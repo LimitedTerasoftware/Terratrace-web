@@ -60,7 +60,7 @@ function App() {
             path="/auth/signin"
             element={
               <>
-                <PageTitle title="Signin | TerraTrace" />
+                <PageTitle title="Signin | Terrain Trace" />
                 <SignIn />
               </>
             }
@@ -69,7 +69,7 @@ function App() {
             path="/auth/signup"
             element={
               <>
-                <PageTitle title="Signup | TerraTrace" />
+                <PageTitle title="Signup | Terrain Trace" />
                 <SignUp />
               </>
             }
@@ -81,7 +81,7 @@ function App() {
               index
               element={
                 <>
-                  <PageTitle title="Terra Trace Sign In" />
+                  <PageTitle title="Terrain Trace Sign In" />
                   <SignIn />
                 </>
               }
@@ -91,7 +91,7 @@ function App() {
               element={
                 <>
                    <DefaultLayout>
-                  <PageTitle title="Terra Trace" />
+                  <PageTitle title="Terrain Trace" />
                   <Calendar />
                   </DefaultLayout>
                 </>
@@ -102,7 +102,7 @@ function App() {
               element={
                 <>
                    <DefaultLayout>
-                  <PageTitle title="Terra Trace Dashboard" />
+                  <PageTitle title="Terrain Trace Dashboard" />
                   <ECommerce />
                   </DefaultLayout>
                 </>

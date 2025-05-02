@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import { Link } from 'react-router-dom';
-import LogoDark from '../../images/logo/logo.png';
-import Logo from '../../images/logo/logo.png';
+// import LogoDark from '../../images/logo/logo.png';
+import LogoDark from '../../images/logo/Tricad.png';
+import Logo1 from '../../images/logo/logo.png';
+import Logo from '../../images/logo/Tricad.png';
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -84,7 +86,7 @@ const SignIn: React.FC = () => {
             <Link className="mb-5.5 inline-flex items-center gap-2 text-[18px] font-medium" to="/">
                 <img className="hidden dark:block h-6 w-auto" src={Logo} alt="Logo" />
                 <img className="dark:hidden h-6 w-auto" src={LogoDark} alt="Logo" />
-                <span className="text-white">Terra Trace</span>
+                <span className="text-white">Terrain Trace</span>
               </Link>
               <p className="2xl:px-20 text-white">
               Experience the future of property management with Terra Trace.
@@ -219,7 +221,7 @@ const SignIn: React.FC = () => {
           <div className="w-full border-stroke dark:border-strokedark xl:w-1/2 xl:border-l-2">
             <div className="w-full p-4 sm:p-12.5 xl:p-17.5">
               <h2 className="mb-9 text-2xl font-bold text-white dark:text-white sm:text-title-xl2">
-                Sign In to Terra Trace
+                Sign In to Terrain Trace
               </h2>
 
               <form onSubmit={handleSubmit}>

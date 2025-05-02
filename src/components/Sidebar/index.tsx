@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import SidebarLinkGroup from './SidebarLinkGroup';
 import Logo from '../../images/logo/logo.png';
-
+import Tricad from '../../images/logo/Tricad.png';
 interface SidebarProps {
   sidebarOpen: boolean;
   setSidebarOpen: (arg: boolean) => void;
@@ -65,8 +65,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
       {/* <!-- SIDEBAR HEADER --> */}
       <div className="flex items-center justify-between gap-2 px-6 py-5.5 lg:py-6.5">
       <NavLink to="/dashboard" className="flex items-center gap-2 text-[24px] font-medium">
-          <img src={Logo} alt="Logo" className="h-6 w-auto" />
-          <span>Terra Trace</span>
+          <img src={Tricad} alt="Logo" className="h-6 w-auto" />
+          <span>Terrain Trace</span>
         </NavLink>
 
         <button
