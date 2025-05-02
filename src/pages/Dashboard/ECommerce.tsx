@@ -93,6 +93,21 @@ const ECommerce: React.FC = () => {
     fetchData();
   }, [selectedTab, selectedState]);
 
+  
+useEffect(() => {
+  if (selectedTab === 'last_7_days') {
+    setFromDate(moment().subtract(7, 'days').format("YYYY-MM-DD"));
+    setToDate(moment().format("YYYY-MM-DD"));
+  } else if (selectedTab === 'last_30_days') {
+    setFromDate(moment().subtract(30, 'days').format("YYYY-MM-DD"));
+    setToDate(moment().format("YYYY-MM-DD"));
+  } else {
+   
+    setFromDate(selectedTab);
+    setToDate(selectedTab);
+  }
+}, [selectedTab]);
+
   const chartData = [
     { name: "GPS", Pending: stats.pendingGPS, Accepted: stats.acceptedGPS, Rejected: stats.rejectedGPS },
     { name: "BLOCK", Pending: stats.pendingBSNL, Accepted: stats.acceptedBSNL, Rejected: stats.rejectedBSNL },
@@ -120,15 +135,19 @@ const ECommerce: React.FC = () => {
     if (status === undefined) {
       navigate(`/survey?tab=bsnl`,{
         state:{
-          selectedState,
+         state: selectedState,
+         formdate:fromDate,
+         todate:toDate
         }
       });
     } else {
       // navigate(`/survey?tab=bsnl&status=${status}`);
       navigate(`/survey?tab=bsnl&status=${status}`, {
-        state: {
-          selectedState, 
-        },
+        state:{
+          state: selectedState,
+          formdate:fromDate,
+          todate:toDate
+         }
       });
       
     }
@@ -138,11 +157,19 @@ const ECommerce: React.FC = () => {
    
     if (status === undefined) {
       navigate(`/survey?tab=gp`, {
-        state: { selectedState },
+        state:{
+          state: selectedState,
+          formdate:fromDate,
+          todate:toDate
+         }
       });
     } else {
       navigate(`/survey?tab=gp&status=${status}`, {
-        state: { selectedState },
+        state:{
+          state: selectedState,
+          formdate:fromDate,
+          todate:toDate
+         }
       });
     }
     
@@ -151,15 +178,19 @@ const ECommerce: React.FC = () => {
   const handleHOTORedirect = (status?: number) => {
     if (status === undefined) {
       navigate(`/survey?tab=hoto`, {
-        state: {
-          selectedState, 
-        },
+        state:{
+          state: selectedState,
+          formdate:fromDate,
+          todate:toDate
+         }
       });
     } else {
       navigate(`/survey?tab=hoto&status=${status}`, {
-        state: {
-          selectedState, 
-        },
+        state:{
+          state: selectedState,
+          formdate:fromDate,
+          todate:toDate
+         }
       });
     }
   };
@@ -167,15 +198,19 @@ const ECommerce: React.FC = () => {
   const handleAerialRedirect = (status?: number) => {
     if (status === undefined) {
       navigate(`/survey?tab=aerial`, {
-        state: {
-          selectedState, 
-        },
+        state:{
+          state: selectedState,
+          formdate:fromDate,
+          todate:toDate
+         }
       });
     } else {
       navigate(`/survey?tab=aerial&status=${status}`, {
-        state: {
-          selectedState, 
-        },
+        state:{
+          state: selectedState,
+          formdate:fromDate,
+          todate:toDate
+         }
       });
     }
   };
@@ -183,19 +218,22 @@ const ECommerce: React.FC = () => {
   const handleGroundRedirect = (status?: number) => {
     if (status === undefined) {
       navigate(`/survey?tab=ground`, {
-        state: {
-          selectedState, 
-        },
+        state:{
+          state: selectedState,
+          formdate:fromDate,
+          todate:toDate
+         }
       });
     } else {
       navigate(`/survey?tab=ground&status=${status}`, {
-        state: {
-          selectedState, 
-        },
+        state:{
+          state: selectedState,
+          formdate:fromDate,
+          todate:toDate
+         }
       });
     }
   };
-
   return (
     <>
       {/* Header Section */}
@@ -248,6 +286,7 @@ const ECommerce: React.FC = () => {
             value={fromDate}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFromDate(e.target.value)}
             className="border px-3 py-2 rounded-lg bg-white text-gray-700 w-full sm:w-auto"
+           
           />
 
           {/* To Date */}
@@ -256,6 +295,7 @@ const ECommerce: React.FC = () => {
             value={toDate}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setToDate(e.target.value)}
             className="border px-3 py-2 rounded-lg bg-white text-gray-700 w-full sm:w-auto"
+            
           />
         </div>
       </div>

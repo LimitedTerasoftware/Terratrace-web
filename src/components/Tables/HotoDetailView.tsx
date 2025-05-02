@@ -133,7 +133,7 @@ const HotoDetailView = () => {
       const response = await axios.get(
         `${BASEURL_Val}/hoto-forms/${id}` 
       );
-      console.log(response.data.data);
+      
       setDetail(response.data.data[0]); // Adjust based on actual API response structure
     } catch (err: any) {
       setError(err.message || "Failed to fetch data");
@@ -218,7 +218,7 @@ const HotoDetailView = () => {
             <p><strong>Address:</strong> {detail.buildingAddress}</p>
             <p><strong>OLT to FPOI:</strong> {detail.oltToFpoi}</p>
             <p><strong>OLT to FPOI Length(Mtrs):</strong> {detail.oltToFpoiLength}</p>
-            <p><strong>OLT to FPOI Fibres:</strong> {detail.oltToFpoiFaultyFibers}</p>
+            <p><strong>OLT to FPOI faulty Fibres:</strong> {detail.oltToFpoiFaultyFibers}</p>
             <p><strong>FPOI to GP:</strong> {detail.fpoiToGp}</p>
             <p><strong>FPOI to GP Length(Mtrs) :</strong> {detail.fpoiToGpLength}</p>
             <p><strong>FPOI to GP faulty Fibres:</strong> {detail.fpoiToGpFaultyFibers}</p>
@@ -244,7 +244,7 @@ const HotoDetailView = () => {
             <p><strong>Earthing Condition:</strong> {detail.earthingCondition}</p>
             <p><strong>Enclosure:</strong> {detail.enclosure}</p>
             <p><strong>Optical Power:</strong> {detail.opticalPower}</p>
-            <p><strong>Enclosure:</strong> {detail.enclosure}</p>
+           
           </div>
 
           <div className="bg-white shadow rounded-lg p-4">
@@ -255,7 +255,8 @@ const HotoDetailView = () => {
             <p><strong>ONT Ports:</strong> {detail.ontPorts}</p>
             <p><strong>FTB Fiber Terminated:</strong> {detail.ftbNoOfFiberTerminated}</p>
             <p><strong>CSC Shifted Location:</strong> {detail.csc}</p>
-            <p><strong>CCU Serial Number:</strong> {detail.ccuSerialNumber}</p>
+            {/* <p><strong>CCU Serial Number:</strong> {detail.ccuSerialNumber}</p> */}
+            <p><strong>CSC Address:</strong> {detail.cscLocation ? detail.cscLocation : '-'}</p>
             </div>
 
             {detail ? (
@@ -270,6 +271,8 @@ const HotoDetailView = () => {
                     
                       <p>End B Lat/Lng: {item.endBLatLang}</p>
                       <img src={`${baseUrl}${item.endBPhoto}`} alt={`End B ${index}`} width="200" />
+                    
+                      
                       </div>
 
                   ))

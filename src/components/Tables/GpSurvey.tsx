@@ -147,10 +147,11 @@ const GpSurvey: React.FC = () => {
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
-   const [selectedStatus, setSelectedStatus] = useState<number | null>(null);
-    const [isStatusInitialized, setIsStatusInitialized] = useState<boolean | null>(false);
-  
-  
+  const [selectedStatus, setSelectedStatus] = useState<number | null>(null);
+ const [isStatusInitialized, setIsStatusInitialized] = useState<boolean | null>(false);
+ const[fromdate,setFromDate]= useState<string>('');
+  const[todate,setToDate]=useState<string>('');
+
 
   const navigate = useNavigate();
 
@@ -174,19 +175,26 @@ const GpSurvey: React.FC = () => {
       if (statusParam) {
         setSelectedStatus(Number(statusParam));
       }
+      if (location.state?.formdate) {
+        setFromDate(location.state?.formdate || '');
+      }
+    
+      if (location.state?.todate) {
+        setToDate(location.state?.todate || '');
+      }
       setIsStatusInitialized(true);
     }, [location]);
 
      useEffect(() => {
-        if (states.length && location.state?.selectedState) {
-          setSelectedState(location.state.selectedState);
+        if (states.length && location.state?.state) {
+          setSelectedState(location.state.state);
         }
       }, [states, location.state]);
   const fetchData = async () => {
     setLoading(true);
     try {
       const response = await axios.get<ApiResponse>(`${BASEURL}/gp-surveys`, {
-        params: {searchText:globalsearch, page, limit: pageSize, state: selectedState, district: selectedDistrict, block: selectedBlock, status: selectedStatus },
+        params: {from_date:fromdate,to_date:todate,searchText:globalsearch, page, limit: pageSize, state: selectedState, district: selectedDistrict, block: selectedBlock, status: selectedStatus },
       });
       setData(response.data.data);
       
@@ -202,7 +210,7 @@ const GpSurvey: React.FC = () => {
     if (isStatusInitialized) {
       fetchData();
        }
-  }, [page, pageSize, selectedState, selectedDistrict, selectedBlock, selectedStatus, isStatusInitialized,globalsearch]);
+  }, [page, pageSize, selectedState, selectedDistrict, selectedBlock, selectedStatus, isStatusInitialized,globalsearch,fromdate,todate]);
 
   const handleAccept = async (id: string) => {
     try {
@@ -350,11 +358,13 @@ const GpSurvey: React.FC = () => {
   };
   const exportExcel = async () => {
     try {
+      const response = await axios.get<ApiResponse>(`${BASEURL}/gp-surveys`, {
+        params: {from_date:fromdate,to_date:todate,isExport: 1,searchText:globalsearch,state: selectedState, district: selectedDistrict, block: selectedBlock, status: selectedStatus },
+      });
     // const response = await fetch(`/Tracking/api/v1/gp-surveys?limit=10000`); // increase limit as needed
     // const json = await response.json();
     // const allData: GpSurvey[] = json.data ?? json;
-    const allData = data;
-
+    const allData: GpSurvey[] = response.data.data;
     const rows1 = allData.map((data) => ({
       id: data.id,
       state_name: data.state_name,

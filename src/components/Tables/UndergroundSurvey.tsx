@@ -111,7 +111,9 @@ const UndergroundSurvey: React.FC = () => {
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<number | null>(null);
   const [isStatusInitialized, setIsStatusInitialized] = useState<boolean | null>(false);
-  
+  const[fromdate,setFromDate]= useState<string>('');
+  const[todate,setToDate]=useState<string>('');
+    
     
   
 
@@ -136,11 +138,18 @@ const UndergroundSurvey: React.FC = () => {
       if (statusParam) {
         setSelectedStatus(Number(statusParam));
       }
+      if (location.state?.formdate) {
+        setFromDate(location.state?.formdate || '');
+      }
+    
+      if (location.state?.todate) {
+        setToDate(location.state?.todate || '');
+      }
       setIsStatusInitialized(true);
     }, [location]);
   useEffect(() => {
-    if (states.length && location.state?.selectedState) {
-      setSelectedState(location.state.selectedState);
+    if (states.length && location.state?.state) {
+      setSelectedState(location.state.state);
     }
   }, [states, location.state]);
 
@@ -148,7 +157,7 @@ const UndergroundSurvey: React.FC = () => {
     setLoading(true);
     try {
       const response = await axios.get<ApiResponse>(`${BASEURL}/underground-surveys`, {
-        params: { searchText:globalsearch,page, limit: pageSize, state: selectedState, district: selectedDistrict, block: selectedBlock, status: selectedStatus },
+        params: { from_date:fromdate,to_date:todate,searchText:globalsearch,page, limit: pageSize, state: selectedState, district: selectedDistrict, block: selectedBlock, status: selectedStatus },
       });
      
       setData(response.data.data);
@@ -164,7 +173,7 @@ const UndergroundSurvey: React.FC = () => {
     if (isStatusInitialized) {
       fetchData();
        }
-  }, [globalsearch,page, pageSize, selectedState, selectedDistrict, selectedBlock, selectedStatus, isStatusInitialized]);
+  }, [fromdate,todate,globalsearch,page, pageSize, selectedState, selectedDistrict, selectedBlock, selectedStatus, isStatusInitialized]);
 
   // Handle delete
   const handleDelete = async (id: string) => {
@@ -324,8 +333,16 @@ const UndergroundSurvey: React.FC = () => {
     }
     return pageNumbers;
   };
-const exportExcel = () => {
-  const rows = data.map((data) => ({
+const exportExcel = async() => {
+  const response = await axios.get<ApiResponse>(`${BASEURL}/underground-surveys`, {
+    params: { from_date:fromdate,
+      to_date:todate,
+      isExport: 1,
+      searchText:globalsearch,
+      state: selectedState, district: selectedDistrict, block: selectedBlock, status: selectedStatus },
+  });
+  const allData: UndergroundSurvey[] = response.data.data;
+  const rows = allData.map((data) => ({
     id: data.id,
     state_id: data.state_id,
     state_name: data.state_name,

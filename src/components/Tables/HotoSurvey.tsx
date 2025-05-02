@@ -148,7 +148,8 @@ const HotoSurvey: React.FC = () => {
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<number | null>(null);
   const [isStatusInitialized, setIsStatusInitialized] = useState<boolean | null>(false);
-
+  const[fromdate,setFromDate]= useState<string>('');
+  const[todate,setToDate]=useState<string>('');
   
 
 
@@ -173,11 +174,18 @@ const HotoSurvey: React.FC = () => {
     if (statusParam) {
       setSelectedStatus(Number(statusParam));
     }
+    if (location.state?.formdate) {
+      setFromDate(location.state?.formdate || '');
+    }
+  
+    if (location.state?.todate) {
+      setToDate(location.state?.todate || '');
+    }
     setIsStatusInitialized(true);
   }, [location]);
   useEffect(() => {
-    if (states.length && location.state?.selectedState) {
-      setSelectedState(location.state.selectedState);
+    if (states.length && location.state?.state) {
+      setSelectedState(location.state.state);
     }
   }, [states, location.state]);
 
@@ -189,7 +197,7 @@ const HotoSurvey: React.FC = () => {
       const companyId = userData?.company_id ?? 1; 
 
       const response = await axios.get<ApiResponse>(`${BASEURL}/hoto-forms`, {
-        params: {searchText:globalsearch, page, limit: pageSize, state: selectedState, district: selectedDistrict, block: selectedBlock, status: selectedStatus },
+        params: {from_date:fromdate,to_date:todate,searchText:globalsearch, page, limit: pageSize, state: selectedState, district: selectedDistrict, block: selectedBlock, status: selectedStatus },
         });
      // console.log("response", response);
       setData(response.data.data);
@@ -205,7 +213,7 @@ const HotoSurvey: React.FC = () => {
     if (isStatusInitialized) {
     fetchData();
      }
-  }, [globalsearch,page, pageSize, selectedState, selectedDistrict, selectedBlock, selectedStatus, isStatusInitialized]);
+  }, [fromdate,todate,globalsearch,page, pageSize, selectedState, selectedDistrict, selectedBlock, selectedStatus, isStatusInitialized]);
 
   
  
@@ -274,6 +282,7 @@ const HotoSurvey: React.FC = () => {
       { accessorKey: "state_name", header: "State Name" },
       { accessorKey: "district_name", header: "District Name" },
       { accessorKey: "block_name", header: "Block Name" },
+      { accessorKey: "gpName", header: "GP Name" },
       {
         accessorKey: "fullname",
         header: "Surviour Name",
@@ -335,7 +344,14 @@ const HotoSurvey: React.FC = () => {
     // const response = await fetch(`${BASEURL}/hoto-forms?limit=10000`); // increase limit as needed
     // const json = await response.json();
     // const allData: Hoto[] = json.data ?? json;
-    const allData=data;
+    const response = await axios.get<ApiResponse>(`${BASEURL}/hoto-forms`, {
+      params: {
+        from_date:fromdate,
+        to_date:todate,
+        isExport: 1,
+        searchText:globalsearch, state: selectedState, district: selectedDistrict, block: selectedBlock, status: selectedStatus },
+      });
+    const allData: Hoto[] = response.data.data;
     const rows = allData.map((data) => ({
       id: data.id,
       state_id: data.state_id,
