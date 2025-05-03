@@ -65,8 +65,10 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
       {/* <!-- SIDEBAR HEADER --> */}
       <div className="flex items-center justify-between gap-2 px-6 py-5.5 lg:py-6.5">
       <NavLink to="/dashboard" className="flex items-center gap-2 text-[24px] font-medium">
-          <img src={Tricad} alt="Logo" className="h-6 w-auto" />
-          <span>Terrain Trace</span>
+      <img src={Tricad} alt="Logo" className="w-[180px]" />
+
+          {/* <img src={Tricad} alt="Logo" className="h-6 w-auto" /> */}
+          {/* <span>Terrain Trace</span> */}
         </NavLink>
 
         <button

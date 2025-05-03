@@ -86,10 +86,10 @@ const SignIn: React.FC = () => {
             <Link className="mb-5.5 inline-flex items-center gap-2 text-[18px] font-medium" to="/">
                 <img className="hidden dark:block h-6 w-auto" src={Logo} alt="Logo" />
                 <img className="dark:hidden h-6 w-auto" src={LogoDark} alt="Logo" />
-                <span className="text-white">Terrain Trace</span>
+                {/* <span className="text-white">Terrain Trace</span> */}
               </Link>
               <p className="2xl:px-20 text-white">
-              Experience the future of property management with Terra Trace.
+              Experience the future of property management with Terrain Trace.
               Simplifying your journey with innovative solutions and insights.
               </p>
 
