@@ -21,6 +21,8 @@ const SignIn: React.FC = () => {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [errors, setErrors] = useState<FormErrors>({});
+  const [loading,setLoading] = useState(false)
+  
   const navigate = useNavigate();
   // Validation for email and password
   const validateForm = (): boolean => {
@@ -44,7 +46,7 @@ const SignIn: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     if (!validateForm()) return;
-
+    setLoading(true)
     try {
       const response = await axios.post(`${BASEURL}/adminuser`, {
         email,
@@ -54,6 +56,7 @@ const SignIn: React.FC = () => {
       
 
       if (response.status === 200) {
+        setLoading(false)
         // Save login success data to localStorage
         localStorage.setItem("userData", JSON.stringify(response.data.admin));
         localStorage.setItem("token", response.data.token); // Save token as well
@@ -65,11 +68,13 @@ const SignIn: React.FC = () => {
         // Redirect to /dashboard
         navigate("/dashboard");
       } else {
+        setLoading(false)
         toast.error(response.data.message || "Invalid credentials.", {
           autoClose: 3000, // Correct property name
         });
       }
     } catch (error) {
+      setLoading(false)
       toast.error("Something went wrong. Please try again later.", {
         autoClose: 3000, // Correct property name
       });
@@ -79,6 +84,12 @@ const SignIn: React.FC = () => {
 
   return (
     <>
+      {loading && (
+        <div className="absolute inset-0 bg-white bg-opacity-70 flex justify-center items-center z-50">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      )}
+
       <div className="min-h-screen rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark bg-[url('/public/background.jpg')] bg-cover bg-center">
         <div className="flex flex-wrap items-center">
           <div className="hidden w-full xl:block xl:w-1/2">
@@ -88,10 +99,14 @@ const SignIn: React.FC = () => {
                 <img className="dark:hidden h-6 w-auto" src={LogoDark} alt="Logo" />
                 {/* <span className="text-white">Terrain Trace</span> */}
               </Link>
-              <p className="2xl:px-20 text-white">
+              {/* <p className="2xl:px-20 text-white">
               Experience the future of property management with Terrain Trace.
               Simplifying your journey with innovative solutions and insights.
-              </p>
+              </p> */}
+            <p className="2xl:px-20 text-white">
+              <strong>Deploy smarter. Track faster. Build better.</strong><br/>  
+              An AI-first platform for managing fiber and utility projects at scale.
+            </p>
 
               <span className="mt-15 inline-block">
                 <svg

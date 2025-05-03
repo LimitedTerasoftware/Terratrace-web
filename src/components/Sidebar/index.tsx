@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import SidebarLinkGroup from './SidebarLinkGroup';
 import Logo from '../../images/logo/logo.png';
 import Tricad from '../../images/logo/Tricad.png';
+import RouteMap from '../../images/icon/route-map.svg'
 interface SidebarProps {
   sidebarOpen: boolean;
   setSidebarOpen: (arg: boolean) => void;
@@ -255,7 +256,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                   rel="noopener noreferrer"  // Security best practice when opening in a new tab
                   className="group relative flex items-center gap-2.5 rounded-sm py-2 px-4 font-medium text-bodydark1 duration-300 ease-in-out hover:bg-graydark dark:hover:bg-meta-4"
                 >
-                  <svg
+                <img src={RouteMap} alt="Map Icon" className="w-6 h-6" />
+
+                  {/* <svg
                     className="fill-current"
                     width="18"
                     height="19"
@@ -279,7 +282,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                         />
                       </clipPath>
                     </defs>
-                  </svg>
+                  </svg> */}
                   Route Planning
                 </NavLink>
               </li>
