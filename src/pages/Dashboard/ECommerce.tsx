@@ -349,7 +349,22 @@ useEffect(() => {
         />
       </div>
 
-      <StatBox 
+      {/* <StatBox 
+        title="HOTO Survey" 
+        rejected={stats.rejectedHOTO} 
+        pending={stats.pendingHOTO} 
+        total={stats.allHOTO} 
+        completed={stats.acceptedHOTO} 
+        onApprovedClick={() => handleHOTORedirect(1)}
+        onPendingClick={() => handleHOTORedirect(0)}
+        onRejectedClick={() => handleHOTORedirect(2)}
+        onTotalClick={() => handleHOTORedirect(undefined)}
+      /> */}
+      
+      <div className="flex flex-row gap-6 mt-10 w-full">
+        {/* Left - StatBox */}
+        <div className="w-1/3">
+        <StatBox 
         title="HOTO Survey" 
         rejected={stats.rejectedHOTO} 
         pending={stats.pendingHOTO} 
@@ -360,16 +375,13 @@ useEffect(() => {
         onRejectedClick={() => handleHOTORedirect(2)}
         onTotalClick={() => handleHOTORedirect(undefined)}
       />
-      
-      <div className="flex flex-row gap-6 mt-10 w-full">
-        {/* Left - StatBox */}
-        <div className="w-1/3">
-        <UserStatBox 
+
+        {/* <UserStatBox 
             title="Users" 
             active={stats.activeUsers} 
             inactive={stats.inactiveUsers} 
             total={stats.allUsers} 
-          />
+          /> */}
         </div>
 
         {/* Right - Table */}
