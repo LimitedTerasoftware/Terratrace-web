@@ -34,6 +34,8 @@ import AerialEdit from './components/Tables/AerialEdit';
 import GroundDetailView from './components/Tables/GroundDetailView';
 import CompaniesTable from './components/Tables/CompaniesTable';
 import HotoDetailView from './components/Tables/HotoDetailView';
+import FileUpload from "./components/Uploads/KmlManager";
+import KmlTable from "./components/Uploads/DataTable";
 
 
 function App() {
@@ -401,6 +403,18 @@ function App() {
             </>
            } 
            />
+
+            <Route
+              path="/kmlfileupload"
+              element={
+                <>
+                   <DefaultLayout>
+                  <PageTitle title="Kml File Upload" />
+                  <FileUpload />
+                  </DefaultLayout>
+                </>
+              }
+            />
           </Routes>
           
       )}
