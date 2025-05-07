@@ -119,6 +119,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
             <SideBarItem icon={CompanyIcon} label="Companies" isOpen={isOpen} isActive={pathname.includes('companies')} path='/companies' />
             <SideBarItem icon={User} label="Users" isOpen={isOpen} isActive={pathname.includes('users')} path='/users' />
             <SideBarItem icon={SurveyIcon} label="Survey" isOpen={isOpen} isActive={pathname.includes('survey')} path='/survey' />
+            <SideBarItem icon={User} label="KML File Upload" isOpen={isOpen} isActive={pathname.includes('kmlfileupload')} path='/kmlfileupload' />
             <li>
               <NavLink
                 to="http://traceapi.keeshondcoin.com/"
