@@ -196,7 +196,6 @@ const paginatedData = data?.under_ground_survey_data.slice(
 
 
 
-  
 
   return (
   <>
