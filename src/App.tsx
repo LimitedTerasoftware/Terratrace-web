@@ -36,6 +36,7 @@ import CompaniesTable from './components/Tables/CompaniesTable';
 import HotoDetailView from './components/Tables/HotoDetailView';
 import FileUpload from "./components/Uploads/KmlManager";
 import KmlTable from "./components/Uploads/DataTable";
+import RoutePlanning from './components/RoutePlanning/index';
 
 
 function App() {
@@ -251,7 +252,7 @@ function App() {
            } 
            />
 
-<Route 
+          <Route 
            path="/survey/hoto-detail-view/:id" 
            element={
             <>
@@ -262,6 +263,15 @@ function App() {
             </>
            } 
            />
+            <Route
+              path="/route-planning"
+              element={
+                <>
+                  <PageTitle title="Route Planning" />
+                  <RoutePlanning />
+                </>
+              }
+            />
             <Route
               path="/settings"
               element={

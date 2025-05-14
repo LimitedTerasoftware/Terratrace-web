@@ -122,7 +122,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
             <SideBarItem icon={User} label="KML File Upload" isOpen={isOpen} isActive={pathname.includes('kmlfileupload')} path='/kmlfileupload' />
             <li>
               <NavLink
-                to="http://traceapi.keeshondcoin.com/"
+                // to="http://traceapi.keeshondcoin.com/"
+                to="/route-planning"
                 target="_blank"  // This will open the link in a new tab
                 rel="noopener noreferrer"  // Security best practice when opening in a new tab
                 className={`

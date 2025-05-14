@@ -48,7 +48,9 @@ const FileUpload: React.FC = () => {
 
     try {
       const data = await parseKML(file);
+      
       const res = await axios.post(`${BASEURL}upload-kml`, { data });
+
       setMessage(res.data.message || "Upload successful!");
     } catch (err) {
       console.error(err);
