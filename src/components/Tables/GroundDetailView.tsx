@@ -63,6 +63,7 @@ interface PatrollerDetails {
     utility_features_checked: UtilityFeaturesChecked;
     videoUrl: string;
     created_at: string;
+    createdTime: string;
   }
   
   interface GroundSurvey {
@@ -310,7 +311,7 @@ const paginatedData = data?.under_ground_survey_data.slice(
                   "-"
                 )}
                 </td>
-              <td className="border p-2 text-center">{new Date(survey.created_at).toLocaleString()}</td>
+              <td className="border p-2 text-center">{new Date(survey.createdTime || survey.created_at).toLocaleString()}</td>
             </tr>
           ))}  
         </tbody>

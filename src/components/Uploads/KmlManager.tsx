@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import KmlSurvey from "../Tables/KmlSurvey";
 
 type KmlPoint = {
   id: number;
@@ -99,44 +100,7 @@ const UploadedList: React.FC = () => {
 
   return (
     <div className="p-4 w-full mx-auto">
-      <h2 className="text-xl font-bold mb-4">Uploaded KML Data</h2>
-      <table className="w-full table-auto border border-gray-300">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="border px-2 py-1">Name</th>
-            <th className="border px-2 py-1">Description</th>
-            <th className="border px-2 py-1">Latitude</th>
-            <th className="border px-2 py-1">Longitude</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map(point => (
-            <tr key={point.id}>
-              <td className="border px-2 py-1">{point.link_name}</td>
-              <td className="border px-2 py-1">{point.description}</td>
-              <td className="border px-2 py-1">{point.latitude}</td>
-              <td className="border px-2 py-1">{point.longitude}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <div className="flex justify-center gap-2">
-        <button
-          onClick={() => setPage(prev => Math.max(prev - 1, 1))}
-          disabled={page === 1}
-          className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50"
-        >
-          Prev
-        </button>
-        <span>Page {page}</span>
-        <button
-          onClick={() => setPage(prev => Math.min(prev + 1, lastPage))}
-          disabled={page === lastPage}
-          className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50"
-        >
-          Next
-        </button>
-      </div>
+      <KmlSurvey/>
     </div>
   );
 };
