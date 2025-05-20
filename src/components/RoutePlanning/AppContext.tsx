@@ -18,6 +18,16 @@ interface AppContextType {
   setAutoMode: (data: boolean) => void;
   AIMode:boolean;
   setAIMode: (data: boolean) => void;
+  SaveFile:boolean;
+  SetSaveFile:(data:boolean) => void;
+  DownloadFile:any;
+  SetDownloadFile: (data: any) => void;
+  gpFile:File | null;
+  setGpFile:(data:File | null) => void;
+  incrementalFile:File | null;
+  setIncrementalFile:(data:File | null) => void;
+
+
 }
 
 // Create context with default values
@@ -38,6 +48,14 @@ const AppContext = createContext<AppContextType>({
   setAutoMode:()=>{},
   AIMode:false,
   setAIMode:()=>{},
+  SaveFile:false,
+  SetSaveFile:()=>{},
+  DownloadFile:()=>{},
+  SetDownloadFile:()=>{},
+  gpFile:null,
+  setGpFile:()=>{},
+  incrementalFile: null,
+  setIncrementalFile:()=>{},
 });
 
 // Provider component
@@ -50,6 +68,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [PointProperties, setPointProperties] = useState<any>(null);
   const [AutoMode,setAutoMode]=useState(false);
   const [AIMode,setAIMode]=useState(false);
+  const[SaveFile,SetSaveFile]=useState(false);
+  const[DownloadFile,SetDownloadFile]=useState<any>(null);
+  const [gpFile, setGpFile] = useState<File | null>(null);
+  const [incrementalFile, setIncrementalFile] = useState<File | null>(null);
 
 
   // Effect to handle window resize and adjust sidebar state
@@ -93,6 +115,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setAutoMode,
     AIMode,
     setAIMode,
+    SaveFile,
+    SetSaveFile,
+    DownloadFile,
+    SetDownloadFile,
+    gpFile,
+    setGpFile,
+    incrementalFile,
+    setIncrementalFile,
+
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

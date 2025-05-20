@@ -3,10 +3,8 @@ import { Upload, FileText } from 'lucide-react';
 import { useAppContext } from '../AppContext';
 
 const FileUpload: React.FC = () => {
-  const {setGPSApiResponse,setConctApiResponse} = useAppContext();
+  const {setGPSApiResponse,setConctApiResponse,gpFile, setGpFile,incrementalFile, setIncrementalFile} = useAppContext();
   const BASEURL = import.meta.env.VITE_API_BASE;
-  const [gpFile, setGpFile] = useState<File | null>(null);
-  const [incrementalFile, setIncrementalFile] = useState<File | null>(null);
 
 const handleGpPoints = async (file:File) => {
 
