@@ -43,6 +43,15 @@ interface PatrollerDetails {
     selectedGroundFeatures: string[];
   }
   
+  interface VideoDetails {
+  startLatitude: number;
+  startLongitude: number;
+  startTimeStamp: number;
+  endLatitude: number;
+  endLongitude: number;
+  endTimeStamp: number;
+  videoUrl: string;
+}
   interface UnderGroundSurveyData {
     id: number;
     area_type: string;
@@ -62,6 +71,7 @@ interface PatrollerDetails {
     end_photos: string[];
     utility_features_checked: UtilityFeaturesChecked;
     videoUrl: string;
+    videoDetails?: VideoDetails;
     created_at: string;
     createdTime: string;
   }
@@ -83,6 +93,7 @@ const GroundDetailView: React.FC = () => {
   const [zoomImage, setZoomImage] = useState<string | null>(null);
   const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'map'>('details');
+  console.log("selectedVideoUrl324",selectedVideoUrl);
 
 
   const { id } = useParams();
@@ -286,17 +297,36 @@ const paginatedData = data?.under_ground_survey_data.slice(
                 ))}
               </td>
               <td className="border p-2 text-center">
-              {survey.event_type == "VIDEORECORD" && survey.videoUrl && survey.videoUrl.trim().replace(/(^"|"$)/g, '') !== "" ? (
-                  <button
-                    onClick={() => setSelectedVideoUrl(survey.videoUrl!.replace(/(^"|"$)/g, ''))}
-                    className="text-blue-600 hover:underline"
-                  >
-                    Play Video
-                  </button>
-                ) : (
-                  "No Video"
+                {survey.event_type == "VIDEORECORD" && (
+                  (() => {
+                    const mainVideoUrl = survey.videoUrl?.trim().replace(/(^"|"$)/g, '');
+                    const fallbackVideoUrl = survey.videoDetails?.videoUrl?.trim().replace(/(^"|"$)/g, '');
+
+                    if (mainVideoUrl) {
+                      return (
+                        <button
+                          onClick={() => setSelectedVideoUrl(mainVideoUrl)}
+                          className="text-blue-600 hover:underline"
+                        >
+                          Play Video
+                        </button>
+                      );
+                    } else if (fallbackVideoUrl) {
+                      return (
+                        <button
+                          onClick={() => setSelectedVideoUrl(fallbackVideoUrl)}
+                          className="text-blue-600 hover:underline"
+                        >
+                          Play Video
+                        </button>
+                      );
+                    } else {
+                      "No Video";
+                    }
+                  })()
                 )}
               </td>
+
               <td className="border p-2">
                   {survey.routeIndicatorUrl ? (
                     <img src={`${baseUrl}${survey.routeIndicatorUrl}`} alt="Route Photo" className="w-16 h-16"  onClick={() => setZoomImage(`${baseUrl}${survey.routeIndicatorUrl}`)}/>

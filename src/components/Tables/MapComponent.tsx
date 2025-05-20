@@ -22,6 +22,16 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
+type VideoDetails = {
+  startLatitude: number;
+  startLongitude: number;
+  startTimeStamp: number;
+  endLatitude: number;
+  endLongitude: number;
+  endTimeStamp: number;
+  videoUrl: string;
+};
+
 // Type Definitions
 type UnderGroundSurveyData = {
   id: string;
@@ -35,6 +45,7 @@ type UnderGroundSurveyData = {
   jointChamberUrl: string;
   created_at: string;
   video_duration?: number;
+  videoDetails?: VideoDetails;
 
 };
 
@@ -212,10 +223,9 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
         }))
         .sort((a, b) => a.distance - b.distance)[0];
     };
-    const nearestToA = findNearestPoint(pointA);
-    const nearestToB = pointB ? findNearestPoint(pointB) : null;
+    let nearestToA = findNearestPoint(pointA);
+    let nearestToB = pointB ? findNearestPoint(pointB) : null;
  
-
     if (nearestToB && isSameCoordinate(nearestToA, nearestToB)) {
         nearestToB = null;
     }
@@ -600,21 +610,28 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
                 <strong>ID:</strong> {selectedMarker.id}<br />
                 <strong>Event:</strong> {selectedMarker.event_type}<br />
                 <strong>Modality:</strong> {selectedMarker.execution_modality}<br /><br />
-                {selectedMarker.event_type === "VIDEORECORD" &&
-                  selectedMarker.videoUrl &&
-                  selectedMarker.videoUrl.trim().replace(/(^"|"$)/g, '') !== "" ? (
-                  <iframe
-                    width="100%"
-                    height="180"
-                    src={`${baseUrl}${selectedMarker.videoUrl!.replace(/(^"|"$)/g, '')}`}
-                    frameBorder="0"
-                    allow="autoplay; encrypted-media"
-                    allowFullScreen
-                    title={`Video-${selectedMarker.id}`}
-                  />
-                ) : (
-                  <p>No video available.</p>
-                )}
+                {selectedMarker.event_type === "VIDEORECORD" && (() => {
+                  const mainVideoUrl = selectedMarker.videoUrl?.trim().replace(/(^"|"$)/g, '');
+                  const fallbackVideoUrl = selectedMarker.videoDetails?.videoUrl?.trim().replace(/(^"|"$)/g, '');
+                  const finalUrl = mainVideoUrl || fallbackVideoUrl;
+
+                  if (finalUrl) {
+                    return (
+                      <iframe
+                        width="100%"
+                        height="180"
+                        src={`${baseUrl}${finalUrl}`}
+                        frameBorder="0"
+                        allow="autoplay; encrypted-media"
+                        allowFullScreen
+                        title={`Video-${selectedMarker.id}`}
+                      />
+                    );
+                  } else {
+                    return <p>No video available.</p>;
+                  }
+                })()}
+
                 {selectedMarker.event_type === "JOINTCHAMBER" && selectedMarker.jointChamberUrl ? (
                   <img
                     src={`${baseUrl}${selectedMarker.jointChamberUrl}`}
