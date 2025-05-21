@@ -69,7 +69,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [AutoMode,setAutoMode]=useState(false);
   const [AIMode,setAIMode]=useState(false);
   const[SaveFile,SetSaveFile]=useState(false);
-  const[DownloadFile,SetDownloadFile]=useState<any>(null);
+  const[DownloadFile,SetDownloadFile]=useState<any>('');
   const [gpFile, setGpFile] = useState<File | null>(null);
   const [incrementalFile, setIncrementalFile] = useState<File | null>(null);
 

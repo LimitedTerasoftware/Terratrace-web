@@ -7,12 +7,24 @@ type UnderGroundSurveyData = {
   longitude: string;
   event_type: string;
   execution_modality: string;
-  videoUrl?: string;
+  videoUrl?: string | undefined;
   start_photos: string[];
   end_photos: string[];
   jointChamberUrl: string;
   created_at: string;
+  createdTime:string
   video_duration?: number;
+  videoDetails?: VideoDetails;
+};
+
+type VideoDetails = {
+  startLatitude: number;
+  startLongitude: number;
+  startTimeStamp: number;
+  endLatitude: number;
+  endLongitude: number;
+  endTimeStamp: number;
+  videoUrl: string;
 };
 
 interface VideoPlayerProps {
@@ -45,7 +57,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const hasSetStartTime = useRef(false);
 
   const currentVideo = videoSegment[currentVideoIndex];
-  const videoUrl = currentVideo?.videoUrl ? `${baseUrl}${currentVideo.videoUrl.replace(/(^"|"$)/g, '')}` : '';
+  const videoUrl =  (currentVideo?.videoDetails?.videoUrl || currentVideo?.videoUrl) ? `${baseUrl}${currentVideo?.videoDetails?.videoUrl.replace(/(^"|"$)/g, '') || currentVideo?.videoUrl.replace(/(^"|"$)/g, '')}` : '';
 
   // Effect to handle video initialization
   useEffect(() => {

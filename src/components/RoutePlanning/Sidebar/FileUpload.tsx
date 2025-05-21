@@ -5,14 +5,16 @@ import { useAppContext } from '../AppContext';
 const FileUpload: React.FC = () => {
   const {setGPSApiResponse,setConctApiResponse,gpFile, setGpFile,incrementalFile, setIncrementalFile} = useAppContext();
   const BASEURL = import.meta.env.VITE_API_BASE;
+  const [loadingpoints, setLoadingPoints] = useState(false);
+  const [loadingconnections, setLoadingConnections] = useState(false);
 
 const handleGpPoints = async (file:File) => {
 
   try {
     const formData = new FormData();
     formData.append('pointsFile', file);
-
-    const response = await fetch(`http://traceapi.keeshondcoin.com/upload-points`, {
+    setLoadingPoints(true);
+    const response = await fetch(`https://traceapi.keeshondcoin.com/upload-points`, {
       method: 'POST',
       body: formData,
     });
@@ -25,6 +27,8 @@ const handleGpPoints = async (file:File) => {
     setGPSApiResponse(data);
   } catch (error) {
     console.error('Error uploading file:', error);
+  }finally{
+      setLoadingPoints(false);
   }
 };
 
@@ -33,8 +37,8 @@ const handleIncrementalPoints = async (file:File) => {
   try {
     const formData = new FormData();
     formData.append('connectionsFile', file);
-
-    const response = await fetch(`http://traceapi.keeshondcoin.com/upload-connections`, {
+   setLoadingConnections(true);
+    const response = await fetch(`https://traceapi.keeshondcoin.com/upload-connections`, {
       method: 'POST',
       body: formData,
     });
@@ -47,6 +51,8 @@ const handleIncrementalPoints = async (file:File) => {
      setConctApiResponse(data);
   } catch (error) {
     console.error('Error uploading file:', error);
+  }finally{
+      setLoadingConnections(false);
   }
 };
 
@@ -55,7 +61,7 @@ const handleIncrementalPoints = async (file:File) => {
       <div className="border rounded-md p-4">
         <div className="flex justify-between items-center mb-2">
           <h3 className="font-medium text-sm">Gp Points File</h3>
-          <span className="text-xs text-gray-500">KML-text/kml</span>
+          <span className="text-xs text-gray-500">KML/kml</span>
         </div>
         <div className="relative mb-4">
           <input
@@ -74,13 +80,22 @@ const handleIncrementalPoints = async (file:File) => {
             className="flex items-center justify-between cursor-pointer text-sm p-2 bg-gray-50 border rounded hover:bg-gray-100 transition-colors"
           >
             <span className="truncate">{gpFile ? gpFile.name : 'Choose file...'}</span>
-            <Upload size={16} className="text-gray-500" />
+
+            {loadingpoints ? (
+              <svg className="animate-spin h-4 w-4 text-gray-500 mr-2" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            ) : (
+              <Upload size={16} className="text-gray-500" />
+            )}
+
           </label>
         </div>
         
         <div className="flex justify-between items-center mb-2">
           <h3 className="font-medium text-sm">Incremental File</h3>
-          <span className="text-xs text-gray-500">KML-text/kml</span>
+          <span className="text-xs text-gray-500">KML/kml</span>
         </div>
         <div className="relative">
           <input
@@ -99,7 +114,14 @@ const handleIncrementalPoints = async (file:File) => {
             className="flex items-center justify-between cursor-pointer text-sm p-2 bg-gray-50 border rounded hover:bg-gray-100 transition-colors"
           >
             <span className="truncate">{incrementalFile ? incrementalFile.name : 'Choose file...'}</span>
-            <Upload size={16} className="text-gray-500" />
+              {loadingconnections ? (
+              <svg className="animate-spin h-4 w-4 text-gray-500 mr-2" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            ) : (
+              <Upload size={16} className="text-gray-500" />
+            )}
           </label>
         </div>
       </div>

@@ -1,10 +1,12 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { GoogleMap, Marker, InfoWindow, useJsApiLoader, OverlayView } from '@react-google-maps/api';
 import { useAppContext } from './AppContext';
 import { MapStyles } from './MapStyles';
 import { mapMarkers } from './mapMarkers';
 import axios from 'axios';
 import { localeData } from 'moment';
+import MapIcon from '../../images/icon/icon-Map.svg'
+import UndoIcon from '../../images/icon/undo-icon.svg'
 
 // Map container style
 const containerStyle = {
@@ -116,6 +118,18 @@ type DistanceLabelProps = {
   text: string;
 };
 
+type Place = {
+  name: string;
+  formatted_address: string;
+  location: {
+    lat: number;
+    lng: number;
+  };
+};
+
+type SearchBoxProps = {
+  map: google.maps.Map | null;
+};
 
 const DistanceLabel = ({ position, text }: DistanceLabelProps) => {
   return (
@@ -208,8 +222,6 @@ const colors = ['gray', 'blue', 'green'];
 const MapComponent: React.FC = () => {
   const { transportMode, apiGPSResponse, apiConctResponse, setPointProperties, AutoMode, setAutoMode ,SaveFile,SetSaveFile,DownloadFile,SetDownloadFile,AIMode,setAIMode,incrementalFile,gpFile,setGPSApiResponse,setConctApiResponse} = useAppContext();
   const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [searchValue, setSearchValue] = useState('');
-  const [showSearch, setShowSearch] = useState(false);
   const [distanceInfoWindows, setDistanceInfoWindows] = useState<
     { position: google.maps.LatLngLiteral; distance: number }[]
   >([]);
@@ -237,11 +249,17 @@ const MapComponent: React.FC = () => {
   const [SelectRoute,setSelectRoute]=useState<any>('');
   const [IsOpen,setIsOpen]=useState<boolean>(false)
   const [error,setError]=useState<string>('')
- const [polylineInstanceMap, setPolylineInstanceMap] = useState<Map<string, google.maps.Polyline>>(new Map());
- const [AIdata, setAIdata] = useState<any>({});
- const [PolylineDetails, setPolylineDetails] = useState<any>('');
-
-
+  const [polylineInstanceMap, setPolylineInstanceMap] = useState<Map<string, google.maps.Polyline>>(new Map());
+  const [AIdata, setAIdata] = useState<any>({});
+  const [PolylineDetails, setPolylineDetails] = useState<any>('');
+  const [searchValue, setSearchValue] = useState('');
+  const [searchResults, setSearchResults] = useState<Place[]>([]);
+  const [showSearch, setShowSearch] = useState(true);
+  const searchMarkerRef = useRef<google.maps.Marker | null>(null);
+  const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
+  const autoModeRef = useRef(AutoMode);
+  const pointARef = useRef(pointA);
+  const pointBRef = useRef(pointB);
 
 
 
@@ -340,10 +358,10 @@ const MapComponent: React.FC = () => {
     const bounds = new window.google.maps.LatLngBounds();
     let totalExisting = 0;
     // const newPolylineHistory: Record<string, PolylineEntry> = {};
-const newPolylineHistory: Record<string, {
-  instance: google.maps.Polyline; // this is for cleanup later
-  data: PolylineEntry;            // this is for global state
-}> = {};
+    const newPolylineHistory: Record<string, {
+      instance: google.maps.Polyline; // this is for cleanup later
+      data: PolylineEntry;            // this is for global state
+    }> = {};
     apiConctResponse.connections.forEach((connection: Connection) => {
       if (!Array.isArray(connection.coordinates) || connection.coordinates.length < 2) {
         console.warn(`Skipping invalid connection: ${connection.name}`);
@@ -387,37 +405,35 @@ const newPolylineHistory: Record<string, {
     //     },
     //   },
     // };
- 
 
-
-
-
-
-newPolylineHistory[connection.name] = {
-  instance: polyline,
-  data: {
-    polyline: { coordinates: path },
-    segmentData: {
-      connection: {
-        length: connection.length || 0,
-        existing: true,
-      },
-    },
-  },
-};
+      newPolylineHistory[connection.name] = {
+        instance: polyline,
+        data: {
+          polyline: { coordinates: path },
+          segmentData: {
+            connection: {
+              length: connection.length || 0,
+              existing: true,
+            },
+          },
+        },
+      };
 
 
 
 
     totalExisting += connection.length || 0;
-
+    polyline.addListener("click", (e) => {
+      setPointProperties(connection)
+    
+    });
    setPolylineInstanceMap(prev => {
-  const newMap = new Map(prev);
-  Object.entries(newPolylineHistory).forEach(([key, val]) => {
-    newMap.set(key, val.instance);
-  });
-  return newMap;
-});
+      const newMap = new Map(prev);
+      Object.entries(newPolylineHistory).forEach(([key, val]) => {
+        newMap.set(key, val.instance);
+      });
+      return newMap;
+    });
     });
     setExistingDistance(totalExisting);
 
@@ -452,7 +468,7 @@ async function AImodehandle() {
   formData.append('connectionsFile', incrementalFile);
 
   try {
-    const response = await fetch('http://traceapi.keeshondcoin.com/upload', {
+    const response = await fetch('https://traceapi.keeshondcoin.com/upload', {
       method: 'POST',
       body: formData,
     });
@@ -462,12 +478,23 @@ async function AImodehandle() {
     }
 
     const result = await response.json();
+    setAIdata(result)
     AIMap(result)
   } catch (error) {
     console.error('Upload error:', error);
   }
 }
 
+useEffect(() => {
+  autoModeRef.current = AutoMode;
+}, [AutoMode]);
+useEffect(() => {
+  pointARef.current = pointA;
+}, [pointA]);
+
+useEffect(() => {
+  pointBRef.current = pointB;
+}, [pointB]);
 const AIMap = (AIdata:any) => {
   if (!map || !AIdata?.loop?.length) return;
   const bounds = new window.google.maps.LatLngBounds();
@@ -532,18 +559,9 @@ const AIMap = (AIdata:any) => {
 
     totalLength += connection?.length || 0;
     polyline.addListener("click", (e) => {
-      const infoWindow = new window.google.maps.InfoWindow({
-        content: `
-          <div>
-            <strong>${connection?.originalName || `${connection?.from} → ${connection?.to}`}</strong><br/>
-            Length: ${connection?.length?.toFixed(2)} km<br/>
-            Existing: ${connection?.existing ? 'Yes' : 'No'}
-          </div>
-        `,
-        position: e.latLng,
-      });
-
-      infoWindow.open(map);
+      
+       setPointProperties(connection)
+      
     });
     // Optional: Add marker for loop point
     if (
@@ -568,25 +586,40 @@ const AIMap = (AIdata:any) => {
 
       bounds.extend(markerPoint);
       const marker = new google.maps.Marker({
-  position: markerPoint,
-  map,
-  title: name,
-  icon: {
-    url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-    scaledSize: new google.maps.Size(30, 30),
-  },
-});
+      position: markerPoint,
+      map,
+      title: name,
+      icon: {
+        url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+        scaledSize: new google.maps.Size(30, 30),
+      },
+    });
+    const isPointSame = pointA && !pointB && isSameCoordinate(pointA, markerPoint);
 
-// Add click listener to send data
-marker.addListener('click', () => {
-  setPointProperties({
-    name,
-    coordinates,
-    properties:{
-    coordinates:coordinates
-  }
-  });
-});
+    // Add click listener to send data
+      marker.addListener('click', () => {
+        setPointProperties({
+          name,
+          coordinates,
+          properties:{
+          coordinates:coordinates
+        }
+        });
+       if (autoModeRef.current) {
+          const currentPointA = pointARef.current;
+          const currentPointB = pointBRef.current;
+
+          const isPointSame = currentPointA && !currentPointB && isSameCoordinate(currentPointA, markerPoint);
+
+          if (!currentPointA) {
+            setPointAName(name);
+            setPointA(markerPoint);
+          } else if (!currentPointB && !isPointSame) {
+            setPointBName(name);
+            setPointB(markerPoint);
+          }
+      }
+      });
 
 
       
@@ -631,7 +664,7 @@ marker.addListener('click', () => {
   const HandleCalculation = async () => {
     if (!pointA || !pointB || !pointAName || !pointBName || !mapInstance) return;
 
-    const url = `http://traceapi.keeshondcoin.com/show-route?lat1=${pointA.lat}&lng1=${pointA.lng}&lat2=${pointB.lat}&lng2=${pointB.lng}`;
+    const url = `https://traceapi.keeshondcoin.com/show-route?lat1=${pointA.lat}&lng1=${pointA.lng}&lat2=${pointB.lat}&lng2=${pointB.lng}`;
     try {
       const response = await fetch(url);
       const data = await response.json();
@@ -664,8 +697,16 @@ marker.addListener('click', () => {
             zIndex: selectedRouteIndex === index ? 999 : 1,
             map: mapInstance,
           });
-
+           
           polyline.addListener("click", () => {
+            setPointProperties({
+              name:`${pointAName} - ${pointBName}`,
+              start:pointAName,
+              end:pointBName,
+              length:routeData.distance,
+              existing:false
+
+            });
             handleRouteSelection(routeKey, index);
             setSelectedRouteIndex(index);
           });
@@ -780,7 +821,7 @@ marker.addListener('click', () => {
         // const routeUrl = `http://router.project-osrm.org/route/v1/driving/${start.lng()},${start.lat()};${newCoord.lng()},${newCoord.lat()};${end.lng()},${end.lat()}?overview=full&geometries=geojson`;
 
         try {
-          const res = await axios.post('http://traceapi.keeshondcoin.com/compute-route', {
+          const res = await axios.post('https://traceapi.keeshondcoin.com/compute-route', {
             newPos: newCoord,
             origin: start,
             destination: end
@@ -955,8 +996,8 @@ const handleRouteSelection = (routeKey: string, selectedIndex: number) => {
 
    setRouteKey(selectedId);
    setSelectRoute(routeKey)
-    setPointA(null)
-    setPointB(null)
+   setPointA(null)
+   setPointB(null)
     // Remove other optional routes and their distance labels
     const group = routeGroups.get(routeKey);
     const toRemovePositions: google.maps.LatLng[] = [];
@@ -1186,7 +1227,8 @@ const deleteRoute = (routeKey: string,routeKeyMain:string) => {
 const deleteGlobalRoute = (routeKey: string) => {
   let fromName = '';
   let toName = '';
-
+ setRouteKey('');
+ setSelectRoute('')
   // Extract fromName and toName from routeKey
   for (const point of LocalData.loop) {
     if (routeKey.endsWith(`-${point.name}`)) {
@@ -1260,7 +1302,7 @@ polylineInstanceMap.forEach(polyline => {
   setExistingDistance(0);
   setSelectedRouteIndex(null);
   setError('')
- setMapInstance(null)
+//  setMapInstance(null)
   setPointA(null)
   setPointB(null)
  setMap(null)
@@ -1292,7 +1334,7 @@ async function saveKML(LocalData:GlobalData) {
 
 
   try {
-    const response = await fetch('http://traceapi.keeshondcoin.com/save-kml', {
+    const response = await fetch('https://traceapi.keeshondcoin.com/save-kml', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body:  JSON.stringify(Body)
@@ -1343,7 +1385,7 @@ async function downloadFile(DownloadFile:string) {
   }
 
   try {
-    const response = await fetch(`http://traceapi.keeshondcoin.com/download/${DownloadFile}`, {
+    const response = await fetch(`https://traceapi.keeshondcoin.com/download/${DownloadFile}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: payload
@@ -1370,21 +1412,83 @@ async function downloadFile(DownloadFile:string) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    SetDownloadFile(null)
+    SetDownloadFile("")
 
   } catch (error) {
      console.error('Download error:', error);
-    SetDownloadFile(null)
+    SetDownloadFile("")
 
   }
 }
 useEffect(()=>{
-  if(DownloadFile !== null){
+  if(DownloadFile !== null && DownloadFile !== ''){
 
    downloadFile(DownloadFile)
 
   }
-},[DownloadFile])
+},[DownloadFile]) 
+
+  useEffect(() => {
+    if (searchValue.trim() === '') {
+      setSearchResults([]);
+      return;
+    }
+
+    const delay = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://traceapi.keeshondcoin.com/search-location?query=${encodeURIComponent(searchValue)}`);
+        const data: Place[] = await res.json();
+        setSearchResults(data);
+      } catch (error) {
+        console.error('Search error:', error);
+        setSearchResults([]);
+      }
+    }, 400); 
+
+    return () => clearTimeout(delay);
+  }, [searchValue]);
+
+const handleSelect = (place: Place) => {
+    if (!map || !place?.location) return;
+
+    const { lat, lng } = place.location;
+
+    // Remove old marker
+    if (searchMarkerRef.current) {
+      searchMarkerRef.current.setMap(null);
+    }
+    if (infoWindowRef.current) {
+      infoWindowRef.current.close();
+    }
+
+    // Create new marker
+    const marker = new google.maps.Marker({
+      position: { lat, lng },
+      map,
+      title: place.name,
+    });
+
+    searchMarkerRef.current = marker;
+
+    const infoWindow = new google.maps.InfoWindow({
+      content: `
+        <div>
+          <strong>${place.name}</strong><br/>
+          ${place.formatted_address}<br/>
+          Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}
+        </div>
+      `,
+    });
+
+    infoWindow.open(map, marker);
+    infoWindowRef.current = infoWindow;
+
+    map.setCenter({ lat, lng });
+    map.setZoom(15);
+    setSearchResults([]);
+    setSearchValue(`${place.name}`);
+  };
+
   // Initialize places autocomplete - moved outside conditional block
   React.useEffect(() => {
     if (!isLoaded || !map || !window.google?.maps?.places) return;
@@ -1436,25 +1540,38 @@ useEffect(()=>{
   return (
     <div className="relative h-full w-full">
       {/* Search Box */}
-      <div className="absolute top-4 left-0 right-0 mx-auto w-11/12 sm:w-96 z-10">
-        <div className="relative">
-          <input
-            id="map-search"
-            type="text"
-            placeholder="Find a place"
-            className={`w-full px-4 py-2 pr-10 rounded-md border border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${showSearch ? 'opacity-100' : 'opacity-0 pointer-events-none'
-              } transition-opacity duration-300`}
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-          />
-          <button
-            className="absolute right-2 top-2 text-gray-500 hover:text-gray-700"
-            onClick={() => setShowSearch(!showSearch)}
-          >
-            {showSearch ? '×' : '🔍'}
-          </button>
-        </div>
+     <div className="absolute top-25 left-1 right-200 mx-auto w-45 z-10">
+
+      <div className="relative">
+        <input
+          id="map-search"
+          type="text"
+          placeholder="Find a place"
+          className={`w-full pl-10 pr-4 py-2 rounded-full shadow-md bg-white text-sm placeholder-gray-500 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-opacity duration-300 ${
+            showSearch ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
+        />
+        <span className="absolute left-3 top-2.5 text-xl pointer-events-none"><img src={MapIcon} className='w-5'/></span>
+
+        {/* Dropdown results */}
+        {searchResults.length > 0 && (
+          <ul className="absolute top-full mt-2 left-0 w-full bg-white shadow-lg rounded-md z-20 max-h-60 overflow-y-auto">
+            {searchResults.map((place, index) => (
+              <li
+                key={index}
+                className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                onClick={() => handleSelect(place)}
+              >
+                {place.name} ({place.formatted_address})
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
+    </div>
+
 
       {/* Google Map Component */}
       <GoogleMap
@@ -1519,23 +1636,23 @@ useEffect(()=>{
           />
         ))}
         {AutoMode && (
-          <div className="absolute top-15 right-4 z-50 bg-blue-800 text-white rounded-lg shadow-lg w-96 overflow-hidden">
+          <div className="absolute top-15 right-4 z-50 bg-white text-white rounded-lg shadow-lg w-80 overflow-hidden">
             {/* Header */}
-            <div className="bg-white text-blue-800 flex justify-between items-center px-4 py-3">
+            <div className="bg-gray-200 text-blue-800 flex justify-between items-center px-4 py-3">
               <h2 className="text-lg font-semibold">Route Selection</h2>
               <button className="text-blue-800 hover:text-blue-600 text-xl font-bold" onClick={() => setAutoMode(false)}>&times;</button>
             </div>
 
             {/* Body */}
             <div className="p-4 space-y-2">
-              <p><span className="font-bold">Start:</span> <span className="text-gray-200">{pointA ? `${pointAName} (${pointA.lat}, ${pointA.lng})` : 'Not Selected'}</span></p>
-              <p><span className="font-bold">End:</span> <span className="text-gray-200">{pointB ? `${pointBName} (${pointB.lat},${pointB.lng})` : 'Not Selected'}</span></p>
+              <p><span className="font-bold text-black">Point A:</span> <span className="text-gray-700">{pointA ? `${pointAName}` : 'Not Selected'}</span></p>
+              <p><span className="font-bold text-black">Point B:</span> <span className="text-gray-700">{pointB ? `${pointBName}` : 'Not Selected'}</span></p>
 
               <div className="flex gap-2 pt-2">
-                <button className="flex-1 bg-white text-black py-2 px-3 rounded-md font-medium flex items-center justify-center hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed" disabled={!pointA || !pointB} onClick={HandleCalculation}>
+                <button className="flex-1 bg-gray-300 text-black py-2 px-0 rounded-md font-medium flex items-center justify-center hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed" disabled={!pointA || !pointB} onClick={HandleCalculation}>
                   🧭 Calculate Route
                 </button>
-                <button className="flex-1 bg-white text-black py-2 px-3 rounded-md font-medium flex items-center justify-center hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed" disabled={RouteKey === ''} onClick={() => {setIsOpen(true)}}>
+                <button className="flex-1 bg-gray-300 text-black py-2 px-0 rounded-md font-medium flex items-center justify-center hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed" disabled={RouteKey === ''} onClick={() => {setIsOpen(true)}}>
                   🗑️ Delete Route
                 </button>
               </div>
@@ -1559,17 +1676,12 @@ useEffect(()=>{
             <div className="w-5 h-1 rounded-sm mr-2" style={{ backgroundColor: '#f00' }}></div>
             Proposed Lines: {proposedDistance.toFixed(2)}km
           </div>
-          {PolylineDetails && (
-          <div className="mb-2.5 flex items-center">
-            <div className="w-5 h-1 rounded-sm mr-2" style={{ backgroundColor: '#f00' }}></div>
-             Lines Details: {PolylineDetails}
-          </div>
-          )}
+        
           
 
           <button
             onClick={() => undoRouteChange(RouteKey)}
-            className="px-3 py-1.5 bg-gray-300 rounded cursor-pointer font-bold border-none"
+            className="px-3 py-1.5 bg-gray-300 hover:bg-gray-200 rounded cursor-pointer font-bold border-none"
           >
             Undo
           </button>

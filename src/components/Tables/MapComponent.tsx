@@ -44,8 +44,10 @@ type UnderGroundSurveyData = {
   end_photos: string[];
   jointChamberUrl: string;
   created_at: string;
+  createdTime:string;
   video_duration?: number;
   videoDetails?: VideoDetails;
+  
 
 };
 
@@ -77,8 +79,8 @@ const FitBounds: React.FC<FitBoundsProps> = ({ positions, triggerReset, resetCom
 const findNearestVideoBefore = (data: UnderGroundSurveyData[], targetTime: string): UnderGroundSurveyData | null => {
 
   return [...data]
-    .filter(item => item.event_type === "VIDEORECORD" && item.videoUrl && item.videoUrl.trim().replace(/(^"|"$)/g, '') !== "" && new Date(item.created_at) <= new Date(targetTime))
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0] || null;
+    .filter(item => item.event_type === "VIDEORECORD" && (  item?.videoDetails?.videoUrl || item.videoUrl) && (item?.videoDetails?.videoUrl.trim().replace(/(^"|"$)/g, '') !== ""  || item?.videoUrl.trim().replace(/(^"|"$)/g, '') !== "" ) && new Date( item.createdTime || item.created_at) <= new Date(targetTime))
+    .sort((a, b) => new Date(b.createdTime || b.created_at ).getTime() - new Date(  a.createdTime || a.created_at).getTime())[0] || null;
 };
 const getTimeDifferenceInSeconds = (time1: string, time2: string): number => {
   return (new Date(time1).getTime() - new Date(time2).getTime()) / 1000;
@@ -230,7 +232,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
         nearestToB = null;
     }
 
-    const videoAtPointA = findNearestVideoBefore(data, nearestToA.created_at);
+    const videoAtPointA = findNearestVideoBefore(data, (nearestToA.createdTime || nearestToA.created_at));
 
     if (!videoAtPointA || !videoAtPointA.videoUrl?.trim()){
       setErrorMessage("No video found near Point A.");
@@ -238,17 +240,17 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
 
     } 
 
-    const startTimeOffset = getTimeDifferenceInSeconds(nearestToA.created_at, videoAtPointA.created_at);
+    const startTimeOffset = getTimeDifferenceInSeconds( (nearestToA?.createdTime || nearestToA.created_at), ( videoAtPointA?.createdTime || videoAtPointA.created_at));
     const endTimeOffset = nearestToB
-      ? getTimeDifferenceInSeconds(nearestToB.created_at, videoAtPointA.created_at)
+      ? getTimeDifferenceInSeconds(( nearestToB?.createdTime || nearestToB.created_at), ( videoAtPointA?.createdTime || videoAtPointA.created_at))
       : null;
     
 
     const relevantVideos = data.filter(item =>
-      item.videoUrl && item.event_type === "VIDEORECORD" &&
-      item.videoUrl.trim().replace(/(^"|"$)/g, '') !== "" &&
-      new Date(item.created_at) >= new Date(videoAtPointA.created_at)
-    ).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      (item?.videoDetails?.videoUrl || item.videoUrl) && item.event_type === "VIDEORECORD" &&
+       ((item?.videoDetails?.videoUrl.trim().replace(/(^"|"$)/g, '') !== "") || (item?.videoUrl.trim().replace(/(^"|"$)/g, '') !== "" )) &&
+      new Date(item?.createdTime || item?.created_at) >= new Date( videoAtPointA?.createdTime || videoAtPointA.created_at)
+    ).sort((a, b) => new Date( a?.createdTime || a.created_at).getTime() - new Date( b?.createdTime || b.created_at).getTime());
 
 
     setVideoSegment(relevantVideos);
@@ -401,13 +403,13 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
         };
     
         const videoAtA = findNearestPoint(pointA);
-        const currentVideoStartTime = new Date(videoAtA.created_at).getTime();
+        const currentVideoStartTime = new Date(videoAtA?.createdTime || videoAtA.created_at).getTime();
     
         // Find the next video (after Point A)
         const nextVideo = data.find(item =>
           item.event_type === "VIDEORECORD" &&
-          item.videoUrl &&
-          new Date(item.created_at).getTime() > currentVideoStartTime
+         (item?.videoDetails?.videoUrl || item.videoUrl) &&
+          new Date( item?.createdTime ||item.created_at).getTime() > currentVideoStartTime
         );
         
         if (nextVideo) {
@@ -478,7 +480,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
       setVideoSegment(updatedSegment);
     }
   };
-
+  console.log(filteredData,'kjhgfx')
   return (
     <div ref={containerRef} className="flex flex-col md:flex-row h-screen">
       {/* Left side: Map */}
@@ -527,8 +529,8 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
               iconUrl = 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'; // Point B
             } else if (
               item.event_type === "VIDEORECORD" &&
-              item.videoUrl &&
-              item.videoUrl.trim().replace(/(^"|"$)/g, '') !== ""
+             (item?.videoDetails?.videoUrl || item?.videoUrl ) &&
+             (item?.videoDetails?.videoUrl.trim().replace(/(^"|"$)/g, '') !== "" || item?.videoUrl.trim().replace(/(^"|"$)/g, '') !== "")
             ) {
               iconUrl = `${videoIcon}`; // Your custom video icon
             }

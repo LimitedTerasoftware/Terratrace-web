@@ -58,7 +58,7 @@ const Sidebar: React.FC = () => {
                             {/* Upload Buttons */}
                             <div className="flex items-center gap-1">
                                 {/* KML Upload */}
-                                <div className="relative">
+                                {/* <div className="relative">
                                     <input
                                         type="file"
                                         id="KML"
@@ -72,7 +72,7 @@ const Sidebar: React.FC = () => {
                                     >
                                         KML_Upload
                                     </label>
-                                </div>
+                                </div> */}
 
                                 {/* Bulk Upload */}
                                 <div className="relative">
@@ -85,7 +85,7 @@ const Sidebar: React.FC = () => {
                                     />
                                     <label
                                         htmlFor="Bulk"
-                                        className="text-[10px] px-2 py-2 bg-gray-100 rounded-full cursor-pointer hover:bg-gray-200 transition-all"
+                                        className="text-[15px] px-2 py-2 bg-gray-100 rounded-full cursor-pointer hover:bg-gray-200 transition-all"
                                     >
                                         Bulk_Upload
                                     </label>

@@ -3,7 +3,7 @@ import { useAppContext } from '../AppContext';
 import SaveIcon from '../../../images/icon/save-file.svg';
 
 const ModeToggle: React.FC = () => {
-  const { AutoMode, setAutoMode, AIMode, setAIMode, SaveFile, SetSaveFile ,SetDownloadFile} = useAppContext();
+  const { AutoMode, setAutoMode, AIMode, setAIMode, SaveFile, SetSaveFile ,SetDownloadFile,DownloadFile} = useAppContext();
   const [format, setFormat] = useState("");
 
   const handleChange = (e: any) => {
@@ -17,9 +17,9 @@ const ModeToggle: React.FC = () => {
           className={`py-2 px-4 text-sm font-medium rounded-md transition-colors ${AutoMode === true
               ? 'bg-[#9D336C] text-white'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-            disabled={AIMode}
-          onClick={() => {setAutoMode(!AutoMode);setAIMode(false)}}
+            }`}
+           
+          onClick={() => {setAutoMode(!AutoMode)}}
         >
           Auto Mode
         </button>
@@ -28,7 +28,7 @@ const ModeToggle: React.FC = () => {
               ? 'bg-[#9D336C] text-white'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             } `}
-          onClick={() =>{ setAIMode(!AIMode);setAutoMode(false)}}
+          onClick={() =>{setAIMode(true);setAutoMode(false)}}
         >
           AI Mode
         </button>
@@ -50,12 +50,12 @@ const ModeToggle: React.FC = () => {
 
         <div className="relative">
           <select
-            value={format}
+            value={DownloadFile}
             onChange={handleChange}
             className={`w-full py-3 px-4 text-sm rounded-md transition-colors appearance-none items-center justify-center gap-2 bg-gray-100 text-gray-700 hover:bg-gray-200
        `}
           >
-            <option value="" disabled>
+            <option value='' disabled>
               Select Download
             </option>
             <option value="kml">KML</option>
