@@ -1,9 +1,14 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useAppContext } from './AppContext';
 import TransportModes from './Sidebar/TransportModes';
 import FileUpload from './Sidebar/FileUpload';
 import ModeToggle from './Sidebar/ModeToggle';
 import PointDetails from './Sidebar/PointDetails';
+
+// *****Related to the bulk Upload Modal*****
+// Import the BulkUploadModal component for file pair uploads
+import BulkUploadModal from './Sidebar/BulkUploadModal';
+
 import { ChevronLeft, ChevronRight, Car, Bike, PersonStanding, Upload } from 'lucide-react';
 import Tricad from '../../images/logo/Tricad.png';
 
@@ -11,10 +16,31 @@ const modes = ['car', 'bike', 'walk'] as const;
 type Mode = typeof modes[number]; 
 
 const Sidebar: React.FC = () => {
-    const { isSidebarOpen, toggleSidebar, transportMode, setTransportMode } = useAppContext();
+    // *****Related to the bulk Upload Modal*****
+    // Destructure bulk upload modal state and setter from the AppContext
+    const { 
+        isSidebarOpen, 
+        toggleSidebar, 
+        transportMode, 
+        setTransportMode,
+        
+        // Bulk upload modal related props from context
+        isBulkUploadModalOpen, 
+        setBulkUploadModalOpen 
+    } = useAppContext();
 
     return (
         <>
+            {/* 
+            // *****Related to the bulk Upload Modal*****
+            // Render the BulkUploadModal component with props from context
+            // isOpen: Controls visibility based on context state
+            // onClose: Uses context setter to hide the modal when closed
+            */}
+            <BulkUploadModal 
+                isOpen={isBulkUploadModalOpen} 
+                onClose={() => setBulkUploadModalOpen(false)} 
+            />
 
             <aside
                 className={`fixed top-0 bottom-0 left-0 w-80 bg-white border-r border-gray-200 overflow-y-auto 
@@ -74,18 +100,15 @@ const Sidebar: React.FC = () => {
                                     </label>
                                 </div>
 
-                                {/* Bulk Upload */}
+                                {/* 
+                                // *****Related to the bulk Upload Modal*****
+                                // Label that opens the bulk upload modal when clicked
+                                // Uses the context setter to show the modal
+                                */}
                                 <div className="relative">
-                                    <input
-                                        type="file"
-                                        id="Bulk"
-                                        className="hidden"
-                                        // onChange={(e) => setIncrementalFile(e.target.files?.[0] || null)}
-                                        accept=".kml,.txt"
-                                    />
                                     <label
-                                        htmlFor="Bulk"
                                         className="text-[10px] px-2 py-2 bg-gray-100 rounded-full cursor-pointer hover:bg-gray-200 transition-all"
+                                        onClick={() => setBulkUploadModalOpen(true)}
                                     >
                                         Bulk_Upload
                                     </label>

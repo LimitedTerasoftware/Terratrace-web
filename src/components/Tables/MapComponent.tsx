@@ -1,5 +1,5 @@
 import { GoogleMap, LoadScript, Marker, Polyline, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
-import { MapPin, Map as MapIcon, Satellite, Mountain, Maximize2, Minimize2, Star, Codepen } from 'lucide-react';
+import { MapPin, Map as MapIcon, Satellite, Mountain, Maximize2, Minimize2, Star, Codepen, SlidersHorizontal } from 'lucide-react';
 import { LatLngExpression, LatLngBounds } from 'leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -49,11 +49,11 @@ type UnderGroundSurveyData = {
 
 };
 
-interface FitBoundsProps {
-  positions: LatLngExpression[];
-  triggerReset: boolean;
-  resetComplete: () => void;
-}
+//interface FitBoundsProps {
+  //positions: LatLngExpression[];
+  //triggerReset: boolean;
+  //resetComplete: () => void;
+//}
 const BASEURL_Val = import.meta.env.VITE_API_BASE;
 const baseUrl = `${BASEURL_Val}/public/`;
 
@@ -62,24 +62,25 @@ interface MapComponentProps {
 }
 
 // Component to re-fit bounds dynamically
-const FitBounds: React.FC<FitBoundsProps> = ({ positions, triggerReset, resetComplete }) => {
-  const map = useMap();
-  useEffect(() => {
-    if (positions.length > 0 && triggerReset) {
-      const bounds = new LatLngBounds(positions);
-      map.fitBounds(bounds, { padding: [50, 50] });
-      resetComplete(); // reset the trigger
-    }
-  }, [positions, triggerReset, resetComplete, map]);
-  return null;
-};
+//const FitBounds: React.FC<FitBoundsProps> = ({ positions, triggerReset, resetComplete }) => {
+  //const map = useMap();
+  //useEffect(() => {
+    //if (positions.length > 0 && triggerReset) {
+      //const bounds = new LatLngBounds(positions);
+      //map.fitBounds(bounds, { padding: [50, 50] });
+      //resetComplete(); // reset the trigger
+    //}
+  //}, [positions, triggerReset, resetComplete, map]);
+  //return null;
+//};
 
 const findNearestVideoBefore = (data: UnderGroundSurveyData[], targetTime: string): UnderGroundSurveyData | null => {
-
+  
   return [...data]
-    .filter(item => item.event_type === "VIDEORECORD" && item.videoUrl && item.videoUrl.trim().replace(/(^"|"$)/g, '') !== "" && new Date(item.created_at) <= new Date(targetTime))
+    .filter(item => item.event_type === "VIDEORECORD" && (item?.videoDetails?.videoUrl || item?.videoUrl ) && (item?.videoDetails?.videoUrl.trim().replace(/(^"|"$)/g, '') !== "" || item?.videoUrl.trim().replace(/(^"|"$)/g, '') !== "") && new Date(item.created_at) <= new Date(targetTime))
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0] || null;
 };
+
 const getTimeDifferenceInSeconds = (time1: string, time2: string): number => {
   return (new Date(time1).getTime() - new Date(time2).getTime()) / 1000;
 };
@@ -94,7 +95,7 @@ const isSameCoordinate = (
   const lng2 = parseFloat(coord2.lng as any);
 
   return lat1 === lat2 && lng1 === lng2;
-};
+}; 
 
 const calculateDistance = (p1: google.maps.LatLngLiteral, p2: google.maps.LatLngLiteral): number => {
   const R = 6371e3; // Earth's radius in meters
@@ -152,9 +153,9 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
   const [selectedMarker, setSelectedMarker] = useState<UnderGroundSurveyData | null>(null);
   const [selectedEventType, setSelectedEventType] = useState<string>('ALL');
   const [selectedModality, setSelectedModality] = useState<string>('ALL');
-  const [zoomLevel, setZoomLevel] = useState<number>(5);
+  //const [zoomLevel, setZoomLevel] = useState<number>(5);
   const [viewMode, setViewMode] = useState<string>('default');
-  const [resetMapBounds, setResetMapBounds] = useState<boolean>(false);
+  //const [resetMapBounds, setResetMapBounds] = useState<boolean>(false);
   const [initialFitDone, setInitialFitDone] = useState<boolean>(false);
   const [isFullView, setIsFullView] = useState<boolean>(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -172,13 +173,23 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
   const [currentTime, setCurrentTime] = useState<number | null>(0);
   const [movingMarkerPosition, setMovingMarkerPosition] = useState<google.maps.LatLngLiteral | null>(null);
   const [VideoDetails, setVideoDetails] = useState<UnderGroundSurveyData[] | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string>("");
-
+  const [errorMessage, setErrorMessage] = useState<string>(""); 
 
   const hasFitBounds = useRef(false);
 
   const { enterFullscreen, exitFullscreen } = useFullscreen();
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(true);
+
+  useEffect(() => {
+    // Short delay to ensure the component is fully rendered
+    const timer = setTimeout(() => {
+      if (containerRef.current) {
+        enterFullscreen(containerRef.current);
+      }
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [enterFullscreen]);
 
 
   const eventTypes = useMemo<string[]>(() => ['ALL', ...new Set(data.map(d => d.event_type))], [data]);
@@ -245,8 +256,8 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
     
 
     const relevantVideos = data.filter(item =>
-      item.videoUrl && item.event_type === "VIDEORECORD" &&
-      item.videoUrl.trim().replace(/(^"|"$)/g, '') !== "" &&
+     ( item?.videoDetails?.videoUrl || item?.videoUrl) && item.event_type === "VIDEORECORD" &&
+      (item?.videoDetails?.videoUrl.trim().replace(/(^"|"$)/g, '') !== "" || item?.videoUrl.trim().replace(/(^"|"$)/g, '') !== "" )&&
       new Date(item.created_at) >= new Date(videoAtPointA.created_at)
     ).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
@@ -293,13 +304,13 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
 
 
 
-  const handleResetMap = () => {
-    setResetMapBounds(true);
-  };
+//const handleResetMap = () => {
+    //setResetMapBounds(true);
+  //};
 
-  const resetComplete = () => {
-    setResetMapBounds(false);
-  };
+  //const resetComplete = () => {
+    //setResetMapBounds(false);
+  //};
 
   const clearFilters = () => {
     setSelectedEventType('ALL');
@@ -406,7 +417,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
         // Find the next video (after Point A)
         const nextVideo = data.find(item =>
           item.event_type === "VIDEORECORD" &&
-          item.videoUrl &&
+          (item?.videoDetails?.videoUrl || item?.videoUrl) &&
           new Date(item.created_at).getTime() > currentVideoStartTime
         );
         
@@ -479,13 +490,18 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
     }
   };
 
+  const sidebarWidth = isFullscreen ?  'w-1/4' : 'w-96';
+
+  const mapWidth = isFullscreen ? 'w-3/4' : 'w-full md:flex-1'; 
+
+  console.log(filteredData,'lkjhgc')
   return (
     <div ref={containerRef} className="flex flex-col md:flex-row h-screen">
       {/* Left side: Map */}
-      <div className={`w-full md:w-3/4 h-1/2 md:h-full relative`}>
+      <div className={`${mapWidth} h-1/2 md:h-full relative`}>
         <GoogleMap
           mapContainerStyle={{ height: '100%', width: '100%' }}
-          zoom={zoomLevel}
+          //zoom={5}
           center={!mapLoaded ? initialCenter : undefined}
           onLoad={(map) => {
             mapRef.current = map;
@@ -518,6 +534,9 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
             const isPointA = pointA && isSameCoordinate(pointA, position);
             const isPointB = pointB && isSameCoordinate(pointB, position);
 
+            const mainVideoUrl = item.videoUrl?.trim().replace(/(^"|"$)/g, '');
+            const fallbackVideoUrl = item.videoDetails?.videoUrl?.trim().replace(/(^"|"$)/g, '');
+            const finalUrl = mainVideoUrl || fallbackVideoUrl;
 
             let iconUrl = 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'; // default
 
@@ -527,8 +546,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
               iconUrl = 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'; // Point B
             } else if (
               item.event_type === "VIDEORECORD" &&
-              item.videoUrl &&
-              item.videoUrl.trim().replace(/(^"|"$)/g, '') !== ""
+              finalUrl
             ) {
               iconUrl = `${videoIcon}`; // Your custom video icon
             }
@@ -725,9 +743,37 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
       </div>
 
       {/* Right side: Filters and Controls */}
-      <div className="w-80 bg-gray-100 p-4 overflow-y-auto">
+      <div className={`${sidebarWidth} bg-gray-100 p-4 overflow-y-auto`}>
 
-        <h2 className="text-lg font-bold mb-4">Video Segments</h2>
+        <div className="mb-4 flex space-x-2 items-center">
+          <div>
+            <button 
+              className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded" 
+              onClick={() => { 
+                if (isFullscreen) { 
+                  exitFullscreen(); 
+                  setIsFullscreen(false); 
+                } else { 
+                  enterFullscreen(containerRef.current); 
+                  setIsFullscreen(true); 
+                } 
+              }}
+            >
+              {isFullscreen ? 'Exit Full View' : 'Full View'}
+            </button>
+          </div>
+    
+          <div>
+            <button 
+              className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded"
+              onClick={() => startPointSelection('A')}
+            >
+              Select Video Segment
+            </button>
+          </div>
+        </div>
+
+        <h2 className="text-xl font-bold mb-4 text-blue-600">Video Segments</h2>
 
         {videoSegment && videoSegment.length > 0 && (
           <><VideoPlayer
@@ -746,7 +792,10 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
         )}
        {errorMessage && <p style={{ color: "red" }}>{errorMessage}</p>}
 
-        <h2 className="text-lg font-bold mb-4">Filters</h2>
+       <h2 className="text-xl font-bold mb-4 flex items-center text-blue-600">
+        <SlidersHorizontal className="w-5 h-5 mr-2" />
+        Filters
+       </h2>
 
         {/* Event Type Filter */}
         <div className="mb-4">
@@ -778,40 +827,12 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
 
         {/* Clear Filters Button */}
         <div className="mb-6">
-          <button
-            onClick={clearFilters}
-            className="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded"
-          >
-            Clear Filters
-          </button>
-        </div>
-
-        <h2 className="text-lg font-bold mt-8 mb-4">Map Controls</h2>
-
-        {/* Zoom Controls */}
-        <div className="flex gap-4 mb-4">
-          <button
-            onClick={() => setZoomLevel((prev) => Math.min(prev + 1, 18))}
-            className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded"
-          >
-            Zoom In
-          </button>
-          <button
-            onClick={() => setZoomLevel((prev) => Math.max(prev - 1, 2))}
-            className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded"
-          >
-            Zoom Out
-          </button>
-        </div>
-
-        {/* Reset Zoom Button */}
-        <div className="mb-6">
-          <button
-            onClick={handleResetMap}
-            className="w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded"
-          >
-            Reset Zoom
-          </button>
+        <button
+          onClick={clearFilters}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded"
+        >
+          Clear Filters
+        </button>
         </div>
 
         {/* View Mode Selector */}
@@ -827,24 +848,6 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
             <option value="terrain">Terrain</option>
           </select>
         </div> */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-1">View full Screen:</label>
-          <button
-            className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-            onClick={() => {
-              if (isFullscreen) {
-                exitFullscreen();
-                setIsFullscreen(false);
-              } else {
-                enterFullscreen(containerRef.current);
-                setIsFullscreen(true);
-              }
-            }}
-          >
-            {isFullscreen ? 'Exit Full View' : 'Full View'}
-          </button>
-
-        </div>
       </div>
     </div>
   );

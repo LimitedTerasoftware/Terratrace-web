@@ -26,8 +26,12 @@ interface AppContextType {
   setGpFile:(data:File | null) => void;
   incrementalFile:File | null;
   setIncrementalFile:(data:File | null) => void;
-
-
+  
+  // *****Related to the bulk Upload Modal*****
+  // Controls visibility of the bulk upload modal throughout the application
+  isBulkUploadModalOpen: boolean;
+  // Function to toggle or set the visibility state of the bulk upload modal
+  setBulkUploadModalOpen: (isOpen: boolean) => void;
 }
 
 // Create context with default values
@@ -56,6 +60,12 @@ const AppContext = createContext<AppContextType>({
   setGpFile:()=>{},
   incrementalFile: null,
   setIncrementalFile:()=>{},
+  
+  // *****Related to the bulk Upload Modal*****
+  // Default state is closed (false)
+  isBulkUploadModalOpen: false,
+  // Empty function placeholder for the setter
+  setBulkUploadModalOpen: () => {},
 });
 
 // Provider component
@@ -72,7 +82,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const[DownloadFile,SetDownloadFile]=useState<any>(null);
   const [gpFile, setGpFile] = useState<File | null>(null);
   const [incrementalFile, setIncrementalFile] = useState<File | null>(null);
-
+  
+  // *****Related to the bulk Upload Modal*****
+  // State to track if the bulk upload modal is currently visible
+  const [isBulkUploadModalOpen, setBulkUploadModalOpen] = useState(false);
 
   // Effect to handle window resize and adjust sidebar state
   useEffect(() => {
@@ -95,9 +108,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
   const toggleSidebar = () => {
-
     setIsSidebarOpen(!isSidebarOpen);
   };
+  
   const value = {
     isSidebarOpen,
     toggleSidebar,
@@ -123,7 +136,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setGpFile,
     incrementalFile,
     setIncrementalFile,
-
+    
+    // *****Related to the bulk Upload Modal*****
+    // Expose the bulk upload modal visibility state to all components
+    isBulkUploadModalOpen,
+    // Expose the setter function to allow components to open/close the modal
+    setBulkUploadModalOpen,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
