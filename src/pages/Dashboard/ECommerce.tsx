@@ -394,6 +394,7 @@ const ECommerce: React.FC = () => {
 
       </div>
       <div className="mt-4 grid grid-cols-12 gap-4 md:mt-6 md:gap-6 2xl:mt-7.5 2xl:gap-7.5">
+        
         {/* Left Side: Table */}
         <div className="col-span-12 md:col-span-6 xl:col-span-6">
           <div className="bg-white shadow rounded-lg h-full flex flex-col overflow-x-auto">
@@ -406,7 +407,8 @@ const ECommerce: React.FC = () => {
                   <th className="border border-gray-300 px-4 py-2 text-left">Rejected</th>
                 </tr>
               </thead>
-              <tbody className="bg-white">
+
+              {/*<tbody className="bg-white">
                 <tr className="cursor-pointer" onClick={handleGpNavigate}>
                   <td className="border border-gray-300 px-4 py-2 text-black">Gp Survey</td>
                   <td className="border border-gray-300 px-4 py-2">{stats.acceptedGPS}</td>
@@ -437,8 +439,190 @@ const ECommerce: React.FC = () => {
                   <td className="border border-gray-300 px-4 py-2">{stats.pendingHOTO}</td>
                   <td className="border border-gray-300 px-4 py-2">{stats.rejectedHOTO}</td>
                 </tr>
+              </tbody>*/}
 
+<tbody className="bg-white">
+                <tr>
+                  <td 
+                    className="border border-gray-300 px-4 py-2 text-black cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleGPRedirect(undefined)}
+                  >
+                    Gp Survey
+                  </td>
+                  <td 
+                    className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-green-100 text-green-700 font-semibold"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleGPRedirect(1);
+                    }}
+                  >
+                    {stats.acceptedGPS}
+                  </td>
+                  <td 
+                    className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-yellow-100 text-yellow-700 font-semibold"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleGPRedirect(0);
+                    }}
+                  >
+                    {stats.pendingGPS}
+                  </td>
+                  <td 
+                    className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-red-100 text-red-700 font-semibold"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleGPRedirect(2);
+                    }}
+                  >
+                    {stats.rejectedGPS}
+                  </td>
+                </tr>
+                
+                <tr>
+                  <td 
+                    className="border border-gray-300 px-4 py-2 text-black cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleBsnlRedirect(undefined)}
+                  >
+                    Block Survey
+                  </td>
+                  <td 
+                    className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-green-100 text-green-700 font-semibold"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleBsnlRedirect(1);
+                    }}
+                  >
+                    {stats.acceptedBSNL}
+                  </td>
+                  <td 
+                    className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-yellow-100 text-yellow-700 font-semibold"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleBsnlRedirect(0);
+                    }}
+                  >
+                    {stats.pendingBSNL}
+                  </td>
+                  <td 
+                    className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-red-100 text-red-700 font-semibold"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleBsnlRedirect(2);
+                    }}
+                  >
+                    {stats.rejectedBSNL}
+                  </td>
+                </tr>
+                
+                <tr>
+                  <td 
+                    className="border border-gray-300 px-4 py-2 text-black cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleAerialRedirect(undefined)}
+                  >
+                    Aerial Survey
+                  </td>
+                  <td 
+                    className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-green-100 text-green-700 font-semibold"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAerialRedirect(1);
+                    }}
+                  >
+                    {stats.acceptedAerial}
+                  </td>
+                  <td 
+                    className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-yellow-100 text-yellow-700 font-semibold"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAerialRedirect(0);
+                    }}
+                  >
+                    {stats.pendingAerial}
+                  </td>
+                  <td 
+                    className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-red-100 text-red-700 font-semibold"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAerialRedirect(2);
+                    }}
+                  >
+                    {stats.rejectedAerial}
+                  </td>
+                </tr>
+                
+                <tr>
+                  <td 
+                    className="border border-gray-300 px-4 py-2 text-black cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleGroundRedirect(undefined)}
+                  >
+                    UG Survey
+                  </td>
+                  <td 
+                    className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-green-100 text-green-700 font-semibold"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleGroundRedirect(1);
+                    }}
+                  >
+                    {stats.acceptedUnderGround}
+                  </td>
+                  <td 
+                    className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-yellow-100 text-yellow-700 font-semibold"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleGroundRedirect(0);
+                    }}
+                  >
+                    {stats.pendingUnderGround}
+                  </td>
+                  <td 
+                    className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-red-100 text-red-700 font-semibold"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleGroundRedirect(2);
+                    }}
+                  >
+                    {stats.rejectedUnderGround}
+                  </td>
+                </tr>
+                
+                <tr>
+                  <td 
+                    className="border border-gray-300 px-4 py-2 text-black cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleHOTORedirect(undefined)}
+                  >
+                    Hoto Survey
+                  </td>
+                  <td 
+                    className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-green-100 text-green-700 font-semibold"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleHOTORedirect(1);
+                    }}
+                  >
+                    {stats.acceptedHOTO}
+                  </td>
+                  <td 
+                    className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-yellow-100 text-yellow-700 font-semibold"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleHOTORedirect(0);
+                    }}
+                  >
+                    {stats.pendingHOTO}
+                  </td>
+                  <td 
+                    className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-red-100 text-red-700 font-semibold"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleHOTORedirect(2);
+                    }}
+                  >
+                    {stats.rejectedHOTO}
+                  </td>
+                </tr>
               </tbody>
+
             </table>
           </div>
         </div>
