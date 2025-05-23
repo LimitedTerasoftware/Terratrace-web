@@ -192,8 +192,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                           {/* Option 2: Route Builder can use both the internal path and external link*/}
                           <li>
                             <NavLink
-                              // to="http://traceapi.keeshondcoin.com/"
-                              to="/route-planning/builder"
+                               to="http://traceapi.keeshondcoin.com/"
+                              //to="/route-planning/builder"
                               target="_blank"
                               rel="noopener noreferrer"
                               className={({ isActive }) =>
