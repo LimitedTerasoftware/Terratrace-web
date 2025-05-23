@@ -496,7 +496,6 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
 
   const mapWidth = isFullscreen ? 'w-3/4' : 'w-full md:flex-1'; 
 
-  console.log(filteredData,'lkjhgc')
   return (
     <div ref={containerRef} className="flex flex-col md:flex-row h-screen">
       {/* Left side: Map */}

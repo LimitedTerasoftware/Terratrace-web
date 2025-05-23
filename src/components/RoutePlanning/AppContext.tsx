@@ -32,6 +32,8 @@ interface AppContextType {
   isBulkUploadModalOpen: boolean;
   // Function to toggle or set the visibility state of the bulk upload modal
   setBulkUploadModalOpen: (isOpen: boolean) => void;
+  lineSummary:boolean;
+  setLineSummary:(data:boolean) => void;
 }
 
 // Create context with default values
@@ -66,6 +68,8 @@ const AppContext = createContext<AppContextType>({
   isBulkUploadModalOpen: false,
   // Empty function placeholder for the setter
   setBulkUploadModalOpen: () => {},
+  lineSummary:true,
+  setLineSummary:() => {},
 });
 
 // Provider component
@@ -82,7 +86,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const[DownloadFile,SetDownloadFile]=useState<any>('');
   const [gpFile, setGpFile] = useState<File | null>(null);
   const [incrementalFile, setIncrementalFile] = useState<File | null>(null);
-  
+  const [lineSummary, setLineSummary] = useState(true);
+
   // *****Related to the bulk Upload Modal*****
   // State to track if the bulk upload modal is currently visible
   const [isBulkUploadModalOpen, setBulkUploadModalOpen] = useState(false);
@@ -142,6 +147,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     isBulkUploadModalOpen,
     // Expose the setter function to allow components to open/close the modal
     setBulkUploadModalOpen,
+    lineSummary,
+    setLineSummary
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

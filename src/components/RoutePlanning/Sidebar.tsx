@@ -26,7 +26,9 @@ const Sidebar: React.FC = () => {
         
         // Bulk upload modal related props from context
         isBulkUploadModalOpen, 
-        setBulkUploadModalOpen 
+        setBulkUploadModalOpen ,
+        lineSummary,
+        setLineSummary
     } = useAppContext();
 
     return (
@@ -84,21 +86,15 @@ const Sidebar: React.FC = () => {
                             {/* Upload Buttons */}
                             <div className="flex items-center gap-1">
                                 {/* KML Upload */}
-                                {/* <div className="relative">
-                                    <input
-                                        type="file"
-                                        id="KML"
-                                        className="hidden"
-                                        // onChange={(e) => setGpFile(e.target.files?.[0] || null)}
-                                        accept=".kml,.txt"
-                                    />
-                                    <label
-                                        htmlFor="KML"
-                                        className="text-[10px] px-2 py-2 bg-gray-100 rounded-full cursor-pointer hover:bg-gray-200 transition-all"
+                                <div className="relative">
+                                   
+                                    <button
+                                        onClick={()=>setLineSummary(!lineSummary)}
+                                        className="text-[10px] px-2 py-[3px] bg-gray-100 rounded-full cursor-pointer hover:bg-gray-200 transition-all"
                                     >
-                                        KML_Upload
-                                    </label>
-                                </div> */}
+                                        Line_Summary
+                                    </button>
+                                </div>
 
                                 {/* 
                                 // *****Related to the bulk Upload Modal*****

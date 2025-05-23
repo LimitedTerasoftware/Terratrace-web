@@ -22,7 +22,7 @@ const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
   showDetailedErrors = false
 }) => {
   // Context
-  const { setGPSApiResponse, setConctApiResponse } = useAppContext();
+  // const { setGPSApiResponse, setConctApiResponse } = useAppContext();
   
   // State management
   const [gpFiles, setGpFiles] = useState<File[]>([]);
@@ -303,11 +303,11 @@ const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
       // Update context with response data
       if (incrementalFiles[index]) {
         // Original behavior when both files are present
-        setGPSApiResponse(data.gpData || data);
-        setConctApiResponse(data.incrementalData || data);
+        // setGPSApiResponse(data.gpData || data);
+        // setConctApiResponse(data.incrementalData || data);
       } else {
         // For GP file only uploads using generate-route endpoint
-        setGPSApiResponse(data);
+        // setGPSApiResponse(data);
       }
       
       // Set success status

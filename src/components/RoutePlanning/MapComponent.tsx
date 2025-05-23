@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { GoogleMap, Marker, InfoWindow, useJsApiLoader, OverlayView } from '@react-google-maps/api';
+import { GoogleMap, Marker, InfoWindow, useJsApiLoader, OverlayView, DirectionsRenderer } from '@react-google-maps/api';
 import { useAppContext } from './AppContext';
 import { MapStyles } from './MapStyles';
 import { mapMarkers } from './mapMarkers';
@@ -7,6 +7,7 @@ import axios from 'axios';
 import { localeData } from 'moment';
 import MapIcon from '../../images/icon/icon-Map.svg'
 import UndoIcon from '../../images/icon/undo-icon.svg'
+import { AlertCircle, CheckCircle, X } from 'lucide-react';
 
 // Map container style
 const containerStyle = {
@@ -41,7 +42,9 @@ interface PolylineEntry {
       existing: boolean;
     };
   };
-  distanceLabel?: string | null;
+startCords?: [number, number];
+endCords?: [number, number];
+distanceLabel?: string | null;
 }
 
 // Define the structure for LoopConnection
@@ -59,17 +62,19 @@ interface LoopEntry {
   route: {
     features: RouteFeature[];
   };
- 
+
 }
 
 // Define the global data structure
 interface GlobalData {
-  
+
   loop: LoopEntry[];
   mainPointName: string | null;
   totalLength: number;
+  existinglength:number,
+  proposedlength:number,
   // complete: boolean;
-   polylineHistory: {
+  polylineHistory: {
     [segmentKey: string]: PolylineEntry;
   };
 }
@@ -126,6 +131,12 @@ type Place = {
     lng: number;
   };
 };
+
+interface NotifierState {
+  type: 'success' | 'error';
+  message: string;
+  visible: boolean;
+}
 
 type SearchBoxProps = {
   map: google.maps.Map | null;
@@ -216,11 +227,18 @@ function isSamePosition(pos1, pos2, precision = 6) {
 
 
 
-const libraries: ("places" | "drawing" | "geometry" | "localContext" | "visualization")[] = ["places"];
-const colors = ['gray', 'blue', 'green'];
+const libraries: ("places" | "drawing" | "geometry" | "visualization")[] = [
+  "places",
+  "drawing",
+  "geometry",
+  "visualization"
+];
+const colors = ['blue', 'green', 'gray'];
 
 const MapComponent: React.FC = () => {
-  const { transportMode, apiGPSResponse, apiConctResponse, setPointProperties, AutoMode, setAutoMode ,SaveFile,SetSaveFile,DownloadFile,SetDownloadFile,AIMode,setAIMode,incrementalFile,gpFile,setGPSApiResponse,setConctApiResponse} = useAppContext();
+  const { transportMode, apiGPSResponse, apiConctResponse, setPointProperties, AutoMode, setAutoMode, SaveFile, SetSaveFile, DownloadFile, SetDownloadFile, AIMode, setAIMode, incrementalFile, gpFile, setGPSApiResponse, setConctApiResponse,
+    lineSummary, setLineSummary
+  } = useAppContext();
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [distanceInfoWindows, setDistanceInfoWindows] = useState<
     { position: google.maps.LatLngLiteral; distance: number }[]
@@ -234,21 +252,24 @@ const MapComponent: React.FC = () => {
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
   const [selectedRouteIndex, setSelectedRouteIndex] = useState<number | null>(null);
   const [editMarkers, setEditMarkers] = useState<google.maps.Marker[]>([]);
+
   const [existingDistance, setExistingDistance] = useState<number>(0);
   const [proposedDistance, setProposedDistance] = useState<number>(0);
   const [LocalData, setLocalData] = useState<GlobalData>({
-    
+
     loop: [],
     mainPointName: null,
     totalLength: 0,
+    existinglength:0,
+    proposedlength:0,
     // complete: false,
     polylineHistory: {},
   });
-
-  const [RouteKey,setRouteKey]=useState<any>('');
-  const [SelectRoute,setSelectRoute]=useState<any>('');
-  const [IsOpen,setIsOpen]=useState<boolean>(false)
-  const [error,setError]=useState<string>('')
+  const [SelectedPolyline, setSelectedPolyline] = useState<any>('');
+  const [RouteKey, setRouteKey] = useState<any>('');
+  const [SelectRoute, setSelectRoute] = useState<any>('');
+  const [IsOpen, setIsOpen] = useState<boolean>(false)
+  const [error, setError] = useState<string>('')
   const [polylineInstanceMap, setPolylineInstanceMap] = useState<Map<string, google.maps.Polyline>>(new Map());
   const [AIdata, setAIdata] = useState<any>({});
   const [PolylineDetails, setPolylineDetails] = useState<any>('');
@@ -260,13 +281,29 @@ const MapComponent: React.FC = () => {
   const autoModeRef = useRef(AutoMode);
   const pointARef = useRef(pointA);
   const pointBRef = useRef(pointB);
+  const [loader, setLoader] = useState(false);
+  const [Notifier, setNotifier] = useState<NotifierState>({ type: 'success', message: '', visible: false });
+  const notifierTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const routeMarkers = useRef<Map<string, google.maps.Marker[]>>(new Map());
+
+
+
+
+  useEffect(() => {
+    // Cleanup function
+    return () => {
+      if (notifierTimeoutRef.current) {
+        clearTimeout(notifierTimeoutRef.current);
+      }
+    };
+  }, []);
 
 
 
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: 'AIzaSyCPHNQoyCkDJ3kOdYZAjZElbhXuJvx-Odg',
-    // libraries,
+    libraries,
   });
 
   // Callback when map loads - moved outside conditional block
@@ -282,60 +319,60 @@ const MapComponent: React.FC = () => {
     setMapInstance(null);
 
   }, []);
-  
+
   useEffect(() => {
     if (apiGPSResponse?.points?.length && map) {
-    setPointProperties(apiGPSResponse?.points[0])
-    
-  const connectionsByPoint = new Map<string, Connection[]>();
+      setPointProperties(apiGPSResponse?.points[0])
 
-  // Group connections by point name (like "A", "B")
-  if (apiConctResponse?.connections?.length) {
-    apiConctResponse.connections.forEach((conn:Connection) => {
-    const [from, to] = [conn.start, conn.end];
-      [from, to].forEach((point) => {
-        if (!connectionsByPoint.has(point)) {
-          connectionsByPoint.set(point, []);
-        }
-        connectionsByPoint.get(point)?.push(conn);
-      });
-    });
-  }
+      const connectionsByPoint = new Map<string, Connection[]>();
 
-  const newLoopEntries: LoopEntry[] = apiGPSResponse.points.map((point: any) => {
-    const relatedConnections = connectionsByPoint.get(point.name) || [];
+      // Group connections by point name (like "A", "B")
+      if (apiConctResponse?.connections?.length) {
+        apiConctResponse.connections.forEach((conn: Connection) => {
+          const [from, to] = [conn.start, conn.end];
+          [from, to].forEach((point) => {
+            if (!connectionsByPoint.has(point)) {
+              connectionsByPoint.set(point, []);
+            }
+            connectionsByPoint.get(point)?.push(conn);
+          });
+        });
+      }
 
-    // Pick one connection if multiple (or you can loop them all if needed)
-    const matchedConn = relatedConnections[0];
+      const newLoopEntries: LoopEntry[] = apiGPSResponse.points.map((point: any) => {
+        const relatedConnections = connectionsByPoint.get(point.name) || [];
 
-    return {
-      name: point.name,
-      coordinates: point.coordinates,
-      ...(matchedConn && {
-      connection: {
-        length: matchedConn.length || 0,
-        existing: true,
-        color: matchedConn.color || "#55ff00",
-      },
-      route: {
-        features: [
-          {
-            geometry: {
-              coordinates: matchedConn.coordinates,
+        // Pick one connection if multiple (or you can loop them all if needed)
+        const matchedConn = relatedConnections[0];
+
+        return {
+          name: point.name,
+          coordinates: point.coordinates,
+          ...(matchedConn && {
+            connection: {
+              length: matchedConn.length || 0,
+              existing: true,
+              color: matchedConn.color || "#55ff00",
             },
-          },
-        ],
-      },
-    }),
-       
-    };
-  });
+            route: {
+              features: [
+                {
+                  geometry: {
+                    coordinates: matchedConn.coordinates,
+                  },
+                },
+              ],
+            },
+          }),
 
-  setLocalData((prev: GlobalData) => ({
-    ...prev,
-    mainPointName: apiGPSResponse.mainPointName || null,
-    loop: [...prev.loop, ...newLoopEntries],
-  }));
+        };
+      });
+
+      setLocalData((prev: GlobalData) => ({
+        ...prev,
+        mainPointName: apiGPSResponse.mainPointName || null,
+        loop: [...prev.loop, ...newLoopEntries],
+      }));
 
 
       const bounds = new window.google.maps.LatLngBounds();
@@ -352,7 +389,8 @@ const MapComponent: React.FC = () => {
 
       map.fitBounds(bounds);
     }
-  }, [apiGPSResponse,apiConctResponse, map]);
+  }, [apiGPSResponse, apiConctResponse, map]);
+
   useEffect(() => {
     if (!map || !apiConctResponse?.connections?.length) return;
     const bounds = new window.google.maps.LatLngBounds();
@@ -396,17 +434,9 @@ const MapComponent: React.FC = () => {
         },
       ]);
 
-    //   newPolylineHistory[connection.name] = {
-    //   polyline: { coordinates: path },
-    //   segmentData: {
-    //     connection: {
-    //       length: connection.length || 0,
-    //       existing: true,
-    //     },
-    //   },
-    // };
+   
 
-      newPolylineHistory[connection.name] = {
+      newPolylineHistory[`${connection.start} TO ${connection.end}`] = {
         instance: polyline,
         data: {
           polyline: { coordinates: path },
@@ -416,250 +446,268 @@ const MapComponent: React.FC = () => {
               existing: true,
             },
           },
+        startCords: path.length > 0
+        ? [path[0].lat, path[0].lng]
+        : [0, 0],
+
+       endCords: path.length > 0
+        ? [path[path.length - 1].lat, path[path.length - 1].lng]
+        : [0, 0],
+
         },
       };
 
 
 
 
-    totalExisting += connection.length || 0;
-    polyline.addListener("click", (e) => {
-      setPointProperties(connection)
-    
+      totalExisting += connection.length || 0;
+      polyline.addListener("click", (e) => {
+        setPointProperties(connection)
+
+      });
+      setPolylineInstanceMap(prev => {
+        const newMap = new Map(prev);
+        Object.entries(newPolylineHistory).forEach(([key, val]) => {
+          newMap.set(key, val.instance);
+        });
+        return newMap;
+      });
     });
-   setPolylineInstanceMap(prev => {
+    setExistingDistance(totalExisting);
+
+    map.fitBounds(bounds);
+ 
+    setLocalData(prev => ({
+      ...prev,
+      totalLength:totalExisting,
+      existinglength:totalExisting,
+      polylineHistory: {
+        ...prev.polylineHistory,
+        ...Object.fromEntries(
+          Object.entries(newPolylineHistory).map(([key, val]) => [key, val.data])
+        ),
+      },
+    }));
+
+
+
+  }, [apiConctResponse, map]);
+
+  async function AImodehandle() {
+    if (!gpFile || !incrementalFile) {
+      return;
+    }
+    setLoader(true)
+    const formData = new FormData();
+    formData.append('pointsFile', gpFile);
+    formData.append('connectionsFile', incrementalFile);
+
+    try {
+      const response = await fetch('https://traceapi.keeshondcoin.com/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      setAIdata(result)
+      AIMap(result)
+    } catch (error) {
+      console.error('Upload error:', error);
+    } finally {
+      setLoader(false)
+    }
+  }
+
+  useEffect(() => {
+    autoModeRef.current = AutoMode;
+  }, [AutoMode]);
+
+  useEffect(() => {
+    pointARef.current = pointA;
+  }, [pointA]);
+
+  useEffect(() => {
+    pointBRef.current = pointB;
+  }, [pointB]);
+
+  const AIMap = (AIdata: any) => {
+    if (!map || !AIdata?.loop?.length) return;
+    const bounds = new window.google.maps.LatLngBounds();
+    let totalLength = 0;
+
+    const newPolylineHistory: Record<string, {
+      instance: google.maps.Polyline;
+      data: PolylineEntry;
+    }> = {};
+
+    AIdata.loop.forEach((item: any) => {
+      const { name, coordinates, connection, route } = item;
+
+      if (
+        !route?.features?.[0]?.geometry?.coordinates?.length ||
+        !Array.isArray(route.features[0].geometry.coordinates)
+      ) return;
+
+      const path = route.features[0].geometry.coordinates.map(([lng, lat]) => {
+        const point = { lat, lng };
+        bounds.extend(point);
+        return point;
+      });
+
+      // Draw polyline
+      const polyline = new google.maps.Polyline({
+        path,
+        geodesic: true,
+        strokeColor: connection?.color || "#ff0000",
+        strokeOpacity: 1.0,
+        strokeWeight: 4,
+      });
+      polyline.setMap(map);
+
+      // Midpoint distance label
+      const offsetIndex = Math.floor(path.length * 0.5);
+      const midPoint = path[offsetIndex];
+
+      setDistanceInfoWindows(prev => [
+        ...prev,
+        {
+          position: midPoint,
+          distance: connection?.length || 0,
+        },
+      ]);
+
+      const routeKey = `${connection?.from} TO ${connection?.to}`;
+
+      // Polyline history
+      newPolylineHistory[routeKey] = {
+        instance: polyline,
+        data: {
+          polyline: { coordinates: path },
+          segmentData: {
+            connection: {
+              length: connection?.length || 0,
+              existing: connection?.existing || false,
+            },
+          },
+          startCords: path.length > 0
+            ? [path[0].lat, path[0].lng]
+            : [0, 0],
+
+          endCords: path.length > 0
+            ? [path[path.length - 1].lat, path[path.length - 1].lng]
+            : [0, 0],
+
+        },
+      };
+
+      totalLength += connection?.length || 0;
+      polyline.addListener("click", (e) => {
+
+        setPointProperties(connection)
+
+      });
+      // Optional: Add marker for loop point
+      if (
+        Array.isArray(coordinates) &&
+        coordinates.length === 2 &&
+        typeof coordinates[0] === 'number' &&
+        typeof coordinates[1] === 'number'
+      ) {
+        const markerPoint = {
+          lat: coordinates[1],
+          lng: coordinates[0],
+        };
+        new google.maps.Marker({
+          position: markerPoint,
+          map,
+          title: name,
+          icon: {
+            url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+            scaledSize: new google.maps.Size(30, 30),
+          },
+        });
+
+        bounds.extend(markerPoint);
+        const marker = new google.maps.Marker({
+          position: markerPoint,
+          map,
+          title: name,
+          icon: {
+            url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+            scaledSize: new google.maps.Size(30, 30),
+          },
+        });
+        const isPointSame = pointA && !pointB && isSameCoordinate(pointA, markerPoint);
+
+        // Add click listener to send data
+        marker.addListener('click', () => {
+          setPointProperties({
+            name,
+            coordinates,
+            properties: {
+              coordinates: coordinates
+            }
+          });
+          if (autoModeRef.current) {
+            const currentPointA = pointARef.current;
+            const currentPointB = pointBRef.current;
+
+            const isPointSame = currentPointA && !currentPointB && isSameCoordinate(currentPointA, markerPoint);
+
+            if (!currentPointA) {
+              setPointAName(name);
+              setPointA(markerPoint);
+            } else if (!currentPointB && !isPointSame) {
+              setPointBName(name);
+              setPointB(markerPoint);
+            }
+          }
+        });
+      }
+    });
+
+    // Store instance references for cleanup
+    setPolylineInstanceMap(prev => {
       const newMap = new Map(prev);
       Object.entries(newPolylineHistory).forEach(([key, val]) => {
         newMap.set(key, val.instance);
       });
       return newMap;
     });
-    });
-    setExistingDistance(totalExisting);
 
-    map.fitBounds(bounds);
-  //    setLocalData(prev => ({
-  //   ...prev,
-  //   polylineHistory: {
-  //     ...prev.polylineHistory,
-  //     ...newPolylineHistory,
-  //   },
-  // }));
-setLocalData(prev => ({
-  ...prev,
-  polylineHistory: {
-    ...prev.polylineHistory,
-    ...Object.fromEntries(
-      Object.entries(newPolylineHistory).map(([key, val]) => [key, val.data])
-    ),
-  },
-}));
-
-
-
-  }, [apiConctResponse, map]);
-
-async function AImodehandle() {
-  if(!gpFile || !incrementalFile){
-    return;
-  }
-  const formData = new FormData();
-  formData.append('pointsFile', gpFile);
-  formData.append('connectionsFile', incrementalFile);
-
-  try {
-    const response = await fetch('https://traceapi.keeshondcoin.com/upload', {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      throw new Error(`Upload failed: ${response.statusText}`);
-    }
-
-    const result = await response.json();
-    setAIdata(result)
-    AIMap(result)
-  } catch (error) {
-    console.error('Upload error:', error);
-  }
-}
-
-useEffect(() => {
-  autoModeRef.current = AutoMode;
-}, [AutoMode]);
-useEffect(() => {
-  pointARef.current = pointA;
-}, [pointA]);
-
-useEffect(() => {
-  pointBRef.current = pointB;
-}, [pointB]);
-const AIMap = (AIdata:any) => {
-  if (!map || !AIdata?.loop?.length) return;
-  const bounds = new window.google.maps.LatLngBounds();
-  let totalLength = 0;
-
-  const newPolylineHistory: Record<string, {
-    instance: google.maps.Polyline;
-    data: PolylineEntry;
-  }> = {};
-
-  AIdata.loop.forEach((item: any) => {
-    const { name, coordinates, connection, route } = item;
-
-    if (
-      !route?.features?.[0]?.geometry?.coordinates?.length ||
-      !Array.isArray(route.features[0].geometry.coordinates)
-    ) return;
-
-    const path = route.features[0].geometry.coordinates.map(([lng, lat]) => {
-      const point = { lat, lng };
-      bounds.extend(point);
-      return point;
-    });
-
-    // Draw polyline
-    const polyline = new google.maps.Polyline({
-      path,
-      geodesic: true,
-      strokeColor: connection?.color || "#ff0000",
-      strokeOpacity: 1.0,
-      strokeWeight: 4,
-    });
-    polyline.setMap(map);
-
-    // Midpoint distance label
-    const offsetIndex = Math.floor(path.length * 0.5);
-    const midPoint = path[offsetIndex];
-
-    setDistanceInfoWindows(prev => [
+    // Store polyline data into global state
+    setLocalData(prev => ({
       ...prev,
-      {
-        position: midPoint,
-        distance: connection?.length || 0,
+      polylineHistory: {
+        ...prev.polylineHistory,
+        ...Object.fromEntries(
+          Object.entries(newPolylineHistory).map(([key, val]) => [key, val.data])
+        ),
       },
-    ]);
+      mainPointName: AIdata.mainPointName || null,
+      loop: AIdata.loop || [],
+    }));
 
-    const routeKey = `${connection?.from}->${connection?.to}`;
+    setExistingDistance(totalLength);
+    map.fitBounds(bounds);
 
-    // Polyline history
-    newPolylineHistory[routeKey] = {
-      instance: polyline,
-      data: {
-        polyline: { coordinates: path },
-        segmentData: {
-          connection: {
-            length: connection?.length || 0,
-            existing: connection?.existing || false,
-          },
-        },
-      },
-    };
-
-    totalLength += connection?.length || 0;
-    polyline.addListener("click", (e) => {
-      
-       setPointProperties(connection)
-      
-    });
-    // Optional: Add marker for loop point
-    if (
-      Array.isArray(coordinates) &&
-      coordinates.length === 2 &&
-      typeof coordinates[0] === 'number' &&
-      typeof coordinates[1] === 'number'
-    ) {
-      const markerPoint = {
-        lat: coordinates[1],
-        lng: coordinates[0],
-      };
-      new google.maps.Marker({
-        position: markerPoint,
-        map,
-        title: name,
-        icon: {
-          url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-          scaledSize: new google.maps.Size(30, 30),
-        },
-      });
-
-      bounds.extend(markerPoint);
-      const marker = new google.maps.Marker({
-      position: markerPoint,
-      map,
-      title: name,
-      icon: {
-        url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-        scaledSize: new google.maps.Size(30, 30),
-      },
-    });
-    const isPointSame = pointA && !pointB && isSameCoordinate(pointA, markerPoint);
-
-    // Add click listener to send data
-      marker.addListener('click', () => {
-        setPointProperties({
-          name,
-          coordinates,
-          properties:{
-          coordinates:coordinates
-        }
-        });
-       if (autoModeRef.current) {
-          const currentPointA = pointARef.current;
-          const currentPointB = pointBRef.current;
-
-          const isPointSame = currentPointA && !currentPointB && isSameCoordinate(currentPointA, markerPoint);
-
-          if (!currentPointA) {
-            setPointAName(name);
-            setPointA(markerPoint);
-          } else if (!currentPointB && !isPointSame) {
-            setPointBName(name);
-            setPointB(markerPoint);
-          }
-      }
-      });
-
-
-      
-    }
-  });
-
-  // Store instance references for cleanup
-  setPolylineInstanceMap(prev => {
-    const newMap = new Map(prev);
-    Object.entries(newPolylineHistory).forEach(([key, val]) => {
-      newMap.set(key, val.instance);
-    });
-    return newMap;
-  });
-
-  // Store polyline data into global state
-  setLocalData(prev => ({
-    ...prev,
-    polylineHistory: {
-      ...prev.polylineHistory,
-      ...Object.fromEntries(
-        Object.entries(newPolylineHistory).map(([key, val]) => [key, val.data])
-      ),
-    },
-    mainPointName: AIdata.mainPointName || null,
-    loop: AIdata.loop || [],
-  }));
-
-  setExistingDistance(totalLength);
-  map.fitBounds(bounds);
-
-}
+  }
 
 
   useEffect(() => {
-  if (AIMode && map) {
-    clearMapData(); 
-    AImodehandle()
-  }
-}, [AIMode, map]);
+    if (AIMode && map) {
+      clearMapData();
+      AImodehandle()
+    }
+  }, [AIMode, map]);
+
+
+
+
 
   const HandleCalculation = async () => {
     if (!pointA || !pointB || !pointAName || !pointBName || !mapInstance) return;
@@ -707,7 +755,8 @@ const AIMap = (AIdata:any) => {
               existing:false
 
             });
-            handleRouteSelection(routeKey, index);
+             
+            handleRouteSelection(routeKey, index,routeData.distance);
             setSelectedRouteIndex(index);
           });
           polyline.addListener("mouseover", () => {
@@ -768,9 +817,10 @@ const AIMap = (AIdata:any) => {
   };
 
 
+
   useEffect(() => {
     if (selectedRouteIndex === null || !routeGroups || !mapInstance) return;
-
+   
     routeGroups.forEach(({ layers }, key) => {
       layers.forEach(layer => {
         if (layer instanceof google.maps.Polyline) {
@@ -785,217 +835,275 @@ const AIMap = (AIdata:any) => {
         }
       });
     });
-  }, [selectedRouteIndex]);
+  }, [selectedRouteIndex,RouteKey]);
 
+const addDragMarkersWithRerouting = (
+  polyline: google.maps.Polyline,
+  routeKey: string,
+  selectedId: string
+) => {
+  const path = polyline.getPath().getArray();
+  const fractions = [0.25, 0.5, 0.75];
+  // editMarkers.forEach(m => m.setMap(null));
+  // setEditMarkers([]); 
+  const existingMarkers = routeMarkers.current.get(selectedId);
+  if (existingMarkers) {
+    existingMarkers.forEach(m => m.setMap(null));
+  }
 
-  const addDragMarkersWithRerouting = (polyline: google.maps.Polyline, routeKey: string,selectedId:string) => {
-    const path = polyline.getPath().getArray();
-    const fractions = [0.25, 0.5, 0.75];
-   
-    const newMarkers: google.maps.Marker[] = [];
+  const allMarkers: google.maps.Marker[] = [];
 
-    fractions.forEach((f, index) => {
-      const pointIndex = Math.floor(path.length * f);
-      const coord = path[pointIndex];
-      if (!coord) return;
+  let ghostLine: google.maps.Polyline | null = null;
 
-      const marker = new google.maps.Marker({
-        position: coord,
-        map: mapInstance,
-        draggable: true,
-        icon: {
-          url: 'data:image/svg+xml;charset=UTF-8,' +
-            encodeURIComponent(`
+  const handleDragEvents = (marker: google.maps.Marker, getStart: () => google.maps.LatLng, getEnd: () => google.maps.LatLng) => {
+    marker.addListener('drag', (e) => {
+      const newCoord = e.latLng;
+      const previewPath = [getStart(), newCoord, getEnd()];
+      if (!ghostLine) {
+        ghostLine = new google.maps.Polyline({
+          path: previewPath,
+          strokeColor: '#888',
+          strokeOpacity: 0.5,
+          strokeWeight: 3,
+          map: mapInstance,
+          zIndex: 1,
+        });
+      } else {
+        ghostLine.setPath(previewPath);
+      }
+    });
+
+    marker.addListener('dragend', async (e) => {
+      if (ghostLine) {
+        ghostLine.setMap(null);
+        ghostLine = null;
+      }
+
+      const newCoord = e.latLng;
+      const start = getStart();
+      const end = getEnd();
+
+      try {
+        const res = await axios.post(
+          'https://traceapi.keeshondcoin.com/compute-route',
+          {
+            newPos: newCoord,
+            origin: start,
+            destination: end,
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        const data = res.data;
+        if (data[0].route.length > 0) {
+          const newCoords = data[0].route.map(([lat, lng]) => ({ lat, lng }));
+
+          const currentPath = polyline.getPath().getArray().map(p => ({
+            lat: p.lat(),
+            lng: p.lng(),
+          }));
+
+          const history = polylineHistory.get(selectedId);
+          setRouteKey(selectedId);
+          setSelectRoute(routeKey);
+
+          if (history) {
+            history.undoStack = history.undoStack || [];
+            history.undoStack.push(currentPath);
+          }
+
+          polyline.setPath(newCoords);
+         const updatedPath = polyline.getPath().getArray();
+          updateGlobalDataWithSelectedRoute(polyline, routeKey, 0,updatedPath.length);
+
+         
+          const newFractions = [0, 0.25, 0.5, 0.75, 1];
+
+          allMarkers.forEach((m, i) => {
+            const idx = Math.floor(updatedPath.length * newFractions[i]);
+            const pos = updatedPath[idx];
+            if (pos) m.setPosition(pos);
+          });
+         
+          // routeMarkers.current.set(selectedId, allMarkers);
+
+          const offsetPoint = updatedPath[Math.floor(updatedPath.length * 0.25)];
+          const distanceKm = data[0].distance;
+
+          const entry = Array.from(polylineHistory.entries()).find(([key]) =>
+            key.startsWith(`${routeKey}-route`)
+          );
+          const oldKey = entry?.[0];
+          let infoWindow = entry?.[1]?.distanceLabel;
+          let oldPos: google.maps.LatLng | null = null;
+
+          if (infoWindow) {
+            oldPos = infoWindow.getPosition();
+            infoWindow.close();
+          }
+
+          infoWindow = new google.maps.InfoWindow({
+            content: `<div class="distance-label">${distanceKm.toFixed(2)} km</div>`,
+            position: offsetPoint,
+          });
+
+          if (oldKey) {
+            polylineHistory.set(oldKey, {
+              ...(polylineHistory.get(oldKey) ?? {}),
+              polyline,
+              distanceLabel: infoWindow,
+            });
+          }
+
+          setDistanceInfoWindows(prev =>
+            prev.filter(
+              d =>
+                !oldPos ||
+                Math.abs(d.position.lat - oldPos.lat()) > 1e-6 ||
+                Math.abs(d.position.lng - oldPos.lng()) > 1e-6
+            )
+          );
+
+          setDistanceInfoWindows(prev => [
+            ...prev,
+            { position: offsetPoint, distance: distanceKm },
+          ]);
+          updateRouteSummary(polyline);
+
+        } else {
+          alert("No route found");
+        }
+      } catch (err) {
+        console.error("Rerouting failed", err);
+      }
+    });
+  };
+
+  const addMarkerAt = (coord: google.maps.LatLng, index: number, getStart: () => google.maps.LatLng, getEnd: () => google.maps.LatLng) => {
+    const marker = new google.maps.Marker({
+      position: coord,
+      map: mapInstance,
+      draggable: true,
+      icon: {
+        url: 'data:image/svg+xml;charset=UTF-8,' +
+          encodeURIComponent(`
             <svg width="12" height="12" xmlns="http://www.w3.org/2000/svg">
               <circle cx="6" cy="6" r="5" fill="#00FFFF" stroke="white" stroke-width="1"/>
             </svg>`),
-          scaledSize: new google.maps.Size(12, 12),
-        },
-        zIndex: 999 + index,
-      });
-
-      marker.addListener('dragend', async (e) => {
-        const newCoord = e.latLng;
-        const start = path[0];
-        const end = path[path.length - 1];
-        // const routeUrl = `http://router.project-osrm.org/route/v1/driving/${start.lng()},${start.lat()};${newCoord.lng()},${newCoord.lat()};${end.lng()},${end.lat()}?overview=full&geometries=geojson`;
-
-        try {
-          const res = await axios.post('https://traceapi.keeshondcoin.com/compute-route', {
-            newPos: newCoord,
-            origin: start,
-            destination: end
-          }, {
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          });
-          const data = res.data;
-          if (data[0].route.length > 0) {
-            const newCoordsRaw = data[0].route
-            const newCoords = newCoordsRaw.map(([lat, lng]) => ({ lat, lng }));
-            // Save current path to undoStack
-          const currentPath = polyline.getPath().getArray().map(p => ({ lat: p.lat(), lng: p.lng() }));
-          const history = polylineHistory.get(selectedId);
-          setRouteKey(selectedId);
-          setSelectRoute(routeKey)
-            if (history) {
-              history.undoStack = history.undoStack || [];
-              history.undoStack.push(currentPath);
-            }
-          
-
-
-            polyline.setPath(newCoords);
-            updateGlobalDataWithSelectedRoute(polyline, routeKey, 0); // assume index 0 if rerouted
-
-            // Reposition drag markers
-            const updatedPath = polyline.getPath().getArray();
-            const updatedFractions = [0.25, 0.5, 0.75];
-            newMarkers.forEach((m, idx) => {
-              const i = Math.floor(updatedPath.length * updatedFractions[idx]);
-              const pos = updatedPath[i];
-              if (pos) m.setPosition(pos);
-            });
-
-
-            const distanceKm = data[0].distance;
-            const updatedCoords = updatedPath; // or data.routes[0].geometry.coordinates.map
-
-            const offsetIndex = Math.floor(updatedCoords.length * 0.25);
-            const offsetPoint = updatedCoords[offsetIndex] || updatedCoords[Math.floor(updatedCoords.length / 2)];
-
-
-            let entry = Array.from(polylineHistory.entries()).find(([key]) =>
-              key.startsWith(`${routeKey}-route`)
-            );
-
-            let infoWindow = entry?.[1]?.distanceLabel;
-            const oldKey = entry?.[0];
-
-            let oldPos: google.maps.LatLng | null = null;
-
-            if (infoWindow) {
-              oldPos = infoWindow.getPosition();
-              infoWindow.close();
-            }
-
-            // Always create a new InfoWindow (since the path changed)
-            infoWindow = new google.maps.InfoWindow({
-              content: `<div class="distance-label">${distanceKm.toFixed(2)} km</div>`,
-              position: offsetPoint,
-            });
-            // infoWindow.open(mapInstance);
-
-            // Update polylineHistory with the new InfoWindow
-            if (oldKey) {
-              polylineHistory.set(oldKey, {
-                ...(polylineHistory.get(oldKey) ?? {}),
-                polyline,
-                distanceLabel: infoWindow,
-              });
-            }
-
-            // Remove old one from state
-            setDistanceInfoWindows(prev =>
-              prev.filter(
-                d =>
-                  !oldPos ||
-                  Math.abs(d.position.lat - oldPos.lat()) > 1e-6 ||
-                  Math.abs(d.position.lng - oldPos.lng()) > 1e-6
-              )
-            );
-
-            // Add the new one
-            setDistanceInfoWindows(prev => [
-              ...prev,
-              { position: offsetPoint, distance: distanceKm },
-            ]);
-
-
-            // Update global state
-            updateRouteSummary(polyline);
-          } else {
-            alert("No route found");
-          }
-        } catch (err) {
-          console.error("Rerouting failed", err);
-        }
-      });
-
-      newMarkers.push(marker);
+        scaledSize: new google.maps.Size(12, 12),
+      },
+      zIndex: 999 + index,
     });
 
-    setEditMarkers(newMarkers); // store for cleanup later
+    handleDragEvents(marker, getStart, getEnd);
+    allMarkers.push(marker);
+    
+
   };
 
-const undoRouteChange = (routeKey: string) => {
-  const history = polylineHistory.get(routeKey);
-  
-  if (!history || history.undoStack.length === 0) return;
+  const start = path[0];
+  const end = path[path.length - 1];
+  addMarkerAt(start, 0, () => path[1], () => path[path.length - 1]); // Start marker
+  addMarkerAt(end, 4, () => path[0], () => path[path.length - 2]);   // End marker
 
-  const lastPath = history.undoStack.pop();
-  if (!lastPath) return;
-
-   const oldInfoWindow = history.distanceLabel;
-  const oldPos = oldInfoWindow?.getPosition();
-  // Set polyline back to previous path
-  history.polyline.setPath(lastPath);
-
-  // Update infoWindow and marker positions
-  const midPoint = lastPath[Math.floor(lastPath.length / 2)];
-  const distance = computePathDistance(lastPath);
-
-  const newInfoWindow = new google.maps.InfoWindow({
-    content: `<div class="distance-label">${distance.toFixed(2)} km</div>`,
-    position: midPoint,
+  fractions.forEach((f, i) => {
+    const idx = Math.floor(path.length * f);
+    const coord = path[idx];
+    if (coord) {
+      addMarkerAt(coord, i + 1, () => path[0], () => path[path.length - 1]);
+    }
   });
+  routeMarkers.current.set(selectedId, allMarkers);
 
-  // Move the existing edit markers to the correct spots
-const updatedPath = lastPath;
-const fractions = [0.25, 0.5, 0.75];
-
-
-editMarkers.forEach((m, idx) => {
-  const pointIndex = Math.floor(updatedPath.length * fractions[idx]);
-  const pos = updatedPath[pointIndex];
-  if (pos) m.setPosition(pos);
-});
-
-
-// Update polylineHistory
-  polylineHistory.set(routeKey, {
-    ...history,
-    distanceLabel: newInfoWindow,
-
-  });
-
-  // Update distance windows state
-  setDistanceInfoWindows(prev =>
-    [
-      ...prev.filter(d =>
-        !oldPos ||
-        Math.abs(d.position.lat - oldPos.lat()) > 1e-6 ||
-        Math.abs(d.position.lng - oldPos.lng()) > 1e-6
-      ),
-      { position: midPoint, distance },
-    ]
-  );;
-
-  // Update the route globally again
-  updateGlobalDataWithSelectedRoute(history.polyline, SelectRoute, 0);
+  // setEditMarkers(allMarkers);
 };
 
 
 
-const handleRouteSelection = (routeKey: string, selectedIndex: number) => {
+
+
+const undoRouteChange = (routeKey: string) => {
+    const history = polylineHistory.get(routeKey);
+
+    if (!history || history.undoStack.length === 0) return;
+
+    const lastPath = history.undoStack.pop();
+    if (!lastPath) return;
+
+    const oldInfoWindow = history.distanceLabel;
+    const oldPos = oldInfoWindow?.getPosition();
+    // Set polyline back to previous path
+    history.polyline.setPath(lastPath);
+
+    // Update infoWindow and marker positions
+    const midPoint = lastPath[Math.floor(lastPath.length / 2)];
+    const distance = computePathDistance(lastPath);
+
+    const newInfoWindow = new google.maps.InfoWindow({
+      content: `<div class="distance-label">${distance.toFixed(2)} km</div>`,
+      position: midPoint,
+    });
+
+    // Move the existing edit markers to the correct spots
+    const updatedPath = lastPath;
+    const fractions = [0.25, 0.5, 0.75];
+
+  //  editMarkers.forEach(marker => marker.setMap(null));
+  //  setEditMarkers([]);
+
+   const markers = routeMarkers.current.get(routeKey);
+  if (markers) {
+    markers.forEach(m => m.setMap(null));
+    routeMarkers.current.delete(routeKey);
+  }
+    // Re-add fresh markers with drag handlers
+    addDragMarkersWithRerouting(history.polyline,SelectRoute, routeKey); 
+
+
+    // editMarkers.forEach((m, idx) => {
+    //   const pointIndex = Math.floor(updatedPath.length * fractions[idx]);
+    //   const pos = updatedPath[pointIndex];
+    //   if (pos) m.setPosition(pos);
+    // });
+
+
+    // Update polylineHistory
+    polylineHistory.set(routeKey, {
+      ...history,
+      distanceLabel: newInfoWindow,
+
+    });
+
+    // Update distance windows state
+    setDistanceInfoWindows(prev =>
+      [
+        ...prev.filter(d =>
+          !oldPos ||
+          Math.abs(d.position.lat - oldPos.lat()) > 1e-6 ||
+          Math.abs(d.position.lng - oldPos.lng()) > 1e-6
+        ),
+        { position: midPoint, distance },
+      ]
+    );;
+
+    // Update the route globally again
+    updateGlobalDataWithSelectedRoute(history.polyline, SelectRoute, 0,distance);
+  };
+
+
+
+const handleRouteSelection = (routeKey: string, selectedIndex: number,Length:number) => {
     const selectedId = `${routeKey}-route${selectedIndex + 1}`;
     const selectedEntry = polylineHistory.get(selectedId);
     if (!selectedEntry || !selectedEntry.polyline) return;
     const selectedPolyline = selectedEntry.polyline;
-
    setRouteKey(selectedId);
    setSelectRoute(routeKey)
+
    setPointA(null)
    setPointB(null)
     // Remove other optional routes and their distance labels
@@ -1047,15 +1155,14 @@ const handleRouteSelection = (routeKey: string, selectedIndex: number) => {
     // if (selectedEntry.distanceLabel) {
     //   selectedEntry.distanceLabel.open(mapInstance);
     // }
-
+   
     // Enable editing with draggable midpoints
-    addDragMarkersWithRerouting(selectedPolyline, routeKey,selectedId);
+     addDragMarkersWithRerouting(selectedPolyline, routeKey,selectedId);
    
     // Show summary and update global state
     updateRouteSummary(selectedPolyline);
-    updateGlobalDataWithSelectedRoute(selectedPolyline, routeKey, selectedIndex);
+    updateGlobalDataWithSelectedRoute(selectedPolyline, routeKey, selectedIndex,Length);
   };
-
 
   const updateRouteSummary = (polyline: google.maps.Polyline) => {
     const path = polyline.getPath();
@@ -1079,14 +1186,16 @@ const handleRouteSelection = (routeKey: string, selectedIndex: number) => {
  const updateGlobalDataWithSelectedRoute = (
   polyline: google.maps.Polyline,
   routeKey: string,
-  index: number
+  index: number,
+  Length:number
 ) => {
   const path = polyline.getPath().getArray().map(p => ({
     lat: p.lat(),
     lng: p.lng()
   }));
 
-  const distance = computePathDistance(path);
+  // const distance = computePathDistance(path);
+  const distance =Length
 
   // Extract fromName and toName from routeKey
   let fromName = '';
@@ -1169,7 +1278,7 @@ const handleRouteSelection = (routeKey: string, selectedIndex: number) => {
 
     const updatedHistory = {
       ...prev.polylineHistory,
-      [routeKey]: {
+      [`${toName} TO ${fromName}`]: {
             polyline: {
           coordinates: path
         },
@@ -1177,6 +1286,13 @@ const handleRouteSelection = (routeKey: string, selectedIndex: number) => {
         segmentData: {
           connection: selectedRoute.connection
         },
+         startCords: path.length > 0
+            ? [path[0].lat, path[0].lng]
+            : [0, 0],
+
+          endCords: path.length > 0
+            ? [path[path.length - 1].lat, path[path.length - 1].lng]
+            : [0, 0],
        
       }
     };
@@ -1189,244 +1305,301 @@ const handleRouteSelection = (routeKey: string, selectedIndex: number) => {
   });
 };
 
-const deleteRoute = (routeKey: string,routeKeyMain:string) => {
 
-  const history = polylineHistory.get(routeKey);
-  if (!history) return;
+  const deleteRoute = (routeKey: string, routeKeyMain: string) => {
 
-  // Remove polyline from map
-  history.polyline.setMap(null);
+    const history = polylineHistory.get(routeKey);
+    if (!history) return;
+   // Remove polyline from map
+    history.polyline.setMap(null);
 
-  // Remove edit markers from map
-  editMarkers.forEach(marker => marker.setMap(null));
-
-  // Close and remove distance InfoWindow
-  if (history.distanceLabel) {
-    history.distanceLabel.close();
+    // Remove edit markers from map
+ 
+  //   Array.from(routeMarkers.current.values()).flat().forEach(m => {
+  //     google.maps.event.clearInstanceListeners(m);
+  //     m.setMap(null);
+  //   });
+  //  routeMarkers.current.clear();
+  //  editMarkers.forEach(marker => marker.setMap(null));
+  //  setEditMarkers([]);
+    const markers = routeMarkers.current.get(routeKey);
+  if (markers) {
+    markers.forEach(m => m.setMap(null));
+    routeMarkers.current.delete(routeKey);
   }
-
-  // Remove from polylineHistory
-  polylineHistory.delete(routeKey);
-
-  // Remove from distanceInfoWindows state
-  const oldPos = history.distanceLabel?.getPosition();
-  setDistanceInfoWindows(prev =>
-    prev.filter(d =>
-      !oldPos ||
-      Math.abs(d.position.lat - oldPos.lat()) > 1e-6 ||
-      Math.abs(d.position.lng - oldPos.lng()) > 1e-6
-    )
-  );
-
-  deleteGlobalRoute(routeKeyMain);
-
-
-
-};
-
-const deleteGlobalRoute = (routeKey: string) => {
-  let fromName = '';
-  let toName = '';
- setRouteKey('');
- setSelectRoute('')
-  // Extract fromName and toName from routeKey
-  for (const point of LocalData.loop) {
-    if (routeKey.endsWith(`-${point.name}`)) {
-      toName = point.name;
-      fromName = routeKey.slice(0, routeKey.length - point.name.length - 1);
-      break;
+    // Close and remove distance InfoWindow
+    if (history.distanceLabel) {
+      history.distanceLabel.close();
     }
-  }
 
-  if (!fromName || !toName) {
-    console.error('Invalid route key format:', routeKey);
-    return;
-  }
+    // Remove from polylineHistory
+    polylineHistory.delete(routeKey);
 
-  setLocalData(prev => {
-    const updatedLoop = prev.loop.map(entry => {
-      if (entry.name === toName) {
-        return {
-          ...entry,
-          route: undefined,
-          connection: undefined
-        };
+    // Remove from distanceInfoWindows state
+    const oldPos = history.distanceLabel?.getPosition();
+    setDistanceInfoWindows(prev =>
+      prev.filter(d =>
+        !oldPos ||
+        Math.abs(d.position.lat - oldPos.lat()) > 1e-6 ||
+        Math.abs(d.position.lng - oldPos.lng()) > 1e-6
+      )
+    );
+
+    deleteGlobalRoute(routeKeyMain);
+    routeMarkers.current.delete(routeKey);
+
+
+
+  };
+
+  const deleteGlobalRoute = (routeKey: string) => {
+    let fromName = '';
+    let toName = '';
+    setRouteKey('');
+    setSelectRoute('')
+    // Extract fromName and toName from routeKey
+    for (const point of LocalData.loop) {
+      if (routeKey.endsWith(`-${point.name}`)) {
+        toName = point.name;
+        fromName = routeKey.slice(0, routeKey.length - point.name.length - 1);
+        break;
       }
-      return entry;
+    }
+
+    if (!fromName || !toName) {
+      console.error('Invalid route key format:', routeKey);
+      return;
+    }
+
+    setLocalData(prev => {
+      const updatedLoop = prev.loop.map(entry => {
+        if (entry.name === toName) {
+          return {
+            ...entry,
+            route: undefined,
+            connection: undefined
+          };
+        }
+        return entry;
+      });
+
+      const updatedHistory = { ...prev.polylineHistory };
+      delete updatedHistory[`${toName} TO ${fromName}`];
+
+      return {
+        ...prev,
+        loop: updatedLoop,
+        polylineHistory: updatedHistory
+      };
+    });
+  };
+
+  const clearMapData = () => {
+    polylineInstanceMap.forEach(polyline => {
+      polyline.setMap(null);
     });
 
-    const updatedHistory = { ...prev.polylineHistory };
-    delete updatedHistory[routeKey];
+    polylineHistory.forEach((entry, key) => {
+      if (entry.polyline) {
+        entry.polyline.setMap(null);
+      }
+    });
 
-    return {
+    polylineHistory.clear();
+
+    setDistanceInfoWindows([]);
+
+    editMarkers.forEach((marker) => {
+      marker.setMap(null);
+    });
+    setEditMarkers([]);
+    for (const [key, markers] of routeMarkers.current.entries()) {
+      markers.forEach(m => m.setMap(null));
+    }
+    routeMarkers.current.clear();
+
+    setLocalData({
+      loop: [],
+      mainPointName: null,
+      totalLength: 0,
+      existinglength:0,
+      proposedlength:0,
+      polylineHistory: {},
+    });
+    setPolylineHistory(new Map())
+    setRouteGroups(new Map())
+    setIsOpen(false)
+    setRouteKey('')
+    setSelectRoute('')
+    setSelectRoute(null);
+    setProposedDistance(0);
+    setExistingDistance(0);
+    setSelectedRouteIndex(null);
+    setError('')
+    //  setMapInstance(null)
+    setPointA(null)
+    setPointB(null)
+    setMap(null)
+    setConctApiResponse(null)
+    setGPSApiResponse(null)
+  };
+
+
+  useEffect(() => {
+    const total = Object.values(LocalData.polylineHistory || {})
+      .filter(h => h.segmentData?.connection && !h.segmentData.connection.existing)
+      .reduce((sum, h) => sum + (h.segmentData.connection.length || 0), 0);
+      
+       setLocalData(prev => ({
       ...prev,
-      loop: updatedLoop,
-      polylineHistory: updatedHistory
+      totalLength:prev.existinglength + total,
+      proposedlength:total,
+    
+    }));
+    setProposedDistance(total);
+  }, [LocalData.polylineHistory]);
+
+
+
+
+  async function saveKML(LocalData: GlobalData) {
+    const Body = {
+      globalData: {
+        loop: LocalData.loop,
+        mainPointName: LocalData.mainPointName,
+        totalLength: LocalData.totalLength,
+      },
+      polylineHistory: LocalData.polylineHistory,
     };
-  });
-};
 
-const clearMapData = () => {
-polylineInstanceMap.forEach(polyline => {
-  polyline.setMap(null);
-});
 
-  polylineHistory.forEach((entry, key) => {
-    if (entry.polyline) {
-      entry.polyline.setMap(null);
+    try {
+      setLoader(true)
+      const response = await fetch('https://traceapi.keeshondcoin.com/save-kml', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(Body)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
+      }
+
+      const result = await response.json();
+      SetSaveFile(false);
+      showNotification("success", `KML saved successfully`)
+    } catch (error) {
+      SetSaveFile(false)
+      if (error instanceof Error) {
+        showNotification("error", `Error saving KML: ${error.message}`);
+        console.error('Save KML error:', error);
+      } else {
+        showNotification("error", "An unknown error occurred while saving KML.");
+        console.error('Save KML unknown error:', error);
+      }
+      ;
+    } finally {
+      setLoader(false)
     }
-  });
+  }
 
-  polylineHistory.clear();
+  useEffect(() => {
+    if (SaveFile) {
+      saveKML(LocalData)
+    }
+  }, [SaveFile])
 
-  setDistanceInfoWindows([]);
-
-  editMarkers.forEach((marker) => {
-    marker.setMap(null);
-  });
-  setEditMarkers([]);
-
-  setLocalData({
-    loop: [],
-    mainPointName: null,
-    totalLength: 0,
-    polylineHistory: {},
-  });
-  setPolylineHistory(new Map())
-  setRouteGroups(new Map())
-  setIsOpen(false)
-  setRouteKey('')
-  setSelectRoute('')
-  setSelectRoute(null);
-  setProposedDistance(0);
-  setExistingDistance(0);
-  setSelectedRouteIndex(null);
-  setError('')
-//  setMapInstance(null)
-  setPointA(null)
-  setPointB(null)
- setMap(null)
- setConctApiResponse(null)
- setGPSApiResponse(null)
-};
-
-
-useEffect(() => {
-  const total = Object.values(LocalData.polylineHistory || {})
-    .filter(h => h.segmentData?.connection && !h.segmentData.connection.existing)
-    .reduce((sum, h) => sum + (h.segmentData.connection.length || 0), 0);
-
-  setProposedDistance(total);
-}, [LocalData.polylineHistory]);
-
-
-
-
-async function saveKML(LocalData:GlobalData) {
-  const Body = {
-  globalData: {
-    loop: LocalData.loop,
-    mainPointName: LocalData.mainPointName,
-    totalLength: LocalData.totalLength,
-  },
-  polylineHistory: LocalData.polylineHistory,
-};
-
-
-  try {
-    const response = await fetch('https://traceapi.keeshondcoin.com/save-kml', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:  JSON.stringify(Body)
-    });
-
-    if (!response.ok) {
-      throw new Error(`Server error: ${response.status}`);
+  const showNotification = (type: 'success' | 'error', message: string) => {
+    // Clear any existing timeout to prevent multiple notifications
+    if (notifierTimeoutRef.current) {
+      clearTimeout(notifierTimeoutRef.current);
+      notifierTimeoutRef.current = null;
     }
 
-    const result = await response.json();
-    SetSaveFile(false);
-    // document.getElementById('result').innerHTML = `<p>KML saved successfully: ${result.name}</p>`;
-  } catch (error) {
-    SetSaveFile(false)
-    console.error('Save KML error:', error);
-    // document.getElementById('result').innerHTML = `<p>Error saving KML: ${error.message}</p>`;
-  }
-}
+    setNotifier({ type, message, visible: true });
 
-useEffect(()=>{
-  if(SaveFile){
-    saveKML(LocalData)
-  }
-},[SaveFile])
+    // Auto-hide notification after 5 seconds for success, 10 seconds for error
+    const hideDelay = type === 'success' ? 5000 : 10000;
 
-async function downloadFile(DownloadFile:string) {
-  if (!LocalData) {
-    setError('No data available to download')
-    return;
-  }
+    notifierTimeoutRef.current = setTimeout(() => {
+      setNotifier(prev => ({ ...prev, visible: false }));
+      notifierTimeoutRef.current = null;
+    }, hideDelay);
+  };
 
-   const filteredData = {
-  globalData: {
-    loop: LocalData.loop,
-    mainPointName: LocalData.mainPointName,
-    totalLength: LocalData.totalLength,
-  },
-  polylineHistory: LocalData.polylineHistory,
-};
+  async function downloadFile(DownloadFile: string) {
+    if (!LocalData) {
+      setError('No data available to download')
+      return;
+    }
 
-  const payload = JSON.stringify(filteredData);
-  const payloadSizeMB = new Blob([payload]).size / (1024 * 1024);
+    const filteredData = {
+      globalData: {
+        loop: LocalData.loop,
+        mainPointName: LocalData.mainPointName,
+        totalLength: LocalData.totalLength,
+      },
+      polylineHistory: LocalData.polylineHistory,
+    };
 
-  if (payloadSizeMB > 50) {
-        setError(`Error: Payload too large (${payloadSizeMB.toFixed(2)} MB`)
+    const payload = JSON.stringify(filteredData);
+    const payloadSizeMB = new Blob([payload]).size / (1024 * 1024);
 
-    return;
-  }
-
-  try {
-    const response = await fetch(`https://traceapi.keeshondcoin.com/download/${DownloadFile}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: payload
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      setError(`Error: ${error.error}`)
+    if (payloadSizeMB > 50) {
+      setError(`Error: Payload too large (${payloadSizeMB.toFixed(2)} MB`)
 
       return;
     }
 
-    const blob = await response.blob();
-    const contentDisposition = response.headers.get('Content-Disposition');
-    const filename =
-      contentDisposition?.match(/filename="(.+)"/)?.[1] ||
-      `routes.${DownloadFile}`;
+    try {
+      setLoader(true)
+      const response = await fetch(`https://traceapi.keeshondcoin.com/download/${DownloadFile}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload
+      });
 
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    SetDownloadFile("")
+      if (!response.ok) {
+        const error = await response.json();
+        showNotification("error", `${error.error}`)
 
-  } catch (error) {
-     console.error('Download error:', error);
-    SetDownloadFile("")
+        return;
+      }
 
+      const blob = await response.blob();
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const filename =
+        contentDisposition?.match(/filename="(.+)"/)?.[1] ||
+        `routes.${DownloadFile}`;
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      SetDownloadFile("")
+      showNotification("success", `${DownloadFile} file downloaded`)
+
+    } catch (error) {
+      console.error('Download error:', error);
+      showNotification("error", `${error}`)
+
+      SetDownloadFile("")
+
+    } finally {
+      setLoader(false)
+    }
   }
-}
-useEffect(()=>{
-  if(DownloadFile !== null && DownloadFile !== ''){
+  useEffect(() => {
+    if (DownloadFile !== null && DownloadFile !== '') {
 
-   downloadFile(DownloadFile)
+      downloadFile(DownloadFile)
 
-  }
-},[DownloadFile]) 
+    }
+  }, [DownloadFile])
 
   useEffect(() => {
     if (searchValue.trim() === '') {
@@ -1436,19 +1609,22 @@ useEffect(()=>{
 
     const delay = setTimeout(async () => {
       try {
+        setLoader(true)
         const res = await fetch(`https://traceapi.keeshondcoin.com/search-location?query=${encodeURIComponent(searchValue)}`);
         const data: Place[] = await res.json();
         setSearchResults(data);
       } catch (error) {
         console.error('Search error:', error);
         setSearchResults([]);
+      } finally {
+        setLoader(false)
       }
-    }, 400); 
+    }, 400);
 
     return () => clearTimeout(delay);
   }, [searchValue]);
 
-const handleSelect = (place: Place) => {
+  const handleSelect = (place: Place) => {
     if (!map || !place?.location) return;
 
     const { lat, lng } = place.location;
@@ -1539,54 +1715,81 @@ const handleSelect = (place: Place) => {
 
   return (
     <div className="relative h-full w-full">
+      {loader && (
+        <div className="absolute top-70 right-150 z-10">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-800 mx-auto mb-4"></div>
+        </div>
+      )}
       {/* Search Box */}
-     <div className="absolute top-25 left-1 right-200 mx-auto w-45 z-10">
+      <div className="absolute top-20 left-1 right-200 mx-auto w-45 z-10">
 
-      <div className="relative">
-        <input
-          id="map-search"
-          type="text"
-          placeholder="Find a place"
-          className={`w-full pl-10 pr-4 py-2 rounded-full shadow-md bg-white text-sm placeholder-gray-500 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-opacity duration-300 ${
-            showSearch ? 'opacity-100' : 'opacity-0 pointer-events-none'
-          }`}
-          value={searchValue}
-          onChange={(e) => setSearchValue(e.target.value)}
-        />
-        <span className="absolute left-3 top-2.5 text-xl pointer-events-none"><img src={MapIcon} className='w-5'/></span>
+        <div className="relative">
+                  <input
+                    id="map-search"
+                    type="text"
+                    placeholder="Find a place"
+                    className={`w-full pl-10 pr-4 py-2 rounded-full shadow-md bg-white text-sm placeholder-gray-500 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-opacity duration-300 ${showSearch ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                    value={searchValue}
+                    onChange={(e) => setSearchValue(e.target.value)}
+                  />
 
-        {/* Dropdown results */}
-        {searchResults.length > 0 && (
-          <ul className="absolute top-full mt-2 left-0 w-full bg-white shadow-lg rounded-md z-20 max-h-60 overflow-y-auto">
-            {searchResults.map((place, index) => (
-              <li
-                key={index}
-                className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                onClick={() => handleSelect(place)}
-              >
-                {place.name} ({place.formatted_address})
-              </li>
-            ))}
-          </ul>
-        )}
+                  {/* Show this icon inside the input only when search is open */}
+                  {showSearch && (
+                    <span className="absolute left-3 top-2.5 text-xl pointer-events-none">
+                      <img src={MapIcon} className="w-5" alt="Map Icon" />
+                    </span>
+                  )}
+
+                  {/* Toggle button: MapIcon when closed, × when open */}
+                  <button
+                    type="button"
+                    className="absolute right-2 top-2 text-gray-500 hover:text-gray-700 z-10"
+                    onClick={() => setShowSearch(!showSearch)}
+                  >
+                    {showSearch ? (
+                      '×'
+                    ) : (
+                      <img src={MapIcon} className="w-5" alt="Open search" />
+                    )}
+                  </button>
+
+
+
+
+          {/* Dropdown results */}
+          {searchResults.length > 0 && (
+            <ul className="absolute top-full mt-2 left-0 w-full bg-white shadow-lg rounded-md z-20 max-h-60 overflow-y-auto">
+              {searchResults.map((place, index) => (
+                <li
+                  key={index}
+                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                  onClick={() => handleSelect(place)}
+                >
+                  {place.name} ({place.formatted_address})
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
-    </div>
 
 
       {/* Google Map Component */}
       <GoogleMap
         mapContainerStyle={containerStyle}
         center={center}
-        zoom={10}
+        zoom={15}
         onLoad={onLoad}
         onUnmount={onUnmount}
+        mapTypeId="roadmap"
         options={{
-          styles: MapStyles,
+          // styles: MapStyles,
           disableDefaultUI: false,
           zoomControl: true,
           mapTypeControl: true,
           streetViewControl: true,
           fullscreenControl: true,
+           scrollwheel: true
         }}
       >
         {/* Markers */}
@@ -1597,12 +1800,12 @@ const handleSelect = (place: Place) => {
           };
           const isPointSame = pointA && !pointB && isSameCoordinate(pointA, position);
 
-            return (
+          return (
             <Marker
               key={index}
               position={{ lat: point.coordinates[1], lng: point.coordinates[0] }}
               icon={{
-                url:point?.properties?.icon || 'https://maps.google.com/mapfiles/ms/icons/purple-dot.png',
+                url: point?.properties?.icon || 'https://maps.google.com/mapfiles/ms/icons/purple-dot.png',
                 scaledSize: new window.google.maps.Size(30, 30),
               }}
               onClick={() => {
@@ -1612,7 +1815,7 @@ const handleSelect = (place: Place) => {
                     setPointAName(point.name)
                     setPointA(position)
                   } else if (!pointB && !isPointSame) {
-      
+
                     setPointBName(point.name)
                     setPointB(position);
                   }
@@ -1624,10 +1827,6 @@ const handleSelect = (place: Place) => {
             />
           )
         })}
-
-
-       
-
         {distanceInfoWindows.map((info, idx) => (
           <DistanceLabel
             key={idx}
@@ -1635,7 +1834,9 @@ const handleSelect = (place: Place) => {
             text={`${info.distance.toFixed(2)} km`}
           />
         ))}
-        {AutoMode && (
+
+                  
+          {AutoMode && (
           <div className="absolute top-15 right-4 z-50 bg-white text-white rounded-lg shadow-lg w-80 overflow-hidden">
             {/* Header */}
             <div className="bg-gray-200 text-blue-800 flex justify-between items-center px-4 py-3">
@@ -1649,10 +1850,13 @@ const handleSelect = (place: Place) => {
               <p><span className="font-bold text-black">Point B:</span> <span className="text-gray-700">{pointB ? `${pointBName}` : 'Not Selected'}</span></p>
 
               <div className="flex gap-2 pt-2">
-                <button className="flex-1 bg-gray-300 text-black py-2 px-0 rounded-md font-medium flex items-center justify-center hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed" disabled={!pointA || !pointB} onClick={HandleCalculation}>
+                <button className="flex-1 bg-gray-300 text-black py-2 px-0 rounded-md font-medium flex items-center justify-center hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed" disabled={!pointA || !pointB}
+                 onClick={HandleCalculation}
+
+                >
                   🧭 Calculate Route
                 </button>
-                <button className="flex-1 bg-gray-300 text-black py-2 px-0 rounded-md font-medium flex items-center justify-center hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed" disabled={RouteKey === ''} onClick={() => {setIsOpen(true)}}>
+                <button className="flex-1 bg-gray-300 text-black py-2 px-0 rounded-md font-medium flex items-center justify-center hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed" disabled={RouteKey === ''} onClick={() => { setIsOpen(true) }}>
                   🗑️ Delete Route
                 </button>
               </div>
@@ -1660,59 +1864,94 @@ const handleSelect = (place: Place) => {
           </div>
 
         )}
+        {lineSummary && (
+          <div className="absolute top-35 left-3  overflow-hidden">
+            <div className="p-3 rounded-lg shadow-md bg-white w-60 font-sans text-sm text-gray-800">
+              <strong className="text-base mb-2 font-semibold text-blue-900  flex justify-between items-center ">
+                Line Summary
+                <button className="text-blue-800 hover:text-blue-600 text-xl font-bold" onClick={() => setLineSummary(false)}>&times;</button>
 
-        <div className="absolute top-70 left-4 z-50 overflow-hidden">
-        <div className="p-3 rounded-lg shadow-md bg-white w-60 font-sans text-sm text-gray-800">
-          <strong className="text-base block mb-2 font-semibold text-blue-900">
-            Line Summary
-          </strong>
+              </strong>
 
-          <div className="mb-1.5 flex items-center">
-            <div className="w-5 h-1 rounded-sm mr-2" style={{ backgroundColor: '#0f0' }}></div>
-            Existing Lines: {existingDistance.toFixed(2)}km
+              <div className="mb-1.5 flex items-center">
+                <div className="w-5 h-1 rounded-sm mr-2" style={{ backgroundColor: '#0f0' }}></div>
+                Existing Lines: {existingDistance.toFixed(2)}km
+              </div>
+
+              <div className="mb-2.5 flex items-center">
+                <div className="w-5 h-1 rounded-sm mr-2" style={{ backgroundColor: '#f00' }}></div>
+                Proposed Lines: {proposedDistance.toFixed(2)}km
+              </div>
+
+
+
+              <button
+                onClick={() => undoRouteChange(RouteKey)}
+                className="px-3 py-1.5 bg-gray-300 hover:bg-gray-200 rounded cursor-pointer font-bold border-none flex items-center justify-center gap-2"
+              >
+                <img src={UndoIcon} className='w-3' />
+                Undo
+              </button>
+            </div>
           </div>
+        )}
 
-          <div className="mb-2.5 flex items-center">
-            <div className="w-5 h-1 rounded-sm mr-2" style={{ backgroundColor: '#f00' }}></div>
-            Proposed Lines: {proposedDistance.toFixed(2)}km
-          </div>
-        
-          
 
-          <button
-            onClick={() => undoRouteChange(RouteKey)}
-            className="px-3 py-1.5 bg-gray-300 hover:bg-gray-200 rounded cursor-pointer font-bold border-none"
-          >
-            Undo
-          </button>
-        </div>
-        </div>
-
-  
 
       </GoogleMap>
       {IsOpen && (
-       <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-        <h2 className="text-xl font-semibold mb-4">Delete Route</h2>
-        <p className="text-gray-700 mb-6">Are you sure you want to delete this route?</p>
-        <div className="flex justify-end space-x-4">
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <h2 className="text-xl font-semibold mb-4">Delete Route</h2>
+            <p className="text-gray-700 mb-6">Are you sure you want to delete this route?</p>
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={() => setIsOpen(false)}
+                className="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { deleteRoute(RouteKey, SelectRoute); setIsOpen(false) }}
+                className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {Notifier.visible && (
+        <div
+          className={`fixed top-4 right-4 z-[10000] p-4 rounded-lg shadow-lg flex items-start max-w-md transform transition-all duration-500 ease-in-out ${Notifier.type === 'success'
+            ? 'bg-green-100 border-l-4 border-green-500 text-green-700'
+            : 'bg-red-100 border-l-4 border-red-500 text-red-700'
+            } animate-fadeIn`}
+          style={{ animation: 'fadeIn 0.3s ease-out' }}
+        >
+          <div className="mr-3 mt-0.5">
+            {Notifier.type === 'success'
+              ? <CheckCircle size={20} className="text-green-500" />
+              : <AlertCircle size={20} className="text-red-500" />
+            }
+          </div>
+          <div>
+            <p className="font-bold text-sm">
+              {Notifier.type === 'success' ? 'Success!' : 'Oops!'}
+            </p>
+            <p className="text-sm">
+              {Notifier.message}
+            </p>
+          </div>
           <button
-          onClick={()=>setIsOpen(false)}
-            className="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-800"
+            onClick={() => setNotifier(prev => ({ ...prev, visible: false }))}
+            className="ml-auto p-1 hover:bg-opacity-20 hover:bg-gray-500 rounded"
+            aria-label="Close notification"
           >
-            Cancel
-          </button>
-          <button
-        onClick={()=>{deleteRoute(RouteKey,SelectRoute);setIsOpen(false)}}
-            className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white"
-          >
-            Delete
+            <X size={16} />
           </button>
         </div>
-      </div>
-    </div>
-    )}
+      )}
     </div>
 
 
