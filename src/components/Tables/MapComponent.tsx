@@ -1,6 +1,5 @@
-import { GoogleMap, LoadScript, Marker, Polyline, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
-import { MapPin, Map as MapIcon, Satellite, Mountain, Maximize2, Minimize2, Star, Codepen, SlidersHorizontal } from 'lucide-react';
-import { LatLngExpression, LatLngBounds } from 'leaflet';
+import { GoogleMap, Marker, Polyline, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
+import { MapPin, Map as MapIcon, SlidersHorizontal } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
@@ -10,7 +9,6 @@ import videoIcon from '../../images/icon/cinema.png';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-import { useMap } from 'react-leaflet';
 import VideoPlayer from './VideoPlayer';
 
 
@@ -32,6 +30,16 @@ type VideoDetails = {
   videoUrl: string;
 };
 
+interface RoadCrossing {
+  endPhoto: string;
+  endPhotoLat: number;
+  endPhotoLong: number;
+  length: string;
+  roadCrossing: string;
+  startPhoto: string;
+  startPhotoLat: number;
+  startPhotoLong: number;
+}
 // Type Definitions
 type UnderGroundSurveyData = {
   id: string;
@@ -44,18 +52,15 @@ type UnderGroundSurveyData = {
   end_photos: string[];
   jointChamberUrl: string;
   created_at: string;
-  createdTime:string;
+  createdTime: string;
   video_duration?: number;
   videoDetails?: VideoDetails;
-  
+  road_crossing: RoadCrossing;
+
 
 };
 
-//interface FitBoundsProps {
-  //positions: LatLngExpression[];
-  //triggerReset: boolean;
-  //resetComplete: () => void;
-//}
+
 const BASEURL_Val = import.meta.env.VITE_API_BASE;
 const baseUrl = `${BASEURL_Val}/public/`;
 
@@ -63,24 +68,13 @@ interface MapComponentProps {
   data: UnderGroundSurveyData[];
 }
 
-// Component to re-fit bounds dynamically
-//const FitBounds: React.FC<FitBoundsProps> = ({ positions, triggerReset, resetComplete }) => {
-  //const map = useMap();
-  //useEffect(() => {
-    //if (positions.length > 0 && triggerReset) {
-      //const bounds = new LatLngBounds(positions);
-      //map.fitBounds(bounds, { padding: [50, 50] });
-      //resetComplete(); // reset the trigger
-    //}
-  //}, [positions, triggerReset, resetComplete, map]);
-  //return null;
-//};
+
 
 const findNearestVideoBefore = (data: UnderGroundSurveyData[], targetTime: string): UnderGroundSurveyData | null => {
-  
+
   return [...data]
-    .filter(item => item.event_type === "VIDEORECORD" && (  item?.videoDetails?.videoUrl || item.videoUrl) && (item?.videoDetails?.videoUrl.trim().replace(/(^"|"$)/g, '') !== ""  || item?.videoUrl.trim().replace(/(^"|"$)/g, '') !== "" ) && new Date( item.createdTime || item.created_at) <= new Date(targetTime))
-    .sort((a, b) => new Date(b.createdTime || b.created_at ).getTime() - new Date(  a.createdTime || a.created_at).getTime())[0] || null;
+    .filter(item => item.event_type === "VIDEORECORD" && (item?.videoDetails?.videoUrl || item.videoUrl) && (item?.videoDetails?.videoUrl.trim().replace(/(^"|"$)/g, '') !== "" || item?.videoUrl.trim().replace(/(^"|"$)/g, '') !== "") && new Date(item.createdTime || item.created_at) <= new Date(targetTime))
+    .sort((a, b) => new Date(b.createdTime || b.created_at).getTime() - new Date(a.createdTime || a.created_at).getTime())[0] || null;
 };
 
 const getTimeDifferenceInSeconds = (time1: string, time2: string): number => {
@@ -97,7 +91,7 @@ const isSameCoordinate = (
   const lng2 = parseFloat(coord2.lng as any);
 
   return lat1 === lat2 && lng1 === lng2;
-}; 
+};
 
 const calculateDistance = (p1: google.maps.LatLngLiteral, p2: google.maps.LatLngLiteral): number => {
   const R = 6371e3; // Earth's radius in meters
@@ -106,60 +100,21 @@ const calculateDistance = (p1: google.maps.LatLngLiteral, p2: google.maps.LatLng
   const AB = (p2.lat - p1.lat) * Math.PI / 180;
   const BC = (p2.lng - p1.lng) * Math.PI / 180;
 
-  const a = Math.sin(AB/2) * Math.sin(AB/2) +
-          Math.cos(A1) * Math.cos(A2) *
-          Math.sin(BC/2) * Math.sin(BC/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const a = Math.sin(AB / 2) * Math.sin(AB / 2) +
+    Math.cos(A1) * Math.cos(A2) *
+    Math.sin(BC / 2) * Math.sin(BC / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
   return R * c;
 };
-const findPositionAlongPath = (
-  path: google.maps.LatLngLiteral[],
-  progress: number
-): google.maps.LatLngLiteral => {
-  if (path.length < 2) return path[0];
-  if (progress <= 0) return path[0];
-  if (progress >= 1) return path[path.length - 1];
 
-  // Calculate total path length
-  let totalLength = 0;
-  const segmentLengths: number[] = [];
-  for (let i = 0; i < path.length - 1; i++) {
-    const length = calculateDistance(path[i], path[i + 1]);
-    segmentLengths.push(length);
-    totalLength += length;
-  }
-
-  // Find target distance
-  const targetDistance = totalLength * progress;
-
-  // Find segment containing target point
-  let coveredDistance = 0;
-  for (let i = 0; i < segmentLengths.length; i++) {
-    if (coveredDistance + segmentLengths[i] >= targetDistance) {
-      // Calculate progress within this segment
-      const segmentProgress = (targetDistance - coveredDistance) / segmentLengths[i];
-      return {
-        lat: path[i].lat + (path[i + 1].lat - path[i].lat) * segmentProgress,
-        lng: path[i].lng + (path[i + 1].lng - path[i].lng) * segmentProgress
-      };
-    }
-    coveredDistance += segmentLengths[i];
-  }
-
-  return path[path.length - 1];
-};
 
 const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
 
   const [selectedMarker, setSelectedMarker] = useState<UnderGroundSurveyData | null>(null);
   const [selectedEventType, setSelectedEventType] = useState<string>('ALL');
   const [selectedModality, setSelectedModality] = useState<string>('ALL');
-  //const [zoomLevel, setZoomLevel] = useState<number>(5);
   const [viewMode, setViewMode] = useState<string>('default');
-  //const [resetMapBounds, setResetMapBounds] = useState<boolean>(false);
-  const [initialFitDone, setInitialFitDone] = useState<boolean>(false);
-  const [isFullView, setIsFullView] = useState<boolean>(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -172,13 +127,8 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
   const [StartTime, setStartTime] = useState<number | null>(null);
   const [EndTime, setEndTime] = useState<number | null>(null);
   const [videoSelected, setVideoSelected] = useState<object | null>(null);
-  const [currentTime, setCurrentTime] = useState<number | null>(0);
   const [movingMarkerPosition, setMovingMarkerPosition] = useState<google.maps.LatLngLiteral | null>(null);
-  const [VideoDetails, setVideoDetails] = useState<UnderGroundSurveyData[] | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string>(""); 
-
-  const hasFitBounds = useRef(false);
-
+  const [errorMessage, setErrorMessage] = useState<string>("");
   const { enterFullscreen, exitFullscreen } = useFullscreen();
   const [isFullscreen, setIsFullscreen] = useState(true);
 
@@ -189,7 +139,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
         enterFullscreen(containerRef.current);
       }
     }, 500);
-    
+
     return () => clearTimeout(timer);
   }, [enterFullscreen]);
 
@@ -238,30 +188,30 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
     };
     let nearestToA = findNearestPoint(pointA);
     let nearestToB = pointB ? findNearestPoint(pointB) : null;
- 
+
     if (nearestToB && isSameCoordinate(nearestToA, nearestToB)) {
-        nearestToB = null;
+      nearestToB = null;
     }
 
     const videoAtPointA = findNearestVideoBefore(data, (nearestToA.createdTime || nearestToA.created_at));
 
-    if (!videoAtPointA || !videoAtPointA.videoUrl?.trim()){
+    if (!videoAtPointA || (!videoAtPointA.videoDetails?.videoUrl?.trim() && !videoAtPointA.videoUrl?.trim())) {
       setErrorMessage("No video found near Point A.");
       return;
 
-    } 
+    }
 
-    const startTimeOffset = getTimeDifferenceInSeconds( (nearestToA?.createdTime || nearestToA.created_at), ( videoAtPointA?.createdTime || videoAtPointA.created_at));
+    const startTimeOffset = getTimeDifferenceInSeconds((nearestToA?.createdTime || nearestToA.created_at), (videoAtPointA?.createdTime || videoAtPointA.created_at));
     const endTimeOffset = nearestToB
-      ? getTimeDifferenceInSeconds(( nearestToB?.createdTime || nearestToB.created_at), ( videoAtPointA?.createdTime || videoAtPointA.created_at))
+      ? getTimeDifferenceInSeconds((nearestToB?.createdTime || nearestToB.created_at), (videoAtPointA?.createdTime || videoAtPointA.created_at))
       : null;
-    
+
 
     const relevantVideos = data.filter(item =>
       (item?.videoDetails?.videoUrl || item.videoUrl) && item.event_type === "VIDEORECORD" &&
-       ((item?.videoDetails?.videoUrl.trim().replace(/(^"|"$)/g, '') !== "") || (item?.videoUrl.trim().replace(/(^"|"$)/g, '') !== "" )) &&
-      new Date(item?.createdTime || item?.created_at) >= new Date( videoAtPointA?.createdTime || videoAtPointA.created_at)
-    ).sort((a, b) => new Date( a?.createdTime || a.created_at).getTime() - new Date( b?.createdTime || b.created_at).getTime());
+      ((item?.videoDetails?.videoUrl.trim().replace(/(^"|"$)/g, '') !== "") || (item?.videoUrl.trim().replace(/(^"|"$)/g, '') !== "")) &&
+      new Date(item?.createdTime || item?.created_at) >= new Date(videoAtPointA?.createdTime || videoAtPointA.created_at)
+    ).sort((a, b) => new Date(a?.createdTime || a.created_at).getTime() - new Date(b?.createdTime || b.created_at).getTime());
 
 
     setVideoSegment(relevantVideos);
@@ -275,7 +225,6 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
     });
   }, [pointA, pointB, data]);
 
-  const mapCenter = positions.length > 0 ? positions[0] : { lat: 20.5937, lng: 78.9629 };
 
   const tileLayerUrl = useMemo(() => {
     switch (viewMode) {
@@ -287,32 +236,6 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
         return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
     }
   }, [viewMode]);
-
-  // useEffect(() => {
-  //     if (!mapRef.current || !mapLoaded || filteredData.length === 0 || hasFitBounds.current) return;
-
-  //     const bounds = new window.google.maps.LatLngBounds();
-  //     filteredData.forEach((item) => {
-  //       bounds.extend({
-  //         lat: parseFloat(item.latitude),
-  //         lng: parseFloat(item.longitude),
-  //       });
-  //     });
-
-  //     mapRef.current.fitBounds(bounds);
-  //     hasFitBounds.current = true; 
-  //   }, [filteredData, mapLoaded]);
-
-
-
-
-//const handleResetMap = () => {
-    //setResetMapBounds(true);
-  //};
-
-  //const resetComplete = () => {
-    //setResetMapBounds(false);
-  //};
 
   const clearFilters = () => {
     setSelectedEventType('ALL');
@@ -334,7 +257,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
     }
     return distance;
   };
-  
+
   const getDistance = (a: google.maps.LatLngLiteral, b: google.maps.LatLngLiteral) => {
     const R = 6371e3; // earth radius in meters
     const toRad = (val: number) => val * Math.PI / 180;
@@ -342,25 +265,25 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
     const dLng = toRad(b.lng - a.lng);
     const lat1 = toRad(a.lat);
     const lat2 = toRad(b.lat);
-  
-    const aDist = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                  Math.cos(lat1) * Math.cos(lat2) *
-                  Math.sin(dLng/2) * Math.sin(dLng/2);
+
+    const aDist = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1) * Math.cos(lat2) *
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
     const c = 2 * Math.atan2(Math.sqrt(aDist), Math.sqrt(1 - aDist));
     return R * c;
   };
-  
+
   const findPositionAlongPath = (points: google.maps.LatLngLiteral[], progress: number) => {
     const totalDist = calculateTotalDistance(points);
     const targetDist = totalDist * progress;
-  
+
     let covered = 0;
     for (let i = 0; i < points.length - 1; i++) {
       const segDist = getDistance(points[i], points[i + 1]);
       if (covered + segDist >= targetDist) {
         const remaining = targetDist - covered;
         const ratio = remaining / segDist;
-  
+
         return {
           lat: points[i].lat + (points[i + 1].lat - points[i].lat) * ratio,
           lng: points[i].lng + (points[i + 1].lng - points[i].lng) * ratio
@@ -371,9 +294,9 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
     return points[points.length - 1];
   };
 
-  
 
-  const handleTimeUpdate = (currentTime: number,Vduration:number) => {
+
+  const handleTimeUpdate = (currentTime: number, Vduration: number) => {
     if (!videoTimeRange || !pointA) return;
     let progress;
 
@@ -381,12 +304,12 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
 
 
     let pathPoints: google.maps.LatLngLiteral[] = [];
-  
+
     if (indexA !== -1) {
       if (pointB) {
         const duration = (videoTimeRange.end - videoTimeRange.start);
-         progress = Math.min((currentTime - videoTimeRange.start) / duration, 1);
-    
+        progress = Math.min((currentTime - videoTimeRange.start) / duration, 1);
+
         const indexB = positions.findIndex(pos => isSameCoordinate(pos, pointB));
         if (indexB !== -1) {
           const [start, end] = indexA < indexB ? [indexA, indexB] : [indexB, indexA];
@@ -396,7 +319,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
         const seconds = Math.round(Vduration);
         const duration = seconds - videoTimeRange.start;
         progress = Math.min((currentTime - videoTimeRange.start) / duration, 1);
-  
+
 
         let endCoord: google.maps.LatLngLiteral | null = null;
 
@@ -412,17 +335,17 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
             }))
             .sort((a, b) => a.distance - b.distance)[0];
         };
-    
+
         const videoAtA = findNearestPoint(pointA);
         const currentVideoStartTime = new Date(videoAtA?.createdTime || videoAtA.created_at).getTime();
-    
+
         // Find the next video (after Point A)
         const nextVideo = data.find(item =>
           item.event_type === "VIDEORECORD" &&
-         (item?.videoDetails?.videoUrl || item.videoUrl) &&
-          new Date( item?.createdTime ||item.created_at).getTime() > currentVideoStartTime
+          (item?.videoDetails?.videoUrl || item.videoUrl) &&
+          new Date(item?.createdTime || item.created_at).getTime() > currentVideoStartTime
         );
-        
+
         if (nextVideo) {
           endCoord = {
             lat: parseFloat(nextVideo.latitude),
@@ -431,14 +354,14 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
         } else {
           // No next video, end at last GPS point from current video segment
           const last = videoSegment[videoSegment.length - 1];
-         
+
 
           endCoord = {
             lat: parseFloat(last.latitude),
             lng: parseFloat(last.longitude)
           };
         }
-    
+
         // Find index of end coordinate
         const indexEnd = positions.findIndex(pos =>
           isSameCoordinate(pos, endCoord!)
@@ -449,52 +372,40 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
           // const [start, end] = indexA < indexEnd ? [indexA, indexEnd] : [indexEnd, indexA];
 
           // pathPoints = positions.slice(start, end + 1);
-            let start = indexA;
-            let end = indexEnd;
-            if (indexA === indexEnd || indexEnd < indexA) {
+          let start = indexA;
+          let end = indexEnd;
+          if (indexA === indexEnd || indexEnd < indexA) {
 
-              if (indexEnd + 1 <= positions.length) {
-                end = positions.length - 1; 
-                
-              } else if (indexEnd - 2 >= 0) {
-                start = indexEnd - 2; // or fallback: move backward
-              }
+            if (indexEnd + 1 <= positions.length) {
+              end = positions.length - 1;
+
+            } else if (indexEnd - 2 >= 0) {
+              start = indexEnd - 2; // or fallback: move backward
             }
-            else{
-               [start, end] = indexA < indexEnd ? [indexA, indexEnd] : [indexEnd, indexA]
-            }
-            pathPoints = positions.slice(Math.min(start, end), Math.max(start, end) + 1);
-          
-          
+          }
+          else {
+            [start, end] = indexA < indexEnd ? [indexA, indexEnd] : [indexEnd, indexA]
+          }
+          pathPoints = positions.slice(Math.min(start, end), Math.max(start, end) + 1);
+
+
         }
-        
-        
-    
+
+
+
       }
     }
-      if (pathPoints.length > 1) {
+    if (pathPoints.length > 1) {
 
-        const newPosition = findPositionAlongPath(pathPoints, progress);
+      const newPosition = findPositionAlongPath(pathPoints, progress);
 
-        setMovingMarkerPosition(newPosition);
-      }
-  };
-  
-
-  const handleVideoDurationChange = (duration: number, videoIndex: number) => {
-    if (videoSegment) {
-      const updatedSegment = [...videoSegment];
-      updatedSegment[videoIndex] = {
-        ...updatedSegment[videoIndex],
-        video_duration: duration
-      };
-      setVideoSegment(updatedSegment);
+      setMovingMarkerPosition(newPosition);
     }
   };
 
-  const sidebarWidth = isFullscreen ?  'w-1/4' : 'w-96';
+  const sidebarWidth = isFullscreen ? 'w-1/4' : 'w-96';
 
-  const mapWidth = isFullscreen ? 'w-3/4' : 'w-full md:flex-1'; 
+  const mapWidth = isFullscreen ? 'w-3/4' : 'w-full md:flex-1';
 
   return (
     <div ref={containerRef} className="flex flex-col md:flex-row h-screen">
@@ -531,7 +442,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
               lat: parseFloat(item.latitude),
               lng: parseFloat(item.longitude),
             };
-            
+
             const isPointA = pointA && isSameCoordinate(pointA, position);
             const isPointB = pointB && isSameCoordinate(pointB, position);
 
@@ -547,8 +458,8 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
               iconUrl = 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'; // Point B
             } else if (
               item.event_type === "VIDEORECORD" &&
-             (item?.videoDetails?.videoUrl || item?.videoUrl ) &&
-             (item?.videoDetails?.videoUrl.trim().replace(/(^"|"$)/g, '') !== "" || item?.videoUrl.trim().replace(/(^"|"$)/g, '') !== "")
+              (item?.videoDetails?.videoUrl || item?.videoUrl) &&
+              (item?.videoDetails?.videoUrl.trim().replace(/(^"|"$)/g, '') !== "" || item?.videoUrl.trim().replace(/(^"|"$)/g, '') !== "")
             ) {
               iconUrl = `${videoIcon}`; // Your custom video icon
             }
@@ -600,10 +511,10 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
                       strokeColor: '#0000FF'
                     },
                     offset: '0%',
-                    repeat: '200px'  
+                    repeat: '200px'
                   }
                 ]
-          
+
               }}
             />
           )}
@@ -628,7 +539,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
             >
               <div style={{ width: '250px', minWidth: "200" }}>
                 <strong>ID:</strong> {selectedMarker.id}<br />
-                <strong>Event:</strong> {selectedMarker.event_type}<br />
+                <strong>Event:</strong> {selectedMarker.event_type === 'ROADCROSSING' ? selectedMarker.road_crossing?.roadCrossing : selectedMarker.event_type}<br />
                 <strong>Modality:</strong> {selectedMarker.execution_modality}<br /><br />
                 {selectedMarker.event_type === "VIDEORECORD" && (() => {
                   const mainVideoUrl = selectedMarker.videoUrl?.trim().replace(/(^"|"$)/g, '');
@@ -676,37 +587,65 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
                       className="w-full max-h-40 object-cover mt-2"
                     />
                   ))
-                ) : selectedMarker.event_type === "ALL" ? (
-                  selectedMarker.jointChamberUrl ? (
+                ) :
+                  selectedMarker.event_type === "ROADCROSSING" && selectedMarker.road_crossing?.startPhoto ? (
                     <img
-                      src={`${baseUrl}${selectedMarker.jointChamberUrl}`}
-                      alt="Joint Chamber"
+                      src={`${baseUrl}${selectedMarker.road_crossing?.startPhoto}`}
+                      alt="ROADCROSSING"
                       className="w-full max-h-40 object-cover mt-2"
                     />
-                  ) : selectedMarker.start_photos.length > 0 ? (
-                    selectedMarker.start_photos.map((photo, index) => (
+                  ) :
+                    selectedMarker.event_type === "ROADCROSSING" && selectedMarker.road_crossing?.endPhoto ? (
                       <img
-                        key={index}
-                        src={`${baseUrl}${photo}`}
-                        alt={`Start ${index}`}
+                        src={`${baseUrl}${selectedMarker.road_crossing?.endPhoto}`}
+                        alt="ROADCROSSING"
                         className="w-full max-h-40 object-cover mt-2"
                       />
-                    ))
-                  ) : selectedMarker.end_photos.length > 0 ? (
-                    selectedMarker.end_photos.map((photo, index) => (
-                      <img
-                        key={index}
-                        src={`${baseUrl}${photo}`}
-                        alt={`End ${index}`}
-                        className="w-full max-h-40 object-cover mt-2"
-                      />
-                    ))
-                  ) : (
-                    <p>No image available</p>
-                  )
-                ) : (
-                  <p>No image available</p>
-                )}
+                    ) : selectedMarker.event_type === "ALL" ? (
+                      selectedMarker.jointChamberUrl ? (
+                        <img
+                          src={`${baseUrl}${selectedMarker.jointChamberUrl}`}
+                          alt="Joint Chamber"
+                          className="w-full max-h-40 object-cover mt-2"
+                        />
+                      ) : selectedMarker.start_photos.length > 0 ? (
+                        selectedMarker.start_photos.map((photo, index) => (
+                          <img
+                            key={index}
+                            src={`${baseUrl}${photo}`}
+                            alt={`Start ${index}`}
+                            className="w-full max-h-40 object-cover mt-2"
+                          />
+                        ))
+                      ) : selectedMarker.end_photos.length > 0 ? (
+                        selectedMarker.end_photos.map((photo, index) => (
+                          <img
+                            key={index}
+                            src={`${baseUrl}${photo}`}
+                            alt={`End ${index}`}
+                            className="w-full max-h-40 object-cover mt-2"
+                          />
+                        ))
+                      ) : selectedMarker.road_crossing?.startPhoto ? (
+                        <img
+                          src={`${baseUrl}${selectedMarker.road_crossing?.startPhoto}`}
+                          alt="ROADCROSSING"
+                          className="w-full max-h-40 object-cover mt-2"
+                        />
+                      ) : selectedMarker.road_crossing?.endPhoto ? (
+                        <img
+                          src={`${baseUrl}${selectedMarker.road_crossing?.endPhoto}`}
+                          alt="ROADCROSSING"
+                          className="w-full max-h-40 object-cover mt-2"
+                        />
+
+
+                      ) : (
+                        <p>No image available</p>
+                      )
+                    ) : (
+                      <p>No image available</p>
+                    )}
 
               </div>
             </InfoWindow>
@@ -749,24 +688,24 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
 
         <div className="mb-4 flex space-x-2 items-center">
           <div>
-            <button 
-              className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded" 
-              onClick={() => { 
-                if (isFullscreen) { 
-                  exitFullscreen(); 
-                  setIsFullscreen(false); 
-                } else { 
-                  enterFullscreen(containerRef.current); 
-                  setIsFullscreen(true); 
-                } 
+            <button
+              className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded"
+              onClick={() => {
+                if (isFullscreen) {
+                  exitFullscreen();
+                  setIsFullscreen(false);
+                } else {
+                  enterFullscreen(containerRef.current);
+                  setIsFullscreen(true);
+                }
               }}
             >
               {isFullscreen ? 'Exit Full View' : 'Full View'}
             </button>
           </div>
-    
+
           <div>
-            <button 
+            <button
               className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded"
               onClick={() => startPointSelection('A')}
             >
@@ -792,12 +731,12 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
             </div> */}
           </>
         )}
-       {errorMessage && <p style={{ color: "red" }}>{errorMessage}</p>}
+        {errorMessage && <p style={{ color: "red" }}>{errorMessage}</p>}
 
-       <h2 className="text-xl font-bold mb-4 flex items-center text-blue-600">
-        <SlidersHorizontal className="w-5 h-5 mr-2" />
-        Filters
-       </h2>
+        <h2 className="text-xl font-bold mb-4 flex items-center text-blue-600">
+          <SlidersHorizontal className="w-5 h-5 mr-2" />
+          Filters
+        </h2>
 
         {/* Event Type Filter */}
         <div className="mb-4">
@@ -829,27 +768,13 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
 
         {/* Clear Filters Button */}
         <div className="mb-6">
-        <button
-          onClick={clearFilters}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded"
-        >
-          Clear Filters
-        </button>
-        </div>
-
-        {/* View Mode Selector */}
-        {/* <div className="mb-4">
-          <label className="block text-sm font-medium mb-1">View Mode:</label>
-          <select
-            value={viewMode}
-            onChange={(e) => setViewMode(e.target.value)}
-            className="w-full p-2 border rounded"
+          <button
+            onClick={clearFilters}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded"
           >
-            <option value="default">Default (Road Map)</option>
-            <option value="satellite">Satellite</option>
-            <option value="terrain">Terrain</option>
-          </select>
-        </div> */}
+            Clear Filters
+          </button>
+        </div>
       </div>
     </div>
   );
