@@ -38,6 +38,10 @@ import FileUpload from "./components/Uploads/KmlManager";
 import KmlTable from "./components/Uploads/DataTable";
 import RoutePlanning from './components/RoutePlanning/index';
 
+// Added new imports for Route Planning dropdown menu components
+import RouteList from './components/RouteList';
+import RouteReports from './components/Reports';
+//import AuditLogs from './components/AuditLogs';
 
 function App() {
   const [loading, setLoading] = useState<boolean>(true);
@@ -263,8 +267,9 @@ function App() {
             </>
            } 
            />
+            {/* Updated Route Planning Route - changed path to be consistent with other route planning paths */}
             <Route
-              path="/route-planning"
+              path="/route-planning/builder"
               element={
                 <>
                   <PageTitle title="Route Planning" />
@@ -272,6 +277,44 @@ function App() {
                 </>
               }
             />
+            
+            {/* New Route Planning Routes - added as part of the dropdown implementation */}
+            <Route
+              path="/route-planning/route-list"
+              element={
+                <>
+                  <DefaultLayout>
+                    <PageTitle title="Route List" />
+                    <RouteList />
+                  </DefaultLayout>
+                </>
+              }
+            />
+            
+            <Route
+              path="/route-planning/reports"
+              element={
+                <>
+                  <DefaultLayout>
+                    <PageTitle title="Route Reports" />
+                    <RouteReports />
+                  </DefaultLayout>
+                </>
+              }
+            />
+            
+            {/*<Route
+              path="/route-planning/audit-logs"
+              element={
+                <>
+                  <DefaultLayout>
+                    <PageTitle title="Route Audit Logs" />
+                    <AuditLogs />
+                  </DefaultLayout>
+                </>
+              }
+            />*/}
+            
             <Route
               path="/settings"
               element={

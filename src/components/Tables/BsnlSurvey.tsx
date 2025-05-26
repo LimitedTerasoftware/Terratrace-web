@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import * as XLSX from "xlsx";
 import { useLocation } from 'react-router-dom';
+import ResponsivePagination from "./ResponsivePagination";
 
 
 import {
@@ -108,7 +109,7 @@ const BsnlSurvey: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(10);
+  const [pageSize, setPageSize] = useState<number>(15);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [editingRow, setEditingRow] = useState<BsnlExchange | null>(null);
   const [filters, setFilters] = useState({ state: "", district: "", block: "" });
@@ -341,7 +342,7 @@ const BsnlSurvey: React.FC = () => {
     pageCount: totalPages,
   });
   
-   const renderPageNumbers = () => {
+   {/*const renderPageNumbers = () => {
     const pageNumbers = [];
     for (let i = 1; i <= totalPages; i++) {
       pageNumbers.push(
@@ -357,7 +358,7 @@ const BsnlSurvey: React.FC = () => {
       );
     }
     return pageNumbers;
-  };
+  };*/}
  
   const exportExcel = async () => {
     try {
@@ -441,9 +442,7 @@ const BsnlSurvey: React.FC = () => {
   const selectedStateOption = stateOptions.find(
     (opt) => opt.value === selectedState
   ) || null;
-  
 
-  
   return (
     <div className="container mx-auto px-4 py-6">
 
@@ -606,7 +605,7 @@ const BsnlSurvey: React.FC = () => {
         </table>
       </div>
 	  
-	   {/* Pagination */}
+	   {/* Pagination
       <div className="flex justify-center items-center mt-4 space-x-2">
         <button
           className="px-4 py-2 bg-gray-200 rounded-lg disabled:opacity-50"
@@ -625,7 +624,16 @@ const BsnlSurvey: React.FC = () => {
         >
           Next
         </button>
-      </div>
+      </div>*/}
+
+      {/* Advanced Responsive Pagination */}
+      <ResponsivePagination
+        currentPage={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        itemsPerPage={data.length}
+        totalItems={data.length}
+      />
 
       {error && <p className="text-red-500 mt-4">{error}</p>}
 

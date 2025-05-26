@@ -13,6 +13,7 @@ import { useNavigate, Link, useLocation } from "react-router-dom";
 import ActionsDropdown from "./ActionsDropdown";
 import Select, { SingleValue } from "react-select";
 import * as XLSX from "xlsx";
+import ResponsivePagination from "./ResponsivePagination";
 
 
 interface AerialSurvey {
@@ -96,7 +97,7 @@ const AerialSurvey: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(10);
+  const [pageSize, setPageSize] = useState<number>(15);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [editingRow, setEditingRow] = useState<AerialSurvey | null>(null);
   const [filters, setFilters] = useState({ state: "", district: "", block: "" });
@@ -315,7 +316,7 @@ const AerialSurvey: React.FC = () => {
     pageCount: totalPages,
   });
   
-   const renderPageNumbers = () => {
+   {/*const renderPageNumbers = () => {
     const pageNumbers = [];
     for (let i = 1; i <= totalPages; i++) {
       pageNumbers.push(
@@ -331,7 +332,8 @@ const AerialSurvey: React.FC = () => {
       );
     }
     return pageNumbers;
-  };
+  };*/}
+
 const exportExcel = async() => {
   const response = await axios.get<ApiResponse>(`${BASEURL}/aerial-surveys`, {
     params: 
@@ -552,7 +554,7 @@ const selectedStateOption = stateOptions.find(
         </table>
       </div>
 	  
-	   {/* Pagination */}
+	   {/* Pagination
       <div className="flex justify-center items-center mt-4 space-x-2">
         <button
           className="px-4 py-2 bg-gray-200 rounded-lg disabled:opacity-50"
@@ -571,7 +573,16 @@ const selectedStateOption = stateOptions.find(
         >
           Next
         </button>
-      </div>
+      </div>*/}
+
+      {/* Advanced Responsive Pagination */}
+        <ResponsivePagination
+          currentPage={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          itemsPerPage={data.length}
+          totalItems={data.length}
+        />
 
       {error && <p className="text-red-500 mt-4">{error}</p>}
 
