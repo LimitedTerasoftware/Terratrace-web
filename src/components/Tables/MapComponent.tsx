@@ -131,6 +131,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
   const [errorMessage, setErrorMessage] = useState<string>("");
   const { enterFullscreen, exitFullscreen } = useFullscreen();
   const [isFullscreen, setIsFullscreen] = useState(true);
+  const [CrossingType, setCrossingType] = useState('All');
 
   useEffect(() => {
     // Short delay to ensure the component is fully rendered
@@ -149,9 +150,34 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
   const filteredData = useMemo<UnderGroundSurveyData[]>(() => {
     return data.filter(item =>
       (selectedEventType === 'ALL' || item.event_type === selectedEventType) &&
-      (selectedModality === 'ALL' || item.execution_modality === selectedModality)
+      (selectedModality === 'ALL' || item.execution_modality === selectedModality) &&
+      (CrossingType === 'All' || item.road_crossing?.roadCrossing === CrossingType)
     );
-  }, [data, selectedEventType, selectedModality]);
+  }, [data, selectedEventType, selectedModality,CrossingType]);
+
+const crossingCounts = useMemo(() => {
+  const counts: Record<string, number> = {
+    ROADCROSSING: 0,
+    BRIDGE: 0,
+    LEVELCROSSING: 0,
+    RAILUNDERBRIDGE: 0,
+    CAUSEWAYS: 0,
+    CULVERT: 0,
+    RAILOVERBRIDGE: 0,
+  };
+
+  data.forEach(item => {
+    if (item.event_type === 'ROADCROSSING') {
+
+    const type = item.road_crossing?.roadCrossing;
+    if (type && counts[type] !== undefined) {
+      counts[type]++;
+    }
+  }
+  });
+
+  return counts;
+}, [data]);
 
   const positions = filteredData.map(item => ({
     lat: parseFloat(item.latitude),
@@ -188,7 +214,6 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
     };
     let nearestToA = findNearestPoint(pointA);
     let nearestToB = pointB ? findNearestPoint(pointB) : null;
-
     if (nearestToB && isSameCoordinate(nearestToA, nearestToB)) {
       nearestToB = null;
     }
@@ -200,6 +225,8 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
       return;
 
     }
+  
+
 
     const startTimeOffset = getTimeDifferenceInSeconds((nearestToA?.createdTime || nearestToA.created_at), (videoAtPointA?.createdTime || videoAtPointA.created_at));
     const endTimeOffset = nearestToB
@@ -224,6 +251,8 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
       end: endTimeOffset ?? 0
     });
   }, [pointA, pointB, data]);
+
+
 
 
   const tileLayerUrl = useMemo(() => {
@@ -293,7 +322,6 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
     }
     return points[points.length - 1];
   };
-
 
 
   const handleTimeUpdate = (currentTime: number, Vduration: number) => {
@@ -406,7 +434,6 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
   const sidebarWidth = isFullscreen ? 'w-1/4' : 'w-96';
 
   const mapWidth = isFullscreen ? 'w-3/4' : 'w-full md:flex-1';
-
   return (
     <div ref={containerRef} className="flex flex-col md:flex-row h-screen">
       {/* Left side: Map */}
@@ -448,7 +475,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
 
             const mainVideoUrl = item.videoUrl?.trim().replace(/(^"|"$)/g, '');
             const fallbackVideoUrl = item.videoDetails?.videoUrl?.trim().replace(/(^"|"$)/g, '');
-            const finalUrl = mainVideoUrl || fallbackVideoUrl;
+            const finalUrl = fallbackVideoUrl || mainVideoUrl;
 
             let iconUrl = 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'; // default
 
@@ -458,10 +485,9 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
               iconUrl = 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'; // Point B
             } else if (
               item.event_type === "VIDEORECORD" &&
-              (item?.videoDetails?.videoUrl || item?.videoUrl) &&
-              (item?.videoDetails?.videoUrl.trim().replace(/(^"|"$)/g, '') !== "" || item?.videoUrl.trim().replace(/(^"|"$)/g, '') !== "")
+              finalUrl
             ) {
-              iconUrl = `${videoIcon}`; // Your custom video icon
+              iconUrl = `${videoIcon}`;
             }
 
             return (
@@ -743,7 +769,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
           <label className="block text-sm font-medium mb-1">Event Type:</label>
           <select
             value={selectedEventType}
-            onChange={(e) => setSelectedEventType(e.target.value)}
+            onChange={(e) =>{ setSelectedEventType(e.target.value);setCrossingType('All')}}
             className="w-full p-2 border rounded"
           >
             {eventTypes.map((event) => (
@@ -751,7 +777,23 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
             ))}
           </select>
         </div>
-
+        {selectedEventType === 'ROADCROSSING' && (
+           <div className="mb-4">
+          <label className="block text-sm font-medium mb-1">Crossing Type:</label>
+          <select
+            value={CrossingType}
+            onChange={(e) => setCrossingType(e.target.value)}
+            className="w-full p-2 border rounded"
+          >  
+           <option value='All'>ALL</option>
+            {Object.entries(crossingCounts).map(([type, count]) => (
+              <option key={type} value={type}>
+                {type} ({count})
+              </option>
+            ))} 
+            </select>
+        </div>
+        )}
         {/* Execution Modality Filter */}
         <div className="mb-4">
           <label className="block text-sm font-medium mb-1">Execution Modality:</label>

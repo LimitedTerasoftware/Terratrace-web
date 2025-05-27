@@ -38,8 +38,8 @@ interface PolylineEntry {
       length: number;
       existing: boolean;
     },
-    startCords?: [number, number];
-    endCords?: [number, number];
+    startCords?:string;
+    endCords?:string;
   };
 
   distanceLabel?: string | null;
@@ -57,6 +57,7 @@ interface LoopEntry {
   name: string;
   coordinates: [number, number];
   connection: LoopConnection;
+  lgd_code:string
   route: {
     features: RouteFeature[];
   };
@@ -71,6 +72,10 @@ interface GlobalData {
   totalLength: number;
   existinglength: number,
   proposedlength: number,
+  dt_code:string,
+  dt_name:string,
+  st_code:string,
+  st_name:string,
   // complete: boolean;
   polylineHistory: {
     [segmentKey: string]: PolylineEntry;
@@ -222,6 +227,10 @@ const MapComponent: React.FC = () => {
     totalLength: 0,
     existinglength: 0,
     proposedlength: 0,
+    dt_code:'',
+    dt_name:'',
+    st_code:'',
+    st_name:'',
     polylineHistory: {},
   });
   const [RouteKey, setRouteKey] = useState<any>('');
@@ -294,6 +303,7 @@ const MapComponent: React.FC = () => {
         return {
           name: point.name,
           coordinates: point.coordinates,
+          lgd_code:point.properties.lgd_code,
           ...(matchedConn && {
             connection: {
               length: matchedConn.length || 0,
@@ -316,7 +326,11 @@ const MapComponent: React.FC = () => {
 
       setLocalData((prev: GlobalData) => ({
         ...prev,
-        mainPointName: apiGPSResponse.mainPointName || null,
+          mainPointName:apiGPSResponse.points[0].properties?.blk_name || '',
+          dt_code:apiGPSResponse.points[0].properties?.dt_code || '',
+          dt_name:apiGPSResponse.points[0].properties?.dt_name || '',
+          st_code:apiGPSResponse.points[0].properties?.st_code || '',
+          st_name:apiGPSResponse.points[0].properties?.st_name || '',
         loop: [...prev.loop, ...newLoopEntries],
       }));
       const bounds = new window.google.maps.LatLngBounds();
@@ -377,6 +391,9 @@ const MapComponent: React.FC = () => {
           distance: connection.length || 0,
         },
       ]);
+     const startLgdCode = apiGPSResponse.points.find((point: PointType) => point.name === connection.start);
+     const endLgdCode = apiGPSResponse.points.find((point: PointType) => point.name === connection.end);
+
       newPolylineHistory[`${connection.start} TO ${connection.end}`] = {
         instance: polyline,
         data: {
@@ -386,14 +403,9 @@ const MapComponent: React.FC = () => {
               length: connection.length || 0,
               existing: true,
             },
-            startCords: path.length > 0
-              ? [path[0].lng, path[0].lat]
-              : [0, 0],
-
-            endCords: path.length > 0
-              ? [path[path.length - 1].lng, path[path.length - 1].lat]
-              : [0, 0],
-          },
+            startCords:startLgdCode.properties.lgd_code,
+            endCords:endLgdCode.properties.lgd_code,
+          }, 
         },
       };
       totalExisting += connection.length || 0;
@@ -523,13 +535,8 @@ const MapComponent: React.FC = () => {
               length: connection?.length || 0,
               existing: connection?.existing || false,
             },
-            startCords: path.length > 0
-              ? [path[0].lng, path[0].lat]
-              : [0, 0],
-
-            endCords: path.length > 0
-              ? [path[path.length - 1].lng, path[path.length - 1].lat]
-              : [0, 0],
+            startCords: '', 
+            endCords: '',
 
           },
 
@@ -1099,10 +1106,18 @@ const MapComponent: React.FC = () => {
     // Extract fromName and toName from routeKey
     let fromName = '';
     let toName = '';
+    let startLgdCode='';
+    let endLgdCode='';
     for (const point of LocalData.loop) {
       if (routeKey.endsWith(`-${point.name}`)) {
         toName = point.name;
+        endLgdCode = point.lgd_code;
         fromName = routeKey.slice(0, routeKey.length - point.name.length - 1);
+          const fromPoint = LocalData.loop.find(p => p.name === fromName);
+          if (fromPoint) {
+            startLgdCode = fromPoint.lgd_code;
+          }
+
         break;
       }
     }
@@ -1145,6 +1160,7 @@ const MapComponent: React.FC = () => {
     const selectedRoute: LoopEntry = {
       name: endPoint.name,
       coordinates: endPoint.coordinates,
+      lgd_code:endPoint.lgd_code,
       route: {
         features: [
           {
@@ -1184,13 +1200,8 @@ const MapComponent: React.FC = () => {
 
           segmentData: {
             connection: selectedRoute.connection,
-            startCords: path.length > 0
-              ? [path[0].lng, path[0].lat]
-              : [0, 0],
-
-            endCords: path.length > 0
-              ? [path[path.length - 1].lng, path[path.length - 1].lat]
-              : [0, 0],
+            startCords:startLgdCode,
+            endCords:endLgdCode,
           },
 
 
@@ -1325,6 +1336,10 @@ const MapComponent: React.FC = () => {
       existinglength: 0,
       proposedlength: 0,
       polylineHistory: {},
+      dt_code:'',
+      dt_name: '',
+      st_code:'',
+      st_name:'',
     });
     setPolylineHistory(new Map())
     setRouteGroups(new Map())
@@ -1358,6 +1373,8 @@ const MapComponent: React.FC = () => {
     }));
     setProposedDistance(total);
   }, [LocalData.polylineHistory]);
+    const userDataString = localStorage.getItem('userData');
+    const UserData = userDataString ? JSON.parse(userDataString) : null;
 
   async function saveKML(LocalData: GlobalData) {
     const Body = {
@@ -1366,9 +1383,15 @@ const MapComponent: React.FC = () => {
         mainPointName: LocalData.mainPointName,
         totalLength: LocalData.totalLength,
         proposedlength: LocalData.proposedlength,
-        existinglength: LocalData.existinglength
+        existinglength: LocalData.existinglength,
+        dt_code:LocalData.dt_code || '',
+        dt_name:LocalData.dt_name || '',
+        st_code:LocalData.st_code || '',
+        st_name:LocalData.st_name || '',
       },
       polylineHistory: LocalData.polylineHistory,
+      user_id: UserData?.user_id ?? 1,
+      user_name: UserData?.uname ?? " "
     };
     try {
       setLoader(true)
@@ -1401,15 +1424,17 @@ const MapComponent: React.FC = () => {
   }
 
   async function VerifySaveKML(LocalData: GlobalData) {
-    const userDataString = localStorage.getItem('userData');
-    const UserData = userDataString ? JSON.parse(userDataString) : null;
     const Body = {
       globalData: {
         loop: LocalData.loop,
         mainPointName: LocalData.mainPointName,
         totalLength: LocalData.totalLength,
         proposedlength: LocalData.proposedlength,
-        existinglength: LocalData.existinglength
+        existinglength: LocalData.existinglength,
+        dt_code:LocalData.dt_code || '',
+        dt_name:LocalData.dt_name || '',
+        st_code:LocalData.st_code || '',
+        st_name:LocalData.st_name || '',
       },
       polylineHistory: LocalData.polylineHistory,
       user_id: UserData?.user_id ?? 1,
@@ -1485,9 +1510,15 @@ const MapComponent: React.FC = () => {
         mainPointName: LocalData.mainPointName,
         totalLength: LocalData.totalLength,
         proposedlength: LocalData.proposedlength,
-        existinglength: LocalData.existinglength
+        existinglength: LocalData.existinglength,
+        dt_code:LocalData.dt_code || '',
+        dt_name:LocalData.dt_name || '',
+        st_code:LocalData.st_code || '',
+        st_name:LocalData.st_name || '',
       },
       polylineHistory: LocalData.polylineHistory,
+      user_id: UserData?.user_id ?? 1,
+      user_name: UserData?.uname ?? " "
     };
 
     const payload = JSON.stringify(filteredData);

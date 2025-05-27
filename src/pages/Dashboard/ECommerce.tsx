@@ -407,41 +407,7 @@ const ECommerce: React.FC = () => {
                   <th className="border border-gray-300 px-4 py-2 text-left">Rejected</th>
                 </tr>
               </thead>
-
-              {/*<tbody className="bg-white">
-                <tr className="cursor-pointer" onClick={handleGpNavigate}>
-                  <td className="border border-gray-300 px-4 py-2 text-black">Gp Survey</td>
-                  <td className="border border-gray-300 px-4 py-2">{stats.acceptedGPS}</td>
-                  <td className="border border-gray-300 px-4 py-2">{stats.pendingGPS}</td>
-                  <td className="border border-gray-300 px-4 py-2">{stats.rejectedGPS}</td>
-                </tr>
-                <tr className="cursor-pointer" onClick={handleBsnlNavigate}>
-                  <td className="border border-gray-300 px-4 py-2 text-black">Block Survey</td>
-                  <td className="border border-gray-300 px-4 py-2">{stats.acceptedBSNL}</td>
-                  <td className="border border-gray-300 px-4 py-2">{stats.pendingBSNL}</td>
-                  <td className="border border-gray-300 px-4 py-2">{stats.rejectedBSNL}</td>
-                </tr>
-                <tr className="cursor-pointer" onClick={handleAerialNavigate}>
-                  <td className="border border-gray-300 px-4 py-2 text-black">Aerial Survey</td>
-                  <td className="border border-gray-300 px-4 py-2">{stats.acceptedAerial}</td>
-                  <td className="border border-gray-300 px-4 py-2">{stats.pendingAerial}</td>
-                  <td className="border border-gray-300 px-4 py-2">{stats.rejectedAerial}</td>
-                </tr>
-                <tr className="cursor-pointer" onClick={handleUGNavigate}>
-                  <td className="border border-gray-300 px-4 py-2 text-black">UG Survey</td>
-                  <td className="border border-gray-300 px-4 py-2">{stats.acceptedUnderGround}</td>
-                  <td className="border border-gray-300 px-4 py-2">{stats.pendingUnderGround}</td>
-                  <td className="border border-gray-300 px-4 py-2">{stats.rejectedUnderGround}</td>
-                </tr>
-                <tr className="cursor-pointer" onClick={handleHotoNavigate}>
-                  <td className="border border-gray-300 px-4 py-2 text-black">Hoto Survey</td>
-                  <td className="border border-gray-300 px-4 py-2">{stats.acceptedHOTO}</td>
-                  <td className="border border-gray-300 px-4 py-2">{stats.pendingHOTO}</td>
-                  <td className="border border-gray-300 px-4 py-2">{stats.rejectedHOTO}</td>
-                </tr>
-              </tbody>*/}
-
-<tbody className="bg-white">
+              <tbody className="bg-white">
                 <tr>
                   <td 
                     className="border border-gray-300 px-4 py-2 text-black cursor-pointer hover:bg-gray-100"

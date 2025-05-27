@@ -5,6 +5,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import MapComponent from "./MapComponent";
+import * as XLSX from "xlsx";
+import ResponsivePagination from "./ResponsivePagination";
 
 interface PatrollerDetails {
   companyName: string;
@@ -54,6 +56,7 @@ interface VideoDetails {
 }
 interface UnderGroundSurveyData {
   id: number;
+  survey_id:string;
   area_type: string;
   event_type: string;
   fpoiUrl: string;
@@ -74,12 +77,21 @@ interface UnderGroundSurveyData {
   videoDetails?: VideoDetails;
   created_at: string;
   createdTime: string;
+  surveyUploaded:string;
+  altitude:string;
+  accuracy:string;
+  depth:string;
+  distance_error:string;
+
 }
 
 interface GroundSurvey {
   id: number;
   startLocation: string;
   endLocation: string;
+  block_id:string;
+  district_id:string;
+  state_id:string;
   under_ground_survey_data: UnderGroundSurveyData[];
 }
 
@@ -93,14 +105,13 @@ const GroundDetailView: React.FC = () => {
   const [zoomImage, setZoomImage] = useState<string | null>(null);
   const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'map'>('details');
-  console.log("selectedVideoUrl324", selectedVideoUrl);
 
 
   const { id } = useParams();
   const navigate = useNavigate();
 
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const itemsPerPage = 15;
 
   const totalItems = data?.under_ground_survey_data.length || 0;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
@@ -154,7 +165,6 @@ const GroundDetailView: React.FC = () => {
     axios
       .get(`${BASEURL_Val}/underground-surveys/${id}`)
       .then((response) => {
-        console.log(response.data.data);
         setData(response.data.data);
         setLoading(false);
       })
@@ -206,6 +216,182 @@ const GroundDetailView: React.FC = () => {
         survey.route_feasibility.alternativePathDetails)
   );
 
+const exportExcel = async () => {
+  const AllData = data?.under_ground_survey_data || [];
+   const MainData = data;
+  const rows = AllData.map((data) => ({
+    // Basic Info
+    id: data.id,
+    block_id:MainData?.block_id || '',
+    district_id:MainData?.district_id || '',
+    state_id:MainData?.state_id || '',
+    startLocation:MainData?.startLocation || '',
+    endLocation:MainData?.endLocation || '',
+    survey_id: data.survey_id,
+    area_type: data.area_type,
+    event_type: data.event_type,
+    surveyUploaded: data.surveyUploaded,
+    execution_modality: data.execution_modality,
+
+    // GPS Info
+    latitude: data.latitude,
+    longitude: data.longitude,
+    altitude: data.altitude,
+    accuracy: data.accuracy,
+    depth: data.depth,
+    distance_error: data.distance_error,
+
+   
+
+    // Road Crossing Info
+    crossing_Type: data.road_crossing?.roadCrossing || '',
+    crossing_length: data.road_crossing?.length || '',
+    crossing_startPhoto_URL: data.road_crossing?.startPhoto || '',
+    crossing_startphoto_Lat: data.road_crossing?.startPhotoLat || '',
+    crossing_startphoto_Long: data.road_crossing?.startPhotoLong || '',
+    crossing_endPhoto_URL: data.road_crossing?.endPhoto || '',
+    crossing_endphoto_Lat: data.road_crossing?.endPhotoLat || '',
+    crossing_endphoto_Long: data.road_crossing?.endPhotoLong || '',
+
+    // Route Details
+    centerToMargin: data.route_details?.centerToMargin || '',
+    roadWidth: data.route_details?.roadWidth || '',
+    routeBelongsTo: data.route_details?.routeBelongsTo || '',
+    routeType: data.route_details?.routeType || '',
+    soilType: data.route_details?.soilType || '',
+
+    // Route Feasibility
+    routeFeasible: data.route_feasibility?.routeFeasible ?? '',
+    alternatePathAvailable: data.route_feasibility?.alternatePathAvailable ?? '',
+    alternativePathDetails: data.route_feasibility?.alternativePathDetails || '',
+
+    // Side and Indicator
+    side_type: data.side_type,
+    routeIndicatorUrl: data.routeIndicatorUrl || '',
+
+    // Start/End Photos
+    Survey_Start_Photo: data.start_photos?.[0] || '',
+    Survey_End_Photo: data.end_photos?.[0] || '',
+
+    // Utility Features
+    localInfo: data.utility_features_checked?.localInfo || '',
+    selectedGroundFeatures: (data.utility_features_checked?.selectedGroundFeatures || []).join(', '),
+
+    // Video Details
+    videoUrl: data.videoUrl || data.videoDetails?.videoUrl || '',
+    video_startLatitude: data.videoDetails?.startLatitude || '',
+    video_startLongitude: data.videoDetails?.startLongitude || '',
+    video_startTimeStamp: data.videoDetails?.startTimeStamp || '',
+    video_endLatitude: data.videoDetails?.endLatitude || '',
+    video_endLongitude: data.videoDetails?.endLongitude || '',
+    video_endTimeStamp: data.videoDetails?.endTimeStamp || '',
+
+    // Joint Chamber and fpoi
+    jointChamberUrl: data.jointChamberUrl || '',
+    fpoiUrl: data.fpoiUrl || '',
+
+    // Patroller Details
+    patroller_company: data.patroller_details?.companyName || '',
+    patroller_name: data.patroller_details?.name || '',
+    patroller_email: data.patroller_details?.email || '',
+    patroller_mobile: data.patroller_details?.mobile || '',
+
+    // Timestamps
+    createdTime: data.createdTime,
+    created_at: data.created_at,
+
+  }));
+  const workbook = XLSX.utils.book_new();
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  XLSX.utils.book_append_sheet(workbook, worksheet, `UnderGround Survey_${AllData[0].survey_id}`);
+  XLSX.utils.sheet_add_aoa(worksheet, [
+  [
+    "ID",
+    "Block Id",
+    "District Id",
+    "State Id",
+    "Start Location",
+    "End Location",
+    "Survey ID",
+    "Area Type",
+    "Event Type",
+    "Survey Uploaded",
+    "Execution Modality",
+    "Latitude",
+    "Longitude",
+    "Altitude",
+    "Accuracy",
+    "Depth",
+    "Distance Error",
+
+  
+
+    // Road Crossing
+    "Crossing Type",
+    "Crossing Length",
+    "Crossing Start Photo URL",
+    "Crossing Start Photo Latitude",
+    "Crossing Start Photo Longitude",
+    "Crossing End Photo URL",
+    "Crossing End Photo Latitude",
+    "Crossing End Photo Longitude",
+
+    // Route Details
+    "Center To Margin",
+    "Road Width",
+    "Route Belongs To",
+    "Route Type",
+    "Soil Type",
+
+    // Route Feasibility
+    "Route Feasible",
+    "Alternate Path Available",
+    "Alternative Path Details",
+
+    // Side & Indicator
+    "Side Type",
+    "Route Indicator URL",
+
+    // Survey Photos
+    "Survey Start Photo",
+    "Survey End Photo",
+
+    // Utility Features
+    "Local Info",
+    "Selected Ground Features",
+
+    // Video Details
+    "Video URL",
+    "Video Start Latitude",
+    "Video Start Longitude",
+    "Video Start TimeStamp",
+    "Video End Latitude",
+    "Video End Longitude",
+    "Video End TimeStamp",
+
+    // Joint Chamber & fpoi
+    "Joint Chamber URL",
+    "FPOI URL",
+  // Patroller Details
+    "Patroller Company",
+    "Patroller Name",
+    "Patroller Email",
+    "Patroller Mobile",
+    // Timestamps
+    "Created Time",
+    "Created At",
+
+   
+  ]
+], { origin: "A1" });
+
+  XLSX.writeFile(workbook, `UnderGround Survey_${AllData[0].survey_id}.xlsx`, { compression: true });
+
+
+};
+
+
+
   return (
     <>
       {zoomImage && (
@@ -245,6 +431,9 @@ const GroundDetailView: React.FC = () => {
           >
             Map View
           </button>
+          <button className={`px-4 py-2 rounded bg-green-400 text-white hover:bg-green-300`}
+          onClick={exportExcel}>Export </button>
+
         </div>
         {activeTab === 'details' && (
           <div className="p-4">
@@ -268,7 +457,7 @@ const GroundDetailView: React.FC = () => {
                     <th className="border p-2">Soil Type</th>
                     <th className="border p-2">Area Type</th>
                     <th className="border p-2">Crossing Type</th>
-                    <th className="border p-2">Road Length</th>
+                    <th className="border p-2">Crossing Length</th>
                     <th className="border p-2">Road Width</th>
                     <th className="border p-2">CenterToMargin</th>
                     <th className="border p-2">Route Feasible</th>
@@ -449,6 +638,13 @@ const GroundDetailView: React.FC = () => {
                 </tbody>
               </table>
             </div>
+             {/* <ResponsivePagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={setCurrentPage}
+                      itemsPerPage={paginatedData?.length}
+                      totalItems={totalItems}
+                    /> */}
             <div className="flex justify-center mt-4 flex-wrap gap-1 sm:gap-2 text-sm">
               <button
                 disabled={currentPage === 1}
@@ -458,7 +654,6 @@ const GroundDetailView: React.FC = () => {
                 Prev
               </button>
 
-              {/* First Page */}
               {currentPage > 2 && (
                 <>
                   <button
@@ -472,7 +667,6 @@ const GroundDetailView: React.FC = () => {
                 </>
               )}
 
-              {/* Pages Around Current */}
               {Array.from({ length: 3 }, (_, i) => currentPage - 1 + i)
                 .filter((page) => page >= 1 && page <= totalPages)
                 .map((page) => (
@@ -486,7 +680,6 @@ const GroundDetailView: React.FC = () => {
                   </button>
                 ))}
 
-              {/* Last Page */}
               {currentPage < totalPages - 1 && (
                 <>
                   {currentPage < totalPages - 2 && <span className="px-2">...</span>}
