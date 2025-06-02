@@ -7,6 +7,8 @@ import "react-toastify/dist/ReactToastify.css";
 import MapComponent from "./MapComponent";
 import * as XLSX from "xlsx";
 import ResponsivePagination from "./ResponsivePagination";
+import App from "../VideoPlayback/index";
+import DataTable from "react-data-table-component";
 
 interface PatrollerDetails {
   companyName: string;
@@ -56,7 +58,7 @@ interface VideoDetails {
 }
 interface UnderGroundSurveyData {
   id: number;
-  survey_id:string;
+  survey_id: string;
   area_type: string;
   event_type: string;
   fpoiUrl: string;
@@ -77,24 +79,39 @@ interface UnderGroundSurveyData {
   videoDetails?: VideoDetails;
   created_at: string;
   createdTime: string;
-  surveyUploaded:string;
-  altitude:string;
-  accuracy:string;
-  depth:string;
-  distance_error:string;
+  surveyUploaded: string;
+  altitude: string;
+  accuracy: string;
+  depth: string;
+  distance_error: string;
 
 }
-
+interface StartGp{
+  name: string,
+  blk_name: string,
+  dt_name: string,
+  st_name: string,
+}
+interface EndGp{
+  name: string,
+}
 interface GroundSurvey {
   id: number;
   startLocation: string;
   endLocation: string;
-  block_id:string;
-  district_id:string;
-  state_id:string;
+  block_id: string;
+  district_id: string;
+  state_id: string;
   under_ground_survey_data: UnderGroundSurveyData[];
+  start_gp:StartGp,
+  end_gp:EndGp
 }
-
+interface Props {
+  paginatedData: GroundSurvey[];
+  baseUrl: string;
+  setZoomImage: (url: string) => void;
+  setSelectedVideoUrl: (url: string) => void;
+}
 const BASEURL_Val = import.meta.env.VITE_API_BASE;
 const baseUrl = `${BASEURL_Val}/public/`;
 
@@ -104,7 +121,8 @@ const GroundDetailView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
   const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'details' | 'map'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'map' | 'video'>('details');
+  const [searchTerm, setSearchTerm] = useState("");
 
 
   const { id } = useParams();
@@ -120,7 +138,185 @@ const GroundDetailView: React.FC = () => {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
+  const filteredData = [
+    ...new Map(
+      data?.under_ground_survey_data
+        ?.filter(survey =>
+          survey.event_type !== 'LIVELOCATION' &&
+          survey?.surveyUploaded === "true" &&
+          Object.values(survey).some(val =>
+            typeof val === 'string' && val.toLowerCase().includes(searchTerm.toLowerCase())
+          )
+        )
+        .map(survey => [`${survey.latitude}-${survey.longitude}-${survey.event_type}`, survey])
+    ).values()
+  ];
 
+  const columns = [
+    {
+      name: "Event Type",
+      selector: (row: UnderGroundSurveyData) => row.event_type,
+      sortable: true,
+    },
+    {
+      name: "Latitude",
+      selector: (row: UnderGroundSurveyData) => row.latitude,
+    },
+    {
+      name: "Longitude",
+      selector: (row: UnderGroundSurveyData) => row.longitude,
+    },
+    {
+      name: "Side Type",
+      selector: (row: UnderGroundSurveyData) => row.side_type || "-",
+    },
+    {
+      name: "Execution Modality",
+      selector: (row: UnderGroundSurveyData) => row.execution_modality || "-",
+    },
+    {
+      name: "Image",
+      cell: (row: UnderGroundSurveyData) => (
+        <div className="text-blue-600">
+          {row.event_type === "FPOI" && row.fpoiUrl && (
+            <span className="underline cursor-pointer" onClick={() => setZoomImage(`${baseUrl}${row.fpoiUrl}`)}>
+              fpoiUrl<br />
+            </span>
+          )}
+          {row.event_type === "SURVEYSTART" &&
+            row.start_photos?.map((p, i) => (
+              <span key={i} className="underline cursor-pointer" onClick={() => setZoomImage(`${baseUrl}${p}`)}>
+                start_photo_{i + 1}<br />
+              </span>
+            ))}
+          {row.event_type === "ENDSURVEY" &&
+            row.end_photos?.map((p, i) => (
+              <span key={i} className="underline cursor-pointer" onClick={() => setZoomImage(`${baseUrl}${p}`)}>
+                end_photo_{i + 1}<br />
+              </span>
+            ))}
+          {row.event_type === "ROUTEINDICATOR" && row.routeIndicatorUrl && (
+            <span className="underline cursor-pointer" onClick={() => setZoomImage(`${baseUrl}${row.routeIndicatorUrl}`)}>
+              RouteIndicatorUrl<br />
+            </span>
+          )}
+          {row.event_type === "JOINTCHAMBER" && row.jointChamberUrl && (
+            <span className="underline cursor-pointer" onClick={() => setZoomImage(`${baseUrl}${row.jointChamberUrl}`)}>
+              JointChamberUrl<br />
+            </span>
+          )}
+          {row.event_type === "ROADCROSSING" && row.road_crossing?.startPhoto && (
+            <span className="underline cursor-pointer" onClick={() => setZoomImage(`${baseUrl}${row.road_crossing?.startPhoto}`)}>
+              startPhoto_{row.road_crossing.roadCrossing}<br />
+            </span>
+          )}
+          {row.event_type === "ROADCROSSING" && row.road_crossing?.endPhoto && (
+            <span className="underline cursor-pointer" onClick={() => setZoomImage(`${baseUrl}${row.road_crossing?.endPhoto}`)}>
+              endPhoto_{row.road_crossing.roadCrossing}<br />
+            </span>
+          )}
+          {!row.fpoiUrl &&
+            (!row.start_photos || row.start_photos.length === 0) &&
+            (!row.end_photos || row.end_photos.length === 0) &&
+            !row.routeIndicatorUrl &&
+            !row.jointChamberUrl &&
+            (!row.road_crossing?.startPhoto || row.road_crossing.startPhoto === "") &&
+            (!row.road_crossing?.endPhoto || row.road_crossing.endPhoto === "") && <span>-</span>}
+
+        </div>
+      ),
+    },
+    {
+      name: "Video",
+      cell: (row: UnderGroundSurveyData) => {
+        if (row.event_type === "VIDEORECORD") {
+          const mainUrl = row.videoUrl?.trim().replace(/^"|"$/g, "");
+          const fallbackUrl = row.videoDetails?.videoUrl?.trim().replace(/^"|"$/g, "");
+          const videoUrl = mainUrl || fallbackUrl;
+
+          return videoUrl ? (
+            <button className="text-blue-600 underline" onClick={() => setSelectedVideoUrl(videoUrl)}>
+              Play Video
+            </button>
+          ) : (
+            "-"
+          );
+        }
+        return "-";
+      },
+    },
+    {
+      name: "Route Type",
+      selector: (row: UnderGroundSurveyData) => row.route_details.routeType || "-",
+    },
+    {
+      name: "RouteBelongsTo",
+      selector: (row: UnderGroundSurveyData) => row.route_details.routeBelongsTo || "-",
+    },
+    {
+      name: "Soil Type",
+      selector: (row: UnderGroundSurveyData) => row.route_details.soilType || "-",
+    },
+    {
+      name: "Area Type",
+      selector: (row: UnderGroundSurveyData) => row.area_type || "-",
+    },
+    {
+      name: "Crossing Type",
+      selector: (row: UnderGroundSurveyData) => row.road_crossing?.roadCrossing || "-",
+    },
+    {
+      name: "Crossing Length",
+      selector: (row: UnderGroundSurveyData) => row.road_crossing?.length || "-",
+    },
+    {
+      name: "Road Width",
+      selector: (row: UnderGroundSurveyData) => row.route_details.roadWidth || "-",
+    },
+    {
+      name: "CenterToMargin",
+      selector: (row: UnderGroundSurveyData) => row.route_details.centerToMargin || "-",
+    },
+    {
+      name: "Route Feasible",
+      selector: (row: UnderGroundSurveyData) => (row.route_feasibility?.routeFeasible ? "Yes" : "No"),
+    },
+    {
+      name: "Alternate Path",
+      selector: (row: UnderGroundSurveyData) => (row.route_feasibility?.alternatePathAvailable ? "Yes" : "No"),
+    },
+    {
+      name: "Alt Path Details",
+      selector: (row: UnderGroundSurveyData) => row.route_feasibility?.alternativePathDetails || "-",
+    },
+    {
+      name: "Created At",
+      selector: (row: UnderGroundSurveyData) =>
+        new Date(row.createdTime || row.created_at || "").toLocaleString(),
+    },
+  ];
+  const customStyles = {
+    headRow: {
+      style: {
+        backgroundColor: '#E5E4E2',
+        color: '#000080',
+        fontWeight: 600,
+        fontSize: '14px',
+        padding: '10px',
+
+      },
+    },
+    headCells: {
+      style: {
+        whiteSpace: 'nowrap',
+      },
+    },
+    cells: {
+      style: {
+        width: "150px",
+      },
+    },
+  };
 
   const handleAccept = async () => {
     try {
@@ -216,179 +412,191 @@ const GroundDetailView: React.FC = () => {
         survey.route_feasibility.alternativePathDetails)
   );
 
-const exportExcel = async () => {
-  const AllData = data?.under_ground_survey_data || [];
-   const MainData = data;
-  const rows = AllData.map((data) => ({
-    // Basic Info
-    id: data.id,
-    block_id:MainData?.block_id || '',
-    district_id:MainData?.district_id || '',
-    state_id:MainData?.state_id || '',
-    startLocation:MainData?.startLocation || '',
-    endLocation:MainData?.endLocation || '',
-    survey_id: data.survey_id,
-    area_type: data.area_type,
-    event_type: data.event_type,
-    surveyUploaded: data.surveyUploaded,
-    execution_modality: data.execution_modality,
+  const exportExcel = async () => {
+      const filteredData = [
+    ...new Map(
+      data?.under_ground_survey_data
+        ?.filter(survey =>
+          survey?.surveyUploaded === "true" &&
+          Object.values(survey).some(val =>
+            typeof val === 'string' && val.toLowerCase().includes(searchTerm.toLowerCase())
+          )
+        )
+        .map(survey => [`${survey.latitude}-${survey.longitude}-${survey.event_type}`, survey])
+    ).values()
+  ];
+    const AllData = filteredData || [];
+    const MainData = data;
+    const rows = AllData.map((data) => ({
+      // Basic Info
+      id: data.id,
+      blk_name: MainData?.start_gp?.blk_name|| '',
+      dt_name: MainData?.start_gp?.dt_name || '',
+      st_name: MainData?.start_gp?.st_name|| '',
+      startGp: MainData?.start_gp?.name || '',
+      endGp: MainData?.end_gp?.name || '',
+      survey_id: data.survey_id,
+      area_type: data.area_type,
+      event_type: data.event_type,
+      surveyUploaded: data.surveyUploaded,
+      execution_modality: data.execution_modality,
 
-    // GPS Info
-    latitude: data.latitude,
-    longitude: data.longitude,
-    altitude: data.altitude,
-    accuracy: data.accuracy,
-    depth: data.depth,
-    distance_error: data.distance_error,
-
-   
-
-    // Road Crossing Info
-    crossing_Type: data.road_crossing?.roadCrossing || '',
-    crossing_length: data.road_crossing?.length || '',
-    crossing_startPhoto_URL: data.road_crossing?.startPhoto || '',
-    crossing_startphoto_Lat: data.road_crossing?.startPhotoLat || '',
-    crossing_startphoto_Long: data.road_crossing?.startPhotoLong || '',
-    crossing_endPhoto_URL: data.road_crossing?.endPhoto || '',
-    crossing_endphoto_Lat: data.road_crossing?.endPhotoLat || '',
-    crossing_endphoto_Long: data.road_crossing?.endPhotoLong || '',
-
-    // Route Details
-    centerToMargin: data.route_details?.centerToMargin || '',
-    roadWidth: data.route_details?.roadWidth || '',
-    routeBelongsTo: data.route_details?.routeBelongsTo || '',
-    routeType: data.route_details?.routeType || '',
-    soilType: data.route_details?.soilType || '',
-
-    // Route Feasibility
-    routeFeasible: data.route_feasibility?.routeFeasible ?? '',
-    alternatePathAvailable: data.route_feasibility?.alternatePathAvailable ?? '',
-    alternativePathDetails: data.route_feasibility?.alternativePathDetails || '',
-
-    // Side and Indicator
-    side_type: data.side_type,
-    routeIndicatorUrl: data.routeIndicatorUrl || '',
-
-    // Start/End Photos
-    Survey_Start_Photo: data.start_photos?.[0] || '',
-    Survey_End_Photo: data.end_photos?.[0] || '',
-
-    // Utility Features
-    localInfo: data.utility_features_checked?.localInfo || '',
-    selectedGroundFeatures: (data.utility_features_checked?.selectedGroundFeatures || []).join(', '),
-
-    // Video Details
-    videoUrl: data.videoUrl || data.videoDetails?.videoUrl || '',
-    video_startLatitude: data.videoDetails?.startLatitude || '',
-    video_startLongitude: data.videoDetails?.startLongitude || '',
-    video_startTimeStamp: data.videoDetails?.startTimeStamp || '',
-    video_endLatitude: data.videoDetails?.endLatitude || '',
-    video_endLongitude: data.videoDetails?.endLongitude || '',
-    video_endTimeStamp: data.videoDetails?.endTimeStamp || '',
-
-    // Joint Chamber and fpoi
-    jointChamberUrl: data.jointChamberUrl || '',
-    fpoiUrl: data.fpoiUrl || '',
-
-    // Patroller Details
-    patroller_company: data.patroller_details?.companyName || '',
-    patroller_name: data.patroller_details?.name || '',
-    patroller_email: data.patroller_details?.email || '',
-    patroller_mobile: data.patroller_details?.mobile || '',
-
-    // Timestamps
-    createdTime: data.createdTime,
-    created_at: data.created_at,
-
-  }));
-  const workbook = XLSX.utils.book_new();
-  const worksheet = XLSX.utils.json_to_sheet(rows);
-  XLSX.utils.book_append_sheet(workbook, worksheet, `UnderGround Survey_${AllData[0].survey_id}`);
-  XLSX.utils.sheet_add_aoa(worksheet, [
-  [
-    "ID",
-    "Block Id",
-    "District Id",
-    "State Id",
-    "Start Location",
-    "End Location",
-    "Survey ID",
-    "Area Type",
-    "Event Type",
-    "Survey Uploaded",
-    "Execution Modality",
-    "Latitude",
-    "Longitude",
-    "Altitude",
-    "Accuracy",
-    "Depth",
-    "Distance Error",
-
-  
-
-    // Road Crossing
-    "Crossing Type",
-    "Crossing Length",
-    "Crossing Start Photo URL",
-    "Crossing Start Photo Latitude",
-    "Crossing Start Photo Longitude",
-    "Crossing End Photo URL",
-    "Crossing End Photo Latitude",
-    "Crossing End Photo Longitude",
-
-    // Route Details
-    "Center To Margin",
-    "Road Width",
-    "Route Belongs To",
-    "Route Type",
-    "Soil Type",
-
-    // Route Feasibility
-    "Route Feasible",
-    "Alternate Path Available",
-    "Alternative Path Details",
-
-    // Side & Indicator
-    "Side Type",
-    "Route Indicator URL",
-
-    // Survey Photos
-    "Survey Start Photo",
-    "Survey End Photo",
-
-    // Utility Features
-    "Local Info",
-    "Selected Ground Features",
-
-    // Video Details
-    "Video URL",
-    "Video Start Latitude",
-    "Video Start Longitude",
-    "Video Start TimeStamp",
-    "Video End Latitude",
-    "Video End Longitude",
-    "Video End TimeStamp",
-
-    // Joint Chamber & fpoi
-    "Joint Chamber URL",
-    "FPOI URL",
-  // Patroller Details
-    "Patroller Company",
-    "Patroller Name",
-    "Patroller Email",
-    "Patroller Mobile",
-    // Timestamps
-    "Created Time",
-    "Created At",
-
-   
-  ]
-], { origin: "A1" });
-
-  XLSX.writeFile(workbook, `UnderGround Survey_${AllData[0].survey_id}.xlsx`, { compression: true });
+      // GPS Info
+      latitude: data.latitude,
+      longitude: data.longitude,
+      altitude: data.altitude,
+      accuracy: data.accuracy,
+      depth: data.depth,
+      distance_error: data.distance_error,
 
 
-};
+
+      // Road Crossing Info
+      crossing_Type: data.road_crossing?.roadCrossing || '',
+      crossing_length: data.road_crossing?.length || '',
+      crossing_startPhoto_URL: data.road_crossing?.startPhoto || '',
+      crossing_startphoto_Lat: data.road_crossing?.startPhotoLat || '',
+      crossing_startphoto_Long: data.road_crossing?.startPhotoLong || '',
+      crossing_endPhoto_URL: data.road_crossing?.endPhoto || '',
+      crossing_endphoto_Lat: data.road_crossing?.endPhotoLat || '',
+      crossing_endphoto_Long: data.road_crossing?.endPhotoLong || '',
+
+      // Route Details
+      centerToMargin: data.route_details?.centerToMargin || '',
+      roadWidth: data.route_details?.roadWidth || '',
+      routeBelongsTo: data.route_details?.routeBelongsTo || '',
+      routeType: data.route_details?.routeType || '',
+      soilType: data.route_details?.soilType || '',
+
+      // Route Feasibility
+      routeFeasible: data.route_feasibility?.routeFeasible ?? '',
+      alternatePathAvailable: data.route_feasibility?.alternatePathAvailable ?? '',
+      alternativePathDetails: data.route_feasibility?.alternativePathDetails || '',
+
+      // Side and Indicator
+      side_type: data.side_type,
+      routeIndicatorUrl: data.routeIndicatorUrl || '',
+
+      // Start/End Photos
+      Survey_Start_Photo: data.start_photos?.[0] || '',
+      Survey_End_Photo: data.end_photos?.[0] || '',
+
+      // Utility Features
+      localInfo: data.utility_features_checked?.localInfo || '',
+      selectedGroundFeatures: (data.utility_features_checked?.selectedGroundFeatures || []).join(', '),
+
+      // Video Details
+      videoUrl: data.videoUrl || data.videoDetails?.videoUrl || '',
+      video_startLatitude: data.videoDetails?.startLatitude || '',
+      video_startLongitude: data.videoDetails?.startLongitude || '',
+      video_startTimeStamp: data.videoDetails?.startTimeStamp || '',
+      video_endLatitude: data.videoDetails?.endLatitude || '',
+      video_endLongitude: data.videoDetails?.endLongitude || '',
+      video_endTimeStamp: data.videoDetails?.endTimeStamp || '',
+
+      // Joint Chamber and fpoi
+      jointChamberUrl: data.jointChamberUrl || '',
+      fpoiUrl: data.fpoiUrl || '',
+
+      // Patroller Details
+      patroller_company: data.patroller_details?.companyName || '',
+      patroller_name: data.patroller_details?.name || '',
+      patroller_email: data.patroller_details?.email || '',
+      patroller_mobile: data.patroller_details?.mobile || '',
+
+      // Timestamps
+      createdTime: data.createdTime,
+      created_at: data.created_at,
+
+    }));
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    XLSX.utils.book_append_sheet(workbook, worksheet, `UnderGround Survey_${AllData[0].survey_id}`);
+    XLSX.utils.sheet_add_aoa(worksheet, [
+      [
+        "ID",
+        "Block Name",
+        "District Name",
+        "State Name",
+        "Start GP",
+        "End GP",
+        "Survey ID",
+        "Area Type",
+        "Event Type",
+        "Survey Uploaded",
+        "Execution Modality",
+        "Latitude",
+        "Longitude",
+        "Altitude",
+        "Accuracy",
+        "Depth",
+        "Distance Error",
+
+
+
+        // Road Crossing
+        "Crossing Type",
+        "Crossing Length",
+        "Crossing Start Photo URL",
+        "Crossing Start Photo Latitude",
+        "Crossing Start Photo Longitude",
+        "Crossing End Photo URL",
+        "Crossing End Photo Latitude",
+        "Crossing End Photo Longitude",
+
+        // Route Details
+        "Center To Margin",
+        "Road Width",
+        "Route Belongs To",
+        "Route Type",
+        "Soil Type",
+
+        // Route Feasibility
+        "Route Feasible",
+        "Alternate Path Available",
+        "Alternative Path Details",
+
+        // Side & Indicator
+        "Side Type",
+        "Route Indicator URL",
+
+        // Survey Photos
+        "Survey Start Photo",
+        "Survey End Photo",
+
+        // Utility Features
+        "Local Info",
+        "Selected Ground Features",
+
+        // Video Details
+        "Video URL",
+        "Video Start Latitude",
+        "Video Start Longitude",
+        "Video Start TimeStamp",
+        "Video End Latitude",
+        "Video End Longitude",
+        "Video End TimeStamp",
+
+        // Joint Chamber & fpoi
+        "Joint Chamber URL",
+        "FPOI URL",
+        // Patroller Details
+        "Patroller Company",
+        "Patroller Name",
+        "Patroller Email",
+        "Patroller Mobile",
+        // Timestamps
+        "Created Time",
+        "Created At",
+
+
+      ]
+    ], { origin: "A1" });
+
+    XLSX.writeFile(workbook, `UnderGround Survey_${AllData[0].survey_id}.xlsx`, { compression: true });
+
+
+  };
 
 
 
@@ -421,290 +629,45 @@ const exportExcel = async () => {
         <div className="flex flex-end gap-4 px-4 py-2">
           <button
             onClick={() => setActiveTab('details')}
-            className={`px-4 py-2 rounded ${activeTab === 'details' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+            className={`border px-3 py-1 rounded mb-2 ${activeTab === 'details' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
           >
             Details View
           </button>
           <button
             onClick={() => setActiveTab('map')}
-            className={`px-4 py-2 rounded ${activeTab === 'map' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+            className={`border px-3 py-1 rounded mb-2 ${activeTab === 'map' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
           >
             Map View
           </button>
-          <button className={`px-4 py-2 rounded bg-green-400 text-white hover:bg-green-300`}
-          onClick={exportExcel}>Export </button>
+
+          <button className={`border px-3 py-1 rounded mb-2 bg-blue-700 text-white hover:bg-green-300`}
+            onClick={() => setActiveTab("video")}>Video Details </button>
+          <button className={`border px-3 py-1 rounded mb-2 bg-green-400 text-white hover:bg-green-300`}
+            onClick={exportExcel}>Export </button>
+          <input
+            type="text"
+            className="border px-3 py-1 rounded mb-2"
+            placeholder="Search..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+
 
         </div>
         {activeTab === 'details' && (
           <div className="p-4">
             <div className=" overflow-x-auto">
-              <table className="w-full mt-2 border-collapse border border-gray-400 bg-white">
-                <thead>
-                  <tr className="bg-white-200">
-                    <th className="border p-2">Event Type</th>
-                    {/* <th  className="border p-2">FPOI</th> */}
-                    <th className="border p-2">Latitude</th>
-                    <th className="border p-2">Longitude</th>
-                    <th className="border p-2">Side Type</th>
-                    <th className="border p-2">Execution Modality</th>
-                    <th className="border p-2">Image</th>
-                    {/* <th  className="border p-2">End Photos</th> */}
-                    <th className="border p-2">Video</th>
-                    {/* <th  className="border p-2">Route Indicator</th>
-            <th  className="border p-2">Joint Chamber</th> */}
-                    <th className="border p-2">Route Type</th>
-                    <th className="border p-2">RouteBelongsTo</th>
-                    <th className="border p-2">Soil Type</th>
-                    <th className="border p-2">Area Type</th>
-                    <th className="border p-2">Crossing Type</th>
-                    <th className="border p-2">Crossing Length</th>
-                    <th className="border p-2">Road Width</th>
-                    <th className="border p-2">CenterToMargin</th>
-                    <th className="border p-2">Route Feasible</th>
-                    <th className="border p-2">Alternate Path Available</th>
-                    <th className="border p-2">Alternative Path Details</th>
-                    <th className="border p-2">Created At</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <DataTable
+                columns={columns}
+                data={filteredData}
+                pagination
+                highlightOnHover
+                striped
+                dense
+                responsive
+                customStyles={customStyles} />
 
-                  {paginatedData?.filter(survey => survey.event_type !== 'LIVELOCATION').map((survey) => (
-                    <tr key={survey.id}>
-                      <td className="border p-2 text-center">{survey.event_type}</td>
-                      {/* <td className="border p-2">
-                  {survey.fpoiUrl ? (
-                    <img src={`${baseUrl}${survey.fpoiUrl}`} alt="fpoi Photo" className="w-16 h-16"  onClick={() => setZoomImage(`${baseUrl}${survey.fpoiUrl}`)}/>
-                  ) : (
-                    "-"
-                  )}
-                </td> */}
-                      <td className="border p-2 text-center">{survey.latitude}</td>
-                      <td className="border p-2 text-center">{survey.longitude}</td>
-                      <td className="border p-2 text-center">{survey.side_type}</td>
-                      <td className="border p-2 text-center">{survey.execution_modality}</td>
-                      <td className="border p-2 text-center">
-                        {/* fpoiUrl */}
-                        {survey.fpoiUrl &&  survey.event_type !== 'VIDEORECORD' && (
-                          <span
-                            className="text-blue-600 underline cursor-pointer"
-                            onClick={() => setZoomImage(`${baseUrl}${survey.fpoiUrl}`)}
-                          >
-                            fpoiUrl <br />
-                          </span>
-                        )}
-
-                        {/* start_photos */}
-                        {survey.start_photos?.map((photo, index) => (
-                          <span
-                            key={`start-${index}`}
-                            className="text-blue-600 underline cursor-pointer"
-                            onClick={() => setZoomImage(`${baseUrl}${photo}`)}
-                          >
-                            start_photo_{index + 1} <br />
-                          </span>
-                        ))}
-
-                        {/* end_photos */}
-                        {survey.end_photos?.map((photo, index) => (
-                          <span
-                            key={`end-${index}`}
-                            className="text-blue-600 underline cursor-pointer"
-                            onClick={() => setZoomImage(`${baseUrl}${photo}`)}
-                          >
-                            end_photo_{index + 1} <br />
-                          </span>
-                        ))}
-
-                        {/* routeIndicatorUrl */}
-                        {survey.routeIndicatorUrl  && survey.event_type !== 'VIDEORECORD' && (
-                          <span
-                            className="text-blue-600 underline cursor-pointer"
-                            onClick={() => setZoomImage(`${baseUrl}${survey.routeIndicatorUrl}`)}
-                          >
-                            routeIndicatorUrl <br />
-                          </span>
-                        )}
-
-                        {/* jointChamberUrl */}
-                        {survey.jointChamberUrl && survey.event_type !== 'VIDEORECORD' && (
-                          <span
-                            className="text-blue-600 underline cursor-pointer"
-                            onClick={() => setZoomImage(`${baseUrl}${survey.jointChamberUrl}`)}
-                          >
-                            jointChamberUrl <br />
-                          </span>
-                        )}
-
-                        {/* road_crossing */}
-                        {survey.road_crossing?.startPhoto && survey.event_type !== 'VIDEORECORD'  && (
-                          <span
-                            className="text-blue-600 underline cursor-pointer"
-                            onClick={() => setZoomImage(`${baseUrl}${survey.road_crossing.startPhoto}`)}
-                          >
-                            startPhoto_{survey.road_crossing.roadCrossing} <br />
-                          </span>
-                        )}
-
-                        {/* endPhoto from photoDetails */}
-                        {survey.road_crossing?.endPhoto  && survey.event_type !== 'VIDEORECORD' && (
-                          <span
-                            className="text-blue-600 underline cursor-pointer"
-                            onClick={() => setZoomImage(`${baseUrl}${survey.road_crossing.endPhoto}`)}
-                          >
-                            endPhoto_{survey.road_crossing.roadCrossing} <br />
-                          </span>
-                        )}
-
-                        {/* No URLs fallback */}
-                        {!survey.fpoiUrl &&
-                          (!survey.start_photos || survey.start_photos.length === 0) &&
-                          (!survey.end_photos || survey.end_photos.length === 0) &&
-                          !survey.routeIndicatorUrl &&
-                          !survey.jointChamberUrl &&
-                          (!survey.road_crossing?.startPhoto || survey.road_crossing.startPhoto === "") &&
-                          (!survey.road_crossing?.endPhoto || survey.road_crossing.endPhoto === "") && <span>-</span>}
-
-
-                      </td>
-                      {/* <td className="border p-2 text-center">
-                {survey.start_photos.map((photo, index) => (
-                  <img key={index} src={`${baseUrl}${photo}`} alt="Start" width="50" height="50" onClick={() => setZoomImage(`${baseUrl}${photo}`)}/>
-                ))}
-              </td> */}
-                      {/* <td className="border p-2 text-center">
-                {survey.end_photos.map((photo, index) => (
-                  <img key={index} src={`${baseUrl}${photo}`} alt="End" width="50" height="50" onClick={() => setZoomImage(`${baseUrl}${photo}`)}/>
-                ))}
-              </td> */}
-                      <td className="border p-2 text-center">
-                        {survey.event_type == "VIDEORECORD" && (
-                          (() => {
-                            const mainVideoUrl = survey.videoUrl?.trim().replace(/(^"|"$)/g, '');
-                            const fallbackVideoUrl = survey.videoDetails?.videoUrl?.trim().replace(/(^"|"$)/g, '');
-
-                            if (mainVideoUrl) {
-                              return (
-                                <button
-                                  onClick={() => setSelectedVideoUrl(mainVideoUrl)}
-                                  className="text-blue-600 hover:underline"
-                                >
-                                  Play Video
-                                </button>
-                              );
-                            } else if (fallbackVideoUrl) {
-                              return (
-                                <button
-                                  onClick={() => setSelectedVideoUrl(fallbackVideoUrl)}
-                                  className="text-blue-600 hover:underline"
-                                >
-                                  Play Video
-                                </button>
-                              );
-                            } else {
-                              "No Video";
-                            }
-                          })()
-                        )}
-                      </td>
-
-                      {/* <td className="border p-2">
-                  {survey.routeIndicatorUrl ? (
-                    <img src={`${baseUrl}${survey.routeIndicatorUrl}`} alt="Route Photo" className="w-16 h-16"  onClick={() => setZoomImage(`${baseUrl}${survey.routeIndicatorUrl}`)}/>
-                  ) : (
-                    "-"
-                  )}
-                </td> */}
-                      {/* <td className="border p-2">
-                {survey.jointChamberUrl ? (
-                  <img src={`${baseUrl}${survey.jointChamberUrl}`} alt="Chamber Photo" className="w-16 h-16"  onClick={() => setZoomImage(`${baseUrl}${survey.jointChamberUrl}`)}/>
-                ) : (
-                  "-"
-                )}
-                </td> */}
-                      <td className="border p-2 text-center">{survey.route_details.routeType}</td>
-                      <td className="border p-2 text-center">{survey.route_details.routeBelongsTo}</td>
-                      <td className="border p-2 text-center">{survey.route_details.soilType}</td>
-                      <td className="border p-2 text-center">{survey.area_type}</td>
-                      <td className="border p-2 text-center">{survey.road_crossing.roadCrossing || '-'}</td>
-                      <td className="border p-2 text-center">{survey.road_crossing.length || '-'}</td>
-                      <td className="border p-2 text-center">{survey.route_details.roadWidth || '-'}</td>
-                      <td className="border p-2 text-center">{survey.route_details.centerToMargin || '-'}</td>
-                      <td className="border p-2">{survey?.route_feasibility?.routeFeasible ? "Yes" : "No"}</td>
-                      <td className="border p-2">{survey?.route_feasibility?.alternatePathAvailable ? "Yes" : "No"}</td>
-                      <td className="border p-2">{survey?.route_feasibility?.alternativePathDetails || "-"}</td>
-                      <td className="border p-2 text-center">{new Date(survey.createdTime || survey.created_at).toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
-             {/* <ResponsivePagination
-                      currentPage={currentPage}
-                      totalPages={totalPages}
-                      onPageChange={setCurrentPage}
-                      itemsPerPage={paginatedData?.length}
-                      totalItems={totalItems}
-                    /> */}
-            <div className="flex justify-center mt-4 flex-wrap gap-1 sm:gap-2 text-sm">
-              <button
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage(currentPage - 1)}
-                className="px-3 py-1 border rounded disabled:opacity-50"
-              >
-                Prev
-              </button>
-
-              {currentPage > 2 && (
-                <>
-                  <button
-                    onClick={() => setCurrentPage(1)}
-                    className={`px-3 py-1 border rounded ${currentPage === 1 ? "bg-blue-500 text-white" : ""
-                      }`}
-                  >
-                    1
-                  </button>
-                  {currentPage > 3 && <span className="px-2">...</span>}
-                </>
-              )}
-
-              {Array.from({ length: 3 }, (_, i) => currentPage - 1 + i)
-                .filter((page) => page >= 1 && page <= totalPages)
-                .map((page) => (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={`px-3 py-1 border rounded ${currentPage === page ? "bg-blue-500 text-white" : ""
-                      }`}
-                  >
-                    {page}
-                  </button>
-                ))}
-
-              {currentPage < totalPages - 1 && (
-                <>
-                  {currentPage < totalPages - 2 && <span className="px-2">...</span>}
-                  <button
-                    onClick={() => setCurrentPage(totalPages)}
-                    className={`px-3 py-1 border rounded ${currentPage === totalPages ? "bg-blue-500 text-white" : ""
-                      }`}
-                  >
-                    {totalPages}
-                  </button>
-                </>
-              )}
-
-              <button
-                disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage(currentPage + 1)}
-                className="px-3 py-1 border rounded disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-
-
-
-
             <h2 className="text-xl font-semibold mt-6">Patroller Details</h2>
             {hasPatrollerData ? (
               <table className="w-full mt-2 border-collapse border border-gray-400 bg-white">
@@ -748,105 +711,6 @@ const exportExcel = async () => {
               <p className="text-gray-500 mt-2">No patroller details available.</p>
             )}
 
-            {/* Road Crossing */}
-            {/* <h2 className="text-xl font-semibold mt-6">Road Crossing</h2>
-    {hasRoadCrossingData ? (
-      <table className="w-full mt-2 border-collapse border border-gray-400 bg-white">
-        <thead>
-          <tr className="bg-gray-200">
-            <th className="border p-2">Road Crossing</th>
-            <th className="border p-2">Length</th>
-            <th className="border p-2">Start Photo</th>
-            <th className="border p-2">End Photo</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data?.under_ground_survey_data.map((survey) => {
-            let crossing = survey.road_crossing || {};
-            return crossing.roadCrossing || crossing.length || crossing.startPhoto || crossing.endPhoto ? (
-              <tr key={survey.id}>
-                <td className="border p-2">{crossing.roadCrossing || "-"}</td>
-                <td className="border p-2">{crossing.length || "-"}</td>
-                <td className="border p-2">
-                  {crossing.startPhoto ? (
-                    <img src={`${baseUrl}${crossing.startPhoto}`} alt="Start Photo" className="w-16 h-16"  onClick={() => setZoomImage(`${baseUrl}${crossing.startPhoto}`)}/>
-                  ) : (
-                    "-"
-                  )}
-                </td>
-                <td className="border p-2">
-                  {crossing.endPhoto ? (
-                    <img src={`${baseUrl}${crossing.endPhoto}`} alt="End Photo" className="w-16 h-16"  onClick={() => setZoomImage(`${baseUrl}${crossing.endPhoto}`)}/>
-                  ) : (
-                    "-"
-                  )}
-                </td>
-              </tr>
-            ) : null;
-          })}
-        </tbody>
-      </table>
-    ) : (
-      <p className="text-gray-500 mt-2">No road crossing data available.</p>
-    )} */}
-
-            {/* Route Details */}
-            {/* <h2 className="text-xl font-semibold mt-6">Route Details</h2>
-    {hasRouteDetailsData ? (
-      <table className="w-full mt-2 border-collapse border border-gray-400 bg-white">
-        <thead>
-          <tr className="bg-gray-200">
-            <th className="border p-2">Route Belongs To</th>
-            <th className="border p-2">Route Type</th>
-            <th className="border p-2">Road Width</th>
-            <th className="border p-2">Soil Type</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data?.under_ground_survey_data.map((survey) => {
-            let route = survey.route_details || {};
-            return route.routeBelongsTo || route.routeType || route.roadWidth || route.soilType ? (
-              <tr key={survey.id}>
-                <td className="border p-2">{route.routeBelongsTo || "-"}</td>
-                <td className="border p-2">{route.routeType || "-"}</td>
-                <td className="border p-2">{route.roadWidth || "-"}</td>
-                <td className="border p-2">{route.soilType || "-"}</td>
-              </tr>
-            ) : null;
-          })}
-        </tbody>
-      </table>
-    ) : (
-      <p className="text-gray-500 mt-2">No route details available.</p>
-    )} */}
-
-            {/* Route Feasibility */}
-            {/* <h2 className="text-xl font-semibold mt-6">Route Feasibility</h2>
-    {hasRouteFeasibilityData ? (
-      <table className="w-full mt-2 border-collapse border border-gray-400 bg-white">
-        <thead>
-          <tr className="bg-gray-200">
-            <th className="border p-2">Route Feasible</th>
-            <th className="border p-2">Alternate Path Available</th>
-            <th className="border p-2">Alternative Path Details</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data?.under_ground_survey_data.map((survey) => {
-            let feasibility = survey.route_feasibility || {};
-            return feasibility.routeFeasible !== undefined || feasibility.alternatePathAvailable || feasibility.alternativePathDetails ? (
-              <tr key={survey.id}>
-                <td className="border p-2">{feasibility.routeFeasible ? "Yes" : "No"}</td>
-                <td className="border p-2">{feasibility.alternatePathAvailable ? "Yes" : "No"}</td>
-                <td className="border p-2">{feasibility.alternativePathDetails || "-"}</td>
-              </tr>
-            ) : null;
-          })}
-        </tbody>
-      </table>
-    ) : (
-      <p className="text-gray-500 mt-2">No route feasibility data available.</p>
-    )} */}
 
             {/* Action Buttons */}
             <div className="mt-6 flex gap-4 justify-center">
@@ -891,6 +755,12 @@ const exportExcel = async () => {
           <div className="h-[600px] p-4">
             {/* Map goes here */}
             <MapComponent data={data?.under_ground_survey_data || []} />
+          </div>
+        )}
+        {activeTab === 'video' && (
+          <div className="h-[600px] p-4">
+            {/* Map goes here */}
+            <App data={data?.under_ground_survey_data || []} />
           </div>
         )}
       </div>
