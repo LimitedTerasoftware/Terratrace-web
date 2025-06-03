@@ -206,7 +206,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                               Route Builder
                             </NavLink>
                           </li>
-                          {/* Option 3: Reports - internal link */}
+                          {/* Option 3: Reports - internal link
                           <li>
                             <NavLink
                               to="/route-planning/reports"
@@ -218,7 +218,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                               <ClipboardMinus size={16} className="min-w-[16px]" />
                               Reports
                             </NavLink>
-                          </li>
+                          </li> */}
                           {/* Option 4: Audit Logs - internal link */}
                           {/*<li>
                             <NavLink

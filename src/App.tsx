@@ -22,8 +22,8 @@ import BsnlExchangeDetailView from './components/Tables/BsnlExchangeDetailView';
 import GpDetailView from './components/Tables/GpDetailView';
 import AerialDetailView from './components/Tables/AerialDetailView';
 import States from './components/Tables/States';
-import Districts from './components/Tables/Districts';
-import Blocks from './components/Tables/Blocks';
+//import Districts from './components/Tables/Districts';
+//import Blocks from './components/Tables/Blocks';
 import Gpslist from './components/Tables/Gpslist';
 import Users from './components/Tables/Users';
 import AerailTables from './pages/UiElements/AerailTables';
@@ -34,13 +34,15 @@ import AerialEdit from './components/Tables/AerialEdit';
 import GroundDetailView from './components/Tables/GroundDetailView';
 import CompaniesTable from './components/Tables/CompaniesTable';
 import HotoDetailView from './components/Tables/HotoDetailView';
+import HotoEdit from './components/Tables/HotoEdit';
 import FileUpload from "./components/Uploads/KmlManager";
 import KmlTable from "./components/Uploads/DataTable";
 import RoutePlanning from './components/RoutePlanning/index';
 
 // Added new imports for Route Planning dropdown menu components
-import RouteList from './components/RouteList';
-import RouteReports from './components/Reports';
+import RouteList from './components/RoutePlanning/RouteList';
+import RouteReports from './components/RoutePlanning/Reports';
+import RouteGPList from './components/RoutePlanning/RouteGPList';
 //import AuditLogs from './components/AuditLogs';
 
 function App() {
@@ -267,6 +269,18 @@ function App() {
             </>
            } 
            />
+
+            <Route 
+              path="/survey/hoto-edit/:id" 
+              element={
+                <>
+                  <DefaultLayout>
+                    <PageTitle title="HOTO Edit Form" />
+                    <HotoEdit />
+                  </DefaultLayout>
+                </>
+              } 
+            />
             {/* Updated Route Planning Route - changed path to be consistent with other route planning paths */}
             <Route
               path="/route-planning/builder"
@@ -278,7 +292,7 @@ function App() {
               }
             />
             
-            {/* New Route Planning Routes - added as part of the dropdown implementation */}
+            {/* Route Planning Routes */}
             <Route
               path="/route-planning/route-list"
               element={
@@ -291,7 +305,20 @@ function App() {
               }
             />
             
+            {/* New GP List Route*/}
             <Route
+              path="/route-planning/route-list/gplist/:id"
+              element={
+                <>
+                  <DefaultLayout>
+                    <PageTitle title="Route GP List" />
+                    <RouteGPList />
+                  </DefaultLayout>
+                </>
+              }
+            />
+            
+            {/*<Route
               path="/route-planning/reports"
               element={
                 <>
@@ -303,7 +330,7 @@ function App() {
               }
             />
             
-            {/*<Route
+            <Route
               path="/route-planning/audit-logs"
               element={
                 <>
@@ -366,7 +393,7 @@ function App() {
                 </>
               }
             />
-             <Route
+             {/*<Route
               path="/master/district"
               element={
                 <>
@@ -387,7 +414,7 @@ function App() {
                   </DefaultLayout>
                 </>
               }
-            />
+            />*/}
             <Route
               path="/master/gpslist"
               element={

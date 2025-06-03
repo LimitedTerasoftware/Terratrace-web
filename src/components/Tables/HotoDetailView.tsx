@@ -98,9 +98,9 @@ const HotoDetailView = () => {
       toast.error("Error accepting record");
     }
   };
-
+cl
   const handleEdit = async () => {
-    await navigate(`/survey/bsnl-edit/${id}`);
+    await navigate(`/survey/hoto-edit/${id}`);
   };
 
   // Handle delete
@@ -318,14 +318,14 @@ const HotoDetailView = () => {
       {/* Action Buttons */}
       {!viewOnly && (
       <div className="mt-6 flex gap-4 justify-center">
-       {/* <button
+       <button
           className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded"
           onClick={() => {
             handleEdit();
           }}
         >
           Edit
-        </button> */}
+        </button> 
 
         <button
           className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded"

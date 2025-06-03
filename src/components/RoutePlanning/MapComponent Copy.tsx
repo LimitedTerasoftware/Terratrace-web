@@ -6,10 +6,6 @@ import MapIcon from '../../images/icon/icon-Map.svg'
 import UndoIcon from '../../images/icon/undo-icon.svg'
 import { AlertCircle, CheckCircle, X } from 'lucide-react';
 
-
-// CONSTANTS & CONFIGURATION
-
-
 // Map container style
 const containerStyle = {
   width: '100%',
@@ -21,18 +17,6 @@ const center = {
   lat: 17.4484,
   lng: 78.3741
 };
-
-const libraries: ("places" | "drawing" | "geometry" | "visualization")[] = [
-  "places",
-  "drawing",
-  "geometry",
-  "visualization"
-];
-const colors = ['blue', 'green', 'gray'];
-
-
-// TYPE DEFINITIONS & INTERFACES
-
 
 interface RouteFeature {
   geometry: {
@@ -145,10 +129,6 @@ interface NotifierState {
   visible: boolean;
 }
 
-
-// UTILITY COMPONENTS
-
-
 const DistanceLabel = ({ position, text }: DistanceLabelProps) => {
   return (
     <OverlayView
@@ -162,10 +142,6 @@ const DistanceLabel = ({ position, text }: DistanceLabelProps) => {
   );
 };
 
-
-// UTILITY FUNCTIONS
-
-
 const isSameCoordinate = (
   coord1: google.maps.LatLngLiteral,
   coord2: google.maps.LatLngLiteral
@@ -177,7 +153,6 @@ const isSameCoordinate = (
 
   return lat1 === lat2 && lng1 === lng2;
 };
-
 function computePathDistance(path: { lat: number; lng: number }[]): number {
   if (path.length < 2) return 0;
 
@@ -201,6 +176,7 @@ function haversineDistance(a: { lat: number; lng: number }, b: { lat: number; ln
   return R * c;
 }
 
+
 function getLatLng(pos) {
   // If it's a google.maps.LatLng object
   if (pos && typeof pos.lat === 'function' && typeof pos.lng === 'function') {
@@ -218,51 +194,33 @@ function getLatLng(pos) {
   return null;
 }
 
-
-// MAIN COMPONENT
-
+const libraries: ("places" | "drawing" | "geometry" | "visualization")[] = [
+  "places",
+  "drawing",
+  "geometry",
+  "visualization"
+];
+const colors = ['blue', 'green', 'gray'];
 
 const MapComponent: React.FC = () => {
-  
-  // CONTEXT & HOOKS
-  
   const { transportMode, apiGPSResponse, apiConctResponse, setPointProperties, AutoMode, setAutoMode, SaveFile, setSaveFile, DownloadFile, setDownloadFile, AIMode, setAIMode, incrementalFile, gpFile, setGPSApiResponse, setConctApiResponse,
-    lineSummary, setLineSummary, VerifySaveFile, setVerifySaveFile,previewKmlData 
+    lineSummary, setLineSummary, VerifySaveFile, setVerifySaveFile
   } = useAppContext();
-
-  const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: 'AIzaSyCPHNQoyCkDJ3kOdYZAjZElbhXuJvx-Odg',
-    libraries,
-  });
-
-  
-  // STATE DECLARATIONS
-  
-
-  // Map state
   const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
-
-  // Point selection state
+  const [distanceInfoWindows, setDistanceInfoWindows] = useState<
+    { position: google.maps.LatLngLiteral; distance: number }[]
+  >([]);
   const [pointA, setPointA] = useState<google.maps.LatLngLiteral | null>(null);
   const [pointB, setPointB] = useState<google.maps.LatLngLiteral | null>(null);
   const [pointAName, setPointAName] = useState<string>('');
   const [pointBName, setPointBName] = useState<string>('');
-
-  // Route management state
   const [routeGroups, setRouteGroups] = useState<Map<string, { layers: google.maps.Polyline[] }>>(new Map());
   const [polylineHistory, setPolylineHistory] = useState(new Map());
+  const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
   const [selectedRouteIndex, setSelectedRouteIndex] = useState<number | null>(null);
-  const [polylineInstanceMap, setPolylineInstanceMap] = useState<Map<string, google.maps.Polyline>>(new Map());
-
-  // Distance and route tracking state
-  const [distanceInfoWindows, setDistanceInfoWindows] = useState<
-    { position: google.maps.LatLngLiteral; distance: number }[]
-  >([]);
+  const [editMarkers, setEditMarkers] = useState<google.maps.Marker[]>([]);
   const [existingDistance, setExistingDistance] = useState<number>(0);
   const [proposedDistance, setProposedDistance] = useState<number>(0);
-
-  // Data management state
   const [LocalData, setLocalData] = useState<GlobalData>({
     loop: [],
     mainPointName: null,
@@ -275,40 +233,38 @@ const MapComponent: React.FC = () => {
     st_name:'',
     polylineHistory: {},
   });
-
-  // UI state
-  const [editMarkers, setEditMarkers] = useState<google.maps.Marker[]>([]);
   const [RouteKey, setRouteKey] = useState<any>('');
   const [SelectRoute, setSelectRoute] = useState<any>('');
   const [IsOpen, setIsOpen] = useState<boolean>(false)
   const [error, setError] = useState<string>('')
-  const [loader, setLoader] = useState(false);
-
-  // AI and file processing state
+  const [polylineInstanceMap, setPolylineInstanceMap] = useState<Map<string, google.maps.Polyline>>(new Map());
   const [AIdata, setAIdata] = useState<any>({});
-
-  // Search functionality state
   const [searchValue, setSearchValue] = useState('');
   const [searchResults, setSearchResults] = useState<Place[]>([]);
   const [showSearch, setShowSearch] = useState(true);
-
-  // Notification state
-  const [Notifier, setNotifier] = useState<NotifierState>({ type: 'success', message: '', visible: false });
-
-  
-  // REFS
-  
   const searchMarkerRef = useRef<google.maps.Marker | null>(null);
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
   const autoModeRef = useRef(AutoMode);
   const pointARef = useRef(pointA);
   const pointBRef = useRef(pointB);
+  const [loader, setLoader] = useState(false);
+  const [Notifier, setNotifier] = useState<NotifierState>({ type: 'success', message: '', visible: false });
   const notifierTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const routeMarkers = useRef<Map<string, google.maps.Marker[]>>(new Map());
 
-  
-  // MAP LIFECYCLE CALLBACKS
-  
+  useEffect(() => {
+    // Cleanup function
+    return () => {
+      if (notifierTimeoutRef.current) {
+        clearTimeout(notifierTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: 'AIzaSyCPHNQoyCkDJ3kOdYZAjZElbhXuJvx-Odg',
+    libraries,
+  });
 
   // Callback when map loads - moved outside conditional block
   const onLoad = useCallback((map: google.maps.Map) => {
@@ -325,80 +281,10 @@ const MapComponent: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (previewKmlData && map && isLoaded) {
-      try {
-        const kmlData = JSON.parse(previewKmlData);
-        
-        if (kmlData.success && kmlData.data) {
-          // Transform the KML data to match your existing API response format
-          const transformedGPSResponse = {
-            points: kmlData.data.points.map((point: any) => {
-              const coordsArray = JSON.parse(point.coordinates);
-              return {
-                name: point.name,
-                coordinates: coordsArray, // Keep as [lat, lng] format
-                properties: {
-                  lgd_code: point.lgd_code,
-                  id: point.id,
-                  network_id: point.network_id,
-                  created_at: point.created_at,
-                  // Add network data as properties for the first point
-                  ...(point.id === kmlData.data.points[0]?.id && {
-                    blk_name: kmlData.data.network.main_point_name,
-                    dt_code: kmlData.data.network.dt_code,
-                    dt_name: kmlData.data.network.dt_name,
-                    st_code: kmlData.data.network.st_code,
-                    st_name: kmlData.data.network.st_name
-                  })
-                }
-              };
-            })
-          };
-  
-          const transformedConnectionResponse = {
-            connections: kmlData.data.connections.map((conn: any) => {
-              const coordsArray = JSON.parse(conn.coordinates);
-              return {
-                start: conn.start,
-                end: conn.end,
-                length: parseFloat(conn.length),
-                name: conn.original_name,
-                coordinates: coordsArray, // Keep as [[lat, lng],...] format
-                color: conn.type === 'existing' ? "#00AA00" : "#FF0000",
-                existing: conn.type === 'existing',
-                id: conn.id,
-                network_id: conn.network_id,
-                type: conn.type,
-                start_latlong: conn.start_latlong,
-                end_latlong: conn.end_latlong,
-                user_id: conn.user_id,
-                user_name: conn.user_name,
-                status: conn.status
-              };
-            })
-          };
-  
-          setGPSApiResponse(transformedGPSResponse);
-          setConctApiResponse(transformedConnectionResponse);
-          
-          showNotification("success", `Loaded KML data: ${kmlData.data.points.length} points and ${kmlData.data.connections.length} connections`);
-        }
-      } catch (error) {
-        console.error('Error processing KML data:', error);
-        showNotification("error", "Error loading KML data: Invalid format");
-      }
-    }
-  }, [previewKmlData, map, isLoaded]);
-
-  
-  // DATA PROCESSING EFFECTS
-  
-
-  useEffect(() => {
     if (apiGPSResponse?.points?.length && map) {
       setPointProperties(apiGPSResponse?.points[0])
       const connectionsByPoint = new Map<string, Connection[]>();
-      
+      // Group connections by point name (like "A", "B")
       if (apiConctResponse?.connections?.length) {
         apiConctResponse.connections.forEach((conn: Connection) => {
           const [from, to] = [conn.start, conn.end];
@@ -410,14 +296,14 @@ const MapComponent: React.FC = () => {
           });
         });
       }
-      
       const newLoopEntries: LoopEntry[] = apiGPSResponse.points.map((point: any) => {
         const relatedConnections = connectionsByPoint.get(point.name) || [];
+        // Pick one connection if multiple (or you can loop them all if needed)
         const matchedConn = relatedConnections[0];
         return {
           name: point.name,
-          coordinates: [point.coordinates[1], point.coordinates[0]], // Convert [lat,lng] to [lng,lat] for internal use
-          lgd_code: point.properties.lgd_code,
+          coordinates: point.coordinates,
+          lgd_code:point.properties.lgd_code,
           ...(matchedConn && {
             connection: {
               length: matchedConn.length || 0,
@@ -428,32 +314,37 @@ const MapComponent: React.FC = () => {
               features: [
                 {
                   geometry: {
-                    coordinates: matchedConn.coordinates.map(([lat, lng]) => [lng, lat]), // Convert to [lng,lat]
+                    coordinates: matchedConn.coordinates,
                   },
                 },
               ],
             },
           }),
+
         };
       });
-  
+
       setLocalData((prev: GlobalData) => ({
         ...prev,
-        mainPointName: apiGPSResponse.points[0].properties?.blk_name || '',
-        dt_code: apiGPSResponse.points[0].properties?.dt_code || '',
-        dt_name: apiGPSResponse.points[0].properties?.dt_name || '',
-        st_code: apiGPSResponse.points[0].properties?.st_code || '',
-        st_name: apiGPSResponse.points[0].properties?.st_name || '',
+          mainPointName:apiGPSResponse.points[0].properties?.blk_name || '',
+          dt_code:apiGPSResponse.points[0].properties?.dt_code || '',
+          dt_name:apiGPSResponse.points[0].properties?.dt_name || '',
+          st_code:apiGPSResponse.points[0].properties?.st_code || '',
+          st_name:apiGPSResponse.points[0].properties?.st_name || '',
         loop: [...prev.loop, ...newLoopEntries],
       }));
-      
       const bounds = new window.google.maps.LatLngBounds();
       (apiGPSResponse.points as PointType[]).forEach((point) => {
-        if (Array.isArray(point.coordinates) && point.coordinates.length === 2) {
-          bounds.extend({ lat: point.coordinates[0], lng: point.coordinates[1] }); // [lat,lng] format
+        if (
+          Array.isArray(point.coordinates) &&
+          point.coordinates.length === 2 &&
+          typeof point.coordinates[0] === 'number' &&
+          typeof point.coordinates[1] === 'number'
+        ) {
+          bounds.extend({ lat: point.coordinates[1], lng: point.coordinates[0] });
         }
       });
-  
+
       map.fitBounds(bounds);
     }
   }, [apiGPSResponse, apiConctResponse, map]);
@@ -462,24 +353,23 @@ const MapComponent: React.FC = () => {
     if (!map || !apiConctResponse?.connections?.length) return;
     const bounds = new window.google.maps.LatLngBounds();
     let totalExisting = 0;
-    
+    // const newPolylineHistory: Record<string, PolylineEntry> = {};
     const newPolylineHistory: Record<string, {
-      instance: google.maps.Polyline;
-      data: PolylineEntry;
+      instance: google.maps.Polyline; // this is for cleanup later
+      data: PolylineEntry;            // this is for global state
     }> = {};
-    
     apiConctResponse.connections.forEach((connection: Connection) => {
       if (!Array.isArray(connection.coordinates) || connection.coordinates.length < 2) {
         console.warn(`Skipping invalid connection: ${connection.name}`);
         return;
       }
-  
-      const path = connection.coordinates.map(([lat, lng]) => {
-        const point = { lat, lng }; // Direct use since coordinates are [lat,lng]
+
+      const path = connection.coordinates.map(([lng, lat]) => {
+        const point = { lat, lng };
         bounds.extend(point);
         return point;
       });
-  
+
       const polyline = new window.google.maps.Polyline({
         path,
         geodesic: true,
@@ -487,12 +377,13 @@ const MapComponent: React.FC = () => {
         strokeOpacity: 1.0,
         strokeWeight: 4,
       });
-  
+
       polyline.setMap(map);
-  
-      const offsetIndex = Math.floor(path.length * 0.5);
+
+      //Add distance label
+      const offsetIndex = Math.floor(path.length * 0.5); // middle point
       const midPoint = path[offsetIndex];
-  
+
       setDistanceInfoWindows(prev => [
         ...prev,
         {
@@ -500,10 +391,9 @@ const MapComponent: React.FC = () => {
           distance: connection.length || 0,
         },
       ]);
-      
-      const startLgdCode = apiGPSResponse.points.find((point: PointType) => point.name === connection.start);
-      const endLgdCode = apiGPSResponse.points.find((point: PointType) => point.name === connection.end);
-  
+     const startLgdCode = apiGPSResponse.points.find((point: PointType) => point.name === connection.start);
+     const endLgdCode = apiGPSResponse.points.find((point: PointType) => point.name === connection.end);
+
       newPolylineHistory[`${connection.start} TO ${connection.end}`] = {
         instance: polyline,
         data: {
@@ -513,18 +403,16 @@ const MapComponent: React.FC = () => {
               length: connection.length || 0,
               existing: true,
             },
-            startCords: startLgdCode?.properties.lgd_code,
-            endCords: endLgdCode?.properties.lgd_code,
+            startCords:startLgdCode.properties.lgd_code,
+            endCords:endLgdCode.properties.lgd_code,
           }, 
         },
       };
-      
       totalExisting += connection.length || 0;
-      
       polyline.addListener("click", (e) => {
         setPointProperties(connection)
+
       });
-      
       setPolylineInstanceMap(prev => {
         const newMap = new Map(prev);
         Object.entries(newPolylineHistory).forEach(([key, val]) => {
@@ -533,10 +421,10 @@ const MapComponent: React.FC = () => {
         return newMap;
       });
     });
-    
     setExistingDistance(totalExisting);
+
     map.fitBounds(bounds);
-  
+
     setLocalData(prev => ({
       ...prev,
       totalLength: totalExisting,
@@ -549,49 +437,6 @@ const MapComponent: React.FC = () => {
       },
     }));
   }, [apiConctResponse, map]);
-
-  useEffect(() => {
-    const total = Object.values(LocalData.polylineHistory || {})
-      .filter(h => h.segmentData?.connection && !h.segmentData.connection.existing)
-      .reduce((sum, h) => sum + (h.segmentData.connection.length || 0), 0);
-
-    setLocalData(prev => ({
-      ...prev,
-      totalLength: prev.existinglength + total,
-      proposedlength: total,
-
-    }));
-    setProposedDistance(total);
-  }, [LocalData.polylineHistory]);
-
-  
-  // REF SYNCHRONIZATION EFFECTS
-  
-
-  useEffect(() => {
-    // Cleanup function
-    return () => {
-      if (notifierTimeoutRef.current) {
-        clearTimeout(notifierTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    autoModeRef.current = AutoMode;
-  }, [AutoMode]);
-
-  useEffect(() => {
-    pointARef.current = pointA;
-  }, [pointA]);
-
-  useEffect(() => {
-    pointBRef.current = pointB;
-  }, [pointB]);
-
-  
-  // AI MODE FUNCTIONS
-  
 
   async function AImodehandle() {
     if (!gpFile || !incrementalFile) {
@@ -621,6 +466,18 @@ const MapComponent: React.FC = () => {
       setLoader(false)
     }
   }
+
+  useEffect(() => {
+    autoModeRef.current = AutoMode;
+  }, [AutoMode]);
+
+  useEffect(() => {
+    pointARef.current = pointA;
+  }, [pointA]);
+
+  useEffect(() => {
+    pointBRef.current = pointB;
+  }, [pointB]);
 
   const AIMap = (AIdata: any) => {
     if (!map || !AIdata?.loop?.length) return;
@@ -777,16 +634,13 @@ const MapComponent: React.FC = () => {
 
   }
 
+
   useEffect(() => {
     if (AIMode && map) {
       clearMapData();
       AImodehandle()
     }
   }, [AIMode, map]);
-
-  
-  // ROUTE CALCULATION FUNCTIONS
-  
 
   const HandleCalculation = async () => {
     if (!pointA || !pointB || !pointAName || !pointBName || !mapInstance) return;
@@ -892,11 +746,6 @@ const MapComponent: React.FC = () => {
       console.error(err);
     }
   };
-
-  
-  // ROUTE SELECTION FUNCTIONS
-  
-
   useEffect(() => {
     if (selectedRouteIndex === null || !routeGroups || !mapInstance) return;
 
@@ -915,205 +764,6 @@ const MapComponent: React.FC = () => {
       });
     });
   }, [selectedRouteIndex, RouteKey]);
-
-  const handleRouteSelection = (routeKey: string, selectedIndex: number, Length: number) => {
-    const selectedId = `${routeKey}-route${selectedIndex + 1}`;
-    const selectedEntry = polylineHistory.get(selectedId);
-    if (!selectedEntry || !selectedEntry.polyline) return;
-    const selectedPolyline = selectedEntry.polyline;
-    setRouteKey(selectedId);
-    setSelectRoute(routeKey)
-
-    setPointA(null)
-    setPointB(null)
-    // Remove other optional routes and their distance labels
-    const group = routeGroups.get(routeKey);
-    const toRemovePositions: google.maps.LatLng[] = [];
-
-    let routeCounter = 0;
-
-    group?.layers.forEach((layer) => {
-      if (!(layer instanceof google.maps.Polyline)) return;
-
-      const currentKey = `${routeKey}-route${routeCounter + 1}`;
-      const isSelected = currentKey === selectedId;
-
-      if (!isSelected) {
-        // Remove non-selected polyline
-
-        layer.setMap(null);
-
-        // Collect distanceLabel position to be removed
-        const entry = polylineHistory.get(currentKey);
-
-        if (entry?.distanceLabel) {
-          entry.distanceLabel.close();
-          const pos = entry.distanceLabel.getPosition();
-          if (pos) toRemovePositions.push(pos);
-        }
-      }
-
-      routeCounter++; // Only increment when it's a polyline
-    });
-    // Filter out only those InfoWindows that match the removed ones
-    setDistanceInfoWindows(prev =>
-      prev.filter(d =>
-        !toRemovePositions.some(pos =>
-          Math.abs(d.position.lat - pos.lat()) < 1e-6 &&
-          Math.abs(d.position.lng - pos.lng()) < 1e-6
-        )
-      )
-    );
-    // Enable editing with draggable midpoints
-    addDragMarkersWithRerouting(selectedPolyline, routeKey, selectedId);
-
-    // Show summary and update global state
-    updateRouteSummary(selectedPolyline);
-    updateGlobalDataWithSelectedRoute(selectedPolyline, routeKey, selectedIndex, Length);
-  };
-
-  const updateRouteSummary = (polyline: google.maps.Polyline) => {
-    const path = polyline.getPath();
-    let totalDistance = 0;
-
-    for (let i = 1; i < path.getLength(); i++) {
-      const p1 = path.getAt(i - 1);
-      const p2 = path.getAt(i);
-      totalDistance += google.maps.geometry.spherical.computeDistanceBetween(p1, p2);
-    }
-
-    const summary = {
-      distanceKm: (totalDistance / 1000).toFixed(2),
-      points: path.getArray().map(p => ({ lat: p.lat(), lng: p.lng() })),
-    };
-
-  };
-
-  const updateGlobalDataWithSelectedRoute = (
-    polyline: google.maps.Polyline,
-    routeKey: string,
-    index: number,
-    Length: number
-  ) => {
-    const path = polyline.getPath().getArray().map(p => ({
-      lat: p.lat(),
-      lng: p.lng()
-    }));
-  
-    const distance = Length
-  
-    // Extract fromName and toName from routeKey
-    let fromName = '';
-    let toName = '';
-    let startLgdCode = '';
-    let endLgdCode = '';
-    
-    for (const point of LocalData.loop) {
-      if (routeKey.endsWith(`-${point.name}`)) {
-        toName = point.name;
-        endLgdCode = point.lgd_code;
-        fromName = routeKey.slice(0, routeKey.length - point.name.length - 1);
-        const fromPoint = LocalData.loop.find(p => p.name === fromName);
-        if (fromPoint) {
-          startLgdCode = fromPoint.lgd_code;
-        }
-        break;
-      }
-    }
-  
-    if (!fromName || !toName) {
-      console.error('Invalid route key format:', routeKey);
-      return;
-    }
-  
-    let endPoint = LocalData.loop.find(p => p.name === toName) || null;
-  
-    if (!endPoint) {
-      const endCoord = path[path.length - 1];
-      const result = LocalData.loop.reduce<{
-        point: LoopEntry | null;
-        dist: number;
-      }>((closest, p) => {
-        if (!p.coordinates || p.coordinates.length < 2) return closest;
-        // p.coordinates is [lng, lat], endCoord is {lat, lng}
-        const dist = Math.sqrt(
-          Math.pow(p.coordinates[0] - endCoord.lng, 2) +
-          Math.pow(p.coordinates[1] - endCoord.lat, 2)
-        );
-        return dist < closest.dist ? { point: p, dist } : closest;
-      }, { point: null, dist: Infinity });
-  
-      endPoint = result.point;
-      if (endPoint) {
-        toName = endPoint.name;
-      } else {
-        console.error(`End point ${toName} not found.`);
-        return;
-      }
-    }
-  
-    // Create new route object
-    const selectedRoute: LoopEntry = {
-      name: endPoint.name,
-      coordinates: endPoint.coordinates,
-      lgd_code: endPoint.lgd_code,
-      route: {
-        features: [
-          {
-            geometry: {
-              // Save in [lat, lng] format to match your API/KML structure
-              coordinates: polyline.getPath().getArray().map(p => [p.lat(), p.lng()])
-            }
-          }
-        ]
-      },
-      connection: {
-        length: distance,
-        existing: false,
-        color: '#00FFFF'
-      }
-    };
-  
-    setLocalData(prev => {
-      const loopCopy = [...prev.loop];
-      const existingIndex = loopCopy.findIndex(p => p.name === toName);
-  
-      if (existingIndex >= 0) {
-        loopCopy[existingIndex] = {
-          ...loopCopy[existingIndex],
-          route: selectedRoute.route,
-          connection: selectedRoute.connection
-        };
-      } else {
-        loopCopy.push(selectedRoute);
-      }
-  
-      const updatedHistory = {
-        ...prev.polylineHistory,
-        [`${toName} TO ${fromName}`]: {
-          polyline: {
-            // Store coordinates as {lat, lng} objects for polyline history
-            coordinates: path
-          },
-          segmentData: {
-            connection: selectedRoute.connection,
-            startCords: startLgdCode,
-            endCords: endLgdCode,
-          },
-        }
-      };
-  
-      return {
-        ...prev,
-        loop: loopCopy,
-        polylineHistory: updatedHistory
-      };
-    });
-  };
-
-  
-  // ROUTE EDITING FUNCTIONS
-  
 
   const addDragMarkersWithRerouting = (
     polyline: google.maps.Polyline,
@@ -1299,7 +949,6 @@ const MapComponent: React.FC = () => {
 
     // setEditMarkers(allMarkers);
   };
-
   const undoRouteChange = (routeKey: string) => {
     const history = polylineHistory.get(routeKey);
 
@@ -1367,10 +1016,206 @@ const MapComponent: React.FC = () => {
     // Update the route globally again
     updateGlobalDataWithSelectedRoute(history.polyline, SelectRoute, 0, distance);
   };
+  const handleRouteSelection = (routeKey: string, selectedIndex: number, Length: number) => {
+    const selectedId = `${routeKey}-route${selectedIndex + 1}`;
+    const selectedEntry = polylineHistory.get(selectedId);
+    if (!selectedEntry || !selectedEntry.polyline) return;
+    const selectedPolyline = selectedEntry.polyline;
+    setRouteKey(selectedId);
+    setSelectRoute(routeKey)
 
-  
-  // ROUTE DELETION FUNCTIONS
-  
+    setPointA(null)
+    setPointB(null)
+    // Remove other optional routes and their distance labels
+    const group = routeGroups.get(routeKey);
+    const toRemovePositions: google.maps.LatLng[] = [];
+
+    let routeCounter = 0;
+
+    group?.layers.forEach((layer) => {
+      if (!(layer instanceof google.maps.Polyline)) return;
+
+      const currentKey = `${routeKey}-route${routeCounter + 1}`;
+      const isSelected = currentKey === selectedId;
+
+      if (!isSelected) {
+        // Remove non-selected polyline
+
+        layer.setMap(null);
+
+        // Collect distanceLabel position to be removed
+        const entry = polylineHistory.get(currentKey);
+
+        if (entry?.distanceLabel) {
+          entry.distanceLabel.close();
+          const pos = entry.distanceLabel.getPosition();
+          if (pos) toRemovePositions.push(pos);
+        }
+      }
+
+      routeCounter++; // Only increment when it's a polyline
+    });
+    // Filter out only those InfoWindows that match the removed ones
+    setDistanceInfoWindows(prev =>
+      prev.filter(d =>
+        !toRemovePositions.some(pos =>
+          Math.abs(d.position.lat - pos.lat()) < 1e-6 &&
+          Math.abs(d.position.lng - pos.lng()) < 1e-6
+        )
+      )
+    );
+    // Enable editing with draggable midpoints
+    addDragMarkersWithRerouting(selectedPolyline, routeKey, selectedId);
+
+    // Show summary and update global state
+    updateRouteSummary(selectedPolyline);
+    updateGlobalDataWithSelectedRoute(selectedPolyline, routeKey, selectedIndex, Length);
+  };
+
+  const updateRouteSummary = (polyline: google.maps.Polyline) => {
+    const path = polyline.getPath();
+    let totalDistance = 0;
+
+    for (let i = 1; i < path.getLength(); i++) {
+      const p1 = path.getAt(i - 1);
+      const p2 = path.getAt(i);
+      totalDistance += google.maps.geometry.spherical.computeDistanceBetween(p1, p2);
+    }
+
+    const summary = {
+      distanceKm: (totalDistance / 1000).toFixed(2),
+      points: path.getArray().map(p => ({ lat: p.lat(), lng: p.lng() })),
+    };
+
+  };
+
+  const updateGlobalDataWithSelectedRoute = (
+    polyline: google.maps.Polyline,
+    routeKey: string,
+    index: number,
+    Length: number
+  ) => {
+    const path = polyline.getPath().getArray().map(p => ({
+      lat: p.lat(),
+      lng: p.lng()
+    }));
+
+    // const distance = computePathDistance(path);
+    const distance = Length
+
+    // Extract fromName and toName from routeKey
+    let fromName = '';
+    let toName = '';
+    let startLgdCode='';
+    let endLgdCode='';
+    for (const point of LocalData.loop) {
+      if (routeKey.endsWith(`-${point.name}`)) {
+        toName = point.name;
+        endLgdCode = point.lgd_code;
+        fromName = routeKey.slice(0, routeKey.length - point.name.length - 1);
+          const fromPoint = LocalData.loop.find(p => p.name === fromName);
+          if (fromPoint) {
+            startLgdCode = fromPoint.lgd_code;
+          }
+
+        break;
+      }
+    }
+
+    if (!fromName || !toName) {
+      console.error('Invalid route key format:', routeKey);
+      return;
+    }
+
+    // Get the end point
+    let endPoint = LocalData.loop.find(p => p.name === toName) || null;
+
+
+    if (!endPoint) {
+      const endCoord = path[path.length - 1];
+
+      const result = LocalData.loop.reduce<{
+        point: LoopEntry | null;
+        dist: number;
+      }>((closest, p) => {
+        if (!p.coordinates || p.coordinates.length < 2) return closest;
+        const dist = Math.sqrt(
+          Math.pow(p.coordinates[0] - endCoord.lng, 2) +
+          Math.pow(p.coordinates[1] - endCoord.lat, 2)
+        );
+        return dist < closest.dist ? { point: p, dist } : closest;
+      }, { point: null, dist: Infinity });
+
+      endPoint = result.point;
+
+      if (endPoint) {
+        toName = endPoint.name;
+      } else {
+        console.error(`End point ${toName} not found.`);
+        return;
+      }
+    }
+
+    // Create new route object
+    const selectedRoute: LoopEntry = {
+      name: endPoint.name,
+      coordinates: endPoint.coordinates,
+      lgd_code:endPoint.lgd_code,
+      route: {
+        features: [
+          {
+            geometry: {
+              coordinates: polyline.getPath().getArray().map(p => [p.lng(), p.lat()])
+            }
+          }
+        ]
+      },
+      connection: {
+        length: distance,
+        existing: false,
+        color: '#00FFFF'
+      }
+    };
+    setLocalData(prev => {
+      const loopCopy = [...prev.loop];
+      const existingIndex = loopCopy.findIndex(p => p.name === toName);
+
+      if (existingIndex >= 0) {
+        loopCopy[existingIndex] = {
+          ...loopCopy[existingIndex],
+          route: selectedRoute.route,
+          connection: selectedRoute.connection
+        };
+      } else {
+        loopCopy.push(selectedRoute);
+      }
+
+
+      const updatedHistory = {
+        ...prev.polylineHistory,
+        [`${toName} TO ${fromName}`]: {
+          polyline: {
+            coordinates: path
+          },
+
+          segmentData: {
+            connection: selectedRoute.connection,
+            startCords:startLgdCode,
+            endCords:endLgdCode,
+          },
+
+
+        }
+      };
+
+      return {
+        ...prev,
+        loop: loopCopy,
+        polylineHistory: updatedHistory
+      };
+    });
+  };
+
 
   const deleteRoute = (routeKey: string, routeKeyMain: string) => {
 
@@ -1413,6 +1258,8 @@ const MapComponent: React.FC = () => {
 
     deleteGlobalRoute(routeKeyMain);
     routeMarkers.current.delete(routeKey);
+
+
 
   };
 
@@ -1457,10 +1304,6 @@ const MapComponent: React.FC = () => {
       };
     });
   };
-
-  
-  // MAP CLEANUP FUNCTIONS
-  
 
   const clearMapData = () => {
     polylineInstanceMap.forEach(polyline => {
@@ -1516,12 +1359,22 @@ const MapComponent: React.FC = () => {
     setGPSApiResponse(null)
   };
 
-  
-  // FILE OPERATIONS FUNCTIONS
-  
 
-  const userDataString = localStorage.getItem('userData');
-  const UserData = userDataString ? JSON.parse(userDataString) : null;
+  useEffect(() => {
+    const total = Object.values(LocalData.polylineHistory || {})
+      .filter(h => h.segmentData?.connection && !h.segmentData.connection.existing)
+      .reduce((sum, h) => sum + (h.segmentData.connection.length || 0), 0);
+
+    setLocalData(prev => ({
+      ...prev,
+      totalLength: prev.existinglength + total,
+      proposedlength: total,
+
+    }));
+    setProposedDistance(total);
+  }, [LocalData.polylineHistory]);
+    const userDataString = localStorage.getItem('userData');
+    const UserData = userDataString ? JSON.parse(userDataString) : null;
 
   async function saveKML(LocalData: GlobalData) {
     const Body = {
@@ -1617,6 +1470,34 @@ const MapComponent: React.FC = () => {
     }
   }
 
+  useEffect(() => {
+    if (SaveFile) {
+      saveKML(LocalData)
+    }
+  }, [SaveFile])
+  useEffect(() => {
+    if (VerifySaveFile) {
+      VerifySaveKML(LocalData)
+    }
+  }, [VerifySaveFile])
+  const showNotification = (type: 'success' | 'error', message: string) => {
+    // Clear any existing timeout to prevent multiple notifications
+    if (notifierTimeoutRef.current) {
+      clearTimeout(notifierTimeoutRef.current);
+      notifierTimeoutRef.current = null;
+    }
+
+    setNotifier({ type, message, visible: true });
+
+    // Auto-hide notification after 5 seconds for success, 10 seconds for error
+    const hideDelay = type === 'success' ? 5000 : 10000;
+
+    notifierTimeoutRef.current = setTimeout(() => {
+      setNotifier(prev => ({ ...prev, visible: false }));
+      notifierTimeoutRef.current = null;
+    }, hideDelay);
+  };
+
   async function downloadFile(DownloadFile: string) {
     if (!LocalData) {
       setError('No data available to download')
@@ -1691,19 +1572,6 @@ const MapComponent: React.FC = () => {
       setLoader(false)
     }
   }
-
-  useEffect(() => {
-    if (SaveFile) {
-      saveKML(LocalData)
-    }
-  }, [SaveFile])
-
-  useEffect(() => {
-    if (VerifySaveFile) {
-      VerifySaveKML(LocalData)
-    }
-  }, [VerifySaveFile])
-
   useEffect(() => {
     if (DownloadFile !== null && DownloadFile !== '') {
 
@@ -1711,9 +1579,6 @@ const MapComponent: React.FC = () => {
 
     }
   }, [DownloadFile])
-
-  
-  // SEARCH FUNCTIONALITY
 
   useEffect(() => {
     if (searchValue.trim() === '') {
@@ -1810,32 +1675,6 @@ const MapComponent: React.FC = () => {
     };
   }, [map, isLoaded]); // Added proper dependencies
 
-  
-  // NOTIFICATION FUNCTIONS
-  
-
-  const showNotification = (type: 'success' | 'error', message: string) => {
-    // Clear any existing timeout to prevent multiple notifications
-    if (notifierTimeoutRef.current) {
-      clearTimeout(notifierTimeoutRef.current);
-      notifierTimeoutRef.current = null;
-    }
-
-    setNotifier({ type, message, visible: true });
-
-    // Auto-hide notification after 5 seconds for success, 10 seconds for error
-    const hideDelay = type === 'success' ? 5000 : 10000;
-
-    notifierTimeoutRef.current = setTimeout(() => {
-      setNotifier(prev => ({ ...prev, visible: false }));
-      notifierTimeoutRef.current = null;
-    }, hideDelay);
-  };
-
-  // ---------------------------------------------------------------------------
-  // LOADING AND ERROR HANDLING
-  // ---------------------------------------------------------------------------
-
   if (loadError) return (
     <div className="flex items-center justify-center h-screen bg-gray-100">
       <div className="text-center text-red-600">
@@ -1852,10 +1691,6 @@ const MapComponent: React.FC = () => {
       </div>
     </div>
   );
-
-  
-  // RENDER
-  
 
   return (
     <div className="relative h-full w-full">
@@ -1935,15 +1770,15 @@ const MapComponent: React.FC = () => {
         {/* Markers */}
         {apiGPSResponse?.points?.map((point: GPSPoint, index: number) => {
           const position = {
-            lat: point.coordinates[0], // First element is lat
-            lng: point.coordinates[1], // Second element is lng
+            lat: (point.coordinates[1]),
+            lng: (point.coordinates[0]),
           };
           const isPointSame = pointA && !pointB && isSameCoordinate(pointA, position);
 
           return (
             <Marker
               key={index}
-              position={position}
+              position={{ lat: point.coordinates[1], lng: point.coordinates[0] }}
               icon={{
                 url: point?.properties?.icon || 'https://maps.google.com/mapfiles/ms/icons/purple-dot.png',
                 scaledSize: new window.google.maps.Size(30, 30),
@@ -1955,11 +1790,15 @@ const MapComponent: React.FC = () => {
                     setPointAName(point.name)
                     setPointA(position)
                   } else if (!pointB && !isPointSame) {
+
                     setPointBName(point.name)
                     setPointB(position);
                   }
                 }
-              }}
+
+
+              }
+              }
             />
           )
         })}
