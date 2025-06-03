@@ -4,6 +4,8 @@ import { FaArrowLeft } from "react-icons/fa";
 import { useParams, useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import {hasViewOnlyAccess } from "../../utils/accessControl";
+
 
 interface AerialSurvey {
   id: number;
@@ -107,6 +109,8 @@ const AerialDetailView: React.FC = () => {
 
   if (loading) return <div className="text-center py-10">Loading...</div>;
   if (error) return <div className="text-red-500 text-center py-10">{error}</div>;
+  const viewOnly = hasViewOnlyAccess();
+  
 
   return (
     <>
@@ -209,6 +213,7 @@ const AerialDetailView: React.FC = () => {
         </tbody>
       </table>
        {/* Action Buttons */}
+        {!viewOnly && (
             <div className="mt-6 flex gap-4 justify-center">
              <button
                 className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded"
@@ -244,6 +249,7 @@ const AerialDetailView: React.FC = () => {
                 Delete
               </button>
             </div>
+             )}
     </div>
     </>
   );

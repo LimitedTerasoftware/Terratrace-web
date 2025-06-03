@@ -12,7 +12,7 @@ import SidebarLinkGroup from './SidebarLinkGroup';
 import User from '../../images/icon/user-icon.svg';
 import TableIcon from '../../images/icon/table-icon.svg';
 import Logo from '../../images/logo/logo.png';
-
+import {hasViewOnlyAccess } from "../../utils/accessControl";
 import DropdownUser from './DropDownUser'; // Import the dropdownuser component
 import DarkModeSwitcher from './DarkModeSwitcher'; // Import the dark mode switcher
 
@@ -37,6 +37,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   const { pathname } = location;
   const trigger = useRef<any>(null);
   const sidebar = useRef<any>(null);
+  const viewOnly = hasViewOnlyAccess();
+  
 
   const storedSidebarExpanded = localStorage.getItem('sidebar-expanded');
   const [sidebarExpanded, setSidebarExpanded] = useState(
@@ -124,14 +126,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
           <ul className="space-y-2">
             <SideBarItem icon={DashboardIcon} label="Dashboard" isOpen={isOpen} isActive={pathname === '/' || pathname.includes('dashboard')} path={pathname === '/' ? '/' : '/dashboard'}
             />
+            {!viewOnly && (
+            <>
             <SideBarItem icon={CompanyIcon} label="Companies" isOpen={isOpen} isActive={pathname.includes('companies')} path='/companies' />
             <SideBarItem icon={User} label="Users" isOpen={isOpen} isActive={pathname.includes('users')} path='/users' />
+             </>
+             )}
             <SideBarItem icon={SurveyIcon} label="Survey" isOpen={isOpen} isActive={pathname.includes('survey')} path='/survey' />
-            <SideBarItem icon={User} label="KML File Upload" isOpen={isOpen} isActive={pathname.includes('kmlfileupload')} path='/kmlfileupload' />
-            
-            {/* Modified Route Planning with dropdown */}
-            {/* Modified Route Planning item: changed from single link to dropdown with 4 options */}
-            <SidebarLinkGroup
+             <SidebarLinkGroup
               activeCondition={pathname.includes('route-planning')}
             >
               {(handleClick, open) => {
@@ -237,9 +239,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                 );
               }}
             </SidebarLinkGroup>
+            {!viewOnly && (
+            <>
+            <SideBarItem icon={User} label="KML File Upload" isOpen={isOpen} isActive={pathname.includes('kmlfileupload')} path='/kmlfileupload' />
+          
+            </>
+            )}
           </ul>
         </div>
-        <div className="flex-1 px-3 py-2">
+        {/* <div className="flex-1 px-3 py-2">
           <h3 className={`mb-2 ${isOpen ? 'ml-4' : 'ml-0'}  text-sm font-semibold text-bodydark2`}>
             Masters
           </h3>
@@ -269,7 +277,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                       }}
 
                     >
-                      {/* Icon + Label */}
+                     
                       <div className="flex items-center gap-3">
                         <div className="min-w-[24px] flex justify-center">
                           <img src={TableIcon} alt="RouteMap" className="w-5 h-5 object-contain" />
@@ -277,7 +285,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                         {isOpen && <span>Tables</span>}
                       </div>
 
-                      {/* Arrow */}
+                    
                       {isOpen && (
                         open
                           ? <ChevronUp className="w-4 h-4 text-gray-500" />
@@ -285,7 +293,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                       )}
                     </NavLink>
 
-                    {/* <!-- Dropdown Menu Start --> */}
+                    
                     {isOpen && (
                     <div
                       className={`translate transform overflow-hidden ${!open && 'hidden'
@@ -340,14 +348,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                       </ul>
                     </div>
                     )}
-                    {/* <!-- Dropdown Menu End --> */}
+                    
                   </React.Fragment>
                 );
               }}
             </SidebarLinkGroup>
 
           </ul>
-        </div>
+        </div> */}
 
         {/* Profile Section and Dark Mode Toggler at Bottom */}
         <div className="px-2 pb-4 mt-auto">

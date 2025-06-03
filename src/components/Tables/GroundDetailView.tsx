@@ -9,6 +9,8 @@ import * as XLSX from "xlsx";
 import ResponsivePagination from "./ResponsivePagination";
 import App from "../VideoPlayback/index";
 import DataTable from "react-data-table-component";
+import {hasViewOnlyAccess } from "../../utils/accessControl";
+
 
 interface PatrollerDetails {
   companyName: string;
@@ -372,6 +374,8 @@ const GroundDetailView: React.FC = () => {
 
   if (loading) return <div className="text-center py-10">Loading...</div>;
   if (error) return <div className="text-red-500 text-center py-10">{error}</div>;
+  const viewOnly = hasViewOnlyAccess();
+  
 
   const hasPatrollerData = data?.under_ground_survey_data.some(
     (survey) =>
@@ -713,6 +717,7 @@ const GroundDetailView: React.FC = () => {
 
 
             {/* Action Buttons */}
+            {!viewOnly && (
             <div className="mt-6 flex gap-4 justify-center">
               <button
                 className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded"
@@ -748,6 +753,7 @@ const GroundDetailView: React.FC = () => {
                 Delete
               </button>
             </div>
+             )}
           </div>
         )}
 
