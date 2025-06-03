@@ -1,14 +1,27 @@
+import React, { useState, useRef ,useEffect,useMemo} from 'react';
 import { GoogleMap, Marker, Polyline, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
 import { MapPin, Map as MapIcon, SlidersHorizontal } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useFullscreen } from '../hooks/useFullscreen';
 import videoIcon from '../../images/icon/cinema.png';
 // Leaflet icon fix
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+import JointChamberIcon from '../../images/icon/icons8-hole-50.png'; 
+import FPOIIcon from '../../images/icon/network.png';
+import RouteIndIcon from '../../images/icon/signpost.png';
+import RoadCrossingIcon from '../../images/icon/crossing-roads-perspective.png'
+import BridgeIcon from '../../images/icon/road.png'
+import LevelCrossingIcon from '../../images/icon/level-crossing.png'
+import trainBridgeIcon from '../../images/icon/train-bridge.png'
+import trainunderBridgeIcon from '../../images/icon/bridge_4325806.png'
+import cauwayIcon from '../../images/icon/underpass_17942665.png'
+import CulvertIcon from '../../images/icon/road-culvert-works-svgrepo-com.svg'
+import LandmarkIcon from '../../images/icon/monument.png'
+import FiberTurnIcon from '../../images/icon/curved-arrow.png'
+import StoneIcon from '../../images/icon/icons8-milestone-50.png'
 
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -50,12 +63,14 @@ type UnderGroundSurveyData = {
   start_photos: string[];
   end_photos: string[];
   jointChamberUrl: string;
+  fpoiUrl: string;
+  routeIndicatorUrl: string;
   created_at: string;
   createdTime: string;
   video_duration?: number;
   videoDetails?: VideoDetails;
   road_crossing: RoadCrossing;
-  surveyUploaded:string
+  surveyUploaded:string;
 
 
 };
@@ -77,13 +92,11 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
-  const { enterFullscreen, exitFullscreen } = useFullscreen();
+  const {enterFullscreen, exitFullscreen } = useFullscreen();
   const [isFullscreen, setIsFullscreen] = useState(true);
   const [CrossingType, setCrossingType] = useState('All');
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
   const polylineRef = useRef<google.maps.Polyline | null>(null);
-
-
-
   const eventTypes = useMemo<string[]>(() => ['ALL', ...new Set(data.map(d => d.event_type))], [data]);
   const modalities = useMemo<string[]>(() => ['ALL', ...new Set(data.map(d => d.execution_modality))], [data]);
   const filteredData = useMemo<UnderGroundSurveyData[]>(() => {
@@ -115,8 +128,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
     };
 
     data.forEach(item => {
-      if (item.event_type === 'ROADCROSSING') {
-
+      if (item.event_type === 'ROADCROSSING' && item.surveyUploaded === 'true') {
         const type = item.road_crossing?.roadCrossing;
         if (type && counts[type] !== undefined) {
           counts[type]++;
@@ -138,6 +150,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
 
     return () => clearTimeout(timer);
   }, [enterFullscreen]);
+
   useEffect(() => {
   if (
     mapRef.current &&
@@ -208,13 +221,7 @@ const tileLayerUrl = useMemo(() => {
 
   const mapWidth = isFullscreen ? 'w-3/4' : 'w-full md:flex-1';
 
-
-
-
-
-
-
-  return (
+ return (
     <div ref={containerRef} className="flex flex-col md:flex-row h-screen">
       {/* Left side: Map */}
       <div className={`${mapWidth} h-1/2 md:h-full relative`}>
@@ -258,7 +265,38 @@ const tileLayerUrl = useMemo(() => {
               finalUrl
             ) {
               iconUrl = `${videoIcon}`;
+            }else if(item.event_type === "JOINTCHAMBER"){
+                 iconUrl=JointChamberIcon
+            }else if(item.event_type === "FPOI"){
+                   iconUrl=FPOIIcon
+            }else if(item.event_type === "ROUTEINDICATOR"){
+                   iconUrl=RouteIndIcon
+            }else if(item.event_type === "ROADCROSSING" && item.road_crossing?.roadCrossing === 'ROADCROSSING' && (item.road_crossing?.startPhoto || item.road_crossing?.endPhoto)){
+                   iconUrl=RoadCrossingIcon
+            }else if(item.event_type === "ROADCROSSING" && item.road_crossing?.roadCrossing === 'BRIDGE' && (item.road_crossing?.startPhoto || item.road_crossing?.endPhoto)){
+                   iconUrl=BridgeIcon
+            }else if(item.event_type === "ROADCROSSING" && item.road_crossing?.roadCrossing === 'RAILUNDERBRIDGE' && (item.road_crossing?.startPhoto || item.road_crossing?.endPhoto)){
+                   iconUrl=trainunderBridgeIcon
+            }else if(item.event_type === "ROADCROSSING" && item.road_crossing?.roadCrossing === 'LEVELCROSSING' && (item.road_crossing?.startPhoto || item.road_crossing?.endPhoto)){
+                   iconUrl=LevelCrossingIcon
             }
+            else if(item.event_type === "ROADCROSSING" && item.road_crossing?.roadCrossing === 'RAILOVERBRIDGE' && (item.road_crossing?.startPhoto || item.road_crossing?.endPhoto)){
+                   iconUrl=trainBridgeIcon
+            } else if(item.event_type === "ROADCROSSING" && item.road_crossing?.roadCrossing === 'CAUSEWAYS' && (item.road_crossing?.startPhoto || item.road_crossing?.endPhoto)){
+                   iconUrl=cauwayIcon
+            }else if(item.event_type === "ROADCROSSING" && item.road_crossing?.roadCrossing === 'CULVERT' && (item.road_crossing?.startPhoto || item.road_crossing?.endPhoto)){
+                   iconUrl= CulvertIcon
+            }
+            else if(item.event_type === "LANDMARK"){
+                   iconUrl=LandmarkIcon
+            }else if(item.event_type === "FIBERTURN"){
+                   iconUrl=FiberTurnIcon
+            }else if(item.event_type === "KILOMETERSTONE"){
+                   iconUrl=StoneIcon
+            }
+
+
+
 
             return (
               <Marker
@@ -274,38 +312,7 @@ const tileLayerUrl = useMemo(() => {
               />
             );
           })}
-          {/* {( selectedEventType === 'LIVELOCATION') && filteredData.length > 1 && (
-            <Polyline
-             key={`polyline-${selectedEventType}-${Date.now()}`}
-             path={filteredData
-                  .filter(item => item.event_type === 'LIVELOCATION')
-                  .map(item => ({
-                    lat: parseFloat(item.latitude),
-                    lng: parseFloat(item.longitude)
-                  }))
-                }
-              options={{
-                strokeColor: '#0000FF',
-                strokeOpacity: 0.8,
-                strokeWeight: 3,
-                icons: [
-                  {
-                    icon: {
-                      path: window.google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-                      scale: 2.5,
-                      strokeOpacity: 1,
-                      strokeColor: '#0000FF'
-                    },
-                    offset: '0%',
-                    repeat: '200px'
-                  }
-                ]
-              }}
-            />
-          )} */}
-
-
-        {selectedMarker  && (
+          {selectedMarker  && (
             <InfoWindow
               position={{
                 lat: parseFloat(selectedMarker.latitude),
@@ -333,6 +340,7 @@ const tileLayerUrl = useMemo(() => {
                         allowFullScreen
                         title={`Video-${selectedMarker.id}`}
                       />
+                     
                     );
                   } else {
                     return <p>No video available.</p>;
@@ -344,7 +352,27 @@ const tileLayerUrl = useMemo(() => {
                     src={`${baseUrl}${selectedMarker.jointChamberUrl}`}
                     alt="Joint Chamber"
                     className="w-full max-h-40 object-cover mt-2"
+                    onClick={() => setZoomImage(`${baseUrl}${selectedMarker.jointChamberUrl}`)}
                   />
+                 ) : selectedMarker.event_type === "FPOI" && selectedMarker.fpoiUrl ? (
+                 
+                    <img
+                      src={`${baseUrl}${selectedMarker.fpoiUrl}`}
+                      alt="FpoiUrl"
+                      className="w-full max-h-40 object-cover mt-2"
+                       onClick={() => setZoomImage(`${baseUrl}${selectedMarker.fpoiUrl}`)}
+                    />
+                  
+                ) : selectedMarker.event_type === "ROUTEINDICATOR" && selectedMarker.routeIndicatorUrl ? (
+                 
+                    <img
+                      src={`${baseUrl}${selectedMarker.routeIndicatorUrl}`}
+                      alt="RouteIndicatorUrl"
+                      className="w-full max-h-40 object-cover mt-2"
+                      onClick={() => setZoomImage(`${baseUrl}${selectedMarker.routeIndicatorUrl}`)}
+
+                    />
+                  
                 ) : selectedMarker.event_type === "SURVEYSTART" && selectedMarker.start_photos.length > 0 ? (
                   selectedMarker.start_photos.map((photo, index) => (
                     <img
@@ -352,6 +380,8 @@ const tileLayerUrl = useMemo(() => {
                       src={`${baseUrl}${photo}`}
                       alt={`Start ${index}`}
                       className="w-full max-h-40 object-cover mt-2"
+                      onClick={() => setZoomImage(`${baseUrl}${photo}`)}
+
                     />
                   ))
                 ) : selectedMarker.event_type === "ENDSURVEY" && selectedMarker.end_photos.length > 0 ? (
@@ -361,6 +391,7 @@ const tileLayerUrl = useMemo(() => {
                       src={`${baseUrl}${photo}`}
                       alt={`End ${index}`}
                       className="w-full max-h-40 object-cover mt-2"
+                      onClick={() => setZoomImage(`${baseUrl}${photo}`)}
                     />
                   ))
                 ) :
@@ -369,6 +400,7 @@ const tileLayerUrl = useMemo(() => {
                       src={`${baseUrl}${selectedMarker.road_crossing?.startPhoto}`}
                       alt="ROADCROSSING"
                       className="w-full max-h-40 object-cover mt-2"
+                      onClick={() => setZoomImage(`${baseUrl}${selectedMarker.road_crossing?.startPhoto}`)}
                     />
                   ) :
                     selectedMarker.event_type === "ROADCROSSING" && selectedMarker.road_crossing?.endPhoto ? (
@@ -376,6 +408,8 @@ const tileLayerUrl = useMemo(() => {
                         src={`${baseUrl}${selectedMarker.road_crossing?.endPhoto}`}
                         alt="ROADCROSSING"
                         className="w-full max-h-40 object-cover mt-2"
+                        onClick={() => setZoomImage(`${baseUrl}${selectedMarker.road_crossing?.endPhoto}`)}
+
                       />
                     ) : selectedMarker.event_type === "ALL" ? (
                       selectedMarker.jointChamberUrl ? (
@@ -383,7 +417,10 @@ const tileLayerUrl = useMemo(() => {
                           src={`${baseUrl}${selectedMarker.jointChamberUrl}`}
                           alt="Joint Chamber"
                           className="w-full max-h-40 object-cover mt-2"
+                          onClick={() => setZoomImage(`${baseUrl}${selectedMarker.jointChamberUrl}`)}
+
                         />
+                        
                       ) : selectedMarker.start_photos.length > 0 ? (
                         selectedMarker.start_photos.map((photo, index) => (
                           <img
@@ -391,6 +428,7 @@ const tileLayerUrl = useMemo(() => {
                             src={`${baseUrl}${photo}`}
                             alt={`Start ${index}`}
                             className="w-full max-h-40 object-cover mt-2"
+                            onClick={() => setZoomImage(`${baseUrl}${photo}`)}
                           />
                         ))
                       ) : selectedMarker.end_photos.length > 0 ? (
@@ -400,6 +438,8 @@ const tileLayerUrl = useMemo(() => {
                             src={`${baseUrl}${photo}`}
                             alt={`End ${index}`}
                             className="w-full max-h-40 object-cover mt-2"
+                            onClick={() => setZoomImage(`${baseUrl}${photo}`)}
+
                           />
                         ))
                       ) : selectedMarker.road_crossing?.startPhoto ? (
@@ -407,15 +447,34 @@ const tileLayerUrl = useMemo(() => {
                           src={`${baseUrl}${selectedMarker.road_crossing?.startPhoto}`}
                           alt="ROADCROSSING"
                           className="w-full max-h-40 object-cover mt-2"
+                          onClick={() => setZoomImage(`${baseUrl}${selectedMarker.road_crossing?.startPhoto}`)}
+
                         />
                       ) : selectedMarker.road_crossing?.endPhoto ? (
                         <img
                           src={`${baseUrl}${selectedMarker.road_crossing?.endPhoto}`}
                           alt="ROADCROSSING"
                           className="w-full max-h-40 object-cover mt-2"
+                          onClick={() => setZoomImage(`${baseUrl}${selectedMarker.road_crossing?.endPhoto}`)}
+
                         />
+                        
+                      ) : selectedMarker.fpoiUrl ? (
+                        <img
+                          src={`${baseUrl}${selectedMarker.fpoiUrl}`}
+                          alt="fpoiUrl"
+                          className="w-full max-h-40 object-cover mt-2"
+                          onClick={() => setZoomImage(`${baseUrl}${selectedMarker.fpoiUrl}`)}
 
+                        />
+                        ) : selectedMarker.routeIndicatorUrl ? (
+                        <img
+                          src={`${baseUrl}${selectedMarker.routeIndicatorUrl}`}
+                          alt="RouteIndicatorUrl"
+                          className="w-full max-h-40 object-cover mt-2"
+                          onClick={() => setZoomImage(`${baseUrl}${selectedMarker.routeIndicatorUrl}`)}
 
+                        />
                       ) : (
                         <p>No image available</p>
                       )
@@ -430,7 +489,19 @@ const tileLayerUrl = useMemo(() => {
         </GoogleMap>
 
      </div>
-
+      {zoomImage && (
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-80 z-50"
+          onClick={() => setZoomImage(null)}
+        >
+          <img
+            src={zoomImage}
+            alt="Zoomed"
+            className="max-w-full max-h-full p-4 rounded-lg"
+          />
+        </div>
+      )}
+  
       {/* Right side: Filters and Controls */}
       <div className={`${sidebarWidth} bg-gray-100 p-4 overflow-y-auto`}>
 

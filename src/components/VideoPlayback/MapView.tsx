@@ -122,7 +122,7 @@ const MapView: React.FC<MapViewProps> = ({
                   icon={{
                   path: window.google.maps.SymbolPath.CIRCLE,
                   scale: 8,
-                  fillColor: '#4285F4', // Google blue
+                  fillColor: '#ff0000', // Google blue
                   fillOpacity: 1,
                   strokeColor: 'white',
                   strokeWeight: 2,

@@ -454,10 +454,10 @@ const GroundDetailView: React.FC = () => {
       // Road Crossing Info
       crossing_Type: data.road_crossing?.roadCrossing || '',
       crossing_length: data.road_crossing?.length || '',
-      crossing_startPhoto_URL: data.road_crossing?.startPhoto || '',
+      crossing_startPhoto_URL: `${baseUrl}${data.road_crossing?.startPhoto}`|| '',
       crossing_startphoto_Lat: data.road_crossing?.startPhotoLat || '',
       crossing_startphoto_Long: data.road_crossing?.startPhotoLong || '',
-      crossing_endPhoto_URL: data.road_crossing?.endPhoto || '',
+      crossing_endPhoto_URL: `${baseUrl}${data.road_crossing?.endPhoto}` || '',
       crossing_endphoto_Lat: data.road_crossing?.endPhotoLat || '',
       crossing_endphoto_Long: data.road_crossing?.endPhotoLong || '',
 
@@ -478,15 +478,15 @@ const GroundDetailView: React.FC = () => {
       routeIndicatorUrl: data.routeIndicatorUrl || '',
 
       // Start/End Photos
-      Survey_Start_Photo: data.start_photos?.[0] || '',
-      Survey_End_Photo: data.end_photos?.[0] || '',
+      Survey_Start_Photo: `${baseUrl}${data.start_photos?.[0]}` || '',
+      Survey_End_Photo:`${baseUrl}${data.end_photos?.[0]}` || '',
 
       // Utility Features
       localInfo: data.utility_features_checked?.localInfo || '',
       selectedGroundFeatures: (data.utility_features_checked?.selectedGroundFeatures || []).join(', '),
 
       // Video Details
-      videoUrl: data.videoUrl || data.videoDetails?.videoUrl || '',
+      videoUrl: `${baseUrl}${data.videoUrl}` || `${baseUrl}${data.videoDetails?.videoUrl}` || '',
       video_startLatitude: data.videoDetails?.startLatitude || '',
       video_startLongitude: data.videoDetails?.startLongitude || '',
       video_startTimeStamp: data.videoDetails?.startTimeStamp || '',
@@ -495,8 +495,8 @@ const GroundDetailView: React.FC = () => {
       video_endTimeStamp: data.videoDetails?.endTimeStamp || '',
 
       // Joint Chamber and fpoi
-      jointChamberUrl: data.jointChamberUrl || '',
-      fpoiUrl: data.fpoiUrl || '',
+      jointChamberUrl: `${baseUrl}${data.jointChamberUrl}` || '',
+      fpoiUrl: `${baseUrl}${data.fpoiUrl}` || '',
 
       // Patroller Details
       patroller_company: data.patroller_details?.companyName || '',
@@ -625,34 +625,65 @@ const GroundDetailView: React.FC = () => {
           Back
         </button>
         <h1 className="text-2xl font-bold mb-4">UnderGround Survey Detail View</h1>
+        <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
+          <div className="flex flex-wrap justify-between items-center">
+            {/* Left: Tabs */}
+            <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
+              <li className="mr-2">
+                <button
+                  className={`inline-block p-4 rounded-t-lg outline-none ${
+                    activeTab === 'details'
+                      ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
+                      : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
+                  }`}
+                  onClick={() => setActiveTab('details')}
+                >
+                  Details View
+                </button>
+              </li>
+              <li className="mr-2">
+                <button
+                  className={`inline-block p-4 rounded-t-lg outline-none ${
+                    activeTab === 'map'
+                      ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
+                      : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
+                  }`}
+                  onClick={() => setActiveTab('map')}
+                >
+                  Map View
+                </button>
+              </li>
+              <li className="mr-2">
+                <button
+                  className={`inline-block p-4 rounded-t-lg outline-none ${
+                    activeTab === 'video'
+                      ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
+                      : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
+                  }`}
+                  onClick={() => setActiveTab('video')}
+                >
+                  Video Details
+                </button>
+              </li>
+            </ul>
 
-        <div className="flex flex-end gap-4 px-4 py-2">
-          <button
-            onClick={() => setActiveTab('details')}
-            className={`border px-3 py-1 rounded mb-2 ${activeTab === 'details' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-          >
-            Details View
-          </button>
-          <button
-            onClick={() => setActiveTab('map')}
-            className={`border px-3 py-1 rounded mb-2 ${activeTab === 'map' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-          >
-            Map View
-          </button>
-
-          <button className={`border px-3 py-1 rounded mb-2 bg-blue-700 text-white hover:bg-green-300`}
-            onClick={() => setActiveTab("video")}>Video Details </button>
-          <button className={`border px-3 py-1 rounded mb-2 bg-green-400 text-white hover:bg-green-300`}
-            onClick={exportExcel}>Export </button>
-          <input
-            type="text"
-            className="border px-3 py-1 rounded mb-2"
-            placeholder="Search..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-
-
+            {/* Right: Export + Search */}
+            <div className="flex items-center gap-2 mb-2">
+              <button
+                className="border px-3 py-1 rounded bg-green-400 text-white hover:bg-green-300"
+                onClick={exportExcel}
+              >
+                Export
+              </button>
+              <input
+                type="text"
+                className="border px-3 py-1 rounded"
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
         </div>
         {activeTab === 'details' && (
           <div className="p-4">
