@@ -4,6 +4,8 @@ import { FaArrowLeft } from "react-icons/fa";
 import { useParams, useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import {hasViewOnlyAccess } from "../../utils/accessControl";
+
 
 interface OverheadFiberModel {
   endALatLang: string;
@@ -96,9 +98,9 @@ const HotoDetailView = () => {
       toast.error("Error accepting record");
     }
   };
-
+cl
   const handleEdit = async () => {
-    await navigate(`/survey/bsnl-edit/${id}`);
+    await navigate(`/survey/hoto-edit/${id}`);
   };
 
   // Handle delete
@@ -171,6 +173,8 @@ const HotoDetailView = () => {
 
   if (loading) return <p className="text-center py-4">Loading...</p>;
   if (error) return <p className="text-center py-4 text-red-500">Error: {error}</p>;
+  const viewOnly = hasViewOnlyAccess();
+  
 
   return (
     <>
@@ -312,15 +316,16 @@ const HotoDetailView = () => {
       )}
 
       {/* Action Buttons */}
+      {!viewOnly && (
       <div className="mt-6 flex gap-4 justify-center">
-       {/* <button
+       <button
           className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded"
           onClick={() => {
             handleEdit();
           }}
         >
           Edit
-        </button> */}
+        </button> 
 
         <button
           className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded"
@@ -347,6 +352,7 @@ const HotoDetailView = () => {
           Delete
         </button>
       </div>
+      )}
     </div>
     </>
   );

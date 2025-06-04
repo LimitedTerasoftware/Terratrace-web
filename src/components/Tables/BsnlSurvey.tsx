@@ -4,7 +4,6 @@ import * as XLSX from "xlsx";
 import { useLocation } from 'react-router-dom';
 import ResponsivePagination from "./ResponsivePagination";
 
-
 import {
   useReactTable,
   getCoreRowModel,
@@ -101,7 +100,6 @@ type StatusOption = {
   label: string;
 };
 
-
 const BsnlSurvey: React.FC = () => {
   const BASEURL = import.meta.env.VITE_API_BASE;
   const location = useLocation();
@@ -112,22 +110,18 @@ const BsnlSurvey: React.FC = () => {
   const [pageSize, setPageSize] = useState<number>(15);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [editingRow, setEditingRow] = useState<BsnlExchange | null>(null);
-  const [filters, setFilters] = useState({ state: "", district: "", block: "" });
 
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
-  const [globalsearch,setGlobalSearch] = useState<string>('');
+  const [globalsearch, setGlobalSearch] = useState<string>('');
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<number | null>(null);
-  const [isStatusInitialized, setIsStatusInitialized] = useState<boolean | null>(false);
   
-  const[fromdate,setFromDate]= useState<string>('');
-  const[todate,setToDate]=useState<string>('');
-  
-
+  const [fromdate, setFromDate] = useState<string>('');
+  const [todate, setToDate] = useState<string>('');
 
   const navigate = useNavigate();
 
@@ -144,41 +138,65 @@ const BsnlSurvey: React.FC = () => {
     })
   );
 
+  // Initialize from URL params or location state
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const statusParam = params.get('status');
+    
     if (statusParam) {
       setSelectedStatus(Number(statusParam));
+    } else if (location.state?.selectedStatus !== undefined) {
+      setSelectedStatus(location.state.selectedStatus);
     }
+    
     if (location.state?.formdate) {
-      setFromDate(location.state?.formdate || '');
+      setFromDate(location.state.formdate || '');
     }
-  
+    
     if (location.state?.todate) {
-      setToDate(location.state?.todate || '');
+      setToDate(location.state.todate || '');
     }
-    setIsStatusInitialized(true);
+    
+    if (location.state?.selectedState) {
+      setSelectedState(location.state.selectedState);
+    }
+    
+    if (location.state?.selectedDistrict) {
+      setSelectedDistrict(location.state.selectedDistrict);
+    }
+    
+    if (location.state?.selectedBlock) {
+      setSelectedBlock(location.state.selectedBlock);
+    }
+    
+    if (location.state?.globalsearch) {
+      setGlobalSearch(location.state.globalsearch);
+    }
+    
+    if (location.state?.currentPage) {
+      setPage(location.state.currentPage);
+    }
   }, [location]);
-  
-  useEffect(() => {
-  
-    if (states.length && location.state?.state) {
-      setSelectedState(location.state.state);
-    }
-   
-  }, [states, location.state]);
-  
+
   const fetchData = async () => {
     setLoading(true);
     try {
-
       const userData = JSON.parse(localStorage.getItem("userData") || "{}"); 
       const companyId = userData?.company_id ?? 1; 
 
       const response = await axios.get<ApiResponse>(`${BASEURL}/bsnl-exchanges`, {
-        params: {from_date:fromdate,to_date:todate,searchText:globalsearch, page, limit: pageSize, state: selectedState, district: selectedDistrict, block: selectedBlock, status: selectedStatus },
-        });
-     // console.log("response", response);
+        params: {
+          from_date: fromdate,
+          to_date: todate,
+          searchText: globalsearch, 
+          page, 
+          limit: pageSize, 
+          state: selectedState, 
+          district: selectedDistrict, 
+          block: selectedBlock, 
+          status: selectedStatus
+        },
+      });
       setData(response.data.data);
       setTotalPages(response.data.totalPages);
     } catch (err: any) {
@@ -189,12 +207,9 @@ const BsnlSurvey: React.FC = () => {
   };
 
   useEffect(() => {
-    if (isStatusInitialized) {
     fetchData();
-     }
-  }, [globalsearch,page, pageSize, selectedState, selectedDistrict, selectedBlock, selectedStatus, isStatusInitialized,fromdate,todate]);
+  }, [globalsearch, page, pageSize, selectedState, selectedDistrict, selectedBlock, selectedStatus, fromdate, todate]);
 
-  
   // Handle delete
   const handleDelete = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this record?")) return;
@@ -207,10 +222,33 @@ const BsnlSurvey: React.FC = () => {
   };
 
   const handleView = async (id: string) => {
-    await navigate(`/survey/bsnl-detail-view/${id}`);
+    await navigate(`/survey/bsnl-detail-view/${id}`, {
+      state: {
+        selectedState,
+        selectedDistrict,
+        selectedBlock,
+        selectedStatus,
+        globalsearch,
+        fromdate,
+        todate,
+        currentPage: page
+      }
+    });
   };
+  
   const handleEdit = async (id: string) => {
-    await navigate(`/survey/bsnl-edit/${id}`);
+    await navigate(`/survey/bsnl-edit/${id}`, {
+      state: {
+        selectedState,
+        selectedDistrict,
+        selectedBlock,
+        selectedStatus,
+        globalsearch,
+        fromdate,
+        todate,
+        currentPage: page
+      }
+    });
   };
 
   const handleAccept = async (id: string) => {
@@ -238,7 +276,6 @@ const BsnlSurvey: React.FC = () => {
       alert("Failed to reject record.");
     }
   };
-
 
   // Handle edit
   const handleEditSave = async () => {
@@ -282,7 +319,6 @@ const BsnlSurvey: React.FC = () => {
     }
   }, [selectedDistrict]);
 
- 
   const columns: ColumnDef<BsnlExchange>[] = useMemo(
     () => [
       {
@@ -290,13 +326,12 @@ const BsnlSurvey: React.FC = () => {
         cell: ({ row }: { row: Row<BsnlExchange> }) => (
           <button
             onClick={() => handleView(row.original.id)} // Pass the correct ID
-            className="px-3 py-1 text-white bg-blue-500 rounded-md hover:bg-blue-600"
+            className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 outline-none dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-800"
           >
             View
           </button>
         ),
       },
-      //{ accessorKey: "id", header: "S.No", cell: (row) => row.row.index + 1 },
       { accessorKey: "state_name", header: "State Name" },
       { accessorKey: "district_name", header: "District Name" },
       { accessorKey: "block_name", header: "Block Name" },
@@ -325,13 +360,9 @@ const BsnlSurvey: React.FC = () => {
           <span>{statusMap[row.original.is_active] || "Unknown"}</span>
         ),
       }
-
     ],
     []
   );
-
- 
-  
 
   const table = useReactTable({
     data,
@@ -341,24 +372,6 @@ const BsnlSurvey: React.FC = () => {
     manualPagination: true,
     pageCount: totalPages,
   });
-  
-   {/*const renderPageNumbers = () => {
-    const pageNumbers = [];
-    for (let i = 1; i <= totalPages; i++) {
-      pageNumbers.push(
-        <button
-          key={i}
-          className={`px-3 py-2 mx-1 rounded-lg ${
-            page === i ? "bg-blue-500 text-white" : "bg-gray-200"
-          }`}
-          onClick={() => setPage(i)}
-        >
-          {i}
-        </button>
-      );
-    }
-    return pageNumbers;
-  };*/}
  
   const exportExcel = async () => {
     try {
@@ -375,8 +388,6 @@ const BsnlSurvey: React.FC = () => {
         }
       });
       
-    // const response = await fetch(`/Tracking/api/v1/bsnl-exchanges?limit=10000`); 
-  
     const allData: BsnlExchange[] = response.data.data;
 
     const rows = allData.map((data) => ({
@@ -421,14 +432,14 @@ const BsnlSurvey: React.FC = () => {
     const workbook = XLSX.utils.book_new();
     const worksheet1 = XLSX.utils.json_to_sheet(rows);
   
-    XLSX.utils.book_append_sheet(workbook, worksheet1, "BLOCK Survey");
+    XLSX.utils.book_append_sheet(workbook, worksheet1, "BSNL Survey");
   
     // Customize header names
     XLSX.utils.sheet_add_aoa(worksheet1, [
-      ["ID",  "State Name", "District Name","Block Name","Block ID", 'Surviour Name','Surviour Contact Number',"BSNL Coordinates", "BSNL Exchange Condition",],
+      ["ID", "State Name", "District Name", "Block Name", "Block ID", 'Surviour Name', 'Surviour Contact Number', "BSNL Coordinates", "BSNL Exchange Condition", "Earth Pit Coordinates", "Earth Pit Voltage", "FDMS", "Generator", "Generator Capacity", "Generator Make", "Generator Model", "Is Active", "OLT Count", "OLT Make", "Person Name 1", "Person Name 2", "Person Name 3", "Person Number 1", "Person Number 2", "Person Number 3", "Power System Voltage", "Power Type", "Present Load", "Router Count", "Router Make", "Splitters", "State ID", "Updated At", "UPS Capacity", "Status"]
     ], { origin: "A1" });
   
-    XLSX.writeFile(workbook, "BLOCK_SURVEY.xlsx", { compression: true });
+    XLSX.writeFile(workbook, "BSNL_SURVEY.xlsx", { compression: true });
   } catch (error) {
     console.error("Export failed:", error);
   }
@@ -443,133 +454,200 @@ const BsnlSurvey: React.FC = () => {
     (opt) => opt.value === selectedState
   ) || null;
 
+  const handleClearFilters = () => {
+    setSelectedState(null);
+    setSelectedDistrict(null);
+    setSelectedBlock(null);
+    setSelectedStatus(null);
+    setGlobalSearch('');
+    setFromDate('');
+    setToDate('');
+    setPage(1);
+  };
+
   return (
-    <div className="container mx-auto px-4 py-6">
+    <div className="bg-gray-100 dark:bg-gray-900 min-h-screen">
+      {/* Search Bar and Filters Section */}
+      <div className="mb-4">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* State Filter */}
+          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+            <select
+              value={selectedState || ''}
+              onChange={(e) => {
+                setSelectedState(e.target.value || null);
+                setPage(1);
+              }}
+              className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            >
+              <option value="">All States</option>
+              {states.map((state) => (
+                <option key={state.state_id} value={state.state_id}>
+                  {state.state_name}
+                </option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
 
-     {/* Filters */}
-    <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-4 mb-4">
-      <div className="w-full sm:w-[300px]">
-        <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="state">
-          Select State
-        </label>
-        {/* <Select
-          id="state"
-          options={states.map((state) => ({
-            value: state.state_id,
-            label: state.state_name,
-          })) as StateOption[]} // Explicitly define the type
-          placeholder="Select State"
-          value={
-            states.find((s) => s.state_id === selectedState)
-            ? { value: selectedState!, label: states.find((s) => s.state_id === selectedState)!.state_name }
-            : null}
-          onChange={(selectedOption: SingleValue<StateOption>) => setSelectedState(selectedOption?.value || null)}
-          className="w-full"
-        /> */}
-        <Select
-        id="state"
-        options={stateOptions}
-        placeholder="Select State"
-        value={selectedStateOption}
-        onChange={(selectedOption: SingleValue<StateOption>) =>
-          setSelectedState(selectedOption?.value ?? null)
-        }
-        className="w-full"
-      />
+          {/* District Filter */}
+          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+            <select
+              value={selectedDistrict || ''}
+              onChange={(e) => {
+                setSelectedDistrict(e.target.value || null);
+                setPage(1);
+              }}
+              disabled={!selectedState}
+              className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <option value="">All Districts</option>
+              {districts.map((district) => (
+                <option key={district.district_id} value={district.district_id}>
+                  {district.district_name}
+                </option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
 
+          {/* Block Filter */}
+          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+            <select
+              value={selectedBlock || ''}
+              onChange={(e) => {
+                setSelectedBlock(e.target.value || null);
+                setPage(1);
+              }}
+              disabled={!selectedDistrict}
+              className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <option value="">All Blocks</option>
+              {blocks.map((block) => (
+                <option key={block.block_id} value={block.block_id}>
+                  {block.block_name}
+                </option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Status Filter */}
+          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+            <select
+              value={selectedStatus !== null ? selectedStatus : ''}
+              onChange={(e) => {
+                setSelectedStatus(e.target.value !== '' ? Number(e.target.value) : null);
+                setPage(1);
+              }}
+              className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            >
+              <option value="">All Status</option>
+              {statusOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Date Filters */}
+          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+            <input
+              type="date"
+              value={fromdate}
+              onChange={(e) => {
+                setFromDate(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              placeholder="From Date"
+            />
+          </div>
+
+          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+            <input
+              type="date"
+              value={todate}
+              onChange={(e) => {
+                setToDate(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              placeholder="To Date"
+            />
+          </div>
+
+          {/* Search Bar */}
+          <div className="relative w-80">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+            </div>
+            <input
+              type="text"
+              placeholder="Search..."
+              value={globalsearch}
+              onChange={(e) => {
+                setGlobalSearch(e.target.value);
+                setPage(1);
+              }}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md bg-white text-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
+            />
+          </div>
+
+          {/* Clear Filters Button */}
+          <button
+            onClick={handleClearFilters}
+            className="flex-none h-10 px-4 py-2 text-sm font-medium text-red-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-red-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
+          >
+            <span className="text-red-500 dark:text-red-400 font-medium text-sm">✕</span>
+            <span>Clear Filters</span>
+          </button>
+
+          {/* Export Button */}
+          <button 
+            onClick={exportExcel}
+            className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap"
+          >
+            Export
+          </button>
+        </div>
       </div>
-      <div className="w-full sm:w-[300px]">
-        <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="district">
-          Select District
-        </label>
-        <Select
-          id="district"
-          options={districts.map((district) => ({
-            value: district.district_id,
-            label: district.district_name,
-          })) as DistrictOption[]}
-          placeholder="Select District"
-          value={districts.find((d) => d.district_id === selectedDistrict)
-            ? { value: selectedDistrict!, label: districts.find((d) => d.district_id === selectedDistrict)!.district_name }
-            : null}
-          onChange={(selectedOption: SingleValue<DistrictOption>) => setSelectedDistrict(selectedOption?.value || null)}
-          className="w-full"
-          isDisabled={!selectedState}
-        />
-      </div>
 
-      <div className="w-full sm:w-[300px]">
-        <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="block">
-          Select Block
-        </label>
-        <Select
-          id="block"
-          options={blocks.map((block) => ({
-            value: block.block_id,
-            label: block.block_name,
-          })) as BlockOption[]}
-          placeholder="Select Block"
-          value={blocks.find((b) => b.block_id === selectedBlock)
-            ? { value: selectedBlock!, label: blocks.find((b) => b.block_id === selectedBlock)!.block_name }
-            : null}
-          onChange={(selectedOption: SingleValue<BlockOption>) => setSelectedBlock(selectedOption?.value || null)}
-          className="w-full"
-          isDisabled={!selectedDistrict}
-        />
-      </div>
-
-      <div className="w-full sm:w-[300px]">
-        <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="status">
-          Select Status
-        </label>
-        <Select
-          id="status"
-          options={statusOptions}
-          placeholder="Select Status"
-          value={
-            statusOptions.find((option) => option.value === selectedStatus) || null
-          }
-          onChange={(selectedOption: SingleValue<StatusOption>) =>
-            setSelectedStatus(selectedOption?.value ?? null)
-          }
-          className="w-full"
-        />
-      </div>
-
-      <div className="w-full sm:w-[300px]">
-        <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="search">
-          Search
-        </label>
-        <input id="search" type="text" placeholder="Search ..." 
-          value={globalsearch}
-          onChange={(e) => setGlobalSearch(e.target.value)}
-          className="h-9.5 w-full px-3  border border-gray-400 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
-
-      </div>
-      <button
-        onClick={() => {
-          setSelectedState(null);
-          setSelectedDistrict(null);
-          setSelectedBlock(null);
-          setSelectedStatus(null);
-          setGlobalSearch('');
-        }}
-        className="mt-7 w-full sm:w-auto h-10  text-white bg-red-500 hover:bg-red-600 focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-sm px-3 py-2 text-center"
-      >
-        Clear Filters
-      </button>
-      <button className="bg-green-400 text-white h-10 w-30 px-3 mt-7  rounded-lg" onClick={exportExcel}>Export </button>
-
-    </div>
+      {/* Error message if API request failed */}
+      {error && (
+        <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-200 dark:text-red-800" role="alert">
+          <span className="font-medium">Error loading data:</span> {error}
+        </div>
+      )}
 
       {/* Table */}
-      <div className="overflow-x-auto bg-white rounded-lg shadow-md">
-        <table className="w-full border-collapse text-center">
-          <thead className="bg-blue-300 text-gray-600 uppercase text-sm">
+      <div className="overflow-x-auto relative">
+        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+          <thead className="text-xs text-gray-700 uppercase bg-blue-300 dark:bg-gray-700 dark:text-gray-400">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <th key={header.id} className="px-4 py-2">
+                  <th key={header.id} scope="col" className="px-3 py-2">
                     {flexRender(header.column.columnDef.header, header.getContext())}
                   </th>
                 ))}
@@ -577,54 +655,38 @@ const BsnlSurvey: React.FC = () => {
             ))}
           </thead>
           <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={columns.length} className="text-center py-4">
+            {loading ? (
+              <tr>
+                <td colSpan={columns.length} className="px-3 py-2">
+                  <div className="flex items-center justify-center">
+                    <svg className="animate-spin h-5 w-5 mr-3 text-blue-500" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
                     Loading...
-                  </td>
+                  </div>
+                </td>
+              </tr>
+            ) : table.getRowModel().rows.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length} className="px-3 py-2">
+                  No data available
+                </td>
+              </tr>
+            ) : (
+              table.getRowModel().rows.map((row) => (
+                <tr key={row.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id} className="px-3 py-2 font-medium text-gray-900 dark:text-white">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
                 </tr>
-              ) : table.getRowModel().rows.length === 0 ? (
-                <tr>
-                  <td colSpan={columns.length} className="text-center py-4 text-gray-500">
-                    No data available
-                  </td>
-                </tr>
-              ) : (
-                table.getRowModel().rows.map((row) => (
-                  <tr key={row.id} className="border-b text-sm text-gray-700 hover:bg-gray-50">
-                    {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-4 py-2">
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              )}
+              ))
+            )}
           </tbody>
-
         </table>
       </div>
-	  
-	   {/* Pagination
-      <div className="flex justify-center items-center mt-4 space-x-2">
-        <button
-          className="px-4 py-2 bg-gray-200 rounded-lg disabled:opacity-50"
-          disabled={page === 1}
-          onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-        >
-          Previous
-        </button>
-
-        {renderPageNumbers()}
-
-        <button
-          className="px-4 py-2 bg-gray-200 rounded-lg disabled:opacity-50"
-          disabled={page >= totalPages}
-          onClick={() => setPage((prev) => prev + 1)}
-        >
-          Next
-        </button>
-      </div>*/}
 
       {/* Advanced Responsive Pagination */}
       <ResponsivePagination
@@ -635,80 +697,98 @@ const BsnlSurvey: React.FC = () => {
         totalItems={data.length}
       />
 
-      {error && <p className="text-red-500 mt-4">{error}</p>}
-
       {/* Edit Modal */}
       {editingRow && (
-        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50">
-          <div className="bg-white p-6 rounded-lg shadow-md w-96">
-            <h2 className="text-xl font-semibold mb-4">Edit Record</h2>
-            <input
-              type="text"
-              value={editingRow.state_name}
-              onChange={(e) => setEditingRow({ ...editingRow, state_name: e.target.value })}
-              className="border rounded px-3 py-2 w-full mb-2"
-            />
-            <input
-              type="text"
-              value={editingRow.district_name}
-              onChange={(e) => setEditingRow({ ...editingRow, district_name: e.target.value })}
-              className="border rounded px-3 py-2 w-full mb-2"
-            />
-            <input
-              type="text"
-              value={editingRow.block_name}
-              onChange={(e) => setEditingRow({ ...editingRow, block_name: e.target.value })}
-              className="border rounded px-3 py-2 w-full mb-2"
-            />
-            <input
-              type="text"
-              value={editingRow.powerType}
-              onChange={(e) => setEditingRow({ ...editingRow, powerType: e.target.value })}
-              className="border rounded px-3 py-2 w-full mb-2"
-            />
-            <input
-              type="text"
-              value={editingRow.personName1}
-              onChange={(e) => setEditingRow({ ...editingRow, personName1: e.target.value })}
-              className="border rounded px-3 py-2 w-full mb-2"
-            />
-            <input
-              type="text"
-              value={editingRow.personNumber1}
-              onChange={(e) => setEditingRow({ ...editingRow, personNumber1: e.target.value })}
-              className="border rounded px-3 py-2 w-full mb-2"
-            />
-            <input
-              type="text"
-              value={editingRow.personName2}
-              onChange={(e) => setEditingRow({ ...editingRow, personName2: e.target.value })}
-              className="border rounded px-3 py-2 w-full mb-2"
-            />
-            <input
-              type="text"
-              value={editingRow.personNumber2}
-              onChange={(e) => setEditingRow({ ...editingRow, personNumber2: e.target.value })}
-              className="border rounded px-3 py-2 w-full mb-2"
-            />
-            <input
-              type="text"
-              value={editingRow.personName3}
-              onChange={(e) => setEditingRow({ ...editingRow, personName3: e.target.value })}
-              className="border rounded px-3 py-2 w-full mb-2"
-            />
-            <input
-              type="text"
-              value={editingRow.personNumber3}
-              onChange={(e) => setEditingRow({ ...editingRow, personNumber3: e.target.value })}
-              className="border rounded px-3 py-2 w-full mb-2"
-            />
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md w-96 max-h-[80vh] overflow-y-auto">
+            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Edit Record</h2>
+            <div className="space-y-3">
+              <input
+                type="text"
+                value={editingRow.state_name}
+                onChange={(e) => setEditingRow({ ...editingRow, state_name: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                placeholder="State Name"
+              />
+              <input
+                type="text"
+                value={editingRow.district_name}
+                onChange={(e) => setEditingRow({ ...editingRow, district_name: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                placeholder="District Name"
+              />
+              <input
+                type="text"
+                value={editingRow.block_name}
+                onChange={(e) => setEditingRow({ ...editingRow, block_name: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                placeholder="Block Name"
+              />
+              <input
+                type="text"
+                value={editingRow.powerType}
+                onChange={(e) => setEditingRow({ ...editingRow, powerType: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                placeholder="Power Type"
+              />
+              <input
+                type="text"
+                value={editingRow.personName1}
+                onChange={(e) => setEditingRow({ ...editingRow, personName1: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                placeholder="Person Name 1"
+              />
+              <input
+                type="text"
+                value={editingRow.personNumber1}
+                onChange={(e) => setEditingRow({ ...editingRow, personNumber1: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                placeholder="Person Number 1"
+              />
+              <input
+                type="text"
+                value={editingRow.personName2}
+                onChange={(e) => setEditingRow({ ...editingRow, personName2: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                placeholder="Person Name 2"
+              />
+              <input
+                type="text"
+                value={editingRow.personNumber2}
+                onChange={(e) => setEditingRow({ ...editingRow, personNumber2: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                placeholder="Person Number 2"
+              />
+              <input
+                type="text"
+                value={editingRow.personName3}
+                onChange={(e) => setEditingRow({ ...editingRow, personName3: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                placeholder="Person Name 3"
+              />
+              <input
+                type="text"
+                value={editingRow.personNumber3}
+                onChange={(e) => setEditingRow({ ...editingRow, personNumber3: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                placeholder="Person Number 3"
+              />
+            </div>
 
-            <button onClick={handleEditSave} className="bg-green-500 text-white px-4 py-2 rounded-lg mr-2">
-              Save
-            </button>
-            <button onClick={() => setEditingRow(null)} className="bg-gray-400 hover:bg-gray-800 text-white px-4 py-2 rounded-lg">
-              Cancel
-            </button>
+            <div className="flex gap-3 mt-6">
+              <button 
+                onClick={handleEditSave} 
+                className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-green-600 rounded-md hover:bg-green-700 outline-none"
+              >
+                Save
+              </button>
+              <button 
+                onClick={() => setEditingRow(null)} 
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

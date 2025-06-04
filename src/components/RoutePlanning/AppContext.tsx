@@ -37,6 +37,12 @@ interface AppContextType {
   VerifySaveFile:boolean;
   setVerifySaveFile:(data:boolean) => void;
 
+  // *****Session Storage Data*****
+  // Preview KML data from session storage
+  previewKmlData: string | null;
+  setPreviewKmlData: (data: string | null) => void;
+  // Function to check and load session storage data
+  loadPreviewKmlData: () => void;
 }
 
 // Create context with default values
@@ -75,6 +81,11 @@ const AppContext = createContext<AppContextType>({
   setLineSummary:() => {},
   VerifySaveFile:false,
   setVerifySaveFile:()=>{},
+
+  // *****Session Storage Data*****
+  previewKmlData: null,
+  setPreviewKmlData: () => {},
+  loadPreviewKmlData: () => {},
 });
 
 // Provider component
@@ -98,6 +109,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // State to track if the bulk upload modal is currently visible
   const [isBulkUploadModalOpen, setBulkUploadModalOpen] = useState(false);
 
+  // *****Session Storage Data*****
+  const [previewKmlData, setPreviewKmlData] = useState<string | null>(null);
+
+  // Function to load preview KML data from session storage
+  const loadPreviewKmlData = () => {
+    try {
+      const data = sessionStorage.getItem('previewKmlData');
+      console.log('Loading previewKmlData from sessionStorage:', data);
+      setPreviewKmlData(data);
+      
+      // Optional: Clear session storage after loading
+      if (data) {
+        console.log('Preview KML data loaded successfully from sessionStorage');
+      } else {
+        console.log('No previewKmlData found in sessionStorage');
+      }
+    } catch (error) {
+      console.error('Error loading previewKmlData from sessionStorage:', error);
+      setPreviewKmlData(null);
+    }
+  };
+
   // Effect to handle window resize and adjust sidebar state
   useEffect(() => {
     const handleResize = () => {
@@ -116,6 +149,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return () => {
       window.removeEventListener('resize', handleResize);
     };
+  }, []);
+
+  // Effect to automatically load preview KML data on component mount
+  useEffect(() => {
+    loadPreviewKmlData();
   }, []);
 
   const toggleSidebar = () => {
@@ -156,7 +194,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     lineSummary,
     setLineSummary,
     VerifySaveFile,
-    setVerifySaveFile
+    setVerifySaveFile,
+
+    // *****Session Storage Data*****
+    previewKmlData,
+    setPreviewKmlData,
+    loadPreviewKmlData,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
