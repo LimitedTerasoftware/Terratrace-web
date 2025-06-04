@@ -294,10 +294,6 @@ const tileLayerUrl = useMemo(() => {
             }else if(item.event_type === "KILOMETERSTONE"){
                    iconUrl=StoneIcon
             }
-
-
-
-
             return (
               <Marker
                 key={item.id}

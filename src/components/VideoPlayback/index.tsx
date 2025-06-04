@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import VideoPlayer from './VideoPlayer';
 import MapView from './MapView';
+import ImageViewer from './ImageViewer';
 import { UnderGroundSurveyData, MapPosition, SegmentSelection } from './types';
 import { extractVideoRecordData, getPositionAtTime } from './dataTransformUtils';
 import { Camera, MapPin, Video, Clock } from 'lucide-react';
@@ -24,6 +25,14 @@ function App({ data }: AppProps) {
   const [isVideoListOpen, setIsVideoListOpen] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<any>(null);
   const [isPlayingSegment, setIsPlayingSegment] = useState(false);
+  const [transitionImages, setTransitionImages] = useState<string[]>([]);
+  const [showImageViewer, setShowImageViewer] = useState(false);
+  const [pendingTransition, setPendingTransition] = useState<{
+    type: 'next' | 'previous';
+    index: number;
+    video: UnderGroundSurveyData;
+  } | null>(null);
+
 
   const BASEURL_Val = import.meta.env.VITE_API_BASE;
   const baseUrl = `${BASEURL_Val}/public/`;
@@ -55,6 +64,32 @@ function App({ data }: AppProps) {
       setCurrentPosition(position);
     }
   }, [currentTime, trackPoints]);
+
+    const getImagesBetweenVideos = (currentVideo: UnderGroundSurveyData, nextVideo: UnderGroundSurveyData) => {
+    const currentIndex = data.findIndex(item => item.id === currentVideo.id);
+    const nextIndex = data.findIndex(item => item.id === nextVideo.id);
+    
+    if (currentIndex === -1 || nextIndex === -1) return [];
+    const startIndex = Math.min(currentIndex, nextIndex) + 1;
+    const endIndex = Math.max(currentIndex, nextIndex);
+
+    const imageUrls: string[] = [];
+    
+    // Look at records between the two videos
+    for (let i = startIndex + 1; i < endIndex; i++) {
+      const item = data[i];
+      // Collect all possible image URLs
+      if (item.fpoiUrl && item.surveyUploaded === 'true' && item.event_type === "FPOI") imageUrls.push(item.fpoiUrl);
+      if (item.start_photos && item.surveyUploaded === 'true' && item.start_photos.length > 0 && item.event_type === "SURVEYSTART") imageUrls.push(...item.start_photos);
+      if (item.end_photos && item.surveyUploaded === 'true' && item.end_photos.length > 0 && item.event_type === "ENDSURVEY") imageUrls.push(...item.end_photos);
+      if (item.routeIndicatorUrl && item.surveyUploaded === 'true' && item.event_type === "ROUTEINDICATOR") imageUrls.push(item.routeIndicatorUrl);
+      if (item.jointChamberUrl && item.surveyUploaded === 'true' && item.event_type === "JOINTCHAMBER") imageUrls.push(item.jointChamberUrl);
+      if (item.road_crossing?.startPhoto && item.surveyUploaded === 'true' && item.event_type === "ROADCROSSING") imageUrls.push(item.road_crossing.startPhoto);
+      if (item.road_crossing?.endPhoto && item.surveyUploaded === 'true' && item.event_type === "ROADCROSSING") imageUrls.push(item.road_crossing.endPhoto);
+    }
+
+    return imageUrls.filter(url => url && url.trim() !== '');
+  };
 
   // Handle time update from video
   const handleTimeUpdate = (time: number) => {
@@ -104,51 +139,111 @@ function App({ data }: AppProps) {
       setIsPlayingSegment(true);
     }
   };
+
+ 
+
+  // Handle next video
   const handleNextVideo = () => {
     if (currentVideoIndex < availableVideos.length - 1) {
       const nextIndex = currentVideoIndex + 1;
       const nextVideo = availableVideos[nextIndex];
-      setCurrentVideoIndex(nextIndex);
-      setVideoData(nextVideo);
-      setSelectedVideo(nextVideo.id)
-      const { trackPoints: newTrackPoints } = extractVideoRecordData(
-        data.filter(item => item.survey_id === nextVideo.survey_id)
-      );
-      setTrackPoints(newTrackPoints);
-
-      // If playing a segment, start from beginning of next video
-      if (isPlayingSegment) {
-        setCurrentTime(nextVideo.videoDetails.startTimeStamp);
+      
+      // Get images between current and next video
+      const images = getImagesBetweenVideos(availableVideos[currentVideoIndex], nextVideo);
+      
+      if (images.length > 0) {
+        setTransitionImages(images);
+        setShowImageViewer(true);
+        setPendingTransition({
+          type: 'next',
+          index: nextIndex,
+          video: nextVideo
+        });
+        // The video transition will continue after the image viewer is closed
       } else {
-        setCurrentTime(nextVideo.videoDetails.startTimeStamp);
-        setSelection({ start: null, end: null });
+        completeVideoTransition(nextIndex, nextVideo);
       }
     } else if (isPlayingSegment) {
       setIsPlayingSegment(false);
     }
   };
 
-  // Handle previous video
-  const handlePreviousVideo = () => {
+  const completeVideoTransition = (nextIndex: number, nextVideo: UnderGroundSurveyData) => {
+    setCurrentVideoIndex(nextIndex);
+    setVideoData(nextVideo);
+    setSelectedVideo(nextVideo.id)
+    const { trackPoints: newTrackPoints } = extractVideoRecordData(
+      data.filter(item => item.survey_id === nextVideo.survey_id)
+    );
+    setTrackPoints(newTrackPoints);
+    
+    // If playing a segment, start from beginning of next video
+    if (isPlayingSegment) {
+      setCurrentTime(nextVideo.videoDetails.startTimeStamp);
+    } else {
+      setCurrentTime(nextVideo.videoDetails.startTimeStamp);
+      setSelection({ start: null, end: null });
+    }
+  };
+
+
+
+   const handlePreviousVideo = () => {
     if (currentVideoIndex > 0) {
       const prevIndex = currentVideoIndex - 1;
       const prevVideo = availableVideos[prevIndex];
-      setCurrentVideoIndex(prevIndex);
-      setVideoData(prevVideo);
-      setSelectedVideo(prevVideo.id)
-      const { trackPoints: newTrackPoints } = extractVideoRecordData(
-        data.filter(item => item.survey_id === prevVideo.survey_id)
-      );
-      setTrackPoints(newTrackPoints);
-      setCurrentTime(prevVideo.videoDetails.startTimeStamp);
-      if (!isPlayingSegment) {
-        setSelection({ start: null, end: null });
+      
+      // Get images between previous and current video
+      const images = getImagesBetweenVideos(prevVideo, availableVideos[currentVideoIndex]);
+      
+      if (images.length > 0) {
+        setTransitionImages(images);
+        setShowImageViewer(true);
+         setPendingTransition({
+          type: 'previous',
+          index: prevIndex,
+          video: prevVideo
+        });
+        // The video transition will continue after the image viewer is closed
+      } else {
+        completePreviousVideoTransition(prevIndex, prevVideo);
       }
     }
   };
+
+  const completePreviousVideoTransition = (prevIndex: number, prevVideo: UnderGroundSurveyData) => {
+    setCurrentVideoIndex(prevIndex);
+    setVideoData(prevVideo);
+    setSelectedVideo(prevVideo.id)
+    const { trackPoints: newTrackPoints } = extractVideoRecordData(
+      data.filter(item => item.survey_id === prevVideo.survey_id)
+    );
+    setTrackPoints(newTrackPoints);
+    setCurrentTime(prevVideo.videoDetails.startTimeStamp);
+    if (!isPlayingSegment) {
+      setSelection({ start: null, end: null });
+    }
+  };
+
+
+    const handleImageViewerClose = () => {
+    setShowImageViewer(false);
+    setTransitionImages([]);
+    
+    if (pendingTransition) {
+      if (pendingTransition.type === 'next') {
+        completeVideoTransition(pendingTransition.index, pendingTransition.video);
+      } else {
+        completePreviousVideoTransition(pendingTransition.index, pendingTransition.video);
+      }
+      setPendingTransition(null);
+    }
+  };
+   
     const clearSelection = () => {
     handleSelectionChange({ start: null, end: null });
   };
+ 
   return (
     <div className="min-h-screen bg-gray-100 p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
@@ -156,10 +251,10 @@ function App({ data }: AppProps) {
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-800 flex items-center">
               <Camera className="mr-2" size={28} />
-              Video Survey Viewer
+               Video Survey Viewer
             </h1>
             <p className="text-gray-600 mt-1">
-              View survey videos with synchronized map tracking
+               View survey videos with synchronized map tracking
             </p>
           </div>
 
@@ -215,6 +310,14 @@ function App({ data }: AppProps) {
               </div>
             </div>
           </div>
+        )}
+        {/* Image Viewer */}
+        {showImageViewer && (
+          <ImageViewer
+            images={transitionImages}
+            onClose={handleImageViewerClose}
+            baseUrl={baseUrl}
+          />
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

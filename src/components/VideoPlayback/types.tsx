@@ -49,7 +49,8 @@ export interface UnderGroundSurveyData {
   id: number;
   survey_id: string;
   area_type: string;
-  event_type: "LIVELOCATION" | "VIDEORECORD";
+  // event_type: "LIVELOCATION" | "VIDEORECORD";
+  event_type: string;
   surveyUploaded: string;
   fpoiUrl: string;
   execution_modality: string;
