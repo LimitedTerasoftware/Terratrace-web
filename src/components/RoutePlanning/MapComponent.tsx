@@ -324,25 +324,22 @@ const MapComponent: React.FC = () => {
 
   }, []);
 
-  useEffect(() => {
+useEffect(() => {
     if (previewKmlData && map && isLoaded) {
       try {
-        const kmlData = JSON.parse(previewKmlData);
-        
-        if (kmlData.success && kmlData.data) {
-          // Transform the KML data to match your existing API response format
+        const kmlData = JSON.parse(previewKmlData);      
+        if (kmlData.success && kmlData.data) {      
           const transformedGPSResponse = {
             points: kmlData.data.points.map((point: any) => {
               const coordsArray = JSON.parse(point.coordinates);
               return {
                 name: point.name,
-                coordinates: coordsArray, // Keep as [lat, lng] format
+                coordinates: coordsArray,
                 properties: {
                   lgd_code: point.lgd_code,
                   id: point.id,
                   network_id: point.network_id,
                   created_at: point.created_at,
-                  // Add network data as properties for the first point
                   ...(point.id === kmlData.data.points[0]?.id && {
                     blk_name: kmlData.data.network.main_point_name,
                     dt_code: kmlData.data.network.dt_code,
@@ -354,16 +351,18 @@ const MapComponent: React.FC = () => {
               };
             })
           };
-  
+ 
           const transformedConnectionResponse = {
             connections: kmlData.data.connections.map((conn: any) => {
               const coordsArray = JSON.parse(conn.coordinates);
+              const convertedCoords = coordsArray.map(([lat, lng]) => [lng, lat]);
+             
               return {
                 start: conn.start,
                 end: conn.end,
                 length: parseFloat(conn.length),
                 name: conn.original_name,
-                coordinates: coordsArray, // Keep as [[lat, lng],...] format
+                coordinates: convertedCoords,
                 color: conn.type === 'existing' ? "#00AA00" : "#FF0000",
                 existing: conn.type === 'existing',
                 id: conn.id,
@@ -377,10 +376,10 @@ const MapComponent: React.FC = () => {
               };
             })
           };
-  
+ 
           setGPSApiResponse(transformedGPSResponse);
           setConctApiResponse(transformedConnectionResponse);
-          
+         
           showNotification("success", `Loaded KML data: ${kmlData.data.points.length} points and ${kmlData.data.connections.length} connections`);
         }
       } catch (error) {
@@ -389,6 +388,7 @@ const MapComponent: React.FC = () => {
       }
     }
   }, [previewKmlData, map, isLoaded]);
+ 
 
   
   // DATA PROCESSING EFFECTS
@@ -396,6 +396,10 @@ const MapComponent: React.FC = () => {
 
   useEffect(() => {
     if (apiGPSResponse?.points?.length && map) {
+      console.log('=== GPS API Response ===');
+      console.log('Full response:', apiGPSResponse);
+      console.log('First point coordinates [lng, lat]:', apiGPSResponse.points[0].coordinates);
+      
       setPointProperties(apiGPSResponse?.points[0])
       const connectionsByPoint = new Map<string, Connection[]>();
       
@@ -416,7 +420,7 @@ const MapComponent: React.FC = () => {
         const matchedConn = relatedConnections[0];
         return {
           name: point.name,
-          coordinates: [point.coordinates[1], point.coordinates[0]], // Convert [lat,lng] to [lng,lat] for internal use
+          coordinates: point.coordinates, // Keep as [lng, lat] for internal consistency
           lgd_code: point.properties.lgd_code,
           ...(matchedConn && {
             connection: {
@@ -428,7 +432,7 @@ const MapComponent: React.FC = () => {
               features: [
                 {
                   geometry: {
-                    coordinates: matchedConn.coordinates.map(([lat, lng]) => [lng, lat]), // Convert to [lng,lat]
+                    coordinates: matchedConn.coordinates.map(([lat, lng]) => [lng, lat]), // Convert from [lat,lng] to [lng,lat]
                   },
                 },
               ],
@@ -450,7 +454,8 @@ const MapComponent: React.FC = () => {
       const bounds = new window.google.maps.LatLngBounds();
       (apiGPSResponse.points as PointType[]).forEach((point) => {
         if (Array.isArray(point.coordinates) && point.coordinates.length === 2) {
-          bounds.extend({ lat: point.coordinates[0], lng: point.coordinates[1] }); // [lat,lng] format
+          // Convert [lng, lat] to {lat, lng} for Google Maps
+          bounds.extend({ lat: point.coordinates[1], lng: point.coordinates[0] });
         }
       });
   
@@ -474,11 +479,20 @@ const MapComponent: React.FC = () => {
         return;
       }
   
-      const path = connection.coordinates.map(([lat, lng]) => {
-        const point = { lat, lng }; // Direct use since coordinates are [lat,lng]
+      console.log('=== Connection Processing ===');
+      console.log('Connection name:', connection.name);
+      console.log('Raw coordinates:', connection.coordinates);
+      console.log('First coordinate:', connection.coordinates[0]);
+  
+      // FIXED: Always treat coordinates as [lng, lat] format from your API
+      const path = connection.coordinates.map((coord) => {
+        // coord is [longitude, latitude] from your API
+        const point = { lat: coord[1], lng: coord[0] };
         bounds.extend(point);
         return point;
       });
+  
+      console.log('Converted path for Google Maps:', path);
   
       const polyline = new window.google.maps.Polyline({
         path,
@@ -522,16 +536,16 @@ const MapComponent: React.FC = () => {
       totalExisting += connection.length || 0;
       
       polyline.addListener("click", (e) => {
-        setPointProperties(connection)
+        setPointProperties(connection);
       });
-      
-      setPolylineInstanceMap(prev => {
-        const newMap = new Map(prev);
-        Object.entries(newPolylineHistory).forEach(([key, val]) => {
-          newMap.set(key, val.instance);
-        });
-        return newMap;
+    });
+    
+    setPolylineInstanceMap(prev => {
+      const newMap = new Map(prev);
+      Object.entries(newPolylineHistory).forEach(([key, val]) => {
+        newMap.set(key, val.instance);
       });
+      return newMap;
     });
     
     setExistingDistance(totalExisting);
@@ -700,8 +714,8 @@ const MapComponent: React.FC = () => {
         typeof coordinates[1] === 'number'
       ) {
         const markerPoint = {
-          lat: coordinates[1],
-          lng: coordinates[0],
+          lat: coordinates[1], 
+          lng: coordinates[0], 
         };
         new google.maps.Marker({
           position: markerPoint,
@@ -1061,8 +1075,7 @@ const MapComponent: React.FC = () => {
         features: [
           {
             geometry: {
-              // Save in [lat, lng] format to match your API/KML structure
-              coordinates: polyline.getPath().getArray().map(p => [p.lat(), p.lng()])
+              coordinates: polyline.getPath().getArray().map(p => [p.lng(), p.lat()])
             }
           }
         ]
@@ -1935,8 +1948,8 @@ const MapComponent: React.FC = () => {
         {/* Markers */}
         {apiGPSResponse?.points?.map((point: GPSPoint, index: number) => {
           const position = {
-            lat: point.coordinates[0], // First element is lat
-            lng: point.coordinates[1], // Second element is lng
+            lat: point.coordinates[1], 
+            lng: point.coordinates[0],
           };
           const isPointSame = pointA && !pointB && isSameCoordinate(pointA, position);
 
