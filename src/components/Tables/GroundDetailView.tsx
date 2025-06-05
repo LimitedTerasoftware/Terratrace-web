@@ -300,8 +300,8 @@ const GroundDetailView: React.FC = () => {
   const customStyles = {
     headRow: {
       style: {
-        backgroundColor: '#E5E4E2',
-        color: '#000080',
+        backgroundColor: '#64B5F6',
+        color: '#616161',
         fontWeight: 600,
         fontSize: '14px',
         padding: '10px',
@@ -458,10 +458,10 @@ const GroundDetailView: React.FC = () => {
       // Road Crossing Info
       crossing_Type: data.road_crossing?.roadCrossing || '',
       crossing_length: data.road_crossing?.length || '',
-      crossing_startPhoto_URL: `${baseUrl}${data.road_crossing?.startPhoto}`|| '',
+      crossing_startPhoto_URL:(data.event_type === "ROADCROSSING" && data.road_crossing?.startPhoto) && `${baseUrl}${data.road_crossing?.startPhoto}`|| '',
       crossing_startphoto_Lat: data.road_crossing?.startPhotoLat || '',
       crossing_startphoto_Long: data.road_crossing?.startPhotoLong || '',
-      crossing_endPhoto_URL: `${baseUrl}${data.road_crossing?.endPhoto}` || '',
+      crossing_endPhoto_URL:(data.event_type === "ROADCROSSING" && data.road_crossing?.endPhoto) && `${baseUrl}${data.road_crossing?.endPhoto}` || '',
       crossing_endphoto_Lat: data.road_crossing?.endPhotoLat || '',
       crossing_endphoto_Long: data.road_crossing?.endPhotoLong || '',
 
@@ -479,18 +479,18 @@ const GroundDetailView: React.FC = () => {
 
       // Side and Indicator
       side_type: data.side_type,
-      routeIndicatorUrl: data.routeIndicatorUrl || '',
+      routeIndicatorUrl:(data.event_type === "ROUTEINDICATOR" && data.routeIndicatorUrl) && `${baseUrl}${data.routeIndicatorUrl}` || '',
 
       // Start/End Photos
-      Survey_Start_Photo: `${baseUrl}${data.start_photos?.[0]}` || '',
-      Survey_End_Photo:`${baseUrl}${data.end_photos?.[0]}` || '',
+      Survey_Start_Photo: data.event_type === "SURVEYSTART" && `${baseUrl}${data.start_photos?.[0]}` || '',
+      Survey_End_Photo: data.event_type === "ENDSURVEY" && `${baseUrl}${data.end_photos?.[0]}` || '',
 
       // Utility Features
       localInfo: data.utility_features_checked?.localInfo || '',
       selectedGroundFeatures: (data.utility_features_checked?.selectedGroundFeatures || []).join(', '),
 
       // Video Details
-      videoUrl: `${baseUrl}${data.videoUrl}` || `${baseUrl}${data.videoDetails?.videoUrl}` || '',
+      videoUrl: (data.event_type === "VIDEORECORD" && data.videoDetails?.videoUrl?.trim().replace(/^"|"$/g, "") ) && `${baseUrl}${data.videoDetails?.videoUrl}` || '',
       video_startLatitude: data.videoDetails?.startLatitude || '',
       video_startLongitude: data.videoDetails?.startLongitude || '',
       video_startTimeStamp: data.videoDetails?.startTimeStamp || '',
@@ -499,8 +499,8 @@ const GroundDetailView: React.FC = () => {
       video_endTimeStamp: data.videoDetails?.endTimeStamp || '',
 
       // Joint Chamber and fpoi
-      jointChamberUrl: `${baseUrl}${data.jointChamberUrl}` || '',
-      fpoiUrl: `${baseUrl}${data.fpoiUrl}` || '',
+      jointChamberUrl: (data.event_type === "JOINTCHAMBER" && data.jointChamberUrl) && `${baseUrl}${data.jointChamberUrl}` || '',
+      fpoiUrl: (data.event_type === "FPOI" && data.fpoiUrl) &&  `${baseUrl}${data.fpoiUrl}` || '',
 
       // Patroller Details
       patroller_company: data.patroller_details?.companyName || '',

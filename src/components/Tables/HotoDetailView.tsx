@@ -98,7 +98,7 @@ const HotoDetailView = () => {
       toast.error("Error accepting record");
     }
   };
-cl
+
   const handleEdit = async () => {
     await navigate(`/survey/hoto-edit/${id}`);
   };
