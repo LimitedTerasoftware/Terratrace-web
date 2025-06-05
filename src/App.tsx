@@ -43,6 +43,8 @@ import RoutePlanning from './components/RoutePlanning/index';
 import RouteList from './components/RoutePlanning/RouteList';
 import RouteReports from './components/RoutePlanning/Reports';
 import RouteGPList from './components/RoutePlanning/RouteGPList';
+import Login from './pages/Authentication/Login';
+import Signup from './pages/Authentication/SignUPNew';
 //import AuditLogs from './components/AuditLogs';
 
 function App() {
@@ -69,8 +71,9 @@ function App() {
             path="/auth/signin"
             element={
               <>
-                <PageTitle title="Signin | Terrain Trace" />
-                <SignIn />
+                <PageTitle title="Signin | Tricad" />
+                {/* <SignIn /> */}
+                <Login/>
               </>
             }
           />
@@ -78,8 +81,9 @@ function App() {
             path="/auth/signup"
             element={
               <>
-                <PageTitle title="Signup | Terrain Trace" />
-                <SignUp />
+                <PageTitle title="Signup | Tricad" />
+                {/* <SignUp /> */}
+                <Signup/>
               </>
             }
           />
@@ -90,8 +94,9 @@ function App() {
               index
               element={
                 <>
-                  <PageTitle title="Terrain Trace Sign In" />
-                  <SignIn />
+                  <PageTitle title="Tricad Sign In" />
+                  {/* <SignIn /> */}
+                  <Login/>
                 </>
               }
             />
@@ -100,7 +105,7 @@ function App() {
               element={
                 <>
                    <DefaultLayout>
-                  <PageTitle title="Terrain Trace" />
+                  <PageTitle title="Tricad" />
                   <Calendar />
                   </DefaultLayout>
                 </>
@@ -111,7 +116,7 @@ function App() {
               element={
                 <>
                    <DefaultLayout>
-                  <PageTitle title="Terrain Trace Dashboard" />
+                  <PageTitle title="Tricad Dashboard" />
                   <ECommerce />
                   </DefaultLayout>
                 </>
