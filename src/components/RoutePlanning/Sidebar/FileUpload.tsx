@@ -3,7 +3,7 @@ import { Upload, FileText } from 'lucide-react';
 import { useAppContext } from '../AppContext';
 
 const FileUpload: React.FC = () => {
-  const {setGPSApiResponse,setConctApiResponse,gpFile, setGpFile,incrementalFile, setIncrementalFile} = useAppContext();
+  const {setGPSApiResponse,setConctApiResponse,gpFile, setGpFile,incrementalFile, setIncrementalFile,setPreviewKmlData} = useAppContext();
   const BASEURL = import.meta.env.VITE_API_BASE;
   const [loadingpoints, setLoadingPoints] = useState(false);
   const [loadingconnections, setLoadingConnections] = useState(false);
@@ -24,6 +24,7 @@ const handleGpPoints = async (file:File) => {
     }
 
     const data = await response.json(); 
+    setPreviewKmlData(null)
     setGPSApiResponse(data);
   } catch (error) {
     console.error('Error uploading file:', error);
@@ -48,6 +49,7 @@ const handleIncrementalPoints = async (file:File) => {
     }
 
     const data = await response.json(); 
+      setPreviewKmlData(null)
      setConctApiResponse(data);
   } catch (error) {
     console.error('Error uploading file:', error);

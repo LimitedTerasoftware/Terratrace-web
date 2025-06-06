@@ -68,7 +68,11 @@ interface District {
   district_name: string;
   state_code: string;
 }
-
+interface Block {
+  block_id: string;
+  block_name: string;
+  district_code: string;
+}
 interface StatesResponse {
   success: boolean;
   data: State[];
@@ -77,7 +81,8 @@ interface StatesResponse {
 const RouteList = () => {
   const navigate = useNavigate();
   const { setPreviewKmlData } = useAppContext();
-  
+  const BASEURL = import.meta.env.VITE_API_BASE;
+
   // Network data states
   const [unverifiedNetworks, setUnverifiedNetworks] = useState<UnverifiedNetwork[]>([]);
   const [verifiedNetworks, setVerifiedNetworks] = useState<VerifiedNetwork[]>([]);
@@ -105,12 +110,17 @@ const RouteList = () => {
   // Dynamic filter data
   const [states, setStates] = useState<State[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
+  const [blocks, setBlocks] = useState<Block[]>([]);
+  const [globalsearch, setGlobalSearch] = useState<string>('');
+
   const [loadingStates, setLoadingStates] = useState<boolean>(false);
   const [loadingDistricts, setLoadingDistricts] = useState<boolean>(false);
-  
+  const [loadingBlock, setLoadingBlock] = useState<boolean>(false);
+
   // Selected filter values (using IDs like the example)
   const [selectedState, setSelectedState] = useState<string>('');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('');
+  const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
 
   // Navigate to GP List page
   const handleGPListClick = (networkId: number, networkName: string) => {
@@ -150,7 +160,7 @@ const RouteList = () => {
   const fetchStates = async () => {
     try {
       setLoadingStates(true);
-      const response = await fetch('https://api.keeshondcoin.com/Tracking/api/v1/states');
+      const response = await fetch(`${BASEURL}/states`);
       if (!response.ok) throw new Error('Failed to fetch states');
       const result: StatesResponse = await response.json();
       setStates(result.success ? result.data : []);
@@ -171,10 +181,8 @@ const RouteList = () => {
     try {
       setLoadingDistricts(true);
       // Find the state_code for the selected state_id
-      const selectedStateData = states.find(state => state.state_id.toString() === stateId);
-      if (!selectedStateData) return;
       
-      const response = await fetch(`https://api.keeshondcoin.com/Tracking/api/v1/blocksdata?district_code=${selectedStateData.state_code}`);
+      const response = await fetch(`${BASEURL}/districtsdata?state_code=${stateId}`);
       if (!response.ok) throw new Error('Failed to fetch districts');
       const data = await response.json();
       setDistricts(data || []);
@@ -185,6 +193,27 @@ const RouteList = () => {
       setLoadingDistricts(false);
     }
   };
+    
+ const fetchBlock = async() =>{
+   try {
+      if(selectedDistrict === '') return;
+      setLoadingBlock(true);
+      
+      const response = await fetch(`${BASEURL}/blocksdata?district_code=${selectedDistrict}`);
+      if (!response.ok) throw new Error('Failed to fetch blocks');
+      const data = await response.json();
+      setBlocks(data || []);
+    } catch (error) {
+      console.error('Error fetching blocks:', error);
+      setBlocks([]);
+    } finally {
+      setLoadingBlock(false);
+    }
+ }
+
+  useEffect(() => {
+   fetchBlock();
+  }, [selectedDistrict]);
 
   // Fetch unverified networks with filters
   const fetchUnverifiedNetworks = async () => {
@@ -301,6 +330,8 @@ const RouteList = () => {
   const clearFilters = () => {
     setSelectedState('');
     setSelectedDistrict('');
+    setSelectedBlock(null);
+    setGlobalSearch('');
   };
 
   // Handle unverified network selection
@@ -368,6 +399,11 @@ const RouteList = () => {
             <input
               type="text"
               placeholder="Search..."
+              value={globalsearch}
+              onChange={(e) => {
+                setGlobalSearch(e.target.value);
+              }}
+
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md bg-white text-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
             />
           </div>
@@ -375,14 +411,14 @@ const RouteList = () => {
           {/* State Filter */}
           <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
             <select
-              value={filters.state}
-              onChange={(e) => handleFilterChange('state', e.target.value)}
+             value={selectedState || ''}
+              onChange={(e) => setSelectedState(e.target.value || '')}
               disabled={loadingStates}
               className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
             >
               <option value="">All States</option>
               {states.map((state) => (
-                <option key={state.state_id} value={state.state_code}>
+                <option key={state.state_id} value={state.state_id}>
                   {state.state_name}
                 </option>
               ))}
@@ -404,14 +440,14 @@ const RouteList = () => {
           {/* District Filter */}
           <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
             <select
-              value={filters.district}
-              onChange={(e) => handleFilterChange('district', e.target.value)}
-              disabled={loadingDistricts || !filters.state}
+              value={selectedDistrict || ''}
+              onChange={(e) => setSelectedDistrict(e.target.value || '')}
+              disabled={!selectedState}
               className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
             >
               <option value="">All Districts</option>
               {districts.map((district) => (
-                <option key={district.district_code} value={district.district_code}>
+                <option key={district.district_id} value={district.district_id}>
                   {district.district_name}
                 </option>
               ))}
@@ -433,13 +469,17 @@ const RouteList = () => {
           {/* Block Filter */}
           <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
             <select
-              value={filters.block}
-              onChange={(e) => handleFilterChange('block', e.target.value)}
-              disabled={!filters.district}
+              value={selectedBlock || ''}
+              onChange={(e) => setSelectedBlock(e.target.value)}
+              disabled={!selectedDistrict}
               className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
             >
               <option value="">All Blocks</option>
-              {/* Add blocks data when available */}
+               {blocks.map((block) => (
+                <option key={block.block_id} value={block.block_id}>
+                  {block.block_name}
+                </option>
+              ))}
             </select>
             <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
               <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
