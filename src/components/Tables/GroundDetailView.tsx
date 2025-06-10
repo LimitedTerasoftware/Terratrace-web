@@ -86,6 +86,10 @@ interface UnderGroundSurveyData {
   accuracy: string;
   depth: string;
   distance_error: string;
+  kmtStoneUrl:string;
+  landMarkUrls:string;
+  fiberTurnUrl:string;
+  landMarkType:string;
 
 }
 interface StartGp{
@@ -209,19 +213,39 @@ const GroundDetailView: React.FC = () => {
           )}
           {row.event_type === "ROADCROSSING" && row.road_crossing?.startPhoto && (
             <span className="underline cursor-pointer" onClick={() => setZoomImage(`${baseUrl}${row.road_crossing?.startPhoto}`)}>
-              startPhoto_{row.road_crossing.roadCrossing}<br />
+              startPhoto_URL<br />
             </span>
           )}
           {row.event_type === "ROADCROSSING" && row.road_crossing?.endPhoto && (
             <span className="underline cursor-pointer" onClick={() => setZoomImage(`${baseUrl}${row.road_crossing?.endPhoto}`)}>
-              endPhoto_{row.road_crossing.roadCrossing}<br />
+              endPhoto_URL<br />
             </span>
           )}
+          {row.event_type === "KILOMETERSTONE" && row.kmtStoneUrl && (
+            <span className="underline cursor-pointer" onClick={() => setZoomImage(`${baseUrl}${row.kmtStoneUrl}`)}>
+              KmStone_URL<br />
+            </span>
+          )}
+           {row.event_type === "LANDMARK" && row.landMarkUrls && row.landMarkType !== "NONE" && (
+            <span className="underline cursor-pointer" onClick={() => setZoomImage(`${baseUrl}${row.landMarkUrls}`)}>
+              Landmark_URL<br />
+            </span>
+          )}
+          {row.event_type === "FIBERTURN" && row.fiberTurnUrl && (
+            <span className="underline cursor-pointer" onClick={() => setZoomImage(`${baseUrl}${row.fiberTurnUrl}`)}>
+              Fiberturn_URL<br />
+            </span>
+          )}
+
+
           {!row.fpoiUrl &&
             (!row.start_photos || row.start_photos.length === 0) &&
             (!row.end_photos || row.end_photos.length === 0) &&
             !row.routeIndicatorUrl &&
             !row.jointChamberUrl &&
+            !row.kmtStoneUrl &&
+            !row.landMarkUrls &&
+            !row.fiberTurnUrl &&
             (!row.road_crossing?.startPhoto || row.road_crossing.startPhoto === "") &&
             (!row.road_crossing?.endPhoto || row.road_crossing.endPhoto === "") && <span>-</span>}
 
@@ -501,6 +525,9 @@ const GroundDetailView: React.FC = () => {
       // Joint Chamber and fpoi
       jointChamberUrl: (data.event_type === "JOINTCHAMBER" && data.jointChamberUrl) && `${baseUrl}${data.jointChamberUrl}` || '',
       fpoiUrl: (data.event_type === "FPOI" && data.fpoiUrl) &&  `${baseUrl}${data.fpoiUrl}` || '',
+      kmtStoneUrl: (data.event_type === "KILOMETERSTONE" && data.kmtStoneUrl) &&  `${baseUrl}${data.kmtStoneUrl}` || '',
+      LANDMARK: (data.event_type === "LANDMARK" && data.landMarkUrls && data.landMarkType !== 'NONE') &&  `${baseUrl}${data.landMarkUrls}` || '',
+      FIBERTURN: (data.event_type === "FIBERTURN" && data.fiberTurnUrl) &&  `${baseUrl}${data.fiberTurnUrl}` || '',
 
       // Patroller Details
       patroller_company: data.patroller_details?.companyName || '',
@@ -584,6 +611,9 @@ const GroundDetailView: React.FC = () => {
         // Joint Chamber & fpoi
         "Joint Chamber URL",
         "FPOI URL",
+        "KmStone URL",
+        "LandMark URL",
+        "Fiberturn URL",
         // Patroller Details
         "Patroller Company",
         "Patroller Name",

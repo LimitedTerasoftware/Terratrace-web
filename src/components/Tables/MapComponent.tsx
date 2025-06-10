@@ -71,6 +71,10 @@ type UnderGroundSurveyData = {
   videoDetails?: VideoDetails;
   road_crossing: RoadCrossing;
   surveyUploaded:string;
+  kmtStoneUrl:string;
+  landMarkUrls:string;
+  fiberTurnUrl:string;
+  landMarkType:string;
 
 
 };
@@ -359,6 +363,31 @@ const tileLayerUrl = useMemo(() => {
                        onClick={() => setZoomImage(`${baseUrl}${selectedMarker.fpoiUrl}`)}
                     />
                   
+                  ) : selectedMarker.event_type === "KILOMETERSTONE" && selectedMarker.kmtStoneUrl ? (
+                 
+                    <img
+                      src={`${baseUrl}${selectedMarker.kmtStoneUrl}`}
+                      alt="kmtStoneUrl"
+                      className="w-full max-h-40 object-cover mt-2"
+                       onClick={() => setZoomImage(`${baseUrl}${selectedMarker.kmtStoneUrl}`)}
+                    />
+                  ) : selectedMarker.event_type === "LANDMARK" && selectedMarker.landMarkUrls && selectedMarker.landMarkType !== "NONE" ? (
+                 
+                    <img
+                      src={`${baseUrl}${selectedMarker.landMarkUrls}`}
+                      alt="landMarkUrls"
+                      className="w-full max-h-40 object-cover mt-2"
+                       onClick={() => setZoomImage(`${baseUrl}${selectedMarker.landMarkUrls}`)}
+                    />
+                  ) : selectedMarker.event_type === "FIBERTURN" && selectedMarker.fiberTurnUrl  ? (
+                 
+                    <img
+                      src={`${baseUrl}${selectedMarker.fiberTurnUrl}`}
+                      alt="FIBERTURN"
+                      className="w-full max-h-40 object-cover mt-2"
+                       onClick={() => setZoomImage(`${baseUrl}${selectedMarker.fiberTurnUrl}`)}
+                    />
+                  
                 ) : selectedMarker.event_type === "ROUTEINDICATOR" && selectedMarker.routeIndicatorUrl ? (
                  
                     <img
@@ -416,7 +445,7 @@ const tileLayerUrl = useMemo(() => {
                           onClick={() => setZoomImage(`${baseUrl}${selectedMarker.jointChamberUrl}`)}
 
                         />
-                        
+                       
                       ) : selectedMarker.start_photos.length > 0 ? (
                         selectedMarker.start_photos.map((photo, index) => (
                           <img
@@ -461,6 +490,30 @@ const tileLayerUrl = useMemo(() => {
                           alt="fpoiUrl"
                           className="w-full max-h-40 object-cover mt-2"
                           onClick={() => setZoomImage(`${baseUrl}${selectedMarker.fpoiUrl}`)}
+
+                        />
+                        ) : selectedMarker.kmtStoneUrl ? (
+                        <img
+                          src={`${baseUrl}${selectedMarker.kmtStoneUrl}`}
+                          alt="kmtStoneUrl"
+                          className="w-full max-h-40 object-cover mt-2"
+                          onClick={() => setZoomImage(`${baseUrl}${selectedMarker.kmtStoneUrl}`)}
+
+                        />
+                        ) : selectedMarker.landMarkUrls && selectedMarker.landMarkType !== "NONE" ? (
+                        <img
+                          src={`${baseUrl}${selectedMarker.landMarkUrls}`}
+                          alt="landMarkUrls"
+                          className="w-full max-h-40 object-cover mt-2"
+                          onClick={() => setZoomImage(`${baseUrl}${selectedMarker.landMarkUrls}`)}
+
+                        />
+                        ) : selectedMarker.fiberTurnUrl ? (
+                        <img
+                          src={`${baseUrl}${selectedMarker.fiberTurnUrl}`}
+                          alt="fiberTurnUrl"
+                          className="w-full max-h-40 object-cover mt-2"
+                          onClick={() => setZoomImage(`${baseUrl}${selectedMarker.fiberTurnUrl}`)}
 
                         />
                         ) : selectedMarker.routeIndicatorUrl ? (

@@ -75,6 +75,11 @@ export interface UnderGroundSurveyData {
   createdTime: string;
   created_at: string;
   updated_at: string;
+  kmtStoneUrl:string;
+  landMarkUrls:string;
+  fiberTurnUrl:string;
+  landMarkType:string;
+
 }
 
 export interface MapPosition {
