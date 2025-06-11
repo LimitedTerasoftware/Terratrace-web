@@ -81,9 +81,8 @@ function App({ data }: AppProps) {
       // Collect all possible image URLs
       if (item.fpoiUrl && item.surveyUploaded === 'true' && item.event_type === "FPOI") imageUrls.push(item.fpoiUrl);
       if (item.kmtStoneUrl && item.surveyUploaded === 'true' && item.event_type === "KILOMETERSTONE") imageUrls.push(item.kmtStoneUrl);
-      if (item.landMarkUrls && item.surveyUploaded === 'true' && item.event_type === "LANDMARK" && item.landMarkType !== "NONE" ) imageUrls.push(item.landMarkUrls);
+      if (item.landMarkUrls && item.surveyUploaded === 'true' && item.event_type === "LANDMARK" && item.landMarkType !== "NONE" ) imageUrls.push(...JSON.parse(item.landMarkUrls));
       if (item.fiberTurnUrl && item.surveyUploaded === 'true' && item.event_type === "FIBERTURN") imageUrls.push(item.fiberTurnUrl);
-
       if (item.start_photos && item.surveyUploaded === 'true' && item.start_photos.length > 0 && item.event_type === "SURVEYSTART") imageUrls.push(...item.start_photos);
       if (item.end_photos && item.surveyUploaded === 'true' && item.end_photos.length > 0 && item.event_type === "ENDSURVEY") imageUrls.push(...item.end_photos);
       if (item.routeIndicatorUrl && item.surveyUploaded === 'true' && item.event_type === "ROUTEINDICATOR") imageUrls.push(item.routeIndicatorUrl);

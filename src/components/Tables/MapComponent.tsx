@@ -372,13 +372,17 @@ const tileLayerUrl = useMemo(() => {
                        onClick={() => setZoomImage(`${baseUrl}${selectedMarker.kmtStoneUrl}`)}
                     />
                   ) : selectedMarker.event_type === "LANDMARK" && selectedMarker.landMarkUrls && selectedMarker.landMarkType !== "NONE" ? (
-                 
+                      JSON.parse(selectedMarker.landMarkUrls)
+                    .filter((url: string) => url) 
+                    .map((url: string, index: number) => (
                     <img
-                      src={`${baseUrl}${selectedMarker.landMarkUrls}`}
-                      alt="landMarkUrls"
+                      src={`${baseUrl}${url}`}
+                      alt={`landMarkUrls_${index}`}
                       className="w-full max-h-40 object-cover mt-2"
-                       onClick={() => setZoomImage(`${baseUrl}${selectedMarker.landMarkUrls}`)}
+                       onClick={() => setZoomImage(`${baseUrl}${url}`)}
                     />
+                    ))
+                 
                   ) : selectedMarker.event_type === "FIBERTURN" && selectedMarker.fiberTurnUrl  ? (
                  
                     <img

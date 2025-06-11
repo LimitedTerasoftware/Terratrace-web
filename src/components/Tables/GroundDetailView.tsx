@@ -181,6 +181,10 @@ const GroundDetailView: React.FC = () => {
       selector: (row: UnderGroundSurveyData) => row.execution_modality || "-",
     },
     {
+      name: "Landmark Type",
+      selector: (row: UnderGroundSurveyData) => row.landMarkType || "-",
+    },
+    {
       name: "Image",
       cell: (row: UnderGroundSurveyData) => (
         <div className="text-blue-600">
@@ -226,11 +230,22 @@ const GroundDetailView: React.FC = () => {
               KmStone_URL<br />
             </span>
           )}
-           {row.event_type === "LANDMARK" && row.landMarkUrls && row.landMarkType !== "NONE" && (
-            <span className="underline cursor-pointer" onClick={() => setZoomImage(`${baseUrl}${row.landMarkUrls}`)}>
-              Landmark_URL<br />
-            </span>
+         {row.event_type === "LANDMARK" &&
+          row.landMarkUrls &&
+          row.landMarkType !== "NONE" && (
+            JSON.parse(row.landMarkUrls)
+              .filter((url: string) => url) 
+              .map((url: string, index: number) => (
+                <span
+                  key={index}
+                  className="underline cursor-pointer block"
+                  onClick={() => setZoomImage(`${baseUrl}${url}`)}
+                >
+                  Landmark_URL {index + 1}
+                </span>
+              ))
           )}
+
           {row.event_type === "FIBERTURN" && row.fiberTurnUrl && (
             <span className="underline cursor-pointer" onClick={() => setZoomImage(`${baseUrl}${row.fiberTurnUrl}`)}>
               Fiberturn_URL<br />
@@ -526,7 +541,12 @@ const GroundDetailView: React.FC = () => {
       jointChamberUrl: (data.event_type === "JOINTCHAMBER" && data.jointChamberUrl) && `${baseUrl}${data.jointChamberUrl}` || '',
       fpoiUrl: (data.event_type === "FPOI" && data.fpoiUrl) &&  `${baseUrl}${data.fpoiUrl}` || '',
       kmtStoneUrl: (data.event_type === "KILOMETERSTONE" && data.kmtStoneUrl) &&  `${baseUrl}${data.kmtStoneUrl}` || '',
-      LANDMARK: (data.event_type === "LANDMARK" && data.landMarkUrls && data.landMarkType !== 'NONE') &&  `${baseUrl}${data.landMarkUrls}` || '',
+      landMarkType:data.landMarkType,
+      LANDMARK: (data.event_type === "LANDMARK" && data.landMarkUrls && data.landMarkType !== 'NONE') &&  `${baseUrl}${JSON.parse(data.landMarkUrls)
+              .filter((url: string) => url) 
+              .map((url: string) => (
+              `${baseUrl}${url}`
+              ))}` || '',
       FIBERTURN: (data.event_type === "FIBERTURN" && data.fiberTurnUrl) &&  `${baseUrl}${data.fiberTurnUrl}` || '',
 
       // Patroller Details
@@ -612,6 +632,7 @@ const GroundDetailView: React.FC = () => {
         "Joint Chamber URL",
         "FPOI URL",
         "KmStone URL",
+        "LandMark Type",
         "LandMark URL",
         "Fiberturn URL",
         // Patroller Details
