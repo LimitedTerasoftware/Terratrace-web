@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Eye } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { AlertCircle, AlertTriangle, CheckCircle, Eye, MoreVertical, Trash, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from './AppContext';
 
@@ -92,7 +92,8 @@ const RouteList = () => {
   const [verifiedError, setVerifiedError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'verified' | 'unverified'>('unverified');
   const [previewLoading, setPreviewLoading] = useState<boolean>(false);
-  
+
+
   // Load status tracking
   const [unverifiedLoaded, setUnverifiedLoaded] = useState<boolean>(false);
   const [verifiedLoaded, setVerifiedLoaded] = useState<boolean>(false);
@@ -116,17 +117,65 @@ const RouteList = () => {
   const [loadingStates, setLoadingStates] = useState<boolean>(false);
   const [loadingDistricts, setLoadingDistricts] = useState<boolean>(false);
   const [loadingBlock, setLoadingBlock] = useState<boolean>(false);
-
+  const [notification, setNotification] = useState<{
+    type: 'success' | 'error' | 'warning';
+    message: string;
+    show: boolean;
+  }>({
+    type: 'success',
+    message: '',
+    show: false
+  });
   // Selected filter values (using IDs like the example)
   const [selectedState, setSelectedState] = useState<string>('');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('');
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
-
+  
   // Navigate to GP List page
   const handleGPListClick = (networkId: number, networkName: string) => {
     navigate(`/route-planning/route-list/gplist/${networkId}`, {
       state: { networkName }
     });
+  };
+ const showNotification = (type: 'success' | 'error' | 'warning', message: string) => {
+    setNotification({
+      type,
+      message,
+      show: true
+    });
+    
+    setTimeout(() => {
+      setNotification(prev => ({ ...prev, show: false }));
+    }, 5000);
+  };
+  const closeNotification = () => {
+    setNotification(prev => ({ ...prev, show: false }));
+  };
+    const getNotificationIcon = (type: 'success' | 'error' | 'warning') => {
+    switch (type) {
+      case 'success':
+        return <CheckCircle className="w-5 h-5" />;
+      case 'error':
+        return <AlertCircle className="w-5 h-5" />;
+      case 'warning':
+        return <AlertTriangle className="w-5 h-5" />;
+      default:
+        return null;
+    }
+  };
+
+  // Get notification styling
+  const getNotificationStyles = (type: 'success' | 'error' | 'warning') => {
+    switch (type) {
+      case 'success':
+        return 'bg-green-500 text-white border-green-600';
+      case 'error':
+        return 'bg-red-500 text-white border-red-600';
+      case 'warning':
+        return 'bg-yellow-500 text-white border-yellow-600';
+      default:
+        return 'bg-gray-500 text-white border-gray-600';
+    }
   };
 
   // Handle preview button click
@@ -155,6 +204,30 @@ const RouteList = () => {
       setPreviewLoading(false);
     }
   };
+ 
+  const handleDeleteClick = async(Id:number,name:string,type:string) =>{
+    try {
+    const response = await fetch(`https://traceapi.keeshondcoin.com/delete-network/${Id}`, {
+      method: 'POST',
+    });   
+    if (!response.ok) {
+        throw new Error(`Preview API request failed with status ${response.status}`);
+    }
+      
+     const data = await response.json();
+     showNotification('success', `Successfully Deleted ${name}`);
+   if(type === 'unverified'){
+        fetchUnverifiedNetworks();
+     }else{
+      fetchVerifiedNetworks()
+    }
+
+    } catch (error) {
+      showNotification('error', 'Something went wrong while deleting.');
+
+    }
+
+  }
 
   // Fetch all states
   const fetchStates = async () => {
@@ -263,8 +336,7 @@ const RouteList = () => {
 
   // Fetch verified networks
   const fetchVerifiedNetworks = async () => {
-    if (verifiedLoaded) return;
-    
+  
     try {
       setLoadingVerified(true);
       setVerifiedError(null);
@@ -467,7 +539,7 @@ const RouteList = () => {
           </div>
 
           {/* Block Filter */}
-          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+          {/* <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
             <select
               value={selectedBlock || ''}
               onChange={(e) => setSelectedBlock(e.target.value)}
@@ -486,7 +558,7 @@ const RouteList = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
               </svg>
             </div>
-          </div>
+          </div> */}
 
           {/* Clear Filters */}
           <button
@@ -612,23 +684,49 @@ const RouteList = () => {
                     <td className="px-3 py-2">
                       {new Date(network.created_at).toLocaleDateString()}
                     </td>
+                  
                     <td className="px-3 py-2">
-                      <button
-                        onClick={() => handlePreviewClick(network.id)}
-                        disabled={previewLoading}
-                        className="flex items-center justify-center w-8 h-8 text-gray-600 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                        title="Preview Route"
-                      >
-                        {previewLoading ? (
-                          <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </button>
+                      <div className="flex items-center gap-3">
+                        {/* Preview Button */}
+                        <button
+                          onClick={() => handlePreviewClick(network.id)}
+                          disabled={previewLoading}
+                          className="flex items-center justify-center w-8 h-8 text-gray-600 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                          title="Preview Route"
+                        >
+                          {previewLoading ? (
+                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                                fill="none"
+                              />
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                              />
+                            </svg>
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </button>
+
+                        {/* Delete Button */}
+                        <button
+                          onClick={() => handleDeleteClick(network.id,network.name,'unverified')}
+                          className="flex items-center justify-center w-8 h-8 text-red-600 hover:text-red-800 transition-colors duration-200"
+                          title="Delete Route"
+                        >
+                          <Trash className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
+
                   </tr>
                 ))
               )}
@@ -738,6 +836,13 @@ const RouteList = () => {
                             <Eye className="w-4 h-4" />
                           )}
                         </button>
+                          <button
+                          onClick={() => handleDeleteClick(network.id,network.name,'verified')}
+                          className="flex items-center justify-center w-8 h-8 text-red-600 hover:text-red-800 transition-colors duration-200"
+                          title="Delete Route"
+                        >
+                          <Trash className="w-4 h-4" />
+                        </button>
                         <button 
                           onClick={() => handleGPListClick(network.id, network.name)}
                           className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 outline-none dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-800"
@@ -753,7 +858,30 @@ const RouteList = () => {
           </table>
         </div>
       )}
+         {notification.show && (
+        <div className={`fixed top-4 right-4 z-[60] min-w-80 max-w-md transform transition-all duration-300 ease-in-out ${
+          notification.show ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
+        }`}>
+          <div className={`flex items-start p-4 rounded-lg shadow-lg border-l-4 ${getNotificationStyles(notification.type)}`}>
+            <div className="flex-shrink-0 mr-3">
+              {getNotificationIcon(notification.type)}
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium leading-5">
+                {notification.message}
+              </p>
+            </div>
+            <button
+              onClick={closeNotification}
+              className="flex-shrink-0 ml-3 text-white hover:text-gray-200 transition-colors duration-200"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
+    
   );
 };
 
