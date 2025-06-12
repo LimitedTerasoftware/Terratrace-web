@@ -9,19 +9,7 @@ import videoIcon from '../../images/icon/cinema.png';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-import JointChamberIcon from '../../images/icon/icons8-hole-50.png'; 
-import FPOIIcon from '../../images/icon/network.png';
-import RouteIndIcon from '../../images/icon/signpost.png';
-import RoadCrossingIcon from '../../images/icon/crossing-roads-perspective.png'
-import BridgeIcon from '../../images/icon/road.png'
-import LevelCrossingIcon from '../../images/icon/level-crossing.png'
-import trainBridgeIcon from '../../images/icon/train-bridge.png'
-import trainunderBridgeIcon from '../../images/icon/bridge_4325806.png'
-import cauwayIcon from '../../images/icon/underpass_17942665.png'
-import CulvertIcon from '../../images/icon/road-culvert-works-svgrepo-com.svg'
-import LandmarkIcon from '../../images/icon/monument.png'
-import FiberTurnIcon from '../../images/icon/curved-arrow.png'
-import StoneIcon from '../../images/icon/icons8-milestone-50.png'
+
 
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -55,6 +43,7 @@ interface RoadCrossing {
 // Type Definitions
 type UnderGroundSurveyData = {
   id: string;
+  survey_id:string
   latitude: string;
   longitude: string;
   event_type: string;
@@ -88,7 +77,7 @@ interface MapComponentProps {
 }
 
 const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
-
+ console.log(data)
   const [selectedMarker, setSelectedMarker] = useState<UnderGroundSurveyData | null>(null);
   const [selectedEventType, setSelectedEventType] = useState<string>('ALL');
   const [selectedModality, setSelectedModality] = useState<string>('ALL');
@@ -253,65 +242,49 @@ const tileLayerUrl = useMemo(() => {
             scrollwheel: true
           }}
         >
-          {filteredData.map((item) => {
-            const position = {
-              lat: parseFloat(item.latitude),
-              lng: parseFloat(item.longitude),
-            };
-            const mainVideoUrl = item.videoUrl?.trim().replace(/(^"|"$)/g, '');
-            const fallbackVideoUrl = item.videoDetails?.videoUrl?.trim().replace(/(^"|"$)/g, '');
-            const finalUrl = fallbackVideoUrl || mainVideoUrl;
+        {(() => {
+            const tolerance = 0.0001;
+            const filteredMarkers: { item: UnderGroundSurveyData; position: { lat: number; lng: number; }; iconUrl: string; }[] = [];
 
-            let iconUrl = 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png';
+            for (let i = 0; i < filteredData.length; i++) {
+              const item = filteredData[i];
+              const position = {
+                lat: parseFloat(item.latitude),
+                lng: parseFloat(item.longitude),
+              };
 
-            if (
-              item.event_type === "VIDEORECORD" &&
-              finalUrl
-            ) {
-              iconUrl = `${videoIcon}`;
-            }else if(item.event_type === "JOINTCHAMBER"){
-                 iconUrl=JointChamberIcon
-            }else if(item.event_type === "FPOI"){
-                   iconUrl=FPOIIcon
-            }else if(item.event_type === "ROUTEINDICATOR"){
-                   iconUrl=RouteIndIcon
-            }else if(item.event_type === "ROADCROSSING" && item.road_crossing?.roadCrossing === 'ROADCROSSING' && (item.road_crossing?.startPhoto || item.road_crossing?.endPhoto)){
-                   iconUrl=RoadCrossingIcon
-            }else if(item.event_type === "ROADCROSSING" && item.road_crossing?.roadCrossing === 'BRIDGE' && (item.road_crossing?.startPhoto || item.road_crossing?.endPhoto)){
-                   iconUrl=BridgeIcon
-            }else if(item.event_type === "ROADCROSSING" && item.road_crossing?.roadCrossing === 'RAILUNDERBRIDGE' && (item.road_crossing?.startPhoto || item.road_crossing?.endPhoto)){
-                   iconUrl=trainunderBridgeIcon
-            }else if(item.event_type === "ROADCROSSING" && item.road_crossing?.roadCrossing === 'LEVELCROSSING' && (item.road_crossing?.startPhoto || item.road_crossing?.endPhoto)){
-                   iconUrl=LevelCrossingIcon
+              const isTooClose = filteredMarkers.some(m =>
+                Math.abs(m.position.lat - position.lat) < tolerance &&
+                Math.abs(m.position.lng - position.lng) < tolerance
+              );
+
+              if (!isTooClose) {
+                const mainVideoUrl = item.videoUrl?.trim().replace(/(^"|"$)/g, '');
+                const fallbackVideoUrl = item.videoDetails?.videoUrl?.trim().replace(/(^"|"$)/g, '');
+                const finalUrl = fallbackVideoUrl || mainVideoUrl;
+
+                let iconUrl = 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png';
+                if (item.event_type === "VIDEORECORD" && finalUrl) {
+                  iconUrl = videoIcon;
+                }
+
+                filteredMarkers.push({ item, position, iconUrl });
+              }
             }
-            else if(item.event_type === "ROADCROSSING" && item.road_crossing?.roadCrossing === 'RAILOVERBRIDGE' && (item.road_crossing?.startPhoto || item.road_crossing?.endPhoto)){
-                   iconUrl=trainBridgeIcon
-            } else if(item.event_type === "ROADCROSSING" && item.road_crossing?.roadCrossing === 'CAUSEWAYS' && (item.road_crossing?.startPhoto || item.road_crossing?.endPhoto)){
-                   iconUrl=cauwayIcon
-            }else if(item.event_type === "ROADCROSSING" && item.road_crossing?.roadCrossing === 'CULVERT' && (item.road_crossing?.startPhoto || item.road_crossing?.endPhoto)){
-                   iconUrl= CulvertIcon
-            }
-            else if(item.event_type === "LANDMARK"){
-                   iconUrl=LandmarkIcon
-            }else if(item.event_type === "FIBERTURN"){
-                   iconUrl=FiberTurnIcon
-            }else if(item.event_type === "KILOMETERSTONE"){
-                   iconUrl=StoneIcon
-            }
-            return (
+
+            return filteredMarkers.map(({ item, position, iconUrl }) => (
               <Marker
                 key={item.id}
                 position={position}
                 icon={{
                   url: iconUrl,
-                  scaledSize: new window.google.maps.Size(32, 32),
+                  scaledSize: new window.google.maps.Size(25, 25),
                 }}
-                onClick={() => {
-                 setSelectedMarker(item);
-                }}
+                onClick={() => setSelectedMarker(item)}
               />
-            );
-          })}
+            ));
+          })()}
+
           {selectedMarker  && (
             <InfoWindow
               position={{
@@ -321,6 +294,7 @@ const tileLayerUrl = useMemo(() => {
               onCloseClick={() => setSelectedMarker(null)}
             >
               <div style={{ width: '250px', minWidth: "200" }}>
+                <strong>Survey ID:</strong> {selectedMarker.survey_id}<br />
                 <strong>ID:</strong> {selectedMarker.id}<br />
                 <strong>Event:</strong> {selectedMarker.event_type === 'ROADCROSSING' ? selectedMarker.road_crossing?.roadCrossing : selectedMarker.event_type}<br />
                 <strong>Modality:</strong> {selectedMarker.execution_modality}<br /><br />

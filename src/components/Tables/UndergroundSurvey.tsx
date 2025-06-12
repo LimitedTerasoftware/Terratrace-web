@@ -14,6 +14,7 @@ import ActionsDropdown from "./ActionsDropdown";
 import Select, { SingleValue } from "react-select";
 import ResponsivePagination from "./ResponsivePagination";
 import * as XLSX from "xlsx";
+import MapComponent from "./MapComponent";
 
 interface UndergroundSurvey {
   id: string;
@@ -24,21 +25,21 @@ interface UndergroundSurvey {
   startGpCoordinates: string;
   endGpName: string;
   endGpCoordinates: string;
-  is_active:number;
+  is_active: number;
   block_id: string;
   survey_id: string;
   company_id: string;
   user_id: string;
   state_id: string;
-  start_location_name:string;
-  end_location_name:string;
+  start_location_name: string;
+  end_location_name: string;
   startGpCode: string;
   endGpCode: string;
   created_at: string;
   district_id: string;
-  updated_at:string;
-  fullname:string,
-  contact_no:number,
+  updated_at: string;
+  fullname: string,
+  contact_no: number,
 }
 
 interface ApiResponse {
@@ -103,10 +104,13 @@ const UndergroundSurvey: React.FC = () => {
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<number | null>(null);
-  
+  const [rowSelection, setRowSelection] = useState({});
+  const [selectedRowsMap, setSelectedRowsMap] = useState<Record<string, UndergroundSurvey>>({});
+  const [KmlLoader,setKMLLoader]=useState(false);
+
   const [fromdate, setFromDate] = useState<string>('');
   const [todate, setToDate] = useState<string>('');
-
+  const [BlockData,setBlockData]=useState<any>([])
   const navigate = useNavigate();
 
   const statusMap: Record<number, string> = {
@@ -126,37 +130,37 @@ const UndergroundSurvey: React.FC = () => {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const statusParam = params.get('status');
-    
+
     if (statusParam) {
       setSelectedStatus(Number(statusParam));
     } else if (location.state?.selectedStatus !== undefined) {
       setSelectedStatus(location.state.selectedStatus);
     }
-    
+
     if (location.state?.formdate) {
       setFromDate(location.state.formdate || '');
     }
-    
+
     if (location.state?.todate) {
       setToDate(location.state.todate || '');
     }
-    
+
     if (location.state?.selectedState) {
       setSelectedState(location.state.selectedState);
     }
-    
+
     if (location.state?.selectedDistrict) {
       setSelectedDistrict(location.state.selectedDistrict);
     }
-    
+
     if (location.state?.selectedBlock) {
       setSelectedBlock(location.state.selectedBlock);
     }
-    
+
     if (location.state?.globalsearch) {
       setGlobalSearch(location.state.globalsearch);
     }
-    
+
     if (location.state?.currentPage) {
       setPage(location.state.currentPage);
     }
@@ -166,19 +170,19 @@ const UndergroundSurvey: React.FC = () => {
     setLoading(true);
     try {
       const response = await axios.get<ApiResponse>(`${BASEURL}/underground-surveys`, {
-        params: { 
+        params: {
           from_date: fromdate,
           to_date: todate,
           searchText: globalsearch,
-          page, 
-          limit: pageSize, 
-          state: selectedState, 
-          district: selectedDistrict, 
-          block: selectedBlock, 
-          status: selectedStatus 
+          page,
+          limit: pageSize,
+          state: selectedState,
+          district: selectedDistrict,
+          block: selectedBlock,
+          status: selectedStatus
         },
       });
-     
+
       setData(response.data.data);
       setTotalPages(response.data.totalPages);
     } catch (err: any) {
@@ -245,7 +249,7 @@ const UndergroundSurvey: React.FC = () => {
       alert("Failed to accept record.");
     }
   };
-  
+
   const handleReject = async (id: string) => {
     try {
       const response = await axios.post(`${BASEURL}/underground-surveys/${id}/reject`);
@@ -276,7 +280,7 @@ const UndergroundSurvey: React.FC = () => {
       .then((res) => setStates(res.data.data))
       .catch((err) => console.error(err));
   }, []);
-  
+
   // Fetch districts when state is selected
   useEffect(() => {
     if (selectedState) {
@@ -303,17 +307,65 @@ const UndergroundSurvey: React.FC = () => {
 
   const columns = useMemo<ColumnDef<UndergroundSurvey>[]>(
     () => [
-     {
-             header: "Actions",
-             cell: ({ row }: { row: Row<UndergroundSurvey> }) => (
-               <button
-                 onClick={() => handleView(row.original.id)} // Pass the correct ID
-                 className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 outline-none dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-800"
-               >
-                 View
-               </button>
-             ),
-           },
+      {
+        id: "select",
+        header: ({ table }) => {
+          const allSelected = table.getRowModel().rows.every(row => selectedRowsMap[row.original.id]);
+          const someSelected = table.getRowModel().rows.some(row => selectedRowsMap[row.original.id]);
+
+          return (
+            <input
+              type="checkbox"
+              checked={allSelected}
+              ref={el => {
+                if (el) el.indeterminate = !allSelected && someSelected;
+              }}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                const newMap = { ...selectedRowsMap };
+                table.getRowModel().rows.forEach(row => {
+                  if (checked) {
+                    newMap[row.original.id] = row.original;
+                  } else {
+                    delete newMap[row.original.id];
+                  }
+                });
+                setSelectedRowsMap(newMap);
+              }}
+            />
+          );
+        },
+        cell: ({ row }) => (
+          <input
+            type="checkbox"
+            checked={!!selectedRowsMap[row.original.id]}
+            onChange={(e) => {
+              const checked = e.target.checked;
+              setSelectedRowsMap(prev => {
+                const newMap = { ...prev };
+                if (checked) newMap[row.original.id] = row.original;
+                else delete newMap[row.original.id];
+                return newMap;
+              });
+            }}
+          />
+        ),
+        enableSorting: false,
+        enableColumnFilter: false,
+      },
+
+
+      {
+        header: "Actions",
+        cell: ({ row }: { row: Row<UndergroundSurvey> }) => (
+          <button
+            onClick={() => handleView(row.original.id)} // Pass the correct ID
+            className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 outline-none dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-800"
+          >
+            View
+          </button>
+        ),
+      },
       { accessorKey: "state_name", header: "State Name" },
       { accessorKey: "district_name", header: "District Name" },
       { accessorKey: "block_name", header: "Block Name" },
@@ -324,7 +376,7 @@ const UndergroundSurvey: React.FC = () => {
         header: "Surviour Name",
         cell: ({ row }) => (
           <span>
-            {row.original.fullname} 
+            {row.original.fullname}
           </span>
         ),
       },
@@ -345,7 +397,8 @@ const UndergroundSurvey: React.FC = () => {
         ),
       }
     ],
-    []
+
+    [selectedRowsMap]
   );
 
   const table = useReactTable({
@@ -355,25 +408,172 @@ const UndergroundSurvey: React.FC = () => {
     getPaginationRowModel: getPaginationRowModel(),
     manualPagination: true,
     pageCount: totalPages,
+    getRowId: row => String(row.id)
   });
 
-  const exportExcel = async() => {
+  const handleGenerateKML = async () => {
+    const selected = Object.values(selectedRowsMap);
+    if (selected.length === 0) {
+      alert("No rows selected");
+      return;
+    }
+
+    const selectedEventTypes = ["KILOMETERSTONE", "FIBERTURN", "FPOI", "ROUTEFEASIBILITY", "JOINTCHAMBER", "LANDMARK",
+      "ROADCROSSING", "ROUTEINDICATOR", "LIVELOCATION", "SIDE"
+    ];
+    const blueIcon = "http://maps.google.com/mapfiles/kml/paddle/blu-circle.png";
+
+    let allPlacemarks = "";
+
+    for (const item of selected) {
+      setKMLLoader(true)
+      try {
+        const res = await fetch(`${BASEURL}/underground-surveys/${item.id}`);
+        const json = await res.json();
+
+        const filteredPoints = [
+          ...new Map(
+            json.data?.under_ground_survey_data
+              ?.filter((survey: any) =>
+                survey?.surveyUploaded === "true" &&
+                selectedEventTypes.includes(survey.event_type)
+              )
+              .map((survey: any) => [`${survey.latitude}-${survey.longitude}-${survey.event_type}`, survey])
+          ).values()
+        ];
+
+        if (filteredPoints.length === 0) continue;
+        const roundCoord = (value: string | number) => {
+          return parseFloat(Number(value).toFixed(5));
+        };
+
+        const uniquePoints = filteredPoints.filter((point: any, index, self) => {
+          const lat = roundCoord(point.latitude);
+          const lng = roundCoord(point.longitude);
+
+          return (
+            index ===
+            self.findIndex((p: any) =>
+              roundCoord(p.latitude) === lat && roundCoord(p.longitude) === lng
+            )
+          );
+        });
+
+        const coordString = uniquePoints
+          .map((p: any) => `${p.longitude},${p.latitude},0`)
+          .join(" ");
+
+        // const coordString = filteredPoints.map(p => `${p.longitude},${p.latitude},0`).join(" ");
+
+        const linePlacemark = `
+        <Placemark>
+          <name>Line ${item.id}</name>
+          <Style>
+            <LineStyle>
+              <color>ff0000ff</color>
+              <width>3</width>
+            </LineStyle>
+          </Style>
+          <LineString>
+            <tessellate>1</tessellate>
+            <coordinates>${coordString}</coordinates>
+          </LineString>
+        </Placemark>
+      `;
+
+        let eventPlacemarks = "";
+        const excludedTypes = ["LIVELOCATION"];
+
+        filteredPoints
+          .filter((e: any) => !excludedTypes.includes(e.event_type)).forEach((p: any) => {
+            eventPlacemarks += `
+          <Placemark>
+            <name>${p.event_type || "UNKNOWN"}</name>
+            <description>
+              Survey ID: ${p.survey_id}<br/>
+              ID: ${p.id}<br/>
+              Area Type: ${p.area_type}<br/>
+              Depth: ${p.depth}<br/>
+            
+            </description>
+            <Style>
+              <IconStyle>
+                <scale>1.1</scale>
+                <Icon><href>${blueIcon}</href></Icon>
+              </IconStyle>
+            </Style>
+            <Point>
+              <coordinates>${p.longitude},${p.latitude},0</coordinates>
+            </Point>
+          </Placemark>
+        `;
+          });
+
+        allPlacemarks += eventPlacemarks + linePlacemark;
+      } catch (err) {
+        console.error(`Error fetching for ID ${item.id}`, err);
+      }
+    }
+    setKMLLoader(false)
+    const kmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+    <kml xmlns="http://www.opengis.net/kml/2.2">
+      <Document>
+        ${allPlacemarks}
+      </Document>
+    </kml>`;
+
+    const blob = new Blob([kmlContent], { type: "application/vnd.google-earth.kml+xml" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${data[0]?.block_name || ''}_GroundSurvey.kml`;
+    a.click();
+  };
+
+const handlePreview = async () => {
+  const selected = Object.values(selectedRowsMap);
+  if (selected.length === 0) {
+    alert("No rows selected");
+    return;
+  }
+
+  let Data: any[] = [];
+  setKMLLoader(true);
+
+  try {
+    for (const item of selected) {
+      const res = await fetch(`${BASEURL}/underground-surveys/${item.id}`);
+      const json = await res.json();
+
+      const newData = json.data?.under_ground_survey_data || [];
+      Data.push(...newData); 
+    }
+  } catch (error) {
+    console.error("Preview fetch error:", error);
+  } finally {
+    setKMLLoader(false);
+  }
+
+  setBlockData(Data); 
+};
+  const exportExcel = async () => {
     try {
+      setKMLLoader(true)
       const response = await axios.get<ApiResponse>(`${BASEURL}/underground-surveys`, {
-        params: { 
+        params: {
           from_date: fromdate,
           to_date: todate,
           isExport: 1,
           searchText: globalsearch,
-          state: selectedState, 
-          district: selectedDistrict, 
-          block: selectedBlock, 
-          status: selectedStatus 
+          state: selectedState,
+          district: selectedDistrict,
+          block: selectedBlock,
+          status: selectedStatus
         },
       });
-      
+
       const allData: UndergroundSurvey[] = response.data.data;
-      
+
       // Map data with column names that match your headers exactly
       const rows = allData.map((data) => ({
         "ID": data.id,
@@ -405,16 +605,18 @@ const UndergroundSurvey: React.FC = () => {
       const worksheet = XLSX.utils.json_to_sheet(rows);
 
       XLSX.utils.book_append_sheet(workbook, worksheet, "Underground Survey");
-
+      
       // Export file
       XLSX.writeFile(workbook, "UNDERGROUND_SURVEY.xlsx", { compression: true });
     } catch (error) {
       console.error("Export failed:", error);
+    }finally{
+      setKMLLoader(false)
     }
   };
 
   const stateOptions = states.map((state) => ({
-    value: String(state.state_id), 
+    value: String(state.state_id),
     label: state.state_name,
   }));
 
@@ -431,11 +633,22 @@ const UndergroundSurvey: React.FC = () => {
     setFromDate('');
     setToDate('');
     setPage(1);
+    setSelectedRowsMap({})
+    setBlockData([]);
   };
 
   return (
+    <>
+     {BlockData.length > 0 ? (
+    <MapComponent data={BlockData || []} />
+    ):(
     <div className="bg-gray-100 dark:bg-gray-900 min-h-screen">
       {/* Search Bar and Filters Section */}
+      {KmlLoader && (
+        <div className="absolute inset-0 bg-white bg-opacity-70 flex justify-center items-center z-50">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      )}
       <div className="mb-4">
         <div className="flex flex-wrap items-center gap-3">
           {/* State Filter */}
@@ -592,11 +805,23 @@ const UndergroundSurvey: React.FC = () => {
           </button>
 
           {/* Export Button */}
-          <button 
+          <button
             onClick={exportExcel}
             className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap"
           >
-            Export
+            Excel
+          </button>
+          <button
+            onClick={handleGenerateKML}
+            className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap"
+          >
+           KML
+          </button>
+            <button
+            onClick={handlePreview}
+            className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap"
+          >
+           Preview
           </button>
         </div>
       </div>
@@ -658,12 +883,12 @@ const UndergroundSurvey: React.FC = () => {
 
       {/* Advanced Responsive Pagination */}
       <ResponsivePagination
-          currentPage={page}
-          totalPages={totalPages}
-          onPageChange={setPage}
-          itemsPerPage={data.length}
-          totalItems={data.length}
-        />
+        currentPage={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        itemsPerPage={data.length}
+        totalItems={data.length}
+      />
 
       {/* Edit Modal */}
       {editingRow && (
@@ -723,14 +948,14 @@ const UndergroundSurvey: React.FC = () => {
             </div>
 
             <div className="flex gap-3 mt-6">
-              <button 
-                onClick={handleEditSave} 
+              <button
+                onClick={handleEditSave}
                 className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-green-600 rounded-md hover:bg-green-700 outline-none"
               >
                 Save
               </button>
-              <button 
-                onClick={() => setEditingRow(null)} 
+              <button
+                onClick={() => setEditingRow(null)}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600"
               >
                 Cancel
@@ -740,6 +965,9 @@ const UndergroundSurvey: React.FC = () => {
         </div>
       )}
     </div>
+     )}
+   
+    </>
   );
 };
 
