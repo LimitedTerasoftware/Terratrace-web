@@ -7,9 +7,8 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 interface GpEdit {
-    [key: string]: string;
-  }
-
+  [key: string]: string | File | File[];
+}
 const gpFields: { name: keyof GpEdit; label: string }[] = [
     // { name: "id", label: "ID" },
     // { name: "state_name", label: "State Name" },
@@ -72,7 +71,7 @@ const gpFields: { name: keyof GpEdit; label: string }[] = [
 function gpEdit() {
   const BASEURL = import.meta.env.VITE_API_BASE;
   const { id } = useParams();
-  const [data, setData] = useState<GpEdit | null>(null);
+  const [data, setData] = useState<GpEdit>({});
   const [loading, setLoading] = useState<boolean>(true);
   const [states, setStates] = useState<string[]>([]);
   const [districts, setDistricts] = useState<any[]>([]);  
@@ -140,19 +139,43 @@ function gpEdit() {
     fetchBlocks();
   }, []);
 
+ 
   const handleEditSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!data) return;
+  e.preventDefault();
+  if (!data) return;
 
-    const { state_name, district_name, block_name, gp_name,  ...filteredData } = data;
+  const formData = new FormData();
 
-    try {
-      await axios.put(`${BASEURL}/gp-surveys/${data.id}`, filteredData);
-      alert("Record updated successfully!");
-    } catch (error) {
-      alert("Failed to update record.");
-    }
-  };
+  const skipFields = ["state_name", "district_name", "block_name", "gp_name"];
+
+  for (const key in data) {
+    if (skipFields.includes(key)) continue;
+
+    const value = data[key];
+ if (Array.isArray(value)) {
+    value.forEach((file) => {
+      formData.append(`${key}[]`, file);  
+    });
+    continue;
+  }
+  formData.append(key, value);
+  }
+
+
+  try {
+    const response = await axios.post(`${BASEURL}/gp-surveys/update/${data.id}`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    alert("Record updated successfully!");
+  } catch (error) {
+    console.error("Update error:", error);
+    alert("Failed to update record.");
+  }
+};
+
 
   if (loading) {
     return <div className="text-center py-4">Loading...</div>;
@@ -246,15 +269,33 @@ function gpEdit() {
                 <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
                   {field.label}
                 </label>
+                  {field.name === "gpLayoutPhoto" ? (
+                  <input
+                     type="file"
+                    accept="image/*"
+                    multiple 
+                    onChange={(e) => {
+                      if (!e.target.files) return;
+
+                      const files = Array.from(e.target.files); 
+                      setData({ ...data, gpLayoutPhoto: files }); 
+                    }}
+                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                  />
+                ) : (
                 <input
                   type="text"
                   aria-label={field.label}
-                  value={data[field.name] || ""}
-                  onChange={(e) => setData({ ...data, [field.name]: e.target.value })}
-                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                  value={typeof data[field.name] === "string" ? data[field.name] as string : ""}
+                  onChange={(e) =>
+                    setData((prev) => ({ ...prev, [field.name]: e.target.value }))
+                  }
+                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                   placeholder={field.label}
                 />
+      )}
               </div>
+    
             ))}
         </div>
         <button

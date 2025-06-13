@@ -242,11 +242,11 @@ const areCoordsEqual = (a: number, b: number) => Math.abs(a - b) < 0.00001;
             transform: `rotate(${rotation}deg)`,
             transition: 'transform 0.3s ease'
           }}
-            className="max-h-full max-w-full">
+            className="max-h-full w-full">
             <video
               ref={videoRef}
               src={videoUrl}
-              className="max-h-full max-w-full object-contain"
+              className="max-h-full w-full object-contain"
               onTimeUpdate={handleTimeUpdate}
               onLoadedMetadata={handleLoadedMetadata}
               onPlay={() => setIsPlaying(true)}

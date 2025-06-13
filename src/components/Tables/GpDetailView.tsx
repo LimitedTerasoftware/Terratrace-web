@@ -205,7 +205,7 @@ const GpDetailView = () => {
           <p>
             <strong>Coordinates:</strong> {detail.gpCoordinates}
           </p>
-          {detail.gpLayoutPhoto && (
+          {/* {detail.gpLayoutPhoto && (
               <div className="mt-4">
                 <h3 className="text-md font-semibold mb-2">GP Layout Photo</h3>
                 <div className="w-[250px] h-[200px] overflow-hidden flex items-center justify-center border rounded-lg shadow-lg">
@@ -217,7 +217,41 @@ const GpDetailView = () => {
                 />
                 </div>
               </div>
-            )}
+            )} */}
+
+               {detail.gpLayoutPhoto && (
+                <div className="mt-4">
+                  <h3 className="text-md font-semibold mb-2">GP Layout Photo</h3>
+
+                  {(() => {
+                    let photos: string[] = [];
+
+                    try {
+                      const parsed = JSON.parse(detail.gpLayoutPhoto);
+                      // Check if parsed is an array
+                      photos = Array.isArray(parsed) ? parsed : [parsed];
+                    } catch (err) {
+                      // If not JSON, treat it as single string
+                      photos = [detail.gpLayoutPhoto];
+                    }
+
+                    return photos.map((photoUrl, index) => (
+                      <div
+                        key={index}
+                        className="w-[250px] h-[200px] overflow-hidden flex items-center justify-center border rounded-lg shadow-lg mb-4"
+                      >
+                        <img
+                          src={`${baseUrl}/${photoUrl}`}
+                          alt={`GP Layout Photo ${index + 1}`}
+                          className="w-full h-auto rounded-lg shadow-lg cursor-pointer"
+                          onClick={() => setZoomImage(`${baseUrl}/${photoUrl}`)}
+                        />
+                      </div>
+                    ));
+                  })()}
+                </div>
+              )}
+ 
 
             {detail.gpEntirePhoto && (
               <div className="mt-4">

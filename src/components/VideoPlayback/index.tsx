@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import VideoPlayer from './VideoPlayer';
 import MapView from './MapView';
 import ImageViewer from './ImageViewer';
 import { UnderGroundSurveyData, MapPosition, SegmentSelection } from './types';
 import { extractVideoRecordData, getPositionAtTime } from './dataTransformUtils';
 import { Camera, MapPin, Video, Clock } from 'lucide-react';
+import { useFullscreen } from '../hooks/useFullscreen';
 
 type AppProps = {
   data: UnderGroundSurveyData[];
@@ -36,6 +37,9 @@ function App({ data }: AppProps) {
 
   const BASEURL_Val = import.meta.env.VITE_API_BASE;
   const baseUrl = `${BASEURL_Val}/public/`;
+  const {enterFullscreen, exitFullscreen } = useFullscreen();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setData(data);
@@ -64,6 +68,29 @@ function App({ data }: AppProps) {
       setCurrentPosition(position);
     }
   }, [currentTime, trackPoints]);
+
+    useEffect(() => {
+      // Short delay to ensure the component is fully rendered
+      const timer = setTimeout(() => {
+        if (containerRef.current) {
+          setIsFullscreen(true);
+          enterFullscreen(containerRef.current);
+        }
+      }, 500);
+  
+      return () => clearTimeout(timer);
+    }, [enterFullscreen]);
+
+    useEffect(() => {
+      const handleFullscreenChange = () => {
+        if (!document.fullscreenElement) {
+          setIsFullscreen(false);
+        }
+      };
+      document.addEventListener("fullscreenchange", handleFullscreenChange);
+      return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    }, []);
+
 
     const getImagesBetweenVideos = (currentVideo: UnderGroundSurveyData, nextVideo: UnderGroundSurveyData) => {
     const currentIndex = data.findIndex(item => item.id === currentVideo.id);
@@ -246,10 +273,10 @@ function App({ data }: AppProps) {
     const clearSelection = () => {
     handleSelectionChange({ start: null, end: null });
   };
- 
+
   return (
-    <div className="min-h-screen bg-gray-100 p-4 md:p-6">
-      <div className="max-w-7xl mx-auto">
+    <div  ref={containerRef} className="min-h-screen bg-gray-100">
+      <div className="mx-auto">
         <header className="mb-6 flex justify-between items-center">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-800 flex items-center">
@@ -261,16 +288,37 @@ function App({ data }: AppProps) {
             </p>
           </div>
 
-          <div className="text-gray-600">
-            Video {currentVideoIndex + 1} of {availableVideos.length}
+          <div className="flex flex-col md:flex-row items-end md:items-center gap-2 md:gap-4 ml-auto">
+            <div className="text-gray-600 whitespace-nowrap">
+              Video {currentVideoIndex + 1} of {availableVideos.length}
+            </div>
+
+            <div className="flex gap-2">
+              
+
+              <button
+                onClick={() => setIsVideoListOpen(!isVideoListOpen)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center"
+              >
+                <Video className="mr-2" size={20} />
+                Select Video
+              </button>
+              <button
+                className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded"
+                onClick={() => {
+                  if (isFullscreen) {
+                    exitFullscreen();
+                    setIsFullscreen(false);
+                  } else {
+                    enterFullscreen(containerRef.current);
+                    setIsFullscreen(true);
+                  }
+                }}
+              >
+                {isFullscreen ? 'Exit Full View' : 'Full View'}
+              </button>
+            </div>
           </div>
-          <button
-            onClick={() => setIsVideoListOpen(!isVideoListOpen)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center"
-          >
-            <Video className="mr-2" size={20} />
-            Select Video
-          </button>
         </header>
         {/* Video Selection Panel */}
         {isVideoListOpen && (
@@ -323,9 +371,9 @@ function App({ data }: AppProps) {
           />
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+         <div  className={`w-full grid grid-cols-1 lg:grid-cols-2 gap-0`}>
           {/* Video Player */}
-          <div className="h-[400px] md:h-[500px]">
+          <div className={isFullscreen ? "h-[750px]" : "h-[400px] md:h-[500px]"}>
             <VideoPlayer
               videoUrl={getVideoUrl() ?? ""}
               currentTime={currentTime}
@@ -345,7 +393,7 @@ function App({ data }: AppProps) {
           </div>
 
           {/* Map View */}
-          <div className="h-[400px] md:h-[500px]">
+          <div className={isFullscreen ? "h-[750px]" : "h-[400px] md:h-[500px]"}>
             <MapView
               trackPoints={trackPoints}
               currentPosition={currentPosition}

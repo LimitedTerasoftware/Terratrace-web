@@ -77,7 +77,7 @@ interface MapComponentProps {
 }
 
 const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
- console.log(data)
+
   const [selectedMarker, setSelectedMarker] = useState<UnderGroundSurveyData | null>(null);
   const [selectedEventType, setSelectedEventType] = useState<string>('ALL');
   const [selectedModality, setSelectedModality] = useState<string>('ALL');
@@ -147,7 +147,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
   useEffect(() => {
   if (
     mapRef.current &&
-   (selectedEventType === 'ALL'||selectedEventType === 'LIVELOCATION') &&
+    (selectedEventType === 'ALL'||selectedEventType === 'LIVELOCATION' || selectedEventType === 'VIDEORECORD') &&
     filteredData.length > 1
   ) {
     const livePoints = filteredData
@@ -185,6 +185,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
       polylineRef.current.setMap(null);
       polylineRef.current = null;
     }
+    
   }
 }, [selectedEventType, filteredData]);
 
@@ -242,49 +243,33 @@ const tileLayerUrl = useMemo(() => {
             scrollwheel: true
           }}
         >
-        {(() => {
-            const tolerance = 0.0001;
-            const filteredMarkers: { item: UnderGroundSurveyData; position: { lat: number; lng: number; }; iconUrl: string; }[] = [];
+       {filteredData.map((item) => {
+            const position = {
+              lat: parseFloat(item.latitude),
+              lng: parseFloat(item.longitude),
+            };
+            const mainVideoUrl = item.videoUrl?.trim().replace(/(^"|"$)/g, '');
+            const fallbackVideoUrl = item.videoDetails?.videoUrl?.trim().replace(/(^"|"$)/g, '');
+            const finalUrl = fallbackVideoUrl || mainVideoUrl;
 
-            for (let i = 0; i < filteredData.length; i++) {
-              const item = filteredData[i];
-              const position = {
-                lat: parseFloat(item.latitude),
-                lng: parseFloat(item.longitude),
-              };
-
-              const isTooClose = filteredMarkers.some(m =>
-                Math.abs(m.position.lat - position.lat) < tolerance &&
-                Math.abs(m.position.lng - position.lng) < tolerance
-              );
-
-              if (!isTooClose) {
-                const mainVideoUrl = item.videoUrl?.trim().replace(/(^"|"$)/g, '');
-                const fallbackVideoUrl = item.videoDetails?.videoUrl?.trim().replace(/(^"|"$)/g, '');
-                const finalUrl = fallbackVideoUrl || mainVideoUrl;
-
-                let iconUrl = 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png';
+            let iconUrl = 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png';
                 if (item.event_type === "VIDEORECORD" && finalUrl) {
                   iconUrl = videoIcon;
                 }
-
-                filteredMarkers.push({ item, position, iconUrl });
-              }
-            }
-
-            return filteredMarkers.map(({ item, position, iconUrl }) => (
+              return (
               <Marker
                 key={item.id}
                 position={position}
                 icon={{
                   url: iconUrl,
-                  scaledSize: new window.google.maps.Size(25, 25),
+                     scaledSize: new window.google.maps.Size(25, 25),
                 }}
-                onClick={() => setSelectedMarker(item)}
+                onClick={() => {
+                 setSelectedMarker(item);
+                }}
               />
-            ));
-          })()}
-
+            );
+          })}
           {selectedMarker  && (
             <InfoWindow
               position={{
