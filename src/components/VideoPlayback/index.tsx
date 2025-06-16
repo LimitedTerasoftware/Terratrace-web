@@ -9,9 +9,10 @@ import { useFullscreen } from '../hooks/useFullscreen';
 
 type AppProps = {
   data: UnderGroundSurveyData[];
+  SelectedEvent:UnderGroundSurveyData | null
 };
 
-function App({ data }: AppProps) {
+function App({ data,SelectedEvent}: AppProps) {
   const [datas, setData] = useState<UnderGroundSurveyData[]>([]);
   const [trackPoints, setTrackPoints] = useState<MapPosition[]>([]);
   const [videoData, setVideoData] = useState<UnderGroundSurveyData | null>(null);
@@ -41,7 +42,7 @@ function App({ data }: AppProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+   useEffect(() => {
     setData(data);
     // Filter out video records
     const videos = data.filter(item =>
@@ -52,11 +53,42 @@ function App({ data }: AppProps) {
     );
     setAvailableVideos(videos);
     if (videos.length > 0) {
-      setVideoData(videos[0]);
-      setSelectedVideo(videos[0].id)
+      // setVideoData(videos[0]);
+      //  setSelectedVideo(videos[0].id)
+      let initialVideo = videos[0];
+      let initialIndex = 0;
+        if (SelectedEvent) {
+          const selectedTime = new Date(SelectedEvent.createdTime || SelectedEvent.created_at).getTime();
+          let closestVideo = videos[0];
+          let closestIndex = 0;
+          let minTimeDiff = Math.abs(selectedTime - closestVideo.videoDetails.startTimeStamp);
+
+          videos.forEach((video, index) => {
+            const startTimeDiff = Math.abs(selectedTime - video.videoDetails.startTimeStamp);
+            const endTimeDiff = Math.abs(selectedTime - video.videoDetails.endTimeStamp);
+            const minDiff = Math.min(startTimeDiff, endTimeDiff);
+
+            if (minDiff < minTimeDiff) {
+              minTimeDiff = minDiff;
+              closestVideo = video;
+              closestIndex = index;
+            }
+          });
+
+          initialVideo = closestVideo;
+          initialIndex = closestIndex;
+        }
+     
+      setVideoData(initialVideo);
+      setSelectedVideo(initialVideo.id)
+      setCurrentVideoIndex(initialIndex);
       const { trackPoints } = extractVideoRecordData(data.filter(item => item.survey_id === videos[0].survey_id));
       setTrackPoints(trackPoints);
-      setCurrentTime(videos[0].videoDetails.startTimeStamp);
+       const initialTime = SelectedEvent 
+          ? new Date(SelectedEvent.createdTime || SelectedEvent.created_at).getTime()
+          : initialVideo.videoDetails.startTimeStamp;
+      setCurrentTime(initialTime);
+      // setCurrentTime(videos[0].videoDetails.startTimeStamp);
 
     }
   }, []);
@@ -256,7 +288,7 @@ function App({ data }: AppProps) {
   };
 
 
-    const handleImageViewerClose = () => {
+  const handleImageViewerClose = () => {
     setShowImageViewer(false);
     setTransitionImages([]);
     
@@ -270,7 +302,7 @@ function App({ data }: AppProps) {
     }
   };
    
-    const clearSelection = () => {
+  const clearSelection = () => {
     handleSelectionChange({ start: null, end: null });
   };
 

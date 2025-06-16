@@ -129,7 +129,7 @@ const GroundDetailView: React.FC = () => {
   const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'map' | 'video'>('details');
   const [searchTerm, setSearchTerm] = useState("");
-
+  const [SelectedItem,setSelectedItem] = useState<any | null>(null);
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -653,7 +653,10 @@ const GroundDetailView: React.FC = () => {
 
   };
 
-
+const handleTabChange = (item:any) =>{
+ setActiveTab('video')
+ setSelectedItem(item)
+}
 
   return (
     <>
@@ -842,13 +845,13 @@ const GroundDetailView: React.FC = () => {
         {activeTab === 'map' && (
           <div className="h-[600px] p-4">
             {/* Map goes here */}
-            <MapComponent data={data?.under_ground_survey_data || []} />
+            <MapComponent data={data?.under_ground_survey_data || []}  OnTabChange={handleTabChange} />
           </div>
         )}
         {activeTab === 'video' && (
           <div className="h-[600px] p-4">
             {/* Map goes here */}
-            <App data={data?.under_ground_survey_data || []} />
+            <App data={data?.under_ground_survey_data || []} SelectedEvent={SelectedItem}/>
           </div>
         )}
       </div>

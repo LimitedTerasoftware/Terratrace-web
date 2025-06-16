@@ -1,6 +1,6 @@
 import React, { useState, useRef ,useEffect,useMemo} from 'react';
 import { GoogleMap, Marker, Polyline, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
-import { MapPin, Map as MapIcon, SlidersHorizontal } from 'lucide-react';
+import { MapPin, Map as MapIcon, SlidersHorizontal, Video, Play } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useFullscreen } from '../hooks/useFullscreen';
@@ -74,9 +74,10 @@ const baseUrl = `${BASEURL_Val}/public/`;
 
 interface MapComponentProps {
   data: UnderGroundSurveyData[];
+  OnTabChange?:(selectedItem:UnderGroundSurveyData)=>void | undefined;
 }
 
-const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
+const MapComponent: React.FC<MapComponentProps> = ({ data,OnTabChange}) => {
 
   const [selectedMarker, setSelectedMarker] = useState<UnderGroundSurveyData | null>(null);
   const [selectedEventType, setSelectedEventType] = useState<string>('ALL');
@@ -90,6 +91,11 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
   const [CrossingType, setCrossingType] = useState('All');
   const [zoomImage, setZoomImage] = useState<string | null>(null);
   const polylineRef = useRef<google.maps.Polyline | null>(null);
+   const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    item: UnderGroundSurveyData;
+  } | null>(null);
   const eventTypes = useMemo<string[]>(() => ['ALL', ...new Set(data.map(d => d.event_type))], [data]);
   const modalities = useMemo<string[]>(() => ['ALL', ...new Set(data.map(d => d.execution_modality))], [data]);
   const filteredData = useMemo<UnderGroundSurveyData[]>(() => {
@@ -131,7 +137,48 @@ const MapComponent: React.FC<MapComponentProps> = ({ data }) => {
 
     return counts;
   }, [data]);
+
+  const handleMarkerRightClick = (event:google.maps.MapMouseEvent,item:UnderGroundSurveyData)=>{
+       if(item.event_type === 'LIVELOCATION') return;
+         const hasImages = item.fpoiUrl || 
+                     item.start_photos?.length > 0 || 
+                     item.end_photos?.length > 0 || 
+                     item.routeIndicatorUrl || 
+                     item.jointChamberUrl || 
+                     item.road_crossing?.startPhoto || 
+                     item.road_crossing?.endPhoto ||
+                     item.kmtStoneUrl ||
+                     item.landMarkUrls ||
+                     item.fiberTurnUrl;
+
+                      if (!hasImages) return;
+                     if (event.domEvent) {
+                          event.domEvent.preventDefault();
+                          const mouseEvent = event.domEvent as MouseEvent;
+                          setContextMenu({
+                            x: mouseEvent.clientX,
+                            y: mouseEvent.clientY,
+                            item: item
+                          });
+                        }
+}
+
+const handlePlayVideoFromImage =(selectedItem:UnderGroundSurveyData)=>{
+    OnTabChange?.(selectedItem);
+    setContextMenu(null);
+  }
   
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setContextMenu(null);
+    };
+
+    if (contextMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [contextMenu]);
+
   useEffect(() => {
     // Short delay to ensure the component is fully rendered
     const timer = setTimeout(() => {
@@ -267,6 +314,9 @@ const tileLayerUrl = useMemo(() => {
                 onClick={() => {
                  setSelectedMarker(item);
                 }}
+                onRightClick={(event)=>
+                 handleMarkerRightClick(event, item) 
+                }
               />
             );
           })}
@@ -493,13 +543,50 @@ const tileLayerUrl = useMemo(() => {
                     ) : (
                       <p>No image available</p>
                     )}
-
+                 {selectedMarker.event_type !== 'LIVELOCATION' && (
+                  selectedMarker.fpoiUrl || 
+                  selectedMarker.start_photos?.length > 0 || 
+                  selectedMarker.end_photos?.length > 0 || 
+                  selectedMarker.routeIndicatorUrl || 
+                  selectedMarker.jointChamberUrl || 
+                  selectedMarker.road_crossing?.startPhoto || 
+                  selectedMarker.road_crossing?.endPhoto ||
+                  selectedMarker.kmtStoneUrl ||
+                  selectedMarker.landMarkUrls ||
+                  selectedMarker.fiberTurnUrl
+                ) && (
+                  <div className="mt-3 pt-2 border-t">
+                  <button
+                      onClick={() => handlePlayVideoFromImage(selectedMarker)}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded flex items-center justify-center text-sm"
+                    >
+                      <Video className="w-4 h-4 mr-2" />
+                      Play Video from Here
+                    </button>
+                  </div>
+                )}
               </div>
             </InfoWindow>
           )}
 
         </GoogleMap>
-
+        {contextMenu && (
+          <div
+            className="fixed bg-white border border-gray-300 rounded-lg shadow-lg py-2 z-50"
+            style={{
+              left: `${contextMenu.x}px`,
+              top: `${contextMenu.y}px`,
+            }}
+          >
+            <button
+              onClick={() => handlePlayVideoFromImage(contextMenu.item)}
+              className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center text-sm"
+            >
+              <Play className="w-4 h-4 mr-2 text-blue-600" />
+              Play Video from Image
+            </button>
+          </div>
+        )}
      </div>
       {zoomImage && (
         <div
@@ -513,10 +600,8 @@ const tileLayerUrl = useMemo(() => {
           />
         </div>
       )}
-  
       {/* Right side: Filters and Controls */}
       <div className={`${sidebarWidth} bg-gray-100 p-4 overflow-y-auto`}>
-
         <div className="mb-4 flex space-x-2 items-center">
           <div>
             <button
