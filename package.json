@@ -20,6 +20,7 @@
     "@emotion/styled": "^11.14.0",
     "@react-google-maps/api": "^2.20.6",
     "@tanstack/react-table": "^8.20.6",
+    "@tmcw/togeojson": "^7.1.2",
     "apexcharts": "^4.4.0",
     "axios": "^1.7.9",
     "flatpickr": "^4.6.13",

@@ -9,7 +9,7 @@ import * as XLSX from "xlsx";
 import ResponsivePagination from "./ResponsivePagination";
 import App from "../VideoPlayback/index";
 import DataTable from "react-data-table-component";
-import {hasViewOnlyAccess } from "../../utils/accessControl";
+import { hasViewOnlyAccess } from "../../utils/accessControl";
 
 
 interface PatrollerDetails {
@@ -86,19 +86,19 @@ interface UnderGroundSurveyData {
   accuracy: string;
   depth: string;
   distance_error: string;
-  kmtStoneUrl:string;
-  landMarkUrls:string;
-  fiberTurnUrl:string;
-  landMarkType:string;
+  kmtStoneUrl: string;
+  landMarkUrls: string;
+  fiberTurnUrl: string;
+  landMarkType: string;
 
 }
-interface StartGp{
+interface StartGp {
   name: string,
   blk_name: string,
   dt_name: string,
   st_name: string,
 }
-interface EndGp{
+interface EndGp {
   name: string,
 }
 interface GroundSurvey {
@@ -109,8 +109,8 @@ interface GroundSurvey {
   district_id: string;
   state_id: string;
   under_ground_survey_data: UnderGroundSurveyData[];
-  start_gp:StartGp,
-  end_gp:EndGp
+  start_gp: StartGp,
+  end_gp: EndGp
 }
 interface Props {
   paginatedData: GroundSurvey[];
@@ -129,7 +129,7 @@ const GroundDetailView: React.FC = () => {
   const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'map' | 'video'>('details');
   const [searchTerm, setSearchTerm] = useState("");
-  const [SelectedItem,setSelectedItem] = useState<any | null>(null);
+  const [SelectedItem, setSelectedItem] = useState<any | null>(null);
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -144,6 +144,7 @@ const GroundDetailView: React.FC = () => {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
+  
   const filteredData = [
     ...new Map(
       data?.under_ground_survey_data
@@ -230,21 +231,21 @@ const GroundDetailView: React.FC = () => {
               KmStone_URL<br />
             </span>
           )}
-         {row.event_type === "LANDMARK" &&
-          row.landMarkUrls &&
-          row.landMarkType !== "NONE" && (
-            JSON.parse(row.landMarkUrls)
-              .filter((url: string) => url) 
-              .map((url: string, index: number) => (
-                <span
-                  key={index}
-                  className="underline cursor-pointer block"
-                  onClick={() => setZoomImage(`${baseUrl}${url}`)}
-                >
-                  Landmark_URL {index + 1}
-                </span>
-              ))
-          )}
+          {row.event_type === "LANDMARK" &&
+            row.landMarkUrls &&
+            row.landMarkType !== "NONE" && (
+              JSON.parse(row.landMarkUrls)
+                .filter((url: string) => url)
+                .map((url: string, index: number) => (
+                  <span
+                    key={index}
+                    className="underline cursor-pointer block"
+                    onClick={() => setZoomImage(`${baseUrl}${url}`)}
+                  >
+                    Landmark_URL {index + 1}
+                  </span>
+                ))
+            )}
 
           {row.event_type === "FIBERTURN" && row.fiberTurnUrl && (
             <span className="underline cursor-pointer" onClick={() => setZoomImage(`${baseUrl}${row.fiberTurnUrl}`)}>
@@ -336,6 +337,7 @@ const GroundDetailView: React.FC = () => {
         new Date(row.createdTime || row.created_at || "").toLocaleString(),
     },
   ];
+
   const customStyles = {
     headRow: {
       style: {
@@ -414,7 +416,7 @@ const GroundDetailView: React.FC = () => {
   if (loading) return <div className="text-center py-10">Loading...</div>;
   if (error) return <div className="text-red-500 text-center py-10">{error}</div>;
   const viewOnly = hasViewOnlyAccess();
-  
+
 
   const hasPatrollerData = data?.under_ground_survey_data.some(
     (survey) =>
@@ -456,26 +458,26 @@ const GroundDetailView: React.FC = () => {
   );
 
   const exportExcel = async () => {
-      const filteredData = [
-    ...new Map(
-      data?.under_ground_survey_data
-        ?.filter(survey =>
-          survey?.surveyUploaded === "true" &&
-          Object.values(survey).some(val =>
-            typeof val === 'string' && val.toLowerCase().includes(searchTerm.toLowerCase())
+    const filteredData = [
+      ...new Map(
+        data?.under_ground_survey_data
+          ?.filter(survey =>
+            survey?.surveyUploaded === "true" &&
+            Object.values(survey).some(val =>
+              typeof val === 'string' && val.toLowerCase().includes(searchTerm.toLowerCase())
+            )
           )
-        )
-        .map(survey => [`${survey.latitude}-${survey.longitude}-${survey.event_type}`, survey])
-    ).values()
-  ];
+          .map(survey => [`${survey.latitude}-${survey.longitude}-${survey.event_type}`, survey])
+      ).values()
+    ];
     const AllData = filteredData || [];
     const MainData = data;
     const rows = AllData.map((data) => ({
       // Basic Info
       id: data.id,
-      blk_name: MainData?.start_gp?.blk_name|| '',
+      blk_name: MainData?.start_gp?.blk_name || '',
       dt_name: MainData?.start_gp?.dt_name || '',
-      st_name: MainData?.start_gp?.st_name|| '',
+      st_name: MainData?.start_gp?.st_name || '',
       startGp: MainData?.start_gp?.name || '',
       endGp: MainData?.end_gp?.name || '',
       survey_id: data.survey_id,
@@ -497,10 +499,10 @@ const GroundDetailView: React.FC = () => {
       // Road Crossing Info
       crossing_Type: data.road_crossing?.roadCrossing || '',
       crossing_length: data.road_crossing?.length || '',
-      crossing_startPhoto_URL:(data.event_type === "ROADCROSSING" && data.road_crossing?.startPhoto) && `${baseUrl}${data.road_crossing?.startPhoto}`|| '',
+      crossing_startPhoto_URL: (data.event_type === "ROADCROSSING" && data.road_crossing?.startPhoto) && `${baseUrl}${data.road_crossing?.startPhoto}` || '',
       crossing_startphoto_Lat: data.road_crossing?.startPhotoLat || '',
       crossing_startphoto_Long: data.road_crossing?.startPhotoLong || '',
-      crossing_endPhoto_URL:(data.event_type === "ROADCROSSING" && data.road_crossing?.endPhoto) && `${baseUrl}${data.road_crossing?.endPhoto}` || '',
+      crossing_endPhoto_URL: (data.event_type === "ROADCROSSING" && data.road_crossing?.endPhoto) && `${baseUrl}${data.road_crossing?.endPhoto}` || '',
       crossing_endphoto_Lat: data.road_crossing?.endPhotoLat || '',
       crossing_endphoto_Long: data.road_crossing?.endPhotoLong || '',
 
@@ -518,7 +520,7 @@ const GroundDetailView: React.FC = () => {
 
       // Side and Indicator
       side_type: data.side_type,
-      routeIndicatorUrl:(data.event_type === "ROUTEINDICATOR" && data.routeIndicatorUrl) && `${baseUrl}${data.routeIndicatorUrl}` || '',
+      routeIndicatorUrl: (data.event_type === "ROUTEINDICATOR" && data.routeIndicatorUrl) && `${baseUrl}${data.routeIndicatorUrl}` || '',
 
       // Start/End Photos
       Survey_Start_Photo: data.event_type === "SURVEYSTART" && `${baseUrl}${data.start_photos?.[0]}` || '',
@@ -529,7 +531,7 @@ const GroundDetailView: React.FC = () => {
       selectedGroundFeatures: (data.utility_features_checked?.selectedGroundFeatures || []).join(', '),
 
       // Video Details
-      videoUrl: (data.event_type === "VIDEORECORD" && data.videoDetails?.videoUrl?.trim().replace(/^"|"$/g, "") ) && `${baseUrl}${data.videoDetails?.videoUrl}` || '',
+      videoUrl: (data.event_type === "VIDEORECORD" && data.videoDetails?.videoUrl?.trim().replace(/^"|"$/g, "")) && `${baseUrl}${data.videoDetails?.videoUrl}` || '',
       video_startLatitude: data.videoDetails?.startLatitude || '',
       video_startLongitude: data.videoDetails?.startLongitude || '',
       video_startTimeStamp: data.videoDetails?.startTimeStamp || '',
@@ -539,15 +541,15 @@ const GroundDetailView: React.FC = () => {
 
       // Joint Chamber and fpoi
       jointChamberUrl: (data.event_type === "JOINTCHAMBER" && data.jointChamberUrl) && `${baseUrl}${data.jointChamberUrl}` || '',
-      fpoiUrl: (data.event_type === "FPOI" && data.fpoiUrl) &&  `${baseUrl}${data.fpoiUrl}` || '',
-      kmtStoneUrl: (data.event_type === "KILOMETERSTONE" && data.kmtStoneUrl) &&  `${baseUrl}${data.kmtStoneUrl}` || '',
-      landMarkType:data.landMarkType,
-      LANDMARK: (data.event_type === "LANDMARK" && data.landMarkUrls && data.landMarkType !== 'NONE') &&  `${baseUrl}${JSON.parse(data.landMarkUrls)
-              .filter((url: string) => url) 
-              .map((url: string) => (
-              `${baseUrl}${url}`
-              ))}` || '',
-      FIBERTURN: (data.event_type === "FIBERTURN" && data.fiberTurnUrl) &&  `${baseUrl}${data.fiberTurnUrl}` || '',
+      fpoiUrl: (data.event_type === "FPOI" && data.fpoiUrl) && `${baseUrl}${data.fpoiUrl}` || '',
+      kmtStoneUrl: (data.event_type === "KILOMETERSTONE" && data.kmtStoneUrl) && `${baseUrl}${data.kmtStoneUrl}` || '',
+      landMarkType: data.landMarkType,
+      LANDMARK: (data.event_type === "LANDMARK" && data.landMarkUrls && data.landMarkType !== 'NONE') && `${baseUrl}${JSON.parse(data.landMarkUrls)
+        .filter((url: string) => url)
+        .map((url: string) => (
+          `${baseUrl}${url}`
+        ))}` || '',
+      FIBERTURN: (data.event_type === "FIBERTURN" && data.fiberTurnUrl) && `${baseUrl}${data.fiberTurnUrl}` || '',
 
       // Patroller Details
       patroller_company: data.patroller_details?.companyName || '',
@@ -643,20 +645,16 @@ const GroundDetailView: React.FC = () => {
         // Timestamps
         "Created Time",
         "Created At",
-
-
       ]
     ], { origin: "A1" });
-
     XLSX.writeFile(workbook, `UnderGround Survey_${AllData[0].survey_id}.xlsx`, { compression: true });
-
-
+  
   };
 
-const handleTabChange = (item:any) =>{
- setActiveTab('video')
- setSelectedItem(item)
-}
+  const handleTabChange = (item: any) => {
+    setActiveTab('video')
+    setSelectedItem(item)
+  }
 
   return (
     <>
@@ -689,11 +687,10 @@ const handleTabChange = (item:any) =>{
             <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
               <li className="mr-2">
                 <button
-                  className={`inline-block p-4 rounded-t-lg outline-none ${
-                    activeTab === 'details'
+                  className={`inline-block p-4 rounded-t-lg outline-none ${activeTab === 'details'
                       ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
                       : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
-                  }`}
+                    }`}
                   onClick={() => setActiveTab('details')}
                 >
                   Details View
@@ -701,11 +698,10 @@ const handleTabChange = (item:any) =>{
               </li>
               <li className="mr-2">
                 <button
-                  className={`inline-block p-4 rounded-t-lg outline-none ${
-                    activeTab === 'map'
+                  className={`inline-block p-4 rounded-t-lg outline-none ${activeTab === 'map'
                       ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
                       : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
-                  }`}
+                    }`}
                   onClick={() => setActiveTab('map')}
                 >
                   Map View
@@ -713,11 +709,10 @@ const handleTabChange = (item:any) =>{
               </li>
               <li className="mr-2">
                 <button
-                  className={`inline-block p-4 rounded-t-lg outline-none ${
-                    activeTab === 'video'
+                  className={`inline-block p-4 rounded-t-lg outline-none ${activeTab === 'video'
                       ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
                       : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
-                  }`}
+                    }`}
                   onClick={() => setActiveTab('video')}
                 >
                   Video Details
@@ -803,55 +798,55 @@ const handleTabChange = (item:any) =>{
 
             {/* Action Buttons */}
             {!viewOnly && (
-            <div className="mt-6 flex gap-4 justify-center">
-              <button
-                className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded"
-                onClick={() => {
-                  toast.success("Coming Soon this page!");
-                }}
-              >
-                Edit
-              </button>
+              <div className="mt-6 flex gap-4 justify-center">
+                <button
+                  className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded"
+                  onClick={() => {
+                    toast.success("Coming Soon this page!");
+                  }}
+                >
+                  Edit
+                </button>
 
-              <button
-                className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded"
-                onClick={() => {
-                  handleAccept();
-                }}
-              >
-                Accept
-              </button>
-              <button
-                className="bg-yellow-500 hover:bg-red-600 text-white py-2 px-4 rounded"
-                onClick={() => {
-                  handleReject();
-                }}
-              >
-                Reject
-              </button>
-              <button
-                className="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded"
-                onClick={() => {
-                  handleDelete();
-                }}
-              >
-                Delete
-              </button>
-            </div>
-             )}
+                <button
+                  className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded"
+                  onClick={() => {
+                    handleAccept();
+                  }}
+                >
+                  Accept
+                </button>
+                <button
+                  className="bg-yellow-500 hover:bg-red-600 text-white py-2 px-4 rounded"
+                  onClick={() => {
+                    handleReject();
+                  }}
+                >
+                  Reject
+                </button>
+                <button
+                  className="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded"
+                  onClick={() => {
+                    handleDelete();
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
+            )}
           </div>
         )}
 
         {activeTab === 'map' && (
           <div className="h-[600px] p-4">
             {/* Map goes here */}
-            <MapComponent data={data?.under_ground_survey_data || []}  OnTabChange={handleTabChange} />
+            <MapComponent data={data?.under_ground_survey_data || []} OnTabChange={handleTabChange} />
           </div>
         )}
         {activeTab === 'video' && (
           <div className="h-[600px] p-4">
             {/* Map goes here */}
-            <App data={data?.under_ground_survey_data || []} SelectedEvent={SelectedItem}/>
+            <App data={data?.under_ground_survey_data || []} SelectedEvent={SelectedItem} />
           </div>
         )}
       </div>

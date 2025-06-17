@@ -96,24 +96,62 @@ const MapComponent: React.FC<MapComponentProps> = ({ data,OnTabChange}) => {
     y: number;
     item: UnderGroundSurveyData;
   } | null>(null);
-  const eventTypes = useMemo<string[]>(() => ['ALL', ...new Set(data.map(d => d.event_type))], [data]);
+  const eventTypes = useMemo<string[]>(() => ['ALL','MEDIA-FILES', ...new Set(data.map(d => d.event_type))], [data]);
   const modalities = useMemo<string[]>(() => ['ALL', ...new Set(data.map(d => d.execution_modality))], [data]);
-  const filteredData = useMemo<UnderGroundSurveyData[]>(() => {
+//   const filteredData = useMemo<UnderGroundSurveyData[]>(() => {
+//   const seen = new Set<string>();
+//   return data
+//     .filter(item =>
+//       (selectedEventType === 'ALL' || item.event_type === selectedEventType) &&
+//       (selectedEventType === 'Media-Files' ? item.event_type !== 'LIVELOCATION' : '') &&
+//       (selectedModality === 'ALL' || item.execution_modality === selectedModality) &&
+//       (CrossingType === 'All' || item.road_crossing?.roadCrossing === CrossingType) &&
+//        item?.surveyUploaded === "true" 
+//     )
+//     .filter(item => {
+//       const key = `${item.latitude}-${item.longitude}-${item.event_type}`;
+//       if (seen.has(key)) return false;
+//       seen.add(key);
+//       return true;
+//     });
+// }, [data, selectedEventType, selectedModality, CrossingType]);
+const filteredData = useMemo<UnderGroundSurveyData[]>(() => {
   const seen = new Set<string>();
+
   return data
-    .filter(item =>
-      (selectedEventType === 'ALL' || item.event_type === selectedEventType) &&
-      (selectedModality === 'ALL' || item.execution_modality === selectedModality) &&
-      (CrossingType === 'All' || item.road_crossing?.roadCrossing === CrossingType) &&
-       item?.surveyUploaded === "true" 
-    )
     .filter(item => {
-      const key = `${item.latitude}-${item.longitude}-${item.event_type}`;
-      if (seen.has(key)) return false;
+      const isEventTypeMatch =
+        selectedEventType === 'ALL' ||
+        (selectedEventType === 'MEDIA-FILES'
+          ? item.event_type !== 'LIVELOCATION' &&  item.event_type !== 'ROUTEFEASIBILITY' && item.event_type !== 'AREA' 
+          && item.event_type !== 'SIDE'  && item.event_type !== 'ROUTEDETAILS'
+          : item.event_type === selectedEventType);
+
+      const isModalityMatch =
+        selectedModality === 'ALL' || item.execution_modality === selectedModality;
+
+      const isCrossingTypeMatch =
+        CrossingType === 'All' || item.road_crossing?.roadCrossing === CrossingType;
+
+      const isUploaded = item?.surveyUploaded === 'true';
+
+      return isEventTypeMatch && isModalityMatch && isCrossingTypeMatch && isUploaded;
+    })
+    .filter(item => {
+      // const key = `${item.latitude}-${item.longitude}-${item.event_type}`;
+      // if (seen.has(key)) return false;
+       const lat = Number(item.latitude)?.toFixed(4);
+      const lng = Number(item.longitude)?.toFixed(4);
+      const key = `${lat}-${lng}-${item.event_type}`;
+
+      if (item.event_type === 'LIVELOCATION') {
+        if (seen.has(`${lat}-${lng}-LIVELOCATION`)) return false;
+      }
       seen.add(key);
       return true;
     });
 }, [data, selectedEventType, selectedModality, CrossingType]);
+
 
   const crossingCounts = useMemo(() => {
     const counts: Record<string, number> = {
@@ -194,7 +232,7 @@ const handlePlayVideoFromImage =(selectedItem:UnderGroundSurveyData)=>{
   useEffect(() => {
   if (
     mapRef.current &&
-    (selectedEventType === 'ALL'||selectedEventType === 'LIVELOCATION' || selectedEventType === 'VIDEORECORD') &&
+    (selectedEventType === 'ALL'||selectedEventType === 'LIVELOCATION' || selectedEventType === 'VIDEORECORD' || selectedEventType === 'MEDIA-FILES') &&
     filteredData.length > 1
   ) {
     const livePoints = filteredData

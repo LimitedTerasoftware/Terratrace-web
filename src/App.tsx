@@ -36,6 +36,7 @@ import CompaniesTable from './components/Tables/CompaniesTable';
 import HotoDetailView from './components/Tables/HotoDetailView';
 import HotoEdit from './components/Tables/HotoEdit';
 import FileUpload from "./components/Uploads/KmlManager";
+import KMLUpload from './components/KMLUpload/index';
 import KmlTable from "./components/Uploads/DataTable";
 import RoutePlanning from './components/RoutePlanning/index';
 
@@ -500,6 +501,12 @@ function App() {
                 </>
               }
             />
+            <Route path='/gp-points-filter' element={<>
+                <DefaultLayout>
+                  <PageTitle title="Filter GP Points" />
+                  <KMLUpload />
+                </DefaultLayout>
+            </>}/>
           </Routes>
           
       )}

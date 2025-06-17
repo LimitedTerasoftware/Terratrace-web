@@ -9,10 +9,10 @@ import { useFullscreen } from '../hooks/useFullscreen';
 
 type AppProps = {
   data: UnderGroundSurveyData[];
-  SelectedEvent:UnderGroundSurveyData | null
+  SelectedEvent: UnderGroundSurveyData | null
 };
 
-function App({ data,SelectedEvent}: AppProps) {
+function App({ data, SelectedEvent }: AppProps) {
   const [datas, setData] = useState<UnderGroundSurveyData[]>([]);
   const [trackPoints, setTrackPoints] = useState<MapPosition[]>([]);
   const [videoData, setVideoData] = useState<UnderGroundSurveyData | null>(null);
@@ -38,11 +38,11 @@ function App({ data,SelectedEvent}: AppProps) {
 
   const BASEURL_Val = import.meta.env.VITE_API_BASE;
   const baseUrl = `${BASEURL_Val}/public/`;
-  const {enterFullscreen, exitFullscreen } = useFullscreen();
+  const { enterFullscreen, exitFullscreen } = useFullscreen();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-   useEffect(() => {
+  useEffect(() => {
     setData(data);
     // Filter out video records
     const videos = data.filter(item =>
@@ -57,36 +57,36 @@ function App({ data,SelectedEvent}: AppProps) {
       //  setSelectedVideo(videos[0].id)
       let initialVideo = videos[0];
       let initialIndex = 0;
-        if (SelectedEvent) {
-          const selectedTime = new Date(SelectedEvent.createdTime || SelectedEvent.created_at).getTime();
-          let closestVideo = videos[0];
-          let closestIndex = 0;
-          let minTimeDiff = Math.abs(selectedTime - closestVideo.videoDetails.startTimeStamp);
+      if (SelectedEvent) {
+        const selectedTime = new Date(SelectedEvent.createdTime || SelectedEvent.created_at).getTime();
+        let closestVideo = videos[0];
+        let closestIndex = 0;
+        let minTimeDiff = Math.abs(selectedTime - closestVideo.videoDetails.startTimeStamp);
 
-          videos.forEach((video, index) => {
-            const startTimeDiff = Math.abs(selectedTime - video.videoDetails.startTimeStamp);
-            const endTimeDiff = Math.abs(selectedTime - video.videoDetails.endTimeStamp);
-            const minDiff = Math.min(startTimeDiff, endTimeDiff);
+        videos.forEach((video, index) => {
+          const startTimeDiff = Math.abs(selectedTime - video.videoDetails.startTimeStamp);
+          const endTimeDiff = Math.abs(selectedTime - video.videoDetails.endTimeStamp);
+          const minDiff = Math.min(startTimeDiff, endTimeDiff);
 
-            if (minDiff < minTimeDiff) {
-              minTimeDiff = minDiff;
-              closestVideo = video;
-              closestIndex = index;
-            }
-          });
+          if (minDiff < minTimeDiff) {
+            minTimeDiff = minDiff;
+            closestVideo = video;
+            closestIndex = index;
+          }
+        });
 
-          initialVideo = closestVideo;
-          initialIndex = closestIndex;
-        }
-     
+        initialVideo = closestVideo;
+        initialIndex = closestIndex;
+      }
+
       setVideoData(initialVideo);
       setSelectedVideo(initialVideo.id)
       setCurrentVideoIndex(initialIndex);
       const { trackPoints } = extractVideoRecordData(data.filter(item => item.survey_id === videos[0].survey_id));
       setTrackPoints(trackPoints);
-       const initialTime = SelectedEvent 
-          ? new Date(SelectedEvent.createdTime || SelectedEvent.created_at).getTime()
-          : initialVideo.videoDetails.startTimeStamp;
+      const initialTime = SelectedEvent
+        ? new Date(SelectedEvent.createdTime || SelectedEvent.created_at).getTime()
+        : initialVideo.videoDetails.startTimeStamp;
       setCurrentTime(initialTime);
       // setCurrentTime(videos[0].videoDetails.startTimeStamp);
 
@@ -101,46 +101,47 @@ function App({ data,SelectedEvent}: AppProps) {
     }
   }, [currentTime, trackPoints]);
 
-    useEffect(() => {
-      // Short delay to ensure the component is fully rendered
-      const timer = setTimeout(() => {
-        if (containerRef.current) {
-          setIsFullscreen(true);
-          enterFullscreen(containerRef.current);
-        }
-      }, 500);
-  
-      return () => clearTimeout(timer);
-    }, [enterFullscreen]);
+  useEffect(() => {
+    // Short delay to ensure the component is fully rendered
+    const timer = setTimeout(() => {
+      if (containerRef.current) {
+        setIsFullscreen(true);
+        enterFullscreen(containerRef.current);
+      }
+    }, 500);
 
-    useEffect(() => {
-      const handleFullscreenChange = () => {
-        if (!document.fullscreenElement) {
-          setIsFullscreen(false);
-        }
-      };
-      document.addEventListener("fullscreenchange", handleFullscreenChange);
-      return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
-    }, []);
+    return () => clearTimeout(timer);
+  }, [enterFullscreen]);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        setIsFullscreen(false);
+      }
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+
+  }, []);
 
 
-    const getImagesBetweenVideos = (currentVideo: UnderGroundSurveyData, nextVideo: UnderGroundSurveyData) => {
+  const getImagesBetweenVideos = (currentVideo: UnderGroundSurveyData, nextVideo: UnderGroundSurveyData) => {
     const currentIndex = data.findIndex(item => item.id === currentVideo.id);
     const nextIndex = data.findIndex(item => item.id === nextVideo.id);
-    
+
     if (currentIndex === -1 || nextIndex === -1) return [];
     const startIndex = Math.min(currentIndex, nextIndex) + 1;
     const endIndex = Math.max(currentIndex, nextIndex);
 
     const imageUrls: string[] = [];
-    
+
     // Look at records between the two videos
     for (let i = startIndex + 1; i < endIndex; i++) {
       const item = data[i];
       // Collect all possible image URLs
       if (item.fpoiUrl && item.surveyUploaded === 'true' && item.event_type === "FPOI") imageUrls.push(item.fpoiUrl);
       if (item.kmtStoneUrl && item.surveyUploaded === 'true' && item.event_type === "KILOMETERSTONE") imageUrls.push(item.kmtStoneUrl);
-      if (item.landMarkUrls && item.surveyUploaded === 'true' && item.event_type === "LANDMARK" && item.landMarkType !== "NONE" ) imageUrls.push(...JSON.parse(item.landMarkUrls));
+      if (item.landMarkUrls && item.surveyUploaded === 'true' && item.event_type === "LANDMARK" && item.landMarkType !== "NONE") imageUrls.push(...JSON.parse(item.landMarkUrls));
       if (item.fiberTurnUrl && item.surveyUploaded === 'true' && item.event_type === "FIBERTURN") imageUrls.push(item.fiberTurnUrl);
       if (item.start_photos && item.surveyUploaded === 'true' && item.start_photos.length > 0 && item.event_type === "SURVEYSTART") imageUrls.push(...item.start_photos);
       if (item.end_photos && item.surveyUploaded === 'true' && item.end_photos.length > 0 && item.event_type === "ENDSURVEY") imageUrls.push(...item.end_photos);
@@ -196,23 +197,20 @@ function App({ data,SelectedEvent}: AppProps) {
       if (startVideoIndex !== -1 && startVideoIndex !== currentVideoIndex) {
         handleVideoSelect(availableVideos[startVideoIndex]);
       }
-
       setCurrentTime(newSelection.start.timestamp);
       setIsPlayingSegment(true);
     }
   };
-
- 
 
   // Handle next video
   const handleNextVideo = () => {
     if (currentVideoIndex < availableVideos.length - 1) {
       const nextIndex = currentVideoIndex + 1;
       const nextVideo = availableVideos[nextIndex];
-      
+
       // Get images between current and next video
       const images = getImagesBetweenVideos(availableVideos[currentVideoIndex], nextVideo);
-      
+
       if (images.length > 0) {
         setTransitionImages(images);
         setShowImageViewer(true);
@@ -238,7 +236,6 @@ function App({ data,SelectedEvent}: AppProps) {
       data.filter(item => item.survey_id === nextVideo.survey_id)
     );
     setTrackPoints(newTrackPoints);
-    
     // If playing a segment, start from beginning of next video
     if (isPlayingSegment) {
       setCurrentTime(nextVideo.videoDetails.startTimeStamp);
@@ -248,20 +245,17 @@ function App({ data,SelectedEvent}: AppProps) {
     }
   };
 
-
-
-   const handlePreviousVideo = () => {
+  const handlePreviousVideo = () => {
     if (currentVideoIndex > 0) {
       const prevIndex = currentVideoIndex - 1;
       const prevVideo = availableVideos[prevIndex];
-      
       // Get images between previous and current video
       const images = getImagesBetweenVideos(prevVideo, availableVideos[currentVideoIndex]);
-      
+
       if (images.length > 0) {
         setTransitionImages(images);
         setShowImageViewer(true);
-         setPendingTransition({
+        setPendingTransition({
           type: 'previous',
           index: prevIndex,
           video: prevVideo
@@ -291,7 +285,6 @@ function App({ data,SelectedEvent}: AppProps) {
   const handleImageViewerClose = () => {
     setShowImageViewer(false);
     setTransitionImages([]);
-    
     if (pendingTransition) {
       if (pendingTransition.type === 'next') {
         completeVideoTransition(pendingTransition.index, pendingTransition.video);
@@ -301,22 +294,22 @@ function App({ data,SelectedEvent}: AppProps) {
       setPendingTransition(null);
     }
   };
-   
+
   const clearSelection = () => {
     handleSelectionChange({ start: null, end: null });
   };
 
   return (
-    <div  ref={containerRef} className="min-h-screen bg-gray-100">
+    <div ref={containerRef} className="min-h-screen bg-gray-100">
       <div className="mx-auto">
         <header className="mb-6 flex justify-between items-center">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-800 flex items-center">
               <Camera className="mr-2" size={28} />
-               Video Survey Viewer
+              Video Survey Viewer
             </h1>
             <p className="text-gray-600 mt-1">
-               View survey videos with synchronized map tracking
+              View survey videos with synchronized map tracking
             </p>
           </div>
 
@@ -326,7 +319,7 @@ function App({ data,SelectedEvent}: AppProps) {
             </div>
 
             <div className="flex gap-2">
-              
+
 
               <button
                 onClick={() => setIsVideoListOpen(!isVideoListOpen)}
@@ -403,7 +396,7 @@ function App({ data,SelectedEvent}: AppProps) {
           />
         )}
 
-         <div  className={`w-full grid grid-cols-1 lg:grid-cols-2 gap-0`}>
+        <div className={`w-full grid grid-cols-1 lg:grid-cols-2 gap-0`}>
           {/* Video Player */}
           <div className={isFullscreen ? "h-[750px]" : "h-[400px] md:h-[500px]"}>
             <VideoPlayer
@@ -438,21 +431,21 @@ function App({ data,SelectedEvent}: AppProps) {
         {/* Survey Info */}
         {videoData && (
           <div className="mt-6 bg-white rounded-lg shadow-md p-4">
-           <h2 className="text-lg font-semibold text-gray-800 mb-3 flex justify-between items-center">
-            <span className="flex items-center">
-              <MapPin className="mr-2" size={20} />
-              Survey Information
-            </span>
+            <h2 className="text-lg font-semibold text-gray-800 mb-3 flex justify-between items-center">
+              <span className="flex items-center">
+                <MapPin className="mr-2" size={20} />
+                Survey Information
+              </span>
 
-            {selection.start && (
-              <button
-                onClick={clearSelection}
-                className="text-xs text-red-500 hover:text-red-700"
-              >
-                Clear Selection
-              </button>
-            )}
-          </h2>
+              {selection.start && (
+                <button
+                  onClick={clearSelection}
+                  className="text-xs text-red-500 hover:text-red-700"
+                >
+                  Clear Selection
+                </button>
+              )}
+            </h2>
 
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -520,7 +513,7 @@ function App({ data,SelectedEvent}: AppProps) {
               <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-blue-100 text-blue-500 text-xs font-medium mr-2 mt-0.5">4</span>
               Click on another point to mark the end of the segment (red marker)
             </li>
-           
+
           </ul>
         </div>
       </div>
