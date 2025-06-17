@@ -48,7 +48,7 @@ const FileUploadManager: React.FC<FileUploadManagerProps> = ({
     setUploadComplete(false);
   }, []);
 
-
+  
   const simulateUpload = useCallback(async () => {
     if (!fileObj || isUploading) return;
 
@@ -70,6 +70,7 @@ const FileUploadManager: React.FC<FileUploadManagerProps> = ({
       'https://traceapi.keeshondcoin.com/upload-filtered-points',
       formData,
       {
+      responseType: 'blob',
      onUploadProgress: (progressEvent) => {
         if (progressEvent.total) {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -80,21 +81,23 @@ const FileUploadManager: React.FC<FileUploadManagerProps> = ({
         }
 
       }
+     
     );
     const Data = response.data;
-    console.log(Data,'Data')
     setFileObj((prev) => prev ? {
       ...prev,
       status: 'success',
       progress: 100,
     } : null);
 
-    if (onUploadComplete && fileObj) {
-      onUploadComplete(fileObj.file);
-      setUploadComplete(true);
-    }
+    // if (onUploadComplete && fileObj) {
+    //   onUploadComplete(fileObj.file);
+    //   setUploadComplete(true);
+    // }
 
   } catch (error) {
+      console.error('Upload error:', error);
+
     setFileObj((prev) => prev ? {
       ...prev,
       status: 'error',
