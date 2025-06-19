@@ -199,6 +199,8 @@ function haversineDistance(a: { lat: number; lng: number }, b: { lat: number; ln
   const c = 2 * Math.atan2(Math.sqrt(aVal), Math.sqrt(1 - aVal));
   return R * c;
 }
+const BASEURL_Val = import.meta.env.VITE_TraceAPI_URL;
+
 // MAIN COMPONENT
 const MapComponent: React.FC = () => {
   
@@ -627,7 +629,7 @@ useEffect(() => {
     formData.append('connectionsFile', incrementalFile);
 
     try {
-      const response = await fetch('https://traceapi.keeshondcoin.com/upload', {
+      const response = await fetch(`${BASEURL_Val}/upload`, {
         method: 'POST',
         body: formData,
       });
@@ -670,7 +672,7 @@ useEffect(() => {
   const HandleCalculation = async () => {
     if (!pointA || !pointB || !pointAName || !pointBName || !mapInstance) return;
 
-    const url = `https://traceapi.keeshondcoin.com/show-route?lat1=${pointA.lat}&lng1=${pointA.lng}&lat2=${pointB.lat}&lng2=${pointB.lng}`;
+    const url = `${BASEURL_Val}/show-route?lat1=${pointA.lat}&lng1=${pointA.lng}&lat2=${pointB.lat}&lng2=${pointB.lng}`;
     try {
       const response = await fetch(url);
       const data = await response.json();
@@ -1043,7 +1045,7 @@ useEffect(() => {
 
         try {
           const res = await axios.post(
-            'https://traceapi.keeshondcoin.com/compute-route',
+            `${BASEURL_Val}/compute-route`,
             {
               newPos: newCoord,
               origin: start,
@@ -1464,7 +1466,7 @@ const deletePolylineAndDistance = (key: string) => {
     };
     try {
       setLoader(true)
-      const response = await fetch('https://traceapi.keeshondcoin.com/save-to-db', {
+      const response = await fetch(`${BASEURL_Val}/save-to-db`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(Body)
@@ -1502,7 +1504,7 @@ const deletePolylineAndDistance = (key: string) => {
    }
     try {
       setLoader(true)
-      const response = await fetch('https://traceapi.keeshondcoin.com/verify-network', {
+      const response = await fetch(`${BASEURL_Val}/verify-network`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(Body)
@@ -1564,7 +1566,7 @@ const deletePolylineAndDistance = (key: string) => {
 
     try {
       setLoader(true)
-      const response = await fetch(`https://traceapi.keeshondcoin.com/download/${DownloadFile}`, {
+      const response = await fetch(`${BASEURL_Val}/download/${DownloadFile}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: payload
@@ -1637,7 +1639,7 @@ const deletePolylineAndDistance = (key: string) => {
     const delay = setTimeout(async () => {
       try {
         setLoader(true)
-        const res = await fetch(`https://traceapi.keeshondcoin.com/search-location?query=${encodeURIComponent(searchValue)}`);
+        const res = await fetch(`${BASEURL_Val}/search-location?query=${encodeURIComponent(searchValue)}`);
         const data: Place[] = await res.json();
         setSearchResults(data);
       } catch (error) {

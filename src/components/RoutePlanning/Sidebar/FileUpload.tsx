@@ -7,6 +7,7 @@ const FileUpload: React.FC = () => {
   const BASEURL = import.meta.env.VITE_API_BASE;
   const [loadingpoints, setLoadingPoints] = useState(false);
   const [loadingconnections, setLoadingConnections] = useState(false);
+  const BASEURL_Val = import.meta.env.VITE_TraceAPI_URL;
 
 const handleGpPoints = async (file:File) => {
 
@@ -14,7 +15,7 @@ const handleGpPoints = async (file:File) => {
     const formData = new FormData();
     formData.append('pointsFile', file);
     setLoadingPoints(true);
-    const response = await fetch(`https://traceapi.keeshondcoin.com/upload-points`, {
+    const response = await fetch(`${BASEURL_Val}/upload-points`, {
       method: 'POST',
       body: formData,
     });
@@ -39,7 +40,7 @@ const handleIncrementalPoints = async (file:File) => {
     const formData = new FormData();
     formData.append('connectionsFile', file);
    setLoadingConnections(true);
-    const response = await fetch(`https://traceapi.keeshondcoin.com/upload-connections`, {
+    const response = await fetch(`${BASEURL_Val}/upload-connections`, {
       method: 'POST',
       body: formData,
     });

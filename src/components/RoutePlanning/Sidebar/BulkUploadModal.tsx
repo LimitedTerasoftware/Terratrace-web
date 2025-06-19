@@ -15,6 +15,7 @@ interface NotificationState {
   message: string;
   visible: boolean;
 }
+  const BASEURL_Val = import.meta.env.VITE_TraceAPI_URL;
 
 const BulkUploadModal: React.FC<BulkUploadModalProps> = ({ 
   isOpen, 
@@ -219,12 +220,12 @@ const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
       
       if (incrementalFiles[index]) {
         // If both files are present, use the upload endpoint
-        apiEndpoint = 'https://traceapi.keeshondcoin.com/upload';
+        apiEndpoint = `${BASEURL_Val}/upload`;
         formData.append('pointsFile', gpFiles[index]);
         formData.append('connectionsFile', incrementalFiles[index]);
       } else {
         // If only GP file is present, use the generate-route endpoint
-        apiEndpoint = 'https://traceapi.keeshondcoin.com/generate-route';
+        apiEndpoint = `${BASEURL_Val}/generate-route`;
         formData.append('pointsFile', gpFiles[index]);
       }
       

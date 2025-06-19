@@ -17,6 +17,7 @@ interface FileUploadManagerProps {
   onUploadComplete?: (file: File) => void;
    className?: string;
 }
+const BASEURL_Val = import.meta.env.VITE_TraceAPI_URL;
 
 const FileUploadManager: React.FC<FileUploadManagerProps> = ({
   onUploadComplete,
@@ -69,7 +70,7 @@ const FileUploadManager: React.FC<FileUploadManagerProps> = ({
     formData.append('filteredPointsFile', fileObj.file);
 
     const response = await axios.post(
-      'https://traceapi.keeshondcoin.com/upload-filtered-points',
+      `${BASEURL_Val}/upload-filtered-points`,
       formData,
       {
       // responseType: 'blob',

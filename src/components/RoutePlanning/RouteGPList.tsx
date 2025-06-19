@@ -21,6 +21,7 @@ interface UserListResponse {
     usersList: User[];
   };
 }
+const BASEURL_Val = import.meta.env.VITE_TraceAPI_URL;
 
 const RouteGPList = () => {
   const { id: networkId } = useParams();
@@ -69,7 +70,7 @@ const RouteGPList = () => {
       setLoadingGPList(true);
       setGpListError(null);
       
-      const response = await fetch(`https://traceapi.keeshondcoin.com/get-gplist/${networkId}`);
+      const response = await fetch(`${BASEURL_Val}/get-gplist/${networkId}`);
       
       if (!response.ok) {
         throw new Error(`API request failed with status ${response.status}`);
@@ -142,7 +143,7 @@ const RouteGPList = () => {
       setLoadingUsers(true);
       setUsersError(null);
       
-      const response = await fetch('https://traceapi.keeshondcoin.com/user-list');
+      const response = await fetch(`${BASEURL_Val}/user-list`);
       
       if (!response.ok) {
         throw new Error(`API request failed with status ${response.status}`);
@@ -212,7 +213,7 @@ const RouteGPList = () => {
             user_name: user.fullname
           };
           
-          const assignmentPromise = fetch('https://traceapi.keeshondcoin.com/assign-segment', {
+          const assignmentPromise = fetch(`${BASEURL_Val}/assign-segment`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

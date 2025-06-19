@@ -82,6 +82,7 @@ const RouteList = () => {
   const navigate = useNavigate();
   const { setPreviewKmlData } = useAppContext();
   const BASEURL = import.meta.env.VITE_API_BASE;
+  const BASEURL_Val = import.meta.env.VITE_TraceAPI_URL;
 
   // Network data states
   const [unverifiedNetworks, setUnverifiedNetworks] = useState<UnverifiedNetwork[]>([]);
@@ -183,7 +184,7 @@ const RouteList = () => {
     try {
       setPreviewLoading(true);
       
-      const response = await fetch(`https://traceapi.keeshondcoin.com/get-networks/${networkId}`);
+      const response = await fetch(`${BASEURL_Val}/get-networks/${networkId}`);
       
       if (!response.ok) {
         throw new Error(`Preview API request failed with status ${response.status}`);
@@ -207,7 +208,7 @@ const RouteList = () => {
  
   const handleDeleteClick = async(Id:number,name:string,type:string) =>{
     try {
-    const response = await fetch(`https://traceapi.keeshondcoin.com/delete-network/${Id}`, {
+    const response = await fetch(`${BASEURL_Val}/delete-network/${Id}`, {
       method: 'POST',
     });   
     if (!response.ok) {
@@ -294,7 +295,7 @@ const RouteList = () => {
       setLoadingUnverified(true);
       setUnverifiedError(null);
       
-      let url = 'https://traceapi.keeshondcoin.com/get-unverified-networks';
+      let url = `${BASEURL_Val}/get-unverified-networks`;
       const params = new URLSearchParams();
       
       // Convert state_id to state_code for API
@@ -341,7 +342,7 @@ const RouteList = () => {
       setLoadingVerified(true);
       setVerifiedError(null);
       
-      const response = await fetch('https://traceapi.keeshondcoin.com/get-verified-netwrorks');
+      const response = await fetch(`${BASEURL_Val}/get-verified-netwrorks`);
       
       if (!response.ok) {
         throw new Error(`API request failed with status ${response.status}`);

@@ -201,6 +201,7 @@ const libraries: ("places" | "drawing" | "geometry" | "visualization")[] = [
   "visualization"
 ];
 const colors = ['blue', 'green', 'gray'];
+const BASEURL_Val = import.meta.env.VITE_TraceAPI_URL;
 
 const MapComponent: React.FC = () => {
   const { transportMode, apiGPSResponse, apiConctResponse, setPointProperties, AutoMode, setAutoMode, SaveFile, setSaveFile, DownloadFile, setDownloadFile, AIMode, setAIMode, incrementalFile, gpFile, setGPSApiResponse, setConctApiResponse,
@@ -448,7 +449,7 @@ const MapComponent: React.FC = () => {
     formData.append('connectionsFile', incrementalFile);
 
     try {
-      const response = await fetch('https://traceapi.keeshondcoin.com/upload', {
+      const response = await fetch(`${BASEURL_Val}/upload`, {
         method: 'POST',
         body: formData,
       });
