@@ -9,7 +9,6 @@ import { AlertCircle, CheckCircle, X } from 'lucide-react';
 
 // CONSTANTS & CONFIGURATION
 
-
 // Map container style
 const containerStyle = {
   width: '100%',

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Upload, Loader2 } from 'lucide-react';
+import { Upload, Loader2, Download } from 'lucide-react';
 
 interface UploadButtonProps {
   onClick: () => void;
@@ -26,11 +26,12 @@ const UploadButton: React.FC<UploadButtonProps> = ({
       {isUploading ? (
         <>
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          Uploading...
+          {text === 'Download' ? 'Downloading...' : "Uploading..." }
         </>
       ) : (
         <>
-          <Upload className="w-4 h-4 mr-2" />
+         {text === 'Download' ?  <Download className="w-4 h-4 mr-2" /> :  <Upload className="w-4 h-4 mr-2" /> }
+         
           {text}
         </>
       )}

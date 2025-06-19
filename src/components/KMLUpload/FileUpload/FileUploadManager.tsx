@@ -24,7 +24,9 @@ const FileUploadManager: React.FC<FileUploadManagerProps> = ({
 }) => {
   const [fileObj, setFileObj] = useState<FileWithStatus | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [uploadComplete, setUploadComplete] = useState(false);
+  const [KmlData,setKmlData]= useState([]);
 
   const handleFilesAdded = useCallback(
     (newFiles: File[]) => {
@@ -70,8 +72,8 @@ const FileUploadManager: React.FC<FileUploadManagerProps> = ({
       'https://traceapi.keeshondcoin.com/upload-filtered-points',
       formData,
       {
-      responseType: 'blob',
-     onUploadProgress: (progressEvent) => {
+      // responseType: 'blob',
+      onUploadProgress: (progressEvent) => {
         if (progressEvent.total) {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
             setFileObj((prev) => prev ? { ...prev, progress: percentCompleted } : null);
@@ -84,16 +86,17 @@ const FileUploadManager: React.FC<FileUploadManagerProps> = ({
      
     );
     const Data = response.data;
+    setKmlData(Data.points)
     setFileObj((prev) => prev ? {
       ...prev,
       status: 'success',
       progress: 100,
     } : null);
 
-    // if (onUploadComplete && fileObj) {
-    //   onUploadComplete(fileObj.file);
-    //   setUploadComplete(true);
-    // }
+    if (onUploadComplete && Data && response.status === 200) {
+      onUploadComplete(Data);
+      setUploadComplete(true);
+    }
 
   } catch (error) {
       console.error('Upload error:', error);
@@ -109,6 +112,67 @@ const FileUploadManager: React.FC<FileUploadManagerProps> = ({
 
   }, [fileObj, isUploading, onUploadComplete]);
 
+
+
+
+ const handleDownload = (points: any[]) => {
+  if (!points || !points.length) {
+    alert('No filtered points to download.');
+    return;
+  }
+   setIsDownloading(true)
+
+  let kml = `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n  <Document>\n    <name>Parsed KML Points</name>`;
+  
+  points.forEach(point => {
+    if (
+      Array.isArray(point.coordinates) &&
+      point.coordinates.length >= 2 &&
+      typeof point.coordinates[0] === 'number' && !isNaN(point.coordinates[0]) &&
+      typeof point.coordinates[1] === 'number' && !isNaN(point.coordinates[1])
+    ) {
+      kml += `
+    <Placemark>
+      <name>${point.name || 'Unnamed'}</name>`;
+      if (point.properties && typeof point.properties === 'object') {
+        kml += `
+      <ExtendedData>`;
+        Object.entries(point.properties)
+          .filter(([_, value]) => value !== null && value !== '' && value !== 'NULL')
+          .forEach(([key, value]) => {
+            kml += `
+        <Data name="${key}">
+          <value>${value}</value>
+        </Data>`;
+          });
+        kml += `
+      </ExtendedData>`;
+      }
+      kml += `
+      <Point>
+        <coordinates>${point.coordinates[0]},${point.coordinates[1]}</coordinates>
+      </Point>
+    </Placemark>`;
+    }
+  });
+
+  kml += `
+  </Document>
+</kml>`;
+
+  const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'parsed_kml_points.kml';
+  document.body.appendChild(a);
+  a.click();
+  URL.revokeObjectURL(url);
+  document.body.removeChild(a); 
+  setIsDownloading(false)
+}
+
+
   const canUpload = fileObj && !isUploading && fileObj.status !== 'success';
 
   return (
@@ -119,6 +183,7 @@ const FileUploadManager: React.FC<FileUploadManagerProps> = ({
           <CheckCircle className="w-5 h-5 mr-2 text-green-500" />
           <span>File has been successfully uploaded!</span>
         </div>
+     
       )}
 
       {/* Drop zone */}
@@ -145,13 +210,24 @@ const FileUploadManager: React.FC<FileUploadManagerProps> = ({
       )}
 
       {/* Upload button */}
-      {fileObj && (
+      {fileObj && !uploadComplete && (
         <div className="flex justify-end">
           <UploadButton
             onClick={simulateUpload}
             isUploading={isUploading}
             disabled={!canUpload}
             text="Upload File"
+          />
+        </div>
+      )}
+      {uploadComplete && fileObj && (
+        <div className="flex justify-end">
+          <UploadButton
+            onClick={()=>handleDownload(KmlData)}
+            isUploading={isDownloading}
+            // disabled={!canUpload}
+            text="Download"
+           
           />
         </div>
       )}
