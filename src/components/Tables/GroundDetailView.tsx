@@ -571,15 +571,15 @@ const GroundDetailView: React.FC = () => {
       const fieldsWithLinks = {
         crossing_startPhoto_URL: 'T',
         crossing_endPhoto_URL: 'W',
-        routeIndicatorUrl: 'AH',
-        Survey_Start_Photo: 'AI',
-        Survey_End_Photo: 'AJ',
-        videoUrl: 'AK',
-        jointChamberUrl: 'AR',
-        fpoiUrl: 'AS',
-        kmtStoneUrl: 'AT',
-        LANDMARK: 'AV',
-        FIBERTURN: 'AW'
+        routeIndicatorUrl: 'AI',
+        Survey_Start_Photo: 'AJ',
+        Survey_End_Photo: 'AK',
+        videoUrl: 'AN',
+        jointChamberUrl: 'AU',
+        fpoiUrl: 'AV',
+        kmtStoneUrl: 'AW',
+        LANDMARK: 'AY',
+        FIBERTURN: 'AZ'
       };
 
     Object.entries(fieldsWithLinks).forEach(([key, col]) => {
