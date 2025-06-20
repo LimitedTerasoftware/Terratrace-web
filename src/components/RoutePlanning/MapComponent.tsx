@@ -303,77 +303,81 @@ const MapComponent: React.FC = () => {
 
   }, []);
 
+// DATA PROCESSING EFFECTS
+  
 useEffect(() => {
-    if (previewKmlData && map && isLoaded) {
-      try {
+  if (previewKmlData && map && isLoaded) {
+    try {
+      let parsed = typeof previewKmlData === "string" ? JSON.parse(previewKmlData) : previewKmlData;
+      const kmlArray = Array.isArray(parsed) ? parsed : [parsed];
 
-        const kmlData = JSON.parse(previewKmlData);   
-        if (kmlData.success && kmlData.data) {      
-          const transformedGPSResponse = {
-            points: kmlData.data.points.map((point: any) => {
-              const coordsArray = JSON.parse(point.coordinates);
-              return {
-                name: point.name,
-                coordinates:[coordsArray[1],coordsArray[0]],
-                properties: {
-                  lgd_code: point.lgd_code,
-                  id: point.id,
-                  network_id: point.network_id,
-                  created_at: point.created_at,
-                  ...(point.id === kmlData.data.points[0]?.id && {
-                    blk_name: kmlData.data.network.main_point_name,
-                    dt_code: kmlData.data.network.dt_code,
-                    dt_name: kmlData.data.network.dt_name,
-                    st_code: kmlData.data.network.st_code,
-                    st_name: kmlData.data.network.st_name
-                  })
-                }
-              };
-            })
-          };
- 
-          const transformedConnectionResponse = {
-            connections: kmlData.data.connections.map((conn: any) => {
-              const coordsArray = JSON.parse(conn.coordinates);
-              const convertedCoords = coordsArray.map(([lat, lng]) => [lng, lat]);
-             
-              return {
-                start: conn.start,
-                end: conn.end,
-                length: Number(conn.length),
-                name: conn.original_name,
-                coordinates: convertedCoords,
-                color: conn.type === 'existing' ? "#00AA00" : "#FF0000",
-                existing: conn.type === 'existing',
-                id: conn.id,
-                network_id: conn.network_id,
-                type: conn.type,
-                start_latlong: conn.start_latlong,
-                end_latlong: conn.end_latlong,
-                user_id: conn.user_id,
-                user_name: conn.user_name,
-                status: conn.status
-              };
-            })
-          };
- 
-          setGPSApiResponse(transformedGPSResponse);
-          setConctApiResponse(transformedConnectionResponse);
-         
-          showNotification("success", `Loaded KML data: ${kmlData.data.points.length} points and ${kmlData.data.connections.length} connections`);
+      let allPoints: any[] = [];
+      let allConnections: any[] = [];
+
+      kmlArray.forEach((kmlData, idx) => {
+        if (kmlData.success && kmlData.data) {
+          const points = kmlData.data.points.map((point: any, i: number) => {
+            const coordsArray = JSON.parse(point.coordinates);
+            return {
+              name: point.name,
+              coordinates: [coordsArray[1], coordsArray[0]],
+              properties: {
+                lgd_code: point.lgd_code,
+                id: point.id,
+                network_id: point.network_id,
+                created_at: point.created_at,
+                ...(i === 0 && {
+                  blk_name: kmlData.data.network.main_point_name,
+                  dt_code: kmlData.data.network.dt_code,
+                  dt_name: kmlData.data.network.dt_name,
+                  st_code: kmlData.data.network.st_code,
+                  st_name: kmlData.data.network.st_name
+                })
+              }
+            };
+          });
+
+          const connections = kmlData.data.connections.map((conn: any) => {
+            const coordsArray = JSON.parse(conn.coordinates);
+            const convertedCoords = coordsArray.map(([lat, lng]: [number, number]) => [lng, lat]);
+
+            return {
+              start: conn.start,
+              end: conn.end,
+              length: Number(conn.length),
+              name: conn.original_name,
+              coordinates: convertedCoords,
+              color: conn.type === 'existing' ? "#00AA00" : "#FF0000",
+              existing: conn.type === 'existing',
+              id: conn.id,
+              network_id: conn.network_id,
+              type: conn.type,
+              start_latlong: conn.start_latlong,
+              end_latlong: conn.end_latlong,
+              user_id: conn.user_id,
+              user_name: conn.user_name,
+              status: conn.status
+            };
+          });
+
+          allPoints.push(...points);
+          allConnections.push(...connections);
         }
-      } catch (error) {
-        console.error('Error processing KML data:', error);
-        showNotification("error", "Error loading KML data: Invalid format");
-      }
-    }
-  
-  }, [previewKmlData, map, isLoaded]);
- 
+      });
 
-  // DATA PROCESSING EFFECTS
-  
-useEffect(() => {
+      setGPSApiResponse({ points: allPoints });
+      setConctApiResponse({ connections: allConnections });
+
+      showNotification("success", `Loaded ${allPoints.length} points and ${allConnections.length} connections`);
+    } catch (error) {
+      console.error("Error processing KML data:", error);
+      showNotification("error", "Error loading KML data: Invalid format");
+    }
+  }
+}, [previewKmlData, map, isLoaded]);
+
+
+  useEffect(() => {
     if (apiGPSResponse?.points?.length && map) {
     
       setPointProperties(apiGPSResponse?.points[0])

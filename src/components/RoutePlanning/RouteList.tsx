@@ -93,6 +93,7 @@ const RouteList = () => {
   const [verifiedError, setVerifiedError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'verified' | 'unverified'>('unverified');
   const [previewLoading, setPreviewLoading] = useState<boolean>(false);
+  const [AllpreviewLoading, setAllPreviewLoading] = useState<boolean>(false);
 
 
   // Load status tracking
@@ -407,6 +408,34 @@ const RouteList = () => {
     setGlobalSearch('');
   };
 
+  const handlePreview = async() =>{
+    if(selectedUnverifiedNetworks.size === 0 && selectedVerifiedNetworks.size === 0){
+      alert("No rows selected");
+      return;
+    }
+    const Networks = selectedUnverifiedNetworks.size > 0
+      ? selectedUnverifiedNetworks
+      : selectedVerifiedNetworks;
+    let Data:any[]=[];
+    setAllPreviewLoading(true);
+    try {
+      for(const item of Networks){
+       const response = await fetch(`${BASEURL_Val}/get-networks/${item}`);
+       const json = await response.json();
+       const newData = json.data|| {};
+       Data.push({ success: true, data: newData });      }
+      
+    } catch (error) {
+      console.log(error)
+      
+    }finally{
+      setAllPreviewLoading(false)
+    }
+        sessionStorage.setItem('previewKmlData', JSON.stringify(Data));
+        setPreviewKmlData(JSON.stringify(Data));
+      
+      window.open('/route-planning/builder', '_blank');
+  }
   // Handle unverified network selection
   const handleUnverifiedNetworkSelection = (id: number) => {
     setSelectedUnverifiedNetworks(prev => {
@@ -453,6 +482,11 @@ const RouteList = () => {
 
   return (
     <div className="sm:p-2 lg:p-4 bg-gray-100 dark:bg-gray-900 min-h-screen">
+       {AllpreviewLoading && (
+        <div className="absolute inset-0 bg-white bg-opacity-70 flex justify-center items-center z-50">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      )}
       <div className="mb-6">
         <h1 className="text-xl font-bold text-blue-900 dark:text-blue-100">
           Route List
@@ -568,6 +602,15 @@ const RouteList = () => {
           >
             <span className="text-red-500 dark:text-red-400 font-medium text-sm">✕</span>
             <span>Clear Filters</span>
+          </button>
+            <button
+            onClick={handlePreview}
+            className="flex-none h-10 px-4 py-2 text-sm font-medium  text-gray-400 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark: text-gray-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
+          >
+            <span className=" text-gray-400 font-medium text-sm">
+              <Eye className="w-4 h-4" />
+            </span>
+            <span>Preview</span>
           </button>
         </div>
       </div>
