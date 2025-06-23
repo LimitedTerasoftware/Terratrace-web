@@ -15,7 +15,8 @@ import Logo from '../../images/logo/logo.png';
 import {hasViewOnlyAccess } from "../../utils/accessControl";
 import DropdownUser from './DropDownUser'; // Import the dropdownuser component
 import DarkModeSwitcher from './DarkModeSwitcher'; // Import the dark mode switcher
-import KML from '../../images/icon/kml-file.svg'
+import KML from '../../images/icon/kml-file.svg';
+import Smart_Inv from '../../images/icon/internet-world-svgrepo-com.svg'
 
 import {
   ChevronLeft,
@@ -241,6 +242,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
               }}
             </SidebarLinkGroup>
             <SideBarItem icon={KML} label="Filter GP Points" isOpen={isOpen} isActive={pathname.includes('gp-points-filter')} path='/gp-points-filter' />
+            <li>
+              <NavLink
+                to="/smart-inventory"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={({ isActive }) =>
+                  'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white'
+                }
+              >
+                <img src={Smart_Inv} className="w-5" />
+                Smart Inventory
+              </NavLink>
+            </li>
             {!viewOnly && (
             <>
             <SideBarItem icon={User} label="KML File Upload" isOpen={isOpen} isActive={pathname.includes('kmlfileupload')} path='/kmlfileupload' />

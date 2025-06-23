@@ -46,6 +46,7 @@ import RouteReports from './components/RoutePlanning/Reports';
 import RouteGPList from './components/RoutePlanning/RouteGPList';
 import Login from './pages/Authentication/Login';
 import Signup from './pages/Authentication/SignUPNew';
+import SmartInventory from './components/SmartInventory/index';
 //import AuditLogs from './components/AuditLogs';
 
 function App() {
@@ -507,6 +508,11 @@ function App() {
                   <KMLUpload />
                 </DefaultLayout>
             </>}/>
+            <Route path='/smart-inventory' element={<>
+              
+                  <SmartInventory />
+            </>}/>
+
           </Routes>
           
       )}
