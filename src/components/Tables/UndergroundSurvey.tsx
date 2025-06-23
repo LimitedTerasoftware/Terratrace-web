@@ -15,6 +15,7 @@ import Select, { SingleValue } from "react-select";
 import ResponsivePagination from "./ResponsivePagination";
 import * as XLSX from "xlsx";
 import MapComponent from "./MapComponent";
+import { exportMediaWithStructure } from "../hooks/useFullscreen";
 
 interface UndergroundSurvey {
   id: string;
@@ -530,7 +531,7 @@ const UndergroundSurvey: React.FC = () => {
     a.click();
   };
 
-const handlePreview = async () => {
+const handlePreview = async (id:number) => {
   const selected = Object.values(selectedRowsMap);
   if (selected.length === 0) {
     alert("No rows selected");
@@ -538,6 +539,7 @@ const handlePreview = async () => {
   }
 
   let Data: any[] = [];
+  let MediaData: any[] = [];
   setKMLLoader(true);
 
   try {
@@ -547,15 +549,23 @@ const handlePreview = async () => {
 
       const newData = json.data?.under_ground_survey_data || [];
       Data.push(...newData); 
+        if (json.data) {
+        MediaData.push(json.data); 
+      }
     }
   } catch (error) {
     console.error("Preview fetch error:", error);
   } finally {
     setKMLLoader(false);
   }
-
-  setBlockData(Data); 
+  if(id === 1){
+  await exportMediaWithStructure(MediaData)
+  }else{
+    setBlockData(Data); 
+  }
+  
 };
+
   const exportExcel = async () => {
     try {
       setKMLLoader(true)
@@ -818,10 +828,16 @@ const handlePreview = async () => {
            KML
           </button>
             <button
-            onClick={handlePreview}
+            onClick={()=>handlePreview(0)}
             className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap"
           >
            Preview
+          </button>
+             <button
+            onClick={()=>handlePreview(1)}
+            className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap"
+          >
+           Multimedia  Download
           </button>
         </div>
       </div>

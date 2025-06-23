@@ -289,8 +289,10 @@ const tileLayerUrl = useMemo(() => {
     setSelectedEventType('ALL');
     setSelectedModality('ALL');
   };
+  const GoogleKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
   const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: 'AIzaSyCPHNQoyCkDJ3kOdYZAjZElbhXuJvx-Odg',
+    googleMapsApiKey:GoogleKey,
   });
 
   if (loadError) return <div>Map cannot be loaded right now...</div>;

@@ -19,9 +19,10 @@ const KMLVisualizer: React.FC<KMLVisualizerProps> = ({
   const [mapLoaded, setMapLoaded] = useState(false);
   const [GpPoints, setGpPoints] = useState<Gpdata[]>([]);
   const mapRef = useRef<google.maps.Map | null>(null);
+  const GoogleKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
   const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: 'AIzaSyCPHNQoyCkDJ3kOdYZAjZElbhXuJvx-Odg',
+    googleMapsApiKey: GoogleKey,
   });
 
   useEffect(() => {

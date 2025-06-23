@@ -209,9 +209,10 @@ const MapComponent: React.FC = () => {
   const { transportMode, apiGPSResponse, apiConctResponse, setPointProperties, AutoMode, setAutoMode, SaveFile, setSaveFile, DownloadFile, setDownloadFile, AIMode, setAIMode, incrementalFile, gpFile, setGPSApiResponse, setConctApiResponse,
     lineSummary, setLineSummary, VerifySaveFile, setVerifySaveFile,previewKmlData 
   } = useAppContext();
+  const GoogleKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
   const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: 'AIzaSyCPHNQoyCkDJ3kOdYZAjZElbhXuJvx-Odg',
+    googleMapsApiKey: GoogleKey,
     libraries,
   });
 

@@ -20,9 +20,10 @@ const mapContainerStyle = {
 
 const IndiaMap = () => {
   const center = useMemo(() => ({ lat: 22.98675690, lng: 87.85497550 }), []);
+  const GoogleKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
   return (
-    <LoadScript googleMapsApiKey="AIzaSyCPHNQoyCkDJ3kOdYZAjZElbhXuJvx-Odg">
+    <LoadScript googleMapsApiKey={GoogleKey}>
       <GoogleMap mapContainerStyle={mapContainerStyle} center={center} zoom={5}>
         {Object.entries(statesCoordinates).map(([state, coordinates], index) => (
           <Marker key={index} position={coordinates} title={state} />
