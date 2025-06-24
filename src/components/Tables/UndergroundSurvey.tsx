@@ -15,7 +15,8 @@ import Select, { SingleValue } from "react-select";
 import ResponsivePagination from "./ResponsivePagination";
 import * as XLSX from "xlsx";
 import MapComponent from "./MapComponent";
-import { exportMediaWithStructure } from "../hooks/useFullscreen";
+import { MediaExportService } from "../hooks/useFullscreen";
+import { CheckCircle, Download, EyeIcon, FolderOpen, Loader, MapPinIcon, SheetIcon, SquaresExcludeIcon } from "lucide-react";
 
 interface UndergroundSurvey {
   id: string;
@@ -112,6 +113,10 @@ const UndergroundSurvey: React.FC = () => {
   const [fromdate, setFromDate] = useState<string>('');
   const [todate, setToDate] = useState<string>('');
   const [BlockData,setBlockData]=useState<any>([])
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState({ current: 0, total: 0, currentFile: '' });
+  const [exportComplete, setExportComplete] = useState(false);
+
   const navigate = useNavigate();
 
   const statusMap: Record<number, string> = {
@@ -531,6 +536,8 @@ const UndergroundSurvey: React.FC = () => {
     a.click();
   };
 
+  const mediaExportService = new MediaExportService();
+
 const handlePreview = async (id:number) => {
   const selected = Object.values(selectedRowsMap);
   if (selected.length === 0) {
@@ -540,7 +547,14 @@ const handlePreview = async (id:number) => {
 
   let Data: any[] = [];
   let MediaData: any[] = [];
-  setKMLLoader(true);
+  if(id === 1){
+     setIsExporting(true);
+    setExportComplete(false);
+    setExportProgress({ current: 0, total: 0, currentFile: '' });
+  }else{
+   setKMLLoader(true);
+  }
+  
 
   try {
     for (const item of selected) {
@@ -553,16 +567,24 @@ const handlePreview = async (id:number) => {
         MediaData.push(json.data); 
       }
     }
+  if(id === 1){
+  await mediaExportService.exportMediaWithStructure(
+        MediaData,
+          (current, total, currentFile) => {
+          setExportProgress({ current, total, currentFile });
+        }
+      );
+    setExportComplete(true);
+  }else{
+    setBlockData(Data); 
+  }
   } catch (error) {
     console.error("Preview fetch error:", error);
   } finally {
     setKMLLoader(false);
+    setIsExporting(false);
   }
-  if(id === 1){
-  await exportMediaWithStructure(MediaData)
-  }else{
-    setBlockData(Data); 
-  }
+
   
 };
 
@@ -817,27 +839,40 @@ const handlePreview = async (id:number) => {
           {/* Export Button */}
           <button
             onClick={exportExcel}
-            className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap"
+            className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
           >
+            <SheetIcon className="h-4 w-4 text-green-600"/>
             Excel
           </button>
           <button
             onClick={handleGenerateKML}
             className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap"
           >
+            
            KML
           </button>
             <button
             onClick={()=>handlePreview(0)}
-            className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap"
+            className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
           >
+            <EyeIcon className="h-4 w-4 text-green-600"/>
            Preview
           </button>
              <button
             onClick={()=>handlePreview(1)}
-            className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap"
-          >
-           Multimedia  Download
+            disabled={isExporting}
+            className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          > {isExporting ? (
+                <>
+                  <Loader className="h-4 w-4 animate-spin" />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                <Download className="h-4 w-4" />
+                  Export Selected Media
+                </>
+              )}
           </button>
         </div>
       </div>
@@ -848,7 +883,36 @@ const handlePreview = async (id:number) => {
           <span className="font-medium">Error loading data:</span> {error}
         </div>
       )}
+         {isExporting && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center gap-2 mb-2">
+                <Loader className="h-4 w-4 animate-spin text-blue-600" />
+                <span className="font-medium text-blue-900">
+                  Downloading files... ({exportProgress.current}/{exportProgress.total})
+                </span>
+              </div>
+              <div className="w-full bg-blue-200 rounded-full h-2 mb-2">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${exportProgress.total > 0 ? (exportProgress.current / exportProgress.total) * 100 : 0}%` }}
+                />
+              </div>
+              {exportProgress.currentFile && (
+                <p className="text-sm text-gray-600">Current: {exportProgress.currentFile}</p>
+              )}
+            </div>
+          )}
 
+          {/* Success Message */}
+          {exportComplete && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                <span className="font-medium text-green-900">Export completed successfully!</span>
+              </div>
+              <p className="text-sm text-green-700 mt-1">Your Media_Folder.zip file has been downloaded.</p>
+            </div>
+          )}
       {/* Table */}
       <div className="overflow-x-auto relative">
         <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">

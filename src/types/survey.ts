@@ -1,0 +1,104 @@
+export interface StartGp {
+   name: string,
+  blk_name: string,
+  dt_name: string,
+  st_name: string,
+}
+
+export interface EndGp {
+   name: string,
+
+}
+
+export interface PatrollerDetails {
+companyName: string;
+email: string;
+mobile: string;
+name: string;
+}
+
+export interface RoadCrossing {
+  startPhoto?: string;
+  endPhoto?: string;
+  roadCrossing: string;
+}
+
+export interface RouteDetails {
+  centerToMargin: string;
+  roadWidth: string;
+  routeBelongsTo: string;
+  routeType: string;
+  soilType: string;
+}
+
+export interface RouteFeasibility {
+  alternatePathAvailable: boolean;
+  alternativePathDetails: string;
+  routeFeasible: boolean;
+}
+
+export interface UtilityFeaturesChecked {
+  localInfo: string;
+  selectedGroundFeatures: string[];
+}
+
+export interface VideoDetails {
+  videoUrl?: string;
+}
+
+export interface UnderGroundSurveyData {
+  id: number;
+  survey_id: string;
+  area_type: string;
+  event_type: string;
+  fpoiUrl: string;
+  routeIndicatorUrl: string;
+  jointChamberUrl: string;
+  execution_modality: string;
+  latitude: string;
+  longitude: string;
+  patroller_details: PatrollerDetails;
+  road_crossing: RoadCrossing;
+  route_details: RouteDetails;
+  route_feasibility: RouteFeasibility;
+  side_type: string;
+  start_photos: string[];
+  end_photos: string[];
+  utility_features_checked: UtilityFeaturesChecked;
+  videoUrl: string;
+  videoDetails?: VideoDetails;
+  created_at: string;
+  createdTime: string;
+  surveyUploaded: string;
+  altitude: string;
+  accuracy: string;
+  depth: string;
+  distance_error: string;
+  kmtStoneUrl: string;
+  landMarkUrls: string;
+  fiberTurnUrl: string;
+  landMarkType: string;
+}
+
+export interface GroundSurvey {
+  id: number;
+  startLocation: string;
+  endLocation: string;
+  block_id: string;
+  district_id: string;
+  state_id: string;
+  under_ground_survey_data: UnderGroundSurveyData[];
+  start_gp: StartGp;
+  end_gp: EndGp;
+}
+
+export interface MediaFile {
+  url: string;
+  filename: string;
+  eventType: string;
+  type: 'image' | 'video';
+}
+
+export interface FolderStructure {
+  [blockPath: string]: MediaFile[];
+}
