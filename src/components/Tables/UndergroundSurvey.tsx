@@ -588,7 +588,7 @@ const handlePreview = async (id:number) => {
   
 };
 
-  const exportExcel = async () => {
+const exportExcel = async () => {
     try {
       setKMLLoader(true)
       const response = await axios.get<ApiResponse>(`${BASEURL}/underground-surveys`, {

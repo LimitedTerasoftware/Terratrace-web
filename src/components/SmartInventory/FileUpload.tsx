@@ -1,5 +1,6 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Upload, FileText, AlertCircle } from 'lucide-react';
+import FileUploadModal from './Modalpopup';
 
 interface FileUploadProps {
   onFileUpload: (file: File) => void;
@@ -10,6 +11,7 @@ interface FileUploadProps {
 export const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload, isLoading, error }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  
   const handleClick = () => {
     fileInputRef.current?.click();
   };
@@ -30,7 +32,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload, isLoading,
   return (
     <div className="mb-6">
       <button
-        onClick={handleClick}
+         onClick={handleClick}
         disabled={isLoading}
         className={`
           w-full px-4 py-3 rounded-lg border-2 border-dashed 
@@ -69,6 +71,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload, isLoading,
         onChange={handleFileChange}
         className="hidden"
       />
+    
     </div>
   );
 };

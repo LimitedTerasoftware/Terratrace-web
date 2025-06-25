@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Sidebar } from './Sidebar';
 import { FileUpload } from './FileUpload';
 import { FileList } from './FileList';
@@ -9,8 +9,21 @@ import { KMZParser } from '../../utils/kmzParser';
 import { dbOperations } from '../../utils/databasee';
 import { useFiltering } from '../../hooks/useFiltering';
 import { KMZFile, FilterState, ViewState, Placemark } from '../../types/kmz';
+import FileUploadModal from './Modalpopup';
+import { AlertCircle, CheckCircle, Upload, X } from 'lucide-react';
+import axios from 'axios';
+
+interface NotifierState {
+  type: 'success' | 'error';
+  message: string;
+  visible: boolean;
+}
+const BASEURL = import.meta.env.VITE_TraceAPI_URL;
 
 function SmartInventory() {
+  const [isModalOpen, setModalOpen] = useState(false);
+  const [Notifier, setNotifier] = useState<NotifierState>({ type: 'success', message: '', visible: false });
+  const notifierTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [files, setFiles] = useState<KMZFile[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<KMZFile[]>([]);
@@ -78,13 +91,78 @@ function SmartInventory() {
       setVisiblePlacemarks(new Set());
     }
   }, [selectedFiles]); // Only depend on length to avoid infinite loops
+
   // Handle file upload
-  const handleFileUpload = async (file: File) => {
+  const handleFileUpload = async (desktopFile:File,physicalFile:File,FileName:string,stateId:string,DistrictId:string,BlcokId:string) => {
+      setIsUploading(true);
+      setUploadError('');
+       try {
+        const formData = new FormData();
+         formData.append('desktop_planning', desktopFile);  
+         formData.append('physical_survey', physicalFile); 
+         formData.append('state_code', stateId); 
+         formData.append('dtcode', DistrictId);  
+         formData.append('block_code', BlcokId); 
+         formData.append('FileName', FileName);
+
+      const kmzFile = await axios.post(`${BASEURL}/upload-external-data`,formData,{
+         headers: {
+        "Content-Type": "multipart/form-data",
+      },
+      });
+      const data = kmzFile.data;
+      if(kmzFile.status === 200 || kmzFile.status === 201){
+        showNotification("success", `${desktopFile.name} and ${physicalFile.name} files are saved `);
+
+      }
+      
+      setFilters({});
+      setSearchQuery('');
+      setHighlightedPlacemark(undefined);
+      setModalOpen(false)
+    } catch (error) {
+      console.error('Failed to upload file:', error);
+      setUploadError(error instanceof Error ? error.message : 'Failed to upload file');
+      showNotification("error", "Failed to upload file");
+
+    } finally {
+      setIsUploading(false);
+    }
+    
+  }
+
+    useEffect(() => {
+      // Cleanup function
+      return () => {
+        if (notifierTimeoutRef.current) {
+          clearTimeout(notifierTimeoutRef.current);
+        }
+      };
+    }, []);
+   const showNotification = (type: 'success' | 'error', message: string) => {
+    // Clear any existing timeout to prevent multiple notifications
+    if (notifierTimeoutRef.current) {
+      clearTimeout(notifierTimeoutRef.current);
+      notifierTimeoutRef.current = null;
+    }
+
+    setNotifier({ type, message, visible: true });
+
+    // Auto-hide notification after 5 seconds for success, 10 seconds for error
+    const hideDelay = type === 'success' ? 5000 : 10000;
+
+    notifierTimeoutRef.current = setTimeout(() => {
+      setNotifier(prev => ({ ...prev, visible: false }));
+      notifierTimeoutRef.current = null;
+    }, hideDelay);
+  };
+
+  const handleFileParse = async (desktopFile:File,physicalFile:File,FileName:string,stateId:string,DistrictId:string,BlcokId:string) => {
     setIsUploading(true);
     setUploadError('');
     
     try {
-      const kmzFile = await KMZParser.parseKMZ(file);
+      const kmzFile = await KMZParser.parseKMZ(desktopFile);
       await dbOperations.saveKMZ(kmzFile);
       
       const updatedFiles = await dbOperations.getAllKMZ();
@@ -126,6 +204,7 @@ function SmartInventory() {
     setFilters({});
     setSearchQuery('');
     setHighlightedPlacemark(undefined);
+   
   }, []);
 
   // Handle file deletion
@@ -146,6 +225,7 @@ function SmartInventory() {
       setFilters({});
       setSearchQuery('');
       setHighlightedPlacemark(undefined);
+     
     } catch (error) {
       console.error('Failed to delete file:', error);
     }
@@ -210,12 +290,38 @@ function SmartInventory() {
   return (
     <div className="h-screen flex bg-gray-50">
       <Sidebar isOpen={sidebarOpen} onToggle={handleSidebarToggle}>
-        <FileUpload
+        {/* <FileUpload
           onFileUpload={handleFileUpload}
           isLoading={isUploading}
           error={uploadError}
-        />
-        
+        /> */}
+        <div className="mb-6">
+          <button
+            onClick={()=>{setModalOpen(true);setUploadError('')}}
+            disabled={isUploading}
+            className={`
+              w-full px-4 py-3 rounded-lg border-2 border-dashed 
+              ${isUploading 
+                ? 'border-gray-300 bg-gray-50 cursor-not-allowed' 
+                : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
+              }
+              transition-all duration-200 flex items-center justify-center gap-2
+              text-sm font-medium text-gray-700
+            `}
+          >
+              {isUploading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-transparent" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4" />
+                  Upload KMZ or KML File
+                </>
+              )}
+          </button>
+        </div>
         <FileList
           files={files}
           selectedFileIds={selectedFiles.map(f => f.id)}
@@ -242,6 +348,16 @@ function SmartInventory() {
       </Sidebar>
 
       <main className="flex-1 relative">
+       
+          <FileUploadModal
+            isOpen={isModalOpen}
+            onClose={() => setModalOpen(false)}
+            onUpload={handleFileUpload}
+            isLoading={isUploading}
+            error={uploadError}
+          />
+        
+      
         <MapViewer
           placemarks={visibleFilteredPlacemarks}
           highlightedPlacemark={highlightedPlacemark}
@@ -250,6 +366,37 @@ function SmartInventory() {
           onViewStateChange={handleViewStateChange}
         />
       </main>
+        {Notifier.visible && (
+        <div
+          className={`fixed top-4 right-4 z-[10000] p-4 rounded-lg shadow-lg flex items-start max-w-md transform transition-all duration-500 ease-in-out ${Notifier.type === 'success'
+            ? 'bg-green-100 border-l-4 border-green-500 text-green-700'
+            : 'bg-red-100 border-l-4 border-red-500 text-red-700'
+            } animate-fadeIn`}
+          style={{ animation: 'fadeIn 0.3s ease-out' }}
+        >
+          <div className="mr-3 mt-0.5">
+            {Notifier.type === 'success'
+              ? <CheckCircle size={20} className="text-green-500" />
+              : <AlertCircle size={20} className="text-red-500" />
+            }
+          </div>
+          <div>
+            <p className="font-bold text-sm">
+              {Notifier.type === 'success' ? 'Success!' : 'Oops!'}
+            </p>
+            <p className="text-sm">
+              {Notifier.message}
+            </p>
+          </div>
+          <button
+            onClick={() => setNotifier(prev => ({ ...prev, visible: false }))}
+            className="ml-auto p-1 hover:bg-opacity-20 hover:bg-gray-500 rounded"
+            aria-label="Close notification"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

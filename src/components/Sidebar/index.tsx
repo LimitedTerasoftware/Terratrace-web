@@ -242,19 +242,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
               }}
             </SidebarLinkGroup>
             <SideBarItem icon={KML} label="Filter GP Points" isOpen={isOpen} isActive={pathname.includes('gp-points-filter')} path='/gp-points-filter' />
-            <li>
+            {/* <li>
               <NavLink
                 to="/smart-inventory"
                 target="_blank"
                 rel="noopener noreferrer"
-                className={({ isActive }) =>
-                  'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white'
-                }
-              >
+                className={`
+                    flex items-center py-2 px-3 rounded-lg transition-colors duration-200
+                  text-bodydark1 hover:bg-graydark dark:hover:bg-meta-4 gap-4`}
+                >
                 <img src={Smart_Inv} className="w-5" />
                 Smart Inventory
               </NavLink>
-            </li>
+            </li> */}
             {!viewOnly && (
             <>
             <SideBarItem icon={User} label="KML File Upload" isOpen={isOpen} isActive={pathname.includes('kmlfileupload')} path='/kmlfileupload' />
