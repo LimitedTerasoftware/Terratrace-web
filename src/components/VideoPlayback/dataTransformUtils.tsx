@@ -14,7 +14,7 @@ export const extractVideoRecordData = (data: UnderGroundSurveyData[]): {
   
     .filter(item => {
       // Include all LIVELOCATION entries
-      if (item.event_type === 'LIVELOCATION' && item.surveyUploaded === 'true') return true;
+      if (item.event_type === 'LIVELOCATION') return true;
                        
 
       // Include start and end points from VIDEORECORD
@@ -31,7 +31,7 @@ export const extractVideoRecordData = (data: UnderGroundSurveyData[]): {
       return false;
     })
     .flatMap(item => {
-      if (item.event_type === 'LIVELOCATION'  && item.surveyUploaded === 'true') {
+      if (item.event_type === 'LIVELOCATION') {
         return [{
           lat: parseFloat(item.latitude),
           lng: parseFloat(item.longitude),

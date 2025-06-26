@@ -98,23 +98,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ data,OnTabChange}) => {
   } | null>(null);
   const eventTypes = useMemo<string[]>(() => ['ALL','MEDIA-FILES', ...new Set(data.map(d => d.event_type))], [data]);
   const modalities = useMemo<string[]>(() => ['ALL', ...new Set(data.map(d => d.execution_modality))], [data]);
-//   const filteredData = useMemo<UnderGroundSurveyData[]>(() => {
-//   const seen = new Set<string>();
-//   return data
-//     .filter(item =>
-//       (selectedEventType === 'ALL' || item.event_type === selectedEventType) &&
-//       (selectedEventType === 'Media-Files' ? item.event_type !== 'LIVELOCATION' : '') &&
-//       (selectedModality === 'ALL' || item.execution_modality === selectedModality) &&
-//       (CrossingType === 'All' || item.road_crossing?.roadCrossing === CrossingType) &&
-//        item?.surveyUploaded === "true" 
-//     )
-//     .filter(item => {
-//       const key = `${item.latitude}-${item.longitude}-${item.event_type}`;
-//       if (seen.has(key)) return false;
-//       seen.add(key);
-//       return true;
-//     });
-// }, [data, selectedEventType, selectedModality, CrossingType]);
+
 const filteredData = useMemo<UnderGroundSurveyData[]>(() => {
   const seen = new Set<string>();
 
@@ -133,7 +117,9 @@ const filteredData = useMemo<UnderGroundSurveyData[]>(() => {
       const isCrossingTypeMatch =
         CrossingType === 'All' || item.road_crossing?.roadCrossing === CrossingType;
 
-      const isUploaded = item?.surveyUploaded === 'true';
+      const isUploaded =
+        item.event_type === 'LIVELOCATION' ||
+        String(item?.surveyUploaded).toLowerCase() === 'true';
 
       return isEventTypeMatch && isModalityMatch && isCrossingTypeMatch && isUploaded;
     })

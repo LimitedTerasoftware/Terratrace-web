@@ -25,7 +25,7 @@ function SmartInventory() {
   const [Notifier, setNotifier] = useState<NotifierState>({ type: 'success', message: '', visible: false });
   const notifierTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [files, setFiles] = useState<KMZFile[]>([]);
+  const [files, setFiles] = useState<KMZFile[][]>([]);
   const [selectedFiles, setSelectedFiles] = useState<KMZFile[]>([]);
   const [filters, setFilters] = useState<FilterState>({});
   const [searchQuery, setSearchQuery] = useState('');
@@ -36,17 +36,32 @@ function SmartInventory() {
   const [viewState, setViewState] = useState<ViewState>({
     center: { lat: 20.5937, lng: 78.9629 }, // Center of India
     zoom: 5,
-    mapType: 'satellite'
+    mapType: 'roadmap'
   });
 
+  const filteredPlacemarks = [
+    {id:'1',name:'Landmarks'},
+    {id:'2',name:'Fiber Turns'},
+    {id:'3',name:'Bridge'},
+    {id:'4',name:'Culvert'},
+    {id:'5',name:'Road Cross'},
+    {id:'6',name:'Level Cross'},
+    {id:'7',name:'Rail Under Bridge'},
+    {id:'8',name:'Causeways'},
+    {id:'9',name:'Rail Over Bridge'},
+    {id:'10',name:'Kmt Stone'},
+    {id:'11',name:'Fpoi'},
+    {id:'12',name:'Joint Chamber'},
+  ]
   // Combine placemarks from all selected files
-  const allPlacemarks = selectedFiles.flatMap(file => file.placemarks);
+   const allPlacemarks = selectedFiles.flatMap(file => file.placemarks);
   // Filter placemarks based on current filters and search
-  const filteredPlacemarks = useFiltering(
-    allPlacemarks,
-    filters,
-    searchQuery
-  );
+  
+  // const filteredPlacemarks = useFiltering(
+  //   allPlacemarks,
+  //   filters,
+  //   searchQuery
+  // );
   // Get visible filtered placemarks
   const visibleFilteredPlacemarks = filteredPlacemarks.filter(placemark => 
     visiblePlacemarks.has(placemark.id)
@@ -69,17 +84,25 @@ function SmartInventory() {
   useEffect(() => {
     const loadFiles = async () => {
       try {
-        const savedFiles = await dbOperations.getAllKMZ();
-        setFiles(savedFiles);
-        if (savedFiles.length > 0) {
-          setSelectedFiles([savedFiles[0]]);
+        const params:any ={};
+        if (filters.state) params.state_code = filters.state;
+        if(filters.division) params.dtcode = filters.division;
+        if(filters.block) params.blk_code = filters.block;
+        if(searchQuery) params.filename = searchQuery;
+
+        const savedFiles = await axios.get(`${BASEURL}/get-external-files`,{params});
+        if(savedFiles.status === 200 || savedFiles.status === 201){
+          setFiles(savedFiles.data.data);
+          if (savedFiles.data.length > 0) {
+          setSelectedFiles([savedFiles.data.data[0]]);
+          }
         }
       } catch (error) {
         console.error('Failed to load files:', error);
       }
     };
     loadFiles();
-  }, []);
+  }, [filters,searchQuery]);
 
   // Update visible placemarks when selected files change
   useEffect(() => {
@@ -90,7 +113,7 @@ function SmartInventory() {
     } else {
       setVisiblePlacemarks(new Set());
     }
-  }, [selectedFiles]); // Only depend on length to avoid infinite loops
+  }, [selectedFiles]); 
 
   // Handle file upload
   const handleFileUpload = async (desktopFile:File,physicalFile:File,FileName:string,stateId:string,DistrictId:string,BlcokId:string) => {
@@ -166,7 +189,7 @@ function SmartInventory() {
       await dbOperations.saveKMZ(kmzFile);
       
       const updatedFiles = await dbOperations.getAllKMZ();
-      setFiles(updatedFiles);
+      // setFiles(updatedFiles);
       setSelectedFiles([kmzFile]);
       
       // Reset filters when switching files
@@ -212,7 +235,7 @@ function SmartInventory() {
     try {
       await dbOperations.deleteKMZ(id);
       const updatedFiles = await dbOperations.getAllKMZ();
-      setFiles(updatedFiles);
+      // setFiles(updatedFiles);
       
       // Remove from selected files if it was selected
       setSelectedFiles(prev => prev.filter(f => f.id !== id));
@@ -279,13 +302,6 @@ function SmartInventory() {
     }
   }, []);
 
-  // Create combined metadata for filtering
-  const combinedMetadata = {
-    states: [...new Set(selectedFiles.flatMap(f => f.metadata?.states || []))].sort(),
-    divisions: [...new Set(selectedFiles.flatMap(f => f.metadata?.divisions || []))].sort(),
-    blocks: [...new Set(selectedFiles.flatMap(f => f.metadata?.blocks || []))].sort(),
-    categories: [...new Set(selectedFiles.flatMap(f => f.metadata?.categories || []))].sort(),
-  };
 
   return (
     <div className="h-screen flex bg-gray-50">
@@ -322,22 +338,22 @@ function SmartInventory() {
               )}
           </button>
         </div>
+      
+        
+        <FilterPanel
+          filters={filters}
+          onFiltersChange={setFilters}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          selectedFilesCount={selectedFiles.length}
+        />
+
         <FileList
           files={files}
           selectedFileIds={selectedFiles.map(f => f.id)}
           onFileSelect={handleFileSelect}
           onFileDelete={handleFileDelete}
         />
-        
-        <FilterPanel
-          filters={filters}
-          onFiltersChange={setFilters}
-          metadata={combinedMetadata}
-          searchQuery={searchQuery}
-          onSearchChange={handleSearchChange}
-          selectedFilesCount={selectedFiles.length}
-        />
-
         <PlacemarkList
           placemarks={filteredPlacemarks}
           visiblePlacemarks={visiblePlacemarks}

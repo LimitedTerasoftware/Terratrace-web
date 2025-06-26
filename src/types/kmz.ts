@@ -2,7 +2,7 @@ export interface Placemark {
   id: string;
   name: string;
   description?: string;
-  coordinates: {
+  coordinates?: {
     lat: number;
     lng: number;
     alt?: number;
@@ -18,18 +18,17 @@ export interface Placemark {
 
 export interface KMZFile {
   id: string;
-  name: string;
-  uploadDate: Date;
+  filename: string;
+  filepath:string;
+  data_id:number;
+  uploaded_at: Date;
   size: number;
   placemarks: Placemark[];
   originalData: ArrayBuffer;
   styles?: Record<string, any>;
-  metadata?: {
-    states: string[];
-    divisions: string[];
-    blocks: string[];
-    categories: string[];
-  };
+  state_code: string;
+  dist_code: string;
+  blk_code: string;
 }
 
 export interface FilterState {

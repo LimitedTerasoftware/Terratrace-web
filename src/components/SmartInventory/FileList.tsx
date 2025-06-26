@@ -1,25 +1,25 @@
 import React from 'react';
-import { FileText, Download, Trash2, MapPin, Check } from 'lucide-react';
+import { FileText, Download, Trash2, Check } from 'lucide-react';
 import { KMZFile } from '../../types/kmz';
 import { saveAs } from 'file-saver';
 
 interface FileListProps {
-  files: KMZFile[];
+  files: KMZFile[][];
   selectedFileIds: string[];
   onFileSelect: (file: KMZFile, isMultiSelect?: boolean) => void;
   onFileDelete: (id: string) => void;
 }
 
-export const FileList: React.FC<FileListProps> = ({ 
-  files, 
-  selectedFileIds, 
-  onFileSelect, 
-  onFileDelete 
+export const FileList: React.FC<FileListProps> = ({
+  files,
+  selectedFileIds,
+  onFileSelect,
+  onFileDelete
 }) => {
   const handleDownload = (file: KMZFile, event: React.MouseEvent) => {
     event.stopPropagation();
     const blob = new Blob([file.originalData], { type: 'application/vnd.google-earth.kmz' });
-    saveAs(blob, `${file.name}.kmz`);
+    saveAs(blob, `${file.filename}.kmz`);
   };
 
   const handleDelete = (id: string, event: React.MouseEvent) => {
@@ -34,22 +34,20 @@ export const FileList: React.FC<FileListProps> = ({
     onFileSelect(file, isMultiSelect);
   };
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-
-  const formatDate = (date: Date): string => {
+  const formatDate = (date: string | Date): string => {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    if (isNaN(d.getTime())) return 'Invalid Date'; // fallback
     return new Intl.DateTimeFormat('en-US', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
-    }).format(date);
+      minute: '2-digit',
+      hour12: true
+    }).format(d);
   };
+  const totalFiles = files.reduce((count, group) => count + group.length, 0);
 
-  if (files.length === 0) {
+  if (totalFiles === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
         <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
@@ -57,12 +55,11 @@ export const FileList: React.FC<FileListProps> = ({
       </div>
     );
   }
-
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 max-h-80 overflow-y-auto">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-700">
-          Saved Files ({files.length})
+          Saved Files ({totalFiles})
         </h3>
         {selectedFileIds.length > 1 && (
           <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
@@ -70,12 +67,75 @@ export const FileList: React.FC<FileListProps> = ({
           </span>
         )}
       </div>
-      
+
       <div className="text-xs text-gray-500 mb-2">
         Hold Ctrl/Cmd to select multiple files
       </div>
+      {files.map((group, groupIndex) => (
+        <div key={groupIndex} className="mb-6">
+          <div className={`
+                  p-3 rounded-lg border cursor-pointer transition-all duration-200 relative
+                border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm}
+                `}>
+            {group.map((file) => {
+              const isSelected = selectedFileIds.includes(file.id);
 
-      {files.map((file) => {
+              return (
+                <div
+                  key={file.id}
+                  onClick={(e) => handleFileClick(file, e)}
+                  className={`
+                      p-3 rounded-lg border cursor-pointer transition-all duration-200 relative
+                      ${isSelected
+                      ? 'border-blue-500 bg-blue-50 shadow-sm'
+                      : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'}
+                    `}
+                >
+                  {isSelected && (
+                    <div className="absolute top-2 right-2">
+                      <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                        <Check className="h-3 w-3 text-white" />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0 ">
+                      <div className="flex items-center gap-2 mb-1">
+                        <FileText className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                        <h4 className="text-sm font-medium text-gray-900 truncate">
+                          {file.filename}
+                        </h4>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-gray-500">
+                        <span>{formatDate(file.uploaded_at)}</span>
+
+                        <button
+                          onClick={(e) => handleDownload(file, e)}
+                          className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                          title="Download"
+                        >
+                          <Download className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={(e) => handleDelete(file.id, e)}
+                          className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {/* {files.map((file,index) => {
+        
         const isSelected = selectedFileIds.includes(file.id);
         
         return (
@@ -103,16 +163,17 @@ export const FileList: React.FC<FileListProps> = ({
                 <div className="flex items-center gap-2 mb-1">
                   <FileText className="h-4 w-4 text-blue-600 flex-shrink-0" />
                   <h4 className="text-sm font-medium text-gray-900 truncate">
-                    {file.name}
+                    {file.filename}
                   </h4>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-gray-500">
                   <span className="flex items-center gap-1">
                     <MapPin className="h-3 w-3" />
-                    {file.placemarks.length} markers
+                    {file.placemarks.length} 
+                    markers
                   </span>
                   <span>{formatFileSize(file.size)}</span>
-                  <span>{formatDate(file.uploadDate)}</span>
+                  <span>{formatDate(file.uploaded_at)}</span>
                 </div>
               </div>
               <div className="flex items-center gap-1 ml-2">
@@ -134,7 +195,7 @@ export const FileList: React.FC<FileListProps> = ({
             </div>
           </div>
         );
-      })}
+      })} */}
     </div>
   );
 };

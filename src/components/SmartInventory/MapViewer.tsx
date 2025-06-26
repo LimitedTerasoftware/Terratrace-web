@@ -266,7 +266,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         try {
           const bounds = new google.maps.LatLngBounds();
           placemarks.forEach(placemark => {
-            bounds.extend(placemark.coordinates);
+            bounds.extend(placemark?.coordinates);
           });
           map.fitBounds(bounds);
         } catch (error) {

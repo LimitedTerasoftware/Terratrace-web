@@ -23,7 +23,6 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
   const handleSelectAll = () => {
     const newSelectAll = !selectAll;
     setSelectAll(newSelectAll);
-    
     placemarks.forEach(placemark => {
       onPlacemarkVisibilityChange(placemark.id, newSelectAll);
     });
@@ -34,16 +33,16 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
     onPlacemarkVisibilityChange(placemark.id, !isVisible);
   };
 
-  if (placemarks.length === 0) {
-    return (
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <div className="text-center text-gray-500 py-4">
-          <MapPin className="h-8 w-8 mx-auto mb-2 opacity-50" />
-          <p className="text-sm">No placemarks available</p>
-        </div>
-      </div>
-    );
-  }
+  // if (placemarks.length === 0) {
+  //   return (
+  //     <div className="bg-white rounded-lg border border-gray-200 p-4">
+  //       <div className="text-center text-gray-500 py-4">
+  //         <MapPin className="h-8 w-8 mx-auto mb-2 opacity-50" />
+  //         <p className="text-sm">No placemarks available</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="bg-white rounded-lg border border-gray-200">
@@ -94,16 +93,16 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
                         {placemark.name}
                       </h4>
                     </div>
-                    {placemark.description && (
+                    {/* {placemark.description && (
                       <p className="text-xs text-gray-500 truncate mb-1">
                         {placemark.description}
                       </p>
-                    )}
-                    <div className="flex items-center gap-2 text-xs text-gray-400">
+                    )} */}
+                    {/* <div className="flex items-center gap-2 text-xs text-gray-400">
                       {placemark.state && <span>{placemark.state}</span>}
                       {placemark.division && <span>• {placemark.division}</span>}
                       {placemark.block && <span>• {placemark.block}</span>}
-                    </div>
+                    </div> */}
                   </div>
                   <button
                     onClick={(e) => {
