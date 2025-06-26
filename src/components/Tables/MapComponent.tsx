@@ -459,22 +459,44 @@ const tileLayerUrl = useMemo(() => {
                     />
                   ))
                 ) :
-                  selectedMarker.event_type === "ROADCROSSING" && selectedMarker.road_crossing?.startPhoto ? (
-                    <img
-                      src={`${baseUrl}${selectedMarker.road_crossing?.startPhoto}`}
-                      alt="ROADCROSSING"
-                      className="w-full max-h-40 object-cover mt-2"
-                      onClick={() => setZoomImage(`${baseUrl}${selectedMarker.road_crossing?.startPhoto}`)}
-                    />
-                  ) :
-                    selectedMarker.event_type === "ROADCROSSING" && selectedMarker.road_crossing?.endPhoto ? (
-                      <img
-                        src={`${baseUrl}${selectedMarker.road_crossing?.endPhoto}`}
-                        alt="ROADCROSSING"
-                        className="w-full max-h-40 object-cover mt-2"
-                        onClick={() => setZoomImage(`${baseUrl}${selectedMarker.road_crossing?.endPhoto}`)}
+                  // selectedMarker.event_type === "ROADCROSSING" && selectedMarker.road_crossing?.startPhoto ? (
+                  //   <img
+                  //     src={`${baseUrl}${selectedMarker.road_crossing?.startPhoto}`}
+                  //     alt="ROADCROSSING"
+                  //     className="w-full max-h-40 object-cover mt-2"
+                  //     onClick={() => setZoomImage(`${baseUrl}${selectedMarker.road_crossing?.startPhoto}`)}
+                  //   />
+                  // ) :
+                  //   selectedMarker.event_type === "ROADCROSSING" && selectedMarker.road_crossing?.endPhoto ? (
+                  //     <img
+                  //       src={`${baseUrl}${selectedMarker.road_crossing?.endPhoto}`}
+                  //       alt="ROADCROSSING"
+                  //       className="w-full max-h-40 object-cover mt-2"
+                  //       onClick={() => setZoomImage(`${baseUrl}${selectedMarker.road_crossing?.endPhoto}`)}
 
+                  //     />
+                  
+                 selectedMarker.event_type === "ROADCROSSING" ? (
+                  <>
+                    {selectedMarker.road_crossing?.startPhoto && (
+                      <img
+                        src={`${baseUrl}${selectedMarker.road_crossing.startPhoto}`}
+                        alt="Start Road Crossing"
+                        className="w-full max-h-40 object-cover mt-2"
+                        onClick={() => setZoomImage(`${baseUrl}${selectedMarker.road_crossing.startPhoto}`)}
                       />
+                    )}
+
+                    {selectedMarker.road_crossing?.endPhoto && (
+                      <img
+                        src={`${baseUrl}${selectedMarker.road_crossing.endPhoto}`}
+                        alt="End Road Crossing"
+                        className="w-full max-h-40 object-cover mt-2"
+                        onClick={() => setZoomImage(`${baseUrl}${selectedMarker.road_crossing.endPhoto}`)}
+                      />
+                    )}
+                  </>
+
                     ) : selectedMarker.event_type === "ALL" ? (
                       selectedMarker.jointChamberUrl ? (
                         <img

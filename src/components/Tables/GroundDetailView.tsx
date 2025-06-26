@@ -462,7 +462,6 @@ const GroundDetailView: React.FC = () => {
       ...new Map(
         data?.under_ground_survey_data
           ?.filter(survey =>
-            survey?.surveyUploaded === "true" &&
             Object.values(survey).some(val =>
               typeof val === 'string' && val.toLowerCase().includes(searchTerm.toLowerCase())
             )
@@ -499,10 +498,10 @@ const GroundDetailView: React.FC = () => {
       // Road Crossing Info
       crossing_Type: data.road_crossing?.roadCrossing || '',
       crossing_length: data.road_crossing?.length || '',
-      crossing_startPhoto_URL: (data.event_type === "ROADCROSSING" && data.road_crossing?.startPhoto) ?  { text: `${baseUrl}${data.road_crossing?.startPhoto}`, url: `${baseUrl}${data.road_crossing?.startPhoto}` } : '',
+      crossing_startPhoto_URL: (data.event_type === "ROADCROSSING" && data?.surveyUploaded === "true" && data.road_crossing?.startPhoto) ?  { text: `${baseUrl}${data.road_crossing?.startPhoto}`, url: `${baseUrl}${data.road_crossing?.startPhoto}` } : '',
       crossing_startphoto_Lat: data.road_crossing?.startPhotoLat || '',
       crossing_startphoto_Long: data.road_crossing?.startPhotoLong || '',
-      crossing_endPhoto_URL: (data.event_type === "ROADCROSSING" && data.road_crossing?.endPhoto) ? {text: `${baseUrl}${data.road_crossing?.endPhoto}`,url:`${baseUrl}${data.road_crossing?.endPhoto}`}:'',
+      crossing_endPhoto_URL: (data.event_type === "ROADCROSSING" && data?.surveyUploaded === "true"  && data.road_crossing?.endPhoto) ? {text: `${baseUrl}${data.road_crossing?.endPhoto}`,url:`${baseUrl}${data.road_crossing?.endPhoto}`}:'',
       crossing_endphoto_Lat: data.road_crossing?.endPhotoLat || '',
       crossing_endphoto_Long: data.road_crossing?.endPhotoLong || '',
 
@@ -520,20 +519,20 @@ const GroundDetailView: React.FC = () => {
 
       // Side and Indicator
       side_type: data.side_type,
-      routeIndicatorUrl: (data.event_type === "ROUTEINDICATOR" && data.routeIndicatorUrl)
+      routeIndicatorUrl: (data.event_type === "ROUTEINDICATOR" && data?.surveyUploaded === "true" && data.routeIndicatorUrl)
         ? { text: `${baseUrl}${data.routeIndicatorUrl}`, url: `${baseUrl}${data.routeIndicatorUrl}` }
         : '',
 
       // Start/End Photos
-      Survey_Start_Photo: data.event_type === "SURVEYSTART" ? {text:`${baseUrl}${data.start_photos?.[0]}` ,url:`${baseUrl}${data.start_photos?.[0]}`} : '',
-      Survey_End_Photo: data.event_type === "ENDSURVEY" ? {text:`${baseUrl}${data.end_photos?.[0]}` ,url:`${baseUrl}${data.end_photos?.[0]}`}: '',
+      Survey_Start_Photo: data.event_type === "SURVEYSTART" && data?.surveyUploaded === "true"  ? {text:`${baseUrl}${data.start_photos?.[0]}` ,url:`${baseUrl}${data.start_photos?.[0]}`} : '',
+      Survey_End_Photo: data.event_type === "ENDSURVEY" && data?.surveyUploaded === "true" ? {text:`${baseUrl}${data.end_photos?.[0]}` ,url:`${baseUrl}${data.end_photos?.[0]}`}: '',
 
       // Utility Features
       localInfo: data.utility_features_checked?.localInfo || '',
       selectedGroundFeatures: (data.utility_features_checked?.selectedGroundFeatures || []).join(', '),
 
       // Video Details
-      videoUrl: (data.event_type === "VIDEORECORD" && data.videoDetails?.videoUrl?.trim().replace(/^"|"$/g, "")) ? {text:`${baseUrl}${data.videoDetails?.videoUrl}`,url:`${baseUrl}${data.videoDetails?.videoUrl}`} : '',
+      videoUrl: (data.event_type === "VIDEORECORD" && data?.surveyUploaded === "true"  && data.videoDetails?.videoUrl?.trim().replace(/^"|"$/g, "")) ? {text:`${baseUrl}${data.videoDetails?.videoUrl}`,url:`${baseUrl}${data.videoDetails?.videoUrl}`} : '',
       video_startLatitude: data.videoDetails?.startLatitude || '',
       video_startLongitude: data.videoDetails?.startLongitude || '',
       video_startTimeStamp: data.videoDetails?.startTimeStamp || '',
@@ -542,16 +541,16 @@ const GroundDetailView: React.FC = () => {
       video_endTimeStamp: data.videoDetails?.endTimeStamp || '',
 
       // Joint Chamber and fpoi
-      jointChamberUrl: (data.event_type === "JOINTCHAMBER" && data.jointChamberUrl) ? {text:`${baseUrl}${data.jointChamberUrl}`,url:`${baseUrl}${data.jointChamberUrl}`} :'',
-      fpoiUrl: (data.event_type === "FPOI" && data.fpoiUrl) ? {text:`${baseUrl}${data.fpoiUrl}`,url:`${baseUrl}${data.fpoiUrl}`} : '',
-      kmtStoneUrl: (data.event_type === "KILOMETERSTONE" && data.kmtStoneUrl)? {text:`${baseUrl}${data.kmtStoneUrl}`,url:`${baseUrl}${data.kmtStoneUrl}`}: '',
+      jointChamberUrl: (data.event_type === "JOINTCHAMBER" && data?.surveyUploaded === "true"  && data.jointChamberUrl) ? {text:`${baseUrl}${data.jointChamberUrl}`,url:`${baseUrl}${data.jointChamberUrl}`} :'',
+      fpoiUrl: (data.event_type === "FPOI" && data.fpoiUrl && data?.surveyUploaded === "true" ) ? {text:`${baseUrl}${data.fpoiUrl}`,url:`${baseUrl}${data.fpoiUrl}`} : '',
+      kmtStoneUrl: (data.event_type === "KILOMETERSTONE" && data.kmtStoneUrl && data?.surveyUploaded === "true" )? {text:`${baseUrl}${data.kmtStoneUrl}`,url:`${baseUrl}${data.kmtStoneUrl}`}: '',
       landMarkType: data.landMarkType,
-      LANDMARK: (data.event_type === "LANDMARK" && data.landMarkUrls && data.landMarkType !== 'NONE') && `${baseUrl}${JSON.parse(data.landMarkUrls)
+      LANDMARK: (data.event_type === "LANDMARK" && data?.surveyUploaded === "true" && data.landMarkUrls && data.landMarkType !== 'NONE') && `${baseUrl}${JSON.parse(data.landMarkUrls)
         .filter((url: string) => url)
         .map((url: string) => (
          {text: `${baseUrl}${url}`,url: `${baseUrl}${url}`}
         ))}` || '',
-      FIBERTURN: (data.event_type === "FIBERTURN" && data.fiberTurnUrl) ? {text: `${baseUrl}${data.fiberTurnUrl}`,url:`${baseUrl}${data.fiberTurnUrl}`} : '',
+      FIBERTURN: (data.event_type === "FIBERTURN" && data?.surveyUploaded === "true"  && data.fiberTurnUrl) ? {text: `${baseUrl}${data.fiberTurnUrl}`,url:`${baseUrl}${data.fiberTurnUrl}`} : '',
 
       // Patroller Details
       patroller_company: data.patroller_details?.companyName || '',

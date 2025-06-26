@@ -441,7 +441,7 @@ const UndergroundSurvey: React.FC = () => {
           ...new Map(
             json.data?.under_ground_survey_data
               ?.filter((survey: any) =>
-                survey?.surveyUploaded === "true" &&
+                survey.event_type === 'LIVELOCATION' ||  survey?.surveyUploaded === "true" &&
                 selectedEventTypes.includes(survey.event_type)
               )
               .map((survey: any) => [`${survey.latitude}-${survey.longitude}-${survey.event_type}`, survey])
