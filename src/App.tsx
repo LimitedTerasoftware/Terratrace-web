@@ -47,6 +47,9 @@ import RouteGPList from './components/RoutePlanning/RouteGPList';
 import Login from './pages/Authentication/Login';
 import Signup from './pages/Authentication/SignUPNew';
 import SmartInventory from './components/SmartInventory/index';
+import IndexChart from './components/DepthChart/index';
+import MachineDataTable from './components/DepthChart/MachineData';
+import MachineManagement from './components/MachineManagement/index';
 //import AuditLogs from './components/AuditLogs';
 
 function App() {
@@ -512,6 +515,25 @@ function App() {
               
                   <SmartInventory />
             </>}/>
+             <Route path='/depth-chart' element={<>
+                <DefaultLayout>
+                  <PageTitle title="depth chart" />
+                  <IndexChart />
+                </DefaultLayout>
+            </>}/>
+             <Route path='/machine-data' element={<>
+                <DefaultLayout>
+                  <PageTitle title="Machine-Data" />
+                  <MachineDataTable />
+                </DefaultLayout>
+            </>}/>
+              <Route path='/machine-management' element={<>
+                <DefaultLayout>
+                  <PageTitle title="machine-management" />
+                  <MachineManagement />
+                </DefaultLayout>
+            </>}/>
+
 
           </Routes>
           

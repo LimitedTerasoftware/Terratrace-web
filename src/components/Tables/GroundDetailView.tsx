@@ -130,6 +130,7 @@ const GroundDetailView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'details' | 'map' | 'video'>('details');
   const [searchTerm, setSearchTerm] = useState("");
   const [SelectedItem, setSelectedItem] = useState<any | null>(null);
+  const [videoSizes, setVideoSizes] = useState<Record<string, number>>({});
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -144,7 +145,19 @@ const GroundDetailView: React.FC = () => {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
-  
+
+  const fetchVideoSize = async (url: string) => {
+    try {
+      const response = await axios.head(`${baseUrl}${url}`);
+      const size = response.headers['content-length'];
+      if (size) {
+        setVideoSizes((prev) => ({ ...prev, [url]: parseInt(size, 10) }));
+      }
+    } catch (error) {
+      console.error(`Failed to fetch video size for ${url}:`, error);
+    }
+  };
+
   const filteredData = [
     ...new Map(
       data?.under_ground_survey_data
@@ -158,6 +171,22 @@ const GroundDetailView: React.FC = () => {
         .map(survey => [`${survey.latitude}-${survey.longitude}-${survey.event_type}`, survey])
     ).values()
   ];
+
+  useEffect(() => {
+    if (data) {
+      data.under_ground_survey_data.forEach((row) => {
+        if (row.event_type === "VIDEORECORD") {
+          const mainUrl = row.videoUrl?.trim().replace(/^"|"$/g, "");
+          const fallbackUrl = row.videoDetails?.videoUrl?.trim().replace(/^"|"$/g, "");
+          const videoUrl = mainUrl || fallbackUrl;
+
+          if (videoUrl && !videoSizes[videoUrl]) {
+            fetchVideoSize(videoUrl);
+          }
+        }
+      });
+    }
+  }, [data]);
 
   const columns = [
     {
@@ -287,6 +316,26 @@ const GroundDetailView: React.FC = () => {
         return "-";
       },
     },
+    {
+      name: "Video Size",
+      cell: (row: UnderGroundSurveyData) => {
+        if (row.event_type === "VIDEORECORD") {
+          const mainUrl = row.videoUrl?.trim().replace(/^"|"$/g, "");
+          const fallbackUrl = row.videoDetails?.videoUrl?.trim().replace(/^"|"$/g, "");
+          const videoUrl = mainUrl || fallbackUrl;
+
+          const sizeInBytes = videoSizes[videoUrl || ""];
+          if (sizeInBytes) {
+            const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(2);
+            return `${sizeInMB} MB`;
+          } else {
+            return "Loading...";
+          }
+        }
+        return "-";
+      },
+    },
+
     {
       name: "Route Type",
       selector: (row: UnderGroundSurveyData) => row.route_details.routeType || "-",
@@ -498,10 +547,10 @@ const GroundDetailView: React.FC = () => {
       // Road Crossing Info
       crossing_Type: data.road_crossing?.roadCrossing || '',
       crossing_length: data.road_crossing?.length || '',
-      crossing_startPhoto_URL: (data.event_type === "ROADCROSSING" && data?.surveyUploaded === "true" && data.road_crossing?.startPhoto) ?  { text: `${baseUrl}${data.road_crossing?.startPhoto}`, url: `${baseUrl}${data.road_crossing?.startPhoto}` } : '',
+      crossing_startPhoto_URL: (data.event_type === "ROADCROSSING" && data?.surveyUploaded === "true" && data.road_crossing?.startPhoto) ? { text: `${baseUrl}${data.road_crossing?.startPhoto}`, url: `${baseUrl}${data.road_crossing?.startPhoto}` } : '',
       crossing_startphoto_Lat: data.road_crossing?.startPhotoLat || '',
       crossing_startphoto_Long: data.road_crossing?.startPhotoLong || '',
-      crossing_endPhoto_URL: (data.event_type === "ROADCROSSING" && data?.surveyUploaded === "true"  && data.road_crossing?.endPhoto) ? {text: `${baseUrl}${data.road_crossing?.endPhoto}`,url:`${baseUrl}${data.road_crossing?.endPhoto}`}:'',
+      crossing_endPhoto_URL: (data.event_type === "ROADCROSSING" && data?.surveyUploaded === "true" && data.road_crossing?.endPhoto) ? { text: `${baseUrl}${data.road_crossing?.endPhoto}`, url: `${baseUrl}${data.road_crossing?.endPhoto}` } : '',
       crossing_endphoto_Lat: data.road_crossing?.endPhotoLat || '',
       crossing_endphoto_Long: data.road_crossing?.endPhotoLong || '',
 
@@ -524,15 +573,15 @@ const GroundDetailView: React.FC = () => {
         : '',
 
       // Start/End Photos
-      Survey_Start_Photo: data.event_type === "SURVEYSTART" && data?.surveyUploaded === "true"  ? {text:`${baseUrl}${data.start_photos?.[0]}` ,url:`${baseUrl}${data.start_photos?.[0]}`} : '',
-      Survey_End_Photo: data.event_type === "ENDSURVEY" && data?.surveyUploaded === "true" ? {text:`${baseUrl}${data.end_photos?.[0]}` ,url:`${baseUrl}${data.end_photos?.[0]}`}: '',
+      Survey_Start_Photo: data.event_type === "SURVEYSTART" && data?.surveyUploaded === "true" ? { text: `${baseUrl}${data.start_photos?.[0]}`, url: `${baseUrl}${data.start_photos?.[0]}` } : '',
+      Survey_End_Photo: data.event_type === "ENDSURVEY" && data?.surveyUploaded === "true" ? { text: `${baseUrl}${data.end_photos?.[0]}`, url: `${baseUrl}${data.end_photos?.[0]}` } : '',
 
       // Utility Features
       localInfo: data.utility_features_checked?.localInfo || '',
       selectedGroundFeatures: (data.utility_features_checked?.selectedGroundFeatures || []).join(', '),
 
       // Video Details
-      videoUrl: (data.event_type === "VIDEORECORD" && data?.surveyUploaded === "true"  && data.videoDetails?.videoUrl?.trim().replace(/^"|"$/g, "")) ? {text:`${baseUrl}${data.videoDetails?.videoUrl}`,url:`${baseUrl}${data.videoDetails?.videoUrl}`} : '',
+      videoUrl: (data.event_type === "VIDEORECORD" && data?.surveyUploaded === "true" && data.videoDetails?.videoUrl?.trim().replace(/^"|"$/g, "")) ? { text: `${baseUrl}${data.videoDetails?.videoUrl}`, url: `${baseUrl}${data.videoDetails?.videoUrl}` } : '',
       video_startLatitude: data.videoDetails?.startLatitude || '',
       video_startLongitude: data.videoDetails?.startLongitude || '',
       video_startTimeStamp: data.videoDetails?.startTimeStamp || '',
@@ -541,16 +590,16 @@ const GroundDetailView: React.FC = () => {
       video_endTimeStamp: data.videoDetails?.endTimeStamp || '',
 
       // Joint Chamber and fpoi
-      jointChamberUrl: (data.event_type === "JOINTCHAMBER" && data?.surveyUploaded === "true"  && data.jointChamberUrl) ? {text:`${baseUrl}${data.jointChamberUrl}`,url:`${baseUrl}${data.jointChamberUrl}`} :'',
-      fpoiUrl: (data.event_type === "FPOI" && data.fpoiUrl && data?.surveyUploaded === "true" ) ? {text:`${baseUrl}${data.fpoiUrl}`,url:`${baseUrl}${data.fpoiUrl}`} : '',
-      kmtStoneUrl: (data.event_type === "KILOMETERSTONE" && data.kmtStoneUrl && data?.surveyUploaded === "true" )? {text:`${baseUrl}${data.kmtStoneUrl}`,url:`${baseUrl}${data.kmtStoneUrl}`}: '',
+      jointChamberUrl: (data.event_type === "JOINTCHAMBER" && data?.surveyUploaded === "true" && data.jointChamberUrl) ? { text: `${baseUrl}${data.jointChamberUrl}`, url: `${baseUrl}${data.jointChamberUrl}` } : '',
+      fpoiUrl: (data.event_type === "FPOI" && data.fpoiUrl && data?.surveyUploaded === "true") ? { text: `${baseUrl}${data.fpoiUrl}`, url: `${baseUrl}${data.fpoiUrl}` } : '',
+      kmtStoneUrl: (data.event_type === "KILOMETERSTONE" && data.kmtStoneUrl && data?.surveyUploaded === "true") ? { text: `${baseUrl}${data.kmtStoneUrl}`, url: `${baseUrl}${data.kmtStoneUrl}` } : '',
       landMarkType: data.landMarkType,
       LANDMARK: (data.event_type === "LANDMARK" && data?.surveyUploaded === "true" && data.landMarkUrls && data.landMarkType !== 'NONE') && `${baseUrl}${JSON.parse(data.landMarkUrls)
         .filter((url: string) => url)
         .map((url: string) => (
-         {text: `${baseUrl}${url}`,url: `${baseUrl}${url}`}
+          { text: `${baseUrl}${url}`, url: `${baseUrl}${url}` }
         ))}` || '',
-      FIBERTURN: (data.event_type === "FIBERTURN" && data?.surveyUploaded === "true"  && data.fiberTurnUrl) ? {text: `${baseUrl}${data.fiberTurnUrl}`,url:`${baseUrl}${data.fiberTurnUrl}`} : '',
+      FIBERTURN: (data.event_type === "FIBERTURN" && data?.surveyUploaded === "true" && data.fiberTurnUrl) ? { text: `${baseUrl}${data.fiberTurnUrl}`, url: `${baseUrl}${data.fiberTurnUrl}` } : '',
 
       // Patroller Details
       patroller_company: data.patroller_details?.companyName || '',
@@ -566,7 +615,7 @@ const GroundDetailView: React.FC = () => {
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.json_to_sheet(rows);
     rows.forEach((row, rowIndex) => {
-      const excelRow = rowIndex + 2; 
+      const excelRow = rowIndex + 2;
       const fieldsWithLinks = {
         crossing_startPhoto_URL: 'T',
         crossing_endPhoto_URL: 'W',
@@ -581,7 +630,7 @@ const GroundDetailView: React.FC = () => {
         FIBERTURN: 'AZ'
       };
 
-    Object.entries(fieldsWithLinks).forEach(([key, col]) => {
+      Object.entries(fieldsWithLinks).forEach(([key, col]) => {
         const val = (row as any)[key];
         if (val && typeof val === 'object' && val.url) {
           worksheet[`${col}${excelRow}`] = {
@@ -678,7 +727,7 @@ const GroundDetailView: React.FC = () => {
       ]
     ], { origin: "A1" });
     XLSX.writeFile(workbook, `UnderGround Survey_${AllData[0].survey_id}.xlsx`, { compression: true });
-  
+
   };
 
   const handleTabChange = (item: any) => {
@@ -718,8 +767,8 @@ const GroundDetailView: React.FC = () => {
               <li className="mr-2">
                 <button
                   className={`inline-block p-4 rounded-t-lg outline-none ${activeTab === 'details'
-                      ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
-                      : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
+                    ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
+                    : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
                     }`}
                   onClick={() => setActiveTab('details')}
                 >
@@ -729,8 +778,8 @@ const GroundDetailView: React.FC = () => {
               <li className="mr-2">
                 <button
                   className={`inline-block p-4 rounded-t-lg outline-none ${activeTab === 'map'
-                      ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
-                      : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
+                    ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
+                    : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
                     }`}
                   onClick={() => setActiveTab('map')}
                 >
@@ -740,8 +789,8 @@ const GroundDetailView: React.FC = () => {
               <li className="mr-2">
                 <button
                   className={`inline-block p-4 rounded-t-lg outline-none ${activeTab === 'video'
-                      ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
-                      : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
+                    ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
+                    : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
                     }`}
                   onClick={() => setActiveTab('video')}
                 >

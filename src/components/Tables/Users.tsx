@@ -7,6 +7,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Modal from "react-modal";
 import UserActionsDropdown from "./UserActionsDropdown";
+import { Machine } from "../../types/machine";
 
 interface UsersData {
   user_id: string;
@@ -32,8 +33,29 @@ const Users = () => {
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const [userAdded, setUserAdded] = useState(false);
   const [userActivated, setUserActivated] = useState(false);
-  const [formData, setFormData] = useState({ user_id: "", fullname: "", email: "", contact_no: "", company_id:"", password: "" });
+  const [formData, setFormData] = useState({ user_id: "", fullname: "", email: "", contact_no: "", company_id:"", password: "" ,machine_id:'',registrationNumber:"",username:''});
+  const[constructionUser,setconstructionUser]= useState(false);
   const navigate = useNavigate();
+  const [successModalOpen, setSuccessModalOpen] = useState(false);
+  const [addedUserId, setAddedUserId] = useState<string | null>(null);
+
+  const [machines, setMachines] = useState<Machine[]>([]);
+  const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
+
+ 
+
+    const GetData = async() =>{
+      try {
+        const resp = await axios.get(`${TraceBASEURL}/get-all-machines`);
+        if(resp.status === 200 || resp.status === 201){
+         setMachines(resp.data.machines);
+        }
+        
+      } catch (error) {
+         console.log(error)
+      }
+
+    }
 
   const fetchData = async () => {
     try {
@@ -47,7 +69,7 @@ const Users = () => {
   };
 
   const resetFormData = () => {
-    setFormData({ user_id: "", fullname: "", email: "", company_id:"", contact_no: "", password: "" });
+    setFormData({ user_id: "", fullname: "", email: "", company_id:"", contact_no: "", password: "" ,machine_id:"",registrationNumber:"",username:''});
   };
 
   const openEditModal = (user: UsersData) => {
@@ -58,6 +80,9 @@ const Users = () => {
       contact_no: "", // Assuming contact_no is not part of the initial data
       password: "", // Assuming password is not part of the initial data
       company_id: user.company_id,
+      registrationNumber:'',
+      machine_id:'',
+      username:""
     });
     setEditModalIsOpen(true);
   };
@@ -151,23 +176,41 @@ const Users = () => {
     getPaginationRowModel: getPaginationRowModel(),
   });
 
-  const handleAddUser = async () => {
+  const handleAddUser = async (e?: React.FormEvent) => {
+      if (e) e.preventDefault();
+
     setUserAdded(false);
 
     if (!formData.fullname || !formData.email || !formData.contact_no || !formData.password) {
       toast.error("All fields are required!");
       return;
     }
+    if(constructionUser && !formData.registrationNumber){
+      toast.error("Registration number is required!");
+      return;
+    }
 
     try {
-      const response = await axios.post(`${BASEURL}/createuser`, formData);
+     const response = constructionUser
+    ? await axios.post(`${TraceBASEURL}/create-users`, formData)
+    : await axios.post(`${BASEURL}/createuser`, formData);  
+    if(response.status === 200 || response.status === 201){
       toast.success("User added successfully!");
       setData([...data, response.data]);
+      setAddedUserId(response.data.data.user_id);
+      setSuccessModalOpen(true);
       setModalIsOpen(false);
       setUserAdded(true);
       resetFormData();
-    } catch (error) {
-      toast.error("Failed to add user");
+
+    }else{
+     toast.error(`Error:${response.data?.message || response.data?.error}`);
+
+    } 
+    } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.message || "Something went wrong while adding the user.";
+      toast.error(`Failed to add user: ${errorMessage}`);
     }
   };
 
@@ -179,16 +222,31 @@ const Users = () => {
       <ToastContainer />
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-semibold">All Users</h1>
+        <div className="flex justify-end gap-2">
         <button
         className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
         onClick={() => {
           resetFormData(); // Reset form data when opening the modal
           setModalIsOpen(true);
+          setconstructionUser(false);
         }}
         >
         <FaPlusCircle className="h-5 w-5" />
         Add New
         </button>
+         <button
+          className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+          onClick={() => {
+            GetData();
+            resetFormData(); // Reset form data when opening the modal
+            setModalIsOpen(true);
+            setconstructionUser(true);
+          }}
+        >
+        <FaPlusCircle className="h-5 w-5" />
+          Add Construction User
+        </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto bg-white rounded-lg shadow-md">
@@ -231,10 +289,10 @@ const Users = () => {
       <Modal
         isOpen={modalIsOpen}
         onRequestClose={() => setModalIsOpen(false)}
-        className="bg-white p-6 rounded-lg shadow-lg w-96 mx-auto mt-20 border relative"
+        className="bg-white p-6 rounded-lg shadow-lg w-96 mx-auto mt-5 border relative"
         overlayClassName="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
       >
-        <form autoComplete="off">
+        <form autoComplete="off" onSubmit={handleAddUser}>
         <input type="text" name="fake-username" className="hidden" />
         <input type="password" name="fake-password" className="hidden" />
          <button
@@ -244,7 +302,7 @@ const Users = () => {
         <FaTimes className="h-5 w-5" />
       </button>
 
-        <h2 className="text-xl font-semibold mb-4 text-gray-800">Add User</h2>
+        <h2 className="text-xl font-semibold mb-4 text-gray-800">{constructionUser ? 'Construction User' : 'Add User'} </h2>
         <div className="space-y-3">
         <div>
           <label className="block text-sm font-medium text-gray-700">Company</label>
@@ -265,15 +323,54 @@ const Users = () => {
             ))}
           </select>
         </div>
+        {constructionUser && (
+         <><div>
+                <label className="block text-sm font-medium text-gray-700">Machine Registration Number</label>
+                <select
+                  name="company_field"
+                  value={formData.registrationNumber}
+                  onChange={(e) => {
+                    const selectedRegNo = e.target.value;
+                    const selectedMachine = machines.find(
+                      (m) => m.registration_number.toString() === selectedRegNo
+                    );
 
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Username</label>
+                    setFormData({
+                      ...formData,
+                      registrationNumber: selectedRegNo,
+                      machine_id: selectedMachine ? selectedMachine.machine_id : '',
+                    });
+                  } }
+                  required
+                  className="w-full mt-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                >
+                  <option value="">Select Registration Number</option>
+                  {machines.map((machine) => (
+                    <option key={machine.machine_id} value={machine.registration_number.toString()}>
+                      {machine.registration_number}
+                    </option>
+                  ))}
+                </select>
+              </div><div>
+                  <label className="block text-sm font-medium text-gray-700">User Name</label>
+                  <input
+                    type="text"
+                    autoComplete="off"
+                    name="username"
+                    placeholder="Enter username"
+                    value={formData.username}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    required
+                    className="w-full mt-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                </div></>
+          )}
+        <div>
+            <label className="block text-sm font-medium text-gray-700">Full Name</label>
             <input
               type="text"
               autoComplete="off"
               name="username_field"
-              placeholder="Enter username"
+              placeholder="Enter full name"
               value={formData.fullname}
               onChange={(e) => setFormData({ ...formData, fullname: e.target.value })}
               required
@@ -319,7 +416,8 @@ const Users = () => {
             />
           </div>
           <button
-            onClick={handleAddUser}
+            // onClick={handleAddUser}
+            type="submit"
             className="w-full bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-lg transition"
           >
             Submit
@@ -410,6 +508,30 @@ const Users = () => {
           </button>
         </div>
       </Modal>
+      <Modal
+  isOpen={successModalOpen}
+  onRequestClose={() => setSuccessModalOpen(false)}
+  className="bg-white p-6 rounded-lg shadow-lg w-96 mx-auto mt-20 border relative"
+  overlayClassName="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+>
+  <button
+    onClick={() => setSuccessModalOpen(false)}
+    className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+  >
+    <FaTimes className="h-5 w-5" />
+  </button>
+
+  <h2 className="text-xl font-semibold mb-4 text-green-600">User Added Successfully!</h2>
+  <p className="text-gray-800">New User ID: <span className="font-bold">{addedUserId}</span></p>
+
+  <button
+    onClick={() => setSuccessModalOpen(false)}
+    className="mt-4 w-full bg-green-500 hover:bg-green-600 text-white p-2 rounded-lg transition"
+  >
+    OK
+  </button>
+</Modal>
+
     </div>
   );
 };

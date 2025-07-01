@@ -102,3 +102,34 @@ export interface MediaFile {
 export interface FolderStructure {
   [blockPath: string]: MediaFile[];
 }
+
+export interface DepthDataPoint {
+  state_id: number;
+  distrct_id: number;
+  block_id: number;
+  gp_id: number;
+  link_name: string;
+  startPointPhoto: string;
+  startPointCoordinates: string;
+  status: number;
+  start_lgd: string;
+  end_lgd: string;
+  machine_id: string;
+  contractor_details: string;
+  distance: string;
+  depthMeters: string;
+  created_at: string;
+}
+
+export interface ApiResponse {
+  data: {
+    depthData: DepthDataPoint[];
+  };
+}
+
+export interface ChartPoint {
+  distance: number;
+  depth: number;
+  isBelowMinimum: boolean;
+  originalData: DepthDataPoint;
+}

@@ -138,7 +138,6 @@ const filteredData = useMemo<UnderGroundSurveyData[]>(() => {
     });
 }, [data, selectedEventType, selectedModality, CrossingType]);
 
-
   const crossingCounts = useMemo(() => {
     const counts: Record<string, number> = {
       ROADCROSSING: 0,
@@ -287,6 +286,17 @@ const tileLayerUrl = useMemo(() => {
   const sidebarWidth = isFullscreen ? 'w-1/4' : 'w-96';
 
   const mapWidth = isFullscreen ? 'w-3/4' : 'w-full md:flex-1';
+const imageEventTypes = [
+  "FPOI",
+  "SURVEYSTART",
+  "ENDSURVEY",
+  "ROUTEINDICATOR",
+  "JOINTCHAMBER",
+  "ROADCROSSING",
+  "KILOMETERSTONE",
+  "LANDMARK",
+  "FIBERTURN",
+];
 
  return (
     <div ref={containerRef} className="flex flex-col md:flex-row h-screen">
@@ -324,10 +334,11 @@ const tileLayerUrl = useMemo(() => {
             const mainVideoUrl = item.videoUrl?.trim().replace(/(^"|"$)/g, '');
             const fallbackVideoUrl = item.videoDetails?.videoUrl?.trim().replace(/(^"|"$)/g, '');
             const finalUrl = fallbackVideoUrl || mainVideoUrl;
-
             let iconUrl = 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png';
                 if (item.event_type === "VIDEORECORD" && finalUrl) {
                   iconUrl = videoIcon;
+                }else if (imageEventTypes.includes(item.event_type)) {
+                  iconUrl = 'http://maps.google.com/mapfiles/ms/icons/red-dot.png';
                 }
               return (
               <Marker

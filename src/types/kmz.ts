@@ -15,11 +15,31 @@ export interface Placemark {
   category?: string;
   customData?: Record<string, any>;
 }
+export interface ApiPlacemark {
+  points: ApiPoint[];
+  polylines: ApiPolyline[];
+}
 
+export interface ApiPoint {
+  name: string;
+  styleUrl: string | null;
+  coordinates: {
+    longitude: number;
+    latitude: number;
+  };
+}
+
+export interface ApiPolyline {
+  name: string;
+  styleUrl: string | null;
+  distance: string | null;
+  coordinates: [number, number][];
+}
 export interface KMZFile {
   id: string;
   filename: string;
   filepath:string;
+  file_type:string;
   data_id:number;
   uploaded_at: Date;
   size: number;
@@ -46,4 +66,22 @@ export interface ViewState {
   };
   zoom: number;
   mapType: 'roadmap' | 'satellite' | 'hybrid' | 'terrain';
+}
+export interface PlacemarkCategory {
+  id: string;
+  name: string;
+  count: number;
+  visible: boolean;
+  color: string;
+  icon: string;
+}
+
+export interface ProcessedPlacemark {
+  id: string;
+  name: string;
+  category: string;
+  type: 'point' | 'polyline';
+  coordinates: any;
+  distance?: string|null;
+  styleUrl?: string | null;
 }

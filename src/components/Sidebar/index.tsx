@@ -16,7 +16,8 @@ import {hasViewOnlyAccess } from "../../utils/accessControl";
 import DropdownUser from './DropDownUser'; // Import the dropdownuser component
 import DarkModeSwitcher from './DarkModeSwitcher'; // Import the dark mode switcher
 import KML from '../../images/icon/kml-file.svg';
-import Smart_Inv from '../../images/icon/internet-world-svgrepo-com.svg'
+import Smart_Inv from '../../images/icon/internet-world-svgrepo-com.svg';
+import Machine from '../../images/icon/mechine.svg';
 
 import {
   ChevronLeft,
@@ -132,6 +133,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
             <>
             <SideBarItem icon={CompanyIcon} label="Companies" isOpen={isOpen} isActive={pathname.includes('companies')} path='/companies' />
             <SideBarItem icon={User} label="Users" isOpen={isOpen} isActive={pathname.includes('users')} path='/users' />
+            {/* <SideBarItem icon={Machine} label="Machines" isOpen={isOpen} isActive={pathname.includes('machine-management')} path='/machine-management' /> */}
+
              </>
              )}
             <SideBarItem icon={SurveyIcon} label="Survey" isOpen={isOpen} isActive={pathname.includes('survey')} path='/survey' />
