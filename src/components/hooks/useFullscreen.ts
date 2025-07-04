@@ -78,11 +78,28 @@ export class MediaExportService {
         }
         break;
 
+      // case "ROUTEINDICATOR":
+      //   if (item.routeIndicatorUrl) {
+      //     addMediaFile(item.routeIndicatorUrl, `route_indicator_${item.id}.jpg`, 'image');
+      //   }
+      //   break;
       case "ROUTEINDICATOR":
         if (item.routeIndicatorUrl) {
-          addMediaFile(item.routeIndicatorUrl, `route_indicator_${item.id}.jpg`, 'image');
+          try {
+            const parsed = JSON.parse(item.routeIndicatorUrl);
+            if (Array.isArray(parsed)) {
+              parsed.forEach((url, index) => {
+                addMediaFile(url, `route_indicator_${item.id}_${index + 1}.jpg`, 'image');
+              });
+            } else if (typeof parsed === 'string') {
+              addMediaFile(parsed, `route_indicator_${item.id}.jpg`, 'image');
+            }
+          } catch (e) {
+            addMediaFile(item.routeIndicatorUrl, `route_indicator_${item.id}.jpg`, 'image');
+          }
         }
         break;
+
 
       case "JOINTCHAMBER":
         if (item.jointChamberUrl) {

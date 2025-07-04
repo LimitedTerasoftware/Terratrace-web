@@ -10,7 +10,7 @@ import HotoTables from "../../pages/HotoTables";
 // Define tab types
 type TabType = "bsnl" | "gp" | "aerial" | "ground" | "hoto";
 
-// Placeholder Components
+// Placeholder Components...
 const BsnlSurvey: React.FC = () => <div className="p-4"><BsnlTables /></div>;
 const GpSurvey: React.FC = () => <div className="p-4"><GpTables /></div>;
 const AerialSurvey: React.FC = () => <div className="p-4"><AerailTables /></div>;

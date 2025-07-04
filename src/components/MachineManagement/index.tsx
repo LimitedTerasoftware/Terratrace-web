@@ -3,11 +3,11 @@ import { Machine, MachineFormData } from '../../types/machine';
 import MachineForm from './MachineForm';
 import MachineList from './MachineList';
 import { Settings, BarChart3, Truck } from 'lucide-react';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 
 function MachineManagement() {
   const [machines, setMachines] = useState<Machine[]>([]);
-  const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
+  const [editingMachine, setEditingMachine] = useState<Machine | undefined>(undefined);
   const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
   useEffect(()=>{
@@ -42,8 +42,8 @@ function MachineManagement() {
       console.error("Unexpected response:", resp.status, resp.data);
     }
   } catch (error) {
-    console.error("Error creating machine:", error.response?.data || error.message);
-  }
+    const err = error as AxiosError;
+    console.error("Error creating machine:", err.response?.data || err.message);  }
   };
 
   const handleEditMachine = (formData: MachineFormData) => {
@@ -53,7 +53,7 @@ function MachineManagement() {
           ? { ...machine, ...formData, updated_at: new Date() }
           : machine
       ));
-      setEditingMachine(null);
+      setEditingMachine(undefined);
     }
   };
 
@@ -66,7 +66,7 @@ function MachineManagement() {
   };
 
   const handleCancelEdit = () => {
-    setEditingMachine(null);
+    setEditingMachine(undefined);
   };
 
   const getStatusCounts = () => {

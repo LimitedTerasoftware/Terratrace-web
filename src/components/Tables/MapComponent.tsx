@@ -438,17 +438,35 @@ const imageEventTypes = [
                        onClick={() => setZoomImage(`${baseUrl}${selectedMarker.fiberTurnUrl}`)}
                     />
                   
-                ) : selectedMarker.event_type === "ROUTEINDICATOR" && selectedMarker.routeIndicatorUrl ? (
-                 
-                    <img
-                      src={`${baseUrl}${selectedMarker.routeIndicatorUrl}`}
-                      alt="RouteIndicatorUrl"
-                      className="w-full max-h-40 object-cover mt-2"
-                      onClick={() => setZoomImage(`${baseUrl}${selectedMarker.routeIndicatorUrl}`)}
+                ) : 
+                 selectedMarker.event_type === "ROUTEINDICATOR" && selectedMarker.routeIndicatorUrl ? (() => {
+                  let urls = [];
 
+                  try {
+                    const parsed = JSON.parse(selectedMarker.routeIndicatorUrl);
+                    if (Array.isArray(parsed)) {
+                      urls = parsed;
+                    } else if (typeof parsed === "string") {
+                      urls = [parsed];
+                    } else {
+                      urls = [];
+                    }
+                  } catch (e) {
+                    urls = [selectedMarker.routeIndicatorUrl];
+                  }
+
+                  return urls.map((url, index) => (
+                    <img
+                      key={index}
+                      src={`${baseUrl}${url}`}
+                      alt={`Route Indicator ${urls.length > 1 ? index + 1 : ""}`}
+                      className="w-full max-h-40 object-cover mt-2 cursor-pointer"
+                      onClick={() => setZoomImage(`${baseUrl}${url}`)}
                     />
-                  
-                ) : selectedMarker.event_type === "SURVEYSTART" && selectedMarker.start_photos.length > 0 ? (
+                  ));
+                })(
+
+              ) : selectedMarker.event_type === "SURVEYSTART" && selectedMarker.start_photos.length > 0 ? (
                   selectedMarker.start_photos.map((photo, index) => (
                     <img
                       key={index}

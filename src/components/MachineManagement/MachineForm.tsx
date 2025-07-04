@@ -16,15 +16,23 @@ const MachineForm: React.FC<MachineFormProps> = ({
   isEditing = false,
 }) => {
   const [formData, setFormData] = useState<MachineFormData>({
-    serial_number: '',
-    contractor_name: '',
-    registration_number: '',
-    model: '',
-    manufacturer: '',
-    year_of_manufacture: new Date().getFullYear(),
-    gps_tracker_id: '',
-    status: 'active',
-    assigned_project: '',
+  firm_name:"",
+  authorised_person:"",
+  machine_make:"",
+  capacity:"",
+  no_of_rods:0,
+  digitrack_make:"",
+  digitrack_model:"",
+  truck_make:"",
+  truck_model:"",
+  registration_number: "",
+  registration_valid_upto:new Date(),
+  driver_batch_no:"",
+  driver_valid_upto:new Date(),
+  serial_number: "",
+  year_of_manufacture: new Date().getFullYear(),
+  status: 'active',
+
   });
 
   const [errors, setErrors] = useState<Partial<MachineFormData>>({});
@@ -33,15 +41,22 @@ const MachineForm: React.FC<MachineFormProps> = ({
   useEffect(() => {
     if (machine) {
       setFormData({
+        firm_name:machine.firm_name,
+        authorised_person:machine.authorised_person,
+        machine_make:machine.machine_make,
+        capacity:machine.capacity,
+        no_of_rods:machine.no_of_rods,
+        digitrack_make:machine.digitrack_make,
+        digitrack_model:machine.digitrack_model,
+        truck_make:machine.truck_make,
+        truck_model:machine.truck_model,
+        registration_number:machine.registration_number,
+        registration_valid_upto:machine.registration_valid_upto,
+        driver_batch_no:machine.driver_batch_no,
+        driver_valid_upto:machine.driver_valid_upto,
         serial_number: machine.serial_number,
-        contractor_name: machine.contractor_name,
-        registration_number: machine.registration_number,
-        model: machine.model,
-        manufacturer: machine.manufacturer,
         year_of_manufacture: machine.year_of_manufacture,
-        gps_tracker_id: machine.gps_tracker_id,
         status: machine.status,
-        assigned_project: machine.assigned_project,
       });
     }
   }, [machine]);
@@ -50,16 +65,20 @@ const MachineForm: React.FC<MachineFormProps> = ({
     const newErrors: Partial<MachineFormData> = {};
 
     if (!formData.serial_number.trim()) newErrors.serial_number = 'Serial number is required';
-    if (!formData.contractor_name.trim()) newErrors.contractor_name = 'Contractor name is required';
     if (!formData.registration_number.trim()) newErrors.registration_number = 'Registration number is required';
-    if (!formData.model.trim()) newErrors.model = 'Model is required';
-    if (!formData.manufacturer.trim()) newErrors.manufacturer = 'Manufacturer is required';
-    if (!formData.gps_tracker_id.trim()) newErrors.gps_tracker_id = 'GPS tracker ID is required';
-    if (!formData.assigned_project.trim()) newErrors.assigned_project = 'Assigned project is required';
-
-    if (formData.year_of_manufacture < 1900 || formData.year_of_manufacture > new Date().getFullYear() + 1) {
-      newErrors.year_of_manufacture = 'Please enter a valid year';
-    }
+    if (!formData.firm_name.trim()) newErrors.firm_name = 'Firm name is required';
+    if (!formData.authorised_person.trim()) newErrors.authorised_person = 'Authorised person is required';
+    if (!formData.machine_make.trim()) newErrors.machine_make = 'Machine make is required';
+    if (!formData.capacity.trim()) newErrors.capacity = 'capacity is required';
+    if (!formData.digitrack_make.trim()) newErrors.digitrack_make = 'Digitrack make is required';
+    if (!formData.digitrack_model.trim()) newErrors.digitrack_model = 'Digitrack model is required';
+    if (!formData.truck_make.trim()) newErrors.truck_make = 'Truck make is required';
+    if (!formData.truck_model.trim()) newErrors.truck_model = 'Truck model is required';
+    if (!formData.driver_batch_no.trim()) newErrors.driver_batch_no = 'Driver batch_no is required';
+    if (!formData.driver_batch_no.trim()) newErrors.driver_batch_no = 'Driver batch_no is required';
+    // if (formData.year_of_manufacture < 1900 || formData.year_of_manufacture > new Date().getFullYear() + 1) {
+    //   newErrors.year_of_manufacture = 'Please enter a valid year';
+    // }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -71,15 +90,22 @@ const MachineForm: React.FC<MachineFormProps> = ({
       onSubmit(formData);
       if (!isEditing) {
         setFormData({
+          firm_name:"",
+          authorised_person:"",
+          machine_make:"",
+          capacity:"",
+          no_of_rods:0,
+          digitrack_make:"",
+          digitrack_model:"",
+          truck_make:"",
+          truck_model:"",
+          registration_number: "",
+          registration_valid_upto:new Date(),
+          driver_batch_no:"",
+          driver_valid_upto:new Date(),
           serial_number: '',
-          contractor_name: '',
-          registration_number: '',
-          model: '',
-          manufacturer: '',
           year_of_manufacture: new Date().getFullYear(),
-          gps_tracker_id: '',
           status: 'active',
-          assigned_project: '',
         });
       }
     }
@@ -114,7 +140,7 @@ const MachineForm: React.FC<MachineFormProps> = ({
     </div>
 
       
-      {isExpanded  || isEditing && (
+     {(isExpanded || isEditing )&&(
       <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
@@ -148,7 +174,7 @@ const MachineForm: React.FC<MachineFormProps> = ({
                 value={formData.serial_number}
                 onChange={(e) => handleChange('serial_number', e.target.value)}
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.serial_number ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
-                placeholder="e.g., SN-XYZ-1001" />
+                placeholder="Enter serial number" />
               {errors.serial_number && (
                 <p className="mt-1 text-sm text-red-600">{errors.serial_number}</p>
               )}
@@ -156,16 +182,16 @@ const MachineForm: React.FC<MachineFormProps> = ({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Contractor Name
+                Firm Name
               </label>
               <input
                 type="text"
-                value={formData.contractor_name}
-                onChange={(e) => handleChange('contractor_name', e.target.value)}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.contractor_name ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
-                placeholder="e.g., Alpha Constructions" />
-              {errors.contractor_name && (
-                <p className="mt-1 text-sm text-red-600">{errors.contractor_name}</p>
+                value={formData.firm_name}
+                onChange={(e) => handleChange('firm_name', e.target.value)}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.firm_name ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+                placeholder="Enter firm name" />
+              {errors.firm_name && (
+                <p className="mt-1 text-sm text-red-600">{errors.firm_name}</p>
               )}
             </div>
 
@@ -178,39 +204,54 @@ const MachineForm: React.FC<MachineFormProps> = ({
                 value={formData.registration_number}
                 onChange={(e) => handleChange('registration_number', e.target.value)}
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.registration_number ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
-                placeholder="e.g., REG-2024-001" />
+                placeholder="Enter registration number" />
               {errors.registration_number && (
                 <p className="mt-1 text-sm text-red-600">{errors.registration_number}</p>
               )}
             </div>
-
+           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+             Registration Valid Upto
+            </label>
+            <input
+              type="date"
+              value={
+                  formData.registration_valid_upto
+                    ? new Date(formData.registration_valid_upto).toISOString().split('T')[0]
+                    : ''
+                }             
+              onChange={(e) => handleChange('registration_valid_upto', e.target.value)}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all border-gray-300`}
+              placeholder="Enter registration_valid_upto" />
+              
+          </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Model
+                Authorised Person
               </label>
               <input
                 type="text"
-                value={formData.model}
-                onChange={(e) => handleChange('model', e.target.value)}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.model ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
-                placeholder="e.g., HDD-X900" />
-              {errors.model && (
-                <p className="mt-1 text-sm text-red-600">{errors.model}</p>
+                value={formData.authorised_person}
+                onChange={(e) => handleChange('authorised_person', e.target.value)}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.authorised_person ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+                placeholder="Enter authorised person" />
+              {errors.authorised_person && (
+                <p className="mt-1 text-sm text-red-600">{errors.authorised_person}</p>
               )}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Manufacturer
+                Machine Make
               </label>
               <input
                 type="text"
-                value={formData.manufacturer}
-                onChange={(e) => handleChange('manufacturer', e.target.value)}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.manufacturer ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
-                placeholder="e.g., Vermeer" />
-              {errors.manufacturer && (
-                <p className="mt-1 text-sm text-red-600">{errors.manufacturer}</p>
+                value={formData.machine_make}
+                onChange={(e) => handleChange('machine_make', e.target.value)}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.machine_make ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+                placeholder="Enter machine make" />
+              {errors.machine_make && (
+                <p className="mt-1 text-sm text-red-600">{errors.machine_make}</p>
               )}
             </div>
 
@@ -223,7 +264,7 @@ const MachineForm: React.FC<MachineFormProps> = ({
                 value={formData.year_of_manufacture}
                 onChange={(e) => handleChange('year_of_manufacture', parseInt(e.target.value))}
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.year_of_manufacture ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
-                placeholder="2021"
+                placeholder="Enter year of manufacture"
                 min="1900"
                 max={new Date().getFullYear() + 1} />
               {errors.year_of_manufacture && (
@@ -233,20 +274,119 @@ const MachineForm: React.FC<MachineFormProps> = ({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                GPS Tracker ID
+                Capacity
               </label>
               <input
                 type="text"
-                value={formData.gps_tracker_id}
-                onChange={(e) => handleChange('gps_tracker_id', e.target.value)}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.gps_tracker_id ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
-                placeholder="e.g., GPS12345678" />
-              {errors.gps_tracker_id && (
-                <p className="mt-1 text-sm text-red-600">{errors.gps_tracker_id}</p>
+                value={formData.capacity}
+                onChange={(e) => handleChange('capacity', e.target.value)}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.capacity ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+                placeholder="Enter capacity" />
+              {errors.capacity && (
+                <p className="mt-1 text-sm text-red-600">{errors.capacity}</p>
               )}
             </div>
-
-            <div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              No Of Rods
+            </label>
+            <input
+              type="text"
+              value={formData.no_of_rods}
+              onChange={(e) => handleChange('no_of_rods', e.target.value)}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.no_of_rods ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+              placeholder="Enter No Of rods" />
+            {errors.no_of_rods && (
+              <p className="mt-1 text-sm text-red-600">{errors.no_of_rods}</p>
+            )}
+          </div>
+           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Digitracker Make
+            </label>
+            <input
+              type="text"
+              value={formData.digitrack_make}
+              onChange={(e) => handleChange('digitrack_make', e.target.value)}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.digitrack_make ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+              placeholder="Enter digitrack make" />
+              {errors.digitrack_make && (
+              <p className="mt-1 text-sm text-red-600">{errors.digitrack_make}</p>
+            )}
+          </div>
+           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Digitracker Modal
+            </label>
+            <input
+              type="text"
+              value={formData.digitrack_model}
+              onChange={(e) => handleChange('digitrack_model', e.target.value)}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.digitrack_model ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+              placeholder="Enter digitrack modal" />
+               {errors.digitrack_model && (
+              <p className="mt-1 text-sm text-red-600">{errors.digitrack_model}</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+             Truck Make
+            </label>
+            <input
+              type="text"
+              value={formData.truck_make}
+              onChange={(e) => handleChange('truck_make', e.target.value)}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.truck_make ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+              placeholder="Enter truck make" />
+                {errors.truck_make && (
+              <p className="mt-1 text-sm text-red-600">{errors.truck_make}</p>
+            )}
+          </div>
+           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+             Truck Modal
+            </label>
+            <input
+              type="text"
+              value={formData.truck_model}
+              onChange={(e) => handleChange('truck_model', e.target.value)}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.truck_model ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+              placeholder="Enter truck modal" />
+                {errors.truck_model && (
+              <p className="mt-1 text-sm text-red-600">{errors.truck_model}</p>
+            )}
+          </div>
+           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+             Driver Batch No
+            </label>
+            <input
+              type="text"
+              value={formData.driver_batch_no}
+              onChange={(e) => handleChange('driver_batch_no', e.target.value)}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.driver_batch_no ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+              placeholder="Enter truck modal" />
+                {errors.driver_batch_no && (
+              <p className="mt-1 text-sm text-red-600">{errors.driver_batch_no}</p>
+            )}
+          </div>
+             <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+             Driver Valid Upto
+            </label>
+            <input
+              type="date"
+             value={
+                  formData.driver_valid_upto
+                    ? new Date(formData.driver_valid_upto).toISOString().split('T')[0]
+                    : ''
+                }
+              onChange={(e) => handleChange('driver_valid_upto', e.target.value)}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all border-gray-300`}
+              placeholder="Enter truck modal" />
+              
+          </div>
+          <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Status
               </label>
@@ -262,22 +402,6 @@ const MachineForm: React.FC<MachineFormProps> = ({
               </select>
             </div>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Assigned Project
-            </label>
-            <input
-              type="text"
-              value={formData.assigned_project}
-              onChange={(e) => handleChange('assigned_project', e.target.value)}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.assigned_project ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
-              placeholder="e.g., Fiber Line North Zone" />
-            {errors.assigned_project && (
-              <p className="mt-1 text-sm text-red-600">{errors.assigned_project}</p>
-            )}
-          </div>
-
           <div className="flex justify-end space-x-3 pt-6 border-t">
             {isEditing && (
               <button

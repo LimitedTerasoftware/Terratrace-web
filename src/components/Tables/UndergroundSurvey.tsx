@@ -123,7 +123,6 @@ const UndergroundSurvey: React.FC = () => {
   const [isgenerating, setIsGenerating] = useState(false);
   const [exportProgress, setExportProgress] = useState({ current: 0, total: 0, currentFile: '' });
   const [exportComplete, setExportComplete] = useState(false);
-  const [Machine,setMachine]=useState('');
 
   const navigate = useNavigate();
 
@@ -692,11 +691,13 @@ const exportExcel = async () => {
     const params:any={};
     if(selected[0].startLocation) params.start_lgd = selected[0].startLocation;
     if(selected[0].endLocation) params.end_lgd = selected[0].endLocation;
+     params.eventType ='DEPTH';
+
 
     const resp = await axios.get(`${TraceBASEURL}/get-depth-data`,{params});
     if(resp.status === 200 || resp.status === 201){
       const Data = resp.data;
-      const depthData =Data.data.depthData;
+      const depthData =Data.data;
       navigate('/depth-chart', { state: { depthData } });
 
      
@@ -712,30 +713,7 @@ const exportExcel = async () => {
     }
 
   }
- useEffect(()=>{
-  if(Machine === '' || fromdate === '')return;
-  const handleMachineData = async() =>{
-    try {
-    const params:any={};
-    if(Machine) params.machine_id = Machine;
-    if(fromdate) params.date = fromdate;
-    const resp = await axios.get(`${TraceBASEURL}/get-filtered-data`,{params});
-       if(resp.status === 200 || resp.status === 201){
-        const Data = resp.data.data;
-        navigate('/machine-data', { state: { Data } });
 
-       }else{
-          setError('Error Occured')
-
-       }
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-
-    }
-  }
-  handleMachineData()
- },[Machine,fromdate])
  
   return (
     <>
@@ -849,31 +827,7 @@ const exportExcel = async () => {
             </div>
           </div>
 
-          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-            <select
-              value={Machine !== '' ? Machine : ''}
-              onChange={(e) => {
-              setMachine(e.target.value !== '' ? (e.target.value) :'');
-
-              }}
-              className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            >
-              <option value="">Select Machines</option>
-              <option value='machine1'>
-                  Machine_1
-                </option>
-                 <option value='machine2'>
-                  Machine_2
-                </option>
-
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-          </div>
-
+        
           {/* Date Filters */}
           <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
             <input

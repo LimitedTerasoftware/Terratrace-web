@@ -16,6 +16,7 @@ interface UsersData {
   version: string;
   is_active: string;
   company_id: string;
+  machine_id:string
 }
 
 type Company = {
@@ -33,7 +34,7 @@ const Users = () => {
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const [userAdded, setUserAdded] = useState(false);
   const [userActivated, setUserActivated] = useState(false);
-  const [formData, setFormData] = useState({ user_id: "", fullname: "", email: "", contact_no: "", company_id:"", password: "" ,machine_id:'',registrationNumber:"",username:''});
+  const [formData, setFormData] = useState({ user_id: "", fullname: "", email: "", contact_no: "", company_id:"", password: "" ,machine_id:''});
   const[constructionUser,setconstructionUser]= useState(false);
   const navigate = useNavigate();
   const [successModalOpen, setSuccessModalOpen] = useState(false);
@@ -69,7 +70,7 @@ const Users = () => {
   };
 
   const resetFormData = () => {
-    setFormData({ user_id: "", fullname: "", email: "", company_id:"", contact_no: "", password: "" ,machine_id:"",registrationNumber:"",username:''});
+    setFormData({ user_id: "", fullname: "", email: "", company_id:"", contact_no: "", password: "" ,machine_id:""});
   };
 
   const openEditModal = (user: UsersData) => {
@@ -80,15 +81,14 @@ const Users = () => {
       contact_no: "", // Assuming contact_no is not part of the initial data
       password: "", // Assuming password is not part of the initial data
       company_id: user.company_id,
-      registrationNumber:'',
-      machine_id:'',
-      username:""
+      machine_id:user.machine_id,
     });
     setEditModalIsOpen(true);
   };
 
   useEffect(() => {
     fetchData();
+    GetData();
   }, [userAdded, userActivated]);
 
   useEffect(() => {
@@ -185,15 +185,13 @@ const Users = () => {
       toast.error("All fields are required!");
       return;
     }
-    if(constructionUser && !formData.registrationNumber){
+    if(constructionUser && !formData.machine_id){
       toast.error("Registration number is required!");
       return;
     }
 
     try {
-     const response = constructionUser
-    ? await axios.post(`${TraceBASEURL}/create-users`, formData)
-    : await axios.post(`${BASEURL}/createuser`, formData);  
+    const response = await axios.post(`${BASEURL}/createuser`, formData);
     if(response.status === 200 || response.status === 201){
       toast.success("User added successfully!");
       setData([...data, response.data]);
@@ -234,18 +232,7 @@ const Users = () => {
         <FaPlusCircle className="h-5 w-5" />
         Add New
         </button>
-         <button
-          className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
-          onClick={() => {
-            GetData();
-            resetFormData(); // Reset form data when opening the modal
-            setModalIsOpen(true);
-            setconstructionUser(true);
-          }}
-        >
-        <FaPlusCircle className="h-5 w-5" />
-          Add Construction User
-        </button>
+        
         </div>
       </div>
 
@@ -302,8 +289,36 @@ const Users = () => {
         <FaTimes className="h-5 w-5" />
       </button>
 
-        <h2 className="text-xl font-semibold mb-4 text-gray-800">{constructionUser ? 'Construction User' : 'Add User'} </h2>
+        <h2 className="text-xl font-semibold mb-4 text-gray-800">Add User</h2>
         <div className="space-y-3">
+          <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">User Type</label>
+        <div className="flex space-x-4">
+          <label className="inline-flex items-center">
+            <input
+              type="radio"
+              name="userType"
+              value="normal"
+              checked={!constructionUser}
+              onChange={() => setconstructionUser(false)}
+              className="text-blue-500 focus:ring-blue-500"
+            />
+            <span className="ml-2 text-gray-700">Normal User</span>
+          </label>
+          <label className="inline-flex items-center">
+            <input
+              type="radio"
+              name="userType"
+              value="construction"
+              checked={constructionUser}
+              onChange={() => setconstructionUser(true)}
+              className="text-blue-500 focus:ring-blue-500"
+            />
+            <span className="ml-2 text-gray-700">Construction User</span>
+          </label>
+        </div>
+      </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-700">Company</label>
           <select
@@ -328,17 +343,13 @@ const Users = () => {
                 <label className="block text-sm font-medium text-gray-700">Machine Registration Number</label>
                 <select
                   name="company_field"
-                  value={formData.registrationNumber}
+                  value={formData.machine_id}
                   onChange={(e) => {
                     const selectedRegNo = e.target.value;
-                    const selectedMachine = machines.find(
-                      (m) => m.registration_number.toString() === selectedRegNo
-                    );
 
                     setFormData({
                       ...formData,
-                      registrationNumber: selectedRegNo,
-                      machine_id: selectedMachine ? selectedMachine.machine_id : '',
+                      machine_id: selectedRegNo,
                     });
                   } }
                   required
@@ -346,23 +357,14 @@ const Users = () => {
                 >
                   <option value="">Select Registration Number</option>
                   {machines.map((machine) => (
-                    <option key={machine.machine_id} value={machine.registration_number.toString()}>
+                    <option key={machine.machine_id} value={machine.machine_id}>
                       {machine.registration_number}
                     </option>
                   ))}
                 </select>
-              </div><div>
-                  <label className="block text-sm font-medium text-gray-700">User Name</label>
-                  <input
-                    type="text"
-                    autoComplete="off"
-                    name="username"
-                    placeholder="Enter username"
-                    value={formData.username}
-                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                    required
-                    className="w-full mt-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-                </div></>
+              </div>
+              
+                </>
           )}
         <div>
             <label className="block text-sm font-medium text-gray-700">Full Name</label>
@@ -462,7 +464,32 @@ const Users = () => {
         </select>
       </div>
 
-       
+      {(formData.machine_id !== '0' && formData.machine_id !== null) && (
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Machine Registration Number</label>
+        <select
+          name="company_field"
+          value={formData.machine_id}
+          onChange={(e) => {
+            const selectedRegNo = e.target.value;
+            setFormData({
+              ...formData,
+              machine_id: selectedRegNo,
+            });
+          }}
+          required
+          className="w-full mt-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+        >
+          <option value="">Select Registration Number</option>
+          {machines.map((machine) => (
+            <option key={machine.machine_id} value={machine.machine_id}>
+              {machine.registration_number}
+            </option>
+          ))}
+        </select>
+      </div>
+    )}
+
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium text-gray-700">Username</label>

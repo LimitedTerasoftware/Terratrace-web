@@ -30,7 +30,6 @@ export const DepthChart: React.FC<DepthChartProps> = ({
       }))
       .sort((a, b) => a.distance - b.distance);
   }, [depthData, minDepth]);
-
   const chartDimensions = {
     width: 800,
     height: 400,

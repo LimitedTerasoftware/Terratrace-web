@@ -50,6 +50,9 @@ import SmartInventory from './components/SmartInventory/index';
 import IndexChart from './components/DepthChart/index';
 import MachineDataTable from './components/DepthChart/MachineData';
 import MachineManagement from './components/MachineManagement/index';
+import MainIndex from './components/DepthChart/MainIndex';
+import LiveTrack from './components/DepthChart/LiveTrack';
+import Eventreport from './components/DepthChart/eventreport';
 //import AuditLogs from './components/AuditLogs';
 
 function App() {
@@ -533,6 +536,26 @@ function App() {
                   <MachineManagement />
                 </DefaultLayout>
             </>}/>
+            <Route path='/reports' element={<>
+                <DefaultLayout>
+                  <PageTitle title="Charts & Reports" />
+                  <MainIndex />
+                </DefaultLayout>
+            </>}/>
+              <Route path='/live-track' element={<>
+                <DefaultLayout>
+                  <PageTitle title="live-track" />
+                  <LiveTrack />
+                </DefaultLayout>
+            </>}/>
+             <Route path='/events-report' element={<>
+                <DefaultLayout>
+                  <PageTitle title="events-report" />
+                  <Eventreport/>
+                </DefaultLayout>
+            </>}/>
+
+
 
 
           </Routes>

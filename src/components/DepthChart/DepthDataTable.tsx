@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { DepthDataPoint } from '../../types/survey';
 import { AlertTriangle, CheckCircle, MapPin } from 'lucide-react';
 
@@ -6,11 +6,15 @@ interface DepthDataTableProps {
   depthData: DepthDataPoint[];
   minDepth?: number;
 }
+  const BASEURL_Val = import.meta.env.VITE_API_BASE;
+const baseUrl = `${BASEURL_Val}/public/`;
 
 export const DepthDataTable: React.FC<DepthDataTableProps> = ({ 
   depthData, 
   minDepth = 1.65 
 }) => {
+    const [zoomImage, setZoomImage] = useState<string | null>(null);
+  
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
       <h3 className="text-xl font-bold text-gray-900 mb-4">Detailed Measurements</h3>
@@ -36,6 +40,9 @@ export const DepthDataTable: React.FC<DepthDataTableProps> = ({
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Coordinates
+              </th>
+               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Images
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Date
@@ -68,7 +75,7 @@ export const DepthDataTable: React.FC<DepthDataTableProps> = ({
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {point.link_name}
+                    {point.start_lgd_name}_{point.end_lgd_name}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`text-sm font-bold ${
@@ -89,8 +96,24 @@ export const DepthDataTable: React.FC<DepthDataTableProps> = ({
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center text-sm text-gray-900">
                       <MapPin className="w-4 h-4 text-gray-400 mr-1" />
-                      {point.startPointCoordinates}
+                      {point.depthLatlong}
                     </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
+                    {point.depthPhoto &&
+                     (
+                        JSON.parse(point.depthPhoto)
+                          .filter((url: string) => url)
+                          .map((url: string, index: number) => (
+                            <span
+                              key={index}
+                              className="underline cursor-pointer block"
+                              onClick={() => setZoomImage(`${baseUrl}${url}`)}
+                            >
+                              depth_Img {index + 1}
+                            </span>
+                          ))
+                      )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {new Date(point.created_at).toLocaleDateString()}
@@ -101,6 +124,18 @@ export const DepthDataTable: React.FC<DepthDataTableProps> = ({
           </tbody>
         </table>
       </div>
+       {zoomImage && (
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-80 z-50"
+          onClick={() => setZoomImage(null)}
+        >
+          <img
+            src={zoomImage}
+            alt="Zoomed"
+            className="max-w-full max-h-full p-4 rounded-lg"
+          />
+        </div>
+      )}
     </div>
   );
 };

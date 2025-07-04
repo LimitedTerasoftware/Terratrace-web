@@ -119,6 +119,10 @@ export interface DepthDataPoint {
   distance: string;
   depthMeters: string;
   created_at: string;
+  depthLatlong:string;
+  depthPhoto:string;
+  start_lgd_name:string;
+  end_lgd_name:string;
 }
 
 export interface ApiResponse {
@@ -132,4 +136,72 @@ export interface ChartPoint {
   depth: number;
   isBelowMinimum: boolean;
   originalData: DepthDataPoint;
+}
+export interface Activity {
+  id: number;
+  state_id: string | null;
+  distrct_id: string | null;
+  block_id: string | null;
+  gp_id: string | null;
+  link_name: string;
+  startPointPhoto: string | null;
+  startPointCoordinates: string | null;
+  routeBelongsTo: string | null;
+  roadType: string | null;
+  cableLaidOn: string | null;
+  soilType: string | null;
+  crossingType: string | null;
+  crossingLength: string | null;
+  crossingLatlong: string | null;
+  crossingPhotos: string | null;
+  executionModality: string | null;
+  depthLatlong: string | null;
+  depthPhoto: string | null;
+  depthMeters: string | null;
+  fpoiLatLong: string | null;
+  fpoiPhotos: string | null;
+  jointChamberLatLong: string | null;
+  jointChamberPhotos: string | null;
+  manholeLatLong: string | null;
+  manholePhotos: string | null;
+  routeIndicatorLatLong: string | null;
+  routeIndicatorPhotos: string | null;
+  landmarkLatLong: string | null;
+  landmarkPhotos: string | null;
+  fiberTurnLatLong: string | null;
+  fiberTurnPhotos: string | null;
+  kilometerstoneLatLong: string | null;
+  kilometerstonePhotos: string | null;
+  status: number;
+  created_at: string;
+  updated_at: string;
+  start_lgd: string;
+  end_lgd: string;
+  machine_id: string;
+  contractor_details: string | null;
+  vehicleserialno: string | null;
+  distance: string | null;
+  startPitLatlong: string | null;
+  startPitPhotos: string | null;
+  endPitLatlong: string | null;
+  endPitPhotos: string | null;
+  roadWidthLatlong: string | null;
+  roadWidth: string | null;
+  roadWidthPhotos: string | null;
+  eventType: string;
+  survey_id: number;
+  vehicle_image: string | null;
+  endPitDoc: string | null;
+  start_lgd_name:string;
+  end_lgd_name:string;
+}
+
+export interface ApiResponseMachine {
+  status: boolean;
+  latestActivities: (Activity | { machine_id: number; message: string })[];
+}
+
+export interface MarkerData {
+  position: google.maps.LatLngLiteral;
+  activity: Activity;
 }

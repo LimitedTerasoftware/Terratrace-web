@@ -1,36 +1,36 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { DepthChart } from './DepthChart';
 import { DepthDataTable } from './DepthDataTable';
 import { Database, RefreshCw, Settings, BarChart3 } from 'lucide-react';
 import { ApiResponse, DepthDataPoint } from '../../types/survey';
 import { useLocation } from 'react-router-dom';
 import { FaArrowLeft } from 'react-icons/fa';
+import axios from 'axios';
 
 interface IndexChartProps {
   depthData: DepthDataPoint[];
 }
+const BASEURL = import.meta.env.VITE_API_BASE;
+const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
 function IndexChart() {
   const location = useLocation();
-  const depthData:DepthDataPoint[] = location.state?.depthData
+  let depthData:DepthDataPoint[] = location.state?.depthData || []
+
   const [minDepth, setMinDepth] = useState(1.65);
   const [apiUrl, setApiUrl] = useState('');
   const [activeTab, setActiveTab] = useState<'chart' | 'table'>('chart');
   const criticalCount = depthData.filter(point => 
     parseFloat(point.depthMeters) < minDepth
   ).length;
- 
+
+
   return (
     <div className="min-h-screen">
-        <button
-          className="flex items-center gap-2 text-blue-500 hover:text-blue-700"
-          onClick={() => window.history.back()}
-          >
-          <FaArrowLeft className="h-5 w-5" />
-          Back
-        </button>
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
+     
+      <div className="container mx-auto px-4">
+      
+      
         <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">

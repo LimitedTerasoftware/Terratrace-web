@@ -145,10 +145,22 @@ function App({ data, SelectedEvent }: AppProps) {
       if (item.fiberTurnUrl && item.surveyUploaded === 'true' && item.event_type === "FIBERTURN") imageUrls.push(item.fiberTurnUrl);
       if (item.start_photos && item.surveyUploaded === 'true' && item.start_photos.length > 0 && item.event_type === "SURVEYSTART") imageUrls.push(...item.start_photos);
       if (item.end_photos && item.surveyUploaded === 'true' && item.end_photos.length > 0 && item.event_type === "ENDSURVEY") imageUrls.push(...item.end_photos);
-      if (item.routeIndicatorUrl && item.surveyUploaded === 'true' && item.event_type === "ROUTEINDICATOR") imageUrls.push(item.routeIndicatorUrl);
       if (item.jointChamberUrl && item.surveyUploaded === 'true' && item.event_type === "JOINTCHAMBER") imageUrls.push(item.jointChamberUrl);
       if (item.road_crossing?.startPhoto && item.surveyUploaded === 'true' && item.event_type === "ROADCROSSING") imageUrls.push(item.road_crossing.startPhoto);
       if (item.road_crossing?.endPhoto && item.surveyUploaded === 'true' && item.event_type === "ROADCROSSING") imageUrls.push(item.road_crossing.endPhoto);
+      if (item.routeIndicatorUrl && item.surveyUploaded === 'true' && item.event_type === "ROUTEINDICATOR") {
+        try {
+          const parsed = JSON.parse(item.routeIndicatorUrl);
+          if (Array.isArray(parsed)) {
+            imageUrls.push(...parsed);
+          } else if (typeof parsed === 'string') {
+            imageUrls.push(parsed);
+          }
+        } catch (e) {
+          imageUrls.push(item.routeIndicatorUrl);
+        }
+      }
+
     }
 
     return imageUrls.filter(url => url && url.trim() !== '');

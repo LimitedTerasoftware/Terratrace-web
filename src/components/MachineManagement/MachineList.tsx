@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Machine } from '../../types/machine';
 import { Edit, Trash2, Search, Filter, Eye } from 'lucide-react';
+import DataTable, { TableColumn } from 'react-data-table-component';
 
 interface MachineListProps {
   machines: Machine[];
@@ -15,16 +16,20 @@ const MachineList: React.FC<MachineListProps> = ({ machines, onEdit, onDelete })
 
   const filteredMachines = machines.filter(machine => {
     const matchesSearch = 
-      machine.serial_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      machine.contractor_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      machine.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      machine.manufacturer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      machine.assigned_project.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || machine.status === statusFilter;
-    
+      (machine.digitrack_make || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (machine.firm_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (machine.machine_make || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (machine.authorised_person || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (machine.registration_number || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (machine.digitrack_model || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (machine.digitrack_make || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (machine.truck_make || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (machine.truck_model || "").toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || machine.status === statusFilter;
+
     return matchesSearch && matchesStatus;
   });
+
 
   const getStatusBadge = (status: Machine['status']) => {
     const statusConfig = {
@@ -46,6 +51,56 @@ const MachineList: React.FC<MachineListProps> = ({ machines, onEdit, onDelete })
       onDelete(machine.id);
     }
   };
+
+
+const columns: TableColumn<Machine>[] = [
+  
+  { name: "Firm Name", selector: row => row.firm_name, sortable: true },
+  { name: "Authorised Person", selector: row => row.authorised_person, sortable: true },
+  { name: "Machine Make", selector: row => row.machine_make, sortable: true },
+  { name: "Digitrack Make", selector: row => row.digitrack_make, sortable: true },
+  { name: "Digitrack Model", selector: row => row.digitrack_model, sortable: true },
+  { name: "Truck Make", selector: row => row.truck_make, sortable: true },
+  { name: "Truck Model", selector: row => row.truck_model, sortable: true },
+  { name: "Registration Number", selector: row => row.registration_number, sortable: true },
+  {
+    name: 'Status',
+    selector: (row) => row.status,
+    sortable: true,
+    cell: (row) => getStatusBadge(row.status),
+  },
+  {
+    name: 'Actions',
+    cell: (row) => (
+      <div className="flex space-x-2">
+        <button
+          onClick={() => setSelectedMachine(row)}
+          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+          title="View Details"
+        >
+          <Eye className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => onEdit(row)}
+          className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+          title="Edit Machine"
+        >
+          <Edit className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => handleDelete(row)}
+          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+          title="Delete Machine"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+    ),
+    ignoreRowClick: true,
+    allowOverflow: true,
+    button: true,
+  },
+  ];
 
   return (
     <div className="bg-white rounded-xl shadow-lg border border-gray-100">
@@ -79,13 +134,7 @@ const MachineList: React.FC<MachineListProps> = ({ machines, onEdit, onDelete })
             </div>
           </div>
         </div>
-
-        {filteredMachines.length > 0 && (
-          <div className="mt-4 text-sm text-gray-600">
-            Showing {filteredMachines.length} of {machines.length} machines
-          </div>
-        )}
-      </div>
+        </div>
 
       {filteredMachines.length === 0 ? (
         <div className="p-12 text-center">
@@ -102,77 +151,19 @@ const MachineList: React.FC<MachineListProps> = ({ machines, onEdit, onDelete })
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Machine Details
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Contractor & Project
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredMachines.map((machine) => (
-                <tr key={machine.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="space-y-1">
-                      <div className="font-medium text-gray-900">{machine.serial_number}</div>
-                      <div className="text-sm text-gray-600">
-                        {machine.manufacturer} {machine.model}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        Year: {machine.year_of_manufacture} | GPS: {machine.gps_tracker_id}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="space-y-1">
-                      <div className="font-medium text-gray-900">{machine.contractor_name}</div>
-                      <div className="text-sm text-gray-600">{machine.assigned_project}</div>
-                      <div className="text-xs text-gray-500">Reg: {machine.registration_number}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    {getStatusBadge(machine.status)}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => setSelectedMachine(machine)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="View Details"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => onEdit(machine)}
-                        className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                        title="Edit Machine"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(machine)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Delete Machine"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        
+          <DataTable
+          columns={columns}
+          data={filteredMachines}
+          pagination
+          highlightOnHover
+          pointerOnHover
+          striped
+          dense
+          responsive
+        />
+
+          </div>
       )}
 
       {/* Machine Details Modal */}
@@ -206,9 +197,9 @@ const MachineList: React.FC<MachineListProps> = ({ machines, onEdit, onDelete })
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">
-                    Contractor Name
+                      Firm Name
                   </label>
-                  <p className="text-gray-900">{selectedMachine.contractor_name}</p>
+                  <p className="text-gray-900">{selectedMachine.firm_name}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">
@@ -218,15 +209,15 @@ const MachineList: React.FC<MachineListProps> = ({ machines, onEdit, onDelete })
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">
-                    Model
+                     Authorised Person
                   </label>
-                  <p className="text-gray-900">{selectedMachine.model}</p>
+                  <p className="text-gray-900">{selectedMachine.authorised_person}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">
-                    Manufacturer
+                     Registration Valid Upto
                   </label>
-                  <p className="text-gray-900">{selectedMachine.manufacturer}</p>
+                  <p className="text-gray-900">{selectedMachine.registration_valid_upto ? new Date(selectedMachine.registration_valid_upto).toLocaleDateString() : 'N/A'}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">
@@ -236,17 +227,25 @@ const MachineList: React.FC<MachineListProps> = ({ machines, onEdit, onDelete })
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">
-                    GPS Tracker ID
+                    Machine Make
                   </label>
-                  <p className="text-gray-900">{selectedMachine.gps_tracker_id}</p>
+                  <p className="text-gray-900">{selectedMachine.machine_make}</p>
                 </div>
-              </div>
-              <div>
+                 <div>
                 <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Assigned Project
+                 Capacity
                 </label>
-                <p className="text-gray-900">{selectedMachine.assigned_project}</p>
+                <p className="text-gray-900">{selectedMachine.capacity}</p>
               </div>
+               <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                 No Of Rods
+                </label>
+                <p className="text-gray-900">{selectedMachine.no_of_rods}</p>
+              </div>
+              </div>
+             
+             
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">
