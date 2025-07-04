@@ -134,12 +134,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
             <>
             <SideBarItem icon={CompanyIcon} label="Companies" isOpen={isOpen} isActive={pathname.includes('companies')} path='/companies' />
             <SideBarItem icon={User} label="Users" isOpen={isOpen} isActive={pathname.includes('users')} path='/users' />
-            {/* <SideBarItem icon={Machine} label="Machines" isOpen={isOpen} isActive={pathname.includes('machine-management')} path='/machine-management' /> */}
+            <SideBarItem icon={Machine} label="Machines" isOpen={isOpen} isActive={pathname.includes('machine-management')} path='/machine-management' />
 
              </>
              )}
             <SideBarItem icon={SurveyIcon} label="Survey" isOpen={isOpen} isActive={pathname.includes('survey')} path='/survey' />
-            {/* <SideBarItem icon={Other} label="Reports & Tracking" isOpen={isOpen} isActive={pathname.includes('reports')} path='/reports' /> */}
+            <SideBarItem icon={Other} label="Reports & Tracking" isOpen={isOpen} isActive={pathname.includes('reports')} path='/reports' />
 
              <SidebarLinkGroup
               activeCondition={pathname.includes('route-planning')}
