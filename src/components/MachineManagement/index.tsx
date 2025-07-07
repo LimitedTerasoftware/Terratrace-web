@@ -4,11 +4,26 @@ import MachineForm from './MachineForm';
 import MachineList from './MachineList';
 import { Settings, BarChart3, Truck } from 'lucide-react';
 import axios, { AxiosError } from 'axios';
+import Modal from '../hooks/ModalPopup';
+
+interface ModalData {
+  title: string;
+  message: string;
+  type: "success" | "error" | "info";
+}
 
 function MachineManagement() {
   const [machines, setMachines] = useState<Machine[]>([]);
   const [editingMachine, setEditingMachine] = useState<Machine | undefined>(undefined);
   const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
+  const [isModalOpen, setModalOpen] = useState(false);
+  const [modalData, setModalData] = useState<ModalData>({
+    title: "",
+    message: "",
+    type: "info",
+  });
+
+  
 
   useEffect(()=>{
 
@@ -36,29 +51,96 @@ function MachineManagement() {
     });
 
     if (resp.status === 200 || resp.status === 201) {
-      alert('Success');
+      setModalData({
+      title: "Success!",
+      message: "Machine added successfully.",
+      type: "success",
+    });
+    setModalOpen(true)
 
     } else {
-      console.error("Unexpected response:", resp.status, resp.data);
+      setModalData({
+      title: "Error!",
+      message: resp.data || "Unexpected response",
+      type: "error",
+    });
+    setModalOpen(true)
+
+
     }
   } catch (error) {
     const err = error as AxiosError;
-    console.error("Error creating machine:", err.response?.data || err.message);  }
+    console.error("Error creating machine:", err.response?.data || err.message); 
+    setModalData({
+      title: "Error!",
+      message: err.message || "Unexpected response",
+      type: "error",
+    });
+    setModalOpen(true)
+
+   }
+      
   };
 
-  const handleEditMachine = (formData: MachineFormData) => {
+  const handleEditMachine = async(formData: MachineFormData) => {
     if (editingMachine) {
-      setMachines(prev => prev.map(machine => 
-        machine.id === editingMachine.id 
-          ? { ...machine, ...formData, updated_at: new Date() }
-          : machine
-      ));
+      try {
+        const response = await axios.put(`${TraceBASEURL}/update-machine/${editingMachine.machine_id}`,formData,{
+          headers:{
+            'Content-Type':'application/json'
+          }
+        });
+        if(response.status === 200 || response.status === 201){
+          setMachines(prev => prev.map(machine => 
+            machine.machine_id === editingMachine.machine_id 
+              ? { ...machine, ...formData, updated_at: new Date() }
+              : machine
+          ));
+        setModalData({
+          title: "Success!",
+          message: "Machine updated successfully.",
+          type: "success",
+        });
+        setModalOpen(true)
+        }else{
+          console.error("Unexpected response:", response.status, response.data);
+            setModalData({
+            title: "Error!",
+            message: response.data || "Unexpected response",
+            type: "error",
+          });
+          setModalOpen(true)
+
+        }
+      } catch (error) {
+        const err = error as AxiosError;
+        console.error("Error creating machine:", err.response?.data || err.message);  
+
+      }
       setEditingMachine(undefined);
     }
   };
 
-  const handleDeleteMachine = (id: string) => {
-    setMachines(prev => prev.filter(machine => machine.id !== id));
+  const handleDeleteMachine = async(id: string) => {
+    try {
+      const resp = await axios.post(`${TraceBASEURL}/delete-machine/${id}`);
+      if(resp.status === 200 || resp.status === 201){
+           setModalData({
+          title: "Success!",
+          message: "Machine Deleted successfully.",
+          type: "success",
+        });
+        setModalOpen(true)
+        setMachines(prev => prev.filter(machine => machine.machine_id !== id));
+
+      }
+      
+    } catch (error) {
+        const err = error as AxiosError;
+        console.error("Error deleting machine:", err.response?.data || err.message);  
+
+    }
+
   };
 
   const handleStartEdit = (machine: Machine) => {
@@ -153,6 +235,14 @@ function MachineManagement() {
             onDelete={handleDeleteMachine}
           />
         </div>
+        <Modal
+          isOpen={isModalOpen}
+          onClose={() => setModalOpen(false)}
+          title={modalData.title}
+          message={modalData.message}
+          type={modalData.type}
+        />
+
       </div>
     </div>
   );

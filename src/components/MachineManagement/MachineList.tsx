@@ -48,7 +48,7 @@ const MachineList: React.FC<MachineListProps> = ({ machines, onEdit, onDelete })
 
   const handleDelete = (machine: Machine) => {
     if (window.confirm(`Are you sure you want to delete machine ${machine.serial_number}?`)) {
-      onDelete(machine.id);
+      onDelete(machine.machine_id);
     }
   };
 

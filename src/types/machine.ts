@@ -1,5 +1,5 @@
 export interface Machine {
-  machine_id?:string;
+  machine_id:string;
   id: string;
   firm_name:string;
   authorised_person:string;
