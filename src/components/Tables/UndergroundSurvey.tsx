@@ -120,7 +120,6 @@ const UndergroundSurvey: React.FC = () => {
   const [todate, setToDate] = useState<string>('');
   const [BlockData,setBlockData]=useState<any>([])
   const [isExporting, setIsExporting] = useState(false);
-  const [isgenerating, setIsGenerating] = useState(false);
   const [exportProgress, setExportProgress] = useState({ current: 0, total: 0, currentFile: '' });
   const [exportComplete, setExportComplete] = useState(false);
 
@@ -676,43 +675,6 @@ const exportExcel = async () => {
     setBlockData([]);
   };
 
-  const handleDepthChart = async() =>{
-    const selected = Object.values(selectedRowsMap);
-    if (selected.length === 0) {
-      alert("No rows selected");
-      return;
-    }else if(selected.length > 1){
-      alert("Select only one line segment at a time");
-      return;
-    }
-    setIsGenerating(true);
-    setError(null);
-    try {
-    const params:any={};
-    if(selected[0].startLocation) params.start_lgd = selected[0].startLocation;
-    if(selected[0].endLocation) params.end_lgd = selected[0].endLocation;
-     params.eventType ='DEPTH';
-
-
-    const resp = await axios.get(`${TraceBASEURL}/get-depth-data`,{params});
-    if(resp.status === 200 || resp.status === 201){
-      const Data = resp.data;
-      const depthData =Data.data;
-      navigate('/depth-chart', { state: { depthData } });
-
-     
-
-    }else{
-      setError('Error Occured')
-    }
-    } catch (err) {
-     setError(err instanceof Error ? err.message : 'An error occurred');
-
-    }finally{
-      setIsGenerating(false);
-    }
-
-  }
 
  
   return (
@@ -921,22 +883,7 @@ const exportExcel = async () => {
                 </>
               )}
           </button>
-           <button
-            onClick={handleDepthChart}
-            disabled={isgenerating}
-            className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          > {isgenerating ? (
-                <>
-                  <Loader className="h-4 w-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                <ChartBar className="h-4 w-4"/>
-                 Depth Chart
-                </>
-              )}
-          </button>
+           
         </div>
       </div>
 

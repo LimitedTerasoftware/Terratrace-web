@@ -205,3 +205,39 @@ export interface MarkerData {
   position: google.maps.LatLngLiteral;
   activity: Activity;
 }
+
+export interface StateData {
+  state_id: string;
+  state_name: string;
+  state_code: string;
+}
+
+export interface District {
+  district_id: string;
+  district_name: string;
+  state_code: string;
+}
+
+export interface Block {
+  block_id: string;
+  block_name: string;
+  district_code: string;
+}
+
+export interface UGConstructionSurveyData {
+  id: number;
+  user_id: number;
+  company_id: number | null;
+  state_id: number;
+  district_id: number;
+  block_id: number;
+  gp_id: number;
+  startLocation: number;
+  endLocation: number;
+  is_active: number;
+  created_at: string;
+  updated_at: string;
+  surveyType: string;
+  start_lgd_name:string;
+  end_lgd_name:string;
+}

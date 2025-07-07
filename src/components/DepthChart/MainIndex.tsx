@@ -4,14 +4,12 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import IndexChart from '.';
 import MachineDataTable from './MachineData';
 import LiveTrack from './LiveTrack';
-import Report from './Report';
 
 
 function MainIndex() {
-type TabType ="Reports" | "Machine-Data" | "live-track" ;
+type TabType ="Machine-Data" | "live-track" ;
 
 const tabs: { id: TabType; label: string }[] = [
-  { id: "Reports", label: "Reports" },
   { id: "Machine-Data", label: "Machine Data" },
   { id: "live-track", label: "Live Tracking" },
   
@@ -23,7 +21,7 @@ const [activeTab, setActiveTab] = useState<TabType>();
 
  const getTabFromURL = (): TabType => {
     const params = new URLSearchParams(location.search);
-    return (params.get("tab") as TabType) || "Reports";
+    return (params.get("tab") as TabType) || "Machine-Data";
   };
 
   useEffect(() => {
@@ -42,10 +40,9 @@ const handleTabChange = (tabId: TabType) => {
         return <MachineDataTable />;
          case "live-track":
         return <LiveTrack />;
-        case "Reports":
-        return <Report />;
+      
       default:
-        return  <Report />;
+        return  <MachineDataTable />;
     }
   };
 

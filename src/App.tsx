@@ -52,7 +52,9 @@ import MachineDataTable from './components/DepthChart/MachineData';
 import MachineManagement from './components/MachineManagement/index';
 import MainIndex from './components/DepthChart/MainIndex';
 import LiveTrack from './components/DepthChart/LiveTrack';
-import Eventreport from './components/DepthChart/eventreport';
+import Eventreport from './components/DepthChart/UGConstView';
+import Report from './components/DepthChart/UGConst';
+import Construction from './components/DepthChart/Construction';
 //import AuditLogs from './components/AuditLogs';
 
 function App() {
@@ -552,6 +554,12 @@ function App() {
                 <DefaultLayout>
                   <PageTitle title="events-report" />
                   <Eventreport/>
+                </DefaultLayout>
+            </>}/>
+             <Route path='/construction' element={<>
+                <DefaultLayout>
+                  <PageTitle title="construction" />
+                  <Construction/>
                 </DefaultLayout>
             </>}/>
 

@@ -9,16 +9,49 @@ import axios from 'axios';
 
 interface IndexChartProps {
   depthData: DepthDataPoint[];
+  MainData: { start_lgd: string; end_lgd: string };
+
 }
 const BASEURL = import.meta.env.VITE_API_BASE;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
-function IndexChart() {
+function IndexChart({ MainData }: any) {
   const location = useLocation();
-  let depthData:DepthDataPoint[] = location.state?.depthData || []
+  const [depthData,setdepthData]=useState<DepthDataPoint[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // let depthData:DepthDataPoint[] = location.state?.depthData || MainData || []
+  const handleDepthChart = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const params: any = {};
+            if (MainData.start_lgd) params.start_lgd = MainData.start_lgd;
+            if (MainData.end_lgd) params.end_lgd = MainData.end_lgd;
+            params.eventType = 'DEPTH';
 
+
+            const resp = await axios.get(`${TraceBASEURL}/get-depth-data`, { params });
+            if (resp.status === 200 || resp.status === 201) {
+                const Data = resp.data;
+                const depthData = Data.data;
+                setdepthData(depthData);
+            } else {
+                setError('Error Occured')
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'An error occurred');
+
+        } finally {
+            setLoading(false);
+        }
+
+    }
+    useEffect(()=>{
+    handleDepthChart();
+    },[])
   const [minDepth, setMinDepth] = useState(1.65);
-  const [apiUrl, setApiUrl] = useState('');
   const [activeTab, setActiveTab] = useState<'chart' | 'table'>('chart');
   const criticalCount = depthData.filter(point => 
     parseFloat(point.depthMeters) < minDepth
@@ -29,9 +62,13 @@ function IndexChart() {
     <div className="min-h-screen">
      
       <div className="container mx-auto px-4">
+         {loading && (
+                <div className="absolute inset-0 bg-white bg-opacity-70 flex justify-center items-center z-50">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                </div>
+            )}
       
-      
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+        {/* <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="p-3 bg-blue-100 rounded-lg">
@@ -58,7 +95,7 @@ function IndexChart() {
               </div>
             )}
           </div>
-        </div>
+        </div> */}
         {/* Tab Navigation */}
         <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-8">
           <div className="border-b border-gray-200">

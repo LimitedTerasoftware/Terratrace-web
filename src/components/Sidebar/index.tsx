@@ -19,6 +19,7 @@ import KML from '../../images/icon/kml-file.svg';
 import Smart_Inv from '../../images/icon/internet-world-svgrepo-com.svg';
 import Machine from '../../images/icon/mechine.svg'; 
 import Other from '../../images/logo/dashboard-4-svgrepo-com.svg';
+import ConstructionImg from '../../images/icon/construction-worker.svg'
 
 import {
   ChevronLeft,
@@ -139,6 +140,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
              </>
              )}
             <SideBarItem icon={SurveyIcon} label="Survey" isOpen={isOpen} isActive={pathname.includes('survey')} path='/survey' />
+            <SideBarItem icon={ConstructionImg} label="Construction" isOpen={isOpen} isActive={pathname.includes('construction')} path='/construction' />
+
             <SideBarItem icon={Other} label="Reports & Tracking" isOpen={isOpen} isActive={pathname.includes('reports')} path='/reports' />
 
              <SidebarLinkGroup
