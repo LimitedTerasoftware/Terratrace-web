@@ -550,9 +550,9 @@ function App() {
                   <LiveTrack />
                 </DefaultLayout>
             </>}/>
-             <Route path='/events-report' element={<>
+             <Route path='/construction-details' element={<>
                 <DefaultLayout>
-                  <PageTitle title="events-report" />
+                  <PageTitle title="construction-details" />
                   <Eventreport/>
                 </DefaultLayout>
             </>}/>

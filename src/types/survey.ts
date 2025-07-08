@@ -1,5 +1,5 @@
 export interface StartGp {
-   name: string,
+  name: string,
   blk_name: string,
   dt_name: string,
   st_name: string,
@@ -7,7 +7,6 @@ export interface StartGp {
 
 export interface EndGp {
    name: string,
-
 }
 
 export interface PatrollerDetails {
@@ -229,8 +228,11 @@ export interface UGConstructionSurveyData {
   user_id: number;
   company_id: number | null;
   state_id: number;
+  state_name:string;
   district_id: number;
+  district_name:string;
   block_id: number;
+  block_name:string;
   gp_id: number;
   startLocation: number;
   endLocation: number;

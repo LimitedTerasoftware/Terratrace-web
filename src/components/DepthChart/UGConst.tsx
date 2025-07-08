@@ -36,9 +36,11 @@ const Report: React.FC<ReportProps> = ({ Data }) => {
         setLoading(true);
         setError('');
         const params: any = {};
-        if (Data.selectedState) params.state_id = Data.selectedState;
-        if (Data.selectedDistrict) params.district_id = Data.selectedDistrict;
-        if (Data.selectedBlock) params.block_id = Data.selectedBlock;
+        if(Data.selectedState) params.state_id = Data.selectedState;
+        if(Data.selectedDistrict) params.district_id = Data.selectedDistrict;
+        if(Data.selectedBlock) params.block_id = Data.selectedBlock;
+        if(Data.fromdate) params.from_date = Data.fromdate;
+        if(Data.todate) params.to_date = Data.todate;
         const response = await axios.get<{ status: boolean; data: UGConstructionSurveyData[] }>(
           `${TraceBASEURL}/get-survey-data`,
           { params }
@@ -58,7 +60,7 @@ const Report: React.FC<ReportProps> = ({ Data }) => {
     };
 
     fetchSurveyData();
-  }, [Data.selectedState, Data.selectedDistrict, Data.selectedBlock]);
+  }, [Data.selectedState, Data.selectedDistrict, Data.selectedBlock,Data.fromdate,Data.todate]);
 
   const columns: TableColumn<UGConstructionSurveyData>[] = [
     {
@@ -75,9 +77,9 @@ const Report: React.FC<ReportProps> = ({ Data }) => {
       allowOverflow: true,
       button: true,
     },
-    { name: "State Name", selector: row => '', sortable: true },
-    { name: "District Name" ,selector: row => '', sortable: true },
-    { name: "Block Name",selector: row => '', sortable: true  },
+    { name: "State Name", selector: row => row.state_name, sortable: true },
+    { name: "District Name" ,selector: row => row.district_name, sortable: true },
+    { name: "Block Name",selector: row => row.block_name, sortable: true  },
     { name: 'Start GP Name', selector: row => row.start_lgd_name, sortable: true },
     { name: 'End GP Name', selector: row => row.end_lgd_name, sortable: true },
     { name: "Surviour Name",selector: row => '', sortable: true  },
@@ -86,7 +88,7 @@ const Report: React.FC<ReportProps> = ({ Data }) => {
     { name: 'Created At', selector: row => new Date(row.created_at).toLocaleString(), sortable: true },
   ];
   const handleView = async (sgp: number, egp: number) => {
-    navigate('/events-report', { state: { sgp, egp } });
+    navigate('/construction-details', { state: { sgp, egp } });
   };
 
   const filteredData = useMemo(() => {
