@@ -256,11 +256,12 @@ const MapComponent: React.FC<MapCompProps> = ({ data, eventData = [] }) => {
   const [showPolylines, setShowPolylines] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
-
+  const filterRef = useRef<HTMLDivElement>(null);
+  
   // Initialize map
   useEffect(() => {
     if (!mapRef.current || map) return;
-
+      
     const mapInstance = new google.maps.Map(mapRef.current, {
       center: data.length > 0 ? { lat: data[0].lat, lng: data[0].lng } : { lat: 20.5937, lng: 78.9629 },
       zoom: 12,
@@ -283,8 +284,12 @@ const MapComponent: React.FC<MapCompProps> = ({ data, eventData = [] }) => {
 
   // Create markers
   useEffect(() => {
-    if (!map || !data.length) return;
-
+   
+    if (!map || !data.length) {
+      markers.forEach(mark => mark.setMap(null));
+      setMarkers([]);
+      return;
+    }
     // Clear existing markers
     markers.forEach(marker => marker.setMap(null));
     
@@ -409,6 +414,25 @@ const MapComponent: React.FC<MapCompProps> = ({ data, eventData = [] }) => {
     }
   };
 
+  // Close event window
+  useEffect(() => {
+  function handleClickOutside(event: MouseEvent) {
+    if (
+      showFilters &&
+      filterRef.current &&
+      !filterRef.current.contains(event.target as Node)
+    ) {
+      setShowFilters(false);
+    }
+  }
+
+  document.addEventListener('mousedown', handleClickOutside);
+  return () => {
+    document.removeEventListener('mousedown', handleClickOutside);
+  };
+}, [showFilters]);
+
+
   const getEventTypeCount = (eventType: string) => {
     return data.filter(point => point.eventType === eventType).length;
   };
@@ -419,7 +443,7 @@ const MapComponent: React.FC<MapCompProps> = ({ data, eventData = [] }) => {
       <div ref={mapRef} className="w-full h-full rounded-lg shadow-lg" />
 
       {/* Controls */}
-      <div className="absolute top-2 left-50 z-10">
+      <div   ref={filterRef} className="absolute top-2 right-10 z-10">
         <div className="bg-white rounded-lg shadow-lg p-2">
           <div className="flex items-center gap-2 mb-2">
             <button
@@ -450,7 +474,7 @@ const MapComponent: React.FC<MapCompProps> = ({ data, eventData = [] }) => {
                   onClick={toggleAllEventTypes}
                   className="text-xs text-blue-600 hover:text-blue-800"
                 >
-                  {visibleEventTypes.size === Object.keys(EVENT_TYPES).length ? 'Hide All' : 'Show All'}
+                  {visibleEventTypes.size === Object.keys(EVENT_TYPES).length ? 'Show All' : 'Hide All'}
                 </button>
               </div>
               
