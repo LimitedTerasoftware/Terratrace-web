@@ -4,7 +4,8 @@ import { Activity, ApiResponseMachine } from '../../types/survey';
 const useActivities = ( 
   selectedState: string | null,
   selectedDistrict: string | null,
-  selectedBlock: string | null) => {
+  selectedBlock: string | null,
+ Machine:string|null) => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +21,8 @@ const useActivities = (
       if (selectedState) params.append('state_id', selectedState);
       if (selectedDistrict) params.append('district_id', selectedDistrict);
       if (selectedBlock) params.append('block_id', selectedBlock);
-       
+      if (Machine) params.append('machine_id', Machine);
+
       const response = await fetch(`${TraceBASEURL}/machine/latest-activity?${params.toString()}`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -44,7 +46,7 @@ const useActivities = (
     } finally {
       setIsLoading(false);
     }
-  }, [selectedState, selectedDistrict, selectedBlock]);
+  }, [selectedState, selectedDistrict, selectedBlock,Machine]);
 
   useEffect(() => {
     

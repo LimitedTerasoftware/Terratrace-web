@@ -251,8 +251,8 @@ const MapComponent: React.FC<MapCompProps> = ({ data, eventData = [] }) => {
   const [polylines, setPolylines] = useState<google.maps.Polyline[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null);
   const [visibleEventTypes, setVisibleEventTypes] = useState<Set<string>>(
-    new Set(Object.keys(EVENT_TYPES))
-  );
+    // new Set(Object.keys(EVENT_TYPES))
+      new Set(['DEPTH', 'STARTPIT', 'ENDPIT']));
   const [showPolylines, setShowPolylines] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [zoomImage, setZoomImage] = useState<string | null>(null);

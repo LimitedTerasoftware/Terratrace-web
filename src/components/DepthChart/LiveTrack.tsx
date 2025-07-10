@@ -6,6 +6,8 @@ import ActivityDetails from './ActivityDetails';
 import StatsPanel from './StatsPanel';
 import useActivities from '../hooks/useActivities';
 import { Activity, Block, District, MarkerData, StateData } from '../../types/survey';
+import axios from 'axios';
+import { Machine } from '../../types/machine';
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 const BASEURL = import.meta.env.VITE_API_BASE;
@@ -41,11 +43,11 @@ function LiveTrack() {
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
   const [loadingStates, setLoadingStates] = useState<boolean>(false);
   const [loadingDistricts, setLoadingDistricts] = useState<boolean>(false);
-  
+  const [machinesData, setMachinesData] = useState<Machine[]>([]);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [isAutoRefresh, setIsAutoRefresh] = useState(true);
-
-  const {activities, totalCount,isLoading, error, refetch } = useActivities(selectedState, selectedDistrict, selectedBlock);
+  const [Machine,setMachine]=useState('');
+  const {activities, totalCount,isLoading, error, refetch } = useActivities(selectedState, selectedDistrict, selectedBlock,Machine);
 
   // Fetch all states
       const fetchStates = async () => {
@@ -62,8 +64,21 @@ function LiveTrack() {
           }
       };
   
+    const GetData = async() =>{
+      try {
+        const resp = await axios.get(`${TraceBASEURL}/get-all-machines`);
+        if(resp.status === 200 || resp.status === 201){
+         setMachinesData(resp.data.machines);
+        }
+        
+      } catch (error) {
+         console.log(error)
+      }
+
+    }
       useEffect(() => {
           fetchStates();
+          GetData();
       }, []);
   
       // Fetch districts by state ID (not state_code)
@@ -114,9 +129,12 @@ function LiveTrack() {
       }, [selectedState, states]);
   
       useEffect(() => {
-          fetchBlock();
+         fetchBlock();
       }, [selectedDistrict]);
   
+
+    
+ 
 
   const markers: MarkerData[] = useMemo(() => {
     return activities
@@ -180,6 +198,29 @@ function LiveTrack() {
   return (
         <><div className="mb-4">
       <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+            <select
+              value={Machine !== '' ? Machine : ''}
+              onChange={(e) => {
+              setMachine(e.target.value !== '' ? (e.target.value) :'');
+
+              }}
+              className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            >
+              <option value="">All Machines</option>
+                {machinesData.map((machine) => (
+                  <option key={machine.machine_id} value={machine.machine_id}>
+                    {machine.registration_number}
+                  </option>
+                ))}
+
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
         {/* State Filter */}
         <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
           <select
