@@ -4,10 +4,11 @@ import { Activity } from '../../types/survey';
 
 interface StatsPanelProps {
   activities: Activity[];
+  totalCount:number;
   isLoading: boolean;
 }
 
-const StatsPanel: React.FC<StatsPanelProps> = ({ activities, isLoading }) => {
+const StatsPanel: React.FC<StatsPanelProps> = ({ activities, totalCount,isLoading }) => {
   const totalActivities = activities.length;
   const uniqueMachines = new Set(activities.map(a => a.machine_id)).size;
   const eventTypes = new Set(activities.map(a => a.eventType)).size;
@@ -18,8 +19,8 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ activities, isLoading }) => {
   const stats = [
     {
       icon: Activity2,
-      label: 'Total Activities',
-      value: totalActivities,
+      label: 'Total Machines',
+      value: totalCount,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50'
     },

@@ -90,6 +90,7 @@ interface UnderGroundSurveyData {
   landMarkUrls: string;
   fiberTurnUrl: string;
   landMarkType: string;
+  landMarkDescripition:string;
 
 }
 interface StartGp {
@@ -213,6 +214,10 @@ const GroundDetailView: React.FC = () => {
     {
       name: "Landmark Type",
       selector: (row: UnderGroundSurveyData) => row.landMarkType || "-",
+    },
+      {
+      name: "Landmark Description",
+      selector: (row: UnderGroundSurveyData) => row.landMarkDescripition || "-",
     },
     {
       name: "Image",

@@ -193,6 +193,13 @@ export interface Activity {
   endPitDoc: string | null;
   start_lgd_name:string;
   end_lgd_name:string;
+  registration_number:string;
+  authorised_person:string;
+  endPointCoordinates:string;
+  endPointPhoto:string;
+  landmark_type:string;
+  landmark_description:string;
+  machine_registration_number:string;
 }
 
 export interface ApiResponseMachine {
@@ -242,4 +249,7 @@ export interface UGConstructionSurveyData {
   surveyType: string;
   start_lgd_name:string;
   end_lgd_name:string;
+  user_name:string;
+  user_mobile:string;
+
 }

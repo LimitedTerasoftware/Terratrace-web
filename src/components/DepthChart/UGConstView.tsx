@@ -65,6 +65,8 @@ export interface EventData {
     endPitDoc: string | null;
     start_lgd_name: string;
     end_lgd_name: string;
+    endPointPhoto:string;
+    endPointCoordinates:string;
 }
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const BASEURL_Val = import.meta.env.VITE_API_BASE;
@@ -85,7 +87,7 @@ function Eventreport() {
     const [depthChart,setDepthChart]=useState({});
    
     const EventData = [
-        'SURVEYSTART',
+        'STARTSURVEY',
         'DEPTH',
         'ROADCROSSING',
         'FPOI',
@@ -96,7 +98,8 @@ function Eventreport() {
         'FIBERTURN',
         'KILOMETERSTONE',
         'STARTPIT',
-        'ENDPIT'
+        'ENDPIT',
+        'ENDSURVEY',
     ];
     useEffect(() => {
         const getData = async () => {
@@ -152,16 +155,16 @@ function Eventreport() {
             case "ROUTEINDICATOR": return row.routeIndicatorLatLong;
             case "STARTPIT": return row.startPitLatlong;
             case "ENDPIT": return row.endPitLatlong;
-            case "SURVEYSTART": return row.startPointCoordinates;
+            case "STARTSURVEY": return row.startPointCoordinates;
+            case "ENDSURVEY": return row.endPointCoordinates;
             case "ROADCROSSING": return row.crossingLatlong;
             default: return null;
         }
     };
    
-    const markers = filteredData
+const markers = filteredData
   .map((row: EventData) => {
     const latLongStr = getLatLongForEvent(row);
-
     if (
       typeof latLongStr === "string" &&
       latLongStr.includes(",")
@@ -208,10 +211,10 @@ function Eventreport() {
         ROUTEINDICATOR: "routeIndicatorPhotos",
         STARTPIT: 'startPitPhotos',
         ENDPIT: 'endPitPhotos',
-        SURVEYSTART: 'startPointCoordinates',
+        STARTSURVEY: 'startPointPhoto',
+        ENDSURVEY:'endPointPhoto',
         ROADCROSSING: 'crossingPhotos',
     };
-
     const hasImages = (row: EventData) => {
         const photoField = eventPhotoFields[row.eventType];
         return photoField && row[photoField] !== null && row[photoField] !== "[]";
@@ -271,20 +274,20 @@ function Eventreport() {
 
             },
         },
-        { name: "Side Type", selector: row => '' || "-", sortable: true },
+        // { name: "Side Type", selector: row => '' || "-", sortable: true },
         { name: "ExecutionModality", selector: row => row.executionModality || "-", sortable: true },
-        { name: "Landmark Type", selector: row => '' || "-", sortable: true },
+        // { name: "Landmark Type", selector: row => '' || "-", sortable: true },
         { name: "RouteBelongsTo", selector: row => row.routeBelongsTo || "-", sortable: true },
         { name: "RoadType", selector: row => row.roadType || "-", sortable: true },
         { name: "SoilType", selector: row => row.soilType || "-", sortable: true },
-        { name: "Area Type", selector: row => '' || "-", sortable: true },
+        // { name: "Area Type", selector: row => '' || "-", sortable: true },
 
         { name: "CableLaidOn", selector: row => row.cableLaidOn || "-", sortable: true },
         { name: "CrossingType", selector: row => row.crossingType || "-", sortable: true },
         { name: "CrossingLength", selector: row => row.crossingLength || "-", sortable: true },
         { name: "RoadWidth", selector: row => row.roadWidth || "-", sortable: true },
-        { name: "CenterToMargin", selector: row => '' || "-", sortable: true },
-        { name: "Route Feasible", selector: row => '' || "-", sortable: true },
+        // { name: "CenterToMargin", selector: row => '' || "-", sortable: true },
+        // { name: "Route Feasible", selector: row => '' || "-", sortable: true },
         { name: "Depth Meters", selector: row => row.depthMeters || "-", sortable: true },
         { name: "Distance", selector: row => row.distance || "-", sortable: true },
         { name: "Machine ID", selector: row => row.machine_id || "-", sortable: true },
@@ -508,16 +511,15 @@ function Eventreport() {
             {activeTab === 'chart' &&(
             <div className="h-[600px] p-4">
              <IndexChart MainData={{
-                start_lgd: filteredData[0].start_lgd,
-                end_lgd: filteredData[0].end_lgd
+                start_lgd: filteredData[0]?.start_lgd || '',
+                end_lgd: filteredData[0]?.end_lgd || ''
                 }} />
 
             </div>
             )}
-             {activeTab === 'map' &&(
+             {activeTab === 'map' && (
             <div className="h-[600px] p-4">
-            <MapComp data={markers}/>
-           
+                <MapComp data={markers} eventData={filteredData} />
             </div>
             )}
 

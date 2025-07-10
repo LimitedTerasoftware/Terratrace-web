@@ -10,31 +10,68 @@ const MapComponent: React.FC<MapComponentProps> = ({ markers, onMarkerClick }) =
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [googleMarkers, setGoogleMarkers] = useState<google.maps.Marker[]>([]);
-
+  
   // Event type colors for markers
-  const getMarkerColor = (eventType: string) => {
-    const colors = {
-      'DEPTH': '#2563eb',
-      'ROADCROSSING': '#dc2626',
-      'FPOI': '#059669',
-      'JOINTCHAMBER': '#7c3aed',
-      'MANHOLE': '#ea580c',
-      'ROUTEINDICATOR': '#0891b2',
-      'LANDMARK': '#be185d',
-      'FIBERTURN': '#4338ca',
-      'KILOMETERSTONE': '#65a30d',
-      "ENDPIT":'ea580c',
-      "STARTPIT":'ea580c',
-    };
-    return colors[eventType as keyof typeof colors] || '#6b7280';
-  };
+  // const getMarkerColor = (eventType: string) => {
+  //   const colors = {
+  //     'DEPTH': '#2563eb',
+  //     'ROADCROSSING': '#dc2626',
+  //     'FPOI': '#059669',
+  //     'JOINTCHAMBER': '#7c3aed',
+  //     'MANHOLES': '#ea580c',
+  //     'ROUTEINDICATOR': '#0891b2',
+  //     'LANDMARK': '#be185d',
+  //     'FIBERTURN': '#4338ca',
+  //     'KILOMETERSTONE': '#65a30d',
+  //     "ENDPIT":'#ea580c',
+  //     "STARTPIT":'#ea580c',
+  //     'SURVEYSTART':'#dc2626'
+  //   };
+  //   return colors[eventType as keyof typeof colors] || '#6b7280';
+  // };
 
+  // Utility: Get color from a palette
+const colorPalette = [
+  '#2563eb', '#dc2626', '#059669', '#7c3aed', '#ea580c',
+  '#0891b2', '#be185d', '#4338ca', '#65a30d', '#f59e0b',
+  '#10b981', '#8b5cf6', '#ec4899', '#14b8a6', '#6b7280',
+];
+
+const getColorByRegistration = (() => {
+  const colorMap: Record<string, string> = {};
+  let colorIndex = 0;
+
+  return (registration_number: string | null | undefined) => {
+    if (!registration_number) return '#9ca3af'; // default gray for missing
+
+    if (!colorMap[registration_number]) {
+      colorMap[registration_number] = colorPalette[colorIndex % colorPalette.length];
+      colorIndex++;
+    }
+
+    return colorMap[registration_number];
+  };
+})();
+
+ 
   useEffect(() => {
     if (!mapRef.current || !window.google) return;
 
     const newMap = new google.maps.Map(mapRef.current, {
       center: { lat: 17.3882, lng: 78.4892 },
       zoom: 10,
+      mapTypeId: google.maps.MapTypeId.ROADMAP,
+      streetViewControl: false,
+      fullscreenControl: true,
+      mapTypeControl: true,
+      zoomControl: true,
+      styles: [
+        {
+          featureType: "poi",
+          elementType: "labels",
+          stylers: [{ visibility: "off" }]
+        }
+      ]
       
     });
 
@@ -49,19 +86,25 @@ const MapComponent: React.FC<MapComponentProps> = ({ markers, onMarkerClick }) =
 
     // Create new markers
     const newMarkers = markers.map(markerData => {
-      const markerColor = getMarkerColor(markerData.activity.eventType);
+      const markerColor = getColorByRegistration(markerData.activity.registration_number);
       
       const marker = new google.maps.Marker({
         position: markerData.position,
         map: map,
-        title: `${markerData.activity.eventType} - ${markerData.activity.link_name}`,
+        title: `${markerData.activity.registration_number} - ${markerData.activity.eventType}`,
         icon: {
+          // url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+          //   <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="${markerColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          //     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+          //     <circle cx="12" cy="10" r="3" fill="${markerColor}"></circle>
+          //   </svg>
+          // `)}`,
           url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="${markerColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-              <circle cx="12" cy="10" r="3" fill="${markerColor}"></circle>
-            </svg>
-          `)}`,
+          <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="${markerColor}">
+            <path d="M12 2C7.03 2 3 6.03 3 11c0 5.25 6.57 10.74 8.55 12.27a1.5 1.5 0 0 0 1.9 0C14.43 21.74 21 16.25 21 11c0-4.97-4.03-9-9-9z"/>
+            <circle cx="12" cy="11" r="3" fill="white"/>
+          </svg>
+        `)}`,
           scaledSize: new google.maps.Size(32, 32),
           anchor: new google.maps.Point(16, 32)
         }
@@ -134,13 +177,13 @@ const MapComponent: React.FC<MapComponentProps> = ({ markers, onMarkerClick }) =
       {/* Legend */}
       {markers.length > 0 && (
         <div className="absolute top-20 right-4 bg-white p-3 rounded-lg shadow-lg border border-gray-200 max-w-xs">
-          <h4 className="text-sm font-semibold text-gray-900 mb-2">Event Types</h4>
+          <h4 className="text-sm font-semibold text-gray-900 mb-2">Machine Id</h4>
           <div className="space-y-1">
-            {Array.from(new Set(markers.map(m => m.activity.eventType))).map(eventType => (
+            {Array.from(new Set(markers.map(m => m.activity.registration_number))).map(eventType => (
               <div key={eventType} className="flex items-center gap-2">
                 <div 
                   className="w-3 h-3 rounded-full" 
-                  style={{ backgroundColor: getMarkerColor(eventType) }}
+                  style={{ backgroundColor: getColorByRegistration(eventType) }}
                 ></div>
                 <span className="text-xs text-gray-700">{eventType.replace('_', ' ')}</span>
               </div>

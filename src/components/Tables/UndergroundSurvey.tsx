@@ -21,6 +21,7 @@ import { DepthDataPoint } from "../../types/survey";
 import IndexChart from "../DepthChart";
 import MachineDataTable from "../DepthChart/MachineData";
 
+
 interface UndergroundSurvey {
   id: string;
   state_name: string;
@@ -542,7 +543,7 @@ const UndergroundSurvey: React.FC = () => {
     a.click();
   };
 
-  const mediaExportService = new MediaExportService();
+const mediaExportService = new MediaExportService();
 
 const handlePreview = async (id:number) => {
   const selected = Object.values(selectedRowsMap);
@@ -590,8 +591,6 @@ const handlePreview = async (id:number) => {
     setKMLLoader(false);
     setIsExporting(false);
   }
-
-  
 };
 
 const exportExcel = async () => {
@@ -651,9 +650,10 @@ const exportExcel = async () => {
     }finally{
       setKMLLoader(false)
     }
-  };
 
-  const stateOptions = states.map((state) => ({
+};
+
+const stateOptions = states.map((state) => ({
     value: String(state.state_id),
     label: state.state_name,
   }));
@@ -675,8 +675,6 @@ const exportExcel = async () => {
     setBlockData([]);
   };
 
-
- 
   return (
     <>
      {BlockData.length > 0 ? (
@@ -860,6 +858,7 @@ const exportExcel = async () => {
             
            KML
           </button>
+        
             <button
             onClick={()=>handlePreview(0)}
             className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"

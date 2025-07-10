@@ -7,11 +7,11 @@ import LiveTrack from './LiveTrack';
 
 
 function MainIndex() {
-type TabType ="Machine-Data" | "live-track" ;
+type TabType = "live-track" | "Machine-Data";
 
 const tabs: { id: TabType; label: string }[] = [
-  { id: "Machine-Data", label: "Machine Data" },
   { id: "live-track", label: "Live Tracking" },
+  { id: "Machine-Data", label: "Machine Data" },
   
 ];
 
@@ -21,7 +21,7 @@ const [activeTab, setActiveTab] = useState<TabType>();
 
  const getTabFromURL = (): TabType => {
     const params = new URLSearchParams(location.search);
-    return (params.get("tab") as TabType) || "Machine-Data";
+    return (params.get("tab") as TabType) || "live-track";
   };
 
   useEffect(() => {
@@ -35,14 +35,13 @@ const handleTabChange = (tabId: TabType) => {
 
    const renderTabContent = (): JSX.Element => {
     switch (activeTab) {
-    
+      case "live-track":
+        return <LiveTrack />;
       case "Machine-Data":
         return <MachineDataTable />;
-         case "live-track":
-        return <LiveTrack />;
       
       default:
-        return  <MachineDataTable />;
+        return  <LiveTrack />;
     }
   };
 

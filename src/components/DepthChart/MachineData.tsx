@@ -5,65 +5,9 @@ import { useLocation } from "react-router-dom";
 import { FaArrowLeft } from "react-icons/fa";
 import { Machine } from "../../types/machine";
 import { Search } from "lucide-react";
+import { Activity } from "../../types/survey";
 
-export interface TableRow {
-  id: number;
-  state_id: number | null;
-  distrct_id: number | null;
-  block_id: number | null;
-  gp_id: number | null;
-  link_name: string;
-  startPointPhoto: string | null;
-  startPointCoordinates: string | null;
-  routeBelongsTo: string | null;
-  roadType: string | null;
-  cableLaidOn: string | null;
-  soilType: string | null;
-  crossingType: string | null;
-  crossingLength: string | null;
-  crossingLatlong: string | null;
-  crossingPhotos: string | null;
-  executionModality: string | null;
-  depthLatlong: string | null;
-  depthPhoto: string | null;
-  depthMeters: string | null;
-  fpoiLatLong: string | null;
-  fpoiPhotos: string | null;
-  jointChamberLatLong: string | null;
-  jointChamberPhotos: string | null;
-  manholeLatLong: string | null;
-  manholePhotos: string | null;
-  routeIndicatorLatLong: string | null;
-  routeIndicatorPhotos: string | null;
-  landmarkLatLong: string | null;
-  landmarkPhotos: string | null;
-  fiberTurnLatLong: string | null;
-  fiberTurnPhotos: string | null;
-  kilometerstoneLatLong: string | null;
-  kilometerstonePhotos: string | null;
-  status: number;
-  created_at: string;
-  updated_at: string;
-  start_lgd: string;
-  end_lgd: string;
-  machine_id: string;
-  contractor_details: string | null;
-  vehicleserialno: string | null;
-  distance: string | null;
-  startPitLatlong: string | null;
-  startPitPhotos: string | null;
-  endPitLatlong: string | null;
-  endPitPhotos: string | null;
-  roadWidthLatlong: string | null;
-  roadWidth: string | null;
-  roadWidthPhotos: string | null;
-  eventType: string;
-  survey_id: number;
-  vehicle_image: string | null;
-  endPitDoc: string | null;
-}
-
-  const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
+const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const BASEURL_Val = import.meta.env.VITE_API_BASE;
 const baseUrl = `${BASEURL_Val}/public/`;
 
@@ -74,7 +18,7 @@ const MachineDataTable = () => {
       const [todate, setToDate] = useState<string>('');
       const [Machine,setMachine]=useState('');
       const [machinesData, setMachinesData] = useState<Machine[]>([]);
-      const [tableData, setTableData] = useState<TableRow[]>([]);
+      const [tableData, setTableData] = useState<Activity[]>([]);
       const [searchTerm, setSearchTerm] = useState('');
       const [zoomImage, setZoomImage] = useState<string | null>(null);
       const [globalsearch, setGlobalSearch] = useState<string>('');
@@ -147,79 +91,108 @@ const MachineDataTable = () => {
     ));
 };
 
- const columns: TableColumn<TableRow>[] = [
-  { name: "survey_id", selector: row => row.survey_id, sortable: true },
-  { name: "State", selector: row => row.state_id ?? '-', sortable: true },
-  { name: "District", selector: row => row.distrct_id ?? '-', sortable: true },
-  { name: "Block", selector: row => row.block_id ?? '-', sortable: true },
-  { name: "GP", selector: row => row.gp_id ?? '-', sortable: true },
-  { name: "Link Name", selector: row => row.link_name, sortable: true },
-  { name: "Start Coordinates", selector: row => row.startPointCoordinates ?? '-', sortable: true },
+ const getLatLongForEvent = (row: Activity) => {
+        switch (row.eventType) {
+            case "FPOI": return row.fpoiLatLong;
+            case "DEPTH": return row.depthLatlong;
+            case "JOINTCHAMBER": return row.jointChamberLatLong;
+            case "MANHOLES": return row.manholeLatLong;
+            case "LANDMARK": return row.landmarkLatLong;
+            case "KILOMETERSTONE": return row.kilometerstoneLatLong;
+            case "FIBERTURN": return row.fiberTurnLatLong;
+            case "ROUTEINDICATOR": return row.routeIndicatorLatLong;
+            case "STARTPIT": return row.startPitLatlong;
+            case "ENDPIT": return row.endPitLatlong;
+            case "STARTSURVEY": return row.startPointCoordinates;
+            case "ENDSURVEY": return row.endPointCoordinates;
+            case "ROADCROSSING": return row.crossingLatlong;
+            default: return null;
+        }
+    };
+ const eventPhotoFields: Record<string, keyof Activity> = {
+        FPOI: "fpoiPhotos",
+        DEPTH: "depthPhoto",
+        JOINTCHAMBER: "jointChamberPhotos",
+        MANHOLES: "manholePhotos",
+        LANDMARK: "landmarkPhotos",
+        KILOMETERSTONE: "kilometerstonePhotos",
+        FIBERTURN: "fiberTurnPhotos",
+        ROUTEINDICATOR: "routeIndicatorPhotos",
+        STARTPIT: 'startPitPhotos',
+        ENDPIT: 'endPitPhotos',
+        STARTSURVEY: 'startPointPhoto',
+        ENDSURVEY:'endPointPhoto',
+        ROADCROSSING: 'crossingPhotos',
+    };
+ const columns: TableColumn<Activity>[] = [
   {
+    name: "Machine Id",
+    selector: row => row.machine_registration_number,
+    sortable: true,
+  },
+   {
+    name: "contractor Name",
+    selector: row => row.authorised_person,
+    sortable: true,
+  },
+   {
     name: "Event Type",
     selector: row => row.eventType,
     sortable: true,
   },
   {
-  name: "Images",
-  cell: (row: TableRow) => (
-    <div className="text-blue-600">
-      {/* FPOI Photos */}
-      {row.fpoiPhotos && row.eventType === 'FPOI' && parseAndRenderUrls(row.fpoiPhotos, 'FPOI', baseUrl)}
-      {row.startPointPhoto && parseAndRenderUrls(row.startPointPhoto, 'startPoint', baseUrl)}
+      name: "Latitude",
+      selector: row => {
+          const latlong = getLatLongForEvent(row);
+          return latlong ? latlong.split(",")[0] : "-";
+      },
+  },
+  {
+      name: "Longitude",
+      selector: row => {
+          const latlong = getLatLongForEvent(row);
+          return latlong ? latlong.split(",")[1] : "-";
+      },
+  },
+   {
+    name: "Images",
+    cell: (row: Activity) => {
+        const photoField = eventPhotoFields[row.eventType];
+        const rawPhotoData = photoField ? row[photoField] : null;
 
-      {/* Crossing Photos */}
-      {row.crossingPhotos && row.eventType === 'ROADCROSSING'&& parseAndRenderUrls(row.crossingPhotos, 'Crossing', baseUrl)}
+        if (typeof rawPhotoData === "string" && rawPhotoData.trim() !== "") {
+            let urls: string[];
+            try {
+                urls = JSON.parse(rawPhotoData);
+            } catch (e) {
+                console.error("Invalid JSON in photos:", rawPhotoData, e);
+                return <span className="text-red-500">Invalid photo data</span>;
+            }
 
-      {/* Joint Chamber Photos */}
-      {row.jointChamberPhotos && row.eventType === 'JOINTCHAMBER'  && parseAndRenderUrls(row.jointChamberPhotos, 'JointChamber', baseUrl)}
+            return (
+                <div className="text-blue-600 space-y-1">
+                    {urls.map((url: string, i: number) => (
+                        <span
+                            key={i}
+                            className="underline cursor-pointer block"
+                            onClick={() => setZoomImage(`${baseUrl}${url}`)}
+                        >
+                            {`${row.eventType}_Photo_${i + 1}`}
+                        </span>
+                    ))}
+                </div>
+            );
+        }
 
-      {/* Manhole Photos */}
-      {row.manholePhotos && row.eventType === 'MANHOLE' && parseAndRenderUrls(row.manholePhotos, 'Manhole', baseUrl)}
+        return <span>-</span>;
 
-      {/* Route Indicator Photos */}
-      {row.routeIndicatorPhotos && row.eventType === 'ROUTEINDICATOR' && parseAndRenderUrls(row.routeIndicatorPhotos, 'RouteIndicator', baseUrl)}
-
-      {/* Landmark Photos */}
-      {row.landmarkPhotos && row.eventType === 'LANDMARK' && parseAndRenderUrls(row.landmarkPhotos, 'Landmark', baseUrl)}
-
-      {/* Fiber Turn Photos */}
-      {row.fiberTurnPhotos && row.eventType === 'FIBERTURN' && parseAndRenderUrls(row.fiberTurnPhotos, 'FiberTurn', baseUrl)}
-
-      {/* Kilometer Stone Photos */}
-      {row.kilometerstonePhotos && row.eventType === 'KILOMETERSTONE' && parseAndRenderUrls(row.kilometerstonePhotos, 'KmStone', baseUrl)}
-
-      {/* Start Pit Photos */}
-      {row.startPitPhotos && row.eventType === 'STARTPIT' && parseAndRenderUrls(row.startPitPhotos, 'StartPit', baseUrl)}
-
-      {/* End Pit Photos */}
-      {row.endPitPhotos && row.eventType === 'ENDPIT' && parseAndRenderUrls(row.endPitPhotos, 'EndPit', baseUrl)}
-
-      {/* Road Width Photos */}
-      {row.roadWidthPhotos && parseAndRenderUrls(row.roadWidthPhotos, 'RoadWidth', baseUrl)}
-      {row.depthPhoto && parseAndRenderUrls(row.depthPhoto, 'depth', baseUrl)}
-
-      {/* Vehicle Image */}
-      {row.vehicle_image && (
-        <span
-          className="underline cursor-pointer block"
-          onClick={() => setZoomImage(`${baseUrl}${row.vehicle_image}`)}
-        >
-          Vehicle_Image
-        </span>
-      )}
-
-      {/* Fallback */}
-      {!row.fpoiPhotos && !row.crossingPhotos && !row.jointChamberPhotos &&
-       !row.manholePhotos && !row.routeIndicatorPhotos && !row.landmarkPhotos &&
-       !row.fiberTurnPhotos && !row.kilometerstonePhotos && !row.startPitPhotos && !row.startPointPhoto&&
-       !row.depthPhoto &&!row.endPitPhotos && !row.roadWidthPhotos && !row.vehicle_image && (
-         <span className="text-gray-400 text-xs">-</span>
-       )}
-    </div>
-  ),
-},
-
+    },
+  },
+  { name: "State", selector: row => row.state_id ?? '-', sortable: true },
+  { name: "District", selector: row => row.distrct_id ?? '-', sortable: true },
+  { name: "Block", selector: row => row.block_id ?? '-', sortable: true },
+  { name: "Start GP Name", selector: row => row.start_lgd_name , sortable: true },
+  { name: 'End GP Name', selector: row => row.end_lgd_name, sortable: true },
   { name: "Route Belongs To", selector: row => row.routeBelongsTo ?? '-', sortable: true },
   { name: "Road Type", selector: row => row.roadType ?? '-', sortable: true },
   { name: "CableLaidOn", selector: row => row.cableLaidOn ?? '-', sortable: true },
@@ -230,7 +203,8 @@ const MachineDataTable = () => {
   { name: "ExecutionModality", selector: row => row.executionModality ?? '-', sortable: true },
   { name: "Distance (m)", selector: row => row.distance ?? '-', sortable: true },
   { name: "Depth (m)", selector: row => row.depthMeters ?? '-', sortable: true },
-
+  { name: "Landmark Type", selector: row => row.landmark_type ?? '-', sortable: true },
+  { name: "Landmark Description", selector: row => row.landmark_description ?? '-', sortable: true },
   {
     name: "Status",
     selector: row => row.status.toString(),
@@ -247,7 +221,7 @@ const MachineDataTable = () => {
     const customStyles = {
     headRow: {
       style: {
-        backgroundColor: '#64B5F6',
+        backgroundColor: '#dee2e6',
         color: '#616161',
         fontWeight: 600,
         fontSize: '14px',
@@ -279,7 +253,7 @@ const MachineDataTable = () => {
 
   const lowerSearch = globalsearch.toLowerCase();
 
-  return tableData.filter((row: TableRow) =>
+  return tableData.filter((row: Activity) =>
     Object.values(row).some((value) =>
       (typeof value === 'string' || typeof value === 'number') &&
       value.toString().toLowerCase().includes(lowerSearch)
@@ -393,7 +367,7 @@ const MachineDataTable = () => {
             <span className="font-medium">Error loading data:</span> {error}
           </div>
         )}
-       {tableData.length === 0 ? (
+       {filteredData.length === 0 ? (
         <div className="p-12 text-center">
           <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
             <Search className="w-8 h-8 text-gray-400" />
