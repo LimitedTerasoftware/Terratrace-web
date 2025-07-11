@@ -5,6 +5,7 @@ import MachineList from './MachineList';
 import { Settings, BarChart3, Truck } from 'lucide-react';
 import axios, { AxiosError } from 'axios';
 import Modal from '../hooks/ModalPopup';
+import { getMachineOptions } from '../Services/api';
 
 interface ModalData {
   title: string;
@@ -22,25 +23,10 @@ function MachineManagement() {
     message: "",
     type: "info",
   });
-
-  
-
   useEffect(()=>{
-
-    const GetData = async() =>{
-      try {
-        const resp = await axios.get(`${TraceBASEURL}/get-all-machines`);
-        if(resp.status === 200 || resp.status === 201){
-         setMachines(resp.data.machines);
-        }
-        
-      } catch (error) {
-         console.log(error)
-      }
-
-    }
-    GetData();
-
+    getMachineOptions().then(data => {
+          setMachines(data);
+      });
   },[])
   const handleAddMachine = async(formData: MachineFormData) => {
  try {

@@ -44,7 +44,7 @@ interface AerialPole {
 }
 
 const BASEURL = import.meta.env.VITE_API_BASE;
-const baseUrl_public = `${BASEURL}/public/`;
+const baseUrl_public =import.meta.env.VITE_Image_URL;
 const AerialDetailView: React.FC = () => {
   const [data, setData] = useState<AerialSurvey | null>(null);
   const [loading, setLoading] = useState<boolean>(true);

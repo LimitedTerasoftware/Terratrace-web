@@ -1,19 +1,17 @@
 import React, { useEffect, useState } from 'react'
 import Breadcrumb from '../Breadcrumbs/Breadcrumb'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import IndexChart from '.';
 import MachineDataTable from './MachineData';
 import LiveTrack from './LiveTrack';
-
+import Dashboard from './MachineWorkChart/Dashboard';
 
 function MainIndex() {
-type TabType = "live-track" | "Machine-Data";
+type TabType = "live-track" | "Machine-Data" | "Machine-Work-Chart";
 
 const tabs: { id: TabType; label: string }[] = [
   { id: "live-track", label: "Live Tracking" },
   { id: "Machine-Data", label: "Machine Data" },
-  
-];
+  { id: "Machine-Work-Chart", label: "Machine Work Chart"}];
 
 const [activeTab, setActiveTab] = useState<TabType>();
   const location = useLocation();
@@ -36,19 +34,19 @@ const handleTabChange = (tabId: TabType) => {
    const renderTabContent = (): JSX.Element => {
     switch (activeTab) {
       case "live-track":
-        return <LiveTrack />;
+        return <LiveTrack/>;
       case "Machine-Data":
         return <MachineDataTable />;
-      
+      case "Machine-Work-Chart":
+        return <Dashboard MachineId={'1'} View={true}/>
       default:
-        return  <LiveTrack />;
+        return <LiveTrack/>;
     }
   };
 
   return (
   <div className="w-full p-4">
-      <Breadcrumb pageName="Reports & Tracking" />
-
+      <Breadcrumb pageName="Machine Tracking" />
       {/* Tabs Header */}
       <div className="flex border-b border-gray-300">
         {tabs.map((tab) => (
@@ -65,7 +63,6 @@ const handleTabChange = (tabId: TabType) => {
           </button>
         ))}
       </div>
-
       {/* Content Section */}
       <div className="mt-4">{renderTabContent()}</div>
     </div>  

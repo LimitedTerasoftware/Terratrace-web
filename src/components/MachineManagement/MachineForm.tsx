@@ -32,6 +32,7 @@ const MachineForm: React.FC<MachineFormProps> = ({
   serial_number: "",
   year_of_manufacture: new Date().getFullYear(),
   status: 'active',
+  machine_id:'',
 
   });
 
@@ -57,6 +58,8 @@ const MachineForm: React.FC<MachineFormProps> = ({
         serial_number: machine.serial_number,
         year_of_manufacture: machine.year_of_manufacture,
         status: machine.status,
+        machine_id:'',
+
       });
     }
   }, [machine]);
@@ -106,6 +109,8 @@ const MachineForm: React.FC<MachineFormProps> = ({
           serial_number: '',
           year_of_manufacture: new Date().getFullYear(),
           status: 'active',
+          machine_id:'',
+
         });
       }
     }

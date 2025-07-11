@@ -142,7 +142,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
             <SideBarItem icon={SurveyIcon} label="Survey" isOpen={isOpen} isActive={pathname.includes('survey')} path='/survey' />
             <SideBarItem icon={ConstructionImg} label="Construction" isOpen={isOpen} isActive={pathname.includes('construction')} path='/construction' />
 
-            <SideBarItem icon={Other} label="Reports & Tracking" isOpen={isOpen} isActive={pathname.includes('reports')} path='/reports' />
+            <SideBarItem icon={Other} label="Machine Tracking" isOpen={isOpen} isActive={pathname.includes('reports')} path='/reports' />
 
              <SidebarLinkGroup
               activeCondition={pathname.includes('route-planning')}

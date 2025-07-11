@@ -253,3 +253,27 @@ export interface UGConstructionSurveyData {
   user_mobile:string;
 
 }
+
+// MachineWork Chart
+
+export interface MachineData {
+  date: string;
+  totalDistance: string;
+}
+
+export interface MachineDataApiResponse {
+  status: boolean;
+  data: MachineData[];
+}
+
+export interface ChartDataPoint {
+  x: string;
+  y: number;
+}
+
+export interface FilterState {
+  machineId: string;
+  machineName:string;
+  fromDate: string;
+  toDate: string;
+}

@@ -5,7 +5,7 @@ const useActivities = (
   selectedState: string | null,
   selectedDistrict: string | null,
   selectedBlock: string | null,
- Machine:string|null) => {
+  Machine:string|null) => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

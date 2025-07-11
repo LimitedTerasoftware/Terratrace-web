@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { DepthDataPoint, ChartPoint } from '../../types/survey';
-import { AlertTriangle, TrendingDown, TrendingUp, Ruler, X } from 'lucide-react';
+import { AlertTriangle, TrendingDown, Ruler, X } from 'lucide-react';
 
 interface DepthChartProps {
   depthData: DepthDataPoint[];

@@ -5,8 +5,6 @@ import DataTable, { TableColumn } from 'react-data-table-component';
 import { useNavigate } from 'react-router-dom';
 import { UGConstructionSurveyData } from '../../types/survey';
 
-
-
 interface ReportProps {
   Data: {
     selectedState: string | null;
@@ -27,9 +25,6 @@ const Report: React.FC<ReportProps> = ({ Data }) => {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<UGConstructionSurveyData[]>([]);
   const navigate = useNavigate();
-
-
-
   useEffect(() => {
     const fetchSurveyData = async () => {
       try {

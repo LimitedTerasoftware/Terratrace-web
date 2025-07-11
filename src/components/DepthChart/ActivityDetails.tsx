@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, MapPin, Calendar, Camera, Info, Ruler, ArrowRight ,Route} from 'lucide-react';
+import { X, MapPin, Calendar, Camera, Info, Ruler, ArrowRight, Route, ChartBar, ChartArea } from 'lucide-react';
 import { Activity } from '../../types/survey';
 import MachineRouteMap from './MachineRouteMap';
+import Dashboard from './MachineWorkChart/Dashboard';
 
 interface ActivityDetailsProps {
   activity: Activity | null;
@@ -23,24 +24,31 @@ const EVENT_TYPE_MAPPING = {
   'ENDPIT': { coordField: 'endPitLatlong', photoField: 'endPitPhotos' },
   'STARTSURVEY': { coordField: 'startPointCoordinates', photoField: 'startPointPhoto' },
   'ENDSURVEY': { coordField: 'endPointCoordinates', photoField: 'endPointPhoto' },
+};
+const baseUrl = import.meta.env.VITE_Image_URL;
 
-
-  };
-const BASEURL_Val = import.meta.env.VITE_API_BASE;
-const baseUrl = `${BASEURL_Val}/public/`;
-
-const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activity, onClose }) => {
+const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activity, onClose}) => {
   const [showRouteMap, setShowRouteMap] = useState(false);
+  const [showWorkChart, setShowWorkChart] = useState(false);
+
   if (!activity) return null;
-
-
-  const parsePhotos = (photoString: string | null): string[] => {
-    if (!photoString) return [];
+   const parsePhotos = (photoString: string | null): string[] => {
+  if (typeof photoString === "string" && photoString.trim() !== "") {
     try {
-      return JSON.parse(photoString);
+      const parsed = JSON.parse(photoString);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((p: string) => typeof p === 'string' && p.trim() !== '');
+      }
+
+      if (typeof parsed === 'string') {
+        return [parsed];
+      }
     } catch {
-      return photoString.split(',').map(p => p.trim());
+      return [photoString.trim()];
     }
+  }
+
+  return [];
   };
 
   const getCoordinates = (coordString: string | null) => {
@@ -61,12 +69,11 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activity, onClose }) 
   if (mapping) {
     const photoField = mapping.photoField as keyof Activity;
     const coordField = mapping.coordField as keyof Activity;
-    
+
     photos = parsePhotos(activity[photoField] as string | null);
     coordinates = getCoordinates(activity[coordField] as string | null);
   }
-
-if (showRouteMap) {
+ if (showRouteMap) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-end p-4 z-50">
         <div className="bg-white rounded-lg shadow-xl w-full h-full max-w-[1250px] max-h-[95vh] overflow-hidden">
@@ -98,6 +105,37 @@ if (showRouteMap) {
     );
   }
 
+  if(showWorkChart){
+    return(
+       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-end p-4 z-50">
+        <div className="bg-white rounded-lg shadow-xl w-full h-full max-w-[1250px] max-h-[95vh] overflow-hidden">
+          <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+              <ChartArea className="h-5 w-5 text-blue-600" />
+              Machine {activity.registration_number}
+            </h2>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowWorkChart(false)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+              >
+                Back to Details
+              </button>
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+          </div>
+          <div className="h-full overflow-y-auto">
+            <Dashboard MachineId={activity.machine_id} View={false}/>
+          </div>
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -115,7 +153,7 @@ if (showRouteMap) {
         </div>
 
         <div className="p-6 space-y-6">
-                    {/* Action Buttons */}
+          {/* Action Buttons */}
           <div className="flex gap-3">
             <button
               onClick={() => setShowRouteMap(true)}
@@ -123,6 +161,14 @@ if (showRouteMap) {
             >
               <Route className="h-4 w-4" />
               View Complete Route
+              <ArrowRight className="h-4 w-4" />
+            </button>
+             <button
+              onClick={()=>setShowWorkChart(true)}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition-colors font-medium flex items-center justify-center gap-2"
+            >
+              <ChartBar className="h-4 w-4" />
+              View Work Chart
               <ArrowRight className="h-4 w-4" />
             </button>
           </div>

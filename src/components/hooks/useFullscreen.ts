@@ -31,7 +31,7 @@ export const useFullscreen = () => {
 };
 
 const BASEURL_Val = import.meta.env.VITE_API_BASE;
-const baseUrl = `${BASEURL_Val}/public/`;
+const baseUrl = import.meta.env.VITE_Image_URL;
 export class MediaExportService {
   
   //--- Extract all media files from a survey item based on event type ---

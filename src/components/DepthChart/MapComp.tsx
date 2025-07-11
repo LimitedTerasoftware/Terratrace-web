@@ -1,6 +1,8 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Eye, EyeOff, Navigation, Filter, X, ZoomIn } from 'lucide-react';
 import GoogleMapsLoader from '../hooks/googleMapsLoader';
+import moment from 'moment';
+import { Activity } from '../../types/survey';
 
 interface MarkerData {
   lat: number;
@@ -8,71 +10,9 @@ interface MarkerData {
   eventType: string;
   id: number;
 }
-
-interface EventData {
-  id: number;
-  state_id: number | null;
-  distrct_id: number | null;
-  block_id: number | null;
-  gp_id: number | null;
-  link_name: string | null;
-  startPointPhoto: string | null;
-  startPointCoordinates: string | null;
-  routeBelongsTo: string | null;
-  roadType: string | null;
-  cableLaidOn: string | null;
-  soilType: string | null;
-  crossingType: string | null;
-  crossingLength: string | null;
-  crossingLatlong: string | null;
-  crossingPhotos: string | null;
-  executionModality: string | null;
-  depthLatlong: string | null;
-  depthPhoto: string | null;
-  depthMeters: string | null;
-  fpoiLatLong: string | null;
-  fpoiPhotos: string | null;
-  jointChamberLatLong: string | null;
-  jointChamberPhotos: string | null;
-  manholeLatLong: string | null;
-  manholePhotos: string | null;
-  routeIndicatorLatLong: string | null;
-  routeIndicatorPhotos: string | null;
-  landmarkLatLong: string | null;
-  landmarkPhotos: string | null;
-  fiberTurnLatLong: string | null;
-  fiberTurnPhotos: string | null;
-  kilometerstoneLatLong: string | null;
-  kilometerstonePhotos: string | null;
-  status: number;
-  created_at: string;
-  updated_at: string;
-  start_lgd: string;
-  end_lgd: string;
-  machine_id: string;
-  contractor_details: string | null;
-  vehicleserialno: string | null;
-  distance: string | null;
-  startPitLatlong: string | null;
-  startPitPhotos: string | null;
-  endPitLatlong: string | null;
-  endPitPhotos: string | null;
-  roadWidthLatlong: string | null;
-  roadWidth: string | null;
-  roadWidthPhotos: string | null;
-  eventType: string;
-  survey_id: number;
-  vehicle_image: string | null;
-  endPitDoc: string | null;
-  start_lgd_name: string;
-  end_lgd_name: string;
-  endPointPhoto:string;
-  endPointCoordinates:string;
-}
-
 interface MapCompProps {
   data: MarkerData[];
-  eventData?: EventData[];
+  eventData?: Activity[];
 }
 
 // Event type configurations
@@ -92,15 +32,15 @@ const EVENT_TYPES = {
   ENDSURVEY: { color: '#10B981', icon: '🎯', label: 'End Survey' },
 };
 
-const baseUrl = `${import.meta.env.VITE_API_BASE}/public/`;
+const baseUrl = import.meta.env.VITE_Image_URL;
 
 // InfoWindow Component
 const InfoWindow: React.FC<{
-  event: EventData;
+  event: Activity;
   onClose: () => void;
   onImageClick: (url: string) => void;
 }> = ({ event, onClose, onImageClick }) => {
-  const eventPhotoFields: Record<string, keyof EventData> = {
+  const eventPhotoFields: Record<string, keyof Activity> = {
     FPOI: "fpoiPhotos",
     DEPTH: "depthPhoto",
     JOINTCHAMBER: "jointChamberPhotos",
@@ -116,21 +56,31 @@ const InfoWindow: React.FC<{
     ENDSURVEY:'endPointPhoto',
   };
 
-  const getEventPhotos = (event: EventData) => {
-    const photoField = eventPhotoFields[event.eventType];
-    const rawPhotoData = photoField ? event[photoField] : null;
+  const getEventPhotos = (event: Activity) => {
+  const photoField = eventPhotoFields[event.eventType];
+  const rawPhotoData = photoField ? event[photoField] : null;
 
-    if (typeof rawPhotoData === "string" && rawPhotoData.trim() !== "") {
-      try {
-        return JSON.parse(rawPhotoData);
-      } catch (e) {
-        console.error("Invalid JSON in photos:", rawPhotoData, e);
-        return [];
+  if (typeof rawPhotoData === "string" && rawPhotoData.trim() !== "") {
+    try {
+      const parsed = JSON.parse(rawPhotoData);
+
+      // If it's a valid array, return it
+      if (Array.isArray(parsed)) {
+        return parsed.filter((p: string) => typeof p === 'string' && p.trim() !== '');
       }
-    }
-    return [];
-  };
 
+      // If it's a string inside JSON (like just `"uploads/..."`), return as array
+      if (typeof parsed === 'string') {
+        return [parsed];
+      }
+    } catch {
+      // If it's not valid JSON (just a raw path), return it as a one-item array
+      return [rawPhotoData.trim()];
+    }
+  }
+
+  return [];
+};
   const photos = getEventPhotos(event);
   const eventConfig = EVENT_TYPES[event.eventType as keyof typeof EVENT_TYPES];
 
@@ -180,11 +130,29 @@ const InfoWindow: React.FC<{
               <span className="font-medium text-sm">{event.roadType}</span>
             </div>
           )}
+           {event.landmark_type && (
+            <div className="flex justify-between">
+              <span className="text-gray-600 text-sm">Land Mark Type:</span>
+              <span className="font-medium text-sm">{event.landmark_type}</span>
+            </div>
+          )}
+          {event.landmark_description && (
+            <div className="flex justify-between">
+              <span className="text-gray-600 text-sm">Land Mark Description:</span>
+              <span className="font-medium text-sm">{event.landmark_description}</span>
+            </div>
+          )}
+          {event.machine_id && (
+            <div className="flex justify-between">
+              <span className="text-gray-600 text-sm">Machine Id:</span>
+              <span className="font-medium text-sm">{event.machine_id}</span>
+            </div>
+          )}
           
           <div className="flex justify-between">
             <span className="text-gray-600 text-sm">Created:</span>
             <span className="font-medium text-sm">
-              {new Date(event.created_at).toLocaleDateString()}
+              {moment(event.created_at).format("DD/MM/YYYY, hh:mm A")}
             </span>
           </div>
           
@@ -192,7 +160,7 @@ const InfoWindow: React.FC<{
             <div className="mt-3">
               <h4 className="text-sm font-medium text-gray-700 mb-2">Photos:</h4>
               <div className="grid grid-cols-2 gap-2">
-                {photos.slice(0, 4).map((photo: string, idx: number) => (
+                {photos.slice(0, 5).map((photo: string, idx: number) => (
                   <div
                     key={idx}
                     className="relative aspect-square bg-gray-100 rounded-md overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
@@ -209,9 +177,9 @@ const InfoWindow: React.FC<{
                   </div>
                 ))}
               </div>
-              {photos.length > 4 && (
+              {photos.length > 5 && (
                 <p className="text-xs text-gray-500 mt-1">
-                  +{photos.length - 4} more photos
+                  +{photos.length - 5} more photos
                 </p>
               )}
             </div>
@@ -249,7 +217,7 @@ const MapComponent: React.FC<MapCompProps> = ({ data, eventData = [] }) => {
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
   const [polylines, setPolylines] = useState<google.maps.Polyline[]>([]);
-  const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<Activity | null>(null);
   const [visibleEventTypes, setVisibleEventTypes] = useState<Set<string>>(
     // new Set(Object.keys(EVENT_TYPES))
       new Set(['DEPTH', 'STARTPIT', 'ENDPIT']));
@@ -512,7 +480,7 @@ const MapComponent: React.FC<MapCompProps> = ({ data, eventData = [] }) => {
         </div>
       </div>
 
-      {/* Legend */}
+      {/* Events Data */}
       <div className="absolute bottom-4 left-4 z-10">
         <div className="bg-white rounded-lg shadow-lg p-3 max-w-xs">
           <h4 className="font-medium text-sm text-gray-700 mb-2">Events</h4>

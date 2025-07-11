@@ -55,6 +55,7 @@ import LiveTrack from './components/DepthChart/LiveTrack';
 import Eventreport from './components/DepthChart/UGConstView';
 import Report from './components/DepthChart/UGConst';
 import Construction from './components/DepthChart/Construction';
+import Dashboard from './components/DepthChart/MachineWorkChart/Dashboard';
 //import AuditLogs from './components/AuditLogs';
 
 function App() {
@@ -503,7 +504,7 @@ function App() {
               path="/kmlfileupload"
               element={
                 <>
-                   <DefaultLayout>
+                <DefaultLayout>
                   <PageTitle title="Kml File Upload" />
                   <FileUpload />
                   </DefaultLayout>
@@ -517,8 +518,7 @@ function App() {
                 </DefaultLayout>
             </>}/>
             <Route path='/smart-inventory' element={<>
-              
-                  <SmartInventory />
+                <SmartInventory />
             </>}/>
              <Route path='/depth-chart' element={<>
                 <DefaultLayout>
@@ -562,10 +562,12 @@ function App() {
                   <Construction/>
                 </DefaultLayout>
             </>}/>
-
-
-
-
+             <Route path='/construction' element={<>
+                <DefaultLayout>
+                  <PageTitle title="construction" />
+                  <Construction/>
+                </DefaultLayout>
+            </>}/>
           </Routes>
           
       )}

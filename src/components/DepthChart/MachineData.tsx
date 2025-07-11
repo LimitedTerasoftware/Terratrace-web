@@ -1,43 +1,33 @@
 import React, { useEffect, useMemo, useState } from "react";
 import DataTable, { TableColumn } from "react-data-table-component";
 import axios from "axios";
-import { useLocation } from "react-router-dom";
-import { FaArrowLeft } from "react-icons/fa";
 import { Machine } from "../../types/machine";
 import { Search } from "lucide-react";
 import { Activity } from "../../types/survey";
+import moment from "moment";
+import { getMachineOptions } from "../Services/api";
+import {getTodayDate } from "../../utils/dateUtils";
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const BASEURL_Val = import.meta.env.VITE_API_BASE;
-const baseUrl = `${BASEURL_Val}/public/`;
+const baseUrl = import.meta.env.VITE_Image_URL;
 
 const MachineDataTable = () => {
       const [loading, setLoading] = useState<boolean>(false);
       const [error, setError] = useState<string | null>(null);
-      const [fromdate, setFromDate] = useState<string>('');
-      const [todate, setToDate] = useState<string>('');
+      const [fromdate, setFromDate] = useState<string>(getTodayDate());
+      const [todate, setToDate] = useState<string>(getTodayDate());
       const [Machine,setMachine]=useState('');
       const [machinesData, setMachinesData] = useState<Machine[]>([]);
       const [tableData, setTableData] = useState<Activity[]>([]);
       const [searchTerm, setSearchTerm] = useState('');
       const [zoomImage, setZoomImage] = useState<string | null>(null);
       const [globalsearch, setGlobalSearch] = useState<string>('');
-
-   const GetData = async() =>{
-      try {
-        const resp = await axios.get(`${TraceBASEURL}/get-all-machines`);
-        if(resp.status === 200 || resp.status === 201){
-         setMachinesData(resp.data.machines);
-        }
-        
-      } catch (error) {
-         console.log(error)
-      }
-
-    }
-  useEffect(()=>{
-    GetData();
-  },[])
+      useEffect(()=>{
+        getMachineOptions().then(data => {
+              setMachinesData(data);
+          });
+      },[])
   useEffect(()=>{
   const handleMachineData = async() =>{
     try {
@@ -66,6 +56,7 @@ const MachineDataTable = () => {
   }
   handleMachineData()
  },[Machine,fromdate,todate])
+ 
  const parseAndRenderUrls = (
   jsonString: string,
   labelPrefix: string,
@@ -165,8 +156,14 @@ const MachineDataTable = () => {
             try {
                 urls = JSON.parse(rawPhotoData);
             } catch (e) {
-                console.error("Invalid JSON in photos:", rawPhotoData, e);
-                return <span className="text-red-500">Invalid photo data</span>;
+               return (
+                          <span
+                          className="text-blue-600 space-y-1 underline cursor-pointer block"
+                                onClick={() => setZoomImage(`${baseUrl}${rawPhotoData}`)}
+                            >
+                                {`${row.eventType}_Img`}
+                            </span>
+                    )
             }
 
             return (
@@ -210,9 +207,9 @@ const MachineDataTable = () => {
     selector: row => row.status.toString(),
     sortable: true,
   },
-    {
+  {
     name: "Created At",
-    selector: row => new Date(row.created_at).toLocaleString(),
+    selector: row => moment(row.created_at).format("DD/MM/YYYY, hh:mm A"),
     sortable: true,
   },
 ];
@@ -262,7 +259,7 @@ const MachineDataTable = () => {
 }, [globalsearch, tableData]);
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="container mx-auto">
         {zoomImage && (
         <div
           className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-80 z-50"

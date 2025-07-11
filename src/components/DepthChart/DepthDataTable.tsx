@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { DepthDataPoint } from '../../types/survey';
 import { AlertTriangle, CheckCircle, MapPin } from 'lucide-react';
+import moment from 'moment';
 
 interface DepthDataTableProps {
   depthData: DepthDataPoint[];
   minDepth?: number;
 }
-  const BASEURL_Val = import.meta.env.VITE_API_BASE;
-const baseUrl = `${BASEURL_Val}/public/`;
-
+const BASEURL_Val = import.meta.env.VITE_API_BASE;
+const baseUrl = import.meta.env.VITE_Image_URL;
 export const DepthDataTable: React.FC<DepthDataTableProps> = ({ 
   depthData, 
   minDepth = 1.65 
@@ -116,7 +116,7 @@ export const DepthDataTable: React.FC<DepthDataTableProps> = ({
                       )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(point.created_at).toLocaleDateString()}
+                    {moment(point.created_at).format("DD/MM/YYYY, hh:mm A")}
                   </td>
                 </tr>
               );

@@ -1,90 +1,29 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { DepthDataPoint } from '../../types/survey';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Activity,} from '../../types/survey';
+import { useLocation } from 'react-router-dom';
 import DataTable, { TableColumn } from 'react-data-table-component';
-import { Folder, FolderLock, Search, Settings } from 'lucide-react';
+import { Folder} from 'lucide-react';
 import axios from 'axios';
 import { FaArrowLeft } from 'react-icons/fa';
 import IndexChart from './index';
 import MapComp from './MapComp';
+import moment from 'moment';
 
-export interface EventData {
-    id: number;
-    state_id: number | null;
-    distrct_id: number | null;
-    block_id: number | null;
-    gp_id: number | null;
-    link_name: string | null;
-    startPointPhoto: string | null;
-    startPointCoordinates: string | null;
-    routeBelongsTo: string | null;
-    roadType: string | null;
-    cableLaidOn: string | null;
-    soilType: string | null;
-    crossingType: string | null;
-    crossingLength: string | null;
-    crossingLatlong: string | null;
-    crossingPhotos: string | null;
-    executionModality: string | null;
-    depthLatlong: string | null;
-    depthPhoto: string | null;
-    depthMeters: string | null;
-    fpoiLatLong: string | null;
-    fpoiPhotos: string | null;
-    jointChamberLatLong: string | null;
-    jointChamberPhotos: string | null;
-    manholeLatLong: string | null;
-    manholePhotos: string | null;
-    routeIndicatorLatLong: string | null;
-    routeIndicatorPhotos: string | null;
-    landmarkLatLong: string | null;
-    landmarkPhotos: string | null;
-    fiberTurnLatLong: string | null;
-    fiberTurnPhotos: string | null;
-    kilometerstoneLatLong: string | null;
-    kilometerstonePhotos: string | null;
-    status: number;
-    created_at: string;
-    updated_at: string;
-    start_lgd: string;
-    end_lgd: string;
-    machine_id: string;
-    contractor_details: string | null;
-    vehicleserialno: string | null;
-    distance: string | null;
-    startPitLatlong: string | null;
-    startPitPhotos: string | null;
-    endPitLatlong: string | null;
-    endPitPhotos: string | null;
-    roadWidthLatlong: string | null;
-    roadWidth: string | null;
-    roadWidthPhotos: string | null;
-    eventType: string;
-    survey_id: number;
-    vehicle_image: string | null;
-    endPitDoc: string | null;
-    start_lgd_name: string;
-    end_lgd_name: string;
-    endPointPhoto:string;
-    endPointCoordinates:string;
-}
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const BASEURL_Val = import.meta.env.VITE_API_BASE;
-const baseUrl = `${BASEURL_Val}/public/`;
+const baseUrl = import.meta.env.VITE_Image_URL;
 
 function Eventreport() {
     const location = useLocation();
     let sgp = location.state?.sgp || '';
     let egp = location.state?.egp || '';
-    const [depthData, setdepthData] = useState<EventData[]>([]);
+    const [depthData, setdepthData] = useState<Activity[]>([]);
     const [selectedEvent, setSelectedEvent] = useState<string>('');
     const [globalsearch, setGlobalSearch] = useState<string>('');
     const [zoomImage, setZoomImage] = useState<string | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
-    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'details' | 'map' | 'chart'>('details');
-    const [depthChart,setDepthChart]=useState({});
    
     const EventData = [
         'STARTSURVEY',
@@ -130,12 +69,13 @@ function Eventreport() {
         }
         getData()
     }, [sgp, egp, selectedEvent])
+
     const filteredData = useMemo(() => {
         if (!globalsearch.trim()) return depthData;
 
         const lowerSearch = globalsearch.toLowerCase();
 
-        return depthData.filter((row: EventData) =>
+        return depthData.filter((row: Activity) =>
             Object.values(row).some((value) =>
                 (typeof value === 'string' || typeof value === 'number') &&
                 value.toString().toLowerCase().includes(lowerSearch)
@@ -143,7 +83,7 @@ function Eventreport() {
         );
     }, [globalsearch, depthData]);
 
-    const getLatLongForEvent = (row: EventData) => {
+    const getLatLongForEvent = (row: Activity) => {
         switch (row.eventType) {
             case "FPOI": return row.fpoiLatLong;
             case "DEPTH": return row.depthLatlong;
@@ -163,7 +103,7 @@ function Eventreport() {
     };
    
 const markers = filteredData
-  .map((row: EventData) => {
+  .map((row: Activity) => {
     const latLongStr = getLatLongForEvent(row);
     if (
       typeof latLongStr === "string" &&
@@ -187,10 +127,6 @@ const markers = filteredData
         };
       }
     }
-
-    // Optional: log the invalid latlong for debugging
-    console.warn("Invalid latlong skipped:", latLongStr, row);
-
     return null;
   })
   .filter(
@@ -200,7 +136,7 @@ const markers = filteredData
       m !== null
   );
 
-    const eventPhotoFields: Record<string, keyof EventData> = {
+    const eventPhotoFields: Record<string, keyof Activity> = {
         FPOI: "fpoiPhotos",
         DEPTH: "depthPhoto",
         JOINTCHAMBER: "jointChamberPhotos",
@@ -215,11 +151,11 @@ const markers = filteredData
         ENDSURVEY:'endPointPhoto',
         ROADCROSSING: 'crossingPhotos',
     };
-    const hasImages = (row: EventData) => {
+    const hasImages = (row: Activity) => {
         const photoField = eventPhotoFields[row.eventType];
         return photoField && row[photoField] !== null && row[photoField] !== "[]";
     };
-    const columns: TableColumn<EventData>[] = [
+    const columns: TableColumn<Activity>[] = [
       
         {
             name: "Event Type",
@@ -242,7 +178,7 @@ const markers = filteredData
         },
         {
             name: "Images",
-            cell: (row: EventData) => {
+            cell: (row: Activity) => {
                 const photoField = eventPhotoFields[row.eventType];
                 const rawPhotoData = photoField ? row[photoField] : null;
 
@@ -251,8 +187,15 @@ const markers = filteredData
                     try {
                         urls = JSON.parse(rawPhotoData);
                     } catch (e) {
-                        console.error("Invalid JSON in photos:", rawPhotoData, e);
-                        return <span className="text-red-500">Invalid photo data</span>;
+                        return (
+                             <span
+                             className="text-blue-600 space-y-1 underline cursor-pointer block"
+                                    onClick={() => setZoomImage(`${baseUrl}${rawPhotoData}`)}
+                                >
+                                    {`${row.eventType}_Img`}
+                                </span>
+                        )
+                        
                     }
 
                     return (
@@ -274,49 +217,43 @@ const markers = filteredData
 
             },
         },
-        // { name: "Side Type", selector: row => '' || "-", sortable: true },
         { name: "ExecutionModality", selector: row => row.executionModality || "-", sortable: true },
-        // { name: "Landmark Type", selector: row => '' || "-", sortable: true },
+        { name: "Landmark Type", selector: row => row.landmark_type || "-", sortable: true },
+        { name: "Landmark Desc", selector: row => row.landmark_description || "-", sortable: true },
         { name: "RouteBelongsTo", selector: row => row.routeBelongsTo || "-", sortable: true },
         { name: "RoadType", selector: row => row.roadType || "-", sortable: true },
         { name: "SoilType", selector: row => row.soilType || "-", sortable: true },
-        // { name: "Area Type", selector: row => '' || "-", sortable: true },
-
-        { name: "CableLaidOn", selector: row => row.cableLaidOn || "-", sortable: true },
+        { name: "Area Type", selector: row => '' || "-", sortable: true },
+        { name: "Side Type", selector: row => row.cableLaidOn || "-", sortable: true },
         { name: "CrossingType", selector: row => row.crossingType || "-", sortable: true },
         { name: "CrossingLength", selector: row => row.crossingLength || "-", sortable: true },
         { name: "RoadWidth", selector: row => row.roadWidth || "-", sortable: true },
-        // { name: "CenterToMargin", selector: row => '' || "-", sortable: true },
-        // { name: "Route Feasible", selector: row => '' || "-", sortable: true },
+        { name: "CenterToMargin", selector: row => row.road_margin|| "-", sortable: true },
+        { name: "Offset", selector: row => '' || "-", sortable: true },
+        { name: "Route Feasible", selector: row => '' || "-", sortable: true },
         { name: "Depth Meters", selector: row => row.depthMeters || "-", sortable: true },
         { name: "Distance", selector: row => row.distance || "-", sortable: true },
         { name: "Machine ID", selector: row => row.machine_id || "-", sortable: true },
         {
             name: "Vehicle Image",
-            selector: row => {
-                if (typeof row.vehicle_image === "string" && row.vehicle_image.trim() !== "") {
-                    try {
-                        const urls = JSON.parse(row.vehicle_image);
-                        return urls.map((url: string, i: number) => (
-                            <span
-                                key={i}
-                                className="underline cursor-pointer block"
-                                onClick={() => setZoomImage(`${baseUrl}${url}`)}
-                            >
-                                Vehicle_Image_{i + 1}
-                            </span>
-                        ));
-                    } catch (e) {
-                        console.error("Invalid JSON in vehicle_image:", row.vehicle_image, e);
-                        return <span className="text-red-500">Invalid vehicle image data</span>;
-                    }
+            cell: (row: Activity) => {
+                const imageUrl = row.vehicle_image?.trim();
+
+                if (imageUrl) {
+                    return (
+                        <span
+                            className="text-blue-600 underline cursor-pointer block"
+                            onClick={() => setZoomImage(`${baseUrl}${imageUrl}`)}
+                        >
+                            Vehicle_Img
+                        </span>
+                    );
                 }
 
                 return "-";
             },
             sortable: true,
         },
-
         {
             name: "EndPitDoc",
             cell: row => {
@@ -338,7 +275,10 @@ const markers = filteredData
             },
             sortable: true,
         },
-        { name: "Created At", selector: row => new Date(row.created_at).toLocaleString(), sortable: true },
+        {
+            name: "Created At",
+            selector: row => moment(row.created_at).format("DD/MM/YYYY, hh:mm A"),sortable: true,
+        }
 
     ];
 

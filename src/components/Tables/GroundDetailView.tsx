@@ -120,7 +120,7 @@ interface Props {
   setSelectedVideoUrl: (url: string) => void;
 }
 const BASEURL_Val = import.meta.env.VITE_API_BASE;
-const baseUrl = `${BASEURL_Val}/public/`;
+const baseUrl = import.meta.env.VITE_Image_URL;
 
 const GroundDetailView: React.FC = () => {
   const [data, setData] = useState<GroundSurvey | null>(null);
