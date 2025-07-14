@@ -200,6 +200,9 @@ export interface Activity {
   landmark_type:string;
   landmark_description:string;
   machine_registration_number:string;
+  Roadfesibility:string;
+  area_type:string;
+  road_margin:string;
 }
 
 export interface ApiResponseMachine {

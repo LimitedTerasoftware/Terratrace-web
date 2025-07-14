@@ -19,17 +19,20 @@ export const DepthChart: React.FC<DepthChartProps> = ({
   minDepth = 1.65 
 }) => {
   const [selectedPoints, setSelectedPoints] = useState<SelectedPoint[]>([]);
-
   const chartData = useMemo(() => {
-    return depthData
-      .map((point, index) => ({
-        distance: index * 10, // Every 10m as specified
-        depth: parseFloat(point.depthMeters),
-        isBelowMinimum: parseFloat(point.depthMeters) < minDepth,
+  return depthData
+    .map((point, index) => {
+      const depthValue = parseFloat(point.depthMeters);
+      return {
+        distance: index * 10,
+        depth: isNaN(depthValue) ? 0 : depthValue,
+        isBelowMinimum: !isNaN(depthValue) && depthValue < minDepth,
         originalData: point
-      }))
-      .sort((a, b) => a.distance - b.distance);
-  }, [depthData, minDepth]);
+      };
+    })
+    .sort((a, b) => a.distance - b.distance);
+}, [depthData, minDepth]);
+
   const chartDimensions = {
     width: 800,
     height: 400,
@@ -41,7 +44,12 @@ export const DepthChart: React.FC<DepthChartProps> = ({
   const innerHeight = height - margin.top - margin.bottom;
 
   const maxDistance = Math.max(...chartData.map(d => d.distance), 100);
-  const maxDepth = Math.max(...chartData.map(d => d.depth), minDepth + 0.5);
+  const validDepths = chartData
+  .map(d => d.depth)
+  .filter((depth): depth is number => depth !== null);
+  const maxDepth = validDepths.length > 0 ? Math.max(...validDepths, minDepth + 0.5) : minDepth + 0.5;
+
+  // const maxDepth = Math.max(...chartData.map(d => d.depth), minDepth + 0.5);
 
   const xScale = (distance: number) => (distance / maxDistance) * innerWidth;
   // Reversed Y scale: 0 depth at top, max depth at bottom

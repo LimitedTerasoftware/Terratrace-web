@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import DataTable, { TableColumn } from 'react-data-table-component';
 import { useNavigate } from 'react-router-dom';
 import { UGConstructionSurveyData } from '../../types/survey';
+import moment from 'moment';
 
 interface ReportProps {
   Data: {
@@ -80,7 +81,7 @@ const Report: React.FC<ReportProps> = ({ Data }) => {
     { name: "Surviour Name",selector: row => row.user_name, sortable: true  },
     { name: "Surviour Ph Number",selector: row => row.user_mobile, sortable: true  },
     { name: "Status",selector: row => '', sortable: true  },
-    { name: 'Created At', selector: row => new Date(row.created_at).toLocaleString(), sortable: true },
+    { name: 'Created At', selector: row => moment(row.created_at).format("DD/MM/YYYY, hh:mm A"), sortable: true },
   ];
   const handleView = async (sgp: number, egp: number) => {
     navigate('/construction-details', { state: { sgp, egp } });
