@@ -9,7 +9,7 @@ import {
   Row
 } from "@tanstack/react-table";
 import { FaEye, FaEdit, FaTrash, FaCheck, FaTimes } from "react-icons/fa";
-import { useNavigate, Link, useLocation } from "react-router-dom";
+import { useNavigate, Link, useLocation, useSearchParams } from "react-router-dom";
 import ActionsDropdown from "./ActionsDropdown";
 import Select, { SingleValue } from "react-select";
 import ResponsivePagination from "./ResponsivePagination";
@@ -123,6 +123,8 @@ const UndergroundSurvey: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState({ current: 0, total: 0, currentFile: '' });
   const [exportComplete, setExportComplete] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [filtersReady, setFiltersReady] = useState(false);
 
   const navigate = useNavigate();
 
@@ -138,6 +140,8 @@ const UndergroundSurvey: React.FC = () => {
       label,
     })
   );
+
+
 
   // Initialize from URL params or location state
   useEffect(() => {
@@ -182,6 +186,7 @@ const UndergroundSurvey: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
+
       const response = await axios.get<ApiResponse>(`${BASEURL}/underground-surveys`, {
         params: {
           from_date: fromdate,
@@ -206,8 +211,31 @@ const UndergroundSurvey: React.FC = () => {
   };
 
   useEffect(() => {
+  const state_id = searchParams.get('state_id') || null;
+  const district_id = searchParams.get('district_id') || null;
+  const block_id = searchParams.get('block_id') || null;
+  const pageParam = searchParams.get('page') || '1';
+  const status =searchParams.get('status') || null;
+  const from_date =searchParams.get('from_date') ||'' ;
+  const to_date =searchParams.get('to_date') || "";
+  const search =searchParams.get('search') || "";
+
+  setSelectedState(state_id);
+  setSelectedDistrict(district_id);
+  setSelectedBlock(block_id);
+ setSelectedStatus(status !== null ? Number(status) : null);
+  setFromDate(from_date);
+  setToDate(to_date);
+  setGlobalSearch(search)
+  setPage(Number(pageParam));
+  setFiltersReady(true);
+}, []); 
+ 
+  useEffect(() => {
+    
+    if(!filtersReady) return;
     fetchData();
-  }, [fromdate, todate, globalsearch, page, pageSize, selectedState, selectedDistrict, selectedBlock, selectedStatus]);
+  }, [fromdate, todate, globalsearch, page, pageSize, selectedState, selectedDistrict, selectedBlock, selectedStatus,filtersReady]);
 
   // Handle delete
   const handleDelete = async (id: string) => {
@@ -296,13 +324,13 @@ const UndergroundSurvey: React.FC = () => {
 
   // Fetch districts when state is selected
   useEffect(() => {
-    if (selectedState) {
+    if(selectedState) {
       axios.get(`${BASEURL}/districtsdata?state_code=${selectedState}`)
         .then((res) => setDistricts(res.data))
         .catch((err) => console.error(err));
     } else {
       setDistricts([]);
-      setSelectedDistrict(null);
+      // setSelectedDistrict(null);
     }
   }, [selectedState]);
 
@@ -314,7 +342,7 @@ const UndergroundSurvey: React.FC = () => {
         .catch((err) => console.error(err));
     } else {
       setBlocks([]);
-      setSelectedBlock(null);
+      // setSelectedBlock(null);
     }
   }, [selectedDistrict]);
 
@@ -673,9 +701,28 @@ const stateOptions = states.map((state) => ({
     setPage(1);
     setSelectedRowsMap({})
     setBlockData([]);
-  };
+    const currentTab = searchParams.get('tab') || 'defaultTab';
+    setSearchParams({
+      tab: currentTab,
+      page: '1',
+    }); 
+ };
 
-  return (
+const handleFilterChange = (newState: string | null, newDistrict: string | null,newBlock:string|null,status:number|null,from_date:string|null,to_date:string|null,search:string|null,newPage = 1,) => {
+  const currentTab = searchParams.get('tab') || 'defaultTab';
+  const params: Record<string, string> = { tab: currentTab };
+  if (newState) params.state_id = newState;
+  if(newDistrict) params.district_id = newDistrict;
+  if(newBlock) params.block_id = newBlock;
+  if(status) params.status=String(status);
+  if(from_date) params.from_date = from_date;
+  if(to_date) params.to_date = to_date;
+  if(search) params.search = search;
+  params.page = newPage.toString();
+  setSearchParams(params);
+};
+
+return (
     <>
      {BlockData.length > 0 ? (
     <MapComponent data={BlockData || []} />
@@ -695,6 +742,7 @@ const stateOptions = states.map((state) => ({
               value={selectedState || ''}
               onChange={(e) => {
                 setSelectedState(e.target.value || null);
+                handleFilterChange(e.target.value ,selectedDistrict,selectedBlock,selectedStatus,fromdate,todate,globalsearch,1)
                 setPage(1);
               }}
               className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
@@ -718,6 +766,7 @@ const stateOptions = states.map((state) => ({
             <select
               value={selectedDistrict || ''}
               onChange={(e) => {
+                handleFilterChange(selectedState,e.target.value,selectedBlock,selectedStatus,fromdate,todate,globalsearch ,1)
                 setSelectedDistrict(e.target.value || null);
                 setPage(1);
               }}
@@ -743,6 +792,7 @@ const stateOptions = states.map((state) => ({
             <select
               value={selectedBlock || ''}
               onChange={(e) => {
+                handleFilterChange(selectedState,selectedDistrict,e.target.value ,selectedStatus,fromdate,todate,globalsearch,1)
                 setSelectedBlock(e.target.value || null);
                 setPage(1);
               }}
@@ -768,6 +818,7 @@ const stateOptions = states.map((state) => ({
             <select
               value={selectedStatus !== null ? selectedStatus : ''}
               onChange={(e) => {
+                handleFilterChange(selectedState,selectedDistrict,selectedBlock ,Number(e.target.value),fromdate,todate,globalsearch,1)
                 setSelectedStatus(e.target.value !== '' ? Number(e.target.value) : null);
                 setPage(1);
               }}
@@ -794,6 +845,7 @@ const stateOptions = states.map((state) => ({
               type="date"
               value={fromdate}
               onChange={(e) => {
+                handleFilterChange(selectedState,selectedDistrict,selectedBlock ,selectedStatus,e.target.value,todate,globalsearch,1)
                 setFromDate(e.target.value);
                 setPage(1);
               }}
@@ -807,6 +859,7 @@ const stateOptions = states.map((state) => ({
               type="date"
               value={todate}
               onChange={(e) => {
+                handleFilterChange(selectedState,selectedDistrict,selectedBlock ,selectedStatus,fromdate,e.target.value,globalsearch,1)
                 setToDate(e.target.value);
                 setPage(1);
               }}
@@ -827,6 +880,7 @@ const stateOptions = states.map((state) => ({
               placeholder="Search..."
               value={globalsearch}
               onChange={(e) => {
+                handleFilterChange(selectedState,selectedDistrict,selectedBlock ,selectedStatus,fromdate,todate,e.target.value,1)
                 setGlobalSearch(e.target.value);
                 setPage(1);
               }}

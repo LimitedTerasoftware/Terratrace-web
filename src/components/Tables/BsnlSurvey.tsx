@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import * as XLSX from "xlsx";
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import ResponsivePagination from "./ResponsivePagination";
 
 import {
@@ -119,9 +119,10 @@ const BsnlSurvey: React.FC = () => {
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<number | null>(null);
-  
   const [fromdate, setFromDate] = useState<string>('');
   const [todate, setToDate] = useState<string>('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [filtersReady, setFiltersReady] = useState(false);
 
   const navigate = useNavigate();
 
@@ -206,9 +207,31 @@ const BsnlSurvey: React.FC = () => {
     }
   };
 
+    useEffect(() => {
+    const state_id = searchParams.get('state_id') || null;
+    const district_id = searchParams.get('district_id') || null;
+    const block_id = searchParams.get('block_id') || null;
+    const pageParam = searchParams.get('page') || '1';
+    const status =searchParams.get('status') || null;
+    const from_date =searchParams.get('from_date') ||'' ;
+    const to_date =searchParams.get('to_date') || "";
+    const search =searchParams.get('search') || "";
+  
+    setSelectedState(state_id);
+    setSelectedDistrict(district_id);
+    setSelectedBlock(block_id);
+   setSelectedStatus(status !== null ? Number(status) : null);
+    setFromDate(from_date);
+    setToDate(to_date);
+    setGlobalSearch(search)
+    setPage(Number(pageParam));
+    setFiltersReady(true);
+  }, []); 
+
   useEffect(() => {
+    if(!filtersReady) return;
     fetchData();
-  }, [globalsearch, page, pageSize, selectedState, selectedDistrict, selectedBlock, selectedStatus, fromdate, todate]);
+  }, [globalsearch, page, pageSize, selectedState, selectedDistrict, selectedBlock, selectedStatus, fromdate, todate,filtersReady]);
 
   // Handle delete
   const handleDelete = async (id: string) => {
@@ -303,7 +326,7 @@ const BsnlSurvey: React.FC = () => {
         .catch((err) => console.error(err));
     } else {
       setDistricts([]);
-      setSelectedDistrict(null);
+      // setSelectedDistrict(null);
     }
   }, [selectedState]);
 
@@ -315,7 +338,7 @@ const BsnlSurvey: React.FC = () => {
         .catch((err) => console.error(err));
     } else {
       setBlocks([]);
-      setSelectedBlock(null);
+      // setSelectedBlock(null);
     }
   }, [selectedDistrict]);
 
@@ -463,8 +486,26 @@ const BsnlSurvey: React.FC = () => {
     setFromDate('');
     setToDate('');
     setPage(1);
+     const currentTab = searchParams.get('tab') || 'defaultTab';
+     setSearchParams({
+        tab: currentTab,
+        page: '1',
+      }); 
   };
 
+  const handleFilterChange = (newState: string | null, newDistrict: string | null,newBlock:string|null,status:number|null,from_date:string|null,to_date:string|null,search:string|null,newPage = 1,) => {
+  const currentTab = searchParams.get('tab') || 'defaultTab';
+  const params: Record<string, string> = { tab: currentTab };
+  if (newState) params.state_id = newState;
+  if(newDistrict) params.district_id = newDistrict;
+  if(newBlock) params.block_id = newBlock;
+  if(status) params.status=String(status);
+  if(from_date) params.from_date = from_date;
+  if(to_date) params.to_date = to_date;
+  if(search) params.search = search;
+  params.page = newPage.toString();
+  setSearchParams(params);
+};
   return (
     <div className="bg-gray-100 dark:bg-gray-900 min-h-screen">
       {/* Search Bar and Filters Section */}
@@ -475,6 +516,7 @@ const BsnlSurvey: React.FC = () => {
             <select
               value={selectedState || ''}
               onChange={(e) => {
+                handleFilterChange(e.target.value ,selectedDistrict,selectedBlock,selectedStatus,fromdate,todate,globalsearch,1)
                 setSelectedState(e.target.value || null);
                 setPage(1);
               }}
@@ -499,6 +541,7 @@ const BsnlSurvey: React.FC = () => {
             <select
               value={selectedDistrict || ''}
               onChange={(e) => {
+                 handleFilterChange(selectedState,e.target.value,selectedBlock,selectedStatus,fromdate,todate,globalsearch ,1)
                 setSelectedDistrict(e.target.value || null);
                 setPage(1);
               }}
@@ -524,6 +567,7 @@ const BsnlSurvey: React.FC = () => {
             <select
               value={selectedBlock || ''}
               onChange={(e) => {
+                handleFilterChange(selectedState,selectedDistrict,e.target.value ,selectedStatus,fromdate,todate,globalsearch,1)
                 setSelectedBlock(e.target.value || null);
                 setPage(1);
               }}
@@ -549,6 +593,7 @@ const BsnlSurvey: React.FC = () => {
             <select
               value={selectedStatus !== null ? selectedStatus : ''}
               onChange={(e) => {
+                 handleFilterChange(selectedState,selectedDistrict,selectedBlock ,Number(e.target.value),fromdate,todate,globalsearch,1)
                 setSelectedStatus(e.target.value !== '' ? Number(e.target.value) : null);
                 setPage(1);
               }}
@@ -574,6 +619,7 @@ const BsnlSurvey: React.FC = () => {
               type="date"
               value={fromdate}
               onChange={(e) => {
+                handleFilterChange(selectedState,selectedDistrict,selectedBlock ,selectedStatus,e.target.value,todate,globalsearch,1)
                 setFromDate(e.target.value);
                 setPage(1);
               }}
@@ -587,6 +633,7 @@ const BsnlSurvey: React.FC = () => {
               type="date"
               value={todate}
               onChange={(e) => {
+                handleFilterChange(selectedState,selectedDistrict,selectedBlock ,selectedStatus,fromdate,e.target.value,globalsearch,1)
                 setToDate(e.target.value);
                 setPage(1);
               }}
@@ -607,6 +654,7 @@ const BsnlSurvey: React.FC = () => {
               placeholder="Search..."
               value={globalsearch}
               onChange={(e) => {
+                 handleFilterChange(selectedState,selectedDistrict,selectedBlock ,selectedStatus,fromdate,todate,e.target.value,1)
                 setGlobalSearch(e.target.value);
                 setPage(1);
               }}
