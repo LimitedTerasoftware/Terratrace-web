@@ -263,16 +263,22 @@ const MapComponent: React.FC<MapCompProps> = ({ data, eventData = [] }) => {
     
     const newMarkers: google.maps.Marker[] = [];
 
-    data.forEach((point) => {
+    const visibleData = data.filter(point => visibleEventTypes.has(point.eventType));
+
+    visibleData.forEach((point,index) => {
       const eventConfig = EVENT_TYPES[point.eventType as keyof typeof EVENT_TYPES];
       const eventDetails = eventData.find(e => e.id === point.id);
-      
       if (!eventConfig || !visibleEventTypes.has(point.eventType)) return;
-
       const marker = new google.maps.Marker({
         position: { lat: point.lat, lng: point.lng },
         map: map,
         title: `${eventConfig.label} - ${point.eventType}`,
+        label: {
+          text:  (index + 1).toString(),
+          color: 'black',
+          fontSize: '12px',
+          fontWeight: 'bold'
+        },
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
           scale: 8,
