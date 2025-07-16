@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Activity as Activity2, MapPin, Clock, TrendingUp } from 'lucide-react';
 import { Activity } from '../../types/survey';
+import { getMachineOptions } from '../Services/api';
+import { Machine } from '../../types/machine';
 
 interface StatsPanelProps {
   activities: Activity[];
@@ -15,28 +17,44 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ activities, totalCount,isLoadin
   const recentActivities = activities.filter(a => 
     new Date(a.created_at) > new Date(Date.now() - 24 * 60 * 60 * 1000)
   ).length;
+  const [machines, setMachines] = useState<Machine[]>([]);
+
+  useEffect(()=>{
+      getMachineOptions().then(data => {
+            setMachines(data);
+        });
+    },[])
+
+  const getStatusCounts = () => {
+    return machines.reduce((acc, machine) => {
+      acc[machine.status] = (acc[machine.status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+  };
+
+  const statusCounts = getStatusCounts();
 
   const stats = [
     {
       icon: Activity2,
       label: 'Total Machines',
-      value: totalCount,
+      value: machines.length,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50'
     },
     {
       icon: MapPin,
-      label: 'Active Machines',
-      value: uniqueMachines,
+      label: 'Total Active Machines',
+      value: statusCounts.active || 0,
       color: 'text-emerald-600',
       bgColor: 'bg-emerald-50'
     },
     {
-      icon: TrendingUp,
-      label: 'Event Types',
-      value: eventTypes,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50'
+      icon: MapPin,
+      label: 'Total Inactive Machines',
+      value: statusCounts.inactive || 0,
+      color: 'text-red-600',
+      bgColor: 'bg-red-50'
     },
     {
       icon: Clock,
@@ -60,12 +78,15 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ activities, totalCount,isLoadin
     );
   }
 
+  const handleredire = ()=>{
+    console.log('kjhgvc')
+  }
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
       {stats.map((stat, index) => {
         const Icon = stat.icon;
         return (
-          <div key={index} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+          <div key={index} onClick={handleredire}className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">{stat.label}</p>

@@ -251,7 +251,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
               }}
             </SidebarLinkGroup>
             <SideBarItem icon={KML} label="Filter GP Points" isOpen={isOpen} isActive={pathname.includes('gp-points-filter')} path='/gp-points-filter' />
-            {/* <li>
+            <li>
               <NavLink
                 to="/smart-inventory"
                 target="_blank"
@@ -263,7 +263,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                 <img src={Smart_Inv} className="w-5" />
                 Smart Inventory
               </NavLink>
-            </li> */}
+            </li>
             {!viewOnly && (
             <>
             <SideBarItem icon={User} label="KML File Upload" isOpen={isOpen} isActive={pathname.includes('kmlfileupload')} path='/kmlfileupload' />
