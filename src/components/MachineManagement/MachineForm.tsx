@@ -33,6 +33,10 @@ const MachineForm: React.FC<MachineFormProps> = ({
   year_of_manufacture: new Date().getFullYear(),
   status: 'active',
   machine_id:'',
+  supervisor_name:'',
+  supervisor_email:"",
+  supervisor_phone:'',
+  author_phone:""
 
   });
 
@@ -59,6 +63,10 @@ const MachineForm: React.FC<MachineFormProps> = ({
         year_of_manufacture: machine.year_of_manufacture,
         status: machine.status,
         machine_id:'',
+        supervisor_name:machine.supervisor_name,
+        supervisor_email:machine.supervisor_email,
+        supervisor_phone:machine.supervisor_phone,
+        author_phone:machine.author_phone
 
       });
     }
@@ -68,22 +76,20 @@ const MachineForm: React.FC<MachineFormProps> = ({
     const newErrors: Partial<MachineFormData> = {};
 
     if (!formData.serial_number.trim()) newErrors.serial_number = 'Serial number is required';
-    if (!formData.registration_number.trim()) newErrors.registration_number = 'Registration number is required';
+    if (!formData.author_phone.trim()) newErrors.author_phone = 'Authorised person number is required';
+    if ((formData.author_phone).length < 10) newErrors.author_phone = 'Please enter a valid mobile number with 10 digits';
+    if (formData.supervisor_phone && (formData.supervisor_phone).length < 10) newErrors.supervisor_phone = 'Please enter a valid mobile number with 10 digits';
     if (!formData.firm_name.trim()) newErrors.firm_name = 'Firm name is required';
     if (!formData.authorised_person.trim()) newErrors.authorised_person = 'Authorised person is required';
-    if (!formData.machine_make.trim()) newErrors.machine_make = 'Machine make is required';
-    if (!formData.capacity.trim()) newErrors.capacity = 'capacity is required';
-    if (!formData.digitrack_make.trim()) newErrors.digitrack_make = 'Digitrack make is required';
-    if (!formData.digitrack_model.trim()) newErrors.digitrack_model = 'Digitrack model is required';
-    if (!formData.truck_make.trim()) newErrors.truck_make = 'Truck make is required';
-    if (!formData.truck_model.trim()) newErrors.truck_model = 'Truck model is required';
-    if (!formData.driver_batch_no.trim()) newErrors.driver_batch_no = 'Driver batch_no is required';
-    if (!formData.driver_batch_no.trim()) newErrors.driver_batch_no = 'Driver batch_no is required';
-    // if (formData.year_of_manufacture < 1900 || formData.year_of_manufacture > new Date().getFullYear() + 1) {
-    //   newErrors.year_of_manufacture = 'Please enter a valid year';
-    // }
+    if (!formData.registration_number.trim()) newErrors.registration_number = 'Registration number is required';
+    if (formData.supervisor_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.supervisor_email)) {
+        newErrors.supervisor_email = 'Please enter a valid email address';
+      }
 
-    setErrors(newErrors);
+    if (formData.year_of_manufacture < 1900 || formData.year_of_manufacture > new Date().getFullYear() + 1) {
+      newErrors.year_of_manufacture = 'Please enter a valid year';
+    }
+     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
@@ -110,7 +116,10 @@ const MachineForm: React.FC<MachineFormProps> = ({
           year_of_manufacture: new Date().getFullYear(),
           status: 'active',
           machine_id:'',
-
+          supervisor_name:'',
+          supervisor_email:"",
+          supervisor_phone:'',
+          author_phone:""
         });
       }
     }
@@ -239,12 +248,67 @@ const MachineForm: React.FC<MachineFormProps> = ({
                 value={formData.authorised_person}
                 onChange={(e) => handleChange('authorised_person', e.target.value)}
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.authorised_person ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
-                placeholder="Enter authorised person" />
+                placeholder="Enter authorised person name" />
               {errors.authorised_person && (
                 <p className="mt-1 text-sm text-red-600">{errors.authorised_person}</p>
               )}
             </div>
-
+             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Authorised Person Mobile Number
+              </label>
+              <input
+                type="number"
+                value={formData.author_phone}
+                onChange={(e) => handleChange('author_phone', e.target.value)}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.author_phone ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+                placeholder="Enter authorised person mobilenumber"
+                
+                />
+              {errors.author_phone && (
+                <p className="mt-1 text-sm text-red-600">{errors.author_phone}</p>
+              )}
+            </div>
+             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Supervisor Name
+              </label>
+              <input
+                type="text"
+                value={formData.supervisor_name}
+                onChange={(e) => handleChange('supervisor_name', e.target.value)}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all border-gray-300`}
+                placeholder="Enter supervisor name" />
+            </div>
+             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Supervisor Mobile Number
+              </label>
+              <input
+                type="number"
+                value={formData.supervisor_phone}
+                onChange={(e) => handleChange('supervisor_phone', e.target.value)}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.supervisor_phone ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+                placeholder="Enter supervisor mobile number" 
+                />
+                 {errors.supervisor_phone && (
+                <p className="mt-1 text-sm text-red-600">{errors.supervisor_phone}</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Supervisor Email
+              </label>
+              <input
+                type="email"
+                value={formData.supervisor_email}
+                onChange={(e) => handleChange('supervisor_email', e.target.value)}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.supervisor_email ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+                placeholder="Enter supervisor email" />
+                 {errors.supervisor_email && (
+                <p className="mt-1 text-sm text-red-600">{errors.supervisor_email}</p>
+              )}
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Machine Make
@@ -253,11 +317,9 @@ const MachineForm: React.FC<MachineFormProps> = ({
                 type="text"
                 value={formData.machine_make}
                 onChange={(e) => handleChange('machine_make', e.target.value)}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.machine_make ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all border-gray-300`}
                 placeholder="Enter machine make" />
-              {errors.machine_make && (
-                <p className="mt-1 text-sm text-red-600">{errors.machine_make}</p>
-              )}
+             
             </div>
 
             <div>
@@ -285,11 +347,9 @@ const MachineForm: React.FC<MachineFormProps> = ({
                 type="text"
                 value={formData.capacity}
                 onChange={(e) => handleChange('capacity', e.target.value)}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.capacity ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all border-gray-300`}
                 placeholder="Enter capacity" />
-              {errors.capacity && (
-                <p className="mt-1 text-sm text-red-600">{errors.capacity}</p>
-              )}
+             
             </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -299,11 +359,9 @@ const MachineForm: React.FC<MachineFormProps> = ({
               type="text"
               value={formData.no_of_rods}
               onChange={(e) => handleChange('no_of_rods', e.target.value)}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.no_of_rods ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all border-gray-300`}
               placeholder="Enter No Of rods" />
-            {errors.no_of_rods && (
-              <p className="mt-1 text-sm text-red-600">{errors.no_of_rods}</p>
-            )}
+          
           </div>
            <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -313,11 +371,9 @@ const MachineForm: React.FC<MachineFormProps> = ({
               type="text"
               value={formData.digitrack_make}
               onChange={(e) => handleChange('digitrack_make', e.target.value)}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.digitrack_make ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all border-gray-300`}
               placeholder="Enter digitrack make" />
-              {errors.digitrack_make && (
-              <p className="mt-1 text-sm text-red-600">{errors.digitrack_make}</p>
-            )}
+          
           </div>
            <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -327,11 +383,9 @@ const MachineForm: React.FC<MachineFormProps> = ({
               type="text"
               value={formData.digitrack_model}
               onChange={(e) => handleChange('digitrack_model', e.target.value)}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.digitrack_model ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all border-gray-300`}
               placeholder="Enter digitrack modal" />
-               {errors.digitrack_model && (
-              <p className="mt-1 text-sm text-red-600">{errors.digitrack_model}</p>
-            )}
+            
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -341,11 +395,9 @@ const MachineForm: React.FC<MachineFormProps> = ({
               type="text"
               value={formData.truck_make}
               onChange={(e) => handleChange('truck_make', e.target.value)}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.truck_make ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all border-gray-300`}
               placeholder="Enter truck make" />
-                {errors.truck_make && (
-              <p className="mt-1 text-sm text-red-600">{errors.truck_make}</p>
-            )}
+              
           </div>
            <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -355,11 +407,9 @@ const MachineForm: React.FC<MachineFormProps> = ({
               type="text"
               value={formData.truck_model}
               onChange={(e) => handleChange('truck_model', e.target.value)}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.truck_model ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all border-gray-300`}
               placeholder="Enter truck modal" />
-                {errors.truck_model && (
-              <p className="mt-1 text-sm text-red-600">{errors.truck_model}</p>
-            )}
+             
           </div>
            <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -369,11 +419,9 @@ const MachineForm: React.FC<MachineFormProps> = ({
               type="text"
               value={formData.driver_batch_no}
               onChange={(e) => handleChange('driver_batch_no', e.target.value)}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.driver_batch_no ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all border-gray-300`}
               placeholder="Enter truck modal" />
-                {errors.driver_batch_no && (
-              <p className="mt-1 text-sm text-red-600">{errors.driver_batch_no}</p>
-            )}
+              
           </div>
              <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">

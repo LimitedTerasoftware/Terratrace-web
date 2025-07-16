@@ -16,6 +16,10 @@ export interface Machine {
   driver_batch_no:string;
   driver_valid_upto:Date;
   serial_number: string;
+  supervisor_name :string ,
+  supervisor_email :string,
+  supervisor_phone :string,
+  author_phone :string,
   status: 'active' | 'inactive' | 'maintenance' | 'retired';
   created_at: Date;
   updated_at: Date;
