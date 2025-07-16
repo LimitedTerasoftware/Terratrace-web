@@ -32,8 +32,8 @@ const EVENT_TYPE_MAPPING = {
   'ENDPIT': { coordField: 'endPitLatlong', photoField: 'endPitPhotos' },
   'STARTSURVEY': { coordField: 'startPointCoordinates', photoField: 'startPointPhoto' },
   'ENDSURVEY': { coordField: 'endPointCoordinates', photoField: 'endPointPhoto' },
-
-};
+  'HOLD': { coordField: 'holdLatlong', photoField: 'holdPhotos' },
+  };
 
 function LiveTrack() {
   const [states, setStates] = useState<StateData[]>([]);

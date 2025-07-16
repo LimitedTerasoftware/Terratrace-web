@@ -203,6 +203,8 @@ export interface Activity {
   Roadfesibility:string;
   area_type:string;
   road_margin:string;
+  holdPhotos:string;
+  holdLatlong:string;
 }
 
 export interface ApiResponseMachine {

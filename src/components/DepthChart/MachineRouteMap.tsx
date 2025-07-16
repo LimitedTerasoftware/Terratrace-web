@@ -30,8 +30,7 @@ const EVENT_TYPE_MAPPING = {
   'ENDPIT': { coordField: 'endPitLatlong', photoField: 'endPitPhotos' },
   'STARTSURVEY': { coordField: 'startPointCoordinates', photoField: 'startPointPhoto' },
   'ENDSURVEY': { coordField: 'endPointCoordinates', photoField: 'endPointPhoto' },
-
-};
+  'HOLD': { coordField: 'holdLatlong', photoField: 'holdPhotos' },};
 
 const MachineRouteMap: React.FC<MachineRouteMapProps> = ({ machineId }) => {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -70,6 +69,7 @@ const MachineRouteMap: React.FC<MachineRouteMapProps> = ({ machineId }) => {
       "STARTPIT":'#ea580c',
       'STARTSURVEY':'#dc2626',
       'ENDSURVEY':'#dc2626',
+      'HOLD':'#a93226',
 
     };
     return colors[eventType as keyof typeof colors] || '#6b7280';

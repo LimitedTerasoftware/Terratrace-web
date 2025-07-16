@@ -30,6 +30,7 @@ const EVENT_TYPES = {
   STARTPIT: { color: '#14B8A6', icon: '🕳️', label: 'Start Pit' },
   ENDPIT: { color: '#DC2626', icon: '🏁', label: 'End Pit' },
   ENDSURVEY: { color: '#10B981', icon: '🎯', label: 'End Survey' },
+  HOLD: { color: '#a93226', icon: '⏸️', label: 'Hold Survey'},
 };
 
 const baseUrl = import.meta.env.VITE_Image_URL;
@@ -54,6 +55,7 @@ const InfoWindow: React.FC<{
     STARTSURVEY: 'startPointPhoto',
     ROADCROSSING: 'crossingPhotos',
     ENDSURVEY:'endPointPhoto',
+    HOLD:'holdPhotos'
   };
 
   const getEventPhotos = (event: Activity) => {
