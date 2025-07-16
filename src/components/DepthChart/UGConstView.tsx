@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Activity,} from '../../types/survey';
+import { Activity, } from '../../types/survey';
 import { useLocation } from 'react-router-dom';
 import DataTable, { TableColumn } from 'react-data-table-component';
-import { Folder} from 'lucide-react';
+import { Folder } from 'lucide-react';
 import axios from 'axios';
 import { FaArrowLeft } from 'react-icons/fa';
 import IndexChart from './index';
 import MapComp from './MapComp';
 import moment from 'moment';
+import ImageModal from './ImageUploadModal';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const BASEURL_Val = import.meta.env.VITE_API_BASE;
@@ -24,7 +25,8 @@ function Eventreport() {
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'details' | 'map' | 'chart'>('details');
-   
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
     const EventData = [
         'STARTSURVEY',
         'DEPTH',
@@ -40,35 +42,46 @@ function Eventreport() {
         'ENDPIT',
         'ENDSURVEY',
     ];
-    useEffect(() => {
-        const getData = async () => {
-            try {
-                setLoading(true);
-                setError('');
-                const params: any = {};
-                if (sgp) params.start_lgd = sgp;
-                if (egp) params.end_lgd = egp;
-                if (selectedEvent) params.eventType = selectedEvent;
+    const getData = async () => {
+        try {
+            setLoading(true);
+            setError('');
+            const params: any = {};
+            if (sgp) params.start_lgd = sgp;
+            if (egp) params.end_lgd = egp;
+            if (selectedEvent) params.eventType = selectedEvent;
 
-                const resp = await axios.get(`${TraceBASEURL}/get-depth-data`, { params });
-                if (resp.status === 200 || resp.status === 201) {
-                    const Data = resp.data;
-                    const depthData = Data.data;
-                    setdepthData(depthData)
-                } else {
-                    setError('Error Occured')
-                }
-
-            } catch (err) {
-                setError(err instanceof Error ? err.message : 'An error occurred');
-
-            } finally {
-                setLoading(false);
+            const resp = await axios.get(`${TraceBASEURL}/get-depth-data`, { params });
+            if (resp.status === 200 || resp.status === 201) {
+                const Data = resp.data;
+                const depthData = Data.data;
+                setdepthData(depthData)
+            } else {
+                setError('Error Occured')
             }
 
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'An error occurred');
+
+        } finally {
+            setLoading(false);
         }
+
+    }
+
+    useEffect(() => {
         getData()
     }, [sgp, egp, selectedEvent])
+
+    const openModal = (activity: Activity) => {
+        setSelectedActivity(activity);
+        setIsModalOpen(true);
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false);
+        setSelectedActivity(null);
+    };
 
     const filteredData = useMemo(() => {
         if (!globalsearch.trim()) return depthData;
@@ -101,40 +114,40 @@ function Eventreport() {
             default: return null;
         }
     };
-   
-const markers = filteredData
-  .map((row: Activity) => {
-    const latLongStr = getLatLongForEvent(row);
-    if (
-      typeof latLongStr === "string" &&
-      latLongStr.includes(",")
-    ) {
-      const [latStr, lngStr] = latLongStr.split(",");
-      const lat = parseFloat(latStr.trim());
-      const lng = parseFloat(lngStr.trim());
 
-      if (
-        !isNaN(lat) &&
-        !isNaN(lng) &&
-        Math.abs(lat) <= 90 &&
-        Math.abs(lng) <= 180
-      ) {
-        return {
-          lat,
-          lng,
-          eventType: row.eventType,
-          id: row.id,
-        };
-      }
-    }
-    return null;
-  })
-  .filter(
-    (
-      m
-    ): m is { lat: number; lng: number; eventType: string; id: number } =>
-      m !== null
-  );
+    const markers = filteredData
+        .map((row: Activity) => {
+            const latLongStr = getLatLongForEvent(row);
+            if (
+                typeof latLongStr === "string" &&
+                latLongStr.includes(",")
+            ) {
+                const [latStr, lngStr] = latLongStr.split(",");
+                const lat = parseFloat(latStr.trim());
+                const lng = parseFloat(lngStr.trim());
+
+                if (
+                    !isNaN(lat) &&
+                    !isNaN(lng) &&
+                    Math.abs(lat) <= 90 &&
+                    Math.abs(lng) <= 180
+                ) {
+                    return {
+                        lat,
+                        lng,
+                        eventType: row.eventType,
+                        id: row.id,
+                    };
+                }
+            }
+            return null;
+        })
+        .filter(
+            (
+                m
+            ): m is { lat: number; lng: number; eventType: string; id: number } =>
+                m !== null
+        );
 
     const eventPhotoFields: Record<string, keyof Activity> = {
         FPOI: "fpoiPhotos",
@@ -148,15 +161,25 @@ const markers = filteredData
         STARTPIT: 'startPitPhotos',
         ENDPIT: 'endPitPhotos',
         STARTSURVEY: 'startPointPhoto',
-        ENDSURVEY:'endPointPhoto',
+        ENDSURVEY: 'endPointPhoto',
         ROADCROSSING: 'crossingPhotos',
     };
-    const hasImages = (row: Activity) => {
-        const photoField = eventPhotoFields[row.eventType];
-        return photoField && row[photoField] !== null && row[photoField] !== "[]";
-    };
+
     const columns: TableColumn<Activity>[] = [
-      
+        {
+            name: "Actions",
+            cell: (row: Activity) => (
+                <button
+                    onClick={() => openModal(row)}
+                    className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 outline-none dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-800 transition-colors"
+                >
+                    Edit Image
+                </button>
+            ),
+            ignoreRowClick: true,
+            allowOverflow: true,
+            button: true,
+        },
         {
             name: "Event Type",
             selector: row => row.eventType,
@@ -188,14 +211,14 @@ const markers = filteredData
                         urls = JSON.parse(rawPhotoData);
                     } catch (e) {
                         return (
-                             <span
-                             className="text-blue-600 space-y-1 underline cursor-pointer block"
-                                    onClick={() => setZoomImage(`${baseUrl}${rawPhotoData}`)}
-                                >
-                                    {`${row.eventType}_Img`}
-                                </span>
+                            <span
+                                className="text-blue-600 space-y-1 underline cursor-pointer block"
+                                onClick={() => setZoomImage(`${baseUrl}${rawPhotoData}`)}
+                            >
+                                {`${row.eventType}_Img`}
+                            </span>
                         )
-                        
+
                     }
 
                     return (
@@ -228,8 +251,8 @@ const markers = filteredData
         { name: "CrossingType", selector: row => row.crossingType || "-", sortable: true },
         { name: "CrossingLength", selector: row => row.crossingLength || "-", sortable: true },
         { name: "RoadWidth", selector: row => row.roadWidth || "-", sortable: true },
-        { name: "CenterToMargin", selector: row => row.road_margin|| "-", sortable: true },
-        { name: "Offset", selector: row => '' , sortable: true },
+        { name: "CenterToMargin", selector: row => row.road_margin || "-", sortable: true },
+        { name: "Offset", selector: row => '', sortable: true },
         { name: "Route Feasible", selector: row => row.Roadfesibility || "-", sortable: true },
         { name: "Depth Meters", selector: row => row.depthMeters || "-", sortable: true },
         { name: "Machine ID", selector: row => row.machine_id || "-", sortable: true },
@@ -276,7 +299,7 @@ const markers = filteredData
         },
         {
             name: "Created At",
-            selector: row => moment(row.created_at).format("DD/MM/YYYY, hh:mm A"),sortable: true,
+            selector: row => moment(row.created_at).format("DD/MM/YYYY, hh:mm A"), sortable: true,
         }
 
     ];
@@ -284,9 +307,8 @@ const markers = filteredData
     const handleClearFilters = () => {
         setSelectedEvent('');
         setGlobalSearch('');
-
     };
- 
+
     const customStyles = {
         headRow: {
             style: {
@@ -371,9 +393,9 @@ const markers = filteredData
                                     ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
                                     : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
                                     }`}
-                                onClick={() => {setActiveTab('chart')}}
+                                onClick={() => { setActiveTab('chart') }}
                             >
-                                 Depth Analysis
+                                Depth Analysis
                             </button>
                         </li>
                     </ul>
@@ -432,35 +454,44 @@ const markers = filteredData
             </div>
             {activeTab === 'details' && (
                 <div className=" overflow-x-auto">
-                <DataTable
-                columns={columns}
-                data={filteredData}
-                progressPending={loading}
-                pagination
-                highlightOnHover
-                pointerOnHover
-                striped
-                dense
-                responsive
-                customStyles={customStyles}
-            />
-            </div>
-         
-           )}
-            {activeTab === 'chart' &&(
-            <div className="h-[600px] p-4">
-             <IndexChart MainData={{
-                start_lgd: filteredData[0]?.start_lgd || '',
-                end_lgd: filteredData[0]?.end_lgd || ''
-                }} />
+                    <DataTable
+                        columns={columns}
+                        data={filteredData}
+                        progressPending={loading}
+                        pagination
+                        highlightOnHover
+                        pointerOnHover
+                        striped
+                        dense
+                        responsive
+                        customStyles={customStyles}
+                    />
+                </div>
 
-            </div>
             )}
-             {activeTab === 'map' && (
-            <div className="h-[600px] p-4">
-                <MapComp data={markers} eventData={filteredData} />
-            </div>
+            {activeTab === 'chart' && (
+                <div className="h-[600px] p-4">
+                    <IndexChart MainData={{
+                        start_lgd: filteredData[0]?.start_lgd || '',
+                        end_lgd: filteredData[0]?.end_lgd || ''
+                    }} />
+
+                </div>
             )}
+            {activeTab === 'map' && (
+                <div className="h-[600px] p-4">
+                    <MapComp data={markers} eventData={filteredData} />
+                </div>
+            )}
+
+            {/* Image Upload Modal */}
+            <ImageModal
+                isOpen={isModalOpen}
+                onClose={closeModal}
+                activity={selectedActivity}
+                baseUrl={baseUrl}
+                onUpdate={() => getData()}
+            />
 
             {zoomImage && (
                 <div

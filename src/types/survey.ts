@@ -280,3 +280,13 @@ export interface FilterState {
   fromDate: string;
   toDate: string;
 }
+export interface ImageUploadResponse {
+  success: boolean;
+  data:{images?: string[];}
+  message?: string;
+}
+
+export interface UpdatePhotosRequest {
+  id: number;
+  [key: string]: any;
+}
