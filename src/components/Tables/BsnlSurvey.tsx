@@ -360,7 +360,7 @@ const BsnlSurvey: React.FC = () => {
       { accessorKey: "block_name", header: "Block Name" },
       {
         accessorKey: "fullname",
-        header: "Surviour Name",
+        header: "Surveyor Name",
         cell: ({ row }) => (
           <span>
             {row.original.fullname} 
@@ -369,7 +369,7 @@ const BsnlSurvey: React.FC = () => {
       },
       {
         accessorKey: "contact_no",
-        header: "Surviour Contact Number",
+        header: "Surveyor Contact Number",
         cell: ({ row }) => (
           <span>
             {row.original.contact_no}
@@ -459,7 +459,7 @@ const BsnlSurvey: React.FC = () => {
   
     // Customize header names
     XLSX.utils.sheet_add_aoa(worksheet1, [
-      ["ID", "State Name", "District Name", "Block Name", "Block ID", 'Surviour Name', 'Surviour Contact Number', "BSNL Coordinates", "BSNL Exchange Condition", "Earth Pit Coordinates", "Earth Pit Voltage", "FDMS", "Generator", "Generator Capacity", "Generator Make", "Generator Model", "Is Active", "OLT Count", "OLT Make", "Person Name 1", "Person Name 2", "Person Name 3", "Person Number 1", "Person Number 2", "Person Number 3", "Power System Voltage", "Power Type", "Present Load", "Router Count", "Router Make", "Splitters", "State ID", "Updated At", "UPS Capacity", "Status"]
+      ["ID", "State Name", "District Name", "Block Name", "Block ID", 'Surveyor Name', 'Surveyor Contact Number', "BSNL Coordinates", "BSNL Exchange Condition", "Earth Pit Coordinates", "Earth Pit Voltage", "FDMS", "Generator", "Generator Capacity", "Generator Make", "Generator Model", "Is Active", "OLT Count", "OLT Make", "Person Name 1", "Person Name 2", "Person Name 3", "Person Number 1", "Person Number 2", "Person Number 3", "Power System Voltage", "Power Type", "Present Load", "Router Count", "Router Make", "Splitters", "State ID", "Updated At", "UPS Capacity", "Status"]
     ], { origin: "A1" });
   
     XLSX.writeFile(workbook, "BSNL_SURVEY.xlsx", { compression: true });

@@ -205,6 +205,7 @@ export interface Activity {
   road_margin:string;
   holdPhotos:string;
   holdLatlong:string;
+  firm_name:string;
 }
 
 export interface ApiResponseMachine {

@@ -383,8 +383,8 @@ const GpSurvey: React.FC = () => {
       { accessorKey: "district_name", header: "District Name" },
       { accessorKey: "block_name", header: "Block Name" },
       { accessorKey: "gp_name", header: "GP Name" },
-      { accessorKey: "fullname", header: "Surviour Name" },
-      { accessorKey: "contact_no", header: "Surviour Contact Number" },
+      { accessorKey: "fullname", header: "Surveyor Name" },
+      { accessorKey: "contact_no", header: "Surveyor Contact Number" },
       {
         accessorKey: "is_active",
         header: "Status",
@@ -498,7 +498,7 @@ const GpSurvey: React.FC = () => {
       // customize header names
       XLSX.utils.sheet_add_aoa(worksheet1, [
         ["ID", "State Name", "District Name", "Block Name","Block ID",
-         "GP Name", "GP ID","Surviour Name", "Surviour Contact Number" ,"Ceiling Height", "Ceiling Type", 
+         "GP Name", "GP ID","Surveyor Name", "Surveyor Contact Number" ,"Ceiling Height", "Ceiling Type", 
          "Company ID", "Created At", "District ID", "Earth Pit Coordinates", "EB Meter", "Electric Hours", 
          "Engineer Company", "Engineer Email", "Engineer Name", "Engineer Number", "Existing to New Rack Distance", 
          "Floor Type", "Flooring", "FTB", "GP Building Height", "GP Building Type", "GP Coordinates", 

@@ -78,8 +78,8 @@ const Report: React.FC<ReportProps> = ({ Data }) => {
     { name: "Block Name",selector: row => row.block_name, sortable: true  },
     { name: 'Start GP Name', selector: row => row.start_lgd_name, sortable: true },
     { name: 'End GP Name', selector: row => row.end_lgd_name, sortable: true },
-    { name: "Surviour Name",selector: row => row.user_name, sortable: true  },
-    { name: "Surviour Ph Number",selector: row => row.user_mobile, sortable: true  },
+    { name: "Surveyor Name",selector: row => row.user_name, sortable: true  },
+    { name: "Surveyor Ph Number",selector: row => row.user_mobile, sortable: true  },
     { name: "Status",selector: row => '', sortable: true  },
     { name: 'Created At', selector: row => moment(row.created_at).format("DD/MM/YYYY, hh:mm A"), sortable: true },
   ];

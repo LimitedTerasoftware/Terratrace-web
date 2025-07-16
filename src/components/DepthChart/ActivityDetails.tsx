@@ -3,6 +3,7 @@ import { X, MapPin, Calendar, Camera, Info, Ruler, ArrowRight, Route, ChartBar, 
 import { Activity } from '../../types/survey';
 import MachineRouteMap from './MachineRouteMap';
 import Dashboard from './MachineWorkChart/Dashboard';
+import moment from 'moment';
 
 interface ActivityDetailsProps {
   activity: Activity | null;
@@ -59,9 +60,6 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activity, onClose}) =
     return { lat: parseFloat(lat), lng: parseFloat(lng) };
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
-  };
 
   // Get the appropriate fields based on event type
   const mapping = EVENT_TYPE_MAPPING[activity.eventType as keyof typeof EVENT_TYPE_MAPPING];
@@ -282,14 +280,14 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activity, onClose}) =
                 <Calendar className="h-4 w-4" />
                 Created At
               </h3>
-              <p className="text-gray-900">{formatDate(activity.created_at)}</p>
+              <p className="text-gray-900"> {moment(activity.created_at).format("DD/MM/YYYY, hh:mm A")}</p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
               <h3 className="text-sm font-medium text-gray-600 mb-2 flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
                 Updated At
               </h3>
-              <p className="text-gray-900">{formatDate(activity.updated_at)}</p>
+              <p className="text-gray-900">{moment(activity.updated_at).format("DD/MM/YYYY, hh:mm A")}</p>
             </div>
           </div>
         </div>

@@ -414,7 +414,7 @@ const UndergroundSurvey: React.FC = () => {
       { accessorKey: "end_location_name", header: "End GP Name" },
       {
         accessorKey: "fullname",
-        header: "Surviour Name",
+        header: "Surveyor Name",
         cell: ({ row }) => (
           <span>
             {row.original.fullname}
@@ -423,7 +423,7 @@ const UndergroundSurvey: React.FC = () => {
       },
       {
         accessorKey: "contact_no",
-        header: "Surviour Contact Number",
+        header: "Surveyor Contact Number",
         cell: ({ row }) => (
           <span>
             {row.original.contact_no}

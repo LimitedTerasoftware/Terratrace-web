@@ -342,13 +342,13 @@ const AerialSurvey: React.FC = () => {
       { accessorKey: "startGpCoordinates", header: "Start Gp Coordinates" },
       { accessorKey: "endGpName", header: "End GP Name" },
       { accessorKey: "endGpCoordinates", header: "End Gp Coordinates" },
-      {accessorKey:"fullname",header:"Surviour Name",
+      {accessorKey:"fullname",header:"Surveyor Name",
         cell:({row})=>(
           <span>{row.original.fullname}</span>
 
         ),
       },
-      {accessorKey:'contact_no',header:"Surviour Contact Number",
+      {accessorKey:'contact_no',header:"Surveyor Contact Number",
         cell:({row})=>(
           <span>{row.original.contact_no}</span>
 
@@ -422,7 +422,7 @@ const AerialSurvey: React.FC = () => {
 
       // Customize header names
       XLSX.utils.sheet_add_aoa(worksheet, [
-        ["ID", "State Name","State ID", "District Name",  "District ID", "Block Name","Block ID",  'Surviour Name',"Surviour Contact Number","Survey ID", "Company ID", "User ID", 
+        ["ID", "State Name","State ID", "District Name",  "District ID", "Block Name","Block ID",  'Surveyor Name',"Surveyor Contact Number","Survey ID", "Company ID", "User ID", 
         "Start GP Code", "Start GP Coordinates", "Start GP Name",
          "End GP Code", "End GP Coordinates", "End GP Name", "Is Active", "Created At", "Updated At","Status"]
       ], { origin: "A1" });

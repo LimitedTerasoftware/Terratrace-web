@@ -183,6 +183,8 @@ function Eventreport() {
             allowOverflow: true,
             button: true,
         },
+        { name: "Machine ID", selector: row => row.machine_registration_number || "-", sortable: true },
+        { name: "Firm Name", selector: row => row.firm_name || "-", sortable: true },
         {
             name: "Event Type",
             selector: row => row.eventType,
@@ -243,22 +245,21 @@ function Eventreport() {
 
             },
         },
-        { name: "ExecutionModality", selector: row => row.executionModality || "-", sortable: true },
+        { name: "Execution Modality", selector: row => row.executionModality || "-", sortable: true },
         { name: "Landmark Type", selector: row => row.landmark_type || "-", sortable: true },
         { name: "Landmark Desc", selector: row => row.landmark_description || "-", sortable: true },
-        { name: "RouteBelongsTo", selector: row => row.routeBelongsTo || "-", sortable: true },
-        { name: "RoadType", selector: row => row.roadType || "-", sortable: true },
-        { name: "SoilType", selector: row => row.soilType || "-", sortable: true },
+        { name: "Route Belongs To", selector: row => row.routeBelongsTo || "-", sortable: true },
+        { name: "Road Type", selector: row => row.roadType || "-", sortable: true },
+        { name: "Soil Type", selector: row => row.soilType || "-", sortable: true },
         { name: "Area Type", selector: row => row.area_type || "-", sortable: true },
         { name: "Side Type", selector: row => row.cableLaidOn || "-", sortable: true },
-        { name: "CrossingType", selector: row => row.crossingType || "-", sortable: true },
-        { name: "CrossingLength", selector: row => row.crossingLength || "-", sortable: true },
-        { name: "RoadWidth", selector: row => row.roadWidth || "-", sortable: true },
-        { name: "CenterToMargin", selector: row => row.road_margin || "-", sortable: true },
+        { name: "Crossing Type", selector: row => row.crossingType || "-", sortable: true },
+        { name: "Crossing Length", selector: row => row.crossingLength || "-", sortable: true },
+        { name: "Road Width", selector: row => row.roadWidth || "-", sortable: true },
+        { name: "Center To Margin", selector: row => row.road_margin || "-", sortable: true },
         { name: "Offset", selector: row => '', sortable: true },
         { name: "Route Feasible", selector: row => row.Roadfesibility || "-", sortable: true },
         { name: "Depth Meters", selector: row => row.depthMeters || "-", sortable: true },
-        { name: "Machine ID", selector: row => row.machine_id || "-", sortable: true },
         {
             name: "Vehicle Image",
             cell: (row: Activity) => {
@@ -280,7 +281,7 @@ function Eventreport() {
             sortable: true,
         },
         {
-            name: "EndPitDoc",
+            name: "End Pit Doc",
             cell: row => {
                 if (row.endPitDoc) {
                     const downloadUrl = `${baseUrl}${row.endPitDoc}`;

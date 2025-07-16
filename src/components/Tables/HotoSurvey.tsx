@@ -386,7 +386,7 @@ const HotoSurvey: React.FC = () => {
       { accessorKey: "gpName", header: "GP Name" },
       {
         accessorKey: "fullname",
-        header: "Surviour Name",
+        header: "Surveyor Name",
         cell: ({ row }) => (
           <span>
             {row.original.fullname} 
@@ -395,7 +395,7 @@ const HotoSurvey: React.FC = () => {
       },
       {
         accessorKey: "contact_no",
-        header: "Surviour Contact Number",
+        header: "Surveyor Contact Number",
         cell: ({ row }) => (
           <span>
             {row.original.contact_no}
@@ -501,7 +501,7 @@ const HotoSurvey: React.FC = () => {
     
       // Customize header names with comprehensive headers
       XLSX.utils.sheet_add_aoa(worksheet1, [
-        ["ID", "State ID", "State Name", "District ID", "District Name", "Block ID", "Block Name", "GP ID", "GP Name", "Surviour Name", "Surviour Contact Number", "User ID", "Code", "Equipment Make", "Other Equipment Make", "Building Address", "OLT to FPOI", "OLT to FPOI Length", "OLT to FPOI Faulty Fibers", "FPOI to GP", "FPOI to GP Length", "FPOI to GP Faulty Fibers", "ONT", "ONT Make", "ONT Serial Number", "CCU", "CCU Make", "CCU Serial Number", "Battery", "Battery Make", "Battery Serial Number", "Solar", "Solar Make", "Solar Serial Number", "Earthing", "Earthing Condition", "Enclosure", "Optical Power", "OTDR Trace", "Splitter", "FTB No of Fiber Terminated", "Splitter Ports", "ONT Ports", "CSC", "CSC Location", "Less Overhead Fiber Model", "More Overhead Fiber Model", "Is Active", "Created At", "Updated At", "Status"],
+        ["ID", "State ID", "State Name", "District ID", "District Name", "Block ID", "Block Name", "GP ID", "GP Name", "Surveyor Name", "Surveyor Contact Number", "User ID", "Code", "Equipment Make", "Other Equipment Make", "Building Address", "OLT to FPOI", "OLT to FPOI Length", "OLT to FPOI Faulty Fibers", "FPOI to GP", "FPOI to GP Length", "FPOI to GP Faulty Fibers", "ONT", "ONT Make", "ONT Serial Number", "CCU", "CCU Make", "CCU Serial Number", "Battery", "Battery Make", "Battery Serial Number", "Solar", "Solar Make", "Solar Serial Number", "Earthing", "Earthing Condition", "Enclosure", "Optical Power", "OTDR Trace", "Splitter", "FTB No of Fiber Terminated", "Splitter Ports", "ONT Ports", "CSC", "CSC Location", "Less Overhead Fiber Model", "More Overhead Fiber Model", "Is Active", "Created At", "Updated At", "Status"],
       ], { origin: "A1" });
     
       XLSX.writeFile(workbook, "HOTO_SURVEY.xlsx", { compression: true });

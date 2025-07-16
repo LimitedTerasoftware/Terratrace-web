@@ -41,6 +41,7 @@ const InfoWindow: React.FC<{
   onClose: () => void;
   onImageClick: (url: string) => void;
 }> = ({ event, onClose, onImageClick }) => {
+
   const eventPhotoFields: Record<string, keyof Activity> = {
     FPOI: "fpoiPhotos",
     DEPTH: "depthPhoto",
@@ -57,6 +58,26 @@ const InfoWindow: React.FC<{
     ENDSURVEY:'endPointPhoto',
     HOLD:'holdPhotos'
   };
+  const getLatLongForEvent = (row: Activity) => {
+          switch (row.eventType) {
+              case "FPOI": return row.fpoiLatLong;
+              case "DEPTH": return row.depthLatlong;
+              case "JOINTCHAMBER": return row.jointChamberLatLong;
+              case "MANHOLES": return row.manholeLatLong;
+              case "LANDMARK": return row.landmarkLatLong;
+              case "KILOMETERSTONE": return row.kilometerstoneLatLong;
+              case "FIBERTURN": return row.fiberTurnLatLong;
+              case "ROUTEINDICATOR": return row.routeIndicatorLatLong;
+              case "STARTPIT": return row.startPitLatlong;
+              case "ENDPIT": return row.endPitLatlong;
+              case "STARTSURVEY": return row.startPointCoordinates;
+              case "ENDSURVEY": return row.endPointCoordinates;
+              case "ROADCROSSING": return row.crossingLatlong;
+              case 'HOLD':return row.holdLatlong;
+              default: return null;
+          }
+      };
+  
 
   const getEventPhotos = (event: Activity) => {
   const photoField = eventPhotoFields[event.eventType];
@@ -105,6 +126,24 @@ const InfoWindow: React.FC<{
       
       <div className="p-4 max-h-80 overflow-y-auto">
         <div className="space-y-3">
+          {event.machine_registration_number && (
+            <div className="flex justify-between">
+              <span className="text-gray-600 text-sm">Machine Id:</span>
+              <span className="font-medium text-sm">{event.machine_registration_number}</span>
+            </div>
+          )}
+           {event.firm_name && (
+            <div className="flex justify-between">
+              <span className="text-gray-600 text-sm">Firm Name:</span>
+              <span className="font-medium text-sm">{event.firm_name}</span>
+            </div>
+          )}
+            <div className="flex justify-between">
+              <span className="text-gray-600 text-sm">Coordinates:</span>
+              <span className="font-medium text-sm">{getLatLongForEvent(event)}</span>
+            </div>
+          
+         
           {event.depthMeters && (
             <div className="flex justify-between">
               <span className="text-gray-600 text-sm">Depth:</span>
@@ -144,12 +183,7 @@ const InfoWindow: React.FC<{
               <span className="font-medium text-sm">{event.landmark_description}</span>
             </div>
           )}
-          {event.machine_id && (
-            <div className="flex justify-between">
-              <span className="text-gray-600 text-sm">Machine Id:</span>
-              <span className="font-medium text-sm">{event.machine_id}</span>
-            </div>
-          )}
+        
           
           <div className="flex justify-between">
             <span className="text-gray-600 text-sm">Created:</span>
@@ -323,10 +357,15 @@ const MapComponent: React.FC<MapCompProps> = ({ data, eventData = [] }) => {
       setPolylines([]);
       return;
     }
+     const hasVisibleEvents = data.some(point => visibleEventTypes.has(point.eventType));
 
     // Clear existing polylines
     polylines.forEach(polyline => polyline.setMap(null));
 
+     if (!hasVisibleEvents) {
+      setPolylines([]);
+      return;
+    }
     // Sort data by creation time or distance to create proper route
     const sortedData = [...data].sort((a, b) => {
       const eventA = eventData.find(e => e.id === a.id);
@@ -339,10 +378,10 @@ const MapComponent: React.FC<MapCompProps> = ({ data, eventData = [] }) => {
     });
 
     const path = sortedData
-      .filter(point => visibleEventTypes.has(point.eventType))
+      // .filter(point => visibleEventTypes.has(point.eventType))
       .map(point => ({ lat: point.lat, lng: point.lng }));
 
-    if (path.length > 1) {
+    if (path.length > 1 ) {
       const polyline = new google.maps.Polyline({
         path: path,
         geodesic: true,
