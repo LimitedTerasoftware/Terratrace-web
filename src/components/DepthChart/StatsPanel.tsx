@@ -3,6 +3,7 @@ import { Activity as Activity2, MapPin, Clock, TrendingUp } from 'lucide-react';
 import { Activity } from '../../types/survey';
 import { getMachineOptions } from '../Services/api';
 import { Machine } from '../../types/machine';
+import { useNavigate } from 'react-router-dom';
 
 interface StatsPanelProps {
   activities: Activity[];
@@ -11,12 +12,19 @@ interface StatsPanelProps {
 }
 
 const StatsPanel: React.FC<StatsPanelProps> = ({ activities, totalCount,isLoading }) => {
+  const navigate= useNavigate();
   const totalActivities = activities.length;
   const uniqueMachines = new Set(activities.map(a => a.machine_id)).size;
   const eventTypes = new Set(activities.map(a => a.eventType)).size;
-  const recentActivities = activities.filter(a => 
-    new Date(a.created_at) > new Date(Date.now() - 24 * 60 * 60 * 1000)
-  ).length;
+
+  const recentActivities = activities.filter(a =>
+  new Date(a.created_at) > new Date(Date.now() - 24 * 60 * 60 * 1000)
+);
+
+const recentActivitiesCount = recentActivities.length;
+
+const recentRegNumbers = recentActivities.map(a => a.registration_number);
+
   const [machines, setMachines] = useState<Machine[]>([]);
 
   useEffect(()=>{
@@ -40,28 +48,36 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ activities, totalCount,isLoadin
       label: 'Total Machines',
       value: machines.length,
       color: 'text-blue-600',
-      bgColor: 'bg-blue-50'
+      bgColor: 'bg-blue-50',
+      id:0,
+      regids:[]
     },
     {
       icon: MapPin,
       label: 'Total Active Machines',
       value: statusCounts.active || 0,
       color: 'text-emerald-600',
-      bgColor: 'bg-emerald-50'
+      bgColor: 'bg-emerald-50',
+      id:1,
+      regids:[]
     },
     {
       icon: MapPin,
       label: 'Total Inactive Machines',
       value: statusCounts.inactive || 0,
       color: 'text-red-600',
-      bgColor: 'bg-red-50'
+      bgColor: 'bg-red-50',
+      id:2,
+      regids:[]
     },
     {
       icon: Clock,
       label: 'Last 24h',
-      value: recentActivities,
+      value: recentActivitiesCount,
       color: 'text-orange-600',
-      bgColor: 'bg-orange-50'
+      bgColor: 'bg-orange-50',
+      id:3,
+      regids:recentRegNumbers
     }
   ];
 
@@ -77,16 +93,20 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ activities, totalCount,isLoadin
       </div>
     );
   }
-
-  const handleredire = ()=>{
-    console.log('kjhgvc')
+  
+  const handleredire = (id:number,regids:string[])=>{
+    navigate('/machine-management/machines',{
+      state:{
+      Id:id,
+      regids:regids
+    }});
   }
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
       {stats.map((stat, index) => {
         const Icon = stat.icon;
         return (
-          <div key={index} onClick={handleredire}className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+          <div key={index} onClick={()=>handleredire(stat.id,stat.regids)} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">{stat.label}</p>

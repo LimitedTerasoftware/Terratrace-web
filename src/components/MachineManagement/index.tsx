@@ -6,6 +6,7 @@ import { Settings, BarChart3, Truck } from 'lucide-react';
 import axios, { AxiosError } from 'axios';
 import Modal from '../hooks/ModalPopup';
 import { getMachineOptions } from '../Services/api';
+import { useLocation } from 'react-router-dom';
 
 interface ModalData {
   title: string;
@@ -14,6 +15,7 @@ interface ModalData {
 }
 
 function MachineManagement() {
+  const location = useLocation();
   const [machines, setMachines] = useState<Machine[]>([]);
   const [editingMachine, setEditingMachine] = useState<Machine | undefined>(undefined);
   const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -27,6 +29,7 @@ function MachineManagement() {
     getMachineOptions().then(data => {
           setMachines(data);
       });
+     
   },[])
   const handleAddMachine = async(formData: MachineFormData) => {
  try {
@@ -219,6 +222,8 @@ function MachineManagement() {
             machines={machines}
             onEdit={handleStartEdit}
             onDelete={handleDeleteMachine}
+            Id={location.state?.Id}
+            regids={location.state?.regids}
           />
         </div>
         <Modal

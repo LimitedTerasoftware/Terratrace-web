@@ -7,13 +7,15 @@ interface MachineListProps {
   machines: Machine[];
   onEdit: (machine: Machine) => void;
   onDelete: (id: string) => void;
+  Id:number;
+  regids:string[]
 }
 
-const MachineList: React.FC<MachineListProps> = ({ machines, onEdit, onDelete }) => {
+const MachineList: React.FC<MachineListProps> = ({ machines, onEdit, onDelete,Id,regids}) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<Machine['status'] | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<Machine['status'] | 'all'>(Id === 1 ? 'active' : Id === 2 ? 'inactive' : 'all');
   const [selectedMachine, setSelectedMachine] = useState<Machine | null>(null);
-
+   
   const filteredMachines = machines.filter(machine => {
     const matchesSearch = 
       (machine.digitrack_make || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -26,11 +28,13 @@ const MachineList: React.FC<MachineListProps> = ({ machines, onEdit, onDelete })
       (machine.truck_make || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (machine.truck_model || "").toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'all' || machine.status === statusFilter;
-
-    return matchesSearch && matchesStatus;
+      const matchesRecent = !regids || regids.length === 0 
+        ? true 
+        : regids.includes(machine.registration_number);
+    return matchesSearch && matchesStatus && matchesRecent;
   });
 
-
+  
   const getStatusBadge = (status: Machine['status']) => {
     const statusConfig = {
       active: 'bg-green-100 text-green-800 border-green-200',
