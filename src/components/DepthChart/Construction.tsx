@@ -3,6 +3,7 @@ import { StateData, District, Block } from '../../types/survey';
 import Report from './UGConst';
 import { ToastContainer } from 'react-toastify';
 import Breadcrumb from '../Breadcrumbs/Breadcrumb';
+import { SheetIcon } from 'lucide-react';
 
 interface StatesResponse {
     success: boolean;
@@ -32,6 +33,7 @@ function Construction() {
     const [fromdate, setFromDate] = useState<string>('');
     const [todate, setToDate] = useState<string>('');
     const [activeTab, setActiveTab] = useState<'UG'>('UG');
+    const [excel,setExcel]=useState<boolean>(false);
 
 
 
@@ -293,6 +295,13 @@ function Construction() {
                         <span className="text-red-500 dark:text-red-400 font-medium text-sm">✕</span>
                         <span>Clear Filters</span>
                     </button>
+                      <button
+                        onClick={()=>setExcel(true)}
+                        className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
+                    >
+                        <SheetIcon className="h-4 w-4 text-green-600"/>
+                        Excel
+                    </button>
 
                 </div>
             </div>
@@ -323,8 +332,10 @@ function Construction() {
                     selectedStatus,
                     fromdate,
                     todate,
-                    globalsearch
+                    globalsearch,excel,
+                    
                 }}
+                Onexcel={()=>setExcel(false)}
                 />
 
 

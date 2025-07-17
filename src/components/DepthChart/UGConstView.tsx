@@ -2,13 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { Activity, } from '../../types/survey';
 import { useLocation } from 'react-router-dom';
 import DataTable, { TableColumn } from 'react-data-table-component';
-import { Folder } from 'lucide-react';
+import { Folder, SheetIcon } from 'lucide-react';
 import axios from 'axios';
 import { FaArrowLeft } from 'react-icons/fa';
 import IndexChart from './index';
 import MapComp from './MapComp';
 import moment from 'moment';
 import ImageModal from './ImageUploadModal';
+import * as XLSX from "xlsx";
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const BASEURL_Val = import.meta.env.VITE_API_BASE;
@@ -18,6 +19,7 @@ function Eventreport() {
     const location = useLocation();
     let sgp = location.state?.sgp || '';
     let egp = location.state?.egp || '';
+    let MainData = location.state?.row || ''; 
     const [depthData, setdepthData] = useState<Activity[]>([]);
     const [selectedEvent, setSelectedEvent] = useState<string>('');
     const [globalsearch, setGlobalSearch] = useState<string>('');
@@ -312,7 +314,59 @@ function Eventreport() {
         setSelectedEvent('');
         setGlobalSearch('');
     };
+     
+    const handleExcel = ()=> {
+     setLoading(true);
+     const workbook = XLSX.utils.book_new();
 
+  const headers = [
+    "State Name", "District Name", "Block Name", "Start GP Name",  "End GP Name","Machine Registration Number","Firm Name","Event Type","Latitude","Longitude",
+    "Images","Route Belongs To", "Road Type","Cable Laid On", "Soil Type", "Crossing Type", "Crossing Length","Execution Modality", "Depth (Meters)",
+    "Distance","Road Width","Landmark Type","Landmark Description", "Road Feasibility", "Area Type",
+    "Road Margin","Vehicle Image", "End Pit Doc", "Authorised Person","Contractor Details", "Vehicle Serial No","Created At", "Updated At",
+  ];
+
+  // Map Data in the Same Order as Headers
+    const dataRows = filteredData.map(item => {
+
+    const latlong = getLatLongForEvent(item);
+    const [latitude, longitude] = latlong ? latlong.split(",") : ["-", "-"];
+    let VehicalImg = '-'
+    if(item.vehicle_image?.trim()){
+     VehicalImg = `=HYPERLINK("${baseUrl}${VehicalImg}", "Vehical_Img")`;
+    } 
+    const downloadUrl =item.endPitDoc? `=HYPERLINK("${baseUrl}${item.endPitDoc}", "EndpicDoc")` : '-';
+    // Get Image Links
+    const photoField = eventPhotoFields[item.eventType];
+    const rawPhotoData = photoField ? (item as any)[photoField] : null;
+
+    let imageLinks = "-";
+    if (typeof rawPhotoData === "string" && rawPhotoData.trim() !== "") {
+      try {
+        const urls: string[] = JSON.parse(rawPhotoData);
+        if (Array.isArray(urls) && urls.length > 0) {
+          imageLinks = urls.map((url, i) => `=HYPERLINK("${baseUrl}${url}", "${item.eventType}_Photo_${i + 1}")`).join(", ");
+        }
+      } catch (e) {
+        imageLinks = `=HYPERLINK("${baseUrl}${rawPhotoData}", "${item.eventType}_Img")`;
+      }
+    }
+   return [
+    MainData.state_name, MainData.district_name, MainData.block_name, item.start_lgd_name, item.end_lgd_name,item.machine_registration_number,
+    item.firm_name,item.eventType,latitude,longitude,imageLinks,item.routeBelongsTo, item.roadType,
+    item.cableLaidOn, item.soilType, item.crossingType,item.crossingLength, item.executionModality,item.depthMeters,
+    item.distance,item.roadWidth, item.landmark_type,item.landmark_description,item.Roadfesibility, item.area_type,
+    item.road_margin,VehicalImg,downloadUrl,item.authorised_person,item.contractor_details, item.vehicleserialno,item.created_at, item.updated_at
+  ];});
+
+  const worksheet = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
+
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Underground Construcion Details");
+
+  XLSX.writeFile(workbook, "Underground_Construcion_Details.xlsx", { compression: true });
+
+    setLoading(false);
+    }
     const customStyles = {
         headRow: {
             style: {
@@ -451,6 +505,13 @@ function Eventreport() {
                         >
                             <span className="text-red-500 dark:text-red-400 font-medium text-sm">✕</span>
                             <span>Clear Filters</span>
+                        </button>
+                        <button
+                            onClick={handleExcel}
+                            className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
+                        >
+                            <SheetIcon className="h-4 w-4 text-green-600"/>
+                            Excel
                         </button>
 
                     </div>
