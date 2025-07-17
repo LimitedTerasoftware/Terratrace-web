@@ -532,13 +532,13 @@ function App() {
                   <MachineDataTable />
                 </DefaultLayout>
             </>}/>
-              <Route path='/machine-management' element={<>
+              <Route path='/machine-management/machines' element={<>
                 <DefaultLayout>
                   <PageTitle title="machine-management" />
                   <MachineManagement />
                 </DefaultLayout>
             </>}/>
-            <Route path='/reports' element={<>
+            <Route path='machine-management/machine-tracking' element={<>
                 <DefaultLayout>
                   <PageTitle title="Charts & Reports" />
                   <MainIndex />

@@ -29,7 +29,9 @@ import {
   ListCollapse,        // Icon for Route List
   MapPinHouse,        // Icon for Route Builder
   ClipboardMinus,      // Icon for Reports
-  Logs  // Icon for Audit Logs
+  Logs,  // Icon for Audit Logs
+  Cog,
+  LocateFixed
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -135,15 +137,85 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
             <>
             <SideBarItem icon={CompanyIcon} label="Companies" isOpen={isOpen} isActive={pathname.includes('companies')} path='/companies' />
             <SideBarItem icon={User} label="Users" isOpen={isOpen} isActive={pathname.includes('users')} path='/users' />
-            <SideBarItem icon={Machine} label="Machines" isOpen={isOpen} isActive={pathname.includes('machine-management')} path='/machine-management' />
-
-             </>
+            </>
              )}
             <SideBarItem icon={SurveyIcon} label="Survey" isOpen={isOpen} isActive={pathname.includes('survey')} path='/survey' />
             <SideBarItem icon={ConstructionImg} label="Construction" isOpen={isOpen} isActive={pathname.includes('construction')} path='/construction' />
+            <SidebarLinkGroup
+              activeCondition={pathname.includes('machine-management')}
+            >
+              {(handleClick, open) => {
+                return (
+                  <React.Fragment>
+                    <NavLink
+                      to="#"
+                      className={`
+                        flex items-center justify-between py-2 px-3 rounded-lg transition-colors duration-200 text-bodydark1
+                        ${pathname.includes('machine-management')
+                          ? 'bg-graydark dark:bg-meta-4'
+                          : 'hover:bg-graydark dark:hover:bg-meta-4'
+                        }
+                      `}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        sidebarExpanded
+                          ? handleClick()
+                          : setSidebarExpanded(true);
+                      }}
+                    >
+                      {/* Icon + Label */}
+                      <div className="flex items-center gap-3">
+                        <div className="min-w-[24px] flex justify-center">
+                          <img src={Machine} alt="MachMgmt" className="w-5 h-5 object-contain" />
+                        </div>
+                        {isOpen && <span>Machine Mgmt</span>}
+                      </div>
 
-            <SideBarItem icon={Other} label="Machine Tracking" isOpen={isOpen} isActive={pathname.includes('reports')} path='/reports' />
+                    {isOpen && (
+                        open
+                          ? <ChevronUp className="w-4 h-4 text-gray-500" />
+                          : <ChevronDown className="w-4 h-4 text-gray-500" />
+                      )}
+                    </NavLink>
 
+                    {isOpen && (
+                      <div
+                        className={`translate transform overflow-hidden ${!open && 'hidden'}`}
+                      >
+                        <ul className="space-y-2 mb-5.5 mt-4 flex flex-col gap-2.5 pl-6">
+                          <li>
+                            <NavLink
+                              to="/machine-management/machines"
+                              className={({ isActive }) =>
+                                'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white ' +
+                                (isActive && '!text-white')
+                              }
+                            >
+                              <Cog size={16} className="min-w-[16px]" />
+                              Machines
+                            </NavLink>
+                          </li>
+                          <li>
+                            <NavLink
+                              to="/machine-management/machine-tracking"
+                             className={({ isActive }) =>
+                                'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white ' +
+                                (isActive ? '!text-white' : '')
+                              }
+
+                            >
+                              <LocateFixed size={16} className="min-w-[16px]" />
+                             Machine Tracking
+                            </NavLink>
+                          </li>
+                        
+                        </ul>
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              }}
+            </SidebarLinkGroup>    
              <SidebarLinkGroup
               activeCondition={pathname.includes('route-planning')}
             >
@@ -250,7 +322,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                 );
               }}
             </SidebarLinkGroup>
-            <SideBarItem icon={KML} label="Filter GP Points" isOpen={isOpen} isActive={pathname.includes('gp-points-filter')} path='/gp-points-filter' />
             <li>
               <NavLink
                 to="/smart-inventory"
@@ -264,6 +335,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                 Smart Inventory
               </NavLink>
             </li>
+            <SideBarItem icon={KML} label="Filter GP Points" isOpen={isOpen} isActive={pathname.includes('gp-points-filter')} path='/gp-points-filter' />
+
             {!viewOnly && (
             <>
             <SideBarItem icon={User} label="KML File Upload" isOpen={isOpen} isActive={pathname.includes('kmlfileupload')} path='/kmlfileupload' />
