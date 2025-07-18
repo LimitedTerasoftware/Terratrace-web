@@ -15,8 +15,10 @@ const Dashboard: React.FC<DashboardProps> = ({MachineId,View}) => {
     const [filters, setFilters] = useState<FilterState>({
         machineId: MachineId || '1',
         machineName:'',
-        fromDate: getLastWeekDate(),
-        toDate: getTodayDate(),
+        fromDate: '',
+        toDate:'',
+        // fromDate: getLastWeekDate(),
+        // toDate: getTodayDate(),
     });
     const [data, setData] = useState<MachineData[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -28,8 +30,8 @@ const Dashboard: React.FC<DashboardProps> = ({MachineId,View}) => {
             setError(null);
             const response = await fetchMachineData(
                 filters.machineId,
-                // filters.fromDate,
-                // filters.toDate
+                filters.fromDate,
+                filters.toDate
             );
 
             if (response.status && response.data) {
@@ -75,7 +77,7 @@ const Dashboard: React.FC<DashboardProps> = ({MachineId,View}) => {
                                 <p className="text-gray-600 mt-1">Track and analyze machine work activity</p>
                             </div>
                         </div>
-                        <div className='flex items-center gap-3'>
+                        <div className='flex items-center gap-1'>
                          <FilterPanel
                             filters={filters}
                             onFiltersChange={handleFiltersChange}
@@ -84,7 +86,7 @@ const Dashboard: React.FC<DashboardProps> = ({MachineId,View}) => {
                         <button
                             onClick={handleRefresh}
                             disabled={isLoading}
-                            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            className="flex items-center gap-2 px-1 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
                             Refresh
