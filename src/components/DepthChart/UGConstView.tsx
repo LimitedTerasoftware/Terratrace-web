@@ -43,7 +43,7 @@ function Eventreport() {
         'STARTPIT',
         'ENDPIT',
         'ENDSURVEY',
-        'HOLD'
+        'HOLDSURVEY'
     ];
     const getData = async () => {
         try {
@@ -114,7 +114,7 @@ function Eventreport() {
             case "STARTSURVEY": return row.startPointCoordinates;
             case "ENDSURVEY": return row.endPointCoordinates;
             case "ROADCROSSING": return row.crossingLatlong;
-            case 'HOLD':return row.holdLatlong;
+            case 'HOLDSURVEY':return row.holdLatlong;
             default: return null;
         }
     };
@@ -167,7 +167,7 @@ function Eventreport() {
         STARTSURVEY: 'startPointPhoto',
         ENDSURVEY: 'endPointPhoto',
         ROADCROSSING: 'crossingPhotos',
-        HOLD:'holdPhotos'
+        HOLDSURVEY:'holdPhotos'
     };
 
     const columns: TableColumn<Activity>[] = [
@@ -262,6 +262,8 @@ function Eventreport() {
         { name: "Offset", selector: row => '', sortable: true },
         { name: "Route Feasible", selector: row => row.Roadfesibility || "-", sortable: true },
         { name: "Depth Meters", selector: row => row.depthMeters || "-", sortable: true },
+        { name: "DGPS Accuracy", selector: row => row.dgps_accuracy  || "-", sortable: true },
+        { name: "DGPS SIV", selector: row => row.dgps_siv  || "-", sortable: true },
         {
             name: "Vehicle Image",
             cell: (row: Activity) => {

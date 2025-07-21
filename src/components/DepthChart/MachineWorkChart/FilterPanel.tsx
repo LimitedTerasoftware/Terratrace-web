@@ -106,50 +106,65 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
                         </svg>
                     </div>
                 </div>
-                
-                <div className="relative flex-1 min-w-0 sm:flex-none sm:w-32">
 
-                    <select
-                        value={selectedtab}
-                        onChange={(e) => {
-                            setSelectedTab(e.target.value)
-                           
-                        }}                        
-                        className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    >
+                {filters.month === undefined? (
+                <><div className="relative flex-1 min-w-0 sm:flex-none sm:w-32">
+
+                   <select
+                       value={selectedtab}
+                       onChange={(e) => {
+                           setSelectedTab(e.target.value);
+
+                       } }
+                       className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                   >
                        {tabs.map((tab) => (
-                        <option key={tab.label} value={tab.value}>
-                            {tab.label}
-                        </option>
-                        ))}
+                           <option key={tab.label} value={tab.value}>
+                               {tab.label}
+                           </option>
+                       ))}
 
-                    </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                    </div>
-                </div>
+                   </select>
+                   <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                       <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                       </svg>
+                   </div>
+               </div><div className="relative flex-1 min-w-0 sm:flex-none sm:w-32">
 
-                <div className="relative flex-1 min-w-0 sm:flex-none sm:w-32">
+                       <input
+                           type="date"
+                           value={filters.fromDate}
+                           onChange={(e) => handleInputChange('fromDate', e.target.value)}
+                           className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                   </div><div className="relative flex-1 min-w-0 sm:flex-none sm:w-32">
+
+                       <input
+                           type="date"
+                           value={filters.toDate}
+                           onChange={(e) => handleInputChange('toDate', e.target.value)}
+                           className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                   </div></>
+                ):(
+                    <div className="relative flex-1 min-w-0 sm:flex-none sm:w-32">
 
                     <input
-                        type="date"
-                        value={filters.fromDate}
-                        onChange={(e) => handleInputChange('fromDate', e.target.value)}
-                        className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    />
-                </div>
+                            type="month"
+                            value={`${filters.year}-${filters.month.toString().padStart(2, '0')}`}
+                            onChange={(e) => {
+                                const [year, month] = e.target.value.split('-');
+                                onFiltersChange ({
+                                ...filters,
+                                year: parseInt(year),
+                                month: parseInt(month),
+                                });
+                            }}
+                             className="w-full appearance-none px-1 py-2  text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                            />
 
-                <div className="relative flex-1 min-w-0 sm:flex-none sm:w-32">
-
-                    <input
-                        type="date"
-                        value={filters.toDate}
-                        onChange={(e) => handleInputChange('toDate', e.target.value)}
-                        className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    />
-                </div>
+                   
+                </div> 
+                )}
 
 
                 {/* <div className="relative flex-1 min-w-0 sm:flex-none sm:w-30">

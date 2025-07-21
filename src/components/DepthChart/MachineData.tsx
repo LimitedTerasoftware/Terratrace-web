@@ -97,7 +97,7 @@ const MachineDataTable = () => {
             case "STARTSURVEY": return row.startPointCoordinates;
             case "ENDSURVEY": return row.endPointCoordinates;
             case "ROADCROSSING": return row.crossingLatlong;
-            case "HOLD":return row.holdLatlong;
+            case "HOLDSURVEY":return row.holdLatlong;
             default: return null;
         }
     };
@@ -115,7 +115,7 @@ const MachineDataTable = () => {
         STARTSURVEY: 'startPointPhoto',
         ENDSURVEY:'endPointPhoto',
         ROADCROSSING: 'crossingPhotos',
-        HOLD:'holdPhotos'
+        HOLDSURVEY:'holdPhotos'
     };
  const columns: TableColumn<Activity>[] = [
   {

@@ -4,7 +4,7 @@ import { Satellite, RefreshCw } from 'lucide-react';
 import MapComponent from './MapComponent';
 import ActivityDetails from './ActivityDetails';
 import StatsPanel from './StatsPanel';
-import useActivities from '../hooks/useActivities';
+import {useActivities} from '../Services/api';
 import { Activity, Block, District, MarkerData, StateData } from '../../types/survey';
 import axios from 'axios';
 import { Machine } from '../../types/machine';
@@ -32,7 +32,7 @@ const EVENT_TYPE_MAPPING = {
   'ENDPIT': { coordField: 'endPitLatlong', photoField: 'endPitPhotos' },
   'STARTSURVEY': { coordField: 'startPointCoordinates', photoField: 'startPointPhoto' },
   'ENDSURVEY': { coordField: 'endPointCoordinates', photoField: 'endPointPhoto' },
-  'HOLD': { coordField: 'holdLatlong', photoField: 'holdPhotos' },
+  'HOLDSURVEY': { coordField: 'holdLatlong', photoField: 'holdPhotos' },
   };
 
 function LiveTrack() {

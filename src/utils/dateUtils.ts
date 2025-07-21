@@ -17,7 +17,12 @@ export const parseDistance = (distanceString: string): number => {
 export const getTodayDate = (): string => {
   return format(new Date(), 'yyyy-MM-dd');
 };
-
+export const getTodayMon = (): string => {
+  return format(new Date(), 'mm');
+};
+export const getTodayYear = (): string => {
+  return format(new Date(), 'yyyy');
+};
 export const getLastWeekDate = (): string => {
   const date = new Date();
   date.setDate(date.getDate() - 7);

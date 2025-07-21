@@ -206,6 +206,9 @@ export interface Activity {
   holdPhotos:string;
   holdLatlong:string;
   firm_name:string;
+  dgps_accuracy:string; 
+  dgps_siv:number
+ 
 }
 
 export interface ApiResponseMachine {
@@ -280,8 +283,10 @@ export interface ChartDataPoint {
 export interface FilterState {
   machineId: string;
   machineName:string;
-  fromDate: string;
-  toDate: string;
+  fromDate?: string;
+  toDate?: string;
+  month?: number;
+  year?: number;
 }
 export interface ImageUploadResponse {
   success: boolean;

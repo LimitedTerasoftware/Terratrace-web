@@ -32,3 +32,41 @@ export interface Machine {
 }
 
 export type MachineFormData = Omit<Machine, 'id' | 'created_at' | 'updated_at'>;
+
+export interface DailyDistance {
+  date: string;
+  totalDistance: number;
+  meetsDailyRequirement: boolean;
+  difference: number;
+}
+
+export interface MachineData {
+  machineId: string;
+  dailyDistances: DailyDistance[];
+  monthlyTotalDistance: number;
+  machineRent: number;
+  monthlyPenalty: number | null;
+  monthlyIncentive: number | null;
+  netCost: number;
+}
+
+export interface ApiResponse {
+  status: boolean;
+  data: MachineData[];
+  filters: {
+    machine_id: string;
+    month: number;
+    year: number;
+    from_date: string;
+    to_date: string;
+    query_date: string;
+  };
+}
+
+
+export interface PerformanceMetrics {
+  status: 'excellent' | 'good' | 'warning' | 'penalty';
+  message: string;
+  color: string;
+  bgColor: string;
+}

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Activity, ApiResponseMachine } from '../../types/survey';
 
-const useActivities = ( 
+export const useActivities = ( 
   selectedState: string | null,
   selectedDistrict: string | null,
   selectedBlock: string | null,
@@ -72,3 +72,4 @@ const useActivities = (
 };
 
 export default useActivities;
+
