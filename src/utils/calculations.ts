@@ -46,6 +46,13 @@ export const formatDistance = (distance: number): string => {
   return `${distance.toFixed(2)} km`;
 };
 
+export const getPerformanceStatus = (efficiency: number): { status: string; color: string } => {
+  if (efficiency >= 100) return { status: 'Excellent', color: '#10B981' };
+  if (efficiency >= 90) return { status: 'Good', color: '#F59E0B' };
+  if (efficiency >= 70) return { status: 'Average', color: '#EF4444' };
+  return { status: 'Poor', color: '#DC2626' };
+};
+
 export const calculatePenaltyBreakdown = (distance: number) => {
   if (distance >= 7.5) return null;
   
