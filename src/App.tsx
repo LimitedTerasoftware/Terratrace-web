@@ -443,7 +443,7 @@ function App() {
               }
             />
              <Route
-              path="/users"
+              path="/managementlist/users"
               element={
                 <>
                    <DefaultLayout>
@@ -455,7 +455,7 @@ function App() {
             />
 
              <Route
-              path="/companies"
+              path="/managementlist/companies"
               element={
                 <>
                    <DefaultLayout>

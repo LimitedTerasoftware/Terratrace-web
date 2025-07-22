@@ -1,6 +1,6 @@
 // index.tsx - Sidebar with imported DropdownUser component
 import React, { useEffect, useRef, useState } from 'react';
-import {NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { SideBarItem } from './NavLink';
 import Tricad from '../../images/logo/Tricad.png';
 import TricadLogo from '../../images/logo/favicon.png';
@@ -12,12 +12,12 @@ import SidebarLinkGroup from './SidebarLinkGroup';
 import User from '../../images/icon/user-icon.svg';
 import TableIcon from '../../images/icon/table-icon.svg';
 import Logo from '../../images/logo/logo.png';
-import {hasViewOnlyAccess } from "../../utils/accessControl";
+import { hasViewOnlyAccess } from "../../utils/accessControl";
 import DropdownUser from './DropDownUser'; // Import the dropdownuser component
 import DarkModeSwitcher from './DarkModeSwitcher'; // Import the dark mode switcher
 import KML from '../../images/icon/kml-file.svg';
 import Smart_Inv from '../../images/icon/internet-world-svgrepo-com.svg';
-import Machine from '../../images/icon/mechine.svg'; 
+import Machine from '../../images/icon/mechine.svg';
 import Other from '../../images/logo/dashboard-4-svgrepo-com.svg';
 import ConstructionImg from '../../images/icon/construction-worker.svg'
 
@@ -31,7 +31,9 @@ import {
   ClipboardMinus,      // Icon for Reports
   Logs,  // Icon for Audit Logs
   Cog,
-  LocateFixed
+  LocateFixed,
+  Building,
+  User2Icon
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -45,7 +47,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   const trigger = useRef<any>(null);
   const sidebar = useRef<any>(null);
   const viewOnly = hasViewOnlyAccess();
-  
+
 
   const storedSidebarExpanded = localStorage.getItem('sidebar-expanded');
   const [sidebarExpanded, setSidebarExpanded] = useState(
@@ -98,7 +100,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
           
         `}
     >
-     
+
       {/* Toggle Button */}
 
       <button
@@ -134,162 +136,160 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
             <SideBarItem icon={DashboardIcon} label="Dashboard" isOpen={isOpen} isActive={pathname === '/' || pathname.includes('dashboard')} path={pathname === '/' ? '/' : '/dashboard'}
             />
             {!viewOnly && (
-            <>
-            <SideBarItem icon={CompanyIcon} label="Companies" isOpen={isOpen} isActive={pathname.includes('companies')} path='/companies' />
-            <SideBarItem icon={User} label="Users" isOpen={isOpen} isActive={pathname.includes('users')} path='/users' />
-            </>
-             )}
-            <SideBarItem icon={SurveyIcon} label="Survey" isOpen={isOpen} isActive={pathname.includes('survey')} path='/survey' />
-            <SideBarItem icon={ConstructionImg} label="Construction" isOpen={isOpen} isActive={pathname.includes('construction')} path='/construction' />
-            <SidebarLinkGroup
-              activeCondition={pathname.includes('machine-management')}
-            >
-              {(handleClick, open) => {
-                return (
-                  <React.Fragment>
-                    <NavLink
-                      to="#"
-                      className={`
+              <>
+                {/* <SideBarItem icon={CompanyIcon} label="Companies" isOpen={isOpen} isActive={pathname.includes('companies')} path='/companies' />
+               <SideBarItem icon={User} label="Users" isOpen={isOpen} isActive={pathname.includes('users')} path='/users' /> */}
+                <SideBarItem icon={SurveyIcon} label="Survey" isOpen={isOpen} isActive={pathname.includes('survey')} path='/survey' />
+                <SideBarItem icon={ConstructionImg} label="Construction" isOpen={isOpen} isActive={pathname.includes('construction')} path='/construction' />
+                <SidebarLinkGroup
+                  activeCondition={pathname.includes('machine-management')}
+                >
+                  {(handleClick, open) => {
+                    return (
+                      <React.Fragment>
+                        <NavLink
+                          to="#"
+                          className={`
                         flex items-center justify-between py-2 px-3 rounded-lg transition-colors duration-200 text-bodydark1
                         ${pathname.includes('machine-management')
-                          ? 'bg-graydark dark:bg-meta-4'
-                          : 'hover:bg-graydark dark:hover:bg-meta-4'
-                        }
+                              ? 'bg-graydark dark:bg-meta-4'
+                              : 'hover:bg-graydark dark:hover:bg-meta-4'
+                            }
                       `}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        sidebarExpanded
-                          ? handleClick()
-                          : setSidebarExpanded(true);
-                      }}
-                    >
-                      {/* Icon + Label */}
-                      <div className="flex items-center gap-3">
-                        <div className="min-w-[24px] flex justify-center">
-                          <img src={Machine} alt="MachMgmt" className="w-5 h-5 object-contain" />
-                        </div>
-                        {isOpen && <span>Machine Mgmt</span>}
-                      </div>
+                          onClick={(e) => {
+                            e.preventDefault();
+                            sidebarExpanded
+                              ? handleClick()
+                              : setSidebarExpanded(true);
+                          }}
+                        >
+                          {/* Icon + Label */}
+                          <div className="flex items-center gap-3">
+                            <div className="min-w-[24px] flex justify-center">
+                              <img src={Machine} alt="MachMgmt" className="w-5 h-5 object-contain" />
+                            </div>
+                            {isOpen && <span>Machine Mgmt</span>}
+                          </div>
 
-                    {isOpen && (
-                        open
-                          ? <ChevronUp className="w-4 h-4 text-gray-500" />
-                          : <ChevronDown className="w-4 h-4 text-gray-500" />
-                      )}
-                    </NavLink>
+                          {isOpen && (
+                            open
+                              ? <ChevronUp className="w-4 h-4 text-gray-500" />
+                              : <ChevronDown className="w-4 h-4 text-gray-500" />
+                          )}
+                        </NavLink>
 
-                    {isOpen && (
-                      <div
-                        className={`translate transform overflow-hidden ${!open && 'hidden'}`}
-                      >
-                        <ul className="space-y-2 mb-5.5 mt-4 flex flex-col gap-2.5 pl-6">
-                          <li>
-                            <NavLink
-                              to="/machine-management/machines"
-                              className={({ isActive }) =>
-                                'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white ' +
-                                (isActive && '!text-white')
-                              }
-                            >
-                              <Cog size={16} className="min-w-[16px]" />
-                              Machines
-                            </NavLink>
-                          </li>
-                          <li>
-                            <NavLink
-                              to="/machine-management/machine-tracking"
-                             className={({ isActive }) =>
-                                'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white ' +
-                                (isActive ? '!text-white' : '')
-                              }
+                        {isOpen && (
+                          <div
+                            className={`translate transform overflow-hidden ${!open && 'hidden'}`}
+                          >
+                            <ul className="space-y-2 mb-5.5 mt-4 flex flex-col gap-2.5 pl-6">
+                              <li>
+                                <NavLink
+                                  to="/machine-management/machines"
+                                  className={({ isActive }) =>
+                                    'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white ' +
+                                    (isActive && '!text-white')
+                                  }
+                                >
+                                  <Cog size={16} className="min-w-[16px]" />
+                                  Machines
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/machine-management/machine-tracking"
+                                  className={({ isActive }) =>
+                                    'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white ' +
+                                    (isActive ? '!text-white' : '')
+                                  }
 
-                            >
-                              <LocateFixed size={16} className="min-w-[16px]" />
-                             Machine Tracking
-                            </NavLink>
-                          </li>
-                        
-                        </ul>
-                      </div>
-                    )}
-                  </React.Fragment>
-                );
-              }}
-            </SidebarLinkGroup>    
-             <SidebarLinkGroup
-              activeCondition={pathname.includes('route-planning')}
-            >
-              {(handleClick, open) => {
-                return (
-                  <React.Fragment>
-                    <NavLink
-                      to="#"
-                      className={`
+                                >
+                                  <LocateFixed size={16} className="min-w-[16px]" />
+                                  Machine Tracking
+                                </NavLink>
+                              </li>
+
+                            </ul>
+                          </div>
+                        )}
+                      </React.Fragment>
+                    );
+                  }}
+                </SidebarLinkGroup>
+                <SidebarLinkGroup
+                  activeCondition={pathname.includes('route-planning')}
+                >
+                  {(handleClick, open) => {
+                    return (
+                      <React.Fragment>
+                        <NavLink
+                          to="#"
+                          className={`
                         flex items-center justify-between py-2 px-3 rounded-lg transition-colors duration-200 text-bodydark1
                         ${pathname.includes('route')
-                          ? 'bg-graydark dark:bg-meta-4'
-                          : 'hover:bg-graydark dark:hover:bg-meta-4'
-                        }
+                              ? 'bg-graydark dark:bg-meta-4'
+                              : 'hover:bg-graydark dark:hover:bg-meta-4'
+                            }
                       `}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        sidebarExpanded
-                          ? handleClick()
-                          : setSidebarExpanded(true);
-                      }}
-                    >
-                      {/* Icon + Label */}
-                      <div className="flex items-center gap-3">
-                        <div className="min-w-[24px] flex justify-center">
-                          <img src={RouteMap} alt="RouteMap" className="w-5 h-5 object-contain" />
-                        </div>
-                        {isOpen && <span>Route Planning</span>}
-                      </div>
+                          onClick={(e) => {
+                            e.preventDefault();
+                            sidebarExpanded
+                              ? handleClick()
+                              : setSidebarExpanded(true);
+                          }}
+                        >
+                          {/* Icon + Label */}
+                          <div className="flex items-center gap-3">
+                            <div className="min-w-[24px] flex justify-center">
+                              <img src={RouteMap} alt="RouteMap" className="w-5 h-5 object-contain" />
+                            </div>
+                            {isOpen && <span>Route Planning</span>}
+                          </div>
 
-                      {/* Arrow */}
-                      {/* Dropdown Menu for Route Planning with 4 options */}
-                    {isOpen && (
-                        open
-                          ? <ChevronUp className="w-4 h-4 text-gray-500" />
-                          : <ChevronDown className="w-4 h-4 text-gray-500" />
-                      )}
-                    </NavLink>
+                          {/* Arrow */}
+                          {/* Dropdown Menu for Route Planning with 4 options */}
+                          {isOpen && (
+                            open
+                              ? <ChevronUp className="w-4 h-4 text-gray-500" />
+                              : <ChevronDown className="w-4 h-4 text-gray-500" />
+                          )}
+                        </NavLink>
 
-                    {/* Dropdown Menu for Route Planning */}
-                    {isOpen && (
-                      <div
-                        className={`translate transform overflow-hidden ${!open && 'hidden'}`}
-                      >
-                        <ul className="space-y-2 mb-5.5 mt-4 flex flex-col gap-2.5 pl-6">
-                          {/* Option 1: Route List - internal link */}
-                          <li>
-                            <NavLink
-                              to="/route-planning/route-list"
-                              className={({ isActive }) =>
-                                'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white ' +
-                                (isActive && '!text-white')
-                              }
-                            >
-                              <ListCollapse size={16} className="min-w-[16px]" />
-                              Route List
-                            </NavLink>
-                          </li>
-                          {/* Option 2: Route Builder can use both the internal path and external link*/}
-                          <li>
-                            <NavLink
-                              //  to="http://traceapi.keeshondcoin.com/"
-                              to="/route-planning/builder"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={({ isActive }) =>
-                                'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white'
-                              }
-                            >
-                              <MapPinHouse size={16} className="min-w-[16px]" />
-                              Route Builder
-                            </NavLink>
-                          </li>
-                          {/* Option 3: Reports - internal link
+                        {/* Dropdown Menu for Route Planning */}
+                        {isOpen && (
+                          <div
+                            className={`translate transform overflow-hidden ${!open && 'hidden'}`}
+                          >
+                            <ul className="space-y-2 mb-5.5 mt-4 flex flex-col gap-2.5 pl-6">
+                              {/* Option 1: Route List - internal link */}
+                              <li>
+                                <NavLink
+                                  to="/route-planning/route-list"
+                                  className={({ isActive }) =>
+                                    'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white ' +
+                                    (isActive && '!text-white')
+                                  }
+                                >
+                                  <ListCollapse size={16} className="min-w-[16px]" />
+                                  Route List
+                                </NavLink>
+                              </li>
+                              {/* Option 2: Route Builder can use both the internal path and external link*/}
+                              <li>
+                                <NavLink
+                                  //  to="http://traceapi.keeshondcoin.com/"
+                                  to="/route-planning/builder"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={({ isActive }) =>
+                                    'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white'
+                                  }
+                                >
+                                  <MapPinHouse size={16} className="min-w-[16px]" />
+                                  Route Builder
+                                </NavLink>
+                              </li>
+                              {/* Option 3: Reports - internal link
                           <li>
                             <NavLink
                               to="/route-planning/reports"
@@ -302,8 +302,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                               Reports
                             </NavLink>
                           </li> */}
-                          {/* Option 4: Audit Logs - internal link */}
-                          {/*<li>
+                              {/* Option 4: Audit Logs - internal link */}
+                              {/*<li>
                             <NavLink
                               to="/route-planning/audit-logs"
                               className={({ isActive }) =>
@@ -315,33 +315,109 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                               Audit Logs
                             </NavLink>
                           </li>*/}
-                        </ul>
-                      </div>
-                    )}
-                  </React.Fragment>
-                );
-              }}
-            </SidebarLinkGroup>
-            <li>
-              <NavLink
-                to="/smart-inventory"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`
+                            </ul>
+                          </div>
+                        )}
+                      </React.Fragment>
+                    );
+                  }}
+                </SidebarLinkGroup>
+                <li>
+                  <NavLink
+                    to="/smart-inventory"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`
                     flex items-center py-2 px-3 rounded-lg transition-colors duration-200
                   text-bodydark1 hover:bg-graydark dark:hover:bg-meta-4 gap-4`}
+                  >
+                    <img src={Smart_Inv} className="w-5" />
+                    Smart Inventory
+                  </NavLink>
+                </li>
+                <SideBarItem icon={KML} label="Filter GP Points" isOpen={isOpen} isActive={pathname.includes('gp-points-filter')} path='/gp-points-filter' />
+                <SidebarLinkGroup
+                  activeCondition={pathname.includes('managementlist')}
                 >
-                <img src={Smart_Inv} className="w-5" />
-                Smart Inventory
-              </NavLink>
-            </li>
-            <SideBarItem icon={KML} label="Filter GP Points" isOpen={isOpen} isActive={pathname.includes('gp-points-filter')} path='/gp-points-filter' />
+                  {(handleClick, open) => {
+                    return (
+                      <React.Fragment>
+                        <NavLink
+                          to="#"
+                          className={`
+                        flex items-center justify-between py-2 px-3 rounded-lg transition-colors duration-200 text-bodydark1
+                        ${pathname.includes('managementlist')
+                              ? 'bg-graydark dark:bg-meta-4'
+                              : 'hover:bg-graydark dark:hover:bg-meta-4'
+                            }
+                      `}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            sidebarExpanded
+                              ? handleClick()
+                              : setSidebarExpanded(true);
+                          }}
+                        >
+                          {/* Icon + Label */}
+                          <div className="flex items-center gap-3">
+                            <div className="min-w-[24px] flex justify-center">
+                              <img src={TableIcon} alt="ManagementList" className="w-5 h-5 object-contain" />
+                            </div>
+                            {isOpen && <span>ManagementList</span>}
+                          </div>
 
+                          {isOpen && (
+                            open
+                              ? <ChevronUp className="w-4 h-4 text-gray-500" />
+                              : <ChevronDown className="w-4 h-4 text-gray-500" />
+                          )}
+                        </NavLink>
+
+                        {isOpen && (
+                          <div
+                            className={`translate transform overflow-hidden ${!open && 'hidden'}`}
+                          >
+                            <ul className="space-y-2 mb-5.5 mt-4 flex flex-col gap-2.5 pl-6">
+                              <li>
+                                <NavLink
+                                  to="/managementlist/companies"
+                                  className={({ isActive }) =>
+                                    'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white ' +
+                                    (isActive && '!text-white')
+                                  }
+                                >
+                                  <Building size={16} className="min-w-[16px]" />
+                                  Companies
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/managementlist/users"
+                                  className={({ isActive }) =>
+                                    'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white ' +
+                                    (isActive ? '!text-white' : '')
+                                  }
+
+                                >
+                                  <User2Icon size={16} className="min-w-[16px]" />
+                                  Users
+                                </NavLink>
+                              </li>
+
+                            </ul>
+                          </div>
+                        )}
+                      </React.Fragment>
+                    );
+                  }}
+                </SidebarLinkGroup>
+              </>
+            )}
             {!viewOnly && (
-            <>
-            <SideBarItem icon={User} label="KML File Upload" isOpen={isOpen} isActive={pathname.includes('kmlfileupload')} path='/kmlfileupload' />
-          
-            </>
+              <>
+                {/* <SideBarItem icon={User} label="KML File Upload" isOpen={isOpen} isActive={pathname.includes('kmlfileupload')} path='/kmlfileupload' /> */}
+
+              </>
             )}
           </ul>
         </div>
@@ -462,7 +538,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
             <div className="flex-1 min-w-0">
               <DropdownUser isOpen={isOpen} />
             </div>
-            
+
             {/* Compact Dark Mode Switcher - Small fixed width on the right */}
             {isOpen && (
               <div className="flex-shrink-0">
