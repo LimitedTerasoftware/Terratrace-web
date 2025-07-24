@@ -9,23 +9,47 @@ import {
   ResponsiveContainer,
   ReferenceLine,
   Area,
-  ComposedChart
+  ComposedChart,
+  Bar
 } from 'recharts';
-import { MachineData } from '../../../types/machine';
+import { DepthPenalties, MachineData } from '../../../types/machine';
 import { format } from 'date-fns';
+import { calculateDepthPenaltyBreakdown, formatCurrency } from '../../../utils/calculations';
 
 interface PerformanceChartProps {
   data: MachineData;
-}
+  depthPenalties?: DepthPenalties;
 
-export const PerformanceChart: React.FC<PerformanceChartProps> = ({ data }) => {
-  const chartData = data.dailyDistances.map(day => ({
+}
+const defaultDepthPenalties: DepthPenalties = {
+  totalDepthEvents: 0,
+  penalty500: 0,
+  penalty1100: 0,
+  alerts: 0,
+  totalDepthPenalty: 0,
+  details: []
+};
+
+export const PerformanceChart: React.FC<PerformanceChartProps> = ({ data,depthPenalties}) => {
+ 
+const breakdown = calculateDepthPenaltyBreakdown(depthPenalties ?? defaultDepthPenalties);
+  
+const chartData = data.dailyDistances.map(day => ({
     date: format(new Date(day.date), 'MMM dd'),
     fullDate: day.date,
     distance: day.totalDistance,
     target: 0.25, // Daily target (7.5km/30days = 0.25km/day)
     meets: day.meetsDailyRequirement,
-    difference: day.difference
+    difference: day.difference,
+    depthShortfall: depthPenalties?.details
+      .filter(event => format(new Date(event.created_at), 'yyyy-MM-dd') === day.date)
+      .reduce((total, event) => {
+        const shortfall = Math.max(0, 165 - event.depth);
+        return total + shortfall;
+      }, 0) || 0,
+    depthEventsCount: depthPenalties?.details.filter(event => 
+      format(new Date(event.created_at), 'yyyy-MM-dd') === day.date
+    ).length || 0
   }));
 
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -43,6 +67,16 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ data }) => {
           <p className={`text-sm font-medium ${data.difference >= 0 ? 'text-green-600' : 'text-red-600'}`}>
             {data.difference >= 0 ? '+' : ''}{data.difference.toFixed(2)} km
           </p>
+            {data.depthEventsCount > 0 && (
+            <p className="text-sm text-orange-600">
+              Depth Events: {data.depthEventsCount}
+            </p>
+          )}
+          {data.depthShortfall > 0 && (
+            <p className="text-sm text-red-600">
+              Depth Shortfall: {data.depthShortfall.toFixed(0)} cm
+            </p>
+          )}
         </div>
       );
     }
@@ -52,9 +86,10 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ data }) => {
   return (
     <div className="bg-white rounded-b-xl shadow-sm border border-t-0 p-6">
       <div className="mb-6">
-        <h3 className="text-xl font-semibold text-gray-900">Daily Performance Tracking</h3>
+        <h3 className="text-xl font-semibold text-gray-900">Daily Performance Worked</h3>
         <p className="text-sm text-gray-600 mt-1">
-          Daily distance vs target (0.25 km/day for 7.5 km/month goal)
+          {/* Daily distance vs target (0.25 km/day for 7.5 km/month goal) */}
+           Daily distance vs target with depth events overlay
         </p>
       </div>
       
@@ -70,20 +105,38 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ data }) => {
             <YAxis 
               tick={{ fontSize: 12 }}
               tickLine={false}
+              yAxisId="distance"
               label={{ value: 'Distance (km)', angle: -90, position: 'insideLeft' }}
+            />
+             <YAxis 
+              yAxisId="events"
+              orientation="right"
+              tick={{ fontSize: 12 }}
+              tickLine={false}
+              label={{ value: 'Depth Shortfall (cm)', angle: 90, position: 'insideRight' }}
             />
             <Tooltip content={<CustomTooltip />} />
             
             {/* Target line */}
             <ReferenceLine 
+              yAxisId="distance"
               y={0.25} 
               stroke="#f59e0b" 
               strokeDasharray="5 5" 
               label={{ value: "Daily Target", position: "top" }}
             />
+              {/* Depth shortfall bars */}
+            <Bar 
+              yAxisId="events"
+              dataKey="depthShortfall" 
+              fill="#fb923c" 
+              opacity={0.6}
+              name="Depth Shortfall (cm)"
+            />
             
             {/* Actual performance line */}
             <Line 
+              yAxisId="distance"
               type="monotone" 
               dataKey="distance" 
               stroke="#3b82f6" 
@@ -111,21 +164,21 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ data }) => {
           <div className="text-2xl font-bold text-gray-900">
             {data.dailyDistances.length}
           </div>
-          <div className="text-sm text-gray-600">Days Tracked</div>
+          <div className="text-sm text-gray-600">Days Worked</div>
         </div>
         
         <div className="text-center p-3 bg-green-50 rounded-lg">
           <div className="text-2xl font-bold text-green-600">
             {data.dailyDistances.filter(d => d.meetsDailyRequirement).length}
           </div>
-          <div className="text-sm text-gray-600">Target Met</div>
+          <div className="text-sm text-gray-600">Distance Target Met</div>
         </div>
         
         <div className="text-center p-3 bg-red-50 rounded-lg">
           <div className="text-2xl font-bold text-red-600">
             {data.dailyDistances.filter(d => !d.meetsDailyRequirement).length}
           </div>
-          <div className="text-sm text-gray-600">Below Target</div>
+          <div className="text-sm text-gray-600">Distance Below Target</div>
         </div>
         
         <div className="text-center p-3 bg-blue-50 rounded-lg">
@@ -135,6 +188,27 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ data }) => {
           <div className="text-sm text-gray-600">Success Rate</div>
         </div>
       </div>
+      {depthPenalties && (
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
+        <div className="bg-blue-50 rounded-lg p-4 text-center">
+          <div className="text-2xl font-bold text-blue-600">{depthPenalties.totalDepthEvents}</div>
+          <div className="text-sm text-gray-600">Total Depth Events</div>
+        </div>
+        <div className="bg-amber-50 rounded-lg p-4 text-center">
+          <div className="text-2xl font-bold text-amber-600">{breakdown.penalty500Events}</div>
+          <div className="text-sm text-gray-600">₹500 Depth Penalties</div>
+        </div>
+        <div className="bg-red-50 rounded-lg p-4 text-center">
+          <div className="text-2xl font-bold text-red-600">{breakdown.penalty1100Events}</div>
+          <div className="text-sm text-gray-600">₹1100 Depth Penalties</div>
+        </div>
+        <div className="bg-gray-50 rounded-lg p-4 text-center">
+          <div className="text-2xl font-bold text-gray-900">{formatCurrency(breakdown.totalDepthPenalty)}</div>
+          <div className="text-sm text-gray-600">Total Depth Penalty</div>
+        </div>
+      </div>
+      )}
+      
     </div>
   );
 };

@@ -50,9 +50,29 @@ export interface MachineData {
   netCost: number;
 }
 
+export interface DepthEvent {
+  id: number;
+  depth: number;
+  latlong: string;
+  eventType: string;
+  created_at: string;
+  alert: boolean;
+}
+
+export interface DepthPenalties{
+  totalDepthEvents: number;
+  penalty500: number;
+  penalty1100: number;
+  alerts: number;
+  totalDepthPenalty: number;
+  details: DepthEvent[];
+
+}
+
 export interface ApiResponse {
   status: boolean;
   data: MachineData[];
+  depthPenalties: DepthPenalties;
   filters: {
     machine_id: string;
     month: number;

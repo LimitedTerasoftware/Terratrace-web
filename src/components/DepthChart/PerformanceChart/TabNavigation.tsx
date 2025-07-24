@@ -2,8 +2,8 @@ import React from 'react';
 import { BarChart3, Table } from 'lucide-react';
 
 interface TabNavigationProps {
-  activeTab: 'chart' | 'data';
-  onTabChange: (tab: 'chart' | 'data') => void;
+  activeTab: 'chart' | 'data' | 'depth';
+  onTabChange: (tab: 'chart' | 'data' | 'depth') => void;
 }
 
 export const TabNavigation: React.FC<TabNavigationProps> = ({ activeTab, onTabChange }) => {
@@ -30,7 +30,18 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({ activeTab, onTabCh
           }`}
         >
           <Table className="w-4 h-4" />
-          Data Table
+          Distance Data Table
+        </button>
+         <button
+          onClick={() => onTabChange('depth')}
+          className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+            activeTab === 'depth'
+              ? 'border-blue-500 text-blue-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+        >
+          <Table className="w-4 h-4" />
+          Depth Data Table
         </button>
       </nav>
     </div>

@@ -1,38 +1,65 @@
-import { MachineData, PerformanceMetrics } from '../types/machine';
+import { DepthPenalties, MachineData, PerformanceMetrics } from '../types/machine';
 
-export const calculatePerformanceMetrics = (data: MachineData): PerformanceMetrics => {
+export const calculatePerformanceMetrics = (data: MachineData,depthPenalties?: DepthPenalties): PerformanceMetrics => {
   const distance = data.monthlyTotalDistance;
+  const hasDepthPenalties = depthPenalties && depthPenalties.totalDepthPenalty > 0;
   
   if (distance >= 10) {
     return {
       status: 'excellent',
-      message: `Excellent Performance! ${distance} km - Earning incentives`,
+      message: `Excellent Performance! ${distance} km - Earning distance incentives${hasDepthPenalties ? ' (Depth penalties apply)' : ''}`,
       color: 'text-emerald-700',
       bgColor: 'bg-emerald-50 border-emerald-200'
     };
   } else if (distance >= 7.5) {
     return {
       status: 'good',
-      message: `Good Performance! ${distance} km - Earning incentives`,
+      message: `Good Performance! ${distance} km - Earning distance incentives${hasDepthPenalties ? ' (Depth penalties apply)' : ''}`,
       color: 'text-green-700',
       bgColor: 'bg-green-50 border-green-200'
     };
   } else if (distance >= 5) {
     return {
       status: 'warning',
-      message: `Below Target: ${distance} km - Penalty applied`,
+      message: `Below Target: ${distance} km - distance Penalty applied${hasDepthPenalties ? ' + Depth penalties' : ''}`,
       color: 'text-amber-700',
       bgColor: 'bg-amber-50 border-amber-200'
     };
   } else {
     return {
       status: 'penalty',
-      message: `Critical: ${distance} km - High penalty applied`,
+      message: `Critical: ${distance} km - High distance penalty applied${hasDepthPenalties ? ' + Depth penalties' : ''}`,
       color: 'text-red-700',
       bgColor: 'bg-red-50 border-red-200'
     };
   }
 };
+
+export const calculateDepthPenaltyBreakdown = (depthPenalties: DepthPenalties) => {
+  const penalty500Events = depthPenalties.details.filter(event => 
+    event.depth >= 150 && event.depth <= 164
+  ).length;
+  
+  const penalty1100Events = depthPenalties.details.filter(event => 
+    event.depth >= 120 && event.depth <= 149
+  ).length;
+  
+  return {
+    penalty500Events,
+    penalty1100Events,
+    penalty500Amount: penalty500Events * 500,
+    penalty1100Amount: penalty1100Events * 1100,
+    totalDepthPenalty: (penalty500Events * 500) + (penalty1100Events * 1100),
+    totalEvents: depthPenalties.totalDepthEvents
+  };
+};
+
+export const calculateTotalNetCost = (machineData: MachineData, depthPenalties: DepthPenalties) => {
+  const depthPenaltyAmount = calculateDepthPenaltyBreakdown(depthPenalties).totalDepthPenalty;
+  return machineData.netCost - depthPenaltyAmount;
+};
+
+
 
 export const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('en-IN', {
@@ -57,8 +84,9 @@ export const calculatePenaltyBreakdown = (distance: number) => {
   if (distance >= 7.5) return null;
   
   const shortfall = 7.5 - distance;
-  const segments = Math.ceil(shortfall / 0.25); // 250m segments
-  
+  // const segments = Math.ceil(shortfall / 0.25); // 250m segments
+    const segments = (shortfall / 0.25); // 250m segments
+
   if (distance >= 5) {
     return {
       shortfall: shortfall.toFixed(2),
@@ -80,8 +108,9 @@ export const calculateIncentiveBreakdown = (distance: number) => {
   if (distance <= 7.5) return null;
   
   const excess = distance - 7.5;
-  const segments = Math.floor(excess / 0.25); // 250m segments
-  
+  // const segments = Math.floor(excess / 0.25); // 250m segments
+    const segments = (excess / 0.25); // 250m segments
+
   if (distance <= 10) {
     return {
       excess: excess.toFixed(2),

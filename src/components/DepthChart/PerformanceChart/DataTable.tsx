@@ -17,7 +17,7 @@ export const DataTable: React.FC<DataTableProps> = ({ data }) => {
         </p>
       </div>
       
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overflow-y-scroll max-h-100">
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>

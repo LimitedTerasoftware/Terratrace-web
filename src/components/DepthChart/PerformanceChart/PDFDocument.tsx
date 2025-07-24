@@ -1,13 +1,22 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
-import { MachineData } from '../../../types/machine';
+import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer';
+import { MachineData, DepthPenalties } from '../../../types/machine';
+import { formatCurrency, formatDistance, calculateTotalNetCost, calculateDepthPenaltyBreakdown } from '../../../utils/calculations';
 import { FilterState } from '../../../types/survey';
-import { formatCurrency, formatDistance } from '../../../utils/calculations';
 import teralogo from '../../../images/logo/Teraimage.png';
+import { format } from 'date-fns';
+import RobotoRegular from '../../../fonts/Roboto-Regular.ttf';
+
+Font.register({
+  family: 'Roboto',
+  src: RobotoRegular,
+});
+
 
 interface PDFDocumentProps {
   data: MachineData;
   filters: FilterState;
+  depthPenalties?: DepthPenalties;
 }
 
 const styles = StyleSheet.create({
@@ -15,7 +24,8 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     backgroundColor: '#ffffff',
     padding: 20,
-    fontFamily: 'Helvetica',
+    fontFamily: "Roboto",
+    paddingBottom:70
   },
   header: {
     flexDirection: 'row',
@@ -53,7 +63,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   section: {
-    // marginBottom: 10,
+    marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 16,
@@ -116,7 +126,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f1f5f9',
   },
   tableColHeader: {
-    width: '20%',
+    width: '16.66%',
     borderStyle: 'solid',
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -125,7 +135,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   tableCol: {
-    width: '20%',
+    width: '16.66%',
     borderStyle: 'solid',
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -212,6 +222,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
+    marginTop:20
   },
   footerText: {
     fontSize: 8,
@@ -245,40 +256,43 @@ const styles = StyleSheet.create({
   },
 });
 
-const getPerformanceStatus = (distance: number) => {
+const getPerformanceStatus = (distance: number, hasDepthPenalties: boolean = false) => {
   if (distance >= 10) {
     return {
       status: 'excellent',
-      message: `Excellent Performance! ${distance} km - Earning incentives`,
+      message: `Excellent Performance! ${distance} km - Earning incentives${hasDepthPenalties ? ' (Depth penalties apply)' : ''}`,
       style: styles.performanceStatusExcellent,
       textStyle: styles.statusTextExcellent,
     };
   } else if (distance >= 7.5) {
     return {
       status: 'good',
-      message: `Good Performance! ${distance} km - Earning incentives`,
+      message: `Good Performance! ${distance} km - Earning incentives${hasDepthPenalties ? ' (Depth penalties apply)' : ''}`,
       style: styles.performanceStatusGood,
       textStyle: styles.statusTextGood,
     };
   } else if (distance >= 5) {
     return {
       status: 'warning',
-      message: `Below Target: ${distance} km - Penalty applied`,
+      message: `Below Target: ${distance} km - Penalty applied${hasDepthPenalties ? ' + Depth penalties' : ''}`,
       style: styles.performanceStatusWarning,
       textStyle: styles.statusTextWarning,
     };
   } else {
     return {
       status: 'penalty',
-      message: `Critical: ${distance} km - High penalty applied`,
+      message: `Critical: ${distance} km - High penalty applied${hasDepthPenalties ? ' + Depth penalties' : ''}`,
       style: styles.performanceStatusPenalty,
       textStyle: styles.statusTextPenalty,
     };
   }
 };
 
-export const PDFDocumentMachine: React.FC<PDFDocumentProps> = ({ data, filters }) => {
-  const performanceStatus = getPerformanceStatus(data.monthlyTotalDistance);
+export const PDFDocument: React.FC<PDFDocumentProps> = ({ data, filters, depthPenalties }) => {
+  const hasDepthPenalties = depthPenalties && depthPenalties.totalDepthPenalty > 0;
+  const performanceStatus = getPerformanceStatus(data.monthlyTotalDistance, hasDepthPenalties);
+  const totalNetCost = depthPenalties ? calculateTotalNetCost(data, depthPenalties) : data.netCost;
+  const depthBreakdown = depthPenalties ? calculateDepthPenaltyBreakdown(depthPenalties) : null;
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
@@ -296,7 +310,7 @@ export const PDFDocumentMachine: React.FC<PDFDocumentProps> = ({ data, filters }
           </View>
           <View style={styles.headerInfo}>
             <Text style={styles.infoText}>Machine ID: {filters.machineName}</Text>
-            <Text style={styles.infoText}>Period: {monthNames[(filters.month ?? 1) - 1]} {filters.year}</Text>
+            <Text style={styles.infoText}>Period: {monthNames[(filters.month ?? 1) - 1]}  {filters.year}</Text>
             <Text style={styles.infoText}>Generated: {new Date().toLocaleDateString()}</Text>
           </View>
         </View>
@@ -308,18 +322,21 @@ export const PDFDocumentMachine: React.FC<PDFDocumentProps> = ({ data, filters }
           </Text>
           <Text style={styles.statusDescription}>
             Monthly Distance: {formatDistance(data.monthlyTotalDistance)}
+            {depthPenalties && ` | Depth Events: ${depthPenalties.totalDepthEvents}`}
           </Text>
         </View>
 
         {/* Summary Cards */}
-        <View style={styles.summaryContainer}>
+      
+          <View style={[styles.summaryContainer, { alignItems: 'center' }]}>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Machine Rent</Text>
             <Text style={styles.summaryValue}>{formatCurrency(data.machineRent)}</Text>
           </View>
+          <Text style={[styles.summaryValue, { fontSize: 24, color: '#6b7280', marginHorizontal: 10 }]}>{data.monthlyPenalty ? '-' : '+'}</Text>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>
-              {data.monthlyPenalty ? 'Monthly Penalty' : 'Monthly Incentive'}
+              {data.monthlyPenalty ? 'Output Penalty' : 'Output Incentive'}
             </Text>
             <Text style={data.monthlyPenalty ? styles.summaryValueRed : styles.summaryValueGreen}>
               {data.monthlyPenalty 
@@ -330,20 +347,29 @@ export const PDFDocumentMachine: React.FC<PDFDocumentProps> = ({ data, filters }
               }
             </Text>
           </View>
+          <Text style={[styles.summaryValue, { fontSize: 24, color: '#6b7280', marginHorizontal: 10 }]}>-</Text>
           <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Net Cost</Text>
-            <Text style={data.netCost > data.machineRent ? styles.summaryValueRed : styles.summaryValueGreen}>
-              {formatCurrency(data.netCost)}
+            <Text style={styles.summaryLabel}>Depth Penalty</Text>
+            <Text style={styles.summaryValueRed}>
+              {depthPenalties ? formatCurrency(depthPenalties.totalDepthPenalty) : '₹0'}
+            </Text>
+          </View>
+          <Text style={[styles.summaryValue, { fontSize: 24, color: '#6b7280', marginHorizontal: 10 }]}>=</Text>
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryLabel}>Net Payable</Text>
+            <Text style={totalNetCost > data.machineRent ? styles.summaryValueRed : styles.summaryValueGreen}>
+              {formatCurrency(totalNetCost)}
             </Text>
           </View>
         </View>
 
-        {/* Daily Performance Table */}
-        <View style={styles.section} wrap={true}>
+
+      {/* Daily Performance Table */}
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Daily Performance Data</Text>
-          <View style={styles.table} >
+          <View style={styles.table}>
             {/* Table Header */}
-            <View style={styles.tableHeaderRow} fixed>
+            <View style={styles.tableHeaderRow}>
               <View style={styles.tableColHeader}>
                 <Text style={styles.tableCellHeader}>Date</Text>
               </View>
@@ -357,13 +383,16 @@ export const PDFDocumentMachine: React.FC<PDFDocumentProps> = ({ data, filters }
                 <Text style={styles.tableCellHeader}>Difference</Text>
               </View>
               <View style={styles.tableColHeader}>
+                <Text style={styles.tableCellHeader}>Depth Events</Text>
+              </View>
+              <View style={styles.tableColHeader}>
                 <Text style={styles.tableCellHeader}>Status</Text>
               </View>
             </View>
             
             {/* Table Rows */}
             {data.dailyDistances.map((day, index) => (
-              <View key={day.date} style={styles.tableRow} break>
+              <View key={day.date} style={styles.tableRow}>
                 <View style={styles.tableCol}>
                   <Text style={styles.tableCell}>
                     {new Date(day.date).toLocaleDateString()}
@@ -383,6 +412,13 @@ export const PDFDocumentMachine: React.FC<PDFDocumentProps> = ({ data, filters }
                   </Text>
                 </View>
                 <View style={styles.tableCol}>
+                  <Text style={styles.tableCell}>
+                    {depthPenalties?.details.filter(event => 
+                      format(new Date(event.created_at), 'yyyy-MM-dd') === day.date
+                    ).length || 0}
+                  </Text>
+                </View>
+                <View style={styles.tableCol}>
                   <Text style={day.meetsDailyRequirement ? styles.tableCellGreen : styles.tableCellRed}>
                     {day.meetsDailyRequirement ? 'Good' : 'Below'}
                   </Text>
@@ -392,11 +428,92 @@ export const PDFDocumentMachine: React.FC<PDFDocumentProps> = ({ data, filters }
           </View>
         </View>
 
+        {/* Depth Events Table */}
+        {depthPenalties && depthPenalties.details.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Depth Events Data</Text>
+            <View style={styles.table}>
+              {/* Table Header */}
+              <View style={styles.tableHeaderRow}>
+                <View style={styles.tableColHeader}>
+                  <Text style={styles.tableCellHeader}>Date & Time</Text>
+                </View>
+                <View style={styles.tableColHeader}>
+                  <Text style={styles.tableCellHeader}>Depth (cm)</Text>
+                </View>
+                <View style={styles.tableColHeader}>
+                  <Text style={styles.tableCellHeader}>Shortfall</Text>
+                </View>
+                <View style={styles.tableColHeader}>
+                  <Text style={styles.tableCellHeader}>Penalty Rate</Text>
+                </View>
+                <View style={styles.tableColHeader}>
+                  <Text style={styles.tableCellHeader}>Location</Text>
+                </View>
+                <View style={styles.tableColHeader}>
+                  <Text style={styles.tableCellHeader}>Status</Text>
+                </View>
+              </View>
+              
+              {/* Table Rows */}
+              {depthPenalties.details.map((event, index) => {
+                const shortfall = Math.max(0, 165 - event.depth);
+                const getPenaltyRate = (depth: number) => {
+                  if (depth >= 150 && depth <= 164) return '₹500/100m';
+                  if (depth >= 120 && depth <= 149) return '₹1100/100m';
+                  if (depth < 120) return 'Critical';
+                  return 'No Penalty';
+                };
+                const getStatus = (depth: number) => {
+                  if (depth >= 165) return 'Standard';
+                  if (depth >= 150) return 'Minor';
+                  if (depth >= 120) return 'Major';
+                  return 'Critical';
+                };
+                
+                return (
+                  <View key={event.id} style={styles.tableRow}>
+                    <View style={styles.tableCol}>
+                      <Text style={styles.tableCell}>
+                        {format(new Date(event.created_at), 'MMM dd, HH:mm')}
+                      </Text>
+                    </View>
+                    <View style={styles.tableCol}>
+                      <Text style={styles.tableCell}>{event.depth} cm</Text>
+                    </View>
+                    <View style={styles.tableCol}>
+                      <Text style={shortfall > 0 ? styles.tableCellRed : styles.tableCellGreen}>
+                        {shortfall > 0 ? `${shortfall.toFixed(0)} cm` : 'None'}
+                      </Text>
+                    </View>
+                    <View style={styles.tableCol}>
+                      <Text style={styles.tableCell}>
+                        {getPenaltyRate(event.depth)}
+                      </Text>
+                    </View>
+                    <View style={styles.tableCol}>
+                      <Text style={styles.tableCell}>
+                        {event.latlong}
+                      </Text>
+                    </View>
+                    <View style={styles.tableCol}>
+                      <Text style={event.depth >= 165 ? styles.tableCellGreen : styles.tableCellRed}>
+                        {getStatus(event.depth)}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          
+          </View>
+        )}
+
         {/* Performance Breakdown */}
         <View style={styles.breakdownSection}>
           <Text style={styles.breakdownTitle}>Performance Breakdown</Text>
           <View style={styles.breakdownRow}>
-            <Text style={styles.breakdownLabel}>Total Days Tracked:</Text>
+            <Text style={styles.breakdownLabel}>Total Days Worked:</Text>
             <Text style={styles.breakdownValue}>{data.dailyDistances.length}</Text>
           </View>
           <View style={styles.breakdownRow}>
@@ -419,12 +536,111 @@ export const PDFDocumentMachine: React.FC<PDFDocumentProps> = ({ data, filters }
             <Text style={styles.breakdownLabel}>Actual Performance:</Text>
             <Text style={styles.breakdownValue}>{formatDistance(data.monthlyTotalDistance)}</Text>
           </View>
+          {depthPenalties && (
+            <>
+              <View style={styles.breakdownRow}>
+                <Text style={styles.breakdownLabel}>Total Depth Events:</Text>
+                <Text style={styles.breakdownValue}>{depthPenalties.totalDepthEvents}</Text>
+              </View>
+              <View style={styles.breakdownRow}>
+                <Text style={styles.breakdownLabel}>Total Depth Shortfall:</Text>
+                <Text style={styles.breakdownValue}>
+                  {depthPenalties.details.reduce((total, event) => total + Math.max(0, 165 - event.depth), 0).toFixed(0)} cm
+                </Text>
+              </View>
+              {/* <View style={styles.breakdownRow}>
+                <Text style={styles.breakdownLabel}>Depth Penalty:</Text>
+                <Text style={styles.breakdownValue}>{formatCurrency(depthPenalties.totalDepthPenalty)}</Text>
+              </View> */}
+              <View style={styles.breakdownRow}>
+                <Text style={styles.breakdownLabel}>Standard Depth:</Text>
+                <Text style={styles.breakdownValue}>165 cm</Text>
+              </View>
+              {/* <View style={styles.breakdownRow}>
+                <Text style={styles.breakdownLabel}>₹500 Penalties (164-150cm):</Text>
+                <Text style={styles.breakdownValue}>{depthBreakdown?.penalty500Events || 0}</Text>
+              </View>
+              <View style={styles.breakdownRow}>
+                <Text style={styles.breakdownLabel}>₹1100 Penalties (149-120cm):</Text>
+                <Text style={styles.breakdownValue}>{depthBreakdown?.penalty1100Events || 0}</Text>
+              </View> */}
+            </>
+          )}
         </View>
 
+         {/* Penalty Breakdown Section */}
+        {(data.monthlyPenalty || (depthBreakdown && depthBreakdown.totalDepthPenalty > 0)) && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Penalty Breakdown</Text>
+            <View style={styles.breakdownSection}>
+              {data.monthlyPenalty && (
+                <>
+                  <Text style={styles.breakdownTitle}>Distance Penalty</Text>
+                  <View style={styles.breakdownRow}>
+                    <Text style={styles.breakdownLabel}>Monthly Target:</Text>
+                    <Text style={styles.breakdownValue}>7.5 km</Text>
+                  </View>
+                  <View style={styles.breakdownRow}>
+                    <Text style={styles.breakdownLabel}>Actual Distance:</Text>
+                    <Text style={styles.breakdownValue}>{formatDistance(data.monthlyTotalDistance)}</Text>
+                  </View>
+                  <View style={styles.breakdownRow}>
+                    <Text style={styles.breakdownLabel}>Shortfall:</Text>
+                    <Text style={styles.breakdownValue}>{(7.5 - data.monthlyTotalDistance)} km</Text>
+                  </View>
+                  <View style={styles.breakdownRow}>
+                    <Text style={styles.breakdownLabel}>Penalty Rate:</Text>
+                    <Text style={styles.breakdownValue}>
+                      {data.monthlyTotalDistance >= 5 ? '₹40,000/250m' : '₹42,000/250m'}
+                    </Text>
+                  </View>
+                  <View style={styles.breakdownRow}>
+                    <Text style={styles.breakdownLabel}>Total Distance Penalty:</Text>
+                    <Text style={[styles.breakdownValue, { color: '#dc2626' }]}>{formatCurrency(data.monthlyPenalty)}</Text>
+                  </View>
+                </>
+              )}
+              
+              {depthBreakdown && depthBreakdown.totalDepthPenalty > 0 && (
+                <>
+                  {data.monthlyPenalty && <View style={{ marginVertical: 10, borderTopWidth: 1, borderTopColor: '#e5e7eb' }} />}
+                  <Text style={styles.breakdownTitle}>Depth Penalty</Text>
+                  <View style={styles.breakdownRow}>
+                    <Text style={styles.breakdownLabel}>Standard Depth:</Text>
+                    <Text style={styles.breakdownValue}>165 cm</Text>
+                  </View>
+                  <View style={styles.breakdownRow}>
+                    <Text style={styles.breakdownLabel}>Total Depth Events:</Text>
+                    <Text style={styles.breakdownValue}>{depthPenalties && depthPenalties.totalDepthEvents}</Text>
+                  </View>
+                  <View style={styles.breakdownRow}>
+                    <Text style={styles.breakdownLabel}>₹500 Penalties (164-150cm):</Text>
+                    <Text style={styles.breakdownValue}>{depthBreakdown.penalty500Events} events</Text>
+                  </View>
+                  <View style={styles.breakdownRow}>
+                    <Text style={styles.breakdownLabel}>₹1100 Penalties (149-120cm):</Text>
+                    <Text style={styles.breakdownValue}>{depthBreakdown.penalty1100Events} events</Text>
+                  </View>
+                  <View style={styles.breakdownRow}>
+                    <Text style={styles.breakdownLabel}>Total Depth Shortfall:</Text>
+                    <Text style={styles.breakdownValue}>
+                      {depthPenalties && depthPenalties.details.reduce((total, event) => total + Math.max(0, 165 - event.depth), 0).toFixed(0)} cm
+                    </Text>
+                  </View>
+                  <View style={styles.breakdownRow}>
+                    <Text style={styles.breakdownLabel}>Total Depth Penalty:</Text>
+                    <Text style={[styles.breakdownValue, { color: '#dc2626' }]}>{formatCurrency(depthBreakdown.totalDepthPenalty)}</Text>
+                  </View>
+                </>
+              )}
+            </View>
+          </View>
+        )}
         {/* Footer */}
         <View style={styles.footer} fixed>
           <Text style={styles.footerText}>
-            Shop No-8-2-293/82/A, 1107, Road Number 55, CBI Colony, Jubilee Hills, Hyderabad, Telangana 500033</Text>
+            Shop No-8-2-293/82/A, 1107, Road Number 55, CBI Colony, Jubilee Hills, Hyderabad, Telangana 500033
+          </Text>
           <Text style={styles.footerText}>
             04023547447.
           </Text>

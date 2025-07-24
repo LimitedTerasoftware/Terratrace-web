@@ -1,16 +1,18 @@
 import React from 'react';
 import { TrendingUp, TrendingDown, AlertTriangle, Award } from 'lucide-react';
-import { MachineData } from '../../../types/machine';
-import { calculatePerformanceMetrics, formatCurrency, formatDistance } from '../../../utils/calculations';
+import { DepthPenalties, MachineData } from '../../../types/machine';
+import { calculatePerformanceMetrics, calculateTotalNetCost, formatCurrency, formatDistance } from '../../../utils/calculations';
 
 interface PerformanceCardProps {
   data: MachineData;
+  depthPenalties?:DepthPenalties;
   machineName:string
 }
 
-export const PerformanceCard: React.FC<PerformanceCardProps> = ({ data,machineName }) => {
-  const metrics = calculatePerformanceMetrics(data);
-  
+export const PerformanceCard: React.FC<PerformanceCardProps> = ({ data,depthPenalties,machineName }) => {
+  const metrics = calculatePerformanceMetrics(data,depthPenalties);
+  const totalNetCost = depthPenalties ? calculateTotalNetCost(data, depthPenalties) : data.netCost;
+
   const getIcon = () => {
     switch (metrics.status) {
       case 'excellent':
@@ -48,18 +50,21 @@ export const PerformanceCard: React.FC<PerformanceCardProps> = ({ data,machineNa
           </div>
         </div>
       </div>
-      
-      <div className="mt-6 grid grid-cols-3 gap-4">
-        <div className="text-center p-3 bg-white/50 rounded-lg">
+
+        <div className="mt-6 grid grid-cols-4 gap-4">
+        <div className="text-center p-3 bg-white/50 rounded-lg relative">
           <div className="text-sm text-gray-600">Machine Rent</div>
           <div className="text-lg font-semibold text-gray-900">
             {formatCurrency(data.machineRent)}
           </div>
+          <div className="absolute -right-3 top-1/2 transform -translate-y-1/2 text-2xl font-bold text-gray-400">
+            {data.monthlyPenalty ? '-' : '+'}
+          </div>
         </div>
         
-        <div className="text-center p-3 bg-white/50 rounded-lg">
+        <div className="text-center p-3 bg-white/50 rounded-lg relative">
           <div className="text-sm text-gray-600">
-            {data.monthlyPenalty ? 'Penalty' : 'Incentive'}
+            {data.monthlyPenalty ? 'Output Penalty' : 'Output Incentive'}
           </div>
           <div className={`text-lg font-semibold ${
             data.monthlyPenalty ? 'text-red-600' : 'text-green-600'
@@ -71,14 +76,27 @@ export const PerformanceCard: React.FC<PerformanceCardProps> = ({ data,machineNa
                 : '₹0'
             }
           </div>
+          <div className="absolute -right-3 top-1/2 transform -translate-y-1/2 text-2xl font-bold text-gray-400">
+             -
+          </div>
+        </div>
+        
+        <div className="text-center p-3 bg-white/50 rounded-lg relative">
+          <div className="text-sm text-gray-600">Depth Penalty</div>
+          <div className="text-lg font-semibold text-red-600">
+            {depthPenalties ? formatCurrency(depthPenalties.totalDepthPenalty) : '₹0'}
+          </div>
+          <div className="absolute -right-4 top-1/2 transform -translate-y-1/2 text-2xl font-bold text-gray-400">
+            =
+          </div>
         </div>
         
         <div className="text-center p-3 bg-white/50 rounded-lg">
-          <div className="text-sm text-gray-600">Net Cost</div>
+          <div className="text-sm text-gray-600">Net Payable</div>
           <div className={`text-lg font-semibold ${
-            data.netCost > data.machineRent ? 'text-red-600' : 'text-green-600'
+            totalNetCost > data.machineRent ? 'text-red-600' : 'text-green-600'
           }`}>
-            {formatCurrency(data.netCost)}
+            {formatCurrency(totalNetCost)}
           </div>
         </div>
       </div>

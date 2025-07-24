@@ -9,6 +9,8 @@ import { BreakdownPanel } from './BreakdownPanel';
 import { getMachinePerformance } from '../../Services/api';
 import { generatePDF } from '../../../utils/pdfGenerator';
 import { FilterState } from '../../../types/survey';
+import { DepthAnalysisPanel } from './DepthAnalysisPanel';
+import { DepthTableData } from './DepthTableData';
 
 function IndexPerformanceChart() {
 const getTodayMon = () => new Date().getMonth() + 1; 
@@ -20,7 +22,7 @@ const getTodayYear = () => new Date().getFullYear();
     year: getTodayYear()
   });
   
-  const [activeTab, setActiveTab] = useState<'chart' | 'data'>('chart');
+  const [activeTab, setActiveTab] = useState<'chart' | 'data' | 'depth'>('chart');
   const { data, loading, error, fetchData } = getMachinePerformance();
 
   useEffect(() => {
@@ -35,7 +37,7 @@ const getTodayYear = () => new Date().getFullYear();
     if (!data?.data[0]) return;
     
     try {
-      await generatePDF(data.data[0], filters);
+      await generatePDF(data.data[0], filters,data.depthPenalties);
     } catch (error) {
       console.error('Error generating PDF:', error);
       alert('Error generating PDF. Please try again.');
@@ -43,6 +45,7 @@ const getTodayYear = () => new Date().getFullYear();
   };
 
   const machineData = data?.data[0];
+  const depthPenalties = data?.depthPenalties;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -119,7 +122,7 @@ const getTodayYear = () => new Date().getFullYear();
           {machineData && !loading && (
             <>
               {/* Performance Overview */}
-              <PerformanceCard data={machineData} machineName={filters.machineName}/>
+              <PerformanceCard data={machineData} depthPenalties={depthPenalties}machineName={filters.machineName}/>
 
               {/* Main Content Area with Tabs */}
               <div className="grid grid-cols-1 gap-8">
@@ -127,17 +130,28 @@ const getTodayYear = () => new Date().getFullYear();
                     <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
                     
                     {activeTab === 'chart' && (
-                      <PerformanceChart data={machineData} />
+                      <PerformanceChart data={machineData} depthPenalties={depthPenalties}/>
                     )}
                     
                     {activeTab === 'data' && (
                       <DataTable data={machineData} />
+                    
+                    )}
+                     {activeTab === 'depth' && depthPenalties && (
+                    
+                      <DepthTableData depthPenalties={depthPenalties} />
+                      
                     )}
                   </div>
                 <div>
-                  <BreakdownPanel data={machineData} />
+                  <BreakdownPanel data={machineData} depthPenalties={depthPenalties}/>
                 </div>
               </div>
+              {/* Depth Analysis */}
+              {/* {depthPenalties && (
+                <DepthAnalysisPanel depthPenalties={depthPenalties} />
+              )} */}
+
             </>
           )}
 
