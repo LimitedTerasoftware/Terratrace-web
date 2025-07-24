@@ -122,6 +122,8 @@ export interface DepthDataPoint {
   depthPhoto:string;
   start_lgd_name:string;
   end_lgd_name:string;
+  machine_registration_number:string;
+
 }
 
 export interface ApiResponse {

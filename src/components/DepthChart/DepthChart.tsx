@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { DepthDataPoint, ChartPoint } from '../../types/survey';
 import { AlertTriangle, TrendingDown, Ruler, X } from 'lucide-react';
+import { getDistanceFromLatLonInMeters } from '../../utils/calculations';
 
 interface DepthChartProps {
   depthData: DepthDataPoint[];
@@ -20,11 +21,28 @@ export const DepthChart: React.FC<DepthChartProps> = ({
 }) => {
   const [selectedPoints, setSelectedPoints] = useState<SelectedPoint[]>([]);
   const chartData = useMemo(() => {
+    let cumulativeDistance = 0;
   return depthData
     .map((point, index) => {
       const depthValue = parseFloat(point.depthMeters);
+
+    // Parse lat/lng
+    const [latStr, lngStr] = point.depthLatlong?.split(',') || [];
+    const lat = parseFloat(latStr);
+    const lng = parseFloat(lngStr);
+
+    if (index > 0) {
+      const [prevLatStr, prevLngStr] = depthData[index - 1].depthLatlong?.split(',') || [];
+      const prevLat = parseFloat(prevLatStr);
+      const prevLng = parseFloat(prevLngStr);
+
+      if (!isNaN(lat) && !isNaN(lng) && !isNaN(prevLat) && !isNaN(prevLng)) {
+        const segmentDistance = getDistanceFromLatLonInMeters(prevLat, prevLng, lat, lng);
+        cumulativeDistance += segmentDistance;
+      }
+    }
       return {
-        distance: index * 10,
+        distance: Math.round(cumulativeDistance),
         depth: isNaN(depthValue) ? 0 : depthValue,
         isBelowMinimum: !isNaN(depthValue) && depthValue < minDepth,
         originalData: point

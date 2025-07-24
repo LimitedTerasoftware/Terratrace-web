@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { DepthDataPoint } from '../../types/survey';
 import { AlertTriangle, CheckCircle, MapPin } from 'lucide-react';
 import moment from 'moment';
+import { getDistanceFromLatLonInMeters } from '../../utils/calculations';
 
 interface DepthDataTableProps {
   depthData: DepthDataPoint[];
@@ -14,6 +15,7 @@ export const DepthDataTable: React.FC<DepthDataTableProps> = ({
   minDepth = 1.65 
 }) => {
     const [zoomImage, setZoomImage] = useState<string | null>(null);
+    let cumulativeDistance = 0;
   
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
@@ -53,8 +55,21 @@ export const DepthDataTable: React.FC<DepthDataTableProps> = ({
             {depthData.map((point, index) => {
               const depth = parseFloat(point.depthMeters);
               const isBelowMinimum = depth < minDepth;
-              const distance = index * 10; // Every 10m
-
+              // const distance = index * 10; // Every 10m
+              const [latStr, lngStr] = point.depthLatlong?.split(',') || [];
+              const lat = parseFloat(latStr);
+              const lng = parseFloat(lngStr);
+          
+              if (index > 0) {
+                const [prevLatStr, prevLngStr] = depthData[index - 1].depthLatlong?.split(',') || [];
+                const prevLat = parseFloat(prevLatStr);
+                const prevLng = parseFloat(prevLngStr);
+          
+                if (!isNaN(lat) && !isNaN(lng) && !isNaN(prevLat) && !isNaN(prevLng)) {
+                  const segmentDistance = getDistanceFromLatLonInMeters(prevLat, prevLng, lat, lng);
+                  cumulativeDistance += segmentDistance;
+                }
+              }
               return (
                 <tr 
                   key={index} 
@@ -88,10 +103,10 @@ export const DepthDataTable: React.FC<DepthDataTableProps> = ({
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {distance}
+                     {Math.round(cumulativeDistance)} m
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
-                    {point.machine_id}
+                    {point.machine_registration_number}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center text-sm text-gray-900">

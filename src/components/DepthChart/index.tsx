@@ -98,7 +98,7 @@ function IndexChart({ MainData }: any) {
 
         {/* Footer */}
         <div className="text-center text-gray-500 text-sm">
-          <p>Depth measurements are recorded every 10 meters along the route</p>
+          <p>Depth measurements are recorded based on latlong along the route</p>
         </div>
       </div>
     </div>

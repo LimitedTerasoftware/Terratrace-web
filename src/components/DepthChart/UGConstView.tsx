@@ -10,6 +10,7 @@ import MapComp from './MapComp';
 import moment from 'moment';
 import ImageModal from './ImageUploadModal';
 import * as XLSX from "xlsx";
+import { getDistanceFromLatLonInMeters } from '../../utils/calculations';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const BASEURL_Val = import.meta.env.VITE_API_BASE;
@@ -85,20 +86,6 @@ function Eventreport() {
         setIsModalOpen(false);
         setSelectedActivity(null);
     };
-
-    const filteredData = useMemo(() => {
-        if (!globalsearch.trim()) return depthData;
-
-        const lowerSearch = globalsearch.toLowerCase();
-
-        return depthData.filter((row: Activity) =>
-            Object.values(row).some((value) =>
-                (typeof value === 'string' || typeof value === 'number') &&
-                value.toString().toLowerCase().includes(lowerSearch)
-            )
-        );
-    }, [globalsearch, depthData]);
-
     const getLatLongForEvent = (row: Activity) => {
         switch (row.eventType) {
             case "FPOI": return row.fpoiLatLong;
@@ -119,6 +106,42 @@ function Eventreport() {
         }
     };
 
+   const addDistancesToData = (data: Activity[]) => {
+    return data.map((row, index) => {
+        if (index === 0) {
+            return { ...row, distance: "0.00" }; 
+        }
+
+        const latLong1 = getLatLongForEvent(row);
+        const prevRow = data[index - 1];
+        const latLong2 = prevRow ? getLatLongForEvent(prevRow) : null;
+
+        if (!latLong1 || !latLong2) return { ...row, distance: "-" };
+
+        const [lat1, lon1] = latLong1.split(',').map(Number);
+        const [lat2, lon2] = latLong2.split(',').map(Number);
+
+        const distance = getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2);
+        return { ...row, distance: distance.toFixed(2) };
+    });
+};
+
+
+    const filteredData = useMemo(() => {
+    const dataToFilter = globalsearch.trim()
+        ? depthData.filter((row: Activity) =>
+              Object.values(row).some((value) =>
+                  (typeof value === 'string' || typeof value === 'number') &&
+                  value.toString().toLowerCase().includes(globalsearch.toLowerCase())
+              )
+          )
+        : depthData;
+
+    return addDistancesToData(dataToFilter);
+}, [globalsearch, depthData]);
+   
+
+   
     const markers = filteredData
         .map((row: Activity) => {
             const latLongStr = getLatLongForEvent(row);
@@ -262,6 +285,7 @@ function Eventreport() {
         { name: "Offset", selector: row => '', sortable: true },
         { name: "Route Feasible", selector: row => row.Roadfesibility || "-", sortable: true },
         { name: "Depth Meters", selector: row => row.depthMeters || "-", sortable: true },
+        { name: "Distance Meters", selector: row => row.distance  || "-", sortable: true },
         { name: "DGPS Accuracy", selector: row => row.dgps_accuracy  || "-", sortable: true },
         { name: "DGPS SIV", selector: row => row.dgps_siv  || "-", sortable: true },
         {
