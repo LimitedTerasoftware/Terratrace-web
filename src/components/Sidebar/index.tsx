@@ -141,34 +141,30 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                <SideBarItem icon={User} label="Users" isOpen={isOpen} isActive={pathname.includes('users')} path='/users' /> */}
                 <SideBarItem icon={SurveyIcon} label="Survey" isOpen={isOpen} isActive={pathname.includes('survey')} path='/survey' />
                 <SideBarItem icon={ConstructionImg} label="Construction" isOpen={isOpen} isActive={pathname.includes('construction')} path='/construction' />
-                <SidebarLinkGroup
-                  activeCondition={pathname.includes('machine-management')}
-                >
+                <SidebarLinkGroup activeCondition={pathname.includes('machine-management')}>
                   {(handleClick, open) => {
                     return (
-                      <React.Fragment>
+                      <>
                         <NavLink
                           to="#"
                           className={`
-                        flex items-center justify-between py-2 px-3 rounded-lg transition-colors duration-200 text-bodydark1
-                        ${pathname.includes('machine-management')
+                              flex items-center justify-between py-2 ${isOpen ? 'px-3' : 'px-2'} rounded-lg transition-colors duration-200 text-bodydark1
+                              ${pathname.includes('machine-management')
                               ? 'bg-graydark dark:bg-meta-4'
-                              : 'hover:bg-graydark dark:hover:bg-meta-4'
-                            }
-                      `}
+                              : 'hover:bg-graydark dark:hover:bg-meta-4'}
+                              ${!isOpen ? 'w-[44px]' : 'w-full'}
+                            `}
                           onClick={(e) => {
                             e.preventDefault();
-                            sidebarExpanded
-                              ? handleClick()
-                              : setSidebarExpanded(true);
+                            sidebarExpanded ? handleClick() : setSidebarExpanded(true);
                           }}
                         >
                           {/* Icon + Label */}
-                          <div className="flex items-center gap-3">
-                            <div className="min-w-[24px] flex justify-center">
+                          <div className={`flex items-center ${isOpen ? 'gap-3' : 'gap-0'} w-full`}>
+                            <div className="min-w-[20px] flex justify-center">
                               <img src={Machine} alt="MachMgmt" className="w-5 h-5 object-contain" />
                             </div>
-                            {isOpen && <span>Machine Mgmt</span>}
+                            {isOpen && <span className="whitespace-nowrap">Machine Mgmt</span>}
                           </div>
 
                           {isOpen && (
@@ -178,44 +174,41 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                           )}
                         </NavLink>
 
-                        {isOpen && (
-                          <div
-                            className={`translate transform overflow-hidden ${!open && 'hidden'}`}
-                          >
-                            <ul className="space-y-2 mb-5.5 mt-4 flex flex-col gap-2.5 pl-6">
-                              <li>
-                                <NavLink
-                                  to="/machine-management/machines"
-                                  className={({ isActive }) =>
-                                    'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white ' +
-                                    (isActive && '!text-white')
-                                  }
-                                >
-                                  <Cog size={16} className="min-w-[16px]" />
-                                  Machines
-                                </NavLink>
-                              </li>
-                              <li>
-                                <NavLink
-                                  to="/machine-management/machine-tracking"
-                                  className={({ isActive }) =>
-                                    'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white ' +
-                                    (isActive ? '!text-white' : '')
-                                  }
 
-                                >
-                                  <LocateFixed size={16} className="min-w-[16px]" />
-                                  Machine Tracking
-                                </NavLink>
-                              </li>
+                        <div className={`transform overflow-hidden transition-all ${!open && 'hidden'}`}>
+                          <ul className="space-y-2 mt-4 flex flex-col gap-2.5 pl-6">
+                            <li>
+                              <NavLink
+                                to="/machine-management/machines"
+                                className={({ isActive }) =>
+                                  `group relative flex items-center gap-2.5 rounded-md px-2 py-1 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white 
+                                      ${isActive ? '!text-white' : ''}`
+                                }
+                              >
+                                <Cog size={16} className="min-w-[16px]" />
+                                <span className={isOpen ? '' : 'hidden'}>Machines</span>
+                              </NavLink>
+                            </li>
+                            <li>
+                              <NavLink
+                                to="/machine-management/machine-tracking"
+                                className={({ isActive }) =>
+                                  `group relative flex items-center gap-2.5 rounded-md px-2 py-1 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white 
+                                      ${isActive ? '!text-white' : ''}`
+                                }
+                              >
+                                <LocateFixed size={16} className="min-w-[16px]" />
+                                <span className={isOpen ? '' : 'hidden'}>Machine Tracking</span>
+                              </NavLink>
+                            </li>
+                          </ul>
+                        </div>
 
-                            </ul>
-                          </div>
-                        )}
-                      </React.Fragment>
+                      </>
                     );
                   }}
                 </SidebarLinkGroup>
+
                 <SidebarLinkGroup
                   activeCondition={pathname.includes('route-planning')}
                 >
@@ -225,11 +218,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                         <NavLink
                           to="#"
                           className={`
-                        flex items-center justify-between py-2 px-3 rounded-lg transition-colors duration-200 text-bodydark1
+                              flex items-center justify-between py-2 ${isOpen ? 'px-3' : 'px-2'} rounded-lg transition-colors duration-200 text-bodydark1
                         ${pathname.includes('route')
                               ? 'bg-graydark dark:bg-meta-4'
                               : 'hover:bg-graydark dark:hover:bg-meta-4'
-                            }
+                            } ${!isOpen ? 'w-[44px]' : 'w-full'}
                       `}
                           onClick={(e) => {
                             e.preventDefault();
@@ -239,15 +232,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                           }}
                         >
                           {/* Icon + Label */}
-                          <div className="flex items-center gap-3">
-                            <div className="min-w-[24px] flex justify-center">
+                          <div className={`flex items-center ${isOpen ? 'gap-3' : 'gap-0'} w-full`}>
+                            <div className="min-w-[20px] flex justify-center">
                               <img src={RouteMap} alt="RouteMap" className="w-5 h-5 object-contain" />
                             </div>
-                            {isOpen && <span>Route Planning</span>}
+                            {isOpen && <span className="whitespace-nowrap" >Route Planning</span>}
                           </div>
 
-                          {/* Arrow */}
-                          {/* Dropdown Menu for Route Planning with 4 options */}
                           {isOpen && (
                             open
                               ? <ChevronUp className="w-4 h-4 text-gray-500" />
@@ -255,41 +246,38 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                           )}
                         </NavLink>
 
-                        {/* Dropdown Menu for Route Planning */}
-                        {isOpen && (
-                          <div
-                            className={`translate transform overflow-hidden ${!open && 'hidden'}`}
-                          >
-                            <ul className="space-y-2 mb-5.5 mt-4 flex flex-col gap-2.5 pl-6">
-                              {/* Option 1: Route List - internal link */}
-                              <li>
-                                <NavLink
-                                  to="/route-planning/route-list"
-                                  className={({ isActive }) =>
-                                    'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white ' +
-                                    (isActive && '!text-white')
-                                  }
-                                >
-                                  <ListCollapse size={16} className="min-w-[16px]" />
-                                  Route List
-                                </NavLink>
-                              </li>
-                              {/* Option 2: Route Builder can use both the internal path and external link*/}
-                              <li>
-                                <NavLink
-                                  //  to="http://traceapi.keeshondcoin.com/"
-                                  to="/route-planning/builder"
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className={({ isActive }) =>
-                                    'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white'
-                                  }
-                                >
-                                  <MapPinHouse size={16} className="min-w-[16px]" />
-                                  Route Builder
-                                </NavLink>
-                              </li>
-                              {/* Option 3: Reports - internal link
+
+                        <div
+                          className={`translate transform overflow-hidden ${!open && 'hidden'}`}
+                        >
+                          <ul className="space-y-2 mt-4 flex flex-col gap-2.5 pl-6">
+                            <li>
+                              <NavLink
+                                to="/route-planning/route-list"
+                                className={({ isActive }) =>
+                                  `group relative flex items-center gap-2.5 rounded-md px-2 py-1 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white 
+                                      ${isActive ? '!text-white' : ''}`
+                                }
+                              >
+                                <ListCollapse size={16} className="min-w-[16px]" />
+                                <span className={isOpen ? '' : 'hidden'}>Route List</span>
+                              </NavLink>
+                            </li>
+                            <li>
+                              <NavLink
+                                to="/route-planning/builder"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={({ isActive }) =>
+                                  `group relative flex items-center gap-2.5 rounded-md px-2 py-1 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white 
+                                      ${isActive ? '!text-white' : ''}`
+                                }
+                              >
+                                <MapPinHouse size={16} className="min-w-[16px]" />
+                                <span className={isOpen ? '' : 'hidden'}>Route Builder</span>
+                              </NavLink>
+                            </li>
+                            {/* Option 3: Reports - internal link
                           <li>
                             <NavLink
                               to="/route-planning/reports"
@@ -302,8 +290,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                               Reports
                             </NavLink>
                           </li> */}
-                              {/* Option 4: Audit Logs - internal link */}
-                              {/*<li>
+                            {/* Option 4: Audit Logs - internal link */}
+                            {/*<li>
                             <NavLink
                               to="/route-planning/audit-logs"
                               className={({ isActive }) =>
@@ -315,9 +303,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                               Audit Logs
                             </NavLink>
                           </li>*/}
-                            </ul>
-                          </div>
-                        )}
+                          </ul>
+                        </div>
+
                       </React.Fragment>
                     );
                   }}
@@ -328,11 +316,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                     target="_blank"
                     rel="noopener noreferrer"
                     className={`
-                    flex items-center py-2 px-3 rounded-lg transition-colors duration-200
-                  text-bodydark1 hover:bg-graydark dark:hover:bg-meta-4 gap-4`}
+                          flex items-center py-2 ${isOpen ? 'px-3 gap-4' : 'px-2 gap-0'} rounded-lg 
+                          transition-colors duration-200 text-bodydark1 hover:bg-graydark dark:hover:bg-meta-4
+                          ${!isOpen ? 'w-[44px] justify-center' : ''}
+                        `}
                   >
-                    <img src={Smart_Inv} className="w-5" />
-                    Smart Inventory
+                    <img src={Smart_Inv} className="w-5" alt="Smart Inventory" />
+                    {isOpen && <span className="whitespace-nowrap">Smart Inventory</span>}
                   </NavLink>
                 </li>
                 <SideBarItem icon={KML} label="Filter GP Points" isOpen={isOpen} isActive={pathname.includes('gp-points-filter')} path='/gp-points-filter' />
@@ -345,12 +335,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                         <NavLink
                           to="#"
                           className={`
-                        flex items-center justify-between py-2 px-3 rounded-lg transition-colors duration-200 text-bodydark1
-                        ${pathname.includes('managementlist')
+                              flex items-center justify-between py-2 ${isOpen ? 'px-3' : 'px-2'} rounded-lg transition-colors duration-200 text-bodydark1
+                              ${pathname.includes('managementlist')
                               ? 'bg-graydark dark:bg-meta-4'
-                              : 'hover:bg-graydark dark:hover:bg-meta-4'
-                            }
-                      `}
+                              : 'hover:bg-graydark dark:hover:bg-meta-4'}
+                              ${!isOpen ? 'w-[44px]' : 'w-full'}
+                            `}
                           onClick={(e) => {
                             e.preventDefault();
                             sidebarExpanded
@@ -359,11 +349,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                           }}
                         >
                           {/* Icon + Label */}
-                          <div className="flex items-center gap-3">
-                            <div className="min-w-[24px] flex justify-center">
+                          <div className={`flex items-center ${isOpen ? 'gap-3' : 'gap-0'} w-full`}>
+                            <div className="min-w-[20px] flex justify-center">
                               <img src={TableIcon} alt="ManagementList" className="w-5 h-5 object-contain" />
                             </div>
-                            {isOpen && <span>ManagementList</span>}
+                            {isOpen && <span className='whitespace-nowrap'>ManagementList</span>}
                           </div>
 
                           {isOpen && (
@@ -373,40 +363,39 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                           )}
                         </NavLink>
 
-                        {isOpen && (
-                          <div
-                            className={`translate transform overflow-hidden ${!open && 'hidden'}`}
-                          >
-                            <ul className="space-y-2 mb-5.5 mt-4 flex flex-col gap-2.5 pl-6">
-                              <li>
-                                <NavLink
-                                  to="/managementlist/companies"
-                                  className={({ isActive }) =>
-                                    'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white ' +
-                                    (isActive && '!text-white')
-                                  }
-                                >
-                                  <Building size={16} className="min-w-[16px]" />
-                                  Companies
-                                </NavLink>
-                              </li>
-                              <li>
-                                <NavLink
-                                  to="/managementlist/users"
-                                  className={({ isActive }) =>
-                                    'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white ' +
-                                    (isActive ? '!text-white' : '')
-                                  }
 
-                                >
-                                  <User2Icon size={16} className="min-w-[16px]" />
-                                  Users
-                                </NavLink>
-                              </li>
+                        <div
+                          className={`transform overflow-hidden transition-all ${!open && 'hidden'}`}
+                        >
+                          <ul className="space-y-2 mt-4 flex flex-col gap-2.5 pl-6">
+                            <li>
+                              <NavLink
+                                to="/managementlist/companies"
+                                className={({ isActive }) =>
+                                  `group relative flex items-center gap-2.5 rounded-md px-2 py-1 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white 
+                                      ${isActive ? '!text-white' : ''}`
+                                }
+                              >
+                                <Building size={16} className="min-w-[16px]" />
+                                <span className={isOpen ? '' : 'hidden'}>Companies</span>
+                              </NavLink>
+                            </li>
+                            <li>
+                              <NavLink
+                                to="/managementlist/users"
+                                className={({ isActive }) =>
+                                  `group relative flex items-center gap-2.5 rounded-md px-2 py-1 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white 
+                                      ${isActive ? '!text-white' : ''}`
+                                }
+                              >
+                                <User2Icon size={16} className="min-w-[16px]" />
+                                <span className={isOpen ? '' : 'hidden'}>Users</span>
+                              </NavLink>
+                            </li>
 
-                            </ul>
-                          </div>
-                        )}
+                          </ul>
+                        </div>
+
                       </React.Fragment>
                     );
                   }}

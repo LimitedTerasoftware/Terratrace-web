@@ -84,7 +84,7 @@ const chartData = data.dailyDistances.map(day => ({
   };
 
   return (
-    <div className="bg-white rounded-b-xl shadow-sm border border-t-0 p-6">
+    <div className="bg-white rounded-b-xl shadow-sm border border-t-0 p-1">
       <div className="mb-6">
         <h3 className="text-xl font-semibold text-gray-900">Daily Performance Worked</h3>
         <p className="text-sm text-gray-600 mt-1">
@@ -95,7 +95,7 @@ const chartData = data.dailyDistances.map(day => ({
       
       <div style={{ width: '100%', height: 500 }}>
         <ResponsiveContainer>
-          <ComposedChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+          <ComposedChart data={chartData} margin={{ top: 5, right: 0, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
             <XAxis 
               dataKey="date" 
