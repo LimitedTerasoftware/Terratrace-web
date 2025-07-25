@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import Select, { SingleValue } from "react-select";
 import ResponsivePagination from "./ResponsivePagination";
 import BsnlActionsDropdown from "./BsnlActionsDropdown";
+import { hasViewOnlyAccess } from "../../utils/accessControl";
 
 interface Hoto{
   id: string;
@@ -127,6 +128,7 @@ type StatusOption = {
 const HotoSurvey: React.FC = () => {
   const BASEURL = import.meta.env.VITE_API_BASE;
   const location = useLocation();
+  const viewOnly = hasViewOnlyAccess();
   const [data, setData] = useState<Hoto[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -714,12 +716,14 @@ const handleFilterChange = (newState: string | null, newDistrict: string | null,
           </button>
 
           {/* Export Button */}
+          {!viewOnly &&
           <button 
             onClick={exportExcel}
             className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap"
           >
             Export
           </button>
+          }
         </div>
       </div>
 

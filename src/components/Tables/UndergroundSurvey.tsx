@@ -20,6 +20,7 @@ import {ChartBar, CheckCircle, Download, EyeIcon, FolderOpen, Loader, MapPinIcon
 import { DepthDataPoint } from "../../types/survey";
 import IndexChart from "../DepthChart";
 import MachineDataTable from "../DepthChart/MachineData";
+import { hasViewOnlyAccess } from "../../utils/accessControl";
 
 
 interface UndergroundSurvey {
@@ -96,6 +97,7 @@ type StatusOption = {
 const UndergroundSurvey: React.FC = () => {
   const BASEURL = import.meta.env.VITE_API_BASE;
   const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
+  const viewOnly = hasViewOnlyAccess();
   const location = useLocation();
   const [data, setData] = useState<UndergroundSurvey[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -898,44 +900,42 @@ return (
           </button>
 
           {/* Export Button */}
-          <button
-            onClick={exportExcel}
-            className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
-          >
-            <SheetIcon className="h-4 w-4 text-green-600"/>
-            Excel
-          </button>
-          <button
-            onClick={handleGenerateKML}
-            className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap"
-          >
-            
-           KML
-          </button>
-        
-            <button
-            onClick={()=>handlePreview(0)}
-            className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
-          >
-            <EyeIcon className="h-4 w-4 text-green-600"/>
-           Preview
-          </button>
-             <button
-            onClick={()=>handlePreview(1)}
-            disabled={isExporting}
-            className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          > {isExporting ? (
-                <>
-                  <Loader className="h-4 w-4 animate-spin" />
-                  Exporting...
-                </>
-              ) : (
-                <>
-                <Download className="h-4 w-4" />
-                  Export Selected Media
-                </>
-              )}
-          </button>
+          {!viewOnly &&
+          <><button
+                  onClick={exportExcel}
+                  className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
+                >
+                  <SheetIcon className="h-4 w-4 text-green-600" />
+                  Excel
+                </button><button
+                  onClick={handleGenerateKML}
+                  className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap"
+                >
+
+                    KML
+                  </button><button
+                    onClick={() => handlePreview(0)}
+                    className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
+                  >
+                    <EyeIcon className="h-4 w-4 text-green-600" />
+                    Preview
+                  </button><button
+                    onClick={() => handlePreview(1)}
+                    disabled={isExporting}
+                    className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  > {isExporting ? (
+                    <>
+                      <Loader className="h-4 w-4 animate-spin" />
+                      Exporting...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4" />
+                      Export Selected Media
+                    </>
+                  )}
+                  </button></>
+                  }
            
         </div>
       </div>
