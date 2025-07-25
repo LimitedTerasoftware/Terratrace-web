@@ -51,29 +51,40 @@ export const PerformanceCard: React.FC<PerformanceCardProps> = ({ data,depthPena
         </div>
       </div>
 
-        <div className="mt-6 grid grid-cols-4 gap-4">
+        <div className="mt-6 grid grid-cols-5 gap-4">
         <div className="text-center p-3 bg-white/50 rounded-lg relative">
           <div className="text-sm text-gray-600">Machine Rent</div>
           <div className="text-lg font-semibold text-gray-900">
             {formatCurrency(data.machineRent)}
           </div>
-          <div className="absolute -right-3 top-1/2 transform -translate-y-1/2 text-2xl font-bold text-gray-400">
-            {data.monthlyPenalty ? '-' : '+'}
+          <div className="absolute -right-4 top-1/2 transform -translate-y-1/2 text-2xl font-bold text-gray-400">
+            +
           </div>
         </div>
-        
+       
         <div className="text-center p-3 bg-white/50 rounded-lg relative">
           <div className="text-sm text-gray-600">
-            {data.monthlyPenalty ? 'Output Penalty' : 'Output Incentive'}
+            Output Incentive
           </div>
-          <div className={`text-lg font-semibold ${
-            data.monthlyPenalty ? 'text-red-600' : 'text-green-600'
-          }`}>
+          <div className={`text-lg font-semibold text-green-600`}>
+            {data.monthlyIncentive ? `+${formatCurrency(data.monthlyIncentive)}`
+                : '₹0'
+            }
+          </div>
+          <div className="absolute -right-3 top-1/2 transform -translate-y-1/2 text-2xl font-bold text-gray-400">
+             -
+          </div>
+        </div>
+       
+       
+        <div className="text-center p-3 bg-white/50 rounded-lg relative">
+          <div className="text-sm text-gray-600">
+            Output Penalty
+          </div>
+          <div className={`text-lg font-semibold text-red-600`}>
             {data.monthlyPenalty 
               ? `-${formatCurrency(data.monthlyPenalty)}` 
-              : data.monthlyIncentive 
-                ? `+${formatCurrency(data.monthlyIncentive)}`
-                : '₹0'
+              : '₹0'
             }
           </div>
           <div className="absolute -right-3 top-1/2 transform -translate-y-1/2 text-2xl font-bold text-gray-400">

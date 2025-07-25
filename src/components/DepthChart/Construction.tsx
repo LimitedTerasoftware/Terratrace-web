@@ -4,6 +4,7 @@ import Report from './UGConst';
 import { ToastContainer } from 'react-toastify';
 import Breadcrumb from '../Breadcrumbs/Breadcrumb';
 import { SheetIcon } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 
 interface StatesResponse {
     success: boolean;
@@ -34,6 +35,8 @@ function Construction() {
     const [todate, setToDate] = useState<string>('');
     const [activeTab, setActiveTab] = useState<'UG'>('UG');
     const [excel,setExcel]=useState<boolean>(false);
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [filtersReady, setFiltersReady] = useState(false);
 
 
 
@@ -93,7 +96,7 @@ function Construction() {
 
     const fetchBlock = async () => {
         try {
-            if (selectedDistrict === '') return;
+            if (!selectedDistrict) return;
             setLoadingBlock(true);
 
             const response = await fetch(`${BASEURL}/blocksdata?district_code=${selectedDistrict}`);
@@ -113,7 +116,7 @@ function Construction() {
             fetchDistricts(selectedState);
         } else {
             setDistricts([]);
-            setSelectedDistrict('');
+            // setSelectedDistrict('');
         }
     }, [selectedState, states]);
 
@@ -121,6 +124,35 @@ function Construction() {
         fetchBlock();
     }, [selectedDistrict]);
 
+    useEffect(() => {
+    const state_id = searchParams.get('state_id') || null;
+    const district_id = searchParams.get('district_id') || null;
+    const block_id = searchParams.get('block_id') || null;
+    const status =searchParams.get('status') || null;
+    const from_date =searchParams.get('from_date') ||'' ;
+    const to_date =searchParams.get('to_date') || "";
+    const search =searchParams.get('search') || "";
+
+    setSelectedState(state_id);
+    setSelectedDistrict(district_id);
+    setSelectedBlock(block_id);
+    setSelectedStatus(status !== null ? Number(status) : null);
+    setFromDate(from_date);
+    setToDate(to_date);
+    setGlobalSearch(search)
+    setFiltersReady(true);
+    }, []); 
+    const handleFilterChange = (newState: string | null, newDistrict: string | null,newBlock:string|null,status:number|null,from_date:string|null,to_date:string|null,search:string|null) => {
+    const params: Record<string, string> = {};
+    if (newState) params.state_id = newState;
+    if(newDistrict) params.district_id = newDistrict;
+    if(newBlock) params.block_id = newBlock;
+    if(status) params.status=String(status);
+    if(from_date) params.from_date = from_date;
+    if(to_date) params.to_date = to_date;
+    if(search) params.search = search;
+    setSearchParams(params);
+    };
     const clearFilters = () => {
         setSelectedState(null);
         setSelectedDistrict(null);
@@ -129,6 +161,8 @@ function Construction() {
         setGlobalSearch('');
         setFromDate('');
         setToDate('');
+        setSearchParams({}); 
+
     };
     return (
         <div className="sm:p-2 lg:p-4 min-h-screen">
@@ -142,7 +176,8 @@ function Construction() {
                     <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
                         <select
                             value={selectedState || ''}
-                            onChange={(e) => setSelectedState(e.target.value || '')}
+                            onChange={(e) => {setSelectedState(e.target.value || '');
+                                             handleFilterChange(e.target.value ,selectedDistrict,selectedBlock,selectedStatus,fromdate,todate,globalsearch)}}
                             disabled={loadingStates}
                             className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
                         >
@@ -171,7 +206,10 @@ function Construction() {
                     <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
                         <select
                             value={selectedDistrict || ''}
-                            onChange={(e) => setSelectedDistrict(e.target.value || '')}
+                            onChange={(e) => {setSelectedDistrict(e.target.value || '');
+                                                handleFilterChange(selectedState,e.target.value,selectedBlock,selectedStatus,fromdate,todate,globalsearch)
+
+                            }}
                             disabled={!selectedState}
                             className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
                         >
@@ -200,7 +238,10 @@ function Construction() {
                     <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
                         <select
                             value={selectedBlock || ''}
-                            onChange={(e) => setSelectedBlock(e.target.value)}
+                            onChange={(e) => {setSelectedBlock(e.target.value);
+                                                handleFilterChange(selectedState,selectedDistrict,e.target.value ,selectedStatus,fromdate,todate,globalsearch)
+
+                            }}
                             disabled={!selectedDistrict}
                             className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
                         >
@@ -224,6 +265,8 @@ function Construction() {
                             value={selectedStatus !== null ? selectedStatus : ''}
                             onChange={(e) => {
                                 setSelectedStatus(e.target.value !== '' ? Number(e.target.value) : null);
+                                handleFilterChange(selectedState,selectedDistrict,selectedBlock ,Number(e.target.value),fromdate,todate,globalsearch)
+
                             }}
                             className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                         >
@@ -248,6 +291,7 @@ function Construction() {
                             value={fromdate}
                             onChange={(e) => {
                                 setFromDate(e.target.value);
+                                handleFilterChange(selectedState,selectedDistrict,selectedBlock ,selectedStatus,e.target.value,todate,globalsearch)
 
                             }}
                             className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
@@ -261,8 +305,7 @@ function Construction() {
                             value={todate}
                             onChange={(e) => {
                                 setToDate(e.target.value);
-
-                            }}
+                                handleFilterChange(selectedState,selectedDistrict,selectedBlock ,selectedStatus,fromdate,e.target.value,globalsearch)}}
                             className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                             placeholder="To Date"
                         />
@@ -281,6 +324,8 @@ function Construction() {
                             value={globalsearch}
                             onChange={(e) => {
                                 setGlobalSearch(e.target.value);
+                                handleFilterChange(selectedState,selectedDistrict,selectedBlock ,selectedStatus,fromdate,todate,e.target.value)
+
                             }}
 
                             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md bg-white text-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
@@ -332,7 +377,7 @@ function Construction() {
                     selectedStatus,
                     fromdate,
                     todate,
-                    globalsearch,excel,
+                    globalsearch,excel,filtersReady
                     
                 }}
                 Onexcel={()=>setExcel(false)}

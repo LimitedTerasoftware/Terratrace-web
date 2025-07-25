@@ -74,16 +74,21 @@ export const BreakdownPanel: React.FC<BreakdownPanelProps> = ({ data ,depthPenal
               <span>Base Rent:</span>
               <span className="font-medium">{formatCurrency(data.machineRent)}</span>
             </div>
-            <div className="flex justify-between">
-              <span>Distance Penalty/Incentive:</span>
-              <span className={`font-medium ${
-                data.monthlyPenalty ? 'text-red-600' : 'text-green-600'
-              }`}>
-                {data.monthlyPenalty 
-                  ? `-${formatCurrency(data.monthlyPenalty)}` 
-                  : data.monthlyIncentive 
+             <div className="flex justify-between">
+              <span>Output Incentive:</span>
+              <span className={`font-medium text-green-600`}>
+                {data.monthlyIncentive 
                     ? `+${formatCurrency(data.monthlyIncentive)}`
                     : '₹0'
+                }
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>Output Penalty:</span>
+              <span className={`font-medium text-red-600`}>
+                {data.monthlyPenalty 
+                  ? `-${formatCurrency(data.monthlyPenalty)}` 
+                   : '₹0'
                 }
               </span>
             </div>
@@ -109,7 +114,7 @@ export const BreakdownPanel: React.FC<BreakdownPanelProps> = ({ data ,depthPenal
           <div className="bg-red-50 rounded-lg p-4 border border-red-200">
             <div className="flex items-center gap-2 mb-3">
               <AlertTriangle className="w-5 h-5 text-red-600" />
-              <h4 className="font-semibold text-red-800">Distance Penalty Breakdown</h4>
+              <h4 className="font-semibold text-red-800">Output Penalty Breakdown</h4>
             </div>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
@@ -139,7 +144,7 @@ export const BreakdownPanel: React.FC<BreakdownPanelProps> = ({ data ,depthPenal
           <div className="bg-green-50 rounded-lg p-4 border border-green-200">
             <div className="flex items-center gap-2 mb-3">
               <Award className="w-5 h-5 text-green-600" />
-              <h4 className="font-semibold text-green-800">Distance Incentive Breakdown</h4>
+              <h4 className="font-semibold text-green-800">Output Incentive Breakdown</h4>
             </div>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">

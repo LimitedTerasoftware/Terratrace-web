@@ -1,7 +1,7 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer';
 import { MachineData, DepthPenalties } from '../../../types/machine';
-import { formatCurrency, formatDistance, calculateTotalNetCost, calculateDepthPenaltyBreakdown } from '../../../utils/calculations';
+import { formatCurrency, formatDistance, calculateTotalNetCost, calculateDepthPenaltyBreakdown, calculateIncentiveBreakdown } from '../../../utils/calculations';
 import { FilterState } from '../../../types/survey';
 import teralogo from '../../../images/logo/Teraimage.png';
 import { format } from 'date-fns';
@@ -86,6 +86,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#e2e8f0',
+    flexShrink: 1,   
   },
   summaryLabel: {
     fontSize: 10,
@@ -101,11 +102,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     color: '#059669',
+    flexWrap:'nowrap'
   },
   summaryValueRed: {
     fontSize: 14,
     fontWeight: 'bold',
     color: '#dc2626',
+    flexWrap:'nowrap'
   },
   table: {
     // display: 'table',
@@ -293,6 +296,8 @@ export const PDFDocument: React.FC<PDFDocumentProps> = ({ data, filters, depthPe
   const performanceStatus = getPerformanceStatus(data.monthlyTotalDistance, hasDepthPenalties);
   const totalNetCost = depthPenalties ? calculateTotalNetCost(data, depthPenalties) : data.netCost;
   const depthBreakdown = depthPenalties ? calculateDepthPenaltyBreakdown(depthPenalties) : null;
+  const incentiveBreakdown = calculateIncentiveBreakdown(data.monthlyTotalDistance);
+  
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
@@ -333,17 +338,28 @@ export const PDFDocument: React.FC<PDFDocumentProps> = ({ data, filters, depthPe
             <Text style={styles.summaryLabel}>Machine Rent</Text>
             <Text style={styles.summaryValue}>{formatCurrency(data.machineRent)}</Text>
           </View>
-          <Text style={[styles.summaryValue, { fontSize: 24, color: '#6b7280', marginHorizontal: 10 }]}>{data.monthlyPenalty ? '-' : '+'}</Text>
-          <View style={styles.summaryCard}>
+          <Text style={[styles.summaryValue, { fontSize: 24, color: '#6b7280', marginHorizontal: 10 }]}> +</Text>
+            <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>
-              {data.monthlyPenalty ? 'Output Penalty' : 'Output Incentive'}
+              Output Incentive
             </Text>
-            <Text style={data.monthlyPenalty ? styles.summaryValueRed : styles.summaryValueGreen}>
-              {data.monthlyPenalty 
-                ? formatCurrency(data.monthlyPenalty)
-                : data.monthlyIncentive 
+            <Text style={styles.summaryValueGreen}>
+              {data.monthlyIncentive 
                   ? formatCurrency(data.monthlyIncentive)
                   : '₹0'
+              }
+            </Text>
+          </View>
+          <Text style={[styles.summaryValue, { fontSize: 24, color: '#6b7280', marginHorizontal: 10 }]}>-</Text>
+
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryLabel}>
+              Output Penalty
+            </Text>
+            <Text style={styles.summaryValueRed}>
+              {data.monthlyPenalty 
+                ? formatCurrency(data.monthlyPenalty)
+                : '₹0'
               }
             </Text>
           </View>
@@ -630,6 +646,39 @@ export const PDFDocument: React.FC<PDFDocumentProps> = ({ data, filters, depthPe
                   <View style={styles.breakdownRow}>
                     <Text style={styles.breakdownLabel}>Total Depth Penalty:</Text>
                     <Text style={[styles.breakdownValue, { color: '#dc2626' }]}>{formatCurrency(depthBreakdown.totalDepthPenalty)}</Text>
+                  </View>
+                </>
+              )}
+              
+            </View>
+          </View>
+        )}
+
+        {/* Incentive Breakdown Section */}
+        {(incentiveBreakdown) && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Output Incentive Breakdown</Text>
+            <View style={styles.breakdownSection}>
+              {data.monthlyIncentive && (
+                <>
+                  <View style={styles.breakdownRow}>
+                    <Text style={styles.breakdownLabel}>Excess distance:</Text>
+                    <Text style={styles.breakdownValue}>{incentiveBreakdown.excess} km</Text>
+                  </View>
+                  <View style={styles.breakdownRow}>
+                    <Text style={styles.breakdownLabel}>Incentive segments (250m each):</Text>
+                    <Text style={styles.breakdownValue}>{incentiveBreakdown.segments}</Text>
+                  </View>
+                  <View style={styles.breakdownRow}>
+                    <Text style={styles.breakdownLabel}>Rate per segment:</Text>
+                    <Text style={styles.breakdownValue}>{incentiveBreakdown.ratePerSegment}</Text>
+                  </View>
+                
+                  <View style={styles.breakdownRow}>
+                    <Text style={styles.breakdownLabel}>Total Incentive:</Text>
+                    <Text style={[styles.breakdownValue, { color: '#008000' }]}>
+                      {formatCurrency(incentiveBreakdown.totalIncentive)}
+                      </Text>
                   </View>
                 </>
               )}

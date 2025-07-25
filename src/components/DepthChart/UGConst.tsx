@@ -2,7 +2,7 @@ import axios from 'axios';
 import { Search } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react'
 import DataTable, { TableColumn } from 'react-data-table-component';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { UGConstructionSurveyData } from '../../types/survey';
 import moment from 'moment';
 import * as XLSX from "xlsx";
@@ -16,9 +16,8 @@ interface ReportProps {
     fromdate: string;
     todate: string;
     globalsearch: string;
-    excel: boolean
-
-  };
+    excel: boolean;
+    filtersReady:boolean};
   Onexcel:()=>void;
 }
 const BASEURL = import.meta.env.VITE_API_BASE;
@@ -29,9 +28,11 @@ const Report: React.FC<ReportProps> = ({ Data,Onexcel }) => {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<UGConstructionSurveyData[]>([]);
   const navigate = useNavigate();
+  
   useEffect(() => {
     const fetchSurveyData = async () => {
       try {
+
         setLoading(true);
         setError('');
         const params: any = {};
@@ -57,11 +58,11 @@ const Report: React.FC<ReportProps> = ({ Data,Onexcel }) => {
         setLoading(false);
       }
     };
-
+    if(!Data.filtersReady) return;
     fetchSurveyData();
-  }, [Data.selectedState, Data.selectedDistrict, Data.selectedBlock, Data.fromdate, Data.todate]);
+  }, [Data.selectedState, Data.selectedDistrict, Data.selectedBlock, Data.fromdate, Data.todate,Data.filtersReady]);
 
-
+ 
   const columns: TableColumn<UGConstructionSurveyData>[] = [
     {
       name: "Actions",
