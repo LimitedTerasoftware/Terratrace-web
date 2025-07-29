@@ -4,12 +4,11 @@ import { FileList } from './FileList';
 import { FilterPanel } from './FilterPanel';
 import { AlertCircle, CheckCircle, Upload, X, Menu, MapPin } from 'lucide-react';
 import axios from 'axios';
-import  GoogleMap  from './MapComponent';
+import  {GoogleMap}  from './MapViewer';
 import { PlacemarkList } from './PlacemarkList';
 import { PLACEMARK_CATEGORIES, processApiData } from './PlaceMark';
-import {KMZFile, FilterState, ViewState,ApiPlacemark, ProcessedPlacemark, PlacemarkCategory, PhysicalSurveyData } from '../../types/kmz';
+import {KMZFile, FilterState, ViewState,ApiPlacemark, ProcessedPlacemark, PlacemarkCategory, PhysicalSurveyData, EventTypeConfig, EventTypeCounts, PhysicalSurveyApiResponse } from '../../types/kmz';
 import FileUploadModal from './Modalpopup';
-import GoogleMapsLoader from '../hooks/googleMapsLoader';
 
 interface NotifierState {
   type: 'success' | 'error';
@@ -17,7 +16,6 @@ interface NotifierState {
   visible: boolean;
 }
 const BASEURL = import.meta.env.VITE_TraceAPI_URL;
-const GOOGLE_MAPS_API_KEY =import.meta.env.VITE_GOOGLE_MAPS_API_KEY; 
 
 function SmartInventory() {
   const [isModalOpen, setModalOpen] = useState(false);
@@ -37,31 +35,8 @@ function SmartInventory() {
   const [placemarkCategories, setPlacemarkCategories] = useState<PlacemarkCategory[]>([]);
   const [visibleCategories, setVisibleCategories] = useState<Set<string>>(new Set());
   const [highlightedPlacemark, setHighlightedPlacemark] = useState<ProcessedPlacemark>();
-  const [isMapReady, setIsMapReady] = useState(false);
 
-  // Get Physical Survey Data by filters
-
-function transformPhysicalSurveyData(data: PhysicalSurveyData[]): ProcessedPlacemark[] {
-  return data
-    .map((item, index) => {
-      const lat = parseFloat(item.latitude);
-      const lng = parseFloat(item.longitude);
-
-      if (isNaN(lat) || isNaN(lng)) return null; // skip invalid
-
-      return {
-        id: `physical-${item.id}`,
-        name: item.event_type || `Survey Point ${index + 1}`,
-        category: item.event_type?.toUpperCase() || 'PHYSICAL',
-        type: 'point',
-        coordinates: { lat, lng },
-      };
-    })
-    .filter((placemark): placemark is ProcessedPlacemark => placemark !== null);
-}
-
-
-    useEffect(() => {
+   useEffect(() => {
     const PhysicalData = async () => {
       try {
         if(!filters.state || !filters.division || !filters.block) return;
@@ -72,12 +47,13 @@ function transformPhysicalSurveyData(data: PhysicalSurveyData[]): ProcessedPlace
         if (filters.block) params.block_id = filters.block;
 
         const Response = await axios.get(`${BASEURL}/get-physical-survey`, { params });
-
+        const result: PhysicalSurveyApiResponse = Response.data;
+ 
         if (Response.status === 200 || Response.status === 201) {
-          if (Response.data.data.length > 0) {
-             setPhysicalSurvey(Response.data.data); 
-          }
-        }
+          if (result.data.length > 0) {
+             setPhysicalSurvey(result.data); 
+         
+            }}
       } catch (error) {
         console.error('Failed to load files:', error);
         showNotification('error', 'Failed to load files');
@@ -88,74 +64,69 @@ function transformPhysicalSurveyData(data: PhysicalSurveyData[]): ProcessedPlace
     PhysicalData();
   }, [filters, searchQuery]);
 
-    useEffect(() => {
-    // Load Google Maps first
-    GoogleMapsLoader.getInstance()
-      .loadGoogleMaps(GOOGLE_MAPS_API_KEY)
-      .then(() => setIsMapReady(true))
-      .catch((err) => console.error('Map load error', err));
-  }, []);
-  // Load saved files on app start
-  // useEffect(() => {
-  //   const loadFiles = async () => {
-  //     try {
-  //       const params: any = {};
-  //       if (filters.state) params.state_code = filters.state;
-  //       if (filters.division) params.dtcode = filters.division;
-  //       if (filters.block) params.blk_code = filters.block;
-  //       if (searchQuery) params.filename = searchQuery;
 
-  //       const savedFiles = await axios.get(`${BASEURL}/get-external-files`, { params });
-  //       if (savedFiles.status === 200 || savedFiles.status === 201) {
-  //         setFiles(savedFiles.data.data);
-  //         if (savedFiles.data.data.length > 0) {
-  //           setSelectedFiles([savedFiles.data.data[0][0]]);
-  //         }
-  //       }
-  //     } catch (error) {
-  //       console.error('Failed to load files:', error);
-  //       showNotification('error', 'Failed to load files');
-  //     }
-  //   };
-  //   loadFiles();
-  // }, [filters, searchQuery]);
+
+  // Load saved files on app start
+  useEffect(() => {
+    const loadFiles = async () => {
+      try {
+        const params: any = {};
+        if (filters.state) params.state_code = filters.state;
+        if (filters.division) params.dtcode = filters.division;
+        if (filters.block) params.blk_code = filters.block;
+        if (searchQuery) params.filename = searchQuery;
+
+        const savedFiles = await axios.get(`${BASEURL}/get-external-files`, { params });
+        if (savedFiles.status === 200 || savedFiles.status === 201) {
+          setFiles(savedFiles.data.data);
+          if (savedFiles.data.data.length > 0) {
+            setSelectedFiles([savedFiles.data.data[0][0]]);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load files:', error);
+        showNotification('error', 'Failed to load files');
+      }
+    };
+    loadFiles();
+  }, [filters, searchQuery]);
 
   // // Load placemark data when files are selected
-  // useEffect(() => {
-  //   const handleParsed = async () => {
-  //     if (selectedFiles.length > 0) {
-  //       try {
-  //         const params: any = {};
-  //         if (selectedFiles[0].filepath) params.filepath = selectedFiles[0].filepath;
-  //         if (selectedFiles[0].file_type) params.fileType = selectedFiles[0].file_type;
+  useEffect(() => {
+    const handleParsed = async () => {
+      if (selectedFiles.length > 0) {
+        try {
+          const params: any = {};
+          if (selectedFiles[0].filepath) params.filepath = selectedFiles[0].filepath;
+          if (selectedFiles[0].file_type) params.fileType = selectedFiles[0].file_type;
 
-  //         const resp = await axios.get(`${BASEURL}/preview-file`, { params });
-  //         if (resp.status === 200 || resp.status === 201) {
-  //           const apiData: ApiPlacemark = resp.data.data.parsed_data;
-  //           const { placemarks, categories } = processApiData(apiData);
+          const resp = await axios.get(`${BASEURL}/preview-file`, { params });
+          if (resp.status === 200 || resp.status === 201) {
+            const apiData: ApiPlacemark = resp.data.data.parsed_data;
+            const { placemarks, categories } = processApiData(apiData);
             
-  //           setProcessedPlacemarks(placemarks);
-  //           setPlacemarkCategories(categories);
+            setProcessedPlacemarks(placemarks);
+            setPlacemarkCategories(categories);
             
-  //           // Initially show all categories
-  //           const allCategoryIds = new Set(categories.map(cat => cat.id));
-  //           setVisibleCategories(allCategoryIds);
+            // Initially show all categories
+            const allCategoryIds = new Set(categories.map(cat => cat.id));
+            setVisibleCategories(allCategoryIds);
             
-  //         } else {
-  //           showNotification("error", resp.data.message);
-  //         }
-  //       } catch (error) {
-  //         console.error('Failed to show preview:', error);
-  //         showNotification("error", 'Failed to show preview');
-  //       }
-  //     } else {
-  //       setProcessedPlacemarks([]);
-  //       setPlacemarkCategories([]);
-  //       setVisibleCategories(new Set());
-  //     }
-  //   };
-  //   handleParsed();
-  // }, [selectedFiles]);
+          } else {
+            showNotification("error", resp.data.message);
+          }
+        } catch (error) {
+          console.error('Failed to show preview:', error);
+          showNotification("error", 'Failed to show preview');
+        }
+      } else {
+        setProcessedPlacemarks([]);
+        setPlacemarkCategories([]);
+        setVisibleCategories(new Set());
+      }
+    };
+    handleParsed();
+  }, [selectedFiles]);
 
   // Handle file upload
   const handleFileUpload = async (
@@ -366,6 +337,7 @@ function transformPhysicalSurveyData(data: PhysicalSurveyData[]): ProcessedPlace
             onPlacemarkClick={handlePlacemarkClick}
             highlightedPlacemark={highlightedPlacemark}
           />
+ 
       </Sidebar>
 
      
@@ -393,19 +365,15 @@ function transformPhysicalSurveyData(data: PhysicalSurveyData[]): ProcessedPlace
         </div> */}
 
         {/* Map */}
-        {/* <GoogleMap
+        <GoogleMap
           placemarks={processedPlacemarks}
           categories={placemarkCategories}
           visibleCategories={visibleCategories}
           highlightedPlacemark={highlightedPlacemark}
           onPlacemarkClick={handlePlacemarkClick}
           className="w-full h-full"
-        /> */}
-         {isMapReady ? (
-        <GoogleMap points={PhysicalSurvey} />
-          ) : (
-            <p>Loading map...</p>
-          )}
+        />
+       
 
         {/* Stats Overlay */}
         {processedPlacemarks.length > 0 && (

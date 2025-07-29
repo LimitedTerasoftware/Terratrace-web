@@ -105,3 +105,16 @@ export interface PhysicalSurveyData{
     longitude: string,
     event_type: string
 }
+export interface PhysicalSurveyApiResponse {
+  status: boolean;
+  data: PhysicalSurveyData[];
+}
+export interface EventTypeConfig {
+  color: string;
+  icon: string;
+  visible: boolean;
+}
+
+export interface EventTypeCounts {
+  [key: string]: number;
+}
