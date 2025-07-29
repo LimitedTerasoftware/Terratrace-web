@@ -14,7 +14,14 @@ export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string 
   'KILOMETERSTONE': { color: '#85C1E9', icon: '📍' },
   'FPOI': { color: '#F8C471', icon: '⭐' },
   'JOINTCHAMBER': { color: '#82E0AA', icon: '🔗' },
-  'ROUTEINDICATOR': { color: '#F1948A', icon: '🧭' }
+  'ROUTEINDICATOR': { color: '#F1948A', icon: '🧭' },
+  'SURVEYSTART': { color: '#10B981', icon: '🎯'},
+  'DEPTH': { color: '#3B82F6', icon: '📏'},
+  "MANHOLES": { color: '#06B6D4', icon: '🕳️'},
+  "STARTPIT": { color: '#14B8A6', icon: '🕳️' },
+  "ENDPIT": { color: '#DC2626', icon: '🏁'},
+  "ENDSURVEY": { color: '#10B981', icon: '🎯'},
+  "HOLDSURVEY": { color: '#a93226', icon: '⏸️'},
 };
 
 export function processApiData(apiData: ApiPlacemark): {

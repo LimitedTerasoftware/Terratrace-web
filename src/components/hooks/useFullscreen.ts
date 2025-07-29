@@ -58,14 +58,14 @@ export class MediaExportService {
     switch (item.event_type) {
       case "FPOI":
         if (item.fpoiUrl) {
-          addMediaFile(item.fpoiUrl, `fpoi_${item.id}.jpg`, 'image');
+          addMediaFile(item.fpoiUrl, `fpoi_${item.latitude}_${item.longitude}.jpg`, 'image');
         }
         break;
 
       case "SURVEYSTART":
         if (item.start_photos && item.start_photos.length > 0) {
           item.start_photos.forEach((photo, index) => {
-            addMediaFile(photo, `start_photo_${index + 1}_${item.id}.jpg`, 'image');
+            addMediaFile(photo, `start_photo_${index + 1}_${item.latitude}_${item.longitude}.jpg`, 'image');
           });
         }
         break;
@@ -73,7 +73,7 @@ export class MediaExportService {
       case "ENDSURVEY":
         if (item.end_photos && item.end_photos.length > 0) {
           item.end_photos.forEach((photo, index) => {
-            addMediaFile(photo, `end_photo_${index + 1}_${item.id}.jpg`, 'image');
+            addMediaFile(photo, `end_photo_${index + 1}_${item.latitude}_${item.longitude}.jpg`, 'image');
           });
         }
         break;
@@ -89,13 +89,13 @@ export class MediaExportService {
             const parsed = JSON.parse(item.routeIndicatorUrl);
             if (Array.isArray(parsed)) {
               parsed.forEach((url, index) => {
-                addMediaFile(url, `route_indicator_${item.id}_${index + 1}.jpg`, 'image');
+                addMediaFile(url, `route_indicator_${index + 1}_${item.latitude}_${item.longitude}.jpg`, 'image');
               });
             } else if (typeof parsed === 'string') {
-              addMediaFile(parsed, `route_indicator_${item.id}.jpg`, 'image');
+              addMediaFile(parsed, `route_indicator_${item.latitude}_${item.longitude}.jpg`, 'image');
             }
           } catch (e) {
-            addMediaFile(item.routeIndicatorUrl, `route_indicator_${item.id}.jpg`, 'image');
+            addMediaFile(item.routeIndicatorUrl, `route_indicator_${item.latitude}_${item.longitude}.jpg`, 'image');
           }
         }
         break;
@@ -103,22 +103,22 @@ export class MediaExportService {
 
       case "JOINTCHAMBER":
         if (item.jointChamberUrl) {
-          addMediaFile(item.jointChamberUrl, `joint_chamber_${item.id}.jpg`, 'image');
+          addMediaFile(item.jointChamberUrl, `joint_chamber_${item.latitude}_${item.longitude}.jpg`, 'image');
         }
         break;
 
       case "ROADCROSSING":
         if (item.road_crossing?.startPhoto) {
-          addMediaFile(item.road_crossing.startPhoto, `crossing_start_${item.id}.jpg`, 'image');
+          addMediaFile(item.road_crossing.startPhoto, `${item.road_crossing?.roadCrossing}_start_${item.latitude}_${item.longitude}.jpg`, 'image');
         }
         if (item.road_crossing?.endPhoto) {
-          addMediaFile(item.road_crossing.endPhoto, `crossing_end_${item.id}.jpg`, 'image');
+          addMediaFile(item.road_crossing.endPhoto, `${item.road_crossing?.roadCrossing}_end_${item.latitude}_${item.longitude}.jpg`, 'image');
         }
         break;
 
       case "KILOMETERSTONE":
         if (item.kmtStoneUrl) {
-          addMediaFile(item.kmtStoneUrl, `km_stone_${item.id}.jpg`, 'image');
+          addMediaFile(item.kmtStoneUrl, `km_stone_${item.latitude}_${item.longitude}.jpg`, 'image');
         }
         break;
 
@@ -129,7 +129,7 @@ export class MediaExportService {
             landmarkUrls
               .filter((url: string) => url && url.trim())
               .forEach((url: string, index: number) => {
-                addMediaFile(url, `landmark_${index + 1}_${item.id}.jpg`, 'image');
+                addMediaFile(url, `landmark_${index + 1}_${item.latitude}_${item.longitude}.jpg`, 'image');
               });
           } catch (error) {
             console.error('Error parsing landmark URLs:', error);
@@ -139,7 +139,7 @@ export class MediaExportService {
 
       case "FIBERTURN":
         if (item.fiberTurnUrl) {
-          addMediaFile(item.fiberTurnUrl, `fiber_turn_${item.id}.jpg`, 'image');
+          addMediaFile(item.fiberTurnUrl, `fiber_turn_${item.latitude}_${item.longitude}.jpg`, 'image');
         }
         break;
 
@@ -148,7 +148,7 @@ export class MediaExportService {
         const fallbackUrl = item.videoDetails?.videoUrl?.trim().replace(/^"|"$/g, "");
         const videoUrl = mainUrl || fallbackUrl;
         if (videoUrl) {
-          addMediaFile(videoUrl, `video_${item.id}.mp4`, 'video');
+          addMediaFile(videoUrl, `video_${item.videoDetails?.startLatitude}_${item.videoDetails?.startLongitude}_to_${item.videoDetails?.endLatitude}_${item.videoDetails?.endLongitude}.mp4`, 'video');
         }
         break;
     }

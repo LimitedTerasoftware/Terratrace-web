@@ -43,6 +43,13 @@ export interface UtilityFeaturesChecked {
 
 export interface VideoDetails {
   videoUrl?: string;
+  startLatitude?: number;
+  startLongitude?: number;
+  startTimeStamp?: number;
+  endLatitude?: number;
+  endLongitude?: number;
+  endTimeStamp?: number;
+
 }
 
 export interface UnderGroundSurveyData {

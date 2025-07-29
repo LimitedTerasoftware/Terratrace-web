@@ -8,18 +8,12 @@ import {
   flexRender,
   Row
 } from "@tanstack/react-table";
-import { FaEye, FaEdit, FaTrash, FaCheck, FaTimes } from "react-icons/fa";
 import { useNavigate, Link, useLocation, useSearchParams } from "react-router-dom";
-import ActionsDropdown from "./ActionsDropdown";
-import Select, { SingleValue } from "react-select";
 import ResponsivePagination from "./ResponsivePagination";
 import * as XLSX from "xlsx";
 import MapComponent from "./MapComponent";
 import { MediaExportService } from "../hooks/useFullscreen";
 import {ChartBar, CheckCircle, Download, EyeIcon, FolderOpen, Loader, MapPinIcon, SheetIcon, SquaresExcludeIcon } from "lucide-react";
-import { DepthDataPoint } from "../../types/survey";
-import IndexChart from "../DepthChart";
-import MachineDataTable from "../DepthChart/MachineData";
 import { hasViewOnlyAccess } from "../../utils/accessControl";
 
 
@@ -48,7 +42,8 @@ interface UndergroundSurvey {
   fullname: string,
   contact_no: number,
   startLocation:string,       
-  endLocation:string,        
+  endLocation:string,
+  cableType:string        
 }
 
 interface ApiResponse {
@@ -414,6 +409,7 @@ const UndergroundSurvey: React.FC = () => {
       { accessorKey: "block_name", header: "Block Name" },
       { accessorKey: "start_location_name", header: " Start GP Name" },
       { accessorKey: "end_location_name", header: "End GP Name" },
+      {accessorKey:"cableType",header:"Cable Type"},
       {
         accessorKey: "fullname",
         header: "Surveyor Name",
@@ -655,6 +651,7 @@ const exportExcel = async () => {
         "Survey ID": data.survey_id,
         "Company ID": data.company_id,
         "User ID": data.user_id,
+        "Cable Type":data.cableType,
         "Start GP Code": data.startGpCode,
         "Start GP Coordinates": data.startGpCoordinates,
         "Start GP Name": data.startGpName,

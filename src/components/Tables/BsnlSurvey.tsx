@@ -488,7 +488,7 @@ const BsnlSurvey: React.FC = () => {
     setFromDate('');
     setToDate('');
     setPage(1);
-     const currentTab = searchParams.get('tab') || 'defaultTab';
+     const currentTab = searchParams.get('tab') || 'bsnl';
      setSearchParams({
         tab: currentTab,
         page: '1',
@@ -496,7 +496,7 @@ const BsnlSurvey: React.FC = () => {
   };
 
   const handleFilterChange = (newState: string | null, newDistrict: string | null,newBlock:string|null,status:number|null,from_date:string|null,to_date:string|null,search:string|null,newPage = 1,) => {
-  const currentTab = searchParams.get('tab') || 'defaultTab';
+  const currentTab = searchParams.get('tab') || 'bsnl';
   const params: Record<string, string> = { tab: currentTab };
   if (newState) params.state_id = newState;
   if(newDistrict) params.district_id = newDistrict;

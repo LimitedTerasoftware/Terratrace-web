@@ -85,3 +85,23 @@ export interface ProcessedPlacemark {
   distance?: string|null;
   styleUrl?: string | null;
 }
+
+export interface PhysicalSurveyData{
+    id:number;
+    user_id: number;
+    company_id: string|null,
+    state_id: number,
+    district_id: number,
+    block_id: number,
+    gp_id: number,
+    startLocation: number,
+    endLocation: number,
+    cableType: string|null,
+    is_active: number,
+    created_at: string,
+    updated_at: string,
+    surveyType: string|null,
+    latitude: string,
+    longitude: string,
+    event_type: string
+}

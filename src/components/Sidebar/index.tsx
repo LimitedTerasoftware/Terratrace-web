@@ -134,11 +134,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
           <ul className="space-y-2">
             <SideBarItem icon={DashboardIcon} label="Dashboard" isOpen={isOpen} isActive={pathname === '/' || pathname.includes('dashboard')} path={pathname === '/' ? '/' : '/dashboard'}
             />
+            <SideBarItem icon={SurveyIcon} label="Survey" isOpen={isOpen} isActive={pathname.includes('survey')} path='/survey' />
+
             {!viewOnly && (
               <>
                 {/* <SideBarItem icon={CompanyIcon} label="Companies" isOpen={isOpen} isActive={pathname.includes('companies')} path='/companies' />
                <SideBarItem icon={User} label="Users" isOpen={isOpen} isActive={pathname.includes('users')} path='/users' /> */}
-                <SideBarItem icon={SurveyIcon} label="Survey" isOpen={isOpen} isActive={pathname.includes('survey')} path='/survey' />
                 <SideBarItem icon={ConstructionImg} label="Construction" isOpen={isOpen} isActive={pathname.includes('construction')} path='/construction' />
                 <SidebarLinkGroup activeCondition={pathname.includes('machine-management')}>
                   {(handleClick, open) => {
