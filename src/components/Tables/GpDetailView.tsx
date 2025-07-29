@@ -108,7 +108,8 @@ const GpDetailView = () => {
          toast.success("Record deleted successfully.");
       
       // Redirect to another page (e.g., list page)
-       navigate("/survey?tab=gp"); 
+      //  navigate("/survey?tab=gp"); 
+       window.history.back()
       } catch (error) {
         toast.error("Failed to delete record.");
       }

@@ -458,7 +458,8 @@ const GroundDetailView: React.FC = () => {
       toast.success("Record deleted successfully.");
 
       // Redirect to another page (e.g., list page)
-      navigate("/survey?tab=ground");
+      // navigate("/survey?tab=ground");
+       window.history.back()
     } catch (error) {
       toast.error("Failed to delete record.");
     }

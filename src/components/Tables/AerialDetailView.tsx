@@ -76,7 +76,8 @@ const AerialDetailView: React.FC = () => {
        toast.success("Record deleted successfully.");
     
     // Redirect to another page (e.g., list page)
-     navigate("/survey?tab=aerial"); 
+    //  navigate("/survey?tab=aerial"); 
+     window.history.back()
     } catch (error) {
       toast.error("Failed to delete record.");
     }
