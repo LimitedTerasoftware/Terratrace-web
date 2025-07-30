@@ -219,6 +219,7 @@ export interface Activity {
   dgps_siv:number;
   blowingPhotos:string;
   blowingLatLong:string;
+  videoDetails:VideoDetails | null;
  }
 
 export interface ApiResponseMachine {

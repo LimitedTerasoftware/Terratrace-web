@@ -3,7 +3,7 @@ import DataTable, { TableColumn } from "react-data-table-component";
 import axios from "axios";
 import { Machine } from "../../types/machine";
 import { Search } from "lucide-react";
-import { Activity } from "../../types/survey";
+import { Activity, VideoDetails } from "../../types/survey";
 import moment from "moment";
 import { getMachineOptions } from "../Services/api";
 import {getTodayDate } from "../../utils/dateUtils";
@@ -23,6 +23,8 @@ const MachineDataTable = () => {
       const [searchTerm, setSearchTerm] = useState('');
       const [zoomImage, setZoomImage] = useState<string | null>(null);
       const [globalsearch, setGlobalSearch] = useState<string>('');
+      const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | null>(null);
+      
       useEffect(()=>{
         getMachineOptions().then(data => {
               setMachinesData(data);
@@ -149,7 +151,7 @@ const MachineDataTable = () => {
           return latlong ? latlong.split(",")[1] : "-";
       },
   },
-   {
+  {
     name: "Images",
     cell: (row: Activity) => {
         const photoField = eventPhotoFields[row.eventType];
@@ -188,6 +190,27 @@ const MachineDataTable = () => {
         return <span>-</span>;
 
     },
+  },
+  {
+    name: "Video",
+    cell: (row: Activity) => {
+        let parsedVideoDetails: VideoDetails;
+
+        if (typeof row.videoDetails === 'string') {
+
+          parsedVideoDetails = row?.videoDetails ? JSON.parse(row?.videoDetails) : null;
+        
+        const videoUrl =parsedVideoDetails?.videoUrl?.trim().replace(/^"|"$/g, "");
+        return videoUrl ? (
+            <button className="text-blue-600 underline" onClick={() => setSelectedVideoUrl(videoUrl)}>
+            Play Video
+            </button>
+        ) : (
+            "-"
+        );
+        }
+          return "-";
+    }
   },
   { name: "State", selector: row => row.state_id ?? '-', sortable: true },
   { name: "District", selector: row => row.distrct_id ?? '-', sortable: true },
@@ -393,6 +416,31 @@ const MachineDataTable = () => {
       />
       )}
     </div>
+      {/* Modal for video preview */}
+            {selectedVideoUrl && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+                <div className="relative w-full max-w-3xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+                    <div className="p-4 flex justify-end">
+                    <button
+                        onClick={() => setSelectedVideoUrl(null)}
+                        className="text-gray-600 hover:text-red-600 text-xl font-bold"
+                    >
+                        ×
+                    </button>
+                    </div>
+                    <div className="px-4 pb-4">
+                    <div className="relative pb-[56.25%] h-0">
+                        <iframe
+                        src={`${baseUrl}${selectedVideoUrl}`}
+                        title="Survey Video"
+                        allowFullScreen
+                        className="absolute top-0 left-0 w-full h-full rounded"
+                        ></iframe>
+                    </div>
+                    </div>
+                </div>
+                </div>
+            )}
      </div>
   );
 };

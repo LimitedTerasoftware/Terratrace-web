@@ -223,6 +223,28 @@ const InfoWindow: React.FC<{
               )}
             </div>
           )}
+          {typeof event.videoDetails === "string" && (() => {
+                  const parsedVideoDetails = event?.videoDetails ? JSON.parse(event?.videoDetails) : null;
+
+                  const mainVideoUrl = parsedVideoDetails.videoUrl?.trim().replace(/(^"|"$)/g, '');
+
+                  if (mainVideoUrl) {
+                    return (
+                      <iframe
+                        width="100%"
+                        height="180"
+                        src={`${baseUrl}${mainVideoUrl}`}
+                        frameBorder="0"
+                        allow="autoplay; encrypted-media"
+                        allowFullScreen
+                        title={`Video-${event.eventType}`}
+                      />
+                     
+                    );
+                  } else {
+                    return <p>No video available.</p>;
+                  }
+            })()}
         </div>
       </div>
     </div>

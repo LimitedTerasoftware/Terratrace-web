@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Activity, } from '../../types/survey';
+import { Activity, VideoDetails, } from '../../types/survey';
 import { useLocation } from 'react-router-dom';
 import DataTable, { TableColumn } from 'react-data-table-component';
 import { Folder, SheetIcon } from 'lucide-react';
@@ -30,6 +30,7 @@ function Eventreport() {
     const [activeTab, setActiveTab] = useState<'details' | 'map' | 'chart'>('details');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+    const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | null>(null);
     const EventData = [
         'STARTSURVEY',
         'DEPTH',
@@ -273,6 +274,27 @@ function Eventreport() {
 
             },
         },
+        {
+            name: "Video",
+            cell: (row: Activity) => {
+                let parsedVideoDetails: VideoDetails;
+
+                if (typeof row.videoDetails === 'string') {
+
+                  parsedVideoDetails = row?.videoDetails ? JSON.parse(row?.videoDetails) : null;
+                
+                const videoUrl =parsedVideoDetails?.videoUrl?.trim().replace(/^"|"$/g, "");
+                return videoUrl ? (
+                    <button className="text-blue-600 underline" onClick={() => setSelectedVideoUrl(videoUrl)}>
+                    Play Video
+                    </button>
+                ) : (
+                    "-"
+                );
+                }
+                 return "-";
+            }
+        },
         { name: "Execution Modality", selector: row => row.executionModality || "-", sortable: true },
         { name: "Landmark Type", selector: row => row.landmark_type || "-", sortable: true },
         { name: "Landmark Desc", selector: row => row.landmark_description || "-", sortable: true },
@@ -350,8 +372,8 @@ function Eventreport() {
 
   const headers = [
     "State Name", "District Name", "Block Name", "Start GP Name",  "End GP Name","Machine Registration Number","Firm Name","Event Type","Latitude","Longitude",
-    "Images","Route Belongs To", "Road Type","Cable Laid On", "Soil Type", "Crossing Type", "Crossing Length","Execution Modality", "Depth (Meters)",
-    "Distance","Road Width","Landmark Type","Landmark Description", "Road Feasibility", "Area Type",
+    "Images","Videos","Route Belongs To", "Road Type","Cable Laid On", "Soil Type", "Crossing Type", "Crossing Length","Execution Modality", "Depth (Meters)",
+    "Distance","DGPS Accuracy","DGPS SIV","Road Width","Landmark Type","Landmark Description", "Road Feasibility", "Area Type",
     "Road Margin","Vehicle Image", "End Pit Doc", "Authorised Person","Contractor Details", "Vehicle Serial No","Created At", "Updated At",
   ];
 
@@ -363,7 +385,14 @@ function Eventreport() {
     let VehicalImg = '-'
     if(item.vehicle_image?.trim()){
      VehicalImg = `=HYPERLINK("${baseUrl}${VehicalImg}", "Vehical_Img")`;
-    } 
+    }  
+    let Video;
+    let VideoUrl ='-'
+    if(typeof item.videoDetails === 'string'){
+        Video = item?.videoDetails ? JSON.parse(item?.videoDetails) : null;
+        VideoUrl = `=HYPERLINK("${baseUrl}${Video?.videoUrl}", "Video")`
+         
+    }
     const downloadUrl =item.endPitDoc? `=HYPERLINK("${baseUrl}${item.endPitDoc}", "EndpicDoc")` : '-';
     // Get Image Links
     const photoField = eventPhotoFields[item.eventType];
@@ -382,9 +411,9 @@ function Eventreport() {
     }
    return [
     MainData.state_name, MainData.district_name, MainData.block_name, item.start_lgd_name, item.end_lgd_name,item.machine_registration_number,
-    item.firm_name,item.eventType,latitude,longitude,imageLinks,item.routeBelongsTo, item.roadType,
+    item.firm_name,item.eventType,latitude,longitude,imageLinks,VideoUrl,item.routeBelongsTo, item.roadType,
     item.cableLaidOn, item.soilType, item.crossingType,item.crossingLength, item.executionModality,item.depthMeters,
-    item.distance,item.roadWidth, item.landmark_type,item.landmark_description,item.Roadfesibility, item.area_type,
+    item.distance,item.dgps_accuracy,item.dgps_siv,item.roadWidth, item.landmark_type,item.landmark_description,item.Roadfesibility, item.area_type,
     item.road_margin,VehicalImg,downloadUrl,item.authorised_person,item.contractor_details, item.vehicleserialno,item.created_at, item.updated_at
   ];});
 
@@ -597,6 +626,31 @@ function Eventreport() {
                         alt="Zoomed"
                         className="max-w-full max-h-full p-4 rounded-lg"
                     />
+                </div>
+            )}
+            {/* Modal for video preview */}
+            {selectedVideoUrl && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+                <div className="relative w-full max-w-3xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+                    <div className="p-4 flex justify-end">
+                    <button
+                        onClick={() => setSelectedVideoUrl(null)}
+                        className="text-gray-600 hover:text-red-600 text-xl font-bold"
+                    >
+                        ×
+                    </button>
+                    </div>
+                    <div className="px-4 pb-4">
+                    <div className="relative pb-[56.25%] h-0">
+                        <iframe
+                        src={`${baseUrl}${selectedVideoUrl}`}
+                        title="Survey Video"
+                        allowFullScreen
+                        className="absolute top-0 left-0 w-full h-full rounded"
+                        ></iframe>
+                    </div>
+                    </div>
+                </div>
                 </div>
             )}
         </div>

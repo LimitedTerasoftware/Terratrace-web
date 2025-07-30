@@ -348,7 +348,30 @@ const MachineRouteMap: React.FC<MachineRouteMapProps> = ({ machineId }) => {
 
       const markerColor = getMarkerColor(activity.eventType);
       const photos = parsePhotos(activity[photoField] as string | null);
-      
+      let videoIframeHtml = '';
+
+      if (typeof activity.videoDetails === 'string') {
+        try {
+          const parsedVideoDetails = JSON.parse(activity.videoDetails);
+          const mainVideoUrl = parsedVideoDetails.videoUrl?.trim().replace(/(^"|"$)/g, '');
+            if (mainVideoUrl) {
+                videoIframeHtml = `
+                  <iframe
+                    width="100%"
+                    height="180"
+                    src="${baseUrl}${mainVideoUrl}"
+                    frameborder="0"
+                    allow="autoplay; encrypted-media"
+                    allowfullscreen
+                    title="Video-${activity.eventType}">
+                  </iframe>
+                `;
+              }
+            } catch (err) {
+              console.error('Error parsing videoDetails:', err);
+            }
+        }
+
       const marker = new google.maps.Marker({
         position,
         map,
@@ -425,6 +448,7 @@ const MachineRouteMap: React.FC<MachineRouteMapProps> = ({ machineId }) => {
             ${new Date(activity.created_at).toLocaleString()}
           </p>
           ${photoGallery}
+          ${videoIframeHtml}
         </div>
       `;
 

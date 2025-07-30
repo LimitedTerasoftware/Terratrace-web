@@ -273,6 +273,28 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activity, onClose}) =
             </div>
           )}
 
+          {typeof activity.videoDetails === "string" && (() => {
+                  const parsedVideoDetails = activity?.videoDetails ? JSON.parse(activity?.videoDetails) : null;
+
+                  const mainVideoUrl = parsedVideoDetails.videoUrl?.trim().replace(/(^"|"$)/g, '');
+
+                  if (mainVideoUrl) {
+                    return (
+                      <iframe
+                        width="100%"
+                        height="180"
+                        src={`${baseUrl}${mainVideoUrl}`}
+                        frameBorder="0"
+                        allow="autoplay; encrypted-media"
+                        allowFullScreen
+                        title={`Video-${activity.eventType}`}
+                      />
+                     
+                    );
+                  } else {
+                    return <p>No video available.</p>;
+                  }
+            })()}
           {/* Timestamps */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
