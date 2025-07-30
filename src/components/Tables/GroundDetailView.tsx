@@ -10,6 +10,8 @@ import ResponsivePagination from "./ResponsivePagination";
 import App from "../VideoPlayback/index";
 import DataTable from "react-data-table-component";
 import { hasViewOnlyAccess } from "../../utils/accessControl";
+import ImageModal from "../DepthChart/ImageUploadModal";
+import UnderGroundSurveyImageModal from "./UnderGroundSurveyImageModal";
 
 
 interface PatrollerDetails {
@@ -132,7 +134,9 @@ const GroundDetailView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [SelectedItem, setSelectedItem] = useState<any | null>(null);
   const [videoSizes, setVideoSizes] = useState<Record<string, number>>({});
-
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [selectedActivity, setSelectedActivity] = useState<UnderGroundSurveyData | null>(null);
+  
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -188,8 +192,31 @@ const GroundDetailView: React.FC = () => {
       });
     }
   }, [data]);
-
+  
+  const openModal = (activity: UnderGroundSurveyData) => {
+          setSelectedActivity(activity);
+          setIsModalOpen(true);
+      };
+  
+  const closeModal = () => {
+          setIsModalOpen(false);
+          setSelectedActivity(null);
+      };
   const columns = [
+    {
+      name:"Actions",
+      cell:(row:UnderGroundSurveyData)=>(
+        <button onClick={()=>openModal(row)}
+        className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 outline-none dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-800 transition-colors">
+          Edit Image
+        </button>
+
+      ),
+      ignoreRowClick: true,
+      allowOverflow: true,
+      button: true,
+
+    },
     {
       name: "Event Type",
       selector: (row: UnderGroundSurveyData) => row.event_type,
@@ -477,17 +504,20 @@ const GroundDetailView: React.FC = () => {
     }
   };
 
+  const fetchSurveyData = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${BASEURL_Val}/underground-surveys/${id}`);
+      setData(response.data.data);
+      setError(null); // clear error if any
+    } catch (err) {
+      setError("Failed to fetch data");
+    } finally {
+      setLoading(false);
+    }
+  };
   useEffect(() => {
-    axios
-      .get(`${BASEURL_Val}/underground-surveys/${id}`)
-      .then((response) => {
-        setData(response.data.data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError("Failed to fetch data");
-        setLoading(false);
-      });
+      fetchSurveyData();
   }, []);
 
   if (loading) return <div className="text-center py-10">Loading...</div>;
@@ -808,7 +838,7 @@ const GroundDetailView: React.FC = () => {
     setActiveTab('video')
     setSelectedItem(item)
   }
-
+ 
   return (
     <>
       {zoomImage && (
@@ -1005,6 +1035,13 @@ const GroundDetailView: React.FC = () => {
           </div>
         )}
       </div>
+        <UnderGroundSurveyImageModal
+          isOpen={isModalOpen}
+          onClose={closeModal}
+          surveyData={selectedActivity}
+          baseUrl={baseUrl}
+          onUpdate={() => fetchSurveyData()}
+            />
       {/* Modal for video preview */}
       {selectedVideoUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">

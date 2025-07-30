@@ -43,7 +43,8 @@ interface UndergroundSurvey {
   contact_no: number,
   startLocation:string,       
   endLocation:string,
-  cableType:string        
+  cableType:string,
+  routeType:string       
 }
 
 interface ApiResponse {
@@ -409,7 +410,8 @@ const UndergroundSurvey: React.FC = () => {
       { accessorKey: "block_name", header: "Block Name" },
       { accessorKey: "start_location_name", header: " Start GP Name" },
       { accessorKey: "end_location_name", header: "End GP Name" },
-      {accessorKey:"cableType",header:"Cable Type"},
+      {accessorKey:  "routeType",header:"Route Type"},
+      {accessorKey: "cableType",header:"Cable Type"},
       {
         accessorKey: "fullname",
         header: "Surveyor Name",
