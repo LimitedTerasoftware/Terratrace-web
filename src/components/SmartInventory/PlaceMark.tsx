@@ -22,6 +22,7 @@ export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string 
   "ENDPIT": { color: '#DC2626', icon: '🏁'},
   "ENDSURVEY": { color: '#10B981', icon: '🎯'},
   "HOLDSURVEY": { color: '#a93226', icon: '⏸️'},
+  "BLOWING": { color: '#663300', icon:'💨'},
 };
 
 export function processApiData(apiData: ApiPlacemark): {

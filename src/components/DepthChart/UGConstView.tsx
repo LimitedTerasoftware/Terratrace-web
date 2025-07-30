@@ -44,7 +44,8 @@ function Eventreport() {
         'STARTPIT',
         'ENDPIT',
         'ENDSURVEY',
-        'HOLDSURVEY'
+        'HOLDSURVEY',
+        "BLOWING"
     ];
     const getData = async () => {
         try {
@@ -102,6 +103,7 @@ function Eventreport() {
             case "ENDSURVEY": return row.endPointCoordinates;
             case "ROADCROSSING": return row.crossingLatlong;
             case 'HOLDSURVEY':return row.holdLatlong;
+            case "BLOWING":return row.blowingLatLong;
             default: return null;
         }
     };
@@ -190,7 +192,8 @@ function Eventreport() {
         STARTSURVEY: 'startPointPhoto',
         ENDSURVEY: 'endPointPhoto',
         ROADCROSSING: 'crossingPhotos',
-        HOLDSURVEY:'holdPhotos'
+        HOLDSURVEY:'holdPhotos',
+        BLOWING:'blowingPhotos'
     };
 
     const columns: TableColumn<Activity>[] = [

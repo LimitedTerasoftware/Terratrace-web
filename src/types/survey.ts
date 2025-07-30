@@ -216,9 +216,10 @@ export interface Activity {
   holdLatlong:string;
   firm_name:string;
   dgps_accuracy:string; 
-  dgps_siv:number
- 
-}
+  dgps_siv:number;
+  blowingPhotos:string;
+  blowingLatLong:string;
+ }
 
 export interface ApiResponseMachine {
   status: boolean;

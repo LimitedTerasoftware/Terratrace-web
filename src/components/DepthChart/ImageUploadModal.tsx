@@ -50,6 +50,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
     ENDSURVEY: { primary: 'endPointPhoto' },
     ROADCROSSING: { primary: 'crossingPhotos' },
     HOLDSURVEY:{primary:'holdPhotos'},
+    BLOWING:{primary:'blowingPhotos'},
   };
 
   useEffect(() => {

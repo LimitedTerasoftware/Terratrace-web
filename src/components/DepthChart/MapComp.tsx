@@ -31,6 +31,7 @@ const EVENT_TYPES = {
   ENDPIT: { color: '#DC2626', icon: '🏁', label: 'End Pit' },
   ENDSURVEY: { color: '#10B981', icon: '🎯', label: 'End Survey' },
   HOLDSURVEY: { color: '#a93226', icon: '⏸️', label: 'Hold Survey'},
+  BLOWING: { color: '#663300', icon:'💨',label: 'Blowing Survey' },
 };
 
 const baseUrl = import.meta.env.VITE_Image_URL;
@@ -56,7 +57,8 @@ const InfoWindow: React.FC<{
     STARTSURVEY: 'startPointPhoto',
     ROADCROSSING: 'crossingPhotos',
     ENDSURVEY:'endPointPhoto',
-    HOLDSURVEY:'holdPhotos'
+    HOLDSURVEY:'holdPhotos',
+    BLOWING:"blowingPhotos"
   };
   const getLatLongForEvent = (row: Activity) => {
           switch (row.eventType) {
@@ -74,6 +76,7 @@ const InfoWindow: React.FC<{
               case "ENDSURVEY": return row.endPointCoordinates;
               case "ROADCROSSING": return row.crossingLatlong;
               case 'HOLDSURVEY':return row.holdLatlong;
+              case "BLOWING":return row.blowingLatLong;
               default: return null;
           }
       };

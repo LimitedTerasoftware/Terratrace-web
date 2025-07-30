@@ -26,7 +26,7 @@ const EVENT_TYPE_MAPPING = {
   'STARTSURVEY': { coordField: 'startPointCoordinates', photoField: 'startPointPhoto' },
   'ENDSURVEY': { coordField: 'endPointCoordinates', photoField: 'endPointPhoto' },
   'HOLDSURVEY': { coordField: 'holdLatlong', photoField: 'holdPhotos' },
-
+  'BLOWING': { coordField: 'blowingLatLong', photoField: 'blowingPhotos' },
 };
 const baseUrl = import.meta.env.VITE_Image_URL;
 
