@@ -2,13 +2,14 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Sidebar } from './Sidebar';
 import { FileList } from './FileList';
 import { FilterPanel } from './FilterPanel';
-import { AlertCircle, CheckCircle, Upload, X, Menu, MapPin, File, FilePlusIcon, FilePlus2Icon } from 'lucide-react';
+import { AlertCircle, CheckCircle, Upload, X, Menu, MapPin, File, FilePlusIcon, FilePlus2Icon, RefreshCcwIcon, RefreshCcwDotIcon, RefreshCwOffIcon, RefreshCwIcon } from 'lucide-react';
 import axios from 'axios';
-import  {GoogleMap}  from './MapViewer';
+import { GoogleMap } from './MapViewer';
 import { PlacemarkList } from './PlacemarkList';
 import { PLACEMARK_CATEGORIES, processApiData } from './PlaceMark';
-import {KMZFile, FilterState, ViewState,ApiPlacemark, ProcessedPlacemark, PlacemarkCategory, PhysicalSurveyData, EventTypeConfig, EventTypeCounts, PhysicalSurveyApiResponse } from '../../types/kmz';
+import { KMZFile, FilterState, ViewState, ApiPlacemark, ProcessedPlacemark, PlacemarkCategory, PhysicalSurveyData, EventTypeConfig, EventTypeCounts, PhysicalSurveyApiResponse } from '../../types/kmz';
 import FileUploadModal from './Modalpopup';
+import { GeographicSelector } from './GeographicSelector';
 
 interface NotifierState {
   type: 'success' | 'error';
@@ -28,19 +29,19 @@ function SmartInventory() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
-  const [PhysicalSurvey,setPhysicalSurvey]= useState<PhysicalSurveyData[]>([]);
-  const [loading,setLoding]=useState<boolean>(false)
-  const [ShowFiles,setShowFiles]=useState(false);
+  const [PhysicalSurvey, setPhysicalSurvey] = useState<PhysicalSurveyData[]>([]);
+  const [loading, setLoding] = useState<boolean>(false)
+  const [ShowFiles, setShowFiles] = useState(false);
   // Placemark-related state
   const [processedPlacemarks, setProcessedPlacemarks] = useState<ProcessedPlacemark[]>([]);
   const [placemarkCategories, setPlacemarkCategories] = useState<PlacemarkCategory[]>([]);
   const [visibleCategories, setVisibleCategories] = useState<Set<string>>(new Set());
   const [highlightedPlacemark, setHighlightedPlacemark] = useState<ProcessedPlacemark>();
 
-   useEffect(() => {
+  useEffect(() => {
     const PhysicalData = async () => {
       try {
-        if(!filters.state || !filters.division || !filters.block) return;
+        if (!filters.state || !filters.division || !filters.block) return;
         setLoding(true)
         const params: any = {};
         if (filters.state) params.state_id = filters.state;
@@ -49,16 +50,17 @@ function SmartInventory() {
 
         const Response = await axios.get(`${BASEURL}/get-physical-survey`, { params });
         const result: PhysicalSurveyApiResponse = Response.data;
- 
+
         if (Response.status === 200 || Response.status === 201) {
           if (result.data.length > 0) {
-             setPhysicalSurvey(result.data); 
-         
-            }}
+            setPhysicalSurvey(result.data);
+
+          }
+        }
       } catch (error) {
         console.error('Failed to load files:', error);
         showNotification('error', 'Failed to load files');
-      }finally{
+      } finally {
         setLoding(false)
       }
     };
@@ -105,14 +107,14 @@ function SmartInventory() {
           if (resp.status === 200 || resp.status === 201) {
             const apiData: ApiPlacemark = resp.data.data.parsed_data;
             const { placemarks, categories } = processApiData(apiData);
-            
+
             setProcessedPlacemarks(placemarks);
             setPlacemarkCategories(categories);
-            
+
             // Initially show all categories
             const allCategoryIds = new Set(categories.map(cat => cat.id));
             setVisibleCategories(allCategoryIds);
-            
+
           } else {
             showNotification("error", resp.data.message);
           }
@@ -173,7 +175,7 @@ function SmartInventory() {
   };
 
   // Notification system
-    const showNotification = (type: 'success' | 'error', message: string) => {
+  const showNotification = (type: 'success' | 'error', message: string) => {
     // Clear any existing timeout to prevent multiple notifications
     if (notifierTimeoutRef.current) {
       clearTimeout(notifierTimeoutRef.current);
@@ -226,7 +228,7 @@ function SmartInventory() {
     setHighlightedPlacemark(placemark);
   };
 
-    const handleSidebarToggle = useCallback(() => {
+  const handleSidebarToggle = useCallback(() => {
     try {
       setSidebarOpen(prev => !prev);
     } catch (error) {
@@ -235,25 +237,25 @@ function SmartInventory() {
       setSidebarOpen(false);
     }
   }, []);
-  
+
   const handleFileDelete = async (id: string) => {
     // try {
     //   await dbOperations.deleteKMZ(id);
     //   const updatedFiles = await dbOperations.getAllKMZ();
     //   // setFiles(updatedFiles);
-      
+
     //   // Remove from selected files if it was selected
     //   setSelectedFiles(prev => prev.filter(f => f.id !== id));
-      
+
     //   // If no files selected, select the first available
     //   if (selectedFiles.length === 1 && selectedFiles[0].id === id && updatedFiles.length > 0) {
     //     setSelectedFiles([updatedFiles[0]]);
     //   }
-      
+
     //   setFilters({});
     //   setSearchQuery('');
     //   setHighlightedPlacemark(undefined);
-     
+
     // } catch (error) {
     //   console.error('Failed to delete file:', error);
     // }
@@ -267,15 +269,30 @@ function SmartInventory() {
     };
   }, []);
 
+  const handleSelectionChange = (selectedStates: string[], selectedDistricts: string[]) => {
+    console.log('Selected States:', selectedStates);
+    console.log('Selected Districts:', selectedDistricts);
+  };
+
+  const handlePreview = (item: { type: 'state' | 'district'; id: string; name: string }) => {
+    console.log('Preview:', item);
+    // Implement preview functionality
+  };
+
+  const handleRefresh = (item: { type: 'state' | 'district'; id: string; name: string }) => {
+    console.log('Refresh:', item);
+    // Implement refresh functionality
+  };
+
   return (
     <div className="h-screen flex bg-gray-50">
-     {loading && (
+      {loading && (
         <div className="absolute top-70 right-150 z-10">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-800 mx-auto mb-4"></div>
         </div>
       )}
       {/* Sidebar */}
-       <Sidebar isOpen={sidebarOpen} onToggle={handleSidebarToggle}>
+      <Sidebar isOpen={sidebarOpen} onToggle={handleSidebarToggle}>
         {/* <FileUpload
           onFileUpload={handleFileUpload}
           isLoading={isUploading}
@@ -283,81 +300,91 @@ function SmartInventory() {
         /> */}
         <div className="mb-6 flex items-center gap-2">
           <button
-            onClick={()=>{setModalOpen(true);setUploadError('')}}
+            onClick={() => { setModalOpen(true); setUploadError('') }}
             disabled={isUploading}
             className={`
               w-full px-1 py-3 rounded-lg border-2 border-dashed 
-              ${isUploading 
-                ? 'border-gray-300 bg-gray-50 cursor-not-allowed' 
+              ${isUploading
+                ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
                 : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
               }
               transition-all duration-200 flex items-center justify-center gap-2
               text-sm font-medium text-gray-700
             `}
           >
-              {isUploading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-transparent" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <Upload className="h-4 w-4" />
-                  Upload Kmz / Kml
-                </>
-              )}
+            {isUploading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-transparent" />
+                Processing...
+              </>
+            ) : (
+              <>
+                <Upload className="h-4 w-4" />
+                Upload Kmz / Kml
+              </>
+            )}
           </button>
-           <button
-            onClick={()=>{setShowFiles(!ShowFiles)}}
+          <button
+            onClick={() => { setShowFiles(!ShowFiles) }}
             className={`
-              w-60 px-1 py-3 rounded-lg border-2 border-dashed 
-              ${ShowFiles 
-                ? 'border-gray-300 bg-blue-100' 
+              border-2 border-dashed 
+              w-20 h-12 rounded-full flex items-center justify-center transition-colors 
+              ${ShowFiles
+                ? 'border-gray-300 bg-blue-100'
                 : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
               }
               transition-all duration-200 flex items-center justify-center gap-2
               text-sm font-medium text-gray-700
             `}
+            title='External Data'
           >
-           <FilePlus2Icon className="h-4 w-4" />
-               External Data
+            <FilePlus2Icon size={18} />
+
           </button>
-         
-         </div>
-      
-        
-       
+          <button
+            onClick={() => { setShowFiles(!ShowFiles) }}
+            className={`
+              border-2 border-dashed 
+              w-20 h-12 rounded-full flex items-center justify-center transition-colors 
+              ${ShowFiles
+                ? 'border-gray-300 bg-blue-100'
+                : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
+              }
+              transition-all duration-200 flex items-center justify-center gap-2
+              text-sm font-medium text-gray-700
+            `}
+            title='Reload'
+          >
+            <RefreshCwIcon size={18} />
+
+          </button>
+        </div>
+        <GeographicSelector
+          onSelectionChange={handleSelectionChange}
+          onPreview={handlePreview}
+          onRefresh={handleRefresh} />
 
         {/* <PlacemarkList
-          placemarks={filteredPlacemarks}
-          visiblePlacemarks={visiblePlacemarks}
-          onPlacemarkVisibilityChange={handlePlacemarkVisibilityChange}
-          onPlacemarkClick={handlePlacemarkClick}
-          highlightedPlacemark={highlightedPlacemark}
-        /> */}
-         <PlacemarkList
             placemarks={processedPlacemarks}
             categories={placemarkCategories}
             visibleCategories={visibleCategories}
             onCategoryVisibilityChange={handleCategoryVisibilityChange}
             onPlacemarkClick={handlePlacemarkClick}
             highlightedPlacemark={highlightedPlacemark}
-          />
- 
+          /> */}
+
       </Sidebar>
-
-     
-
+      
       {/* Main Content */}
       <main className="flex-1 relative">
         {/* Header */}
-          <FileUploadModal
-            isOpen={isModalOpen}
-            onClose={() => setModalOpen(false)}
-            onUpload={handleFileUpload}
-            isLoading={isUploading}
-            error={uploadError}
-          />
+        <FileUploadModal
+          isOpen={isModalOpen}
+          onClose={() => setModalOpen(false)}
+          onUpload={handleFileUpload}
+          isLoading={isUploading}
+          error={uploadError}
+        />
         {/* <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
           {!sidebarOpen && (
             <button
@@ -379,7 +406,7 @@ function SmartInventory() {
           onPlacemarkClick={handlePlacemarkClick}
           className="w-full h-full"
         />
-       
+
 
         {/* Stats Overlay */}
         {processedPlacemarks.length > 0 && (
@@ -394,21 +421,21 @@ function SmartInventory() {
           </div>
         )}
         {ShowFiles && (
-        <div className="absolute top-0 right-0 h-full bg-white rounded-lg shadow-lg border border-gray-200 p-3 overflow-hidden">
-        <FilterPanel
-          filters={filters}
-          onFiltersChange={setFilters}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          selectedFilesCount={selectedFiles.length}
-        /><br/>
-        <FileList
-          files={files}
-          selectedFileIds={selectedFiles.map(f => f.id)}
-          onFileSelect={handleFileSelect}
-          onFileDelete={handleFileDelete}
-        />
-        </div>
+          <div className="absolute top-0 right-0 h-full bg-white rounded-lg shadow-lg border border-gray-200 p-3 overflow-hidden">
+            <FilterPanel
+              filters={filters}
+              onFiltersChange={setFilters}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              selectedFilesCount={selectedFiles.length}
+            /><br />
+            <FileList
+              files={files}
+              selectedFileIds={selectedFiles.map(f => f.id)}
+              onFileSelect={handleFileSelect}
+              onFileDelete={handleFileDelete}
+            />
+          </div>
         )}
       </main>
 
