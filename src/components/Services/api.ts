@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Activity, ApiResponseMachine ,FilterState} from '../../types/survey';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
+const BASEURL = import.meta.env.VITE_API_BASE;
+
 
 export const fetchMachineData = async (
   machineId: string,
@@ -156,3 +158,28 @@ export const useActivities = (
     refetch: fetchActivities
   };
 };
+
+export const getStateData = async() => {
+  try {
+    const resp = await axios.get(`${BASEURL}/states`);
+    if(resp.status === 200 || resp.status === 201){
+      return resp.data.data;
+    }else{
+      throw new Error(`HTTP error! status: ${resp.status}`);
+    }
+    
+  } catch (error) {
+    throw error;
+  }
+
+}
+
+// export const getDistrictData = async(selectedState:string | null)=>{
+//   try{
+//     const resp = await axios.get(`${BASEURL}/districtsdata?state_code=${selectedState}`);
+    
+//   } catch (error) {
+    
+//   }
+
+// }

@@ -134,82 +134,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
           <ul className="space-y-2">
             <SideBarItem icon={DashboardIcon} label="Dashboard" isOpen={isOpen} isActive={pathname === '/' || pathname.includes('dashboard')} path={pathname === '/' ? '/' : '/dashboard'}
             />
-            <SideBarItem icon={SurveyIcon} label="Survey" isOpen={isOpen} isActive={pathname.includes('survey')} path='/survey' />
-
-            {!viewOnly && (
-              <>
-                {/* <SideBarItem icon={CompanyIcon} label="Companies" isOpen={isOpen} isActive={pathname.includes('companies')} path='/companies' />
-               <SideBarItem icon={User} label="Users" isOpen={isOpen} isActive={pathname.includes('users')} path='/users' /> */}
-                <SideBarItem icon={ConstructionImg} label="Construction" isOpen={isOpen} isActive={pathname.includes('construction')} path='/construction' />
-                <SidebarLinkGroup activeCondition={pathname.includes('machine-management')}>
-                  {(handleClick, open) => {
-                    return (
-                      <>
-                        <NavLink
-                          to="#"
-                          className={`
-                              flex items-center justify-between py-2 ${isOpen ? 'px-3' : 'px-2'} rounded-lg transition-colors duration-200 text-bodydark1
-                              ${pathname.includes('machine-management')
-                              ? 'bg-graydark dark:bg-meta-4'
-                              : 'hover:bg-graydark dark:hover:bg-meta-4'}
-                              ${!isOpen ? 'w-[44px]' : 'w-full'}
-                            `}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            sidebarExpanded ? handleClick() : setSidebarExpanded(true);
-                          }}
-                        >
-                          {/* Icon + Label */}
-                          <div className={`flex items-center ${isOpen ? 'gap-3' : 'gap-0'} w-full`}>
-                            <div className="min-w-[20px] flex justify-center">
-                              <img src={Machine} alt="MachMgmt" className="w-5 h-5 object-contain" />
-                            </div>
-                            {isOpen && <span className="whitespace-nowrap">Machine Mgmt</span>}
-                          </div>
-
-                          {isOpen && (
-                            open
-                              ? <ChevronUp className="w-4 h-4 text-gray-500" />
-                              : <ChevronDown className="w-4 h-4 text-gray-500" />
-                          )}
-                        </NavLink>
-
-
-                        <div className={`transform overflow-hidden transition-all ${!open && 'hidden'}`}>
-                          <ul className="space-y-2 mt-4 flex flex-col gap-2.5 pl-6">
-                            <li>
-                              <NavLink
-                                to="/machine-management/machines"
-                                className={({ isActive }) =>
-                                  `group relative flex items-center gap-2.5 rounded-md px-2 py-1 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white 
-                                      ${isActive ? '!text-white' : ''}`
-                                }
-                              >
-                                <Cog size={16} className="min-w-[16px]" />
-                                <span className={isOpen ? '' : 'hidden'}>Machines</span>
-                              </NavLink>
-                            </li>
-                            <li>
-                              <NavLink
-                                to="/machine-management/machine-tracking"
-                                className={({ isActive }) =>
-                                  `group relative flex items-center gap-2.5 rounded-md px-2 py-1 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white 
-                                      ${isActive ? '!text-white' : ''}`
-                                }
-                              >
-                                <LocateFixed size={16} className="min-w-[16px]" />
-                                <span className={isOpen ? '' : 'hidden'}>Machine Tracking</span>
-                              </NavLink>
-                            </li>
-                          </ul>
-                        </div>
-
-                      </>
-                    );
-                  }}
-                </SidebarLinkGroup>
-
-                <SidebarLinkGroup
+             {!viewOnly && (
+            <SidebarLinkGroup
                   activeCondition={pathname.includes('route-planning')}
                 >
                   {(handleClick, open) => {
@@ -309,7 +235,17 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                       </React.Fragment>
                     );
                   }}
-                </SidebarLinkGroup>
+            </SidebarLinkGroup>
+             )}
+            <SideBarItem icon={SurveyIcon} label="Survey" isOpen={isOpen} isActive={pathname.includes('survey')} path='/survey' />
+
+            {!viewOnly && (
+              <>
+                {/* <SideBarItem icon={CompanyIcon} label="Companies" isOpen={isOpen} isActive={pathname.includes('companies')} path='/companies' />
+               <SideBarItem icon={User} label="Users" isOpen={isOpen} isActive={pathname.includes('users')} path='/users' /> */}
+
+                <SideBarItem icon={ConstructionImg} label="Construction" isOpen={isOpen} isActive={pathname.includes('construction')} path='/construction' />
+                  
                 <li>
                   <NavLink
                     to="/smart-inventory"
@@ -325,6 +261,75 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                     {isOpen && <span className="whitespace-nowrap">Smart Inventory</span>}
                   </NavLink>
                 </li>
+                <SidebarLinkGroup activeCondition={pathname.includes('machine-management')}>
+                  {(handleClick, open) => {
+                    return (
+                      <>
+                        <NavLink
+                          to="#"
+                          className={`
+                              flex items-center justify-between py-2 ${isOpen ? 'px-3' : 'px-2'} rounded-lg transition-colors duration-200 text-bodydark1
+                              ${pathname.includes('machine-management')
+                              ? 'bg-graydark dark:bg-meta-4'
+                              : 'hover:bg-graydark dark:hover:bg-meta-4'}
+                              ${!isOpen ? 'w-[44px]' : 'w-full'}
+                            `}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            sidebarExpanded ? handleClick() : setSidebarExpanded(true);
+                          }}
+                        >
+                          {/* Icon + Label */}
+                          <div className={`flex items-center ${isOpen ? 'gap-3' : 'gap-0'} w-full`}>
+                            <div className="min-w-[20px] flex justify-center">
+                              <img src={Machine} alt="MachMgmt" className="w-5 h-5 object-contain" />
+                            </div>
+                            {isOpen && <span className="whitespace-nowrap">Machines</span>}
+                          </div>
+
+                          {isOpen && (
+                            open
+                              ? <ChevronUp className="w-4 h-4 text-gray-500" />
+                              : <ChevronDown className="w-4 h-4 text-gray-500" />
+                          )}
+                        </NavLink>
+
+
+                        <div className={`transform overflow-hidden transition-all ${!open && 'hidden'}`}>
+                          <ul className="space-y-2 mt-4 flex flex-col gap-2.5 pl-6">
+                            <li>
+                              <NavLink
+                                to="/machine-management/machines"
+                                className={({ isActive }) =>
+                                  `group relative flex items-center gap-2.5 rounded-md px-2 py-1 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white 
+                                      ${isActive ? '!text-white' : ''}`
+                                }
+                              >
+                                <Cog size={16} className="min-w-[16px]" />
+                                <span className={isOpen ? '' : 'hidden'}>Machines</span>
+                              </NavLink>
+                            </li>
+                            <li>
+                              <NavLink
+                                to="/machine-management/machine-tracking"
+                                className={({ isActive }) =>
+                                  `group relative flex items-center gap-2.5 rounded-md px-2 py-1 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white 
+                                      ${isActive ? '!text-white' : ''}`
+                                }
+                              >
+                                <LocateFixed size={16} className="min-w-[16px]" />
+                                <span className={isOpen ? '' : 'hidden'}>Machine Tracking</span>
+                              </NavLink>
+                            </li>
+                          </ul>
+                        </div>
+
+                      </>
+                    );
+                  }}
+                </SidebarLinkGroup>
+
+           
                 <SideBarItem icon={KML} label="Filter GP Points" isOpen={isOpen} isActive={pathname.includes('gp-points-filter')} path='/gp-points-filter' />
                 <SidebarLinkGroup
                   activeCondition={pathname.includes('managementlist')}
@@ -353,7 +358,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                             <div className="min-w-[20px] flex justify-center">
                               <img src={TableIcon} alt="ManagementList" className="w-5 h-5 object-contain" />
                             </div>
-                            {isOpen && <span className='whitespace-nowrap'>ManagementList</span>}
+                            {isOpen && <span className='whitespace-nowrap'>Master Data</span>}
                           </div>
 
                           {isOpen && (

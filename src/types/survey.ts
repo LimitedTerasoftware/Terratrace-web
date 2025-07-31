@@ -3,10 +3,12 @@ export interface StartGp {
   blk_name: string,
   dt_name: string,
   st_name: string,
+  lgd_code:string
 }
 
 export interface EndGp {
    name: string,
+   lgd_code:string
 }
 
 export interface PatrollerDetails {
@@ -103,6 +105,7 @@ export interface MediaFile {
   filename: string;
   eventType: string;
   type: 'image' | 'video';
+  videoDetails?:any
 }
 
 export interface FolderStructure {

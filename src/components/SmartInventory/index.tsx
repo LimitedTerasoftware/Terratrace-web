@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Sidebar } from './Sidebar';
 import { FileList } from './FileList';
 import { FilterPanel } from './FilterPanel';
-import { AlertCircle, CheckCircle, Upload, X, Menu, MapPin } from 'lucide-react';
+import { AlertCircle, CheckCircle, Upload, X, Menu, MapPin, File, FilePlusIcon, FilePlus2Icon } from 'lucide-react';
 import axios from 'axios';
 import  {GoogleMap}  from './MapViewer';
 import { PlacemarkList } from './PlacemarkList';
@@ -30,6 +30,7 @@ function SmartInventory() {
   const [uploadError, setUploadError] = useState('');
   const [PhysicalSurvey,setPhysicalSurvey]= useState<PhysicalSurveyData[]>([]);
   const [loading,setLoding]=useState<boolean>(false)
+  const [ShowFiles,setShowFiles]=useState(false);
   // Placemark-related state
   const [processedPlacemarks, setProcessedPlacemarks] = useState<ProcessedPlacemark[]>([]);
   const [placemarkCategories, setPlacemarkCategories] = useState<PlacemarkCategory[]>([]);
@@ -234,7 +235,8 @@ function SmartInventory() {
       setSidebarOpen(false);
     }
   }, []);
-    const handleFileDelete = async (id: string) => {
+  
+  const handleFileDelete = async (id: string) => {
     // try {
     //   await dbOperations.deleteKMZ(id);
     //   const updatedFiles = await dbOperations.getAllKMZ();
@@ -279,12 +281,12 @@ function SmartInventory() {
           isLoading={isUploading}
           error={uploadError}
         /> */}
-        <div className="mb-6">
+        <div className="mb-6 flex items-center gap-2">
           <button
             onClick={()=>{setModalOpen(true);setUploadError('')}}
             disabled={isUploading}
             className={`
-              w-full px-4 py-3 rounded-lg border-2 border-dashed 
+              w-full px-1 py-3 rounded-lg border-2 border-dashed 
               ${isUploading 
                 ? 'border-gray-300 bg-gray-50 cursor-not-allowed' 
                 : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
@@ -301,27 +303,31 @@ function SmartInventory() {
               ) : (
                 <>
                   <Upload className="h-4 w-4" />
-                  Upload KMZ or KML File
+                  Upload Kmz / Kml
                 </>
               )}
           </button>
-        </div>
+           <button
+            onClick={()=>{setShowFiles(!ShowFiles)}}
+            className={`
+              w-60 px-1 py-3 rounded-lg border-2 border-dashed 
+              ${ShowFiles 
+                ? 'border-gray-300 bg-blue-100' 
+                : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
+              }
+              transition-all duration-200 flex items-center justify-center gap-2
+              text-sm font-medium text-gray-700
+            `}
+          >
+           <FilePlus2Icon className="h-4 w-4" />
+               External Data
+          </button>
+         
+         </div>
       
         
-        <FilterPanel
-          filters={filters}
-          onFiltersChange={setFilters}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          selectedFilesCount={selectedFiles.length}
-        />
+       
 
-        <FileList
-          files={files}
-          selectedFileIds={selectedFiles.map(f => f.id)}
-          onFileSelect={handleFileSelect}
-          onFileDelete={handleFileDelete}
-        />
         {/* <PlacemarkList
           placemarks={filteredPlacemarks}
           visiblePlacemarks={visiblePlacemarks}
@@ -377,7 +383,7 @@ function SmartInventory() {
 
         {/* Stats Overlay */}
         {processedPlacemarks.length > 0 && (
-          <div className="absolute bottom-4 right-20 bg-white rounded-lg shadow-lg border border-gray-200 p-3">
+          <div className="absolute bottom-4 left-2 bg-white rounded-lg shadow-lg border border-gray-200 p-3">
             <div className="text-sm text-gray-600">
               <div className="font-semibold text-gray-900 mb-1">Map Statistics</div>
               <div>Total Placemarks: {processedPlacemarks.length}</div>
@@ -386,6 +392,23 @@ function SmartInventory() {
               <div>Polylines: {processedPlacemarks.filter(p => p.type === 'polyline').length}</div>
             </div>
           </div>
+        )}
+        {ShowFiles && (
+        <div className="absolute top-0 right-0 h-full bg-white rounded-lg shadow-lg border border-gray-200 p-3 overflow-hidden">
+        <FilterPanel
+          filters={filters}
+          onFiltersChange={setFilters}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          selectedFilesCount={selectedFiles.length}
+        /><br/>
+        <FileList
+          files={files}
+          selectedFileIds={selectedFiles.map(f => f.id)}
+          onFileSelect={handleFileSelect}
+          onFileDelete={handleFileDelete}
+        />
+        </div>
         )}
       </main>
 

@@ -16,6 +16,7 @@ import { useNavigate } from 'react-router-dom';
 import Select, { SingleValue } from "react-select";
 import BsnlActionsDropdown from "./BsnlActionsDropdown";
 import { hasViewOnlyAccess } from "../../utils/accessControl";
+import { getStateData } from "../Services/api";
 
 interface BsnlExchange {
   id: string;
@@ -80,22 +81,6 @@ interface Block {
   block_name: string;
   district_code: string;
 }
-
-interface StateOption {
-  value: string;
-  label: string;
-}
-
-interface DistrictOption {
-  value: string;
-  label: string;
-}
-
-interface BlockOption {
-  value: string;
-  label: string;
-}
-
 type StatusOption = {
   value: number;
   label: string;
@@ -112,7 +97,6 @@ const BsnlSurvey: React.FC = () => {
   const [pageSize, setPageSize] = useState<number>(15);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [editingRow, setEditingRow] = useState<BsnlExchange | null>(null);
-
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -315,9 +299,9 @@ const BsnlSurvey: React.FC = () => {
   };
 
   useEffect(() => {
-    axios.get(`${BASEURL}/states`)
-      .then((res) => setStates(res.data.data))
-      .catch((err) => console.error(err));
+    getStateData().then(data =>{
+      setStates(data);
+    })
   }, []);
    
   // Fetch districts when state is selected

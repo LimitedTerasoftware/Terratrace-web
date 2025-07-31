@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { GroundSurvey, UnderGroundSurveyData, MediaFile, FolderStructure } from '../../types/survey';
+import * as XLSX from 'xlsx';
 
 
 export const useFullscreen = () => {
@@ -31,7 +32,9 @@ export const useFullscreen = () => {
 };
 
 const BASEURL_Val = import.meta.env.VITE_API_BASE;
-const baseUrl = import.meta.env.VITE_Image_URL;
+// const baseUrl = import.meta.env.VITE_Image_URL;
+const baseUrl = "https://docs.tricadtrack.com/Tricad/"
+
 export class MediaExportService {
   
   //--- Extract all media files from a survey item based on event type ---
@@ -44,13 +47,14 @@ export class MediaExportService {
       return mediaFiles;
     }
 
-    const addMediaFile = (url: string, filename: string, type: 'image' | 'video') => {
+    const addMediaFile = (url: string, filename: string, type: 'image' | 'video',videoDetails:any) => {
       if (url && url.trim()) {
         mediaFiles.push({
           url: url.startsWith('http') ? url : `${baseUrl}${url}`,
           filename,
           eventType: item.event_type,
-          type
+          type,
+          videoDetails
         });
       }
     };
@@ -58,14 +62,14 @@ export class MediaExportService {
     switch (item.event_type) {
       case "FPOI":
         if (item.fpoiUrl) {
-          addMediaFile(item.fpoiUrl, `fpoi_${item.latitude}_${item.longitude}.jpg`, 'image');
+          addMediaFile(item.fpoiUrl, `fpoi_${item.latitude}_${item.longitude}.jpg`, 'image','');
         }
         break;
 
       case "SURVEYSTART":
         if (item.start_photos && item.start_photos.length > 0) {
           item.start_photos.forEach((photo, index) => {
-            addMediaFile(photo, `start_photo_${index + 1}_${item.latitude}_${item.longitude}.jpg`, 'image');
+            addMediaFile(photo, `start_photo_${index + 1}_${item.latitude}_${item.longitude}.jpg`, 'image','');
           });
         }
         break;
@@ -73,7 +77,7 @@ export class MediaExportService {
       case "ENDSURVEY":
         if (item.end_photos && item.end_photos.length > 0) {
           item.end_photos.forEach((photo, index) => {
-            addMediaFile(photo, `end_photo_${index + 1}_${item.latitude}_${item.longitude}.jpg`, 'image');
+            addMediaFile(photo, `end_photo_${index + 1}_${item.latitude}_${item.longitude}.jpg`, 'image','');
           });
         }
         break;
@@ -89,13 +93,13 @@ export class MediaExportService {
             const parsed = JSON.parse(item.routeIndicatorUrl);
             if (Array.isArray(parsed)) {
               parsed.forEach((url, index) => {
-                addMediaFile(url, `route_indicator_${index + 1}_${item.latitude}_${item.longitude}.jpg`, 'image');
+                addMediaFile(url, `route_indicator_${index + 1}_${item.latitude}_${item.longitude}.jpg`, 'image','');
               });
             } else if (typeof parsed === 'string') {
-              addMediaFile(parsed, `route_indicator_${item.latitude}_${item.longitude}.jpg`, 'image');
+              addMediaFile(parsed, `route_indicator_${item.latitude}_${item.longitude}.jpg`, 'image','');
             }
           } catch (e) {
-            addMediaFile(item.routeIndicatorUrl, `route_indicator_${item.latitude}_${item.longitude}.jpg`, 'image');
+            addMediaFile(item.routeIndicatorUrl, `route_indicator_${item.latitude}_${item.longitude}.jpg`, 'image','');
           }
         }
         break;
@@ -103,22 +107,22 @@ export class MediaExportService {
 
       case "JOINTCHAMBER":
         if (item.jointChamberUrl) {
-          addMediaFile(item.jointChamberUrl, `joint_chamber_${item.latitude}_${item.longitude}.jpg`, 'image');
+          addMediaFile(item.jointChamberUrl, `joint_chamber_${item.latitude}_${item.longitude}.jpg`, 'image','');
         }
         break;
 
       case "ROADCROSSING":
         if (item.road_crossing?.startPhoto) {
-          addMediaFile(item.road_crossing.startPhoto, `${item.road_crossing?.roadCrossing}_start_${item.latitude}_${item.longitude}.jpg`, 'image');
+          addMediaFile(item.road_crossing.startPhoto, `${item.road_crossing?.roadCrossing}_start_${item.latitude}_${item.longitude}.jpg`, 'image','');
         }
         if (item.road_crossing?.endPhoto) {
-          addMediaFile(item.road_crossing.endPhoto, `${item.road_crossing?.roadCrossing}_end_${item.latitude}_${item.longitude}.jpg`, 'image');
+          addMediaFile(item.road_crossing.endPhoto, `${item.road_crossing?.roadCrossing}_end_${item.latitude}_${item.longitude}.jpg`, 'image','');
         }
         break;
 
       case "KILOMETERSTONE":
         if (item.kmtStoneUrl) {
-          addMediaFile(item.kmtStoneUrl, `km_stone_${item.latitude}_${item.longitude}.jpg`, 'image');
+          addMediaFile(item.kmtStoneUrl, `km_stone_${item.latitude}_${item.longitude}.jpg`, 'image','');
         }
         break;
 
@@ -129,7 +133,7 @@ export class MediaExportService {
             landmarkUrls
               .filter((url: string) => url && url.trim())
               .forEach((url: string, index: number) => {
-                addMediaFile(url, `landmark_${index + 1}_${item.latitude}_${item.longitude}.jpg`, 'image');
+                addMediaFile(url, `landmark_${index + 1}_${item.latitude}_${item.longitude}.jpg`, 'image','');
               });
           } catch (error) {
             console.error('Error parsing landmark URLs:', error);
@@ -139,7 +143,7 @@ export class MediaExportService {
 
       case "FIBERTURN":
         if (item.fiberTurnUrl) {
-          addMediaFile(item.fiberTurnUrl, `fiber_turn_${item.latitude}_${item.longitude}.jpg`, 'image');
+          addMediaFile(item.fiberTurnUrl, `fiber_turn_${item.latitude}_${item.longitude}.jpg`, 'image','');
         }
         break;
 
@@ -148,7 +152,10 @@ export class MediaExportService {
         const fallbackUrl = item.videoDetails?.videoUrl?.trim().replace(/^"|"$/g, "");
         const videoUrl = mainUrl || fallbackUrl;
         if (videoUrl) {
-          addMediaFile(videoUrl, `video_${item.videoDetails?.startLatitude}_${item.videoDetails?.startLongitude}_to_${item.videoDetails?.endLatitude}_${item.videoDetails?.endLongitude}.mp4`, 'video');
+          addMediaFile(videoUrl, `video_${item.videoDetails?.startLatitude}_${item.videoDetails?.startLongitude}_to_${item.videoDetails?.endLatitude}_${item.videoDetails?.endLongitude}.mp4`, 'video',
+                  item.videoDetails || {}
+
+          );
         }
         break;
     }
@@ -166,9 +173,11 @@ export class MediaExportService {
       const blockCode = survey.start_gp?.blk_name;
       const startGp = survey.start_gp?.name || 'UnknownStart';
       const endGp = survey.end_gp?.name || 'UnknownEnd';
+      const start_lgd = survey.start_gp?.lgd_code || '-';
+      const end_lgd = survey.end_gp?.lgd_code || '-';
       
       const folderPath = `${blockCode}/${startGp}_${endGp}`;
-
+      
       if (!folderStructure[folderPath]) {
         folderStructure[folderPath] = [];
       }
@@ -206,6 +215,8 @@ export class MediaExportService {
     surveys: GroundSurvey[],
     onProgress?: (current: number, total: number, currentFile: string) => void
   ): Promise<void> {
+    const mappingData: any[] = [];
+
     const zip = new JSZip();
     const folderStructure = this.groupSurveysByFolder(surveys);
     
@@ -214,7 +225,7 @@ export class MediaExportService {
       .reduce((sum, files) => sum + files.length, 0);
     
     let currentFileIndex = 0;
-
+    
     try {
       // Process each folder
       for (const [folderPath, mediaFiles] of Object.entries(folderStructure)) {
@@ -231,16 +242,54 @@ export class MediaExportService {
           if (onProgress) {
             onProgress(currentFileIndex, totalFiles, mediaFile.filename);
           }
-
           try {
             const fileBlob = await this.downloadFile(mediaFile.url);
             folder.file(mediaFile.filename, fileBlob);
+              const FilePath = `${folderPath}/${mediaFile.filename}`;
+              const blockCode = folderPath.split('/')[0];
+              const gpCode = folderPath.split('/')[1];
+              const survey = surveys.find(s => 
+                s.start_gp?.blk_name === blockCode && 
+                `${s.start_gp?.name}_${s.end_gp?.name}` === gpCode
+              );
+
+              const RouteId = `${survey?.start_gp?.lgd_code || '-'}` + '_' + `${survey?.end_gp?.lgd_code || '-'}`;
+
+              const mappingEntry: any = {
+                Layers: mediaFile.eventType,
+                UniqueId: gpCode,
+                RouteId,
+                FilePath
+              };
+
+             if (mediaFile.type === 'video' && mediaFile.videoDetails) {
+                Object.entries(mediaFile.videoDetails).forEach(([key, value]) => {
+                  mappingEntry[key] = value;
+                });
+              }
+
+              mappingData.push(mappingEntry);
+
           } catch (error) {
             console.error(`Failed to download ${mediaFile.filename}:`, error);
             // Continue with other files even if one fails
           }
         }
       }
+      
+      const worksheet = XLSX.utils.json_to_sheet(mappingData);
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Media Mapping');
+
+      // Create binary Excel buffer
+      const excelBuffer = XLSX.write(workbook, {
+        type: 'array',
+        bookType: 'xlsx'
+      });
+
+            // Add to ZIP root
+      zip.file('media_mapping.xlsx', excelBuffer);
 
       // Generate and download ZIP file
       const zipBlob = await zip.generateAsync({ 
