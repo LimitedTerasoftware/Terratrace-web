@@ -15,6 +15,7 @@ import MapComponent from "./MapComponent";
 import { MediaExportService } from "../hooks/useFullscreen";
 import {ChartBar, CheckCircle, Download, EyeIcon, FolderOpen, Loader, MapPinIcon, SheetIcon, SquaresExcludeIcon } from "lucide-react";
 import { hasViewOnlyAccess } from "../../utils/accessControl";
+import { FaArrowLeft } from "react-icons/fa";
 
 
 interface UndergroundSurvey {
@@ -725,8 +726,14 @@ const handleFilterChange = (newState: string | null, newDistrict: string | null,
 
 return (
     <>
-     {BlockData.length > 0 ? (
-    <MapComponent data={BlockData || []} />
+    {BlockData.length > 0 ? (
+       <><button
+        className="flex items-center gap-2 text-blue-500 hover:text-blue-700 mb-6"
+        onClick={() => {setBlockData([]);}}
+      >
+        <FaArrowLeft className="h-5 w-5" />
+        Back
+      </button><MapComponent data={BlockData || []} /></>
     ):(
     <div className="bg-gray-100 dark:bg-gray-900 min-h-screen">
       {/* Search Bar and Filters Section */}
