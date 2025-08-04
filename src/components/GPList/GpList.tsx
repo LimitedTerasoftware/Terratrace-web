@@ -125,7 +125,8 @@ const GpListPage: React.FC<GPListProps> = ({ GpList, onEdit, onDelete, OnPage, O
               <select
                 value={selectedState || ''}
                 onChange={(e) => {
-                  const name = states.find((state) => state.state_id === e.target.value);
+                  const name = states.find((state) => state.state_id == e.target.value);
+                  console.log(states,'name')
                   if (name) {
                     Onstate(name.state_code);
                     setSelectedState(e.target.value)
@@ -147,7 +148,7 @@ const GpListPage: React.FC<GPListProps> = ({ GpList, onEdit, onDelete, OnPage, O
               <select
                 value={selectedDistrict || ''}
                 onChange={(e) => {
-                  const name = districts.find((district) => district.district_id === e.target.value);
+                  const name = districts.find((district) => district.district_id == e.target.value);
                   if (name) {
                     OnDist(name.district_code);
                     setSelectedDistrict(e.target.value)
@@ -169,7 +170,7 @@ const GpListPage: React.FC<GPListProps> = ({ GpList, onEdit, onDelete, OnPage, O
               <select
                 value={selectedBlock || ''}
                 onChange={(e) => {
-                  const name = blocks.find((block) => block.block_id === e.target.value);
+                  const name = blocks.find((block) => block.block_id == e.target.value);
                   if (name) {
                     OnBlock(name?.block_code);
                     setSelectedBlock(e.target.value)
@@ -316,7 +317,7 @@ const GpListPage: React.FC<GPListProps> = ({ GpList, onEdit, onDelete, OnPage, O
                 }}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
               >
-                Edit Machine
+                Edit GP
               </button>
               <button
                 onClick={() => setSelectedGp(null)}
