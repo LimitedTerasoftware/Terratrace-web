@@ -86,6 +86,22 @@ const GpForm: React.FC<GpFormProps> = ({
             })
             const stateCode = states.find(Id=>Id.state_code === GpList?.st_code);
             if(stateCode) setSelectedState(stateCode?.state_id);
+        }else{
+              setFormData({
+                    name: "",
+                    lattitude: "",
+                    longitude: "",
+                    type: "",
+                    blk_code: "",
+                    blk_name: "",
+                    dt_code: "",
+                    dt_name: "",
+                    st_code: "",
+                    st_name: "",
+                    lgd_code: "",
+                    remark: ""
+                })
+            
         }
     }, [GpList])
     const handleChange = (field: keyof GPListFormData, value: string | number) => {

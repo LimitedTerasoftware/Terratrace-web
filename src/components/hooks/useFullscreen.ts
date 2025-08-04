@@ -32,8 +32,8 @@ export const useFullscreen = () => {
 };
 
 const BASEURL_Val = import.meta.env.VITE_API_BASE;
-// const baseUrl = import.meta.env.VITE_Image_URL;
-const baseUrl = "https://docs.tricadtrack.com/Tricad/"
+const baseUrl = import.meta.env.VITE_Image_URL;
+//  const baseUrl = "https://docs.tricadtrack.com/Tricad/"
 
 export class MediaExportService {
   
@@ -69,7 +69,7 @@ export class MediaExportService {
       case "SURVEYSTART":
         if (item.start_photos && item.start_photos.length > 0) {
           item.start_photos.forEach((photo, index) => {
-            addMediaFile(photo, `start_photo_${index + 1}_${item.latitude}_${item.longitude}.jpg`, 'image','');
+            addMediaFile(photo, `startphoto_${index + 1}_${item.latitude}_${item.longitude}.jpg`, 'image','');
           });
         }
         break;
@@ -77,7 +77,7 @@ export class MediaExportService {
       case "ENDSURVEY":
         if (item.end_photos && item.end_photos.length > 0) {
           item.end_photos.forEach((photo, index) => {
-            addMediaFile(photo, `end_photo_${index + 1}_${item.latitude}_${item.longitude}.jpg`, 'image','');
+            addMediaFile(photo, `endphoto_${index + 1}_${item.latitude}_${item.longitude}.jpg`, 'image','');
           });
         }
         break;
@@ -93,13 +93,13 @@ export class MediaExportService {
             const parsed = JSON.parse(item.routeIndicatorUrl);
             if (Array.isArray(parsed)) {
               parsed.forEach((url, index) => {
-                addMediaFile(url, `route_indicator_${index + 1}_${item.latitude}_${item.longitude}.jpg`, 'image','');
+                addMediaFile(url, `routeindicator_${index + 1}_${item.latitude}_${item.longitude}.jpg`, 'image','');
               });
             } else if (typeof parsed === 'string') {
-              addMediaFile(parsed, `route_indicator_${item.latitude}_${item.longitude}.jpg`, 'image','');
+              addMediaFile(parsed, `routeindicator_${item.latitude}_${item.longitude}.jpg`, 'image','');
             }
           } catch (e) {
-            addMediaFile(item.routeIndicatorUrl, `route_indicator_${item.latitude}_${item.longitude}.jpg`, 'image','');
+            addMediaFile(item.routeIndicatorUrl, `routeindicator_${item.latitude}_${item.longitude}.jpg`, 'image','');
           }
         }
         break;
@@ -107,22 +107,22 @@ export class MediaExportService {
 
       case "JOINTCHAMBER":
         if (item.jointChamberUrl) {
-          addMediaFile(item.jointChamberUrl, `joint_chamber_${item.latitude}_${item.longitude}.jpg`, 'image','');
+          addMediaFile(item.jointChamberUrl, `jointchamber_${item.latitude}_${item.longitude}.jpg`, 'image','');
         }
         break;
 
       case "ROADCROSSING":
         if (item.road_crossing?.startPhoto) {
-          addMediaFile(item.road_crossing.startPhoto, `${item.road_crossing?.roadCrossing}_start_${item.latitude}_${item.longitude}.jpg`, 'image','');
+          addMediaFile(item.road_crossing.startPhoto, `${item.road_crossing?.roadCrossing}start_1_${item.latitude}_${item.longitude}.jpg`, 'image','');
         }
         if (item.road_crossing?.endPhoto) {
-          addMediaFile(item.road_crossing.endPhoto, `${item.road_crossing?.roadCrossing}_end_${item.latitude}_${item.longitude}.jpg`, 'image','');
+          addMediaFile(item.road_crossing.endPhoto, `${item.road_crossing?.roadCrossing}end_1_${item.latitude}_${item.longitude}.jpg`, 'image','');
         }
         break;
 
       case "KILOMETERSTONE":
         if (item.kmtStoneUrl) {
-          addMediaFile(item.kmtStoneUrl, `km_stone_${item.latitude}_${item.longitude}.jpg`, 'image','');
+          addMediaFile(item.kmtStoneUrl, `kmstone_${item.latitude}_${item.longitude}.jpg`, 'image','');
         }
         break;
 
@@ -143,7 +143,7 @@ export class MediaExportService {
 
       case "FIBERTURN":
         if (item.fiberTurnUrl) {
-          addMediaFile(item.fiberTurnUrl, `fiber_turn_${item.latitude}_${item.longitude}.jpg`, 'image','');
+          addMediaFile(item.fiberTurnUrl, `fiberturn_${item.latitude}_${item.longitude}.jpg`, 'image','');
         }
         break;
 
@@ -254,11 +254,16 @@ export class MediaExportService {
               );
 
               const RouteId = `${survey?.start_gp?.lgd_code || '-'}` + '_' + `${survey?.end_gp?.lgd_code || '-'}`;
+              const withoutExtension = mediaFile.filename.replace(/\.[^/.]+$/, "");
+
+              // const fileWithoutExt = mediaFile.filename.replace(/\.[^/.]+$/, "");
+              // const parts = fileWithoutExt.split("_");
+              // const name = `${parts[0]}_${parts[1]}`;
 
               const mappingEntry: any = {
                 Layers: mediaFile.eventType,
                 UniqueId: gpCode,
-                RouteId,
+                RouteId:`${RouteId}_${mediaFile.eventType}_${withoutExtension}`,
                 FilePath
               };
 
