@@ -245,12 +245,14 @@ export interface District {
   district_id: string;
   district_name: string;
   state_code: string;
+  district_code:string
 }
 
 export interface Block {
   block_id: string;
   block_name: string;
   district_code: string;
+  block_code:string
 }
 
 export interface UGConstructionSurveyData {
@@ -311,4 +313,37 @@ export interface ImageUploadResponse {
 export interface UpdatePhotosRequest {
   id: number;
   [key: string]: any;
+}
+
+export interface GPList{
+  name:string,
+  lattitude: string,
+  longitude: string,
+  type:string ,
+  blk_code: string,
+  blk_name: string,
+  dt_code: string,
+  dt_name: string,
+  st_code: string,
+  st_name: string,
+  lgd_code: string,
+  remark: string,
+  id:number,
+  created_at:string,
+  updated_at:string
+}
+
+export type GPListFormData = Omit<GPList, 'id' | 'created_at' | 'updated_at'>;
+
+export type GPMainData = {
+  status: boolean,
+  currentPage: number,
+    totalPages: number,
+    totalRows: number,
+    filters: {
+        st_code: string,
+        dt_code: string,
+        blk_code: string
+    },
+    data:GPList[]
 }

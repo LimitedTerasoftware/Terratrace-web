@@ -174,12 +174,59 @@ export const getStateData = async() => {
 
 }
 
-// export const getDistrictData = async(selectedState:string | null)=>{
-//   try{
-//     const resp = await axios.get(`${BASEURL}/districtsdata?state_code=${selectedState}`);
-    
-//   } catch (error) {
-    
-//   }
+export const getDistrictData = async(selectedState:string | null)=>{
+  try{
+    const resp = await axios.get(`${BASEURL}/districtsdata?state_code=${selectedState}`);
+    if(resp.status === 200 || resp.status === 201){
+      return resp.data
+    }else{
+        throw new Error(`HTTP error! status: ${resp.status}`);
 
-// }
+    }
+    
+  } catch (error) {
+        throw error;
+
+  }
+
+}
+
+export const getBlockData = async(selectedDistrict:string | null)=>{
+  try{
+    const resp = await axios.get(`${BASEURL}/blocksdata?district_code=${selectedDistrict}`);
+    if(resp.status === 200 || resp.status === 201){
+      return resp.data
+    }else{
+        throw new Error(`HTTP error! status: ${resp.status}`);
+
+    }
+    
+  } catch (error) {
+        throw error;
+
+  }
+
+}
+
+export const getGpData = async(page:number=1,st_code:string,dt_code:string,blk_code:string)=>{
+  try {
+    const params: any = {};
+    if (page) params.page = page;
+    if (st_code) params.st_code = st_code;
+    if (dt_code) params.dt_code = dt_code;
+    if (blk_code) params.blk_code = blk_code;
+
+    const resp = await axios.get(`${TraceBASEURL}/gpslist`,{params});
+     if(resp.status === 200 || resp.status === 201){
+      return resp.data
+    }else{
+        throw new Error(`HTTP error! status: ${resp.status}`);
+
+    }
+    
+  } catch (error) {
+      throw error;
+
+  }
+}
+  

@@ -56,6 +56,7 @@ import Eventreport from './components/DepthChart/UGConstView';
 import Report from './components/DepthChart/UGConst';
 import Construction from './components/DepthChart/Construction';
 import Dashboard from './components/DepthChart/MachineWorkChart/Dashboard';
+import GPListData from './components/GPList';
 //import AuditLogs from './components/AuditLogs';
 
 function App() {
@@ -465,6 +466,14 @@ function App() {
                 </>
               }
             />
+            <Route 
+              path='/managementlist/gplist' 
+              element={<>
+                        <DefaultLayout>
+                          <PageTitle title="GPList" />
+                          <GPListData/>
+                        </DefaultLayout>
+                       </>}/>
 
           <Route 
            path="/survey/bsnl-edit/:id" 

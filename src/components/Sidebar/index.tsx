@@ -33,7 +33,8 @@ import {
   Cog,
   LocateFixed,
   Building,
-  User2Icon
+  User2Icon,
+  Globe2Icon
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -330,7 +331,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                 </SidebarLinkGroup>
 
            
-                <SideBarItem icon={KML} label="Filter GP Points" isOpen={isOpen} isActive={pathname.includes('gp-points-filter')} path='/gp-points-filter' />
+                {/* <SideBarItem icon={KML} label="Filter GP Points" isOpen={isOpen} isActive={pathname.includes('gp-points-filter')} path='/gp-points-filter' /> */}
                 <SidebarLinkGroup
                   activeCondition={pathname.includes('managementlist')}
                 >
@@ -397,7 +398,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                 <span className={isOpen ? '' : 'hidden'}>Users</span>
                               </NavLink>
                             </li>
-
+                            <li>
+                              <NavLink to="/managementlist/gplist"
+                               className={({isActive})=>`group relative flex items-center gap-2.5 rounded-md px-2 py-1 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white
+                                          ${isActive ? `!text-white`: ''}`}>
+                                <Globe2Icon size={16} className='min-w-[16px]'/>   
+                                <span className={isOpen ? '' : "hidden"}>Gp List</span>
+                              </NavLink>
+                            </li>
                           </ul>
                         </div>
 
