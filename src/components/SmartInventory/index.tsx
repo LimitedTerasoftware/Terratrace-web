@@ -134,7 +134,7 @@ function SmartInventory() {
   // Handle file upload
   const handleFileUpload = async (
     desktopFile: File,
-    physicalFile: File,
+    // physicalFile: File,
     fileName: string,
     stateId: string,
     districtId: string,
@@ -145,7 +145,7 @@ function SmartInventory() {
     try {
       const formData = new FormData();
       formData.append('desktop_planning', desktopFile);
-      formData.append('physical_survey', physicalFile);
+      // formData.append('physical_survey', physicalFile);
       formData.append('state_code', stateId);
       formData.append('dtcode', districtId);
       formData.append('block_code', blockId);
@@ -158,7 +158,7 @@ function SmartInventory() {
       });
 
       if (kmzFile.status === 200 || kmzFile.status === 201) {
-        showNotification("success", `${desktopFile.name} and ${physicalFile.name} files are saved`);
+        showNotification("success", `${desktopFile.name} files are saved`);
       }
 
       setFilters({});

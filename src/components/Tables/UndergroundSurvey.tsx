@@ -598,8 +598,18 @@ const handlePreview = async (id:number) => {
       const json = await res.json();
 
       const newData = json.data?.under_ground_survey_data || [];
-      Data.push(...newData); 
-        if (json.data) {
+        const enrichedData = newData.map((entry: any) => ({
+                              ...entry,
+                              start_gp_name: json.data.start_gp?.name || '',
+                              end_gp_name: json.data.end_gp?.name || '',
+                              start_lgd:json.data.start_gp?.lgd_code || '',
+                              end_lgd:json.data.end_gp?.lgd_code || '',
+                              routeType:json.data?.routeType || ''
+                            }));
+
+      Data.push(...enrichedData);
+      // Data.push(...newData); 
+      if (json.data) {
         MediaData.push(json.data); 
       }
     }
@@ -723,7 +733,7 @@ const handleFilterChange = (newState: string | null, newDistrict: string | null,
   params.page = newPage.toString();
   setSearchParams(params);
 };
-
+console.log(BlockData,'BlockData')
 return (
     <>
     {BlockData.length > 0 ? (

@@ -11,11 +11,11 @@ import HotoTables from "../../pages/HotoTables";
 type TabType = "bsnl" | "gp" | "aerial" | "ground" | "hoto";
 
 // Placeholder Components...
-const BsnlSurvey: React.FC = () => <div className="p-4"><BsnlTables /></div>;
-const GpSurvey: React.FC = () => <div className="p-4"><GpTables /></div>;
-const AerialSurvey: React.FC = () => <div className="p-4"><AerailTables /></div>;
-const GroundSurvey: React.FC = () => <div className="p-4"><UndergroundTables /></div>;
-const HotoSurvey: React.FC = () => <div className="p-4"><HotoTables /></div>;
+const BsnlSurvey: React.FC = () => <div className="py-2"><BsnlTables /></div>;
+const GpSurvey: React.FC = () => <div className="py-2"><GpTables /></div>;
+const AerialSurvey: React.FC = () => <div className="py-2"><AerailTables /></div>;
+const GroundSurvey: React.FC = () => <div className="py-2"><UndergroundTables /></div>;
+const HotoSurvey: React.FC = () => <div className="py-2"><HotoTables /></div>;
 
 // Tab Data
 const tabs: { id: TabType; label: string }[] = [
@@ -68,7 +68,7 @@ const SurveyTabs: React.FC = () => {
   };
 
   return (
-    <div className="w-full p-4">
+    <div className="w-full py-2 px-2">
       <Breadcrumb pageName="Survey Forms" />
 
       {/* Tabs Header */}
@@ -89,7 +89,7 @@ const SurveyTabs: React.FC = () => {
       </div>
 
       {/* Content Section */}
-      <div className="mt-4">{renderTabContent()}</div>
+      <div className="mt-2">{renderTabContent()}</div>
     </div>
   );
 };

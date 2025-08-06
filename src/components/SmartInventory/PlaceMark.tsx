@@ -23,6 +23,9 @@ export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string 
   "ENDSURVEY": { color: '#10B981', icon: '🎯'},
   "HOLDSURVEY": { color: '#a93226', icon: '⏸️'},
   "BLOWING": { color: '#663300', icon:'💨'},
+  "Incremental Cable":{color:"#61f335",icon:'----'},
+  "Proposed Cable":{color:"#ff0000",icon:'----'},
+
 };
 
 export function processApiData(apiData: ApiPlacemark): {
@@ -57,7 +60,7 @@ export function processApiData(apiData: ApiPlacemark): {
 
   // Process polylines
   apiData.polylines.forEach((polyline, index) => {
-    const category = getCategoryFromName(polyline.name);
+    const category = getCategoryFromName(polyline.type || polyline.name);
     categoryCounts[category] = (categoryCounts[category] || 0) + 1;
 
     processedPlacemarks.push({

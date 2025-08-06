@@ -5,7 +5,7 @@ import React, { useEffect, useRef, useState } from "react";
 interface FileUploadModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onUpload: (desktopFile:File,physicalFile:File,FileName:string,stateId:string,DistrictId:string,BlcokId:string) => void;
+    onUpload: (desktopFile:File,FileName:string,stateId:string,DistrictId:string,BlcokId:string) => void;
     isLoading: boolean;
     error?: string;
 }
@@ -77,8 +77,8 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClose, onUp
   }, [selectedDistrict]);
 
     const handleUpload = () => {
-        if(desktopFile !== null && physicalFile !== null &&  FileName !== '' && selectedBlock !== null && selectedDistrict !== null && selectedState !==  null){
-         onUpload(desktopFile,physicalFile,FileName,selectedState,selectedDistrict,selectedBlock)
+        if(desktopFile !== null  &&  FileName !== '' && selectedBlock !== null && selectedDistrict !== null && selectedState !==  null){
+         onUpload(desktopFile,FileName,selectedState,selectedDistrict,selectedBlock)
         }
         // setDesktopFile(null);
         // setPhysicalFile(null);
@@ -203,12 +203,12 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClose, onUp
 
                             </label>
                         </div>
-
+{/* 
                         <div className="flex justify-between items-center mb-2">
                             <h3 className="font-medium text-sm">Physical Survey File</h3>
                             <span className="text-xs text-gray-500">KML/KMZ</span>
-                        </div>
-                        <div className="relative mb-4">
+                        </div> */}
+                        {/* <div className="relative mb-4">
                             <input
                                 type="file"
                                 id="PhysicalFile"
@@ -232,7 +232,7 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClose, onUp
                                 <span className="truncate">{physicalFile ? physicalFile.name : 'Choose file...'}</span>
                                 <Upload size={16} className="text-gray-500" />
                             </label>
-                        </div>
+                        </div> */}
                         <div className="justify-between items-center mb-2">
                             <h3 className="font-medium text-sm">File Name</h3>
                         </div>
@@ -257,12 +257,12 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClose, onUp
                         Cancel
                     </button>
                     <button
-                        className={`flex items-center gap-2 px-4 py-2 rounded  ${isLoading || FileName === '' || physicalFile === null || desktopFile === null
+                        className={`flex items-center gap-2 px-4 py-2 rounded  ${isLoading || FileName === '' || desktopFile === null
                             ? 'border-blue-200 bg-blue-50 text-black cursor-not-allowed'
                             : 'border-blue-300 bg-blue-950 text-white hover:bg-blue-900 hover:border-blue-400 cursor-pointer'
                             }`}
                         onClick={handleUpload}
-                        disabled={FileName === '' || physicalFile === null || desktopFile === null || isLoading}
+                        disabled={FileName === '' || desktopFile === null || isLoading}
                     >
 
                         {isLoading ? (

@@ -33,6 +33,7 @@ export interface ApiPolyline {
   name: string;
   styleUrl: string | null;
   distance: string | null;
+  type:string | null;
   coordinates: [number, number][];
 }
 export interface KMZFile {

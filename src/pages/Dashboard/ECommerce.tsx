@@ -321,7 +321,7 @@ const ECommerce: React.FC = () => {
       </div>
       {/* ----------------------------------- Survey Progress Chart ------------------------------------------*/}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-1">
         <Card className="lg:col-span-2">
           <div className="flex justify-between items-center mb-2">
             <div>
@@ -393,8 +393,8 @@ const ECommerce: React.FC = () => {
         </Card>
 
       </div>
-      <div className="mt-4 grid grid-cols-12 gap-4 md:mt-6 md:gap-6 2xl:mt-7.5 2xl:gap-7.5">
-        
+      <div className="mt-4 grid grid-cols-12 gap-2 md:mt-6 md:gap-6 2xl:mt-7.5 2xl:gap-7.5">
+
         {/* Left Side: Table */}
         <div className="col-span-12 md:col-span-6 xl:col-span-6">
           <div className="bg-white shadow rounded-lg h-full flex flex-col overflow-x-auto">
@@ -409,13 +409,13 @@ const ECommerce: React.FC = () => {
               </thead>
               <tbody className="bg-white">
                 <tr>
-                  <td 
+                  <td
                     className="border border-gray-300 px-4 py-2 text-black cursor-pointer hover:bg-gray-100"
                     onClick={() => handleGPRedirect(undefined)}
                   >
                     Gp Survey
                   </td>
-                  <td 
+                  <td
                     className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-green-100 text-green-700 font-semibold"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -424,7 +424,7 @@ const ECommerce: React.FC = () => {
                   >
                     {stats.acceptedGPS}
                   </td>
-                  <td 
+                  <td
                     className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-yellow-100 text-yellow-700 font-semibold"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -433,7 +433,7 @@ const ECommerce: React.FC = () => {
                   >
                     {stats.pendingGPS}
                   </td>
-                  <td 
+                  <td
                     className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-red-100 text-red-700 font-semibold"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -443,15 +443,15 @@ const ECommerce: React.FC = () => {
                     {stats.rejectedGPS}
                   </td>
                 </tr>
-                
+
                 <tr>
-                  <td 
+                  <td
                     className="border border-gray-300 px-4 py-2 text-black cursor-pointer hover:bg-gray-100"
                     onClick={() => handleBsnlRedirect(undefined)}
                   >
                     Block Survey
                   </td>
-                  <td 
+                  <td
                     className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-green-100 text-green-700 font-semibold"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -460,7 +460,7 @@ const ECommerce: React.FC = () => {
                   >
                     {stats.acceptedBSNL}
                   </td>
-                  <td 
+                  <td
                     className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-yellow-100 text-yellow-700 font-semibold"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -469,7 +469,7 @@ const ECommerce: React.FC = () => {
                   >
                     {stats.pendingBSNL}
                   </td>
-                  <td 
+                  <td
                     className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-red-100 text-red-700 font-semibold"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -479,15 +479,15 @@ const ECommerce: React.FC = () => {
                     {stats.rejectedBSNL}
                   </td>
                 </tr>
-                
+
                 <tr>
-                  <td 
+                  <td
                     className="border border-gray-300 px-4 py-2 text-black cursor-pointer hover:bg-gray-100"
                     onClick={() => handleAerialRedirect(undefined)}
                   >
                     Aerial Survey
                   </td>
-                  <td 
+                  <td
                     className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-green-100 text-green-700 font-semibold"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -496,7 +496,7 @@ const ECommerce: React.FC = () => {
                   >
                     {stats.acceptedAerial}
                   </td>
-                  <td 
+                  <td
                     className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-yellow-100 text-yellow-700 font-semibold"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -505,7 +505,7 @@ const ECommerce: React.FC = () => {
                   >
                     {stats.pendingAerial}
                   </td>
-                  <td 
+                  <td
                     className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-red-100 text-red-700 font-semibold"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -515,15 +515,15 @@ const ECommerce: React.FC = () => {
                     {stats.rejectedAerial}
                   </td>
                 </tr>
-                
+
                 <tr>
-                  <td 
+                  <td
                     className="border border-gray-300 px-4 py-2 text-black cursor-pointer hover:bg-gray-100"
                     onClick={() => handleGroundRedirect(undefined)}
                   >
                     UG Survey
                   </td>
-                  <td 
+                  <td
                     className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-green-100 text-green-700 font-semibold"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -532,7 +532,7 @@ const ECommerce: React.FC = () => {
                   >
                     {stats.acceptedUnderGround}
                   </td>
-                  <td 
+                  <td
                     className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-yellow-100 text-yellow-700 font-semibold"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -541,7 +541,7 @@ const ECommerce: React.FC = () => {
                   >
                     {stats.pendingUnderGround}
                   </td>
-                  <td 
+                  <td
                     className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-red-100 text-red-700 font-semibold"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -551,15 +551,15 @@ const ECommerce: React.FC = () => {
                     {stats.rejectedUnderGround}
                   </td>
                 </tr>
-                
+
                 <tr>
-                  <td 
+                  <td
                     className="border border-gray-300 px-4 py-2 text-black cursor-pointer hover:bg-gray-100"
                     onClick={() => handleHOTORedirect(undefined)}
                   >
                     Hoto Survey
                   </td>
-                  <td 
+                  <td
                     className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-green-100 text-green-700 font-semibold"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -568,7 +568,7 @@ const ECommerce: React.FC = () => {
                   >
                     {stats.acceptedHOTO}
                   </td>
-                  <td 
+                  <td
                     className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-yellow-100 text-yellow-700 font-semibold"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -577,7 +577,7 @@ const ECommerce: React.FC = () => {
                   >
                     {stats.pendingHOTO}
                   </td>
-                  <td 
+                  <td
                     className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-red-100 text-red-700 font-semibold"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -603,155 +603,6 @@ const ECommerce: React.FC = () => {
 
 
 
-{/* 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5 mt-6 mb-6">
-        <StatBox
-          title="Block Survey"
-          rejected={stats.rejectedBSNL}
-          pending={stats.pendingBSNL}
-          total={stats.allBSNL}
-          completed={stats.acceptedBSNL}
-          onApprovedClick={() => handleBsnlRedirect(1)}
-          onPendingClick={() => handleBsnlRedirect(0)}
-          onRejectedClick={() => handleBsnlRedirect(2)}
-          onTotalClick={() => handleBsnlRedirect(undefined)}
-        />
-
-        <StatBox
-          title="GP Survey"
-          rejected={stats.rejectedGPS}
-          pending={stats.pendingGPS}
-          total={stats.allGPS}
-          completed={stats.acceptedGPS}
-          onApprovedClick={() => handleGPRedirect(1)}
-          onPendingClick={() => handleGPRedirect(0)}
-          onRejectedClick={() => handleGPRedirect(2)}
-          onTotalClick={() => handleGPRedirect(undefined)}
-        />
-
-        <StatBox
-          title="Aerial Survey"
-          rejected={stats.rejectedAerial}
-          pending={stats.pendingAerial}
-          total={stats.allAerial}
-          completed={stats.acceptedAerial}
-          onApprovedClick={() => handleAerialRedirect(1)}
-          onPendingClick={() => handleAerialRedirect(0)}
-          onRejectedClick={() => handleAerialRedirect(2)}
-          onTotalClick={() => handleAerialRedirect(undefined)}
-        />
-
-        <StatBox
-          title="UG Survey"
-          rejected={stats.rejectedUnderGround}
-          pending={stats.pendingUnderGround}
-          total={stats.allUnderGround}
-          completed={stats.acceptedUnderGround}
-          onApprovedClick={() => handleGroundRedirect(1)}
-          onPendingClick={() => handleGroundRedirect(0)}
-          onRejectedClick={() => handleGroundRedirect(2)}
-          onTotalClick={() => handleGroundRedirect(undefined)}
-        />
-      </div> */}
-
-      {/* <StatBox 
-        title="HOTO Survey" 
-        rejected={stats.rejectedHOTO} 
-        pending={stats.pendingHOTO} 
-        total={stats.allHOTO} 
-        completed={stats.acceptedHOTO} 
-        onApprovedClick={() => handleHOTORedirect(1)}
-        onPendingClick={() => handleHOTORedirect(0)}
-        onRejectedClick={() => handleHOTORedirect(2)}
-        onTotalClick={() => handleHOTORedirect(undefined)}
-      /> */}
-{/* 
-      <div className="flex flex-row gap-6 mt-10 w-full">
-        <div className="w-1/3">
-          <StatBox
-            title="HOTO Survey"
-            rejected={stats.rejectedHOTO}
-            pending={stats.pendingHOTO}
-            total={stats.allHOTO}
-            completed={stats.acceptedHOTO}
-            onApprovedClick={() => handleHOTORedirect(1)}
-            onPendingClick={() => handleHOTORedirect(0)}
-            onRejectedClick={() => handleHOTORedirect(2)}
-            onTotalClick={() => handleHOTORedirect(undefined)}
-          />
-
-          <UserStatBox 
-            title="Users" 
-            active={stats.activeUsers} 
-            inactive={stats.inactiveUsers} 
-            total={stats.allUsers} 
-          /> 
-        </div>
-
-        <div className="w-2/3 overflow-x-auto">
-          <table className="min-w-full border bg-white border-gray-300 text-gray-600">
-            <thead>
-              <tr className="bg-blue-300">
-                <th className="border border-gray-300 px-4 py-2 text-left"></th>
-                <th className="border border-gray-300 px-4 py-2 text-left">Approved</th>
-                <th className="border border-gray-300 px-4 py-2 text-left">Pending</th>
-                <th className="border border-gray-300 px-4 py-2 text-left">Rejected</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border border-gray-300 cursor-pointer" onClick={handleGpNavigate}>
-                <td className="border border-gray-300 px-4 py-2">Gp Survey</td>
-                <td className="border border-gray-300 px-4 py-2">{stats.acceptedGPS} </td>
-                <td className="border border-gray-300 px-4 py-2">{stats.pendingGPS}</td>
-                <td className="border border-gray-300 px-4 py-2">{stats.rejectedGPS}</td>
-              </tr>
-              <tr className="border border-gray-300 cursor-pointer" onClick={handleBsnlNavigate}>
-                <td className="border border-gray-300 px-4 py-2">Block Survey</td>
-                <td className="border border-gray-300 px-4 py-2">{stats.acceptedBSNL}</td>
-                <td className="border border-gray-300 px-4 py-2">{stats.pendingBSNL}</td>
-                <td className="border border-gray-300 px-4 py-2">{stats.rejectedBSNL}</td>
-              </tr>
-              <tr className="border border-gray-300 cursor-pointer" onClick={handleAerialNavigate}>
-                <td className="border border-gray-300 px-4 py-2">Aerial Survey</td>
-                <td className="border border-gray-300 px-4 py-2">{stats.acceptedAerial}</td>
-                <td className="border border-gray-300 px-4 py-2">{stats.pendingAerial}</td>
-                <td className="border border-gray-300 px-4 py-2">{stats.rejectedAerial}</td>
-              </tr>
-              <tr className="border border-gray-300 cursor-pointer" onClick={handleUGNavigate}>
-                <td className="border border-gray-300 px-4 py-2">UG Survey</td>
-                <td className="border border-gray-300 px-4 py-2">{stats.acceptedUnderGround}</td>
-                <td className="border border-gray-300 px-4 py-2">{stats.pendingUnderGround}</td>
-                <td className="border border-gray-300 px-4 py-2">{stats.rejectedUnderGround}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div> */}
-{/* 
-      <div className="mt-4 grid grid-cols-12 gap-4 md:mt-6 md:gap-6 2xl:mt-7.5 2xl:gap-7.5">
-
-        <div className="col-span-12 md:col-span-6 xl:col-span-7 rounded-sm border border-stroke bg-white py-6 px-7.5 shadow-default dark:border-strokedark dark:bg-boxdark">
-          <h2 className="text-xl font-semibold text-blue-700 text-center mb-4">Survey Progress</h2>
-
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="Pending" stroke="#fbbf24" strokeWidth={2} />
-              <Line type="monotone" dataKey="Accepted" stroke="#10b981" strokeWidth={2} />
-              <Line type="monotone" dataKey="Rejected" stroke="#ef4444" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="col-span-12 md:col-span-6 xl:col-span-5">
-          <MapOne />
-        </div>
-
-      </div> */}
 
     </>
   );

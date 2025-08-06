@@ -113,7 +113,8 @@ interface GroundSurvey {
   state_id: string;
   under_ground_survey_data: UnderGroundSurveyData[];
   start_gp: StartGp,
-  end_gp: EndGp
+  end_gp: EndGp,
+  routeType:string
 }
 interface Props {
   paginatedData: GroundSurvey[];
