@@ -9,10 +9,6 @@ import videoIcon from '../../images/icon/cinema.png';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-import BRIcon from '../../images/icon/bring.svg'
-import GPIcon from '../../images/icon/gpimg.svg';
-import FPOIcon from '../../images/icon/fpimg.svg';
-import BHQIcon from '../../images/icon/bhing.svg'
 
 
 
@@ -68,17 +64,11 @@ type UnderGroundSurveyData = {
   landMarkUrls:string;
   fiberTurnUrl:string;
   landMarkType:string;
-  start_gp_name?:string;
-  end_gp_name?:string;
-  start_lgd?:string;
-  end_lgd?:string;
-  routeType?:string;
 };
 
 
 const BASEURL_Val = import.meta.env.VITE_API_BASE;
 const baseUrl = import.meta.env.VITE_Image_URL ;
-const NewImgUrl = import.meta.env.VITE_NewIMAGE_BASE;
 
 interface MapComponentProps {
   data: UnderGroundSurveyData[];
@@ -117,7 +107,6 @@ const filteredData = useMemo<UnderGroundSurveyData[]>(() => {
         (selectedEventType === 'MEDIA-FILES'
           ? item.event_type !== 'LIVELOCATION' &&  item.event_type !== 'ROUTEFEASIBILITY' && item.event_type !== 'AREA' 
           && item.event_type !== 'SIDE'  && item.event_type !== 'ROUTEDETAILS'
-          : selectedEventType === 'LIVELOCATION' ?  item.event_type === 'LIVELOCATION' || item.event_type === 'SURVEYSTART' || item.event_type === 'ENDSURVEY'
           : item.event_type === selectedEventType);
         const isModalityMatch =
         selectedModality === 'ALL' || item.execution_modality === selectedModality;
@@ -222,66 +211,6 @@ const handlePlayVideoFromImage =(selectedItem:UnderGroundSurveyData)=>{
     return () => clearTimeout(timer);
   }, [enterFullscreen]);
 
-//   useEffect(() => {
-//   if (
-//     mapRef.current &&
-//     (selectedEventType === 'ALL'||selectedEventType === 'LIVELOCATION' || selectedEventType === 'VIDEORECORD' || selectedEventType === 'MEDIA-FILES') &&
-//     filteredData.length > 1
-//   ) {
-//     // const livePoints = filteredData 
-//     //   .map(item => ({
-//     //     lat: parseFloat(item.latitude),
-//     //     lng: parseFloat(item.longitude),
-//     //   }));
-//      const groupedBySurvey = filteredData.reduce((acc, item) => {
-//       const key = item.survey_id;
-//       if (!acc[key]) acc[key] = [];
-//       acc[key].push({
-//         lat: parseFloat(item.latitude),
-//         lng: parseFloat(item.longitude),
-//       });
-//       return acc;
-//     }, {} as Record<string, { lat: number; lng: number }[]>);
-
-//     // Draw a polyline for each group
-//     Object.values(groupedBySurvey).forEach((points) => {
-//       if (points.length < 2) return; // Skip if not enough points
-
-
-//     if (polylineRef.current) {
-//       polylineRef.current.setMap(null);
-//     }
-
-//     polylineRef.current = new window.google.maps.Polyline({
-//       path: points,
-//       strokeColor: '#0000FF',
-//       strokeOpacity: 0.8,
-//       strokeWeight: 3,
-//       icons: [
-//         {
-//           icon: {
-//             path: window.google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-//             scale: 2.5,
-//             strokeOpacity: 1,
-//             strokeColor: '#0000FF',
-//           },
-//           offset: '0%',
-//           repeat: '200px',
-//         },
-//       ],
-//     });
-
-//     polylineRef.current.setMap(mapRef.current);
-//      });
-//   } else {
-//     if (polylineRef.current) {
-//       polylineRef.current.setMap(null);
-//       polylineRef.current = null;
-//     }
-    
-//   }
-// }, [selectedEventType, filteredData]);
-
 
 useEffect(() => {
   if (
@@ -300,34 +229,24 @@ useEffect(() => {
       polylineRef.current = [];
     }
 
-    // Group points by survey_id and include routeType
+    // Group by survey_id
     const groupedBySurvey = filteredData.reduce((acc, item) => {
       const key = item.survey_id;
-      if (!acc[key]) acc[key] = { points: [], routeType: item?.routeType || '' }; // store routeType with points
-      acc[key].points.push({
+      if (!acc[key]) acc[key] = [];
+      acc[key].push({
         lat: parseFloat(item.latitude),
         lng: parseFloat(item.longitude),
       });
       return acc;
-    }, {} as Record<string, { points: { lat: number; lng: number }[]; routeType: string }>);
+    }, {} as Record<string, { lat: number; lng: number }[]>);
 
     // Draw polylines
-    Object.values(groupedBySurvey).forEach(({ points, routeType }) => {
+    Object.values(groupedBySurvey).forEach(points => {
       if (points.length < 2) return;
-
-      // Determine polyline color based on routeType
-      let strokeColor = '#0000FF'; // default blue
-      const normalizedRouteType = routeType?.toLowerCase() || '';
-
-      if (normalizedRouteType == 'Proposed') {
-        strokeColor = '#FF0000'; // red
-      } else if (normalizedRouteType == 'incremental') {
-        strokeColor = '#008000'; // green
-      }
 
       const polyline = new window.google.maps.Polyline({
         path: points,
-        strokeColor,
+        strokeColor: '#0000FF',
         strokeOpacity: 0.8,
         strokeWeight: 3,
         icons: [
@@ -336,7 +255,7 @@ useEffect(() => {
               path: window.google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
               scale: 2.5,
               strokeOpacity: 1,
-              strokeColor,
+              strokeColor: '#0000FF',
             },
             offset: '0%',
             repeat: '200px',
@@ -387,8 +306,8 @@ const tileLayerUrl = useMemo(() => {
   const mapWidth = isFullscreen ? 'w-3/4' : 'w-full md:flex-1';
   const imageEventTypes = [
   "FPOI",
-  // "SURVEYSTART",
-  // "ENDSURVEY",
+  "SURVEYSTART",
+  "ENDSURVEY",
   "ROUTEINDICATOR",
   "JOINTCHAMBER",
   "ROADCROSSING",
@@ -439,36 +358,16 @@ const tileLayerUrl = useMemo(() => {
                   iconUrl = videoIcon;
                 }else if (imageEventTypes.includes(item.event_type)) {
                   iconUrl = 'http://maps.google.com/mapfiles/ms/icons/red-dot.png';
-                }else if ((item.start_lgd?.includes('BH') || item.end_lgd?.includes('BH')) && ( item.event_type === "SURVEYSTART" || item.event_type === "ENDSURVEY")) {
-                  iconUrl = BHQIcon;
-                  size = new window.google.maps.Size(45, 45);
-                } else if ((item.start_lgd?.includes('F') || item.end_lgd?.includes('F')) && ( item.event_type === "SURVEYSTART" || item.event_type === "ENDSURVEY")) {
-                  iconUrl = FPOIcon
-                  size = new window.google.maps.Size(45, 45);
-                } else if ((item.start_lgd?.includes('BR') || item.end_lgd?.includes('BR')) && ( item.event_type === "SURVEYSTART" || item.event_type === "ENDSURVEY")) {
-                  iconUrl = BRIcon
-                  size = new window.google.maps.Size(45, 45);
-                } else if((item?.start_gp_name || item?.end_gp_name) && (item.event_type === "SURVEYSTART" || item.event_type === "ENDSURVEY")){
-                  iconUrl = GPIcon
-                  size = new window.google.maps.Size(45, 45);
                 }
-              return!( selectedEventType === 'LIVELOCATION' && item.event_type === 'LIVELOCATION' && item?.start_gp_name) ? (
+              return(
                 
               <Marker
                 key={item.id}
                 position={position}
-                title={(item?.start_gp_name && item.event_type === 'SURVEYSTART') ? item?.start_gp_name : (item?.end_gp_name &&item.event_type === 'ENDSURVEY') ? item?.end_gp_name : ''}
                 icon={{
                   url: iconUrl,
                   scaledSize:size,
                 }}
-               label={
-                  (item.event_type === 'SURVEYSTART' && typeof item.start_gp_name === 'string')
-                    ? { text: `${item.start_gp_name}`, fontSize: '12px', fontWeight: 'bold', color: '#474040'}
-                    : (item.event_type === 'ENDSURVEY' && typeof item.end_gp_name === 'string')
-                    ? { text: `${item.end_gp_name}`, fontSize: '12px', fontWeight: 'bold', color: '#474040' }
-                    : undefined 
-                }
                 onClick={() => {
                  setSelectedMarker(item);
                 }}
@@ -476,7 +375,7 @@ const tileLayerUrl = useMemo(() => {
                  handleMarkerRightClick(event, item) 
                 }
               />
-            ): null;
+            )
           })}
           {selectedMarker  && (
             <InfoWindow
@@ -487,18 +386,6 @@ const tileLayerUrl = useMemo(() => {
               onCloseClick={() => setSelectedMarker(null)}
             >
               <div style={{ width: '250px', minWidth: "200" }}>
-                {selectedMarker?.start_gp_name && (
-                  <>
-                    <strong>Start Gp Name:</strong> {selectedMarker.start_gp_name}
-                    <br />
-                  </>
-                )}
-                {selectedMarker?.end_gp_name && (
-                  <>
-                    <strong>End Gp Name:</strong> {selectedMarker.end_gp_name}
-                    <br />
-                  </>
-                )}
                 <strong>Survey ID:</strong> {selectedMarker.survey_id}<br />
                 <strong>ID:</strong> {selectedMarker.id}<br />
                 <strong>Event:</strong> {selectedMarker.event_type === 'ROADCROSSING' ? selectedMarker.road_crossing?.roadCrossing : selectedMarker.event_type}<br />
@@ -621,24 +508,7 @@ const tileLayerUrl = useMemo(() => {
                     />
                   ))
                 ) :
-                  // selectedMarker.event_type === "ROADCROSSING" && selectedMarker.road_crossing?.startPhoto ? (
-                  //   <img
-                  //     src={`${baseUrl}${selectedMarker.road_crossing?.startPhoto}`}
-                  //     alt="ROADCROSSING"
-                  //     className="w-full max-h-40 object-cover mt-2"
-                  //     onClick={() => setZoomImage(`${baseUrl}${selectedMarker.road_crossing?.startPhoto}`)}
-                  //   />
-                  // ) :
-                  //   selectedMarker.event_type === "ROADCROSSING" && selectedMarker.road_crossing?.endPhoto ? (
-                  //     <img
-                  //       src={`${baseUrl}${selectedMarker.road_crossing?.endPhoto}`}
-                  //       alt="ROADCROSSING"
-                  //       className="w-full max-h-40 object-cover mt-2"
-                  //       onClick={() => setZoomImage(`${baseUrl}${selectedMarker.road_crossing?.endPhoto}`)}
-
-                  //     />
-                  
-                 selectedMarker.event_type === "ROADCROSSING" ? (
+                selectedMarker.event_type === "ROADCROSSING" ? (
                   <>
                     {selectedMarker.road_crossing?.startPhoto && (
                       <img

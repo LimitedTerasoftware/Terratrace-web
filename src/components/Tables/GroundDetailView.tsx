@@ -246,7 +246,7 @@ const GroundDetailView: React.FC = () => {
     },
     {
       name: "Landmark Description",
-      selector: (row: UnderGroundSurveyData) => row.landMarkDescription || "-",
+      selector: (row: UnderGroundSurveyData) =>row.event_type === "LANDMARK" ? row.landMarkDescription || "-" : "-",
     },
     {
       name: "RouteIndicator Type",
