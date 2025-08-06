@@ -92,7 +92,8 @@ interface UnderGroundSurveyData {
   landMarkUrls: string;
   fiberTurnUrl: string;
   landMarkType: string;
-  landMarkDescripition:string;
+  landMarkDescription:string;
+  routeIndicatorType:string;
 
 }
 interface StartGp {
@@ -243,9 +244,13 @@ const GroundDetailView: React.FC = () => {
       name: "Landmark Type",
       selector: (row: UnderGroundSurveyData) => row.landMarkType || "-",
     },
-      {
+    {
       name: "Landmark Description",
-      selector: (row: UnderGroundSurveyData) => row.landMarkDescripition || "-",
+      selector: (row: UnderGroundSurveyData) => row.landMarkDescription || "-",
+    },
+    {
+      name: "RouteIndicator Type",
+      selector: (row: UnderGroundSurveyData) => row.routeIndicatorType || "-",
     },
     {
       name: "Image",
@@ -688,12 +693,12 @@ const GroundDetailView: React.FC = () => {
         jointChamberUrl: (data.event_type === "JOINTCHAMBER" && data?.surveyUploaded === "true" && data.jointChamberUrl) ? { text: `${baseUrl}${data.jointChamberUrl}`, url: `${baseUrl}${data.jointChamberUrl}` } : '',
         fpoiUrl: (data.event_type === "FPOI" && data.fpoiUrl && data?.surveyUploaded === "true") ? { text: `${baseUrl}${data.fpoiUrl}`, url: `${baseUrl}${data.fpoiUrl}` } : '',
         kmtStoneUrl: (data.event_type === "KILOMETERSTONE" && data.kmtStoneUrl && data?.surveyUploaded === "true") ? { text: `${baseUrl}${data.kmtStoneUrl}`, url: `${baseUrl}${data.kmtStoneUrl}` } : '',
-        landMarkType: data.landMarkType,
+        landMarkType: data.landMarkType,landMarkDescription:data.landMarkDescription,
         LANDMARK: (data.event_type === "LANDMARK" && data?.surveyUploaded === "true" && data.landMarkUrls && data.landMarkType !== 'NONE') && `${baseUrl}${JSON.parse(data.landMarkUrls)
           .filter((url: string) => url)
           .map((url: string) => (
             { text: `${baseUrl}${url}`, url: `${baseUrl}${url}` }
-          ))}` || '',
+          ))}` || '',routeIndicatorType:data.routeIndicatorType,
         FIBERTURN: (data.event_type === "FIBERTURN" && data?.surveyUploaded === "true" && data.fiberTurnUrl) ? { text: `${baseUrl}${data.fiberTurnUrl}`, url: `${baseUrl}${data.fiberTurnUrl}` } : '',
 
         // Patroller Details
@@ -819,7 +824,9 @@ const GroundDetailView: React.FC = () => {
         "FPOI URL",
         "KmStone URL",
         "LandMark Type",
+        "LandMark Desc",
         "LandMark URL",
+        "Route Indicator Type",
         "Fiberturn URL",
         // Patroller Details
         "Patroller Company",

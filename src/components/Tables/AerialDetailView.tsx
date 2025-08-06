@@ -194,6 +194,7 @@ const AerialDetailView: React.FC = () => {
             <th className="border p-2">Pole Height</th>
             <th className="border p-2">Pole Position</th>
             <th className="border p-2">Pole Availablity</th>
+            <th className="border p-2">Coordinates</th>
             <th className="border p-2">Pole Photo</th>
           </tr>
         </thead>
@@ -206,6 +207,7 @@ const AerialDetailView: React.FC = () => {
               <td className="border p-2 text-center">{pole.poleHeight}</td>
               <td className="border p-2 text-center">{pole.polePosition}</td>
               <td className="border p-2 text-center">{pole.poleAvailabilityAt}</td>
+              <td className="border p-2 text-center">{pole.lattitude}-{pole.longitude}</td>
               <td className="border p-2 text-center">
                 {pole.polePhoto && <img src={`${baseUrl_public}${pole.polePhoto}`} alt="Pole" className="w-16 h-16 object-cover" onClick={() => setZoomImage(`${baseUrl_public}${pole.polePhoto}`)}/>}
               </td>
