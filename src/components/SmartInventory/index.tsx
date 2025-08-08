@@ -6,8 +6,8 @@ import { AlertCircle, CheckCircle, Upload, X, Menu, MapPin, File, FilePlusIcon, 
 import axios from 'axios';
 import { GoogleMap } from './MapViewer';
 import { PlacemarkList } from './PlacemarkList';
-import { PLACEMARK_CATEGORIES, processApiData } from './PlaceMark';
-import { KMZFile, FilterState, ViewState, ApiPlacemark, ProcessedPlacemark, PlacemarkCategory, PhysicalSurveyData, EventTypeConfig, EventTypeCounts, PhysicalSurveyApiResponse } from '../../types/kmz';
+import { PLACEMARK_CATEGORIES, processApiData, processPhysicalSurveyData } from './PlaceMark';
+import { KMZFile, FilterState, ViewState, ApiPlacemark, ProcessedPlacemark, PlacemarkCategory, PhysicalSurveyData, EventTypeConfig, EventTypeCounts, PhysicalSurveyApiResponse, ProcessedPhysicalSurvey } from '../../types/kmz';
 import FileUploadModal from './Modalpopup';
 import { GeographicSelector } from './GeographicSelector';
 
@@ -38,38 +38,11 @@ function SmartInventory() {
   const [visibleCategories, setVisibleCategories] = useState<Set<string>>(new Set());
   const [highlightedPlacemark, setHighlightedPlacemark] = useState<ProcessedPlacemark>();
 
-  useEffect(() => {
-    const PhysicalData = async () => {
-      try {
-        if (!filters.state || !filters.division || !filters.block) return;
-        setLoding(true)
-        const params: any = {};
-        if (filters.state) params.state_id = filters.state;
-        if (filters.division) params.district_id = filters.division;
-        if (filters.block) params.block_id = filters.block;
+  const [physicalSurveyData, setPhysicalSurveyData] = useState<ProcessedPhysicalSurvey[]>([]);
+  const [physicalSurveyCategories, setPhysicalSurveyCategories] = useState<PlacemarkCategory[]>([]);
+  const [isLoadingPhysical, setIsLoadingPhysical] = useState(false);
 
-        const Response = await axios.get(`${BASEURL}/get-physical-survey`, { params });
-        const result: PhysicalSurveyApiResponse = Response.data;
-
-        if (Response.status === 200 || Response.status === 201) {
-          if (result.data.length > 0) {
-            setPhysicalSurvey(result.data);
-
-          }
-        }
-      } catch (error) {
-        console.error('Failed to load files:', error);
-        showNotification('error', 'Failed to load files');
-      } finally {
-        setLoding(false)
-      }
-    };
-    PhysicalData();
-  }, [filters, searchQuery]);
-
-
-
-  // Load saved files on app start
+ // Load saved files on app start
   useEffect(() => {
     const loadFiles = async () => {
       try {
@@ -82,9 +55,9 @@ function SmartInventory() {
         const savedFiles = await axios.get(`${BASEURL}/get-external-files`, { params });
         if (savedFiles.status === 200 || savedFiles.status === 201) {
           setFiles(savedFiles.data.data);
-          if (savedFiles.data.data.length > 0) {
-            setSelectedFiles([savedFiles.data.data[0][0]]);
-          }
+          // if (savedFiles.data.data.length > 0) {
+          //   setSelectedFiles([savedFiles.data.data[0][0]]);
+          // }
         }
       } catch (error) {
         console.error('Failed to load files:', error);
@@ -130,6 +103,40 @@ function SmartInventory() {
     };
     handleParsed();
   }, [selectedFiles]);
+
+  // Load physical survey data
+  const loadPhysicalData = async (state: string[], division: string[], block: string[]) => {
+    try {
+      setIsLoadingPhysical(true);
+      const params: any = {};
+
+      if (state.length > 0) params.state_id = state.join(',');
+      if (division.length > 0) params.district_id = division.join(',');
+      if (block.length > 0) params.block_id = block.join(',');
+
+      const response = await axios.get(`${BASEURL}/get-physical-survey`, { params });
+      const result: PhysicalSurveyApiResponse = response.data;
+
+      if (response.status === 200 || response.status === 201) {
+        if (Object.keys(result.data).length > 0) {
+          const { placemarks, categories } = processPhysicalSurveyData(result);
+          setPhysicalSurveyData(placemarks);
+          setPhysicalSurveyCategories(categories);
+          
+          // Add physical survey categories to visible categories
+          const physicalCategoryIds = new Set(categories.map(cat => cat.id));
+          setVisibleCategories(prev => new Set([...prev, ...physicalCategoryIds]));
+          
+          showNotification('success', `Loaded ${placemarks.length} physical survey points`);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load physical survey data:', error);
+      showNotification('error', 'Failed to load physical survey data');
+    } finally {
+      setIsLoadingPhysical(false);
+    }
+  };
 
   // Handle file upload
   const handleFileUpload = async (
@@ -228,6 +235,10 @@ function SmartInventory() {
     setHighlightedPlacemark(placemark);
   };
 
+  const allPlacemarks = [...processedPlacemarks, ...physicalSurveyData];
+  const allCategories = [...placemarkCategories, ...physicalSurveyCategories];
+
+
   const handleSidebarToggle = useCallback(() => {
     try {
       setSidebarOpen(prev => !prev);
@@ -269,17 +280,16 @@ function SmartInventory() {
     };
   }, []);
 
-  const handleSelectionChange = (selectedStates: string[], selectedDistricts: string[]) => {
-    console.log('Selected States:', selectedStates);
-    console.log('Selected Districts:', selectedDistricts);
+   const handleSelectionChange = (selectedStates: string[], selectedDistricts: string[], selectedBlocks: string[]) => {
+     loadPhysicalData(selectedStates,selectedDistricts,selectedBlocks)
   };
 
-  const handlePreview = (item: { type: 'state' | 'district'; id: string; name: string }) => {
+  const handlePreview = (item: { type: 'state' | 'district' | 'block'; stateId:string;DistId:string;BlockId:string; name: string }) => {
     console.log('Preview:', item);
     // Implement preview functionality
   };
 
-  const handleRefresh = (item: { type: 'state' | 'district'; id: string; name: string }) => {
+  const handleRefresh = (item: { type: 'state' | 'district' | 'block'; stateId:string; DistId:string; BlockId:string; name: string }) => {
     console.log('Refresh:', item);
     // Implement refresh functionality
   };
@@ -293,11 +303,7 @@ function SmartInventory() {
       )}
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onToggle={handleSidebarToggle}>
-        {/* <FileUpload
-          onFileUpload={handleFileUpload}
-          isLoading={isUploading}
-          error={uploadError}
-        /> */}
+       
         <div className="mb-6 flex items-center gap-2">
           <button
             onClick={() => { setModalOpen(true); setUploadError('') }}
@@ -359,19 +365,32 @@ function SmartInventory() {
 
           </button>
         </div>
-        <GeographicSelector
+       <GeographicSelector
+          BASEURL={BASEURL}
           onSelectionChange={handleSelectionChange}
           onPreview={handlePreview}
-          onRefresh={handleRefresh} />
+          onRefresh={handleRefresh}
+        />
 
         {/* <PlacemarkList
-            placemarks={processedPlacemarks}
-            categories={placemarkCategories}
+            placemarks={allPlacemarks}
+            categories={allCategories}
             visibleCategories={visibleCategories}
             onCategoryVisibilityChange={handleCategoryVisibilityChange}
             onPlacemarkClick={handlePlacemarkClick}
             highlightedPlacemark={highlightedPlacemark}
           /> */}
+          <PlacemarkList
+            placemarks={allPlacemarks}
+            categories={allCategories}
+            visibleCategories={visibleCategories}
+            onCategoryVisibilityChange={handleCategoryVisibilityChange}
+            onPlacemarkClick={handlePlacemarkClick}
+            highlightedPlacemark={highlightedPlacemark}
+            // onLoadPhysicalData={loadPhysicalData}
+            // isLoadingPhysical={isLoadingPhysical}
+          />
+
 
       </Sidebar>
       
@@ -398,9 +417,10 @@ function SmartInventory() {
         </div> */}
 
         {/* Map */}
+        
         <GoogleMap
-          placemarks={processedPlacemarks}
-          categories={placemarkCategories}
+          placemarks={allPlacemarks}
+          categories={allCategories}
           visibleCategories={visibleCategories}
           highlightedPlacemark={highlightedPlacemark}
           onPlacemarkClick={handlePlacemarkClick}
@@ -409,14 +429,16 @@ function SmartInventory() {
 
 
         {/* Stats Overlay */}
-        {processedPlacemarks.length > 0 && (
+        {allPlacemarks.length > 0 && (
           <div className="absolute bottom-4 left-2 bg-white rounded-lg shadow-lg border border-gray-200 p-3">
             <div className="text-sm text-gray-600">
               <div className="font-semibold text-gray-900 mb-1">Map Statistics</div>
-              <div>Total Placemarks: {processedPlacemarks.length}</div>
+              <div>Total Placemarks: {allPlacemarks.length}</div>
+              <div>KML/KMZ Points: {processedPlacemarks.filter(p => p.type === 'point').length}</div>
+              <div>KML/KMZ Polylines: {processedPlacemarks.filter(p => p.type === 'polyline').length}</div>
+              <div>Physical Survey: {physicalSurveyData.length}</div>
               <div>Visible Categories: {visibleCategories.size}</div>
-              <div>Points: {processedPlacemarks.filter(p => p.type === 'point').length}</div>
-              <div>Polylines: {processedPlacemarks.filter(p => p.type === 'polyline').length}</div>
+
             </div>
           </div>
         )}

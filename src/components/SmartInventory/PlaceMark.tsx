@@ -1,4 +1,4 @@
-import { ApiPlacemark, ApiPoint, ApiPolyline, ProcessedPlacemark, PlacemarkCategory } from '../../types/kmz';
+import { ApiPlacemark, ApiPoint, ApiPolyline, ProcessedPlacemark, PlacemarkCategory, PhysicalSurveyApiResponse, ProcessedPhysicalSurvey } from '../../types/kmz';
 
 // Define placemark categories with colors and icons
 export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string }> = {
@@ -110,4 +110,52 @@ function getCategoryFromName(name: string): string {
   
   // Default category
   return 'LANDMARK';
+}
+
+export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
+  placemarks: ProcessedPhysicalSurvey[];
+  categories: PlacemarkCategory[];
+} {
+  const processedPlacemarks: ProcessedPhysicalSurvey[] = [];
+  const categoryCounts: Record<string, number> = {};
+
+  // Initialize category counts for physical survey categories
+  const physicalSurveyCategories = ['SURVEYSTART', 'ROUTEFEASIBILITY', 'AREA', 'LIVELOCATION', 'SIDE', 'ROUTEDETAILS'];
+  physicalSurveyCategories.forEach(category => {
+    categoryCounts[category] = 0;
+  });
+
+  // Process physical survey data
+  Object.entries(apiData.data).forEach(([blockId, points]) => {
+    points.forEach((point, index) => {
+      const category = point.event_type;
+      categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+
+      processedPlacemarks.push({
+        id: `physical-${blockId}-${point.survey_id}-${index}`,
+        name: `${point.event_type} - Survey ${point.survey_id}`,
+        category,
+        type: 'point',
+        coordinates: {
+          lat: parseFloat(point.latitude),
+          lng: parseFloat(point.longitude)
+        },
+        surveyId: point.survey_id,
+        eventType: point.event_type,
+        blockId
+      });
+    });
+  });
+
+  // Create categories array for physical survey
+  const categories: PlacemarkCategory[] = physicalSurveyCategories.map(name => ({
+    id: `physical-${name.toLowerCase().replace(/\s+/g, '-')}`,
+    name: `Physical: ${name}`,
+    count: categoryCounts[name] || 0,
+    visible: true,
+    color: PLACEMARK_CATEGORIES[name]?.color || '#6B7280',
+    icon: PLACEMARK_CATEGORIES[name]?.icon || '📍'
+  })).filter(category => category.count > 0);
+
+  return { placemarks: processedPlacemarks, categories };
 }

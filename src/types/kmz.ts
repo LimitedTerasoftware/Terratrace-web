@@ -87,29 +87,7 @@ export interface ProcessedPlacemark {
   styleUrl?: string | null;
 }
 
-export interface PhysicalSurveyData{
-    id:number;
-    user_id: number;
-    company_id: string|null,
-    state_id: number,
-    district_id: number,
-    block_id: number,
-    gp_id: number,
-    startLocation: number,
-    endLocation: number,
-    cableType: string|null,
-    is_active: number,
-    created_at: string,
-    updated_at: string,
-    surveyType: string|null,
-    latitude: string,
-    longitude: string,
-    event_type: string
-}
-export interface PhysicalSurveyApiResponse {
-  status: boolean;
-  data: PhysicalSurveyData[];
-}
+
 export interface EventTypeConfig {
   color: string;
   icon: string;
@@ -118,4 +96,35 @@ export interface EventTypeConfig {
 
 export interface EventTypeCounts {
   [key: string]: number;
+}
+
+
+// -------PhysicalSUrvey Data -----------------//
+
+
+
+export interface PhysicalSurveyPoint {
+  survey_id: string;
+  latitude: string;
+  longitude: string;
+  event_type: string;
+}
+
+export interface PhysicalSurveyApiResponse {
+  status: boolean;
+  data: Record<string, PhysicalSurveyPoint[]>;
+}
+
+export interface ProcessedPhysicalSurvey {
+  id: string;
+  name: string;
+  category: string;
+  type: 'point';
+  coordinates: {
+    lat: number;
+    lng: number;
+  };
+  surveyId: string;
+  eventType: string;
+  blockId: string;
 }

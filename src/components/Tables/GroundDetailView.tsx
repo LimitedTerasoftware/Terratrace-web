@@ -9,7 +9,7 @@ import * as XLSX from "xlsx";
 import ResponsivePagination from "./ResponsivePagination";
 import App from "../VideoPlayback/index";
 import DataTable from "react-data-table-component";
-import { hasViewOnlyAccess } from "../../utils/accessControl";
+import { hasDownloadAccess, hasViewOnlyAccess } from "../../utils/accessControl";
 import ImageModal from "../DepthChart/ImageUploadModal";
 import UnderGroundSurveyImageModal from "./UnderGroundSurveyImageModal";
 
@@ -529,6 +529,7 @@ const GroundDetailView: React.FC = () => {
   if (loading) return <div className="text-center py-10">Loading...</div>;
   if (error) return <div className="text-red-500 text-center py-10">{error}</div>;
   const viewOnly = hasViewOnlyAccess();
+  const DownloadOnly = hasDownloadAccess();
 
 
   const hasPatrollerData = data?.under_ground_survey_data.some(
@@ -913,14 +914,14 @@ const GroundDetailView: React.FC = () => {
 
             {/* Right: Export + Search */}
             <div className="flex items-center gap-2 mb-2">
-              {/* {!viewOnly && */}
+              {DownloadOnly && 
               <button
                 className="border px-3 py-1 rounded bg-green-400 text-white hover:bg-green-300"
                 onClick={exportExcel}
               >
                 Export
               </button>
-             {/* } */}
+             }
               <input
                 type="text"
                 className="border px-3 py-1 rounded"
