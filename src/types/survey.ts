@@ -3,12 +3,17 @@ export interface StartGp {
   blk_name: string,
   dt_name: string,
   st_name: string,
-  lgd_code:string
+  lgd_code:string,
+  lattitude:string,
+  longitude:string
+
 }
 
 export interface EndGp {
    name: string,
-   lgd_code:string
+   lgd_code:string,
+   lattitude:string,
+   longitude:string
 }
 
 export interface PatrollerDetails {
@@ -22,6 +27,11 @@ export interface RoadCrossing {
   startPhoto?: string;
   endPhoto?: string;
   roadCrossing: string;
+  endPhotoLat: number;
+  endPhotoLong: number;
+  length: string;
+  startPhotoLat: number;
+  startPhotoLong: number;
 }
 
 export interface RouteDetails {
@@ -86,6 +96,14 @@ export interface UnderGroundSurveyData {
   landMarkUrls: string;
   fiberTurnUrl: string;
   landMarkType: string;
+  blk_name?:string,
+  dt_name?:string,
+  st_name?:string,
+  startGp?:string,
+  endGp?:string,
+  landMarkDescription:string;
+  routeIndicatorType:string;
+
 }
 
 export interface GroundSurvey {

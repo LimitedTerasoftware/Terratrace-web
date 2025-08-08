@@ -9,7 +9,10 @@ import videoIcon from '../../images/icon/cinema.png';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-
+import BRIcon from '../../images/icon/bring.svg'
+import GPIcon from '../../images/icon/gpimg.svg';
+import FPOIcon from '../../images/icon/fpimg.svg';
+import BHQIcon from '../../images/icon/bhing.svg'
 
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -64,6 +67,15 @@ type UnderGroundSurveyData = {
   landMarkUrls:string;
   fiberTurnUrl:string;
   landMarkType:string;
+  // startGp?:string;
+  // endGp?:string;
+  // start_lgd?:string;
+  // end_lgd?:string;
+  // routeType?:string;
+  // startLat?:string;
+  // startLng?:string;
+  // endLat?:string;
+  // endLng?:string;
 };
 
 
