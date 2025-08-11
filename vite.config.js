@@ -27,7 +27,7 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         '/Tracking/api/v1': {
-          target: 'https://api.keeshondcoin.com',
+          target: 'https://traceapi.tricadtrack.com',
           changeOrigin: true,
           secure: false,
         },
