@@ -22,6 +22,7 @@ export interface ApiPlacemark {
 
 export interface ApiPoint {
   name: string;
+  type: string | null;
   styleUrl: string | null;
   coordinates: {
     longitude: number;
@@ -85,6 +86,7 @@ export interface ProcessedPlacemark {
   coordinates: any;
   distance?: string|null;
   styleUrl?: string | null;
+  pointType?: string | null;
 }
 
 
