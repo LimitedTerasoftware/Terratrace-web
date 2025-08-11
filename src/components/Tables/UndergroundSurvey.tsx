@@ -14,8 +14,9 @@ import * as XLSX from "xlsx";
 import MapComponent from "./MapComponent";
 import { MediaExportService } from "../hooks/useFullscreen";
 import {ChartBar, CheckCircle, Download, EyeIcon, FolderOpen, Loader, MapPinIcon, SheetIcon, SquaresExcludeIcon } from "lucide-react";
-import { hasViewOnlyAccess } from "../../utils/accessControl";
+import { hasDownloadAccess, hasViewOnlyAccess } from "../../utils/accessControl";
 import { FaArrowLeft } from "react-icons/fa";
+import { UnderGroundSurveyData } from "../../types/survey";
 
 
 interface UndergroundSurvey {
@@ -95,6 +96,7 @@ const UndergroundSurvey: React.FC = () => {
   const BASEURL = import.meta.env.VITE_API_BASE;
   const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
   const viewOnly = hasViewOnlyAccess();
+  const DownloadOnly = hasDownloadAccess();
   const location = useLocation();
   const [data, setData] = useState<UndergroundSurvey[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -118,7 +120,8 @@ const UndergroundSurvey: React.FC = () => {
 
   const [fromdate, setFromDate] = useState<string>('');
   const [todate, setToDate] = useState<string>('');
-  const [BlockData,setBlockData]=useState<any>([])
+  const [BlockData,setBlockData]=useState<any>([]);
+  const [isExcelExporting, setisExcelExporting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState({ current: 0, total: 0, currentFile: '' });
   const [exportComplete, setExportComplete] = useState(false);
@@ -222,7 +225,7 @@ const UndergroundSurvey: React.FC = () => {
   setSelectedState(state_id);
   setSelectedDistrict(district_id);
   setSelectedBlock(block_id);
- setSelectedStatus(status !== null ? Number(status) : null);
+  setSelectedStatus(status !== null ? Number(status) : null);
   setFromDate(from_date);
   setToDate(to_date);
   setGlobalSearch(search)
@@ -583,32 +586,42 @@ const handlePreview = async (id:number) => {
 
   let Data: any[] = [];
   let MediaData: any[] = [];
+  
   if(id === 1){
-     setIsExporting(true);
+    setIsExporting(true);
     setExportComplete(false);
     setExportProgress({ current: 0, total: 0, currentFile: '' });
-  }else{
+  }else if(id === 0){
    setKMLLoader(true);
+  }else{
+    setisExcelExporting(true);
   }
-  
-
+    
   try {
     for (const item of selected) {
       const res = await fetch(`${BASEURL}/underground-surveys/${item.id}`);
       const json = await res.json();
 
       const newData = json.data?.under_ground_survey_data || [];
-        // const enrichedData = newData.map((entry: any) => ({
-        //                       ...entry,
-        //                       start_gp_name: json.data.start_gp?.name || '',
-        //                       end_gp_name: json.data.end_gp?.name || '',
-        //                       start_lgd:json.data.start_gp?.lgd_code || '',
-        //                       end_lgd:json.data.end_gp?.lgd_code || '',
-        //                       routeType:json.data?.routeType || ''
-        //                     }));
+      const enrichedData = newData.map((entry: any) => ({
+                              ...entry,
+                              blk_name: json.data.start_gp?.blk_name || '',
+                              dt_name: json.data.start_gp?.dt_name || '',
+                              st_name:json.data.start_gp?.st_name || '',
+                              startGp:json.data.start_gp?.name || '',
+                              endGp:json.data.end_gp?.name || '',
+                              start_lgd:json.data.start_gp?.lgd_code || '',
+                              end_lgd:json.data.end_gp?.lgd_code || '',
+                              routeType:json.data?.routeType || '',
+                              startLat: json.data.start_gp?.lattitude || '',
+                              startLng: json.data.start_gp?.longitude || '',
+                              endLat: json.data.end_gp?.lattitude || '',
+                              endLng: json.data.end_gp?.longitude || '',
+                              
+                            }));
 
-      // Data.push(...enrichedData);
-      Data.push(...newData); 
+       Data.push(...enrichedData);
+      // Data.push(...newData); 
       if (json.data) {
         MediaData.push(json.data); 
       }
@@ -621,16 +634,275 @@ const handlePreview = async (id:number) => {
         }
       );
     setExportComplete(true);
-  }else{
+  }else if(id === 0){
     setBlockData(Data); 
+  }else{
+     exportBlockExcel(Data)
   }
   } catch (error) {
     console.error("Preview fetch error:", error);
   } finally {
     setKMLLoader(false);
     setIsExporting(false);
+    setisExcelExporting(false);
   }
 };
+
+
+ const exportBlockExcel = async (BlockData:UnderGroundSurveyData[]) => {
+  setisExcelExporting(true);
+    const filteredData = [
+      ...new Map(
+        BlockData.map(survey => [`${survey.latitude}-${survey.longitude}-${survey.event_type}`, survey])
+      ).values()
+    ];
+
+    const AllData = filteredData || [];
+    const rows = AllData.map((data) => {
+      let routeIndicatorItems: any = [];
+      if (
+        data.event_type === "ROUTEINDICATOR" &&
+        data?.surveyUploaded === "true" &&
+        data.routeIndicatorUrl
+      ) {
+        let urls = [];
+        try {
+          const parsed = JSON.parse(data.routeIndicatorUrl);
+
+          if (Array.isArray(parsed)) {
+            urls = parsed;
+          } else if (typeof parsed === "string") {
+            urls = [parsed];
+          }
+        } catch (e) {
+          urls = [data.routeIndicatorUrl];
+        }
+
+        routeIndicatorItems = urls
+          .filter((url) => !!url)
+          .map((url) => ({
+            text: `${BASEURL}${url}`,
+            url: `${BASEURL}${url}`,
+          }));
+      }
+      return {
+        id: data.id,
+        blk_name: data?.blk_name || '',
+        dt_name: data.dt_name || '',
+        st_name: data.st_name || '',
+        startGp: data.startGp || '',
+        endGp: data?.endGp || '',
+        survey_id: data.survey_id,
+        area_type: data.area_type,
+        event_type: data.event_type,
+        surveyUploaded: data.surveyUploaded,
+        execution_modality: data.execution_modality,
+
+        // GPS Info
+        latitude: data.latitude,
+        longitude: data.longitude,
+        altitude: data.altitude,
+        accuracy: data.accuracy,
+        depth: data.depth,
+        distance_error: data.distance_error,
+
+
+
+        // Road Crossing Info
+        crossing_Type: data.road_crossing?.roadCrossing || '',
+        crossing_length: data.road_crossing?.length || '',
+        crossing_startPhoto_URL: (data.event_type === "ROADCROSSING" && data?.surveyUploaded === "true" && data.road_crossing?.startPhoto) ? { text: `${BASEURL}${data.road_crossing?.startPhoto}`, url: `${BASEURL}${data.road_crossing?.startPhoto}` } : '',
+        crossing_startphoto_Lat: data.road_crossing?.startPhotoLat || '',
+        crossing_startphoto_Long: data.road_crossing?.startPhotoLong || '',
+        crossing_endPhoto_URL: (data.event_type === "ROADCROSSING" && data?.surveyUploaded === "true" && data.road_crossing?.endPhoto) ? { text: `${BASEURL}${data.road_crossing?.endPhoto}`, url: `${BASEURL}${data.road_crossing?.endPhoto}` } : '',
+        crossing_endphoto_Lat: data.road_crossing?.endPhotoLat || '',
+        crossing_endphoto_Long: data.road_crossing?.endPhotoLong || '',
+
+        // Route Details
+        centerToMargin: data.route_details?.centerToMargin || '',
+        roadWidth: data.route_details?.roadWidth || '',
+        routeBelongsTo: data.route_details?.routeBelongsTo || '',
+        routeType: data.route_details?.routeType || '',
+        soilType: data.route_details?.soilType || '',
+
+        // Route Feasibility
+        routeFeasible: data.route_feasibility?.routeFeasible ?? '',
+        alternatePathAvailable: data.route_feasibility?.alternatePathAvailable ?? '',
+        alternativePathDetails: data.route_feasibility?.alternativePathDetails || '',
+
+        // Side and Indicator
+        side_type: data.side_type,
+        routeIndicatorUrl: routeIndicatorItems.length > 0 ? routeIndicatorItems : '',
+         // Start/End Photos
+        Survey_Start_Photo: data.event_type === "SURVEYSTART" && data?.surveyUploaded === "true" ? { text: `${BASEURL}${data.start_photos?.[0]}`, url: `${BASEURL}${data.start_photos?.[0]}` } : '',
+        Survey_End_Photo: data.event_type === "ENDSURVEY" && data?.surveyUploaded === "true" ? { text: `${BASEURL}${data.end_photos?.[0]}`, url: `${BASEURL}${data.end_photos?.[0]}` } : '',
+
+        // Utility Features
+        localInfo: data.utility_features_checked?.localInfo || '',
+        selectedGroundFeatures: (data.utility_features_checked?.selectedGroundFeatures || []).join(', '),
+
+        // Video Details
+        videoUrl: (data.event_type === "VIDEORECORD" && data?.surveyUploaded === "true" && data.videoDetails?.videoUrl?.trim().replace(/^"|"$/g, "")) ? { text: `${BASEURL}${data.videoDetails?.videoUrl}`, url: `${BASEURL}${data.videoDetails?.videoUrl}` } : '',
+        video_startLatitude: data.videoDetails?.startLatitude || '',
+        video_startLongitude: data.videoDetails?.startLongitude || '',
+        video_startTimeStamp: data.videoDetails?.startTimeStamp || '',
+        video_endLatitude: data.videoDetails?.endLatitude || '',
+        video_endLongitude: data.videoDetails?.endLongitude || '',
+        video_endTimeStamp: data.videoDetails?.endTimeStamp || '',
+
+        // Joint Chamber and fpoi
+        jointChamberUrl: (data.event_type === "JOINTCHAMBER" && data?.surveyUploaded === "true" && data.jointChamberUrl) ? { text: `${BASEURL}${data.jointChamberUrl}`, url: `${BASEURL}${data.jointChamberUrl}` } : '',
+        fpoiUrl: (data.event_type === "FPOI" && data.fpoiUrl && data?.surveyUploaded === "true") ? { text: `${BASEURL}${data.fpoiUrl}`, url: `${BASEURL}${data.fpoiUrl}` } : '',
+        kmtStoneUrl: (data.event_type === "KILOMETERSTONE" && data.kmtStoneUrl && data?.surveyUploaded === "true") ? { text: `${BASEURL}${data.kmtStoneUrl}`, url: `${BASEURL}${data.kmtStoneUrl}` } : '',
+        landMarkType: data.landMarkType,landMarkDescription:data.landMarkDescription,
+        LANDMARK: (data.event_type === "LANDMARK" && data?.surveyUploaded === "true" && data.landMarkUrls && data.landMarkType !== 'NONE') && `${BASEURL}${JSON.parse(data.landMarkUrls)
+          .filter((url: string) => url)
+          .map((url: string) => (
+            { text: `${BASEURL}${url}`, url: `${BASEURL}${url}` }
+          ))}` || '',routeIndicatorType:data.routeIndicatorType,
+        FIBERTURN: (data.event_type === "FIBERTURN" && data?.surveyUploaded === "true" && data.fiberTurnUrl) ? { text: `${BASEURL}${data.fiberTurnUrl}`, url: `${BASEURL}${data.fiberTurnUrl}` } : '',
+
+        // Patroller Details
+        patroller_company: data.patroller_details?.companyName || '',
+        patroller_name: data.patroller_details?.name || '',
+        patroller_email: data.patroller_details?.email || '',
+        patroller_mobile: data.patroller_details?.mobile || '',
+
+        // Timestamps
+        createdTime: data.createdTime,
+        created_at: data.created_at,
+
+      }
+    });
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    rows.forEach((row, rowIndex) => {
+      const excelRow = rowIndex + 2;
+      const fieldsWithLinks = {
+        crossing_startPhoto_URL: 'T',
+        crossing_endPhoto_URL: 'W',
+        routeIndicatorUrl: 'AI',
+        Survey_Start_Photo: 'AJ',
+        Survey_End_Photo: 'AK',
+        videoUrl: 'AN',
+        jointChamberUrl: 'AU',
+        fpoiUrl: 'AV',
+        kmtStoneUrl: 'AW',
+        LANDMARK: 'AY',
+        FIBERTURN: 'AZ'
+      };
+
+      Object.entries(fieldsWithLinks).forEach(([key, col]) => {
+        const val = (row as any)[key];
+    if (key === "routeIndicatorUrl" && Array.isArray(val)) {
+      const combinedLinks = val.map((item, i) => `Image ${i + 1}`).join('\n');
+      worksheet[`${col}${excelRow}`] = {
+        t: "s",
+        v: combinedLinks,
+        l: { Target: val[0].url } 
+      };
+    }
+ else if (val && typeof val === 'object' && val.url) {
+
+          worksheet[`${col}${excelRow}`] = {
+            t: "s",
+            v: val.text || "View",
+            l: { Target: val.url }
+          };
+        }
+      });
+
+    });
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, `UnderGround Survey_${AllData[0].survey_id}`);
+    XLSX.utils.sheet_add_aoa(worksheet, [
+      [
+        "ID",
+        "Block Name",
+        "District Name",
+        "State Name",
+        "Start GP",
+        "End GP",
+        "Survey ID",
+        "Area Type",
+        "Event Type",
+        "Survey Uploaded",
+        "Execution Modality",
+        "Latitude",
+        "Longitude",
+        "Altitude",
+        "Accuracy",
+        "Depth",
+        "Distance Error",
+
+
+
+        // Road Crossing
+        "Crossing Type",
+        "Crossing Length",
+        "Crossing Start Photo URL",
+        "Crossing Start Photo Latitude",
+        "Crossing Start Photo Longitude",
+        "Crossing End Photo URL",
+        "Crossing End Photo Latitude",
+        "Crossing End Photo Longitude",
+
+        // Route Details
+        "Center To Margin",
+        "Road Width",
+        "Route Belongs To",
+        "Route Type",
+        "Soil Type",
+
+        // Route Feasibility
+        "Route Feasible",
+        "Alternate Path Available",
+        "Alternative Path Details",
+
+        // Side & Indicator
+        "Side Type",
+        "Route Indicator URL",
+
+        // Survey Photos
+        "Survey Start Photo",
+        "Survey End Photo",
+
+        // Utility Features
+        "Local Info",
+        "Selected Ground Features",
+
+        // Video Details
+        "Video URL",
+        "Video Start Latitude",
+        "Video Start Longitude",
+        "Video Start TimeStamp",
+        "Video End Latitude",
+        "Video End Longitude",
+        "Video End TimeStamp",
+
+        // Joint Chamber & fpoi
+        "Joint Chamber URL",
+        "FPOI URL",
+        "KmStone URL",
+        "LandMark Type",
+        "LandMark Desc",
+        "LandMark URL",
+        "Route Indicator Type",
+        "Fiberturn URL",
+        // Patroller Details
+        "Patroller Company",
+        "Patroller Name",
+        "Patroller Email",
+        "Patroller Mobile",
+        // Timestamps
+        "Created Time",
+        "Created At",
+      ]
+    ], { origin: "A1" });
+    XLSX.writeFile(workbook, `UnderGround Survey_${AllData[0].blk_name}.xlsx`, { compression: true });
+    setisExcelExporting(false);
+
+  }
 
 const exportExcel = async () => {
     try {
@@ -693,6 +965,8 @@ const exportExcel = async () => {
 
 };
 
+
+
 const stateOptions = states.map((state) => ({
     value: String(state.state_id),
     label: state.state_name,
@@ -746,7 +1020,7 @@ return (
     ):(
     <div className="bg-gray-100 dark:bg-gray-900 min-h-screen">
       {/* Search Bar and Filters Section */}
-      {KmlLoader && (
+      {(KmlLoader || isExcelExporting) && (
         <div className="absolute inset-0 bg-white bg-opacity-70 flex justify-center items-center z-50">
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
         </div>
@@ -915,14 +1189,35 @@ return (
           </button>
 
           {/* Export Button */}
-          {!viewOnly &&
-          <><button
+          {DownloadOnly && 
+          <>
+                <button
                   onClick={exportExcel}
                   className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
                 >
                   <SheetIcon className="h-4 w-4 text-green-600" />
                   Excel
-                </button><button
+                </button>
+                <button
+                  onClick={()=>handlePreview(2)}
+                  disabled={isExcelExporting}
+                  className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isExcelExporting ? (
+                    <>
+                      <Loader className="h-4 w-4 animate-spin" />
+                      Exporting...
+                    </>
+                  ) : (
+                    <>
+                     <SheetIcon className="h-4 w-4 text-green-600" />
+                      Excel (Block-wise Data)	
+                    </>
+                  )}
+                  
+                </button>
+
+                <button
                   onClick={handleGenerateKML}
                   className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap"
                 >

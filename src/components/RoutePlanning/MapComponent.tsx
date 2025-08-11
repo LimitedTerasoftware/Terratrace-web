@@ -424,7 +424,7 @@ useEffect(() => {
   
       setLocalData((prev: GlobalData) => ({
         ...prev,
-        mainPointName: apiGPSResponse.points[0].properties?.blk_name || '',
+        mainPointName: apiGPSResponse.points[0].properties?.blk_name || apiGPSResponse.points[0].properties?.name || '',
         dt_code: apiGPSResponse.points[0].properties?.dt_code || '',
         dt_name: apiGPSResponse.points[0].properties?.dt_name || '',
         st_code: apiGPSResponse.points[0].properties?.st_code || '',
@@ -439,7 +439,7 @@ useEffect(() => {
           bounds.extend({ lat: point.coordinates[1], lng: point.coordinates[0] });
         }
       });
-  
+     
       map.fitBounds(bounds);
     }
   }, [apiGPSResponse, apiConctResponse, map]);
@@ -510,8 +510,8 @@ useEffect(() => {
               length: connection.length || 0,
               existing: previewKmlData === null ? true : connection.existing ?? false,
             },
-            startCords: startLgdCode?.properties.lgd_code,
-            endCords: endLgdCode?.properties.lgd_code,
+            startCords: startLgdCode?.properties.lgd_code || '123',
+            endCords: endLgdCode?.properties.lgd_code || '1234',
           }, 
         },
       };
@@ -1865,9 +1865,14 @@ const deletePolylineAndDistance = (key: string) => {
               key={index}
               position={position}
               icon={{
-                url: point?.properties?.icon || 'https://maps.google.com/mapfiles/ms/icons/purple-dot.png',
-                scaledSize: new window.google.maps.Size(30, 30),
+                // url: point?.properties?.icon || 'https://maps.google.com/mapfiles/ms/icons/purple-dot.png',
+                // scaledSize: new window.google.maps.Size(30, 30),
+                url: point?.properties?.icon?.startsWith("http")
+                  ? point.properties.icon
+                  :'https://maps.google.com/mapfiles/ms/icons/purple-dot.png'
+
               }}
+              
               onClick={() => {
                 setPointProperties(point);
                 if (AutoMode) {

@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import axios from 'axios';
 import { 
   ChevronDown, 
   ChevronRight, 
@@ -10,12 +11,23 @@ import {
   HelpCircle,
   Printer
 } from 'lucide-react';
+import { StateData } from '../../types/survey';
+import { getBlockData, getDistrictData, getStateData } from '../Services/api';
+
+interface Block {
+  id: string;
+  name: string;
+  code: string;
+  selected: boolean;
+}
 
 interface District {
   id: string;
   name: string;
   code: string;
   selected: boolean;
+  expanded: boolean;
+  blocks: Block[];
 }
 
 interface State {
@@ -36,161 +48,38 @@ interface Layer {
 }
 
 interface GeographicSelectorProps {
-  onSelectionChange?: (selectedStates: string[], selectedDistricts: string[]) => void;
-  onPreview?: (item: { type: 'state' | 'district'; id: string; name: string }) => void;
-  onRefresh?: (item: { type: 'state' | 'district'; id: string; name: string }) => void;
+  BASEURL: string;
+  onSelectionChange?: (selectedStates: string[], selectedDistricts: string[], selectedBlocks: string[]) => void;
+  onPreview?: (item: { type: 'state' | 'district' | 'block'; stateId:string;DistId:string;BlockId:string;name: string }) => void;
+  onRefresh?: (item: { type: 'state' | 'district' | 'block'; stateId:string;DistId:string;BlockId:string;name: string }) => void;
 }
 
-// Sample data structure
-const SAMPLE_DATA: State[] = [
- {
-    id: 'west-bengal',
-    name: 'West Bengal',
-    code: 'WB',
-    selected: false,
-    expanded: true,
-    districts: [
-      {
-        id: 'alipurduar',
-        name: 'Alipurduar',
-        code: 'ALI',
-        selected: true
-      },
-      {
-        id: 'baliganj',
-        name: 'Baliganj',
-        code: 'BALI',
-        selected: false
-      },
-      {
-        id: 'bankura',
-        name: 'Bankura',
-        code: 'BAN',
-        selected: false
-      },
-      {
-        id: 'barddhaman',
-        name: 'Barddhaman',
-        code: 'BAR',
-        selected: false
-      },
-      {
-        id: 'behiahanj',
-        name: 'Behiahanj',
-        code: 'BEHL',
-        selected: false
-      },
-      {
-        id: 'birbhum',
-        name: 'Birbhum',
-        code: 'BIR',
-        selected: false
-      },
-      {
-        id: 'dakshin-dinajpur',
-        name: 'Dakshin Dinajpur',
-        code: 'DD',
-        selected: false
-      },
-      {
-        id: 'darjiling',
-        name: 'Darjiling',
-        code: 'DAR',
-        selected: false
-      },
-      {
-        id: 'howrah',
-        name: 'HOWRAH',
-        code: 'HOW',
-        selected: false
-      },
-      {
-        id: 'hugli',
-        name: 'Hugli',
-        code: 'HUG',
-        selected: false
-      },
-      {
-        id: 'jalpaiguri',
-        name: 'Jalpaiguri',
-        code: 'JAL',
-        selected: false
-      },
-      {
-        id: 'jhargram',
-        name: 'Jhargram',
-        code: 'JHR',
-        selected: false
-      },
-      {
-        id: 'kalimpong',
-        name: 'Kalimpong',
-        code: 'KMG',
-        selected: false
-      },
-      {
-        id: 'koch-bihar',
-        name: 'Koch Bihar',
-        code: 'KOC',
-        selected: false
-      },
-      {
-        id: 'kolkata',
-        name: 'Kolkata',
-        code: 'KOL',
-        selected: false
-      },
-      {
-        id: 'maldah',
-        name: 'Maldah',
-        code: 'MAL',
-        selected: false
-      },
-      {
-        id: 'murshidabad',
-        name: 'Murshidabad',
-        code: 'MUR',
-        selected: false
-      },
-      {
-        id: 'nadia',
-        name: 'Nadia',
-        code: 'NAD',
-        selected: false
-      },
-      {
-        id: 'north-twenty-four-parganas',
-        name: 'North Twenty Four P...',
-        code: 'N24P',
-        selected: false
-      }
-    ]
-  },
- 
-];
-
 const LAYER_DATA: Layer[] = [
-  { id: 'route-indicator', name: 'Route Indicator', selected: false, color: 'yellow', icon: '●' },
-  { id: 'railway', name: 'railway', selected: false, color: 'black', icon: '═' },
-  { id: 'bridge', name: 'Bridge', selected: false, color: 'blue', icon: '═' },
-  { id: 'road', name: 'Road', selected: false, color: 'orange', icon: '═' },
-  { id: 'crossing', name: 'Crossing', selected: false, color: 'blue', icon: '═' },
-  { id: 'road-edge', name: 'Road Edge', selected: false, color: 'red', icon: '📍' },
-  { id: 'building', name: 'Building', selected: false, color: 'red', icon: '📍' },
-  { id: 'electric-utility', name: 'Electric Utility', selected: false, color: 'orange', icon: '═' },
-  { id: 'landmark', name: 'Landmark', selected: false, color: 'brown', icon: '📍' },
-  { id: 'parcels', name: 'Parcels', selected: false, color: 'yellow', icon: '▢' },
-  { id: 'critical-patch', name: 'Critical Patch', selected: false, color: 'brown', icon: '●' },
-  { id: 'buildings', name: 'Buildings', selected: false, color: 'yellow', icon: '▢' },
-  { id: 'hydrology', name: 'Hydrology', selected: false, color: 'cyan', icon: '═' },
-  { id: 'pit', name: 'Pit', selected: false, color: 'black', icon: '●' },
-  { id: 'depth-measurement', name: 'Depth Measurement', selected: false, color: 'pink', icon: '●' },
-  { id: 'culvert', name: 'Culvert', selected: false, color: 'black', icon: '═' },
-  { id: 'row', name: 'ROW', selected: false, color: 'black', icon: '═' },
-  { id: 'double-track-railway', name: 'Double track Railway line', selected: false, color: 'orange', icon: '═' }
+  { id: 'LANDMARK', name: 'Landmark', selected: false, color: '#FF6B6B', icon: '🏛️' },
+  { id: 'FIBERTURN', name: 'Fiber Turn', selected: false, color: '#4ECDC4', icon: '🔄' },
+  { id: 'Bridge', name: 'Bridge', selected: false, color: '#45B7D1', icon: '🌁' },
+  { id: 'Culvert', name: 'Culvert', selected: false, color: '#96CEB4', icon: '🌊' },
+  { id: 'ROADCROSSING', name: 'Crossing', selected: false, color: '#FFEAA7', icon: '🛣️' },
+  { id: 'Level Cross', name: 'Level Cross', selected: false, color: '#DDA0DD', icon: '🚂' },
+  { id: 'Rail Under Bridge', name: 'Rail Under Bridge', selected: false, color: '#98D8C8', icon: '🚇' },
+  { id: 'KILOMETERSTONE', name: 'Kilometer Stone', selected: false, color: '#85C1E9', icon: '📍' },
+  { id: 'FPOI', name: 'FPOI', selected: false, color: '#F8C471', icon: '⭐' },
+  { id: 'JOINTCHAMBER', name: 'Jointchamber', selected: false, color: '#82E0AA', icon: '🔗' },
+  { id: 'ROUTEINDICATOR', name: 'Route Indicator', selected: false, color: '#F1948A', icon: '🧭' },
+  { id: 'SURVEYSTART', name: 'Start Survey', selected: false, color: '#10B981', icon: '🎯' },
+  { id: 'ENDSURVEY', name: 'End Survey', selected: false, color: '#10B981', icon: '🎯' },
+  { id: 'HOLDSURVEY', name: 'Hold Survey', selected: false, color: '#a93226', icon: '⏸️' },
+  { id: 'DEPTH', name: 'Depth', selected: false, color: '#3B82F6', icon: '📏' },
+  { id: 'MANHOLES', name: 'Manhole', selected: false, color: '#06B6D4', icon: '🕳️' },
+  { id: 'STARTPIT', name: 'Start Pit', selected: false, color: '#14B8A6', icon: '🕳️' },
+  { id: 'ENDPIT', name: 'End Pit', selected: false, color: '#DC2626', icon: '🏁' },
+  { id: 'BLOWING', name: 'Blowing', selected: false, color: '#663300', icon: '═' },
+  { id: 'Incremental Cable', name: 'Incremental Cable', selected: false, color: '#61f335', icon: '---' },
+  { id: 'Proposed Cable', name: 'Proposed Cable', selected: false, color: '#ff0000', icon: '---' }
 ];
 
 export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
+  BASEURL,
   onSelectionChange,
   onPreview,
   onRefresh
@@ -198,8 +87,75 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
   const [isDistrictExpanded, setIsDistrictExpanded] = useState(true);
   const [isLayersExpanded, setIsLayersExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [data, setData] = useState<State[]>(SAMPLE_DATA);
+  const [data, setData] = useState<State[]>([]);
   const [layers, setLayers] = useState<Layer[]>(LAYER_DATA);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch states on component mount
+  useEffect(() => {
+    const fetchStates = async () => {
+      setLoading(true);
+      try {
+        getStateData().then(data => {
+           const statesData = data.map((state: any) => ({
+          id: state.state_id,
+          name: state.state_name,
+          code: state.state_code,
+          selected: false,
+          expanded: false,
+          districts: []
+        }));
+         setData(statesData);
+        })
+       
+      } catch (error) {
+        console.error('Error fetching states:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStates();
+  }, [BASEURL]);
+
+  // Fetch districts when state is expanded
+ const fetchDistricts = async (stateCode: string) => {
+  try {
+    const data = await getDistrictData(stateCode);
+    const districtsData = data.map((district: any) => ({
+      id: district.district_id,
+      name: district.district_name,
+      code: district.district_code,
+      selected: false,
+      expanded: false,
+      blocks: []
+    }));
+
+    return districtsData;
+
+  } catch (error) {
+    console.error('Error fetching districts:', error);
+    return [];
+  }
+};
+
+  // Fetch blocks when district is expanded
+  const fetchBlocks = async (districtCode: string) => {
+    try {
+     const data = await getBlockData(districtCode)
+      const blocksData = data.map((block: any) => ({
+        id: block.block_id ,
+        name: block.block_name,
+        code: block.block_code,
+        selected: false
+      }));
+      return blocksData;
+   
+    } catch (error) {
+      console.error('Error fetching blocks:', error);
+      return [];
+    }
+  };
 
   // Filter data based on search query
   const filteredData = useMemo(() => {
@@ -207,9 +163,16 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
     
     return data.map(state => ({
       ...state,
-      districts: state.districts.filter(district =>
+      districts: state.districts.map(district => ({
+        ...district,
+        blocks: district.blocks.filter(block =>
+          block.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          block.code.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      })).filter(district =>
         district.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        district.code.toLowerCase().includes(searchQuery.toLowerCase())
+        district.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        district.blocks.length > 0
       )
     })).filter(state => 
       state.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -218,11 +181,53 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
     );
   }, [data, searchQuery]);
 
-  const handleStateToggle = (stateId: string) => {
-    setData(prev => prev.map(state => ({
-      ...state,
-      expanded: state.id === stateId ? !state.expanded : state.expanded
-    })));
+  const handleStateToggle = async (stateId: string) => {
+    setData(prev => prev.map(state => {
+      if (state.id === stateId) {
+        const newExpanded = !state.expanded;
+        // Fetch districts if expanding and districts not loaded
+        if (newExpanded && state.districts.length === 0) {
+          fetchDistricts(stateId).then(districts => {
+            setData(prevData => prevData.map(s => 
+              s.id === stateId ? { ...s, districts } : s
+            ));
+          });
+        }
+
+        return { ...state, expanded: newExpanded };
+      }
+      return state;
+    }));
+  };
+  const handleDistrictToggle = async (stateId: string, districtId: string) => {
+    setData(prev => prev.map(state => {
+      if (state.id === stateId) {
+        return {
+          ...state,
+          districts: state.districts.map(district => {
+            if (district.id === districtId) {
+              const newExpanded = !district.expanded;
+              // Fetch blocks if expanding and blocks not loaded
+              if (newExpanded && district.blocks.length === 0) {
+                fetchBlocks(districtId).then(blocks => {
+                  setData(prevData => prevData.map(s => 
+                    s.id === stateId ? {
+                      ...s,
+                      districts: s.districts.map(d =>
+                        d.id === districtId ? { ...d, blocks } : d
+                      )
+                    } : s
+                  ));
+                });
+              }
+              return { ...district, expanded: newExpanded };
+            }
+            return district;
+          })
+        };
+      }
+      return state;
+    }));
   };
 
   const handleStateSelection = (stateId: string) => {
@@ -234,54 +239,106 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
           selected: newSelected,
           districts: state.districts.map(district => ({
             ...district,
-            selected: newSelected
+            selected: newSelected,
+            blocks: district.blocks.map(block => ({
+              ...block,
+              selected: newSelected
+            }))
           }))
         };
       }
       return state;
     }));
     
-    // Trigger callback
     triggerSelectionCallback();
   };
 
   const handleDistrictSelection = (stateId: string, districtId: string) => {
     setData(prev => prev.map(state => {
       if (state.id === stateId) {
-        const updatedDistricts = state.districts.map(district =>
-          district.id === districtId 
-            ? { ...district, selected: !district.selected }
-            : district
-        );
+        const updatedDistricts = state.districts.map(district => {
+          if (district.id === districtId) {
+            const newSelected = !district.selected;
+            return {
+              ...district,
+              selected: newSelected,
+              blocks: district.blocks.map(block => ({
+                ...block,
+                selected: newSelected
+              }))
+            };
+          }
+          return district;
+        });
         
         // Only select state if ALL districts are selected
-        const allSelected = updatedDistricts.every(d => d.selected);
+        const allDistrictsSelected = updatedDistricts.some(d => d.selected);
         
         return {
           ...state,
-          selected: allSelected,
+          selected: allDistrictsSelected,
           districts: updatedDistricts
         };
       }
       return state;
     }));
 
-    // Trigger callback
+    triggerSelectionCallback();
+  };
+
+  const handleBlockSelection = (stateId: string, districtId: string, blockId: string) => {
+    setData(prev => prev.map(state => {
+      if (state.id === stateId) {
+        const updatedDistricts = state.districts.map(district => {
+          if (district.id === districtId) {
+            const updatedBlocks = district.blocks.map(block =>
+              block.id === blockId 
+                ? { ...block, selected: !block.selected }
+                : block
+            );
+            
+            // Only select district if ALL blocks are selected
+            const allBlocksSelected = updatedBlocks.some(b => b.selected);
+            
+            return {
+              ...district,
+              selected: allBlocksSelected,
+              blocks: updatedBlocks
+            };
+          }
+          return district;
+        });
+        
+        // Only select state if ALL districts are selected
+        const allDistrictsSelected = updatedDistricts.some(d => d.selected);
+        
+        return {
+          ...state,
+          selected: allDistrictsSelected,
+          districts: updatedDistricts
+        };
+      }
+      return state;
+    }));
+
     triggerSelectionCallback();
   };
 
   const triggerSelectionCallback = () => {
     const selectedStates: string[] = [];
     const selectedDistricts: string[] = [];
+    const selectedBlocks: string[] = [];
     
     data.forEach(state => {
       if (state.selected) selectedStates.push(state.id);
       state.districts.forEach(district => {
         if (district.selected) selectedDistricts.push(district.id);
+          district.blocks.forEach(block => {
+          if (block.selected) selectedBlocks.push(block.id);
+        });
       });
     });
-    
-    onSelectionChange?.(selectedStates, selectedDistricts);
+    onSelectionChange?.(selectedStates, selectedDistricts, selectedBlocks);
   };
 
   const handleLayerSelection = (layerId: string) => {
@@ -300,12 +357,12 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
     })));
   };
 
-  const handlePreview = (type: 'state' | 'district', id: string, name: string) => {
-    onPreview?.({ type, id, name });
+  const handlePreview = (type: 'state' | 'district' | 'block',stateId:string,DistId:string,BlockId:string, name: string) => {
+     onPreview?.({ type,stateId,DistId,BlockId,name });
   };
 
-  const handleRefresh = (type: 'state' | 'district', id: string, name: string) => {
-    onRefresh?.({ type, id, name });
+  const handleRefresh = (type: 'state' | 'district' | 'block', stateId:string,DistId:string,BlockId:string, name: string) => {
+    onRefresh?.({ type,stateId,DistId,BlockId,name });
   };
 
   const getColorClass = (color: string) => {
@@ -327,12 +384,12 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
       {/* District/Division Section */}
       <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
         {/* Header */}
-        <div className="border-b border-gray-200">
+        <div className="border-b  border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
           <button
             onClick={() => setIsDistrictExpanded(!isDistrictExpanded)}
-            className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors"
+            className="w-full flex items-center justify-between p-3 "
           >
-            <span className="font-medium text-gray-900 text-sm">DISTRICT/DIVISION</span>
+            <span className="font-semibold text-gray-900 text-sm">DISTRICT/DIVISION</span>
             <div className="flex items-center gap-2">
               <button
                 onClick={(e) => {
@@ -367,11 +424,18 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
               />
             </div>
 
+            {/* Loading indicator */}
+            {loading && (
+              <div className="text-center py-4">
+                <div className="text-sm text-gray-500">Loading states...</div>
+              </div>
+            )}
+
             {/* Geographic List */}
             <div className="space-y-1 max-h-96 overflow-y-auto">
               {filteredData.map((state) => (
                 <div key={state.id}>
-                  {/* State/Country Level */}
+                  {/* State Level */}
                   <div className="flex items-center group">
                     <button
                       onClick={() => handleStateToggle(state.id)}
@@ -398,14 +462,14 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
                     {state.selected && (
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-auto">
                         <button
-                          onClick={() => handlePreview('state', state.id, state.name)}
+                          onClick={() => handlePreview('state',state.id,'','',state.name)}
                           className="p-1 hover:bg-gray-100 rounded"
                           title="Preview"
                         >
                           <Eye className="h-3 w-3 text-gray-500" />
                         </button>
                         <button
-                          onClick={() => handleRefresh('state', state.id, state.name)}
+                          onClick={() => handleRefresh('state',state.id,'','', state.name)}
                           className="p-1 hover:bg-gray-100 rounded"
                           title="Refresh"
                         >
@@ -419,37 +483,95 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
                   {state.expanded && (
                     <div className="ml-8 space-y-1 border-l border-gray-200 pl-4">
                       {state.districts.map((district) => (
-                        <div key={district.id} className="flex items-center justify-between group">
-                          <label className="flex items-center flex-1 py-1 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={district.selected}
-                              onChange={() => handleDistrictSelection(state.id, district.id)}
-                              className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span className="text-sm text-gray-600">
-                              {district.name}
-                              <span className="text-gray-400 ml-1">({district.code})</span>
-                            </span>
-                          </label>
-                          
-                          {/* Action Buttons */}
-                          {district.selected && (
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div key={district.id}>
+                          {/* District Level */}
+                          <div className="flex items-center justify-between group">
+                            <div className="flex items-center flex-1">
                               <button
-                                onClick={() => handlePreview('district', district.id, district.name)}
-                                className="p-1 hover:bg-gray-100 rounded"
-                                title="Preview"
+                                onClick={() => handleDistrictToggle(state.id, district.id)}
+                                className="p-1 hover:bg-gray-100 rounded mr-1"
                               >
-                                <Eye className="h-3 w-3 text-gray-500" />
+                                {district.expanded ? (
+                                  <ChevronDown className="h-3 w-3 text-gray-500" />
+                                ) : (
+                                  <ChevronRight className="h-3 w-3 text-gray-500" />
+                                )}
                               </button>
-                              <button
-                                onClick={() => handleRefresh('district', district.id, district.name)}
-                                className="p-1 hover:bg-gray-100 rounded"
-                                title="Refresh"
-                              >
-                                <RotateCcw className="h-3 w-3 text-gray-500" />
-                              </button>
+                              
+                              <label className="flex items-center flex-1 py-1 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={district.selected}
+                                  onChange={() => handleDistrictSelection(state.id, district.id)}
+                                  className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-sm text-gray-600">
+                                  {district.name}
+                                  <span className="text-gray-400 ml-1">({district.code})</span>
+                                </span>
+                              </label>
+                            </div>
+                            
+                            {/* District Action Buttons */}
+                            {district.selected && (
+                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() => handlePreview('district',state.id, district.id, '',district.name)}
+                                  className="p-1 hover:bg-gray-100 rounded"
+                                  title="Preview"
+                                >
+                                  <Eye className="h-3 w-3 text-gray-500" />
+                                </button>
+                                <button
+                                  onClick={() => handleRefresh('district', state.id,district.id, '',district.name)}
+                                  className="p-1 hover:bg-gray-100 rounded"
+                                  title="Refresh"
+                                >
+                                  <RotateCcw className="h-3 w-3 text-gray-500" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Blocks */}
+                          {district.expanded && (
+                            <div className="ml-8 space-y-1 border-l border-gray-200 pl-4">
+                              {district.blocks.map((block) => (
+                                <div key={block.id} className="flex items-center justify-between group">
+                                  <label className="flex items-center flex-1 py-1 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={block.selected}
+                                      onChange={() => handleBlockSelection(state.id, district.id, block.id)}
+                                      className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <span className="text-sm text-gray-600">
+                                      {block.name}
+                                      <span className="text-gray-400 ml-1">({block.code})</span>
+                                    </span>
+                                  </label>
+                                  
+                                  {/* Block Action Buttons */}
+                                  {block.selected && (
+                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <button
+                                        onClick={() => handlePreview('block',state.id,district.id, block.id, block.name)}
+                                        className="p-1 hover:bg-gray-100 rounded"
+                                        title="Preview"
+                                      >
+                                        <Eye className="h-3 w-3 text-gray-500" />
+                                      </button>
+                                      <button
+                                        onClick={() => handleRefresh('block',state.id,district.id,block.id, block.name)}
+                                        className="p-1 hover:bg-gray-100 rounded"
+                                        title="Refresh"
+                                      >
+                                        <RotateCcw className="h-3 w-3 text-gray-500" />
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
                             </div>
                           )}
                         </div>
@@ -464,8 +586,7 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
       </div>
 
       {/* Landbase Layers Section */}
-      <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
-        {/* Header */}
+      {/* <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
         <div className="border-b border-gray-200">
           <button
             onClick={() => setIsLayersExpanded(!isLayersExpanded)}
@@ -491,10 +612,8 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
           </button>
         </div>
 
-        {/* Content */}
         {isLayersExpanded && (
           <div className="p-3">
-            {/* Action Buttons */}
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <button
@@ -519,7 +638,6 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
               <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">L</span>
             </div>
 
-            {/* Select All */}
             <div className="mb-3">
               <label className="flex items-center py-1 cursor-pointer">
                 <input
@@ -532,7 +650,6 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
               </label>
             </div>
 
-            {/* Layers List */}
             <div className="space-y-1 max-h-96 overflow-y-auto">
               {layers.map((layer) => (
                 <div key={layer.id} className="flex items-center justify-between group">
@@ -549,7 +666,6 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
                     <span className="text-sm text-gray-600">{layer.name}</span>
                   </label>
                   
-                  {/* Layer visibility toggle */}
                   <div className="flex items-center">
                     <input
                       type="checkbox"
@@ -563,7 +679,7 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
             </div>
           </div>
         )}
-      </div>
+      </div> */}
     </div>
   );
 };
