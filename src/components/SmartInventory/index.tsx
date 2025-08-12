@@ -7,7 +7,7 @@ import axios from 'axios';
 import { GoogleMap } from './MapViewer';
 import { PlacemarkList } from './PlacemarkList';
 import { PLACEMARK_CATEGORIES, processApiData, processPhysicalSurveyData } from './PlaceMark';
-import { KMZFile, FilterState, ViewState, ApiPlacemark, ProcessedPlacemark, PlacemarkCategory, PhysicalSurveyData, EventTypeConfig, EventTypeCounts, PhysicalSurveyApiResponse, ProcessedPhysicalSurvey } from '../../types/kmz';
+import { KMZFile, FilterState, ViewState, ApiPlacemark, ProcessedPlacemark, PlacemarkCategory, EventTypeConfig, EventTypeCounts, PhysicalSurveyApiResponse, ProcessedPhysicalSurvey } from '../../types/kmz';
 import FileUploadModal from './Modalpopup';
 import { GeographicSelector } from './GeographicSelector';
 
@@ -29,23 +29,21 @@ function SmartInventory() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
-  const [PhysicalSurvey, setPhysicalSurvey] = useState<PhysicalSurveyData[]>([]);
   const [loading, setLoding] = useState<boolean>(false)
   const [ShowFiles, setShowFiles] = useState(false);
-  // Placemark-related state
   const [processedPlacemarks, setProcessedPlacemarks] = useState<ProcessedPlacemark[]>([]);
   const [placemarkCategories, setPlacemarkCategories] = useState<PlacemarkCategory[]>([]);
   const [visibleCategories, setVisibleCategories] = useState<Set<string>>(new Set());
   const [highlightedPlacemark, setHighlightedPlacemark] = useState<ProcessedPlacemark>();
-
   const [physicalSurveyData, setPhysicalSurveyData] = useState<ProcessedPhysicalSurvey[]>([]);
   const [physicalSurveyCategories, setPhysicalSurveyCategories] = useState<PlacemarkCategory[]>([]);
   const [isLoadingPhysical, setIsLoadingPhysical] = useState(false);
 
- // Load saved files on app start
+ // Load  external files
   useEffect(() => {
     const loadFiles = async () => {
       try {
+        setLoding(true)
         const params: any = {};
         if (filters.state) params.state_code = filters.state;
         if (filters.division) params.dtcode = filters.division;
@@ -55,42 +53,81 @@ function SmartInventory() {
         const savedFiles = await axios.get(`${BASEURL}/get-external-files`, { params });
         if (savedFiles.status === 200 || savedFiles.status === 201) {
           setFiles(savedFiles.data.data);
-          // if (savedFiles.data.data.length > 0) {
-          //   setSelectedFiles([savedFiles.data.data[0][0]]);
-          // }
         }
       } catch (error) {
         console.error('Failed to load files:', error);
         showNotification('error', 'Failed to load files');
+      }finally{
+        setLoding(false)
       }
     };
     loadFiles();
   }, [filters, searchQuery]);
 
-  // // Load placemark data when files are selected
+
   useEffect(() => {
     const handleParsed = async () => {
       if (selectedFiles.length > 0) {
+        let allPlacemarks: ProcessedPlacemark[] = [];
+        let allCategoryData: Record<string, number> = {};
+        
         try {
-          const params: any = {};
-          if (selectedFiles[0].filepath) params.filepath = selectedFiles[0].filepath;
-          if (selectedFiles[0].file_type) params.fileType = selectedFiles[0].file_type;
+          // Process each selected file
+          for (const file of selectedFiles) {
+            const params: any = {};
+            if (file.filepath) params.filepath = file.filepath;
+            if (file.file_type) params.fileType = file.file_type;
 
-          const resp = await axios.get(`${BASEURL}/preview-file`, { params });
-          if (resp.status === 200 || resp.status === 201) {
-            const apiData: ApiPlacemark = resp.data.data.parsed_data;
-            const { placemarks, categories } = processApiData(apiData);
-
-            setProcessedPlacemarks(placemarks);
-            setPlacemarkCategories(categories);
-
-            // Initially show all categories
-            const allCategoryIds = new Set(categories.map(cat => cat.id));
-            setVisibleCategories(allCategoryIds);
-
-          } else {
-            showNotification("error", resp.data.message);
+            const resp = await axios.get(`${BASEURL}/preview-file`, { params });
+            if (resp.status === 200 || resp.status === 201) {
+              const apiData: ApiPlacemark = resp.data.data.parsed_data;
+              const { placemarks, categories } = processApiData(apiData);
+              
+              // Combine placemarks with unique IDs
+              const filePrefix = file.id;
+              const prefixedPlacemarks = placemarks.map(placemark => ({
+                ...placemark,
+                id: `${filePrefix}-${placemark.id}`
+              }));
+              
+              allPlacemarks = [...allPlacemarks, ...prefixedPlacemarks];
+              
+              // Combine category counts
+              categories.forEach(category => {
+                allCategoryData[category.name] = (allCategoryData[category.name] || 0) + category.count;
+              });
+              
+            } else {
+              showNotification("error", `Failed to load ${file.filename}: ${resp.data.message}`);
+            }
           }
+          
+          // Create combined categories
+          const combinedCategories = Object.entries(allCategoryData).map(([name, count]) => {
+            const categoryConfig = Object.entries(PLACEMARK_CATEGORIES).find(([key]) => key === name);
+            const config = categoryConfig ? categoryConfig[1] : { color: '#6B7280', icon: '📍' };
+            
+            return {
+              id: name.toLowerCase().replace(/\s+/g, '-'),
+              name,
+              count,
+              visible: true,
+              color: config.color,
+              icon: config.icon
+            };
+          }).filter(category => category.count > 0);
+          
+          setProcessedPlacemarks(allPlacemarks);
+          setPlacemarkCategories(combinedCategories);
+          
+          // Initially show all categories
+          const allCategoryIds = new Set(combinedCategories.map(cat => cat.id));
+          setVisibleCategories(allCategoryIds);
+          
+          if (selectedFiles.length > 1) {
+            showNotification("success", `Successfully loaded ${selectedFiles.length} files with ${allPlacemarks.length} placemarks`);
+          }
+          
         } catch (error) {
           console.error('Failed to show preview:', error);
           showNotification("error", 'Failed to show preview');
@@ -103,6 +140,7 @@ function SmartInventory() {
     };
     handleParsed();
   }, [selectedFiles]);
+
 
   // Load physical survey data
   const loadPhysicalData = async (state: string[], division: string[], block: string[]) => {
@@ -216,7 +254,6 @@ function SmartInventory() {
     }
     setHighlightedPlacemark(undefined);
   }, []);
-
   // Handle category visibility toggle
   const handleCategoryVisibilityChange = (categoryId: string, visible: boolean) => {
     setVisibleCategories(prev => {
@@ -237,7 +274,7 @@ function SmartInventory() {
 
   const allPlacemarks = [...processedPlacemarks, ...physicalSurveyData];
   const allCategories = [...placemarkCategories, ...physicalSurveyCategories];
-
+  // console.log(allPlacemarks,'allPlacemarks')
 
   const handleSidebarToggle = useCallback(() => {
     try {
@@ -281,22 +318,37 @@ function SmartInventory() {
   }, []);
 
    const handleSelectionChange = (selectedStates: string[], selectedDistricts: string[], selectedBlocks: string[]) => {
-     loadPhysicalData(selectedStates,selectedDistricts,selectedBlocks)
+    //  loadPhysicalData(selectedStates,selectedDistricts,selectedBlocks)
   };
 
-  const handlePreview = (item: { type: 'state' | 'district' | 'block'; stateId:string;DistId:string;BlockId:string; name: string }) => {
-    console.log('Preview:', item);
-    // Implement preview functionality
+  const handlePreview = (item: { 
+    type: 'state' | 'district' | 'block' | 'universal'; 
+    selectedStates: string[];
+    selectedDistricts: string[];
+    selectedBlocks: string[];
+    name: string;
+
+  }) => {
+    loadPhysicalData( item.selectedStates, item.selectedDistricts,item.selectedBlocks)
+
   };
 
-  const handleRefresh = (item: { type: 'state' | 'district' | 'block'; stateId:string; DistId:string; BlockId:string; name: string }) => {
-    console.log('Refresh:', item);
-    // Implement refresh functionality
-  };
+  const handleRefresh = (item: { 
+    type: 'state' | 'district' | 'block' | 'universal'; 
+    selectedStates: string[];
+    selectedDistricts: string[];
+    selectedBlocks: string[];
+    name: string;
+
+  }) => {
+    loadPhysicalData( item.selectedStates, item.selectedDistricts,item.selectedBlocks)
+    };
+
+
 
   return (
     <div className="h-screen flex bg-gray-50">
-      {loading && (
+      {(loading || isLoadingPhysical) && (
         <div className="absolute top-70 right-150 z-10">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-800 mx-auto mb-4"></div>
         </div>
@@ -347,39 +399,18 @@ function SmartInventory() {
             <FilePlus2Icon size={18} />
 
           </button>
-          <button
-            onClick={() => { setShowFiles(!ShowFiles) }}
-            className={`
-              border-2 border-dashed 
-              w-20 h-12 rounded-full flex items-center justify-center transition-colors 
-              ${ShowFiles
-                ? 'border-gray-300 bg-blue-100'
-                : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
-              }
-              transition-all duration-200 flex items-center justify-center gap-2
-              text-sm font-medium text-gray-700
-            `}
-            title='Reload'
-          >
-            <RefreshCwIcon size={18} />
-
-          </button>
+         
         </div>
-       <GeographicSelector
-          BASEURL={BASEURL}
-          onSelectionChange={handleSelectionChange}
-          onPreview={handlePreview}
-          onRefresh={handleRefresh}
-        />
+         <GeographicSelector
+            BASEURL={BASEURL}
+            onSelectionChange={handleSelectionChange}
+            onPreview={handlePreview}
+            onRefresh={handleRefresh}
+            isLoadingPhysical={isLoadingPhysical}
 
-        {/* <PlacemarkList
-            placemarks={allPlacemarks}
-            categories={allCategories}
-            visibleCategories={visibleCategories}
-            onCategoryVisibilityChange={handleCategoryVisibilityChange}
-            onPlacemarkClick={handlePlacemarkClick}
-            highlightedPlacemark={highlightedPlacemark}
-          /> */}
+          />
+
+       
           <PlacemarkList
             placemarks={allPlacemarks}
             categories={allCategories}
@@ -387,8 +418,6 @@ function SmartInventory() {
             onCategoryVisibilityChange={handleCategoryVisibilityChange}
             onPlacemarkClick={handlePlacemarkClick}
             highlightedPlacemark={highlightedPlacemark}
-            // onLoadPhysicalData={loadPhysicalData}
-            // isLoadingPhysical={isLoadingPhysical}
           />
 
 
@@ -404,17 +433,7 @@ function SmartInventory() {
           isLoading={isUploading}
           error={uploadError}
         />
-        {/* <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
-          {!sidebarOpen && (
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="p-2 bg-white shadow-md hover:shadow-lg rounded-lg border border-gray-200 transition-all"
-              title="Open sidebar"
-            >
-              <Menu className="h-5 w-5 text-gray-600" />
-            </button>
-          )}
-        </div> */}
+      
 
         {/* Map */}
         

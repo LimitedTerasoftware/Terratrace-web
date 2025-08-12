@@ -58,7 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, children }) 
               </div>
               {isOpen && (
                 <div>
-                  <h1 className="font-bold text-gray-900">SMART INVENTORY</h1>
+                  <h1 className="font-bold text-gray-900">GIS INVENTORY</h1>
                   <p className="text-xs text-gray-500">Geographic Data Explorer</p>
                 </div>
               )}

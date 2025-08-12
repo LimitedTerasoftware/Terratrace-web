@@ -1,30 +1,38 @@
 import { ApiPlacemark, ApiPoint, ApiPolyline, ProcessedPlacemark, PlacemarkCategory, PhysicalSurveyApiResponse, ProcessedPhysicalSurvey } from '../../types/kmz';
 
-// Define placemark categories with colors and icons
+// placemark categories with colors and icons
 export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string }> = {
   'LANDMARK': { color: '#FF6B6B', icon: '🏛️' },
-  'FIBERTURN': { color: '#4ECDC4', icon: '🔄' },
+  'FIBERTURN': { color: '#372AAC', icon: '🔄' },
   'Bridge': { color: '#45B7D1', icon: '🌁' },
   'Culvert': { color: '#96CEB4', icon: '🌊' },
-  'ROADCROSSING': { color: '#FFEAA7', icon: '🛣️' },
+  'ROADCROSSING': { color: '#31F527', icon: '🛣️' },
   'Level Cross': { color: '#DDA0DD', icon: '🚂' },
   'Rail Under Bridge': { color: '#98D8C8', icon: '🚇' },
   'Causeways': { color: '#F7DC6F', icon: '🛤️' },
   'Rail Over Bridge': { color: '#BB8FCE', icon: '🚄' },
-  'KILOMETERSTONE': { color: '#85C1E9', icon: '📍' },
+  'KILOMETERSTONE': { color: '#35530E', icon: '📍' },
   'FPOI': { color: '#F8C471', icon: '⭐' },
-  'JOINTCHAMBER': { color: '#82E0AA', icon: '🔗' },
-  'ROUTEINDICATOR': { color: '#F1948A', icon: '🧭' },
+  'GP': { color: '#4ECDC4', icon: '⭐' },
+  'BHQ': { color: '#BF1E00', icon: '⭐' },
+  'BR': { color: '#0030BF', icon: '⭐' },
+  'JOINTCHAMBER': { color: '#FE9A37', icon: '🔗' },
+  'ROUTEINDICATOR': { color: '#42D3F2', icon: '🧭' },
   'SURVEYSTART': { color: '#10B981', icon: '🎯'},
   'DEPTH': { color: '#3B82F6', icon: '📏'},
   "MANHOLES": { color: '#06B6D4', icon: '🕳️'},
   "STARTPIT": { color: '#14B8A6', icon: '🕳️' },
   "ENDPIT": { color: '#DC2626', icon: '🏁'},
-  "ENDSURVEY": { color: '#10B981', icon: '🎯'},
+  "ENDSURVEY": { color: '#E7180B', icon: '🎯'},
   "HOLDSURVEY": { color: '#a93226', icon: '⏸️'},
   "BLOWING": { color: '#663300', icon:'💨'},
   "Incremental Cable":{color:"#61f335",icon:'----'},
   "Proposed Cable":{color:"#ff0000",icon:'----'},
+  'ROUTEFEASIBILITY': { color: '#17A2B8', icon: '🛤️' },
+  'AREA': { color: '#FFC107', icon: '📐' },
+  'LIVELOCATION': { color: '#DC3545', icon: '📍' },
+  'SIDE': { color: '#6F42C1', icon: '↔️' },
+  'ROUTEDETAILS': { color: '#09090B', icon: '📋' },
 
 };
 
@@ -42,7 +50,14 @@ export function processApiData(apiData: ApiPlacemark): {
 
   // Process points
   apiData.points.forEach((point, index) => {
-    const category = getCategoryFromName(point.name);
+    // Only process points with type "GP" or "FPOI"
+    if(!point.type 
+       || (point.type !== 'GP' && point.type !== 'FPOI' && point.type !== "BHQ" && point.type !== 'BR' && point.type !== "LANDMARK")
+    ) {
+      return;
+    }
+    
+    const category = getCategoryFromName(point.type);
     categoryCounts[category] = (categoryCounts[category] || 0) + 1;
 
     processedPlacemarks.push({
@@ -54,13 +69,14 @@ export function processApiData(apiData: ApiPlacemark): {
         lat: point.coordinates.latitude,
         lng: point.coordinates.longitude
       },
-      styleUrl: point.styleUrl
+      styleUrl: point.styleUrl,
+      pointType: point.type
     });
   });
 
   // Process polylines
   apiData.polylines.forEach((polyline, index) => {
-    const category = getCategoryFromName(polyline.type || polyline.name);
+    const category = getCategoryFromName(polyline.name);
     categoryCounts[category] = (categoryCounts[category] || 0) + 1;
 
     processedPlacemarks.push({
@@ -72,7 +88,7 @@ export function processApiData(apiData: ApiPlacemark): {
         lat: coord[1],
         lng: coord[0]
       })),
-      distance: polyline?.distance,
+      distance: polyline.distance,
       styleUrl: polyline.styleUrl
     });
   });
@@ -109,7 +125,7 @@ function getCategoryFromName(name: string): string {
   if (upperName.includes('KM') || upperName.includes('KILOMETER')) return 'KILOMETERSTONE';
   
   // Default category
-  return 'LANDMARK';
+  return 'FPOI';
 }
 
 export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
@@ -120,7 +136,9 @@ export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
   const categoryCounts: Record<string, number> = {};
 
   // Initialize category counts for physical survey categories
-  const physicalSurveyCategories = ['SURVEYSTART', 'ROUTEFEASIBILITY', 'AREA', 'LIVELOCATION', 'SIDE', 'ROUTEDETAILS'];
+  const physicalSurveyCategories = ['SURVEYSTART', 'ROUTEFEASIBILITY', 'AREA', 'LIVELOCATION', 'SIDE', 'ROUTEDETAILS','LANDMARK','FIBERTURN','Bridge',
+        'Culvert','ROADCROSSING','Causeways','KILOMETERSTONE','FPOI','JOINTCHAMBER','ROUTEINDICATOR' ,'ENDSURVEY','HOLDSURVEY',    
+  ];
   physicalSurveyCategories.forEach(category => {
     categoryCounts[category] = 0;
   });
@@ -128,6 +146,11 @@ export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
   // Process physical survey data
   Object.entries(apiData.data).forEach(([blockId, points]) => {
     points.forEach((point, index) => {
+      // Skip LIVELOCATION events to reduce map load
+      if (point.event_type === 'LIVELOCATION') {
+        return;
+      }
+      
       const category = point.event_type;
       categoryCounts[category] = (categoryCounts[category] || 0) + 1;
 

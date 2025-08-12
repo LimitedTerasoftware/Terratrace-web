@@ -493,10 +493,10 @@ const BsnlSurvey: React.FC = () => {
   setSearchParams(params);
 };
   return (
-    <div className="bg-gray-100 dark:bg-gray-900 min-h-screen">
+    <div className="min-h-screen">
       {/* Search Bar and Filters Section */}
       <div className="mb-4">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 mx-5">
           {/* State Filter */}
           <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
             <select
