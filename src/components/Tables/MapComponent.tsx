@@ -67,15 +67,15 @@ type UnderGroundSurveyData = {
   landMarkUrls:string;
   fiberTurnUrl:string;
   landMarkType:string;
-  // startGp?:string;
-  // endGp?:string;
-  // start_lgd?:string;
-  // end_lgd?:string;
-  // routeType?:string;
-  // startLat?:string;
-  // startLng?:string;
-  // endLat?:string;
-  // endLng?:string;
+  startGp?:string;
+  endGp?:string;
+  start_lgd?:string;
+  end_lgd?:string;
+  routeType?:string;
+  startLat?:string;
+  startLng?:string;
+  endLat?:string;
+  endLng?:string;
 };
 
 
@@ -328,6 +328,48 @@ const tileLayerUrl = useMemo(() => {
   "FIBERTURN",
 ];
 
+const groupedBySurvey = filteredData.reduce((acc, item) => {
+  if (!acc[item.survey_id]) {
+    acc[item.survey_id] = {
+      points: [],
+      start: item.startLat && item.startLng ? {
+        lat: parseFloat(item.startLat),
+        lng: parseFloat(item.startLng),
+      } : null,
+      end: item.endLat && item.endLng ? {
+        lat: parseFloat(item.endLat),
+        lng: parseFloat(item.endLng),
+      } : null,
+      // extra fields for marker logic
+      start_lgd: item.start_lgd,
+      end_lgd: item.end_lgd,
+      start_gp_name: item.startGp ,
+      end_gp_name: item.endGp,
+      survey_id:item.surveyUploaded,
+    };
+  }
+
+  acc[item.survey_id].points.push({
+    lat: parseFloat(item.latitude),
+    lng: parseFloat(item.longitude),
+  });
+
+  return acc;
+}, {} as Record<
+  string,
+  {
+    points: { lat: number; lng: number }[];
+    start: { lat: number; lng: number } | null;
+    end: { lat: number; lng: number } | null;
+    start_lgd?: string;
+    end_lgd?: string;
+    start_gp_name?: string;
+    end_gp_name?: string;
+    survey_id:string
+  }
+>);
+
+console.log(groupedBySurvey,'groupedBySurvey')
  return (
     <div ref={containerRef} className="flex flex-col md:flex-row h-screen">
       {/* Left side: Map */}
@@ -389,6 +431,56 @@ const tileLayerUrl = useMemo(() => {
               />
             )
           })}
+         {Object.values(groupedBySurvey).map((group, idx) => {
+           const markers: JSX.Element[] = [];
+
+            const positions = [
+              { type: 'start', coord: group.start, lgd: group.start_lgd, gpName: group.start_gp_name },
+              { type: 'end', coord: group.end, lgd: group.end_lgd, gpName: group.end_gp_name }
+            ];
+
+            positions.forEach((pos) => {
+              if (!pos.coord) return; 
+
+              let iconUrl = 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png';
+              let size = new window.google.maps.Size(25, 25);
+
+              if (pos.lgd?.includes('BH')) {
+                iconUrl = BHQIcon;
+                size = new window.google.maps.Size(45, 45);
+              } else if (pos.lgd?.includes('F')) {
+                iconUrl = FPOIcon;
+                size = new window.google.maps.Size(45, 45);
+              } else if (pos.lgd?.includes('BR')) {
+                iconUrl = BRIcon;
+                size = new window.google.maps.Size(45, 45);
+              } else if (pos.gpName) {
+                iconUrl = GPIcon;
+                size = new window.google.maps.Size(45, 45);
+              }
+
+              const label =
+                typeof pos.gpName === 'string'
+                  ? { text: pos.gpName, fontSize: '12px', fontWeight: 'bold', color: '#474040' }
+                  : undefined;
+                markers.push(
+                <Marker
+                  key={`${pos.type}-${idx}`}
+                  position={pos.coord}
+                  icon={{
+                    url: iconUrl,
+                    scaledSize: size,
+                  }}
+                  title={pos.gpName}
+                  label={label}
+                />
+              );
+            });
+
+            return markers;
+          })}
+
+
           {selectedMarker  && (
             <InfoWindow
               position={{

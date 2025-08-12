@@ -617,7 +617,6 @@ const handlePreview = async (id:number) => {
                               startLng: json.data.start_gp?.longitude || '',
                               endLat: json.data.end_gp?.lattitude || '',
                               endLng: json.data.end_gp?.longitude || '',
-                              
                             }));
 
        Data.push(...enrichedData);
@@ -705,9 +704,6 @@ const handlePreview = async (id:number) => {
         accuracy: data.accuracy,
         depth: data.depth,
         distance_error: data.distance_error,
-
-
-
         // Road Crossing Info
         crossing_Type: data.road_crossing?.roadCrossing || '',
         crossing_length: data.road_crossing?.length || '',
@@ -717,30 +713,25 @@ const handlePreview = async (id:number) => {
         crossing_endPhoto_URL: (data.event_type === "ROADCROSSING" && data?.surveyUploaded === "true" && data.road_crossing?.endPhoto) ? { text: `${BASEURL}${data.road_crossing?.endPhoto}`, url: `${BASEURL}${data.road_crossing?.endPhoto}` } : '',
         crossing_endphoto_Lat: data.road_crossing?.endPhotoLat || '',
         crossing_endphoto_Long: data.road_crossing?.endPhotoLong || '',
-
         // Route Details
         centerToMargin: data.route_details?.centerToMargin || '',
         roadWidth: data.route_details?.roadWidth || '',
         routeBelongsTo: data.route_details?.routeBelongsTo || '',
         routeType: data.route_details?.routeType || '',
         soilType: data.route_details?.soilType || '',
-
         // Route Feasibility
         routeFeasible: data.route_feasibility?.routeFeasible ?? '',
         alternatePathAvailable: data.route_feasibility?.alternatePathAvailable ?? '',
         alternativePathDetails: data.route_feasibility?.alternativePathDetails || '',
-
         // Side and Indicator
         side_type: data.side_type,
         routeIndicatorUrl: routeIndicatorItems.length > 0 ? routeIndicatorItems : '',
          // Start/End Photos
         Survey_Start_Photo: data.event_type === "SURVEYSTART" && data?.surveyUploaded === "true" ? { text: `${BASEURL}${data.start_photos?.[0]}`, url: `${BASEURL}${data.start_photos?.[0]}` } : '',
         Survey_End_Photo: data.event_type === "ENDSURVEY" && data?.surveyUploaded === "true" ? { text: `${BASEURL}${data.end_photos?.[0]}`, url: `${BASEURL}${data.end_photos?.[0]}` } : '',
-
         // Utility Features
         localInfo: data.utility_features_checked?.localInfo || '',
         selectedGroundFeatures: (data.utility_features_checked?.selectedGroundFeatures || []).join(', '),
-
         // Video Details
         videoUrl: (data.event_type === "VIDEORECORD" && data?.surveyUploaded === "true" && data.videoDetails?.videoUrl?.trim().replace(/^"|"$/g, "")) ? { text: `${BASEURL}${data.videoDetails?.videoUrl}`, url: `${BASEURL}${data.videoDetails?.videoUrl}` } : '',
         video_startLatitude: data.videoDetails?.startLatitude || '',
