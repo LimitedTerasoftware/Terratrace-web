@@ -6,8 +6,7 @@ import AerailTables from "../../pages/UiElements/AerailTables";
 import UndergroundTables from "../../pages/UiElements/UndergroundTables";
 import Breadcrumb from '../../components/Breadcrumbs/Breadcrumb';
 import HotoTables from "../../pages/HotoTables";
-import {Header} from "../Breadcrumbs/Header";
-import { Activity as Activity2, MapPin, Clock, TrendingUp } from 'lucide-react';
+import { Header } from "../Breadcrumbs/Header";
 
 // Define tab types
 type TabType = "bsnl" | "gp" | "aerial" | "ground" | "hoto";
@@ -31,7 +30,7 @@ const tabs: { id: TabType; label: string }[] = [
 const SurveyTabs: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   // Get tab from URL or fallback to "bsnl"
   const getTabFromURL = (): TabType => {
     const params = new URLSearchParams(location.search);
@@ -63,60 +62,38 @@ const SurveyTabs: React.FC = () => {
       case "ground":
         return <GroundSurvey />;
       case "hoto":
-          return <HotoSurvey />;
+        return <HotoSurvey />;
       default:
         return <BsnlSurvey />;
     }
   };
 
- return (
+  return (
     <div className="w-full">
-      <Breadcrumb pageName="Survey Forms" />
-      {/* <Header activeTab={activeTab}/> */}
+      {/* <Breadcrumb pageName="Survey Forms" /> */}
+      <Header activeTab={activeTab} />
 
       {/* Tabs Header */}
-       {/* <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-4 mt-4">
-          <div className="border-b border-gray-200">
-            <nav className="flex space-x-8 px-6">
-               {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => handleTabChange(tab.id)}
-                  className={`py-4 px-2 border-b-2 font-medium text-sm ${
-                    activeTab === tab.id
-                      ? "border-b-4 border-blue-500 text-blue-600"
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+      <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-4 mt-4">
+        <div className="border-b border-gray-200">
+          <nav className="flex space-x-8 px-6">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => handleTabChange(tab.id)}
+                className={`py-4 px-2 border-b-2 font-medium text-sm ${activeTab === tab.id
+                    ? "border-b-4 border-blue-500 text-blue-600"
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
-          </div>
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </div>
 
-           <div className="mt-2">{renderTabContent()}</div>
-        </div> */}
-      <div className="flex border-b border-gray-300">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => handleTabChange(tab.id)}
-            className={`px-4 py-2 text-lg font-semibold transition-all ${
-              activeTab === tab.id
-                ? "border-b-4 border-blue-500 text-blue-600"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+        <div className="mt-2">{renderTabContent()}</div>
       </div>
-      <div>
-         <div className="mt-2">{renderTabContent()}</div>
-
-      </div>
-      {/* Content Section */}
-      
     </div>
   );
 };

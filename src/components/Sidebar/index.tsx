@@ -259,8 +259,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                           ${!isOpen ? 'w-[44px] justify-center' : ''}
                         `}
                   >
-                    <img src={Smart_Inv} className="w-5" alt="Smart Inventory" />
-                    {isOpen && <span className="whitespace-nowrap">Smart Inventory</span>}
+                    <img src={Smart_Inv} className="w-5" alt="GIS Inventory" />
+                    {isOpen && <span className="whitespace-nowrap">GIS Inventory</span>}
                   </NavLink>
                 </li>
                 <SidebarLinkGroup activeCondition={pathname.includes('machine-management')}>

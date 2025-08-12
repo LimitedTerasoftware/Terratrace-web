@@ -12,12 +12,11 @@ import {
   Row
 } from "@tanstack/react-table";
 import { useNavigate } from 'react-router-dom';
-import Select, { SingleValue } from "react-select";
 import ResponsivePagination from "./ResponsivePagination";
-import BsnlActionsDropdown from "./BsnlActionsDropdown";
 import { hasViewOnlyAccess } from "../../utils/accessControl";
+import { ChevronDown, Eye, RotateCcw, Search, TableCellsMerge, User } from "lucide-react";
 
-interface Hoto{
+interface Hoto {
   id: string;
   user_id: number;
   state_id: number;
@@ -61,9 +60,9 @@ interface Hoto{
   ontPorts: string;
   csc: string;
   cscLocation: string;
-  fullname:string;
-  contact_no:string;
-  is_active:number;
+  fullname: string;
+  contact_no: string;
+  is_active: number;
 
   // Parsed from JSON (TEXT column in DB)
   lessOverheadFiberModel: OverheadFiberModel[];
@@ -105,21 +104,6 @@ interface Block {
   district_code: string;
 }
 
-interface StateOption {
-  value: string;
-  label: string;
-}
-
-interface DistrictOption {
-  value: string;
-  label: string;
-}
-
-interface BlockOption {
-  value: string;
-  label: string;
-}
-
 type StatusOption = {
   value: number;
   label: string;
@@ -149,7 +133,7 @@ const HotoSurvey: React.FC = () => {
   const [todate, setToDate] = useState<string>('');
   const [searchParams, setSearchParams] = useSearchParams();
   const [filtersReady, setFiltersReady] = useState(false);
-  
+
 
   const navigate = useNavigate();
 
@@ -170,37 +154,37 @@ const HotoSurvey: React.FC = () => {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const statusParam = params.get('status');
-    
+
     if (statusParam) {
       setSelectedStatus(Number(statusParam));
     } else if (location.state?.selectedStatus !== undefined) {
       setSelectedStatus(location.state.selectedStatus);
     }
-    
+
     if (location.state?.formdate) {
       setFromDate(location.state.formdate || '');
     }
-    
+
     if (location.state?.todate) {
       setToDate(location.state.todate || '');
     }
-    
+
     if (location.state?.selectedState) {
       setSelectedState(location.state.selectedState);
     }
-    
+
     if (location.state?.selectedDistrict) {
       setSelectedDistrict(location.state.selectedDistrict);
     }
-    
+
     if (location.state?.selectedBlock) {
       setSelectedBlock(location.state.selectedBlock);
     }
-    
+
     if (location.state?.globalsearch) {
       setGlobalSearch(location.state.globalsearch);
     }
-    
+
     if (location.state?.currentPage) {
       setPage(location.state.currentPage);
     }
@@ -209,19 +193,19 @@ const HotoSurvey: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const userData = JSON.parse(localStorage.getItem("userData") || "{}"); 
-      const companyId = userData?.company_id ?? 1; 
+      const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+      const companyId = userData?.company_id ?? 1;
 
       const response = await axios.get<ApiResponse>(`${BASEURL}/hoto-forms`, {
         params: {
           from_date: fromdate,
           to_date: todate,
-          searchText: globalsearch, 
-          page, 
-          limit: pageSize, 
-          state: selectedState, 
-          district: selectedDistrict, 
-          block: selectedBlock, 
+          searchText: globalsearch,
+          page,
+          limit: pageSize,
+          state: selectedState,
+          district: selectedDistrict,
+          block: selectedBlock,
           status: selectedStatus
         },
       });
@@ -234,31 +218,31 @@ const HotoSurvey: React.FC = () => {
     }
   };
 
-    useEffect(() => {
+  useEffect(() => {
     const state_id = searchParams.get('state_id') || null;
     const district_id = searchParams.get('district_id') || null;
     const block_id = searchParams.get('block_id') || null;
     const pageParam = searchParams.get('page') || '1';
-    const status =searchParams.get('status') || null;
-    const from_date =searchParams.get('from_date') ||'' ;
-    const to_date =searchParams.get('to_date') || "";
-    const search =searchParams.get('search') || "";
-  
+    const status = searchParams.get('status') || null;
+    const from_date = searchParams.get('from_date') || '';
+    const to_date = searchParams.get('to_date') || "";
+    const search = searchParams.get('search') || "";
+
     setSelectedState(state_id);
     setSelectedDistrict(district_id);
     setSelectedBlock(block_id);
-   setSelectedStatus(status !== null ? Number(status) : null);
+    setSelectedStatus(status !== null ? Number(status) : null);
     setFromDate(from_date);
     setToDate(to_date);
     setGlobalSearch(search)
     setPage(Number(pageParam));
     setFiltersReady(true);
-  }, []); 
+  }, []);
 
   useEffect(() => {
-    if(!filtersReady) return;
+    if (!filtersReady) return;
     fetchData();
-  }, [fromdate, todate, globalsearch, page, pageSize, selectedState, selectedDistrict, selectedBlock, selectedStatus,filtersReady]);
+  }, [fromdate, todate, globalsearch, page, pageSize, selectedState, selectedDistrict, selectedBlock, selectedStatus, filtersReady]);
 
   // Handle delete
   const handleDelete = async (id: string) => {
@@ -313,7 +297,7 @@ const HotoSurvey: React.FC = () => {
       alert("Failed to accept record.");
     }
   };
-  
+
   const handleReject = async (id: string) => {
     try {
       const response = await axios.post(`${BASEURL}/hoto-forms/${id}/reject`);
@@ -374,12 +358,15 @@ const HotoSurvey: React.FC = () => {
       {
         header: "Actions",
         cell: ({ row }: { row: Row<Hoto> }) => (
-          <button
-            onClick={() => handleView(row.original.id)} // Pass the correct ID
-            className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 outline-none dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-800"
-          >
-            View
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => handleView(row.original.id)}
+              className="text-blue-600 hover:text-blue-900 p-1"
+              title="View">
+              <Eye className="w-4 h-4" />
+            </button>
+          </div>
+
         ),
       },
       { accessorKey: "state_name", header: "State Name" },
@@ -390,26 +377,37 @@ const HotoSurvey: React.FC = () => {
         accessorKey: "fullname",
         header: "Surveyor Name",
         cell: ({ row }) => (
-          <span>
-            {row.original.fullname} 
-          </span>
+          <div className="flex items-center">
+            <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center mr-3">
+              <User className="w-4 h-4 text-gray-600" />
+            </div>
+            <div>
+              <div className="text-sm font-medium text-gray-900">{row.original.fullname}</div>
+              <div className="text-sm text-gray-500">{row.original.contact_no}</div>
+            </div>
+          </div>
+
         ),
       },
-      {
-        accessorKey: "contact_no",
-        header: "Surveyor Contact Number",
-        cell: ({ row }) => (
-          <span>
-            {row.original.contact_no}
-          </span>
-        ),
-      },
+
       {
         accessorKey: "is_active",
         header: "Status",
-        cell: ({ row }) => (
-          <span>{statusMap[row.original.is_active] || "Unknown"}</span>
-        ),
+        cell: ({ row }: { row: any }) => {
+          const status = row.original.is_active as 0 | 1 | 2;
+          const statusConfig = {
+            0: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800' },
+            1: { label: 'Accepted', className: 'bg-green-100 text-green-800' },
+            2: { label: 'Rejected', className: 'bg-red-100 text-red-800' }
+          };
+          const config = statusConfig[status] || { label: 'Unknown', className: 'bg-gray-100 text-gray-800' };
+
+          return (
+            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${config.className}`}>
+              {config.label}
+            </span>
+          );
+        }
       }
     ],
     []
@@ -431,14 +429,14 @@ const HotoSurvey: React.FC = () => {
           from_date: fromdate,
           to_date: todate,
           isExport: 1,
-          searchText: globalsearch, 
-          state: selectedState, 
-          district: selectedDistrict, 
-          block: selectedBlock, 
+          searchText: globalsearch,
+          state: selectedState,
+          district: selectedDistrict,
+          block: selectedBlock,
           status: selectedStatus
         },
       });
-      
+
       const allData: Hoto[] = response.data.data;
 
       const rows = allData.map((data) => ({
@@ -451,8 +449,8 @@ const HotoSurvey: React.FC = () => {
         block_name: data.block_name,
         gp_id: data.gp_id,
         gpName: data.gpName,
-        Surviour_Name:data.fullname,
-        Surviour_Contact_Number:data.contact_no,
+        Surviour_Name: data.fullname,
+        Surviour_Contact_Number: data.contact_no,
         user_id: data.user_id,
         code: data.code,
         equipmentMake: data.equipmentMake,
@@ -489,34 +487,34 @@ const HotoSurvey: React.FC = () => {
         cscLocation: data.cscLocation,
         lessOverheadFiberModel: data.lessOverheadFiberModel,
         moreOverheadFiberModel: data.moreOverheadFiberModel,
-        is_active:data.is_active,
+        is_active: data.is_active,
         created_at: data.created_at,
         updated_at: data.updated_at,
-        Status:statusMap[data.is_active]
+        Status: statusMap[data.is_active]
       }));
-    
+
       // Create workbook and worksheet
       const workbook = XLSX.utils.book_new();
       const worksheet1 = XLSX.utils.json_to_sheet(rows);
-    
+
       XLSX.utils.book_append_sheet(workbook, worksheet1, "HOTO Survey");
-    
+
       // Customize header names with comprehensive headers
       XLSX.utils.sheet_add_aoa(worksheet1, [
         ["ID", "State ID", "State Name", "District ID", "District Name", "Block ID", "Block Name", "GP ID", "GP Name", "Surveyor Name", "Surveyor Contact Number", "User ID", "Code", "Equipment Make", "Other Equipment Make", "Building Address", "OLT to FPOI", "OLT to FPOI Length", "OLT to FPOI Faulty Fibers", "FPOI to GP", "FPOI to GP Length", "FPOI to GP Faulty Fibers", "ONT", "ONT Make", "ONT Serial Number", "CCU", "CCU Make", "CCU Serial Number", "Battery", "Battery Make", "Battery Serial Number", "Solar", "Solar Make", "Solar Serial Number", "Earthing", "Earthing Condition", "Enclosure", "Optical Power", "OTDR Trace", "Splitter", "FTB No of Fiber Terminated", "Splitter Ports", "ONT Ports", "CSC", "CSC Location", "Less Overhead Fiber Model", "More Overhead Fiber Model", "Is Active", "Created At", "Updated At", "Status"],
       ], { origin: "A1" });
-    
+
       XLSX.writeFile(workbook, "HOTO_SURVEY.xlsx", { compression: true });
     } catch (error) {
       console.error("Export failed:", error);
     }
   };
-  
+
   const stateOptions = states.map((state) => ({
-    value: String(state.state_id), 
+    value: String(state.state_id),
     label: state.state_name,
   }));
-  
+
   const selectedStateOption = stateOptions.find(
     (opt) => opt.value === selectedState
   ) || null;
@@ -534,36 +532,36 @@ const HotoSurvey: React.FC = () => {
     setSearchParams({
       tab: currentTab,
       page: '1',
-    }); 
+    });
   };
-const handleFilterChange = (newState: string | null, newDistrict: string | null,newBlock:string|null,status:number|null,from_date:string|null,to_date:string|null,search:string|null,newPage = 1,) => {
-  const currentTab = searchParams.get('tab') || 'defaultTab';
-  const params: Record<string, string> = { tab: currentTab };
-  if (newState) params.state_id = newState;
-  if(newDistrict) params.district_id = newDistrict;
-  if(newBlock) params.block_id = newBlock;
-  if(status) params.status=String(status);
-  if(from_date) params.from_date = from_date;
-  if(to_date) params.to_date = to_date;
-  if(search) params.search = search;
-  params.page = newPage.toString();
-  setSearchParams(params);
-};
+  const handleFilterChange = (newState: string | null, newDistrict: string | null, newBlock: string | null, status: number | null, from_date: string | null, to_date: string | null, search: string | null, newPage = 1,) => {
+    const currentTab = searchParams.get('tab') || 'defaultTab';
+    const params: Record<string, string> = { tab: currentTab };
+    if (newState) params.state_id = newState;
+    if (newDistrict) params.district_id = newDistrict;
+    if (newBlock) params.block_id = newBlock;
+    if (status) params.status = String(status);
+    if (from_date) params.from_date = from_date;
+    if (to_date) params.to_date = to_date;
+    if (search) params.search = search;
+    params.page = newPage.toString();
+    setSearchParams(params);
+  };
   return (
-    <div className="bg-gray-100 dark:bg-gray-900 min-h-screen">
+    <div className="min-h-screen">
       {/* Search Bar and Filters Section */}
-      <div className="mb-4">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="mb-4 px-7">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-4">
           {/* State Filter */}
-          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+          <div className="relative">
             <select
               value={selectedState || ''}
               onChange={(e) => {
-                handleFilterChange(e.target.value ,selectedDistrict,selectedBlock,selectedStatus,fromdate,todate,globalsearch,1)
+                handleFilterChange(e.target.value, selectedDistrict, selectedBlock, selectedStatus, fromdate, todate, globalsearch, 1)
                 setSelectedState(e.target.value || null);
                 setPage(1);
               }}
-              className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">All States</option>
               {states.map((state) => (
@@ -572,24 +570,21 @@ const handleFilterChange = (newState: string | null, newDistrict: string | null,
                 </option>
               ))}
             </select>
-            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
+            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+
           </div>
 
           {/* District Filter */}
-          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+          <div className="relative">
             <select
               value={selectedDistrict || ''}
               onChange={(e) => {
-                 handleFilterChange(selectedState,e.target.value,selectedBlock,selectedStatus,fromdate,todate,globalsearch ,1)
+                handleFilterChange(selectedState, e.target.value, selectedBlock, selectedStatus, fromdate, todate, globalsearch, 1)
                 setSelectedDistrict(e.target.value || null);
                 setPage(1);
               }}
               disabled={!selectedState}
-              className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <option value="">All Districts</option>
               {districts.map((district) => (
@@ -598,24 +593,22 @@ const handleFilterChange = (newState: string | null, newDistrict: string | null,
                 </option>
               ))}
             </select>
-            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
+            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+
           </div>
 
           {/* Block Filter */}
-          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+          <div className="relative">
             <select
               value={selectedBlock || ''}
               onChange={(e) => {
-                 handleFilterChange(selectedState,selectedDistrict,e.target.value ,selectedStatus,fromdate,todate,globalsearch,1)
+                handleFilterChange(selectedState, selectedDistrict, e.target.value, selectedStatus, fromdate, todate, globalsearch, 1)
                 setSelectedBlock(e.target.value || null);
                 setPage(1);
               }}
               disabled={!selectedDistrict}
-              className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+
+              className="disabled:opacity-50 disabled:cursor-not-allowed w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">All Blocks</option>
               {blocks.map((block) => (
@@ -624,23 +617,20 @@ const handleFilterChange = (newState: string | null, newDistrict: string | null,
                 </option>
               ))}
             </select>
-            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
+            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+
           </div>
 
           {/* Status Filter */}
-          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+          <div className="relative">
             <select
               value={selectedStatus !== null ? selectedStatus : ''}
               onChange={(e) => {
-                 handleFilterChange(selectedState,selectedDistrict,selectedBlock ,Number(e.target.value),fromdate,todate,globalsearch,1)
+                handleFilterChange(selectedState, selectedDistrict, selectedBlock, Number(e.target.value), fromdate, todate, globalsearch, 1)
                 setSelectedStatus(e.target.value !== '' ? Number(e.target.value) : null);
                 setPage(1);
               }}
-              className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">All Status</option>
               {statusOptions.map((option) => (
@@ -649,80 +639,75 @@ const handleFilterChange = (newState: string | null, newDistrict: string | null,
                 </option>
               ))}
             </select>
-            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
+            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+
           </div>
 
           {/* Date Filters */}
-          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+          <div className="relative">
             <input
               type="date"
               value={fromdate}
               onChange={(e) => {
-                 handleFilterChange(selectedState,selectedDistrict,selectedBlock ,selectedStatus,e.target.value,todate,globalsearch,1)
+                handleFilterChange(selectedState, selectedDistrict, selectedBlock, selectedStatus, e.target.value, todate, globalsearch, 1)
                 setFromDate(e.target.value);
                 setPage(1);
               }}
-              className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              placeholder="From Date"
+              className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="From Date"
             />
           </div>
 
-          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+          <div className="relative">
             <input
               type="date"
               value={todate}
               onChange={(e) => {
-                handleFilterChange(selectedState,selectedDistrict,selectedBlock ,selectedStatus,fromdate,e.target.value,globalsearch,1)
+                handleFilterChange(selectedState, selectedDistrict, selectedBlock, selectedStatus, fromdate, e.target.value, globalsearch, 1)
                 setToDate(e.target.value);
                 setToDate(e.target.value);
                 setPage(1);
               }}
-              className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="To Date"
             />
           </div>
+        </div>
 
-          {/* Search Bar */}
-          <div className="relative w-80">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-              </svg>
-            </div>
+        {/* Search Bar */}
+        <div className="flex items-center space-x-4 mb-4">
+
+          <div className="relative">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+
             <input
               type="text"
               placeholder="Search..."
               value={globalsearch}
               onChange={(e) => {
-                handleFilterChange(selectedState,selectedDistrict,selectedBlock ,selectedStatus,fromdate,todate,e.target.value,1)
+                handleFilterChange(selectedState, selectedDistrict, selectedBlock, selectedStatus, fromdate, todate, e.target.value, 1)
                 setGlobalSearch(e.target.value);
                 setPage(1);
               }}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md bg-white text-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
-            />
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+
           </div>
 
           {/* Clear Filters Button */}
           <button
             onClick={handleClearFilters}
-            className="flex-none h-10 px-4 py-2 text-sm font-medium text-red-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-red-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
-          >
-            <span className="text-red-500 dark:text-red-400 font-medium text-sm">✕</span>
-            <span>Clear Filters</span>
+            className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"          >
+            <RotateCcw className="w-4 h-4 mr-2" />
+            <span>Reset Filters</span>
           </button>
 
           {/* Export Button */}
           {!viewOnly &&
-          <button 
-            onClick={exportExcel}
-            className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap"
-          >
-            Export
-          </button>
+            <button
+              onClick={exportExcel}
+              className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-green-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500"  >
+              <TableCellsMerge className="w-4 h-4 mr-2" />
+              Excel
+            </button>
           }
         </div>
       </div>
@@ -735,51 +720,54 @@ const handleFilterChange = (newState: string | null, newDistrict: string | null,
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto relative">
-        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-          <thead className="text-xs text-gray-700 uppercase bg-blue-300 dark:bg-gray-700 dark:text-gray-400">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <th key={header.id} scope="col" className="px-3 py-2">
-                    {flexRender(header.column.columnDef.header, header.getContext())}
-                  </th>
-                ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={columns.length} className="px-3 py-2">
-                  <div className="flex items-center justify-center">
-                    <svg className="animate-spin h-5 w-5 mr-3 text-blue-500" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Loading...
-                  </div>
-                </td>
-              </tr>
-            ) : table.getRowModel().rows.length === 0 ? (
-              <tr>
-                <td colSpan={columns.length} className="px-3 py-2">
-                  No data available
-                </td>
-              </tr>
-            ) : (
-              table.getRowModel().rows.map((row) => (
-                <tr key={row.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-3 py-2 font-medium text-gray-900 dark:text-white">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left text-gray-500">
+            <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <th key={header.id} scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {flexRender(header.column.columnDef.header, header.getContext())}
+                    </th>
                   ))}
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ))}
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+
+              {loading ? (
+                <tr>
+                  <td colSpan={columns.length} className="px-3 py-2">
+                    <div className="flex items-center justify-center">
+                      <svg className="animate-spin h-5 w-5 mr-3 text-blue-500" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Loading...
+                    </div>
+                  </td>
+                </tr>
+              ) : table.getRowModel().rows.length === 0 ? (
+                <tr>
+                  <td colSpan={columns.length} className="px-3 py-2 text-center text-gray-500">
+                    No data available
+                  </td>
+                </tr>
+              ) : (
+                table.getRowModel().rows.map((row) => (
+                  <tr key={row.id} className="hover:bg-gray-50">
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Advanced Responsive Pagination */}
@@ -849,14 +837,14 @@ const handleFilterChange = (newState: string | null, newDistrict: string | null,
             </div>
 
             <div className="flex gap-3 mt-6">
-              <button 
-                onClick={handleEditSave} 
+              <button
+                onClick={handleEditSave}
                 className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-green-600 rounded-md hover:bg-green-700 outline-none"
               >
                 Save
               </button>
-              <button 
-                onClick={() => setEditingRow(null)} 
+              <button
+                onClick={() => setEditingRow(null)}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600"
               >
                 Cancel
