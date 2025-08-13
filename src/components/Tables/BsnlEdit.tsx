@@ -4,6 +4,8 @@ import { useParams } from "react-router-dom";
 import { FaArrowLeft } from "react-icons/fa";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { Header } from "../Breadcrumbs/Header";
+import { AlertCircle, Edit3, Loader2 } from "lucide-react";
 
 interface BsnlExchangeEdit {
   [key: string]: string;
@@ -83,7 +85,7 @@ function BsnlEdit() {
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedStateId, setSelectedStateId] = useState<number | null>(null);
   const [states, setStates] = useState<State[]>([]);
-  const [districts, setDistricts] = useState<any[]>([]); 
+  const [districts, setDistricts] = useState<any[]>([]);
   const [selectedDistrictId, setSelectedDistrictId] = useState<number | null>(null);
   const [blocks, setBlocks] = useState<any[]>([]);
   const [selectedState, setSelectedState] = useState<string | null>(null);
@@ -106,75 +108,75 @@ function BsnlEdit() {
     fetchData();
   }, [id]);
 
-    // Fetch states when component mounts
-    useEffect(() => {
-      const fetchStates = async () => {
-        try {
-          setLoading(true);
-          const response = await axios.get(`${BASEURL}/states`);
-          const stateData: State[] = response.data.data.map((state: any) => ({
-            state_id: state.state_id,
-            state_code: state.state_code,
-            state_name: state.state_name,
-          }));
-          setStates(stateData);
-        } catch (error) {
-          console.error("Failed to fetch states:", error);
-        } finally {
-          setLoading(false);
-        }
-      };
-      
-  
-      fetchStates();
-    }, []);
-  
-  
-    // Fetch districts when a state is selected
-    useEffect(() => {
-      if (!selectedStateId) return;
-  
-      const fetchDistricts = async () => {
-        try {
-          setLoading(true);
-          const response = await axios.get(`${BASEURL}/districtsdata?state_id=${selectedStateId}`);
-          const districtData = response.data.map((district: any) => ({
-            id: district.district_id,
-            name: district.district_name,
-          }));
-          setDistricts(districtData);
-        } catch (error) {
-          console.error("Failed to fetch districts:", error);
-        } finally {
-          setLoading(false);
-        }
-      };
-  
-      fetchDistricts();
-    }, [selectedStateId]);
-  
-    // Fetch blocks when a district is selected
-    useEffect(() => {
-      if (!selectedDistrictId) return;
-  
-      const fetchBlocks = async () => {
-        try {
-          setLoading(true);
-          const response = await axios.get(`${BASEURL}/blocksdata?district_id=${selectedDistrictId}`);
-          const blockData = response.data.map((block: any) => ({
-            id: block.block_id,
-            name: block.block_name,
-          }));
-          setBlocks(blockData);
-        } catch (error) {
-          console.error("Failed to fetch blocks:", error);
-        } finally {
-          setLoading(false);
-        }
-      };
-  
-      fetchBlocks();
-    }, [selectedDistrictId]);
+  // Fetch states when component mounts
+  useEffect(() => {
+    const fetchStates = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(`${BASEURL}/states`);
+        const stateData: State[] = response.data.data.map((state: any) => ({
+          state_id: state.state_id,
+          state_code: state.state_code,
+          state_name: state.state_name,
+        }));
+        setStates(stateData);
+      } catch (error) {
+        console.error("Failed to fetch states:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+
+    fetchStates();
+  }, []);
+
+
+  // Fetch districts when a state is selected
+  useEffect(() => {
+    if (!selectedStateId) return;
+
+    const fetchDistricts = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(`${BASEURL}/districtsdata?state_id=${selectedStateId}`);
+        const districtData = response.data.map((district: any) => ({
+          id: district.district_id,
+          name: district.district_name,
+        }));
+        setDistricts(districtData);
+      } catch (error) {
+        console.error("Failed to fetch districts:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDistricts();
+  }, [selectedStateId]);
+
+  // Fetch blocks when a district is selected
+  useEffect(() => {
+    if (!selectedDistrictId) return;
+
+    const fetchBlocks = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(`${BASEURL}/blocksdata?district_id=${selectedDistrictId}`);
+        const blockData = response.data.map((block: any) => ({
+          id: block.block_id,
+          name: block.block_name,
+        }));
+        setBlocks(blockData);
+      } catch (error) {
+        console.error("Failed to fetch blocks:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBlocks();
+  }, [selectedDistrictId]);
 
   const handleEditSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -187,30 +189,52 @@ function BsnlEdit() {
     }
   };
 
+
+
   if (loading) {
-    return <div className="text-center py-4">Loading...</div>;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-xl shadow-lg flex items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <div>
+            <p className="text-lg font-medium text-gray-900">Loading details...</p>
+            <p className="text-sm text-gray-500">Please wait while we fetch the information</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!data) {
-    return <div>No data found.</div>;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-xl shadow-lg max-w-md text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Data</h3>
+          <p className="text-gray-600 mb-4">No data found.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors duration-200"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
   }
-
   return (
     <>
-      <ToastContainer />
-      <button
-        className="flex items-center gap-2 text-blue-500 hover:text-blue-700 mb-6"
-        onClick={() => window.history.back()}
-      >
-        <FaArrowLeft className="h-5 w-5" />
-        Back
-      </button>
-      <h1 className="text-2xl font-bold mb-6">BSNL EDIT DETAILS</h1>
+      <div className="w-full">
 
-      <form onSubmit={handleEditSave}>
-        <div className="grid gap-6 mb-6 md:grid-cols-3">
-          {/* State Name Dropdown */}
-          {/* <div>
+        <ToastContainer />
+        <Header activeTab="bsnledit" BackBut={true} />
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-4 mt-4">
+          <div className="border-b border-gray-200">
+
+            <form onSubmit={handleEditSave} className="px-6 py-6">
+              <div className="grid gap-6 mb-6 md:grid-cols-3">
+                {/* State Name Dropdown */}
+                {/* <div>
             <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
               State Name
             </label>
@@ -228,8 +252,8 @@ function BsnlEdit() {
             </select>
           </div> */}
 
-          {/* District Name Dropdown */}
-          {/* <div>
+                {/* District Name Dropdown */}
+                {/* <div>
             <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
               District Name
             </label>
@@ -247,8 +271,8 @@ function BsnlEdit() {
             </select>
           </div> */}
 
-          {/* Block Name Dropdown */}
-          {/* <div>
+                {/* Block Name Dropdown */}
+                {/* <div>
             <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
               Block Name
             </label>
@@ -266,37 +290,43 @@ function BsnlEdit() {
             </select>
           </div> */}
 
-          {/* Render the rest of the fields as text inputs */}
-          {fields
-            .filter(
-              (field) =>
-                field.name !== "state_name" &&
-                field.name !== "district_name" &&
-                field.name !== "block_name"
-            )
-            .map((field, index) => (
-              <div key={index}>
-                <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                  {field.label}
-                </label>
-                <input
-                  type="text"
-                  aria-label={field.label}
-                  value={data[field.name] || ""}
-                  onChange={(e) => setData({ ...data, [field.name]: e.target.value })}
-                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                  placeholder={field.label}
-                />
+                {/* Render the rest of the fields as text inputs */}
+                {fields
+                  .filter(
+                    (field) =>
+                      field.name !== "state_name" &&
+                      field.name !== "district_name" &&
+                      field.name !== "block_name"
+                  )
+                  .map((field, index) => (
+                    <div key={index}>
+                      <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                        {field.label}
+                      </label>
+                      <input
+                        type="text"
+                        aria-label={field.label}
+                        value={data[field.name] || ""}
+                        onChange={(e) => setData({ ...data, [field.name]: e.target.value })}
+                        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                        placeholder={field.label}
+                      />
+                    </div>
+                  ))}
               </div>
-            ))}
+
+              <button
+                type="submit"
+
+                className={`text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-green-300  px-6 py-3 rounded-lg font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2`}
+              >
+                <Edit3 className="h-4 w-4" />
+                Update
+              </button>
+            </form>
+          </div>
         </div>
-        <button
-          type="submit"
-          className="text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-800"
-        >
-          Update
-        </button>
-      </form>
+      </div>
     </>
   );
 }

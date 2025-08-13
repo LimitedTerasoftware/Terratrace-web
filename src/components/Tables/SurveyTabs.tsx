@@ -71,7 +71,7 @@ const SurveyTabs: React.FC = () => {
   return (
     <div className="w-full">
       {/* <Breadcrumb pageName="Survey Forms" /> */}
-      <Header activeTab={activeTab} />
+      <Header activeTab={activeTab} BackBut={false}/>
 
       {/* Tabs Header */}
       <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-4 mt-4">
