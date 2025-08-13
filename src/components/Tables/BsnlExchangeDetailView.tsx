@@ -281,25 +281,16 @@ const BsnlExchangeDetailView = () => {
     <>
       {zoomImage && (
         <div
-          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-90 z-50 p-4"
+          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-80 z-50"
           onClick={() => setZoomImage(null)}
         >
-          <div className="relative max-w-5xl max-h-full">
-            <img
-              src={zoomImage}
-              alt="Zoomed"
-              className="max-w-full max-h-full rounded-lg shadow-2xl"
-            />
-            <button
-              onClick={() => setZoomImage(null)}
-              className="absolute top-4 right-4 bg-white p-2 rounded-full shadow-lg hover:bg-gray-100 transition-colors duration-200"
-            >
-              <X className="h-5 w-5 text-gray-600" />
-            </button>
-          </div>
+          <img
+            src={zoomImage}
+            alt="Zoomed"
+            className="max-w-full max-h-full p-4 rounded-lg"
+          />
         </div>
       )}
-
       <div className="min-h-screen">
         <div className="container mx-auto px-1">
           {/* Header */}
