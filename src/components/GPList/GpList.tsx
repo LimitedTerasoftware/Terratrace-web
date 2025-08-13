@@ -113,6 +113,14 @@ const GpListPage: React.FC<GPListProps> = ({ GpList, onEdit, onDelete, OnPage, O
     OnPage(page)
 
   };
+   const handleClearFilters = () => {
+    setSelectedState(null);
+    setSelectedDistrict(null);
+    setSelectedBlock(null);
+    Onstate('');
+    OnDist('');
+    OnBlock('');
+ };
   return (
     <div className="bg-white rounded-xl shadow-lg border border-gray-100">
       <div className="p-6 border-b border-gray-200">
@@ -126,7 +134,6 @@ const GpListPage: React.FC<GPListProps> = ({ GpList, onEdit, onDelete, OnPage, O
                 value={selectedState || ''}
                 onChange={(e) => {
                   const name = states.find((state) => state.state_id == e.target.value);
-                  console.log(states,'name')
                   if (name) {
                     Onstate(name.state_code);
                     setSelectedState(e.target.value)
@@ -186,6 +193,13 @@ const GpListPage: React.FC<GPListProps> = ({ GpList, onEdit, onDelete, OnPage, O
                 ))}
               </select>
             </div>
+          <button
+            onClick={handleClearFilters}
+            className="flex-none h-10 px-4 py-2 text-sm font-medium text-red-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-red-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
+          >
+            <span className="text-red-500 dark:text-red-400 font-medium text-sm">✕</span>
+            <span>Clear Filters</span>
+          </button>
           </div>
         </div>
       </div>

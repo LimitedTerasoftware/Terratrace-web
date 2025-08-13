@@ -13,11 +13,11 @@ import ResponsivePagination from "./ResponsivePagination";
 import * as XLSX from "xlsx";
 import MapComponent from "./MapComponent";
 import { MediaExportService } from "../hooks/useFullscreen";
-import {ChartBar, CheckCircle, Download, EyeIcon, FolderOpen, Loader, MapPinIcon, SheetIcon, SquaresExcludeIcon } from "lucide-react";
+import { CameraOffIcon, ChartBar, CheckCircle, ChevronDown, Download, Eye, EyeIcon, FolderOpen, Globe2Icon, Loader, MapPinIcon, RotateCcw, Search, SheetIcon, SquaresExcludeIcon, TableCellsMerge, User } from "lucide-react";
 import { hasDownloadAccess, hasViewOnlyAccess } from "../../utils/accessControl";
 import { FaArrowLeft } from "react-icons/fa";
 import { UnderGroundSurveyData } from "../../types/survey";
-
+import { BsCameraVideoFill } from "react-icons/bs";
 
 interface UndergroundSurvey {
   id: string;
@@ -43,10 +43,10 @@ interface UndergroundSurvey {
   updated_at: string;
   fullname: string,
   contact_no: number,
-  startLocation:string,       
-  endLocation:string,
-  cableType:string,
-  routeType:string       
+  startLocation: string,
+  endLocation: string,
+  cableType: string,
+  routeType: string
 }
 
 interface ApiResponse {
@@ -71,22 +71,6 @@ interface Block {
   block_name: string;
   district_code: string;
 }
-
-interface StateOption {
-  value: string;
-  label: string;
-}
-
-interface DistrictOption {
-  value: string;
-  label: string;
-}
-
-interface BlockOption {
-  value: string;
-  label: string;
-}
-
 type StatusOption = {
   value: number;
   label: string;
@@ -114,13 +98,12 @@ const UndergroundSurvey: React.FC = () => {
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<number | null>(null);
-  const [rowSelection, setRowSelection] = useState({});
   const [selectedRowsMap, setSelectedRowsMap] = useState<Record<string, UndergroundSurvey>>({});
-  const [KmlLoader,setKMLLoader]=useState(false);
+  const [KmlLoader, setKMLLoader] = useState(false);
 
   const [fromdate, setFromDate] = useState<string>('');
   const [todate, setToDate] = useState<string>('');
-  const [BlockData,setBlockData]=useState<any>([]);
+  const [BlockData, setBlockData] = useState<any>([]);
   const [isExcelExporting, setisExcelExporting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState({ current: 0, total: 0, currentFile: '' });
@@ -142,8 +125,6 @@ const UndergroundSurvey: React.FC = () => {
       label,
     })
   );
-
-
 
   // Initialize from URL params or location state
   useEffect(() => {
@@ -213,31 +194,31 @@ const UndergroundSurvey: React.FC = () => {
   };
 
   useEffect(() => {
-  const state_id = searchParams.get('state_id') || null;
-  const district_id = searchParams.get('district_id') || null;
-  const block_id = searchParams.get('block_id') || null;
-  const pageParam = searchParams.get('page') || '1';
-  const status =searchParams.get('status') || null;
-  const from_date =searchParams.get('from_date') ||'' ;
-  const to_date =searchParams.get('to_date') || "";
-  const search =searchParams.get('search') || "";
+    const state_id = searchParams.get('state_id') || null;
+    const district_id = searchParams.get('district_id') || null;
+    const block_id = searchParams.get('block_id') || null;
+    const pageParam = searchParams.get('page') || '1';
+    const status = searchParams.get('status') || null;
+    const from_date = searchParams.get('from_date') || '';
+    const to_date = searchParams.get('to_date') || "";
+    const search = searchParams.get('search') || "";
 
-  setSelectedState(state_id);
-  setSelectedDistrict(district_id);
-  setSelectedBlock(block_id);
-  setSelectedStatus(status !== null ? Number(status) : null);
-  setFromDate(from_date);
-  setToDate(to_date);
-  setGlobalSearch(search)
-  setPage(Number(pageParam));
-  setFiltersReady(true);
-}, []); 
- 
+    setSelectedState(state_id);
+    setSelectedDistrict(district_id);
+    setSelectedBlock(block_id);
+    setSelectedStatus(status !== null ? Number(status) : null);
+    setFromDate(from_date);
+    setToDate(to_date);
+    setGlobalSearch(search)
+    setPage(Number(pageParam));
+    setFiltersReady(true);
+  }, []);
+
   useEffect(() => {
-    
-    if(!filtersReady) return;
+
+    if (!filtersReady) return;
     fetchData();
-  }, [fromdate, todate, globalsearch, page, pageSize, selectedState, selectedDistrict, selectedBlock, selectedStatus,filtersReady]);
+  }, [fromdate, todate, globalsearch, page, pageSize, selectedState, selectedDistrict, selectedBlock, selectedStatus, filtersReady]);
 
   // Handle delete
   const handleDelete = async (id: string) => {
@@ -326,7 +307,7 @@ const UndergroundSurvey: React.FC = () => {
 
   // Fetch districts when state is selected
   useEffect(() => {
-    if(selectedState) {
+    if (selectedState) {
       axios.get(`${BASEURL}/districtsdata?state_code=${selectedState}`)
         .then((res) => setDistricts(res.data))
         .catch((err) => console.error(err));
@@ -396,17 +377,18 @@ const UndergroundSurvey: React.FC = () => {
         enableSorting: false,
         enableColumnFilter: false,
       },
-
-
       {
         header: "Actions",
         cell: ({ row }: { row: Row<UndergroundSurvey> }) => (
-          <button
-            onClick={() => handleView(row.original.id)} // Pass the correct ID
-            className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 outline-none dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-800"
-          >
-            View
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => handleView(row.original.id)}
+              className="text-blue-600 hover:text-blue-900 p-1"
+              title="View">
+              <Eye className="w-4 h-4" />
+            </button>
+          </div>
+
         ),
       },
       { accessorKey: "state_name", header: "State Name" },
@@ -414,32 +396,56 @@ const UndergroundSurvey: React.FC = () => {
       { accessorKey: "block_name", header: "Block Name" },
       { accessorKey: "start_location_name", header: " Start GP Name" },
       { accessorKey: "end_location_name", header: "End GP Name" },
-      {accessorKey:  "routeType",header:"Route Type"},
-      {accessorKey: "cableType",header:"Cable Type"},
+      {
+        accessorKey: "routeType",
+        header: "Route Type",
+        cell: ({ row }) => {
+          const type = row.original.routeType?.toUpperCase() || '';
+          return (
+            <span
+              className={type === 'PROPOSED' ? 'text-red-600' : 'text-green-600'}
+            >
+              {type}
+            </span>
+          );
+        },
+
+      },
+      { accessorKey: "cableType", header: "Cable Type" },
       {
         accessorKey: "fullname",
         header: "Surveyor Name",
         cell: ({ row }) => (
-          <span>
-            {row.original.fullname}
-          </span>
-        ),
-      },
-      {
-        accessorKey: "contact_no",
-        header: "Surveyor Contact Number",
-        cell: ({ row }) => (
-          <span>
-            {row.original.contact_no}
-          </span>
+          <div className="flex items-center">
+            <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center mr-3">
+              <User className="w-4 h-4 text-gray-600" />
+            </div>
+            <div>
+              <div className="text-sm font-medium text-gray-900">{row.original.fullname}</div>
+              <div className="text-sm text-gray-500">{row.original.contact_no}</div>
+            </div>
+          </div>
+
         ),
       },
       {
         accessorKey: "is_active",
         header: "Status",
-        cell: ({ row }) => (
-          <span>{statusMap[row.original.is_active] || "Unknown"}</span>
-        ),
+        cell: ({ row }: { row: any }) => {
+          const status = row.original.is_active as 0 | 1 | 2;
+          const statusConfig = {
+            0: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800' },
+            1: { label: 'Accepted', className: 'bg-green-100 text-green-800' },
+            2: { label: 'Rejected', className: 'bg-red-100 text-red-800' }
+          };
+          const config = statusConfig[status] || { label: 'Unknown', className: 'bg-gray-100 text-gray-800' };
+
+          return (
+            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${config.className}`}>
+              {config.label}
+            </span>
+          );
+        }
       }
     ],
 
@@ -455,6 +461,7 @@ const UndergroundSurvey: React.FC = () => {
     pageCount: totalPages,
     getRowId: row => String(row.id)
   });
+  const selected = Object.values(selectedRowsMap);
 
   const handleGenerateKML = async () => {
     const selected = Object.values(selectedRowsMap);
@@ -480,7 +487,7 @@ const UndergroundSurvey: React.FC = () => {
           ...new Map(
             json.data?.under_ground_survey_data
               ?.filter((survey: any) =>
-                survey.event_type === 'LIVELOCATION' ||  survey?.surveyUploaded === "true" &&
+                survey.event_type === 'LIVELOCATION' || survey?.surveyUploaded === "true" &&
                 selectedEventTypes.includes(survey.event_type)
               )
               .map((survey: any) => [`${survey.latitude}-${survey.longitude}-${survey.event_type}`, survey])
@@ -575,82 +582,81 @@ const UndergroundSurvey: React.FC = () => {
     a.click();
   };
 
-const mediaExportService = new MediaExportService();
+  const mediaExportService = new MediaExportService();
 
-const handlePreview = async (id:number) => {
-  const selected = Object.values(selectedRowsMap);
-  if (selected.length === 0) {
-    alert("No rows selected");
-    return;
-  }
-
-  let Data: any[] = [];
-  let MediaData: any[] = [];
-  
-  if(id === 1){
-    setIsExporting(true);
-    setExportComplete(false);
-    setExportProgress({ current: 0, total: 0, currentFile: '' });
-  }else if(id === 0){
-   setKMLLoader(true);
-  }else{
-    setisExcelExporting(true);
-  }
-    
-  try {
-    for (const item of selected) {
-      const res = await fetch(`${BASEURL}/underground-surveys/${item.id}`);
-      const json = await res.json();
-
-      const newData = json.data?.under_ground_survey_data || [];
-      const enrichedData = newData.map((entry: any) => ({
-                              ...entry,
-                              blk_name: json.data.start_gp?.blk_name || '',
-                              dt_name: json.data.start_gp?.dt_name || '',
-                              st_name:json.data.start_gp?.st_name || '',
-                              startGp:json.data.start_gp?.name || '',
-                              endGp:json.data.end_gp?.name || '',
-                              start_lgd:json.data.start_gp?.lgd_code || '',
-                              end_lgd:json.data.end_gp?.lgd_code || '',
-                              routeType:json.data?.routeType || '',
-                              startLat: json.data.start_gp?.lattitude || '',
-                              startLng: json.data.start_gp?.longitude || '',
-                              endLat: json.data.end_gp?.lattitude || '',
-                              endLng: json.data.end_gp?.longitude || '',
-                              
-                            }));
-
-       Data.push(...enrichedData);
-      // Data.push(...newData); 
-      if (json.data) {
-        MediaData.push(json.data); 
-      }
+  const handlePreview = async (id: number) => {
+    const selected = Object.values(selectedRowsMap);
+    if (selected.length === 0) {
+      alert("No rows selected");
+      return;
     }
-  if(id === 1){
-  await mediaExportService.exportMediaWithStructure(
-        MediaData,
-          (current, total, currentFile) => {
-          setExportProgress({ current, total, currentFile });
+
+    let Data: any[] = [];
+    let MediaData: any[] = [];
+
+    if (id === 1) {
+      setIsExporting(true);
+      setExportComplete(false);
+      setExportProgress({ current: 0, total: 0, currentFile: '' });
+    } else if (id === 0) {
+      setKMLLoader(true);
+    } else {
+      setisExcelExporting(true);
+    }
+
+    try {
+      for (const item of selected) {
+        const res = await fetch(`${BASEURL}/underground-surveys/${item.id}`);
+        const json = await res.json();
+
+        const newData = json.data?.under_ground_survey_data || [];
+        const enrichedData = newData.map((entry: any) => ({
+          ...entry,
+          blk_name: json.data.start_gp?.blk_name || '',
+          dt_name: json.data.start_gp?.dt_name || '',
+          st_name: json.data.start_gp?.st_name || '',
+          startGp: json.data.start_gp?.name || '',
+          endGp: json.data.end_gp?.name || '',
+          start_lgd: json.data.start_gp?.lgd_code || '',
+          end_lgd: json.data.end_gp?.lgd_code || '',
+          routeType: json.data?.routeType || '',
+          startLat: json.data.start_gp?.lattitude || '',
+          startLng: json.data.start_gp?.longitude || '',
+          endLat: json.data.end_gp?.lattitude || '',
+          endLng: json.data.end_gp?.longitude || '',
+        }));
+
+        Data.push(...enrichedData);
+        // Data.push(...newData); 
+        if (json.data) {
+          MediaData.push(json.data);
         }
-      );
-    setExportComplete(true);
-  }else if(id === 0){
-    setBlockData(Data); 
-  }else{
-     exportBlockExcel(Data)
-  }
-  } catch (error) {
-    console.error("Preview fetch error:", error);
-  } finally {
-    setKMLLoader(false);
-    setIsExporting(false);
-    setisExcelExporting(false);
-  }
-};
+      }
+      if (id === 1) {
+        await mediaExportService.exportMediaWithStructure(
+          MediaData,
+          (current, total, currentFile) => {
+            setExportProgress({ current, total, currentFile });
+          }
+        );
+        setExportComplete(true);
+      } else if (id === 0) {
+        setBlockData(Data);
+      } else {
+        exportBlockExcel(Data)
+      }
+    } catch (error) {
+      console.error("Preview fetch error:", error);
+    } finally {
+      setKMLLoader(false);
+      setIsExporting(false);
+      setisExcelExporting(false);
+    }
+  };
 
 
- const exportBlockExcel = async (BlockData:UnderGroundSurveyData[]) => {
-  setisExcelExporting(true);
+  const exportBlockExcel = async (BlockData: UnderGroundSurveyData[]) => {
+    setisExcelExporting(true);
     const filteredData = [
       ...new Map(
         BlockData.map(survey => [`${survey.latitude}-${survey.longitude}-${survey.event_type}`, survey])
@@ -705,9 +711,6 @@ const handlePreview = async (id:number) => {
         accuracy: data.accuracy,
         depth: data.depth,
         distance_error: data.distance_error,
-
-
-
         // Road Crossing Info
         crossing_Type: data.road_crossing?.roadCrossing || '',
         crossing_length: data.road_crossing?.length || '',
@@ -717,30 +720,25 @@ const handlePreview = async (id:number) => {
         crossing_endPhoto_URL: (data.event_type === "ROADCROSSING" && data?.surveyUploaded === "true" && data.road_crossing?.endPhoto) ? { text: `${BASEURL}${data.road_crossing?.endPhoto}`, url: `${BASEURL}${data.road_crossing?.endPhoto}` } : '',
         crossing_endphoto_Lat: data.road_crossing?.endPhotoLat || '',
         crossing_endphoto_Long: data.road_crossing?.endPhotoLong || '',
-
         // Route Details
         centerToMargin: data.route_details?.centerToMargin || '',
         roadWidth: data.route_details?.roadWidth || '',
         routeBelongsTo: data.route_details?.routeBelongsTo || '',
         routeType: data.route_details?.routeType || '',
         soilType: data.route_details?.soilType || '',
-
         // Route Feasibility
         routeFeasible: data.route_feasibility?.routeFeasible ?? '',
         alternatePathAvailable: data.route_feasibility?.alternatePathAvailable ?? '',
         alternativePathDetails: data.route_feasibility?.alternativePathDetails || '',
-
         // Side and Indicator
         side_type: data.side_type,
         routeIndicatorUrl: routeIndicatorItems.length > 0 ? routeIndicatorItems : '',
-         // Start/End Photos
+        // Start/End Photos
         Survey_Start_Photo: data.event_type === "SURVEYSTART" && data?.surveyUploaded === "true" ? { text: `${BASEURL}${data.start_photos?.[0]}`, url: `${BASEURL}${data.start_photos?.[0]}` } : '',
         Survey_End_Photo: data.event_type === "ENDSURVEY" && data?.surveyUploaded === "true" ? { text: `${BASEURL}${data.end_photos?.[0]}`, url: `${BASEURL}${data.end_photos?.[0]}` } : '',
-
         // Utility Features
         localInfo: data.utility_features_checked?.localInfo || '',
         selectedGroundFeatures: (data.utility_features_checked?.selectedGroundFeatures || []).join(', '),
-
         // Video Details
         videoUrl: (data.event_type === "VIDEORECORD" && data?.surveyUploaded === "true" && data.videoDetails?.videoUrl?.trim().replace(/^"|"$/g, "")) ? { text: `${BASEURL}${data.videoDetails?.videoUrl}`, url: `${BASEURL}${data.videoDetails?.videoUrl}` } : '',
         video_startLatitude: data.videoDetails?.startLatitude || '',
@@ -754,12 +752,12 @@ const handlePreview = async (id:number) => {
         jointChamberUrl: (data.event_type === "JOINTCHAMBER" && data?.surveyUploaded === "true" && data.jointChamberUrl) ? { text: `${BASEURL}${data.jointChamberUrl}`, url: `${BASEURL}${data.jointChamberUrl}` } : '',
         fpoiUrl: (data.event_type === "FPOI" && data.fpoiUrl && data?.surveyUploaded === "true") ? { text: `${BASEURL}${data.fpoiUrl}`, url: `${BASEURL}${data.fpoiUrl}` } : '',
         kmtStoneUrl: (data.event_type === "KILOMETERSTONE" && data.kmtStoneUrl && data?.surveyUploaded === "true") ? { text: `${BASEURL}${data.kmtStoneUrl}`, url: `${BASEURL}${data.kmtStoneUrl}` } : '',
-        landMarkType: data.landMarkType,landMarkDescription:data.landMarkDescription,
+        landMarkType: data.landMarkType, landMarkDescription: data.landMarkDescription,
         LANDMARK: (data.event_type === "LANDMARK" && data?.surveyUploaded === "true" && data.landMarkUrls && data.landMarkType !== 'NONE') && `${BASEURL}${JSON.parse(data.landMarkUrls)
           .filter((url: string) => url)
           .map((url: string) => (
             { text: `${BASEURL}${url}`, url: `${BASEURL}${url}` }
-          ))}` || '',routeIndicatorType:data.routeIndicatorType,
+          ))}` || '', routeIndicatorType: data.routeIndicatorType,
         FIBERTURN: (data.event_type === "FIBERTURN" && data?.surveyUploaded === "true" && data.fiberTurnUrl) ? { text: `${BASEURL}${data.fiberTurnUrl}`, url: `${BASEURL}${data.fiberTurnUrl}` } : '',
 
         // Patroller Details
@@ -794,15 +792,15 @@ const handlePreview = async (id:number) => {
 
       Object.entries(fieldsWithLinks).forEach(([key, col]) => {
         const val = (row as any)[key];
-    if (key === "routeIndicatorUrl" && Array.isArray(val)) {
-      const combinedLinks = val.map((item, i) => `Image ${i + 1}`).join('\n');
-      worksheet[`${col}${excelRow}`] = {
-        t: "s",
-        v: combinedLinks,
-        l: { Target: val[0].url } 
-      };
-    }
- else if (val && typeof val === 'object' && val.url) {
+        if (key === "routeIndicatorUrl" && Array.isArray(val)) {
+          const combinedLinks = val.map((item, i) => `Image ${i + 1}`).join('\n');
+          worksheet[`${col}${excelRow}`] = {
+            t: "s",
+            v: combinedLinks,
+            l: { Target: val[0].url }
+          };
+        }
+        else if (val && typeof val === 'object' && val.url) {
 
           worksheet[`${col}${excelRow}`] = {
             t: "s",
@@ -904,7 +902,7 @@ const handlePreview = async (id:number) => {
 
   }
 
-const exportExcel = async () => {
+  const exportExcel = async () => {
     try {
       setKMLLoader(true)
       const response = await axios.get<ApiResponse>(`${BASEURL}/underground-surveys`, {
@@ -936,7 +934,7 @@ const exportExcel = async () => {
         "Survey ID": data.survey_id,
         "Company ID": data.company_id,
         "User ID": data.user_id,
-        "Cable Type":data.cableType,
+        "Cable Type": data.cableType,
         "Start GP Code": data.startGpCode,
         "Start GP Coordinates": data.startGpCoordinates,
         "Start GP Name": data.startGpName,
@@ -954,20 +952,20 @@ const exportExcel = async () => {
       const worksheet = XLSX.utils.json_to_sheet(rows);
 
       XLSX.utils.book_append_sheet(workbook, worksheet, "Underground Survey");
-      
+
       // Export file
       XLSX.writeFile(workbook, "UNDERGROUND_SURVEY.xlsx", { compression: true });
     } catch (error) {
       console.error("Export failed:", error);
-    }finally{
+    } finally {
       setKMLLoader(false)
     }
 
-};
+  };
 
 
 
-const stateOptions = states.map((state) => ({
+  const stateOptions = states.map((state) => ({
     value: String(state.state_id),
     label: state.state_name,
   }));
@@ -991,275 +989,267 @@ const stateOptions = states.map((state) => ({
     setSearchParams({
       tab: currentTab,
       page: '1',
-    }); 
- };
+    });
+  };
 
-const handleFilterChange = (newState: string | null, newDistrict: string | null,newBlock:string|null,status:number|null,from_date:string|null,to_date:string|null,search:string|null,newPage = 1,) => {
-  const currentTab = searchParams.get('tab') || 'defaultTab';
-  const params: Record<string, string> = { tab: currentTab };
-  if (newState) params.state_id = newState;
-  if(newDistrict) params.district_id = newDistrict;
-  if(newBlock) params.block_id = newBlock;
-  if(status) params.status=String(status);
-  if(from_date) params.from_date = from_date;
-  if(to_date) params.to_date = to_date;
-  if(search) params.search = search;
-  params.page = newPage.toString();
-  setSearchParams(params);
-};
-return (
+  const handleFilterChange = (newState: string | null, newDistrict: string | null, newBlock: string | null, status: number | null, from_date: string | null, to_date: string | null, search: string | null, newPage = 1,) => {
+    const currentTab = searchParams.get('tab') || 'defaultTab';
+    const params: Record<string, string> = { tab: currentTab };
+    if (newState) params.state_id = newState;
+    if (newDistrict) params.district_id = newDistrict;
+    if (newBlock) params.block_id = newBlock;
+    if (status) params.status = String(status);
+    if (from_date) params.from_date = from_date;
+    if (to_date) params.to_date = to_date;
+    if (search) params.search = search;
+    params.page = newPage.toString();
+    setSearchParams(params);
+  };
+  return (
     <>
-    {BlockData.length > 0 ? (
-       <><button
-        className="flex items-center gap-2 text-blue-500 hover:text-blue-700 mb-6"
-        onClick={() => {setBlockData([]);}}
-      >
-        <FaArrowLeft className="h-5 w-5" />
-        Back
-      </button><MapComponent data={BlockData || []} /></>
-    ):(
-    <div className="bg-gray-100 dark:bg-gray-900 min-h-screen">
-      {/* Search Bar and Filters Section */}
-      {(KmlLoader || isExcelExporting) && (
-        <div className="absolute inset-0 bg-white bg-opacity-70 flex justify-center items-center z-50">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-        </div>
-      )}
-      <div className="mb-4">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* State Filter */}
-          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-            <select
-              value={selectedState || ''}
-              onChange={(e) => {
-                setSelectedState(e.target.value || null);
-                handleFilterChange(e.target.value ,selectedDistrict,selectedBlock,selectedStatus,fromdate,todate,globalsearch,1)
-                setPage(1);
-              }}
-              className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            >
-              <option value="">All States</option>
-              {states.map((state) => (
-                <option key={state.state_id} value={state.state_id}>
-                  {state.state_name}
-                </option>
-              ))}
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-              </svg>
+      {BlockData.length > 0 ? (
+        <><button
+          className="flex items-center gap-2 text-blue-500 hover:text-blue-700 mb-6"
+          onClick={() => { setBlockData([]); }}
+        >
+          <FaArrowLeft className="h-5 w-5" />
+          Back
+        </button><MapComponent data={BlockData || []} /></>
+      ) : (
+        <div className="min-h-screen">
+          {/* Search Bar and Filters Section */}
+          {(KmlLoader || isExcelExporting) && (
+            <div className="absolute inset-0 bg-white bg-opacity-70 flex justify-center items-center z-50">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
             </div>
-          </div>
+          )}
+          <div className="mb-4 px-7">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-4">
+              {/* State Filter */}
+              <div className="relative">
+                <select
+                  value={selectedState || ''}
+                  onChange={(e) => {
+                    setSelectedState(e.target.value || null);
+                    handleFilterChange(e.target.value, selectedDistrict, selectedBlock, selectedStatus, fromdate, todate, globalsearch, 1)
+                    setPage(1);
+                  }}
+                  className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">All States</option>
+                  {states.map((state) => (
+                    <option key={state.state_id} value={state.state_id}>
+                      {state.state_name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
 
-          {/* District Filter */}
-          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-            <select
-              value={selectedDistrict || ''}
-              onChange={(e) => {
-                handleFilterChange(selectedState,e.target.value,selectedBlock,selectedStatus,fromdate,todate,globalsearch ,1)
-                setSelectedDistrict(e.target.value || null);
-                setPage(1);
-              }}
-              disabled={!selectedState}
-              className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="">All Districts</option>
-              {districts.map((district) => (
-                <option key={district.district_id} value={district.district_id}>
-                  {district.district_name}
-                </option>
-              ))}
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-              </svg>
+              </div>
+
+              {/* District Filter */}
+              <div className="relative">
+                <select
+                  value={selectedDistrict || ''}
+                  onChange={(e) => {
+                    handleFilterChange(selectedState, e.target.value, selectedBlock, selectedStatus, fromdate, todate, globalsearch, 1)
+                    setSelectedDistrict(e.target.value || null);
+                    setPage(1);
+                  }}
+                  disabled={!selectedState}
+                  className="disabled:opacity-50 disabled:cursor-not-allowed w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">All Districts</option>
+                  {districts.map((district) => (
+                    <option key={district.district_id} value={district.district_id}>
+                      {district.district_name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+
+              </div>
+
+              {/* Block Filter */}
+              <div className="relative">
+                <select
+                  value={selectedBlock || ''}
+                  onChange={(e) => {
+                    handleFilterChange(selectedState, selectedDistrict, e.target.value, selectedStatus, fromdate, todate, globalsearch, 1)
+                    setSelectedBlock(e.target.value || null);
+                    setPage(1);
+                  }}
+                  disabled={!selectedDistrict}
+                  className="disabled:opacity-50 disabled:cursor-not-allowed w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">All Blocks</option>
+                  {blocks.map((block) => (
+                    <option key={block.block_id} value={block.block_id}>
+                      {block.block_name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+
+              </div>
+
+              {/* Status Filter */}
+              <div className="relative">
+                <select
+                  value={selectedStatus !== null ? selectedStatus : ''}
+                  onChange={(e) => {
+                    handleFilterChange(selectedState, selectedDistrict, selectedBlock, Number(e.target.value), fromdate, todate, globalsearch, 1)
+                    setSelectedStatus(e.target.value !== '' ? Number(e.target.value) : null);
+                    setPage(1);
+                  }}
+                  className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">All Status</option>
+                  {statusOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+
+              </div>
+
+
+              {/* Date Filters */}
+              <div className="relative">
+                <input
+                  type="date"
+                  value={fromdate}
+                  onChange={(e) => {
+                    handleFilterChange(selectedState, selectedDistrict, selectedBlock, selectedStatus, e.target.value, todate, globalsearch, 1)
+                    setFromDate(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="From Date"
+                />
+              </div>
+
+              <div className="relative">
+                <input
+                  type="date"
+                  value={todate}
+                  onChange={(e) => {
+                    handleFilterChange(selectedState, selectedDistrict, selectedBlock, selectedStatus, fromdate, e.target.value, globalsearch, 1)
+                    setToDate(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="To Date"
+                />
+              </div>
             </div>
-          </div>
+            {/* Search Bar */}
+            <div className="flex items-center space-x-4 mb-4">
+              <div className="relative">
+                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={globalsearch}
+                  onChange={(e) => {
+                    handleFilterChange(selectedState, selectedDistrict, selectedBlock, selectedStatus, fromdate, todate, e.target.value, 1)
+                    setGlobalSearch(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
 
-          {/* Block Filter */}
-          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-            <select
-              value={selectedBlock || ''}
-              onChange={(e) => {
-                handleFilterChange(selectedState,selectedDistrict,e.target.value ,selectedStatus,fromdate,todate,globalsearch,1)
-                setSelectedBlock(e.target.value || null);
-                setPage(1);
-              }}
-              disabled={!selectedDistrict}
-              className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="">All Blocks</option>
-              {blocks.map((block) => (
-                <option key={block.block_id} value={block.block_id}>
-                  {block.block_name}
-                </option>
-              ))}
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-          </div>
+              </div>
 
-          {/* Status Filter */}
-          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-            <select
-              value={selectedStatus !== null ? selectedStatus : ''}
-              onChange={(e) => {
-                handleFilterChange(selectedState,selectedDistrict,selectedBlock ,Number(e.target.value),fromdate,todate,globalsearch,1)
-                setSelectedStatus(e.target.value !== '' ? Number(e.target.value) : null);
-                setPage(1);
-              }}
-              className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            >
-              <option value="">All Status</option>
-              {statusOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-          </div>
-
-        
-          {/* Date Filters */}
-          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-            <input
-              type="date"
-              value={fromdate}
-              onChange={(e) => {
-                handleFilterChange(selectedState,selectedDistrict,selectedBlock ,selectedStatus,e.target.value,todate,globalsearch,1)
-                setFromDate(e.target.value);
-                setPage(1);
-              }}
-              className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              placeholder="From Date"
-            />
-          </div>
-
-          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-            <input
-              type="date"
-              value={todate}
-              onChange={(e) => {
-                handleFilterChange(selectedState,selectedDistrict,selectedBlock ,selectedStatus,fromdate,e.target.value,globalsearch,1)
-                setToDate(e.target.value);
-                setPage(1);
-              }}
-              className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              placeholder="To Date"
-            />
-          </div>
-
-          {/* Search Bar */}
-          <div className="relative w-80">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-              </svg>
-            </div>
-            <input
-              type="text"
-              placeholder="Search..."
-              value={globalsearch}
-              onChange={(e) => {
-                handleFilterChange(selectedState,selectedDistrict,selectedBlock ,selectedStatus,fromdate,todate,e.target.value,1)
-                setGlobalSearch(e.target.value);
-                setPage(1);
-              }}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md bg-white text-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
-            />
-          </div>
-
-          {/* Clear Filters Button */}
-          <button
-            onClick={handleClearFilters}
-            className="flex-none h-10 px-4 py-2 text-sm font-medium text-red-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-red-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
-          >
-            <span className="text-red-500 dark:text-red-400 font-medium text-sm">✕</span>
-            <span>Clear Filters</span>
-          </button>
-
-          {/* Export Button */}
-          {DownloadOnly && 
-          <>
+              {/* Clear Filters Button */}
+              <button
+                onClick={handleClearFilters}
+                className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"          >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                <span>Reset Filters</span>
+              </button>
+              {DownloadOnly && (
                 <button
                   onClick={exportExcel}
-                  className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
-                >
-                  <SheetIcon className="h-4 w-4 text-green-600" />
+                  className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-green-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500"  >
+                  <TableCellsMerge className="w-4 h-4 mr-2" />
                   Excel
                 </button>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-600">
+                  {selected.length} item(s) selected
+                </span>
+              </div>
+              <div className="flex space-x-2">
+                {DownloadOnly && (
+                  <><button
+                    onClick={() => handlePreview(2)}
+                    disabled={isExcelExporting}
+                    className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isExcelExporting ? (
+                      <>
+                        <Loader className="h-4 w-4 animate-spin" />
+                        Exporting...
+                      </>
+                    ) : (
+                      <>
+                        <SheetIcon className="h-4 w-4 text-green-600" />
+                        Excel (Block-wise Data)
+                      </>
+                    )}
+
+                  </button><button
+                    onClick={handleGenerateKML}
+                    className="flex items-center gap-2 flex-none h-10 px-4 py-2 text-sm font-medium text-yellow-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap"
+                  >
+                      <Globe2Icon className="h-4 w-4" />
+                      KML
+                    </button><button
+                      onClick={() => handlePreview(1)}
+                      disabled={isExporting}
+                      className="flex-none h-10 px-4 py-2 text-sm font-medium text-red-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    > {isExporting ? (
+                      <>
+                        <Loader className="h-4 w-4 animate-spin" />
+                        Exporting...
+                      </>
+                    ) : (
+                      <>
+                        <BsCameraVideoFill className="h-4 w-4" />
+                        Media Files
+                      </>
+                    )}
+                    </button></>
+                )}
                 <button
-                  onClick={()=>handlePreview(2)}
-                  disabled={isExcelExporting}
-                  className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => handlePreview(0)}
+                  className="flex-none h-10 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap flex items-center gap-2"
                 >
-                  {isExcelExporting ? (
-                    <>
-                      <Loader className="h-4 w-4 animate-spin" />
-                      Exporting...
-                    </>
-                  ) : (
-                    <>
-                     <SheetIcon className="h-4 w-4 text-green-600" />
-                      Excel (Block-wise Data)	
-                    </>
-                  )}
-                  
+                  <EyeIcon className="h-4 w-4 text-blue-600" />
+                  Preview
                 </button>
 
-                <button
-                  onClick={handleGenerateKML}
-                  className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap"
-                >
 
-                    KML
-                  </button>
-                 
-                  <button
-                    onClick={() => handlePreview(1)}
-                    disabled={isExporting}
-                    className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  > {isExporting ? (
-                    <>
-                      <Loader className="h-4 w-4 animate-spin" />
-                      Exporting...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="h-4 w-4" />
-                      Export Selected Media
-                    </>
-                  )}
-                  </button></>
-                  }
-                   <button
-                    onClick={() => handlePreview(0)}
-                    className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
-                  >
-                    <EyeIcon className="h-4 w-4 text-green-600" />
-                    Preview
-                  </button>
-           
-        </div>
-      </div>
+              </div>
+            </div>
+          </div>
 
-      {/* Error message if API request failed */}
-      {error && (
-        <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-200 dark:text-red-800" role="alert">
-          <span className="font-medium">Error loading data:</span> {error}
-        </div>
-      )}
-         {isExporting && (
+
+
+          {/* Error message if API request failed */}
+          {error && (
+            <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-200 dark:text-red-800" role="alert">
+              <span className="font-medium">Error loading data:</span> {error}
+            </div>
+          )}
+          {isExporting && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
               <div className="flex items-center gap-2 mb-2">
                 <Loader className="h-4 w-4 animate-spin text-blue-600" />
@@ -1268,7 +1258,7 @@ return (
                 </span>
               </div>
               <div className="w-full bg-blue-200 rounded-full h-2 mb-2">
-                <div 
+                <div
                   className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${exportProgress.total > 0 ? (exportProgress.current / exportProgress.total) * 100 : 0}%` }}
                 />
@@ -1289,140 +1279,142 @@ return (
               <p className="text-sm text-green-700 mt-1">Your Media_Folder.zip file has been downloaded.</p>
             </div>
           )}
-      {/* Table */}
-      <div className="overflow-x-auto relative">
-        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-          <thead className="text-xs text-gray-700 uppercase bg-blue-300 dark:bg-gray-700 dark:text-gray-400">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <th key={header.id} scope="col" className="px-3 py-2">
-                    {flexRender(header.column.columnDef.header, header.getContext())}
-                  </th>
-                ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={columns.length} className="px-3 py-2">
-                  <div className="flex items-center justify-center">
-                    <svg className="animate-spin h-5 w-5 mr-3 text-blue-500" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Loading...
-                  </div>
-                </td>
-              </tr>
-            ) : table.getRowModel().rows.length === 0 ? (
-              <tr>
-                <td colSpan={columns.length} className="px-3 py-2">
-                  No data available
-                </td>
-              </tr>
-            ) : (
-              table.getRowModel().rows.map((row) => (
-                <tr key={row.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-3 py-2 font-medium text-gray-900 dark:text-white">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
+          {/* Table */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left text-gray-500">
+                <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <tr key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <th key={header.id} scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                        </th>
+                      ))}
+                    </tr>
                   ))}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Advanced Responsive Pagination */}
-      <ResponsivePagination
-        currentPage={page}
-        totalPages={totalPages}
-        onPageChange={setPage}
-        itemsPerPage={data.length}
-        totalItems={data.length}
-      />
-
-      {/* Edit Modal */}
-      {editingRow && (
-        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md w-96 max-h-[80vh] overflow-y-auto">
-            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Edit Record</h2>
-            <div className="space-y-3">
-              <input
-                type="text"
-                value={editingRow.state_name}
-                onChange={(e) => setEditingRow({ ...editingRow, state_name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                placeholder="State Name"
-              />
-              <input
-                type="text"
-                value={editingRow.district_name}
-                onChange={(e) => setEditingRow({ ...editingRow, district_name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                placeholder="District Name"
-              />
-              <input
-                type="text"
-                value={editingRow.block_name}
-                onChange={(e) => setEditingRow({ ...editingRow, block_name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                placeholder="Block Name"
-              />
-              <input
-                type="text"
-                value={editingRow.startGpName}
-                onChange={(e) => setEditingRow({ ...editingRow, startGpName: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                placeholder="Start GP Name"
-              />
-              <input
-                type="text"
-                value={editingRow.startGpCoordinates}
-                onChange={(e) => setEditingRow({ ...editingRow, startGpCoordinates: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                placeholder="Start GP Coordinates"
-              />
-              <input
-                type="text"
-                value={editingRow.endGpName}
-                onChange={(e) => setEditingRow({ ...editingRow, endGpName: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                placeholder="End GP Name"
-              />
-              <input
-                type="text"
-                value={editingRow.endGpCoordinates}
-                onChange={(e) => setEditingRow({ ...editingRow, endGpCoordinates: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                placeholder="End GP Coordinates"
-              />
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={handleEditSave}
-                className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-green-600 rounded-md hover:bg-green-700 outline-none"
-              >
-                Save
-              </button>
-              <button
-                onClick={() => setEditingRow(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600"
-              >
-                Cancel
-              </button>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {loading ? (
+                    <tr>
+                      <td colSpan={columns.length} className="px-3 py-2">
+                        <div className="flex items-center justify-center">
+                          <svg className="animate-spin h-5 w-5 mr-3 text-blue-500" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Loading...
+                        </div>
+                      </td>
+                    </tr>
+                  ) : table.getRowModel().rows.length === 0 ? (
+                    <tr>
+                      <td colSpan={columns.length} className="px-3 py-2 text-center text-gray-500">
+                        No data available
+                      </td>
+                    </tr>
+                  ) : (
+                    table.getRowModel().rows.map((row) => (
+                      <tr key={row.id} className="hover:bg-gray-50">
+                        {row.getVisibleCells().map((cell) => (
+                          <td key={cell.id} className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
+
+          {/* Advanced Responsive Pagination */}
+          <ResponsivePagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            itemsPerPage={data.length}
+            totalItems={data.length}
+          />
+
+          {/* Edit Modal */}
+          {editingRow && (
+            <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md w-96 max-h-[80vh] overflow-y-auto">
+                <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Edit Record</h2>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={editingRow.state_name}
+                    onChange={(e) => setEditingRow({ ...editingRow, state_name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    placeholder="State Name"
+                  />
+                  <input
+                    type="text"
+                    value={editingRow.district_name}
+                    onChange={(e) => setEditingRow({ ...editingRow, district_name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    placeholder="District Name"
+                  />
+                  <input
+                    type="text"
+                    value={editingRow.block_name}
+                    onChange={(e) => setEditingRow({ ...editingRow, block_name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    placeholder="Block Name"
+                  />
+                  <input
+                    type="text"
+                    value={editingRow.startGpName}
+                    onChange={(e) => setEditingRow({ ...editingRow, startGpName: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    placeholder="Start GP Name"
+                  />
+                  <input
+                    type="text"
+                    value={editingRow.startGpCoordinates}
+                    onChange={(e) => setEditingRow({ ...editingRow, startGpCoordinates: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    placeholder="Start GP Coordinates"
+                  />
+                  <input
+                    type="text"
+                    value={editingRow.endGpName}
+                    onChange={(e) => setEditingRow({ ...editingRow, endGpName: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    placeholder="End GP Name"
+                  />
+                  <input
+                    type="text"
+                    value={editingRow.endGpCoordinates}
+                    onChange={(e) => setEditingRow({ ...editingRow, endGpCoordinates: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    placeholder="End GP Coordinates"
+                  />
+                </div>
+
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={handleEditSave}
+                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-green-600 rounded-md hover:bg-green-700 outline-none"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setEditingRow(null)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
-    </div>
-     )}
-   
+
     </>
   );
 };

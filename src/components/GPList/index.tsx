@@ -15,7 +15,7 @@ interface ModalData {
 function GPListData() {
     const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
     const[GpList,setGPList]=useState<GPMainData|undefined>();
-    const [editgp,seteditgp]=useState<GPList>();
+    const[editgp,seteditgp]=useState<GPList>();
     const[page,setPage]=useState<number>(1);
     const[stateId,setStateId]=useState<string>('');
     const[DistrictId,setDistrictId]=useState<string>('');
@@ -41,13 +41,26 @@ function GPListData() {
                 }
             });
           if(resp.status === 200 || resp.status === 201){
+           setGPList(prev =>
+              prev
+                ? {
+                    ...prev,
+                    data: prev.data.map(gp =>
+                      gp.id === editgp.id
+                        ? { ...gp, ...formData, updated_at: new Date().toISOString() }
+                        : gp
+                    ),
+                  }
+                : prev
+            );
+          
             setModalData({
             title: "Success!",
             message: "GP updated successfully.",
             type: "success",
           });
            setModalOpen(true)
-           window.location.reload()
+          //  window.location.reload()
           }else{
             setModalData({
             title: "Error!",

@@ -1,17 +1,15 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import axios from 'axios';
-import { 
-  ChevronDown, 
-  ChevronRight, 
-  Search, 
-  Eye, 
+import {
+  ChevronDown,
+  ChevronRight,
+  Search,
+  Eye,
   RotateCcw,
   Minus,
   Plus,
-  HelpCircle,
-  Printer
+  RefreshCwIcon,
+  Loader
 } from 'lucide-react';
-import { StateData } from '../../types/survey';
 import { getBlockData, getDistrictData, getStateData } from '../Services/api';
 
 interface Block {
@@ -39,56 +37,26 @@ interface State {
   districts: District[];
 }
 
-interface Layer {
-  id: string;
-  name: string;
-  selected: boolean;
-  color: string;
-  icon: string;
-}
+
 
 interface GeographicSelectorProps {
   BASEURL: string;
   onSelectionChange?: (selectedStates: string[], selectedDistricts: string[], selectedBlocks: string[]) => void;
-  onPreview?: (item: { type: 'state' | 'district' | 'block'; stateId:string;DistId:string;BlockId:string;name: string }) => void;
-  onRefresh?: (item: { type: 'state' | 'district' | 'block'; stateId:string;DistId:string;BlockId:string;name: string }) => void;
+  onPreview?: (item: { type: 'state' | 'district' | 'block'; selectedStates: string[]; selectedDistricts: string[]; selectedBlocks: string[]; name: string }) => void;
+  onRefresh?: (item: { type: 'state' | 'district' | 'block' | 'universal'; selectedStates: string[]; selectedDistricts: string[]; selectedBlocks: string[]; name: string }) => void;
+  isLoadingPhysical?: boolean
 }
-
-const LAYER_DATA: Layer[] = [
-  { id: 'LANDMARK', name: 'Landmark', selected: false, color: '#FF6B6B', icon: '🏛️' },
-  { id: 'FIBERTURN', name: 'Fiber Turn', selected: false, color: '#4ECDC4', icon: '🔄' },
-  { id: 'Bridge', name: 'Bridge', selected: false, color: '#45B7D1', icon: '🌁' },
-  { id: 'Culvert', name: 'Culvert', selected: false, color: '#96CEB4', icon: '🌊' },
-  { id: 'ROADCROSSING', name: 'Crossing', selected: false, color: '#FFEAA7', icon: '🛣️' },
-  { id: 'Level Cross', name: 'Level Cross', selected: false, color: '#DDA0DD', icon: '🚂' },
-  { id: 'Rail Under Bridge', name: 'Rail Under Bridge', selected: false, color: '#98D8C8', icon: '🚇' },
-  { id: 'KILOMETERSTONE', name: 'Kilometer Stone', selected: false, color: '#85C1E9', icon: '📍' },
-  { id: 'FPOI', name: 'FPOI', selected: false, color: '#F8C471', icon: '⭐' },
-  { id: 'JOINTCHAMBER', name: 'Jointchamber', selected: false, color: '#82E0AA', icon: '🔗' },
-  { id: 'ROUTEINDICATOR', name: 'Route Indicator', selected: false, color: '#F1948A', icon: '🧭' },
-  { id: 'SURVEYSTART', name: 'Start Survey', selected: false, color: '#10B981', icon: '🎯' },
-  { id: 'ENDSURVEY', name: 'End Survey', selected: false, color: '#10B981', icon: '🎯' },
-  { id: 'HOLDSURVEY', name: 'Hold Survey', selected: false, color: '#a93226', icon: '⏸️' },
-  { id: 'DEPTH', name: 'Depth', selected: false, color: '#3B82F6', icon: '📏' },
-  { id: 'MANHOLES', name: 'Manhole', selected: false, color: '#06B6D4', icon: '🕳️' },
-  { id: 'STARTPIT', name: 'Start Pit', selected: false, color: '#14B8A6', icon: '🕳️' },
-  { id: 'ENDPIT', name: 'End Pit', selected: false, color: '#DC2626', icon: '🏁' },
-  { id: 'BLOWING', name: 'Blowing', selected: false, color: '#663300', icon: '═' },
-  { id: 'Incremental Cable', name: 'Incremental Cable', selected: false, color: '#61f335', icon: '---' },
-  { id: 'Proposed Cable', name: 'Proposed Cable', selected: false, color: '#ff0000', icon: '---' }
-];
 
 export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
   BASEURL,
   onSelectionChange,
   onPreview,
-  onRefresh
+  onRefresh,
+  isLoadingPhysical
 }) => {
   const [isDistrictExpanded, setIsDistrictExpanded] = useState(true);
-  const [isLayersExpanded, setIsLayersExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [data, setData] = useState<State[]>([]);
-  const [layers, setLayers] = useState<Layer[]>(LAYER_DATA);
   const [loading, setLoading] = useState(false);
 
   // Fetch states on component mount
@@ -97,17 +65,17 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
       setLoading(true);
       try {
         getStateData().then(data => {
-           const statesData = data.map((state: any) => ({
-          id: state.state_id,
-          name: state.state_name,
-          code: state.state_code,
-          selected: false,
-          expanded: false,
-          districts: []
-        }));
-         setData(statesData);
+          const statesData = data.map((state: any) => ({
+            id: state.state_id,
+            name: state.state_name,
+            code: state.state_code,
+            selected: false,
+            expanded: false,
+            districts: []
+          }));
+          setData(statesData);
         })
-       
+
       } catch (error) {
         console.error('Error fetching states:', error);
       } finally {
@@ -119,38 +87,38 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
   }, [BASEURL]);
 
   // Fetch districts when state is expanded
- const fetchDistricts = async (stateCode: string) => {
-  try {
-    const data = await getDistrictData(stateCode);
-    const districtsData = data.map((district: any) => ({
-      id: district.district_id,
-      name: district.district_name,
-      code: district.district_code,
-      selected: false,
-      expanded: false,
-      blocks: []
-    }));
+  const fetchDistricts = async (stateCode: string) => {
+    try {
+      const data = await getDistrictData(stateCode);
+      const districtsData = data.map((district: any) => ({
+        id: district.district_id,
+        name: district.district_name,
+        code: district.district_code,
+        selected: false,
+        expanded: false,
+        blocks: []
+      }));
 
-    return districtsData;
+      return districtsData;
 
-  } catch (error) {
-    console.error('Error fetching districts:', error);
-    return [];
-  }
-};
+    } catch (error) {
+      console.error('Error fetching districts:', error);
+      return [];
+    }
+  };
 
   // Fetch blocks when district is expanded
   const fetchBlocks = async (districtCode: string) => {
     try {
-     const data = await getBlockData(districtCode)
+      const data = await getBlockData(districtCode)
       const blocksData = data.map((block: any) => ({
-        id: block.block_id ,
+        id: block.block_id,
         name: block.block_name,
         code: block.block_code,
         selected: false
       }));
       return blocksData;
-   
+
     } catch (error) {
       console.error('Error fetching blocks:', error);
       return [];
@@ -160,7 +128,7 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
   // Filter data based on search query
   const filteredData = useMemo(() => {
     if (!searchQuery) return data;
-    
+
     return data.map(state => ({
       ...state,
       districts: state.districts.map(district => ({
@@ -174,7 +142,7 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
         district.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
         district.blocks.length > 0
       )
-    })).filter(state => 
+    })).filter(state =>
       state.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       state.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
       state.districts.length > 0
@@ -188,7 +156,7 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
         // Fetch districts if expanding and districts not loaded
         if (newExpanded && state.districts.length === 0) {
           fetchDistricts(stateId).then(districts => {
-            setData(prevData => prevData.map(s => 
+            setData(prevData => prevData.map(s =>
               s.id === stateId ? { ...s, districts } : s
             ));
           });
@@ -210,7 +178,7 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
               // Fetch blocks if expanding and blocks not loaded
               if (newExpanded && district.blocks.length === 0) {
                 fetchBlocks(districtId).then(blocks => {
-                  setData(prevData => prevData.map(s => 
+                  setData(prevData => prevData.map(s =>
                     s.id === stateId ? {
                       ...s,
                       districts: s.districts.map(d =>
@@ -249,7 +217,7 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
       }
       return state;
     }));
-    
+
     triggerSelectionCallback();
   };
 
@@ -270,10 +238,10 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
           }
           return district;
         });
-        
+
         // Only select state if ALL districts are selected
         const allDistrictsSelected = updatedDistricts.some(d => d.selected);
-        
+
         return {
           ...state,
           selected: allDistrictsSelected,
@@ -292,14 +260,14 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
         const updatedDistricts = state.districts.map(district => {
           if (district.id === districtId) {
             const updatedBlocks = district.blocks.map(block =>
-              block.id === blockId 
+              block.id === blockId
                 ? { ...block, selected: !block.selected }
                 : block
             );
-            
+
             // Only select district if ALL blocks are selected
             const allBlocksSelected = updatedBlocks.some(b => b.selected);
-            
+
             return {
               ...district,
               selected: allBlocksSelected,
@@ -308,10 +276,10 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
           }
           return district;
         });
-        
+
         // Only select state if ALL districts are selected
         const allDistrictsSelected = updatedDistricts.some(d => d.selected);
-        
+
         return {
           ...state,
           selected: allDistrictsSelected,
@@ -328,12 +296,12 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
     const selectedStates: string[] = [];
     const selectedDistricts: string[] = [];
     const selectedBlocks: string[] = [];
-    
+
     data.forEach(state => {
       if (state.selected) selectedStates.push(state.id);
       state.districts.forEach(district => {
         if (district.selected) selectedDistricts.push(district.id);
-          district.blocks.forEach(block => {
+        district.blocks.forEach(block => {
           if (block.selected) selectedBlocks.push(block.id);
         });
       });
@@ -341,50 +309,78 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
     onSelectionChange?.(selectedStates, selectedDistricts, selectedBlocks);
   };
 
-  const handleLayerSelection = (layerId: string) => {
-    setLayers(prev => prev.map(layer => 
-      layer.id === layerId 
-        ? { ...layer, selected: !layer.selected }
-        : layer
-    ));
+
+
+  const handlePreview = (type: 'state' | 'district' | 'block', id: string, name: string) => {
+    const selectedIds = getSelectedIds();
+    onPreview?.({
+      type,
+      selectedStates: selectedIds.states,
+      selectedDistricts: selectedIds.districts,
+      selectedBlocks: selectedIds.blocks,
+      name
+    });
+    // onPreview?.({ type,stateId,DistId,BlockId,name });
   };
 
-  const handleSelectAllLayers = () => {
-    const allSelected = layers.every(layer => layer.selected);
-    setLayers(prev => prev.map(layer => ({
-      ...layer,
-      selected: !allSelected
-    })));
+  const handleRefresh = (type: 'state' | 'district' | 'block', id: string, name: string) => {
+    // onRefresh?.({ type,stateId,DistId,BlockId,name });
+    const selectedIds = getSelectedIds();
+    onRefresh?.({
+      type,
+      selectedStates: selectedIds.states,
+      selectedDistricts: selectedIds.districts,
+      selectedBlocks: selectedIds.blocks,
+      name,
+
+    });
+
   };
 
-  const handlePreview = (type: 'state' | 'district' | 'block',stateId:string,DistId:string,BlockId:string, name: string) => {
-     onPreview?.({ type,stateId,DistId,BlockId,name });
-  };
+  const getSelectedIds = () => {
+    const selectedStates: string[] = [];
+    const selectedDistricts: string[] = [];
+    const selectedBlocks: string[] = [];
 
-  const handleRefresh = (type: 'state' | 'district' | 'block', stateId:string,DistId:string,BlockId:string, name: string) => {
-    onRefresh?.({ type,stateId,DistId,BlockId,name });
-  };
+    data.forEach(state => {
+      if (state.selected) selectedStates.push(state.id);
+      state.districts.forEach(district => {
+        if (district.selected) selectedDistricts.push(district.id);
+        district.blocks.forEach(block => {
+          if (block.selected) selectedBlocks.push(block.id);
+        });
+      });
+    });
 
-  const getColorClass = (color: string) => {
-    const colorMap: { [key: string]: string } = {
-      yellow: 'text-yellow-500',
-      black: 'text-gray-800',
-      blue: 'text-blue-500',
-      orange: 'text-orange-500',
-      red: 'text-red-500',
-      brown: 'text-amber-700',
-      cyan: 'text-cyan-500',
-      pink: 'text-pink-500'
+    return {
+      states: selectedStates,
+      districts: selectedDistricts,
+      blocks: selectedBlocks
     };
-    return colorMap[color] || 'text-gray-500';
   };
+
+  const handleUniversalRefresh = () => {
+    const selectedIds = getSelectedIds();
+    onRefresh?.({
+      type: 'universal',
+      selectedStates: selectedIds.states,
+      selectedDistricts: selectedIds.districts,
+      selectedBlocks: selectedIds.blocks,
+      name: 'All Selected Items',
+    });
+  };
+
+
+
 
   return (
     <div className="space-y-4">
+
       {/* District/Division Section */}
       <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
         {/* Header */}
         <div className="border-b  border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+
           <button
             onClick={() => setIsDistrictExpanded(!isDistrictExpanded)}
             className="w-full flex items-center justify-between p-3 "
@@ -405,7 +401,27 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
               ) : (
                 <ChevronRight className="h-4 w-4 text-gray-500" />
               )}
+              <button
+                onClick={handleUniversalRefresh}
+                className={`
+                  border-2 border-dashed 
+                  w-10 h-10 rounded-full flex items-center justify-center transition-colors 
+                  ${isLoadingPhysical
+                    ? 'border-gray-300 bg-blue-100'
+                    : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
+                  }
+                  duration-200 gap-2
+                  text-sm font-medium text-gray-700
+                `}
+                title='Reload'
+              >
+                {isLoadingPhysical ?
+                  <Loader className="h-4 w-4 animate-spin text-blue-400" /> :
+                  <RefreshCwIcon size={18} />
+                }
+              </button>
             </div>
+
           </button>
         </div>
 
@@ -447,7 +463,7 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
                         <ChevronRight className="h-3 w-3 text-gray-500" />
                       )}
                     </button>
-                    
+
                     <label className="flex items-center flex-1 py-1 cursor-pointer">
                       <input
                         type="checkbox"
@@ -457,19 +473,19 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
                       />
                       <span className="text-sm text-gray-700 font-medium">{state.name}</span>
                     </label>
-                    
+
                     {/* State Action Buttons */}
                     {state.selected && (
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-auto">
                         <button
-                          onClick={() => handlePreview('state',state.id,'','',state.name)}
+                          onClick={() => handlePreview('state', state.id, state.name)}
                           className="p-1 hover:bg-gray-100 rounded"
                           title="Preview"
                         >
                           <Eye className="h-3 w-3 text-gray-500" />
                         </button>
                         <button
-                          onClick={() => handleRefresh('state',state.id,'','', state.name)}
+                          onClick={() => handleRefresh('state', state.id, state.name)}
                           className="p-1 hover:bg-gray-100 rounded"
                           title="Refresh"
                         >
@@ -497,7 +513,7 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
                                   <ChevronRight className="h-3 w-3 text-gray-500" />
                                 )}
                               </button>
-                              
+
                               <label className="flex items-center flex-1 py-1 cursor-pointer">
                                 <input
                                   type="checkbox"
@@ -511,19 +527,19 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
                                 </span>
                               </label>
                             </div>
-                            
+
                             {/* District Action Buttons */}
                             {district.selected && (
                               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button
-                                  onClick={() => handlePreview('district',state.id, district.id, '',district.name)}
+                                  onClick={() => handlePreview('district', district.id, district.name)}
                                   className="p-1 hover:bg-gray-100 rounded"
                                   title="Preview"
                                 >
                                   <Eye className="h-3 w-3 text-gray-500" />
                                 </button>
                                 <button
-                                  onClick={() => handleRefresh('district', state.id,district.id, '',district.name)}
+                                  onClick={() => handleRefresh('district', district.id, district.name)}
                                   className="p-1 hover:bg-gray-100 rounded"
                                   title="Refresh"
                                 >
@@ -550,19 +566,19 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
                                       <span className="text-gray-400 ml-1">({block.code})</span>
                                     </span>
                                   </label>
-                                  
+
                                   {/* Block Action Buttons */}
                                   {block.selected && (
                                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                       <button
-                                        onClick={() => handlePreview('block',state.id,district.id, block.id, block.name)}
+                                        onClick={() => handlePreview('block', block.id, block.name)}
                                         className="p-1 hover:bg-gray-100 rounded"
                                         title="Preview"
                                       >
                                         <Eye className="h-3 w-3 text-gray-500" />
                                       </button>
                                       <button
-                                        onClick={() => handleRefresh('block',state.id,district.id,block.id, block.name)}
+                                        onClick={() => handleRefresh('block', block.id, block.name)}
                                         className="p-1 hover:bg-gray-100 rounded"
                                         title="Refresh"
                                       >
@@ -584,102 +600,6 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
           </div>
         )}
       </div>
-
-      {/* Landbase Layers Section */}
-      {/* <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
-        <div className="border-b border-gray-200">
-          <button
-            onClick={() => setIsLayersExpanded(!isLayersExpanded)}
-            className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors"
-          >
-            <span className="font-medium text-gray-900 text-sm">LANDBASE LAYERS</span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsLayersExpanded(false);
-                }}
-                className="p-1 hover:bg-gray-200 rounded"
-              >
-                <Minus className="h-3 w-3 text-gray-500" />
-              </button>
-              {isLayersExpanded ? (
-                <Minus className="h-4 w-4 text-blue-600" />
-              ) : (
-                <ChevronRight className="h-4 w-4 text-gray-500" />
-              )}
-            </div>
-          </button>
-        </div>
-
-        {isLayersExpanded && (
-          <div className="p-3">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <button
-                  className="p-1 hover:bg-gray-100 rounded"
-                  title="Help"
-                >
-                  <HelpCircle className="h-4 w-4 text-gray-500" />
-                </button>
-                <button
-                  className="p-1 hover:bg-gray-100 rounded"
-                  title="Add Layer"
-                >
-                  <Plus className="h-4 w-4 text-gray-500" />
-                </button>
-                <button
-                  className="p-1 hover:bg-gray-100 rounded"
-                  title="Print"
-                >
-                  <Printer className="h-4 w-4 text-gray-500" />
-                </button>
-              </div>
-              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">L</span>
-            </div>
-
-            <div className="mb-3">
-              <label className="flex items-center py-1 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={layers.every(layer => layer.selected)}
-                  onChange={handleSelectAllLayers}
-                  className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-sm text-gray-700 font-medium">Select All</span>
-              </label>
-            </div>
-
-            <div className="space-y-1 max-h-96 overflow-y-auto">
-              {layers.map((layer) => (
-                <div key={layer.id} className="flex items-center justify-between group">
-                  <label className="flex items-center flex-1 py-1 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={layer.selected}
-                      onChange={() => handleLayerSelection(layer.id)}
-                      className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className={`mr-2 ${getColorClass(layer.color)}`}>
-                      {layer.icon}
-                    </span>
-                    <span className="text-sm text-gray-600">{layer.name}</span>
-                  </label>
-                  
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={layer.selected}
-                      onChange={() => handleLayerSelection(layer.id)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div> */}
     </div>
   );
 };
