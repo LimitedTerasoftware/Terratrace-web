@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Sidebar } from './Sidebar';
 import { FileList } from './FileList';
 import { FilterPanel } from './FilterPanel';
-import { AlertCircle, CheckCircle, Upload, X, Menu, MapPin, File, FilePlusIcon, FilePlus2Icon, RefreshCcwIcon, RefreshCcwDotIcon, RefreshCwOffIcon, RefreshCwIcon } from 'lucide-react';
+import { AlertCircle, CheckCircle, Upload, X, Menu, MapPin, File, FilePlusIcon, FilePlus2Icon, RefreshCcwIcon, RefreshCcwDotIcon, RefreshCwOffIcon, RefreshCwIcon, DownloadIcon } from 'lucide-react';
 import axios from 'axios';
 import { GoogleMap } from './MapViewer';
 import { PlacemarkList } from './PlacemarkList';
@@ -38,7 +38,9 @@ function SmartInventory() {
   const [physicalSurveyData, setPhysicalSurveyData] = useState<ProcessedPhysicalSurvey[]>([]);
   const [physicalSurveyCategories, setPhysicalSurveyCategories] = useState<PlacemarkCategory[]>([]);
   const [isLoadingPhysical, setIsLoadingPhysical] = useState(false);
-
+  const [shapData, setShapData] = useState<any>(null);
+  const [rawPhysicalSurveyData, setRawPhysicalSurveyData] = useState<any>(null);
+  const [Shapload,setShapload]=useState<boolean>(false);
  // Load  external files
   useEffect(() => {
     const loadFiles = async () => {
@@ -81,6 +83,7 @@ function SmartInventory() {
             const resp = await axios.get(`${BASEURL}/preview-file`, { params });
             if (resp.status === 200 || resp.status === 201) {
               const apiData: ApiPlacemark = resp.data.data.parsed_data;
+              setShapData(resp.data.data);
               const { placemarks, categories } = processApiData(apiData);
               
               // Combine placemarks with unique IDs
@@ -158,6 +161,7 @@ function SmartInventory() {
       if (response.status === 200 || response.status === 201) {
         if (Object.keys(result.data).length > 0) {
           const { placemarks, categories } = processPhysicalSurveyData(result);
+          setRawPhysicalSurveyData(result);
           setPhysicalSurveyData(placemarks);
           setPhysicalSurveyCategories(categories);
           
@@ -216,6 +220,85 @@ function SmartInventory() {
       showNotification("error", "Failed to upload file");
     } finally {
       setIsUploading(false);
+    }
+  };
+
+
+    // download shapefile
+  const downloadShapefile = async () => {
+    try {
+      setShapload(true)
+      const shapefileData: any = {
+        parsed_data: {
+          points: [],
+          polylines: []
+        }
+      };
+
+      if (shapData && shapData.parsed_data) {
+        shapefileData.parsed_data.points = shapData.parsed_data.points || [];
+        shapefileData.parsed_data.polylines = shapData.parsed_data.polylines || [];
+      }
+
+      // Add physical survey data grouped by event type
+      if (rawPhysicalSurveyData && rawPhysicalSurveyData.data) {
+        // Group physical survey points by event type
+        const groupedByEventType: Record<string, any[]> = {};
+        
+        Object.entries(rawPhysicalSurveyData.data).forEach(([blockId, points]: [string, any]) => {
+          if (Array.isArray(points)) {
+            points.forEach((point: any) => {
+              // Skip LIVELOCATION events
+              if (point.event_type === 'LIVELOCATION') {
+                return;
+              }
+              
+              if (!groupedByEventType[point.event_type]) {
+                groupedByEventType[point.event_type] = [];
+              }
+              
+              // Add block_id to the point data
+              groupedByEventType[point.event_type].push({
+                ...point,
+                block_id: blockId
+              });
+            });
+          }
+        });
+
+        // Add grouped data to shapefile structure
+        Object.entries(groupedByEventType).forEach(([eventType, points]) => {
+          shapefileData.parsed_data[eventType] = points;
+        });
+      }
+
+      // Send request to shapefile download API
+      const response = await axios.post(`${BASEURL}/download-shape`, shapefileData, {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        responseType: 'blob' // Important for file download
+      });
+
+      if (response.status === 200) {
+        // Create download link
+        const blob = new Blob([response.data], { type: 'application/zip' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'shapefile.zip';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        showNotification('success', 'Shapefile downloaded successfully');
+      }
+    } catch (error) {
+      console.error('Failed to download shapefile:', error);
+      showNotification('error', 'Failed to download shapefile');
+    }finally{
+      setShapload(false)
     }
   };
 
@@ -399,6 +482,23 @@ function SmartInventory() {
             <FilePlus2Icon size={18} />
 
           </button>
+           {/* <button
+            onClick={() => {downloadShapefile}}
+            className={`
+              border-2 border-dashed 
+              w-20 h-12 rounded-full flex items-center justify-center transition-colors 
+              ${Shapload
+                ? 'border-gray-300 bg-blue-100'
+                : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
+              }
+              transition-all duration-200 flex items-center justify-center gap-2
+              text-sm font-medium text-gray-700
+            `}
+            title='Download Shap'
+          >
+            <DownloadIcon size={18} />
+
+          </button> */}
          
         </div>
          <GeographicSelector

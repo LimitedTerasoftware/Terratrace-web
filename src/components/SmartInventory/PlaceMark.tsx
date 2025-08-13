@@ -174,7 +174,7 @@ export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
   // Create categories array for physical survey
   const categories: PlacemarkCategory[] = physicalSurveyCategories.map(name => ({
     id: `physical-${name.toLowerCase().replace(/\s+/g, '-')}`,
-    name: `Physical: ${name}`,
+    name: `${name}`,
     count: categoryCounts[name] || 0,
     visible: true,
     color: PLACEMARK_CATEGORIES[name]?.color || '#6B7280',
