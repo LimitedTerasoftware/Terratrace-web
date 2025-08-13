@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { StateData, District, Block } from '../../types/survey';
 import Report from './UGConst';
-import { ToastContainer } from 'react-toastify';
 import Breadcrumb from '../Breadcrumbs/Breadcrumb';
 import { SheetIcon } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
@@ -37,9 +36,6 @@ function Construction() {
     const [excel,setExcel]=useState<boolean>(false);
     const [searchParams, setSearchParams] = useSearchParams();
     const [filtersReady, setFiltersReady] = useState(false);
-
-
-
     const statusMap: Record<number, string> = {
         1: "Completed",
         0: "Pending",
@@ -71,7 +67,6 @@ function Construction() {
         fetchStates();
     }, []);
 
-    // Fetch districts by state ID (not state_code)
     const fetchDistricts = async (stateId: string) => {
         if (!stateId) {
             setDistricts([]);
@@ -80,8 +75,6 @@ function Construction() {
 
         try {
             setLoadingDistricts(true);
-            // Find the state_code for the selected state_id
-
             const response = await fetch(`${BASEURL}/districtsdata?state_code=${stateId}`);
             if (!response.ok) throw new Error('Failed to fetch districts');
             const data = await response.json();

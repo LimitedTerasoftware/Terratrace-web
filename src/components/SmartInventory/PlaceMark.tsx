@@ -33,6 +33,7 @@ export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string 
   'LIVELOCATION': { color: '#DC3545', icon: '📍' },
   'SIDE': { color: '#6F42C1', icon: '↔️' },
   'ROUTEDETAILS': { color: '#09090B', icon: '📋' },
+  'point': { color: '#FF0000', icon: '📍' },
 
 };
 
@@ -52,7 +53,7 @@ export function processApiData(apiData: ApiPlacemark): {
   apiData.points.forEach((point, index) => {
     // Only process points with type "GP" or "FPOI"
     if(!point.type 
-       || (point.type !== 'GP' && point.type !== 'FPOI' && point.type !== "BHQ" && point.type !== 'BR' && point.type !== "LANDMARK")
+       || (point.type !== 'GP' && point.type !== 'FPOI' && point.type !== "BHQ" && point.type !== 'BR' && point.type !== "LANDMARK" && point.type !== 'point')
     ) {
       return;
     }
@@ -76,7 +77,7 @@ export function processApiData(apiData: ApiPlacemark): {
 
   // Process polylines
   apiData.polylines.forEach((polyline, index) => {
-    const category = getCategoryFromName(polyline.name);
+    const category = getCategoryFromName((polyline.name === 'Incremental Cable' || polyline.name ===  "Proposed Cable" ) ? polyline.name : "Incremental Cable");
     categoryCounts[category] = (categoryCounts[category] || 0) + 1;
 
     processedPlacemarks.push({

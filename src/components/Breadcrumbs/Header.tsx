@@ -1,7 +1,7 @@
-import { Satellite, Map, Camera, Truck, ClipboardList } from "lucide-react"; 
+import { Satellite, Map, Camera, Truck, ClipboardList, Building2, ArrowLeft, Edit3 } from "lucide-react"; 
 import { Link } from "react-router-dom";
 
-type TabType = "bsnl" | "gp" | "aerial" | "ground" | "hoto";
+type TabType = "bsnl" | "gp" | "aerial" | "ground" | "hoto" | "bsnlaview" | "bsnledit";
 
 const tabHeaderData: Record<
   string,
@@ -13,7 +13,19 @@ const tabHeaderData: Record<
     subtitle: "Monitoring block survey progress in real time",
     bgColor: "bg-blue-600"
   },
-  gp: {
+  bsnlaview:{
+    icon: Building2,
+    title: "BSNL Exchange Details",
+    subtitle: "Comprehensive infrastructure information",
+    bgColor: "bg-gradient-to-br from-blue-500 to-indigo-600" 
+  },
+  bsnledit: {
+    icon: Edit3,
+    title: "Edit BSNL Exchange",
+    subtitle: "Update and manage BSNL exchange details",
+    bgColor: "bg-gradient-to-br from-yellow-500 to-orange-500"
+  },
+ gp: {
     icon: Map,
     title: "GP Survey Tracker",
     subtitle: "Monitoring gram panchayat survey progress",
@@ -38,7 +50,7 @@ const tabHeaderData: Record<
     bgColor: "bg-red-600"
   }
 };
-export  function Header({ activeTab }: { activeTab: TabType }) {
+export  function Header({ activeTab ,BackBut}: { activeTab: TabType ,BackBut:boolean}) {
   const { icon: Icon, title, subtitle, bgColor } = tabHeaderData[activeTab] || tabHeaderData.bsnl;
 
   return (
@@ -71,16 +83,30 @@ export  function Header({ activeTab }: { activeTab: TabType }) {
                 <div className="text-sm text-gray-500">Total Rejected</div>
               </div>
             </div> */}
-         <nav>
+            {BackBut ?  
+            <div className="flex items-center gap-2">
+                <button
+                  className="flex items-center gap-3 text-blue-600 hover:text-blue-700  transition-colors duration-200 group"
+                  onClick={() => window.history.back()}
+                >
+                  <div className="p-2 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors duration-200">
+                    <ArrowLeft className="h-4 w-4" />
+                  </div>
+                  <span className="font-medium">Back to List</span>
+                </button>
+              </div> :
+            <nav>
             <ol className="flex items-center gap-2">
                 <li>
-                <Link className="font-medium" to="/">
+                <Link className="font-medium" to="/dashboard">
                     Dashboard /
                 </Link>
                 </li>
                 <li className="font-medium text-primary">{title}</li>
             </ol>
-              </nav>
+          </nav>}
+        
+         
       </div>
     </header>
   );

@@ -13,22 +13,6 @@ interface GoogleMapProps {
 }
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyCPHNQoyCkDJ3kOdYZAjZElbhXuJvx-Odg';
-
-// Custom marker icons based on event type
-const getMarkerIcon = (eventType: string) => {
-  const iconMap: Record<string, string> = {
-    'SURVEYSTART': 'http://maps.google.com/mapfiles/ms/icons/green-dot.png',
-    'ROUTEFEASIBILITY': 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-    'AREA': 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png',
-    'SIDE': 'http://maps.google.com/mapfiles/ms/icons/purple-dot.png',
-    'ROUTEDETAILS': 'http://maps.google.com/mapfiles/ms/icons/orange-dot.png',
-    // Default for KML/KMZ data
-    'default': 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'
-  };
-  
-  return iconMap[eventType] || iconMap['default'];
-};
-
 export const GoogleMap: React.FC<GoogleMapProps> = ({
   placemarks,
   categories,
@@ -159,6 +143,15 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
           }else if(pointType === 'BR'){
             // Default for other types
             markerIcon = {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 10,
+              fillColor:category.color,
+              fillOpacity: 0.9,
+              strokeColor: '#ffffff',
+              strokeWeight: 2
+            };
+          }else{
+              markerIcon = {
               path: google.maps.SymbolPath.CIRCLE,
               scale: 10,
               fillColor:category.color,
