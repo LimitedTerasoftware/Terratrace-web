@@ -26,6 +26,8 @@ interface AppContextType {
   setGpFile:(data:File | null) => void;
   incrementalFile:File | null;
   setIncrementalFile:(data:File | null) => void;
+  kmzFile:File | null;
+  setKmzFile:(data:File | null) => void;
   
   // *****Related to the bulk Upload Modal*****
   // Controls visibility of the bulk upload modal throughout the application
@@ -71,6 +73,8 @@ const AppContext = createContext<AppContextType>({
   setGpFile:()=>{},
   incrementalFile: null,
   setIncrementalFile:()=>{},
+  kmzFile:null,
+  setKmzFile:()=>{},
   
   // *****Related to the bulk Upload Modal*****
   // Default state is closed (false)
@@ -102,6 +106,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const[DownloadFile,setDownloadFile]=useState<any>('');
   const [gpFile, setGpFile] = useState<File | null>(null);
   const [incrementalFile, setIncrementalFile] = useState<File | null>(null);
+  const [kmzFile,setKmzFile]=useState<File | null>(null);
   const [lineSummary, setLineSummary] = useState(true);
   const[VerifySaveFile,setVerifySaveFile]=useState(false);
 
@@ -184,6 +189,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setGpFile,
     incrementalFile,
     setIncrementalFile,
+    kmzFile,
+    setKmzFile,
     
     // *****Related to the bulk Upload Modal*****
     // Expose the bulk upload modal visibility state to all components

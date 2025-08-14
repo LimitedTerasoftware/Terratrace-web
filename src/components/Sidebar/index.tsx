@@ -12,7 +12,7 @@ import SidebarLinkGroup from './SidebarLinkGroup';
 import User from '../../images/icon/user-icon.svg';
 import TableIcon from '../../images/icon/table-icon.svg';
 import Logo from '../../images/logo/logo.png';
-import { hasViewOnlyAccess} from "../../utils/accessControl";
+import { hasInvOnlyAccess, hasViewOnlyAccess} from "../../utils/accessControl";
 import DropdownUser from './DropDownUser'; // Import the dropdownuser component
 import DarkModeSwitcher from './DarkModeSwitcher'; // Import the dark mode switcher
 import KML from '../../images/icon/kml-file.svg';
@@ -48,6 +48,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   const trigger = useRef<any>(null);
   const sidebar = useRef<any>(null);
   const viewOnly = hasViewOnlyAccess();
+  const InvOnly = hasInvOnlyAccess();
   
 
   const storedSidebarExpanded = localStorage.getItem('sidebar-expanded');
@@ -239,16 +240,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                   }}
             </SidebarLinkGroup>
              )}
-            <SideBarItem icon={SurveyIcon} label="Survey" isOpen={isOpen} isActive={pathname.includes('survey')} path='/survey' />
+             <SideBarItem icon={SurveyIcon} label="Survey" isOpen={isOpen} isActive={pathname.includes('survey')} path='/survey' />
 
-            {!viewOnly && (
-              <>
-                {/* <SideBarItem icon={CompanyIcon} label="Companies" isOpen={isOpen} isActive={pathname.includes('companies')} path='/companies' />
-               <SideBarItem icon={User} label="Users" isOpen={isOpen} isActive={pathname.includes('users')} path='/users' /> */}
-
-                <SideBarItem icon={ConstructionImg} label="Construction" isOpen={isOpen} isActive={pathname.includes('construction')} path='/construction' />
-                  
-                <li>
+             {!viewOnly && (
+               <SideBarItem icon={ConstructionImg} label="Construction" isOpen={isOpen} isActive={pathname.includes('construction')} path='/construction' />
+              )}
+              {InvOnly && (
+                  <li>
                   <NavLink
                     to="/smart-inventory"
                     target="_blank"
@@ -263,6 +261,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                     {isOpen && <span className="whitespace-nowrap">GIS Inventory</span>}
                   </NavLink>
                 </li>
+              )}
+              {!viewOnly && (
+                <>
+              
                 <SidebarLinkGroup activeCondition={pathname.includes('machine-management')}>
                   {(handleClick, open) => {
                     return (

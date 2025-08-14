@@ -265,8 +265,7 @@ function SmartInventory() {
                 },
                 type: point.event_type,
                 properties: {
-                  survey_id: point.survey_id,
-                  event_type: point.event_type
+                  ...point,
                 }
               });
             });

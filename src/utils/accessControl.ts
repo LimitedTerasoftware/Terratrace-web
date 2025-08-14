@@ -11,6 +11,8 @@ export interface User {
 
 const VIEW_ONLY_EMAILS = "wb@terasoftware.com";
 const DOWNLOAD_EMAILS = "nexus@terasoftware.com";
+const SmartInvViewEmail = "survey@terasoftware.com";
+const SmartInvView = ["survey@terasoftware.com", "admin@terasoftware.com"];
 
 const DOWNLOAD_ONLY_EMAILS = ["nexus@terasoftware.com", "admin@terasoftware.com"];
 
@@ -22,13 +24,19 @@ export const getUser = (): User | null => {
 export const hasViewOnlyAccess = (): boolean => {
   const user = getUser();
   const email = user?.email?.toLowerCase();
-  return email === VIEW_ONLY_EMAILS || email === DOWNLOAD_EMAILS;
+  return email === VIEW_ONLY_EMAILS || email === DOWNLOAD_EMAILS || email === SmartInvViewEmail;
 };
 
 export const hasDownloadAccess = (): boolean => {
   const user = getUser();
   const email = user?.email?.toLowerCase();
   return DOWNLOAD_ONLY_EMAILS.includes(email ?? "");
+};
+
+export const hasInvOnlyAccess = (): boolean => {
+ const user = getUser();
+  const email = user?.email?.toLowerCase();
+  return SmartInvView.includes(email ?? "");
 };
 
 
