@@ -1279,15 +1279,21 @@ const UndergroundSurvey: React.FC = () => {
               <p className="text-sm text-green-700 mt-1">Your Media_Folder.zip file has been downloaded.</p>
             </div>
           )}
+          
           {/* Table */}
+
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left text-gray-500">
+            <div className="overflow-x-hidden"> {/* prevent horizontal scroll */}
+              <table className="w-full table-auto text-sm text-left text-gray-500">
                 <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
                   {table.getHeaderGroups().map((headerGroup) => (
                     <tr key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
-                        <th key={header.id} scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th
+                          key={header.id}
+                          scope="col"
+                          className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider break-words"
+                        >
                           {flexRender(header.column.columnDef.header, header.getContext())}
                         </th>
                       ))}
@@ -1299,9 +1305,26 @@ const UndergroundSurvey: React.FC = () => {
                     <tr>
                       <td colSpan={columns.length} className="px-3 py-2">
                         <div className="flex items-center justify-center">
-                          <svg className="animate-spin h-5 w-5 mr-3 text-blue-500" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          <svg
+                            className="animate-spin h-5 w-5 mr-3 text-blue-500"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                              fill="none"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 
+                    5.291A7.962 7.962 0 014 12H0c0 
+                    3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
                           </svg>
                           Loading...
                         </div>
@@ -1309,7 +1332,10 @@ const UndergroundSurvey: React.FC = () => {
                     </tr>
                   ) : table.getRowModel().rows.length === 0 ? (
                     <tr>
-                      <td colSpan={columns.length} className="px-3 py-2 text-center text-gray-500">
+                      <td
+                        colSpan={columns.length}
+                        className="px-3 py-2 text-center text-gray-500"
+                      >
                         No data available
                       </td>
                     </tr>
@@ -1317,7 +1343,10 @@ const UndergroundSurvey: React.FC = () => {
                     table.getRowModel().rows.map((row) => (
                       <tr key={row.id} className="hover:bg-gray-50">
                         {row.getVisibleCells().map((cell) => (
-                          <td key={cell.id} className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          <td
+                            key={cell.id}
+                            className="px-4 py-2 whitespace-normal break-words text-sm font-medium text-gray-900"
+                          >
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                           </td>
                         ))}
@@ -1328,6 +1357,7 @@ const UndergroundSurvey: React.FC = () => {
               </table>
             </div>
           </div>
+
 
           {/* Advanced Responsive Pagination */}
           <ResponsivePagination

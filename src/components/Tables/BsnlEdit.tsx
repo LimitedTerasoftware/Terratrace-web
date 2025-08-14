@@ -6,6 +6,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { Header } from "../Breadcrumbs/Header";
 import { AlertCircle, Edit3, Loader2 } from "lucide-react";
+import { ErrorPage, LoadingPage } from "../hooks/useActivities";
 
 interface BsnlExchangeEdit {
   [key: string]: string;
@@ -192,35 +193,11 @@ function BsnlEdit() {
 
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-xl shadow-lg flex items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-          <div>
-            <p className="text-lg font-medium text-gray-900">Loading details...</p>
-            <p className="text-sm text-gray-500">Please wait while we fetch the information</p>
-          </div>
-        </div>
-      </div>
-    );
+    <LoadingPage/>
   }
 
   if (!data) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-xl shadow-lg max-w-md text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Data</h3>
-          <p className="text-gray-600 mb-4">No data found.</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors duration-200"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
+   <ErrorPage error="No data found"/>
   }
   return (
     <>

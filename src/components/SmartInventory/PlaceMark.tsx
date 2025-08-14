@@ -77,7 +77,7 @@ export function processApiData(apiData: ApiPlacemark): {
 
   // Process polylines
   apiData.polylines.forEach((polyline, index) => {
-    const category = getCategoryFromName((polyline.name === 'Incremental Cable' || polyline.name ===  "Proposed Cable" ) ? polyline.name : "Incremental Cable");
+    const category = getCategoryFromName((polyline.type === 'Incremental Cable' || polyline.type ===  "Proposed Cable" ) ? polyline.type : "Incremental Cable");
     categoryCounts[category] = (categoryCounts[category] || 0) + 1;
 
     processedPlacemarks.push({

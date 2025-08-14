@@ -40,7 +40,6 @@ function SmartInventory() {
   const [isLoadingPhysical, setIsLoadingPhysical] = useState(false);
   const [shapData, setShapData] = useState<any>(null);
   const [rawPhysicalSurveyData, setRawPhysicalSurveyData] = useState<any>(null);
-  const [Shapload,setShapload]=useState<boolean>(false);
  // Load  external files
   useEffect(() => {
     const loadFiles = async () => {
@@ -224,10 +223,10 @@ function SmartInventory() {
   };
 
 
-    // download shapefile
+  // download shapefile
   const downloadShapefile = async () => {
     try {
-      setShapload(true)
+      setLoding(true)
       const shapefileData: any = {
         parsed_data: {
           points: [],
@@ -235,6 +234,7 @@ function SmartInventory() {
         }
       };
 
+      // Add external data if available
       if (shapData && shapData.parsed_data) {
         shapefileData.parsed_data.points = shapData.parsed_data.points || [];
         shapefileData.parsed_data.polylines = shapData.parsed_data.polylines || [];
@@ -257,10 +257,17 @@ function SmartInventory() {
                 groupedByEventType[point.event_type] = [];
               }
               
-              // Add block_id to the point data
               groupedByEventType[point.event_type].push({
-                ...point,
-                block_id: blockId
+                name: `${point.event_type} - Survey ${point.survey_id}`,
+                coordinates: {
+                  longitude: parseFloat(point.longitude),
+                  latitude: parseFloat(point.latitude)
+                },
+                type: point.event_type,
+                properties: {
+                  survey_id: point.survey_id,
+                  event_type: point.event_type
+                }
               });
             });
           }
@@ -298,9 +305,10 @@ function SmartInventory() {
       console.error('Failed to download shapefile:', error);
       showNotification('error', 'Failed to download shapefile');
     }finally{
-      setShapload(false)
+      setLoding(false)
     }
   };
+
 
   // Notification system
   const showNotification = (type: 'success' | 'error', message: string) => {
@@ -482,12 +490,12 @@ function SmartInventory() {
             <FilePlus2Icon size={18} />
 
           </button>
-           {/* <button
-            onClick={() => {downloadShapefile}}
+           <button
+            onClick={downloadShapefile}
             className={`
               border-2 border-dashed 
               w-20 h-12 rounded-full flex items-center justify-center transition-colors 
-              ${Shapload
+              ${loading
                 ? 'border-gray-300 bg-blue-100'
                 : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
               }
@@ -498,7 +506,7 @@ function SmartInventory() {
           >
             <DownloadIcon size={18} />
 
-          </button> */}
+          </button>
          
         </div>
          <GeographicSelector

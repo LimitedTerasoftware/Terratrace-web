@@ -1,7 +1,7 @@
-import { Satellite, Map, Camera, Truck, ClipboardList, Building2, ArrowLeft, Edit3 } from "lucide-react"; 
+import { Satellite, Map, Camera, Truck, ClipboardList, Building2, ArrowLeft, Edit3, Home } from "lucide-react"; 
 import { Link } from "react-router-dom";
 
-type TabType = "bsnl" | "gp" | "aerial" | "ground" | "hoto" | "bsnlaview" | "bsnledit";
+type TabType = "bsnl" | "gp" | "aerial" | "ground" | "hoto" | "bsnlaview" | "bsnledit" | "gpview";
 
 const tabHeaderData: Record<
   string,
@@ -30,6 +30,12 @@ const tabHeaderData: Record<
     title: "GP Survey Tracker",
     subtitle: "Monitoring gram panchayat survey progress",
     bgColor: "bg-green-600"
+  },
+  gpview: {
+    icon: Home,
+    title: "GP Detail View",
+    subtitle: "Comprehensive Gram Panchayat information",
+    bgColor: "bg-gradient-to-br from-emerald-500 to-teal-600"
   },
   aerial: {
     icon: Camera,
