@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Sidebar } from './Sidebar';
 import { FileList } from './FileList';
 import { FilterPanel } from './FilterPanel';
-import { AlertCircle, CheckCircle, Upload, X, Menu, MapPin, File, FilePlusIcon, FilePlus2Icon, RefreshCcwIcon, RefreshCcwDotIcon, RefreshCwOffIcon, RefreshCwIcon, DownloadIcon } from 'lucide-react';
+import { AlertCircle, CheckCircle, Upload, X, Menu, MapPin, File, FilePlusIcon, FilePlus2Icon, RefreshCcwIcon, RefreshCcwDotIcon, RefreshCwOffIcon, RefreshCwIcon, DownloadIcon, ChevronDown } from 'lucide-react';
 import axios from 'axios';
 import { GoogleMap } from './MapViewer';
 import { PlacemarkList } from './PlacemarkList';
@@ -40,6 +40,8 @@ function SmartInventory() {
   const [isLoadingPhysical, setIsLoadingPhysical] = useState(false);
   const [shapData, setShapData] = useState<any>(null);
   const [rawPhysicalSurveyData, setRawPhysicalSurveyData] = useState<any>(null);
+  const [open, setOpen] = useState(false);
+
  // Load  external files
   useEffect(() => {
     const loadFiles = async () => {
@@ -308,6 +310,10 @@ function SmartInventory() {
     }
   };
 
+  const downloadExcel = () =>{
+
+  }
+
 
   // Notification system
   const showNotification = (type: 'success' | 'error', message: string) => {
@@ -446,7 +452,7 @@ function SmartInventory() {
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onToggle={handleSidebarToggle}>
        
-        <div className="mb-6 flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => { setModalOpen(true); setUploadError('') }}
             disabled={isUploading}
@@ -489,7 +495,7 @@ function SmartInventory() {
             <FilePlus2Icon size={18} />
 
           </button>
-           <button
+           {/* <button
             onClick={downloadShapefile}
             className={`
               border-2 border-dashed 
@@ -505,9 +511,53 @@ function SmartInventory() {
           >
             <DownloadIcon size={18} />
 
-          </button>
+          </button> */}
+
          
         </div>
+        <div className="relative inline-block w-full text-left">
+  <button
+    onClick={() => setOpen(!open)}
+    className={`
+          w-full px-1 py-3 rounded-lg border-2 border-dashed 
+          ${loading
+            ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
+            : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
+          }
+          transition-all duration-200 flex items-center justify-center gap-2
+          text-sm font-medium text-gray-700
+        `}
+  >
+     <DownloadIcon size={18} />
+      <span>Download</span>
+      <ChevronDown size={16} />
+  </button>
+
+  {open && (
+    <div className="absolute mt-2 left-0 right-0 w-full rounded-lg shadow-lg bg-white border border-gray-200 z-50">
+      <ul className="py-1 text-sm text-gray-700">
+        <li>
+          <button
+            onClick={() => { downloadShapefile(); setOpen(false); }}
+            className="w-full px-4 py-2 text-left hover:bg-gray-100"
+          >
+            Shapefile
+          </button>
+        </li>
+        <li>
+          <button
+            onClick={() => { downloadExcel(); setOpen(false); }}
+            className="w-full px-4 py-2 text-left hover:bg-gray-100"
+          >
+            Excel
+          </button>
+        </li>
+      </ul>
+    </div>
+  )}
+</div>
+
+     
          <GeographicSelector
             BASEURL={BASEURL}
             onSelectionChange={handleSelectionChange}
