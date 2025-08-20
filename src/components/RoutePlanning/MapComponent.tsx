@@ -72,11 +72,11 @@ interface LoopEntry {
   name: string;
   coordinates: [number, number];
   connection: LoopConnection;
-  lgd_code:string
+  lgd_code: string;
+  properties?: Record<string, any>;
   route: {
     features: RouteFeature[];
   };
-
 }
 
 // Define the global data structure
@@ -244,6 +244,9 @@ const MapComponent: React.FC = () => {
   const [existingDistance, setExistingDistance] = useState<number>(0);
   const [proposedDistance, setProposedDistance] = useState<number>(0);
 
+  const [isSaving, setIsSaving] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // Data management state
   const [LocalData, setLocalData] = useState<GlobalData>({
     loop: [],
@@ -305,51 +308,213 @@ const MapComponent: React.FC = () => {
   }, []);
 
 // DATA PROCESSING EFFECTS
-  
-useEffect(() => {
+
+  useEffect(() => {
   if (previewKmlData && map && isLoaded) {
     try {
-      let parsed = typeof previewKmlData === "string" ? JSON.parse(previewKmlData) : previewKmlData;
-      const kmlArray = Array.isArray(parsed) ? parsed : [parsed];
+      let parsed: KMLData | KMLData[] = typeof previewKmlData === "string" ? JSON.parse(previewKmlData) : previewKmlData;
+      const kmlArray: KMLData[] = Array.isArray(parsed) ? parsed : [parsed];
 
-      let allPoints: any[] = [];
-      let allConnections: any[] = [];
+      let allPoints: ProcessedPoint[] = [];
+      let allConnections: ProcessedConnection[] = [];
 
-      kmlArray.forEach((kmlData, idx) => {
+      kmlArray.forEach((kmlData: KMLData, idx: number) => {
         if (kmlData.success && kmlData.data) {
-          const points = kmlData.data.points.map((point: any, i: number) => {
-            const coordsArray = JSON.parse(point.coordinates);
+          const points = kmlData.data.points.map((point: KMLPoint, i: number): ProcessedPoint => {
+            let coordinates: number[];
+            try {
+              const coordsArray = JSON.parse(point.coordinates as string);
+              coordinates = [coordsArray[0], coordsArray[1]];
+            } catch (error) {
+              if (Array.isArray(point.coordinates)) {
+                coordinates = point.coordinates as number[];
+              } else {
+                coordinates = [0, 0];
+              }
+            }
+            
+            let parsedProperties: Record<string, any> = {};
+            try {
+              if (point.properties && typeof point.properties === 'string') {
+                parsedProperties = JSON.parse(point.properties);
+              } else if (point.properties && typeof point.properties === 'object') {
+                parsedProperties = point.properties;
+              }
+            } catch (error) {
+              console.warn('Failed to parse properties for point:', point.name);
+            }
+
             return {
               name: point.name,
-              coordinates: [coordsArray[1], coordsArray[0]],
+              coordinates: coordinates,
+              lgd_code: point.lgd_code || parsedProperties.lgd_code || "NULL",
               properties: {
-                lgd_code: point.lgd_code,
                 id: point.id,
                 network_id: point.network_id,
                 created_at: point.created_at,
-                ...(i === 0 && {
-                  blk_name: kmlData.data.network.main_point_name,
-                  dt_code: kmlData.data.network.dt_code,
-                  dt_name: kmlData.data.network.dt_name,
-                  st_code: kmlData.data.network.st_code,
-                  st_name: kmlData.data.network.st_name
-                })
+                updated_at: point.updated_at,
+                
+                FID: parsedProperties.FID || point.FID || "",
+                name: parsedProperties.name || point.name,
+                lat: parsedProperties.lat || coordinates[1]?.toString() || "",
+                long: parsedProperties.long || coordinates[0]?.toString() || "",
+                remarks: parsedProperties.remarks || "",
+                
+                blk_code: parsedProperties.blk_code || kmlData.data.network?.blk_code || "",
+                blk_name: parsedProperties.blk_name || kmlData.data.network?.main_point_name || "",
+                dt_code: parsedProperties.dt_code || kmlData.data.network?.dt_code || "",
+                dt_name: parsedProperties.dt_name || kmlData.data.network?.dt_name || "",
+                st_code: parsedProperties.st_code || kmlData.data.network?.st_code || "",
+                st_name: parsedProperties.st_name || kmlData.data.network?.st_name || "",
+                
+                lgd_code: point.lgd_code || parsedProperties.lgd_code || "NULL",
+                asset_code: parsedProperties.asset_code || "",
+                
+                location: parsedProperties.location || "",
+                loc_type: parsedProperties.loc_type || "",
+                obs: parsedProperties.obs || "",
+                status: parsedProperties.status || point.status || "Proposed",
+                geo_photo: parsedProperties.geo_photo || "",
+                
+                otdr_len: parsedProperties.otdr_len || "",
+                conn_str: parsedProperties.conn_str || "",
+                backhaul: parsedProperties.backhaul || "",
+                phase: parsedProperties.phase || "3",
+                route_code: parsedProperties.route_code || "",
+                asset_type: parsedProperties.asset_type || "FPOI",
+                
+                gp_code: parsedProperties.gp_code || "",
+                block_ip: parsedProperties.block_ip || "",
+                gp_mac_id: parsedProperties.gp_mac_id || "",
+                gp_sr_no: parsedProperties.gp_sr_no || "",
+                nmsgp_cd: parsedProperties.nmsgp_cd || "",
+                nmsblk_cd: parsedProperties.nmsblk_cd || "",
+                
+                cable_len: parsedProperties.cable_len || "0",
+                ring: parsedProperties.ring || "",
+                type: parsedProperties.type || parsedProperties.asset_type || "FPOI",
+                
+                GlobalID: parsedProperties.GlobalID || "",
+                Label: parsedProperties.Label || point.name,
+                
+                icon: parsedProperties.icon || 
+                      (parsedProperties.asset_type === "Block Router" ? "https://maps.google.com/mapfiles/ms/icons/blue-dot.png" :
+                       parsedProperties.asset_type === "BHQ" ? "https://maps.google.com/mapfiles/ms/icons/green-dot.png" :
+                       parsedProperties.asset_type === "GP" ? "https://maps.google.com/mapfiles/ms/icons/yellow-dot.png" :
+                       "https://maps.google.com/mapfiles/ms/icons/red-dot.png"),
+                
+                ...(i === 0 && kmlData.data.network && {
+                  network_metadata: {
+                    total_length: kmlData.data.network.total_length,
+                    existing_length: kmlData.data.network.existing_length,
+                    proposed_length: kmlData.data.network.proposed_length
+                  }
+                }),
+                
+                ...parsedProperties
               }
             };
           });
 
-          const connections = kmlData.data.connections.map((conn: any) => {
-            const coordsArray = JSON.parse(conn.coordinates);
-            const convertedCoords = coordsArray.map(([lat, lng]: [number, number]) => [lng, lat]);
+          const pointLookup = new Map<string, ProcessedPoint>();
+          const pointLookupByLGD = new Map<string, ProcessedPoint>();
+          const pointLookupByBaseName = new Map<string, ProcessedPoint>();
+          
+          points.forEach((point: ProcessedPoint) => {
+            pointLookup.set(point.name, point);
+            pointLookup.set(point.name.toUpperCase(), point);
+            
+            if (point.lgd_code && point.lgd_code !== "NULL") {
+              pointLookupByLGD.set(point.lgd_code, point);
+            }
+            
+            const baseName = point.name.replace(/\([^)]*\)$/, '').trim();
+            pointLookupByBaseName.set(baseName.toUpperCase(), point);
+            
+            const nameVariants = [
+              point.name.replace(/-/g, ' '),
+              point.name.replace(/\s+/g, '-'),
+              point.name.replace(/\s+/g, '_'),
+              point.name.replace(/_/g, ' ')
+            ];
+            
+            nameVariants.forEach(variant => {
+              pointLookup.set(variant.toUpperCase(), point);
+            });
+          });
+
+          const findPoint = (searchName: string, lgdCode?: string): ProcessedPoint | null => {
+            if (!searchName) return null;
+            
+            if (lgdCode && lgdCode !== "NULL") {
+              const found = pointLookupByLGD.get(lgdCode);
+              if (found) return found;
+            }
+            
+            let found = pointLookup.get(searchName) || pointLookup.get(searchName.toUpperCase());
+            if (found) return found;
+            
+            found = pointLookupByBaseName.get(searchName.replace(/\([^)]*\)$/, '').trim().toUpperCase());
+            if (found) return found;
+            
+            for (const [key, point] of pointLookup.entries()) {
+              if (key.includes(searchName.toUpperCase()) || searchName.toUpperCase().includes(key)) {
+                return point;
+              }
+            }
+            
+            return null;
+          };
+
+          const connections = kmlData.data.connections.map((conn: KMLConnection): ProcessedConnection => {
+            let convertedCoords: number[][];
+            try {
+              if (typeof conn.coordinates === 'string') {
+                const coordsArray = JSON.parse(conn.coordinates);
+                convertedCoords = coordsArray.map((coord: any) => {
+                  if (Array.isArray(coord) && coord.length === 2) {
+                    const [first, second] = coord;
+                    if (Math.abs(first) > 50 && Math.abs(second) < 50) {
+                      return [first, second];
+                    } else {
+                      return [second, first];
+                    }
+                  }
+                  return coord;
+                });
+              } else if (Array.isArray(conn.coordinates)) {
+                convertedCoords = conn.coordinates as number[][];
+              } else {
+                convertedCoords = [];
+              }
+            } catch (error) {
+              console.warn('Failed to parse coordinates for connection:', conn.name);
+              convertedCoords = [];
+            }
+
+            let connectionProperties: Record<string, any> = {};
+            try {
+              if (conn.properties && typeof conn.properties === 'string') {
+                connectionProperties = JSON.parse(conn.properties);
+              } else if (conn.properties && typeof conn.properties === 'object') {
+                connectionProperties = conn.properties;
+              }
+            } catch (error) {
+              console.warn('Failed to parse connection properties');
+            }
+
+            const startPoint = findPoint(conn.start, conn.start_lgd_code);
+            const endPoint = findPoint(conn.end, conn.end_lgd_code);
 
             return {
               start: conn.start,
               end: conn.end,
-              length: Number(conn.length),
-              name: conn.original_name,
+              length: Number(conn.length || 0),
+              name: conn.original_name || conn.name || `${conn.start} TO ${conn.end}`,
               coordinates: convertedCoords,
-              color: conn.type === 'existing' ? "#00AA00" : "#FF0000",
-              existing: conn.type === 'existing',
+              color: (conn.type === 'existing' || conn.existing === true) ? "#00AA00" : "#FF0000",
+              existing: conn.type === 'existing' || conn.existing === true,
+              
               id: conn.id,
               network_id: conn.network_id,
               type: conn.type,
@@ -357,7 +522,39 @@ useEffect(() => {
               end_latlong: conn.end_latlong,
               user_id: conn.user_id,
               user_name: conn.user_name,
-              status: conn.status
+              status: conn.status,
+              created_at: conn.created_at,
+              updated_at: conn.updated_at,
+              
+              segmentData: {
+                connection: {
+                  length: Number(conn.length || 0),
+                  existing: conn.type === 'existing' || conn.existing === true,
+                  color: conn.color || (conn.type === 'existing' ? "#00AA00" : "#FF0000")
+                },
+                startCords: startPoint?.lgd_code || conn.start_lgd_code || conn.start_latlong || "NULL",
+                endCords: endPoint?.lgd_code || conn.end_lgd_code || conn.end_latlong || "NULL",
+                properties: {
+                  ...connectionProperties,
+                  cs: connectionProperties.cs || conn.cs || "",
+                  name: connectionProperties.name || conn.name || `${conn.start} TO ${conn.end}`,
+                  asset_code: connectionProperties.asset_code || conn.asset_code || "",
+                  seg_length: connectionProperties.seg_length || conn.seg_length || (conn.length ? conn.length * 1000 : 0).toString() || "0",
+                  start_node: connectionProperties.start_node || conn.start,
+                  end_node: connectionProperties.end_node || conn.end,
+                  num_fibre: connectionProperties.num_fibre || "24",
+                  status: connectionProperties.status || conn.status || (conn.type === 'existing' ? "Accepted" : "Proposed"),
+                  phase: connectionProperties.phase || (conn.type === 'existing' ? "1" : "3"),
+                  route_code: connectionProperties.route_code || "",
+                  asset_type: connectionProperties.asset_type || "Incremental Cable",
+                  type: connectionProperties.type || "Incremental Cable",
+                  length: connectionProperties.length || conn.length?.toString() || "0",
+                  GlobalID: connectionProperties.GlobalID || "",
+                  S_N: connectionProperties.S_N || ""
+                }
+              },
+              
+              originalProperties: connectionProperties
             };
           });
 
@@ -369,86 +566,116 @@ useEffect(() => {
       setGPSApiResponse({ points: allPoints });
       setConctApiResponse({ connections: allConnections });
 
-      showNotification("success", `Loaded ${allPoints.length} points and ${allConnections.length} connections`);
+      if (kmlArray[0]?.data?.network) {
+        const network = kmlArray[0].data.network;
+        setLocalData(prev => ({
+          ...prev,
+          mainPointName: network.main_point_name || prev.mainPointName,
+          dt_code: network.dt_code || prev.dt_code,
+          dt_name: network.dt_name || prev.dt_name,
+          st_code: network.st_code || prev.st_code,
+          st_name: network.st_name || prev.st_name,
+          totalLength: network.total_length || 0,
+          existinglength: network.existing_length || 0,
+          proposedlength: network.proposed_length || 0
+        }));
+      }
+
+      const matchedConnections = allConnections.filter(conn => 
+        conn.segmentData.startCords !== "NULL" && conn.segmentData.endCords !== "NULL"
+      );
+      
+      showNotification("success", 
+        `Loaded ${allPoints.length} points and ${allConnections.length} connections`
+      );
+      
     } catch (error) {
-      console.error("Error processing KML data:", error);
+      console.error('Error parsing KML data:', error);
       showNotification("error", "Error loading KML data: Invalid format");
     }
   }
 }, [previewKmlData, map, isLoaded]);
 
-
-  useEffect(() => {
-    if (apiGPSResponse?.points?.length && map) {
+useEffect(() => {
+  if (apiGPSResponse?.points?.length && map) {
+    setPointProperties(apiGPSResponse?.points[0]);
     
-      setPointProperties(apiGPSResponse?.points[0])
-      const connectionsByPoint = new Map<string, Connection[]>();
-      
-      if (apiConctResponse?.connections?.length) {
-        apiConctResponse.connections.forEach((conn: Connection) => {
-          const [from, to] = [conn.start, conn.end];
-          [from, to].forEach((point) => {
-            if (!connectionsByPoint.has(point)) {
-              connectionsByPoint.set(point, []);
-            }
-            connectionsByPoint.get(point)?.push(conn);
-          });
+    const connectionsByPoint = new Map<string, Connection[]>();
+    
+    if (apiConctResponse?.connections?.length) {
+      apiConctResponse.connections.forEach((conn: Connection) => {
+        const [from, to] = [conn.start, conn.end];
+        [from, to].forEach((point) => {
+          if (!connectionsByPoint.has(point)) {
+            connectionsByPoint.set(point, []);
+          }
+          connectionsByPoint.get(point)?.push(conn);
         });
-      }
-      
-      const newLoopEntries: LoopEntry[] = apiGPSResponse.points.map((point: any) => {
-        const relatedConnections = connectionsByPoint.get(point.name) || [];
-        const matchedConn = relatedConnections[0];
-        return {
-          name: point.name,
-          coordinates: point.coordinates, // Keep as [lng, lat] for internal consistency
-          lgd_code: point.properties.lgd_code,
-          ...(matchedConn && {
-            connection: {
-              length: matchedConn.length || 0,
-              existing: previewKmlData === null ? true : matchedConn.existing,
-              color: matchedConn.color || "#55ff00",
-            },
-            route: {
-              features: [
-                {
-                  geometry: {
-                    coordinates: matchedConn.coordinates.map(([lat, lng]) => [lng, lat]), // Convert from [lat,lng] to [lng,lat]
-                  },
-                },
-              ],
-            },
-          }),
-        };
       });
-  
-      setLocalData((prev: GlobalData) => ({
-        ...prev,
-        mainPointName: apiGPSResponse.points[0].properties?.blk_name || apiGPSResponse.points[0].properties?.name || '',
-        dt_code: apiGPSResponse.points[0].properties?.dt_code || '',
-        dt_name: apiGPSResponse.points[0].properties?.dt_name || '',
-        st_code: apiGPSResponse.points[0].properties?.st_code || '',
-        st_name: apiGPSResponse.points[0].properties?.st_name || '',
-        loop: [...prev.loop, ...newLoopEntries],
-      }));
-      
-      const bounds = new window.google.maps.LatLngBounds();
-      (apiGPSResponse.points as PointType[]).forEach((point) => {
-        if (Array.isArray(point.coordinates) && point.coordinates.length === 2) {
-          // Convert [lng, lat] to {lat, lng} for Google Maps
-          bounds.extend({ lat: point.coordinates[1], lng: point.coordinates[0] });
-        }
-      });
-     
-      map.fitBounds(bounds);
     }
-  }, [apiGPSResponse, apiConctResponse, map]);
+    
+    const uniquePoints = new Map<string, any>();
+    
+    apiGPSResponse.points.forEach((point: any) => {
+      if (!point.name.includes(" TO ")) {
+        uniquePoints.set(point.name, point);
+      }
+    });
+    
+    const newLoopEntries: LoopEntry[] = Array.from(uniquePoints.values()).map((point: any) => {
+      const relatedConnections = connectionsByPoint.get(point.name) || [];
+      const matchedConn = relatedConnections[0];
+      
+      return {
+        name: point.name,
+        coordinates: point.coordinates,
+        lgd_code: point.properties?.lgd_code || "NULL",
+        properties: point.properties || {},
+        ...(matchedConn && {
+          connection: {
+            length: matchedConn.length || 0,
+            existing: previewKmlData === null ? true : matchedConn.existing,
+            color: matchedConn.color || "#55ff00",
+          },
+          route: {
+            features: [
+              {
+                geometry: {
+                  coordinates: matchedConn.coordinates.map(([lat, lng]) => [lng, lat]),
+                },
+              },
+            ],
+          },
+        }),
+      };
+    });
+
+    setLocalData((prev: GlobalData) => ({
+      ...prev,
+      mainPointName: apiGPSResponse.points[0].properties?.blk_name || apiGPSResponse.points[0].properties?.name || '',
+      dt_code: apiGPSResponse.points[0].properties?.dt_code || '',
+      dt_name: apiGPSResponse.points[0].properties?.dt_name || '',
+      st_code: apiGPSResponse.points[0].properties?.st_code || '',
+      st_name: apiGPSResponse.points[0].properties?.st_name || '',
+      loop: newLoopEntries,
+    }));
+    
+    const bounds = new window.google.maps.LatLngBounds();
+    (apiGPSResponse.points as PointType[]).forEach((point) => {
+      if (Array.isArray(point.coordinates) && point.coordinates.length === 2 && !point.name.includes(" TO ")) {
+        bounds.extend({ lat: point.coordinates[1], lng: point.coordinates[0] });
+      }
+    });
+   
+    map.fitBounds(bounds);
+  }
+}, [apiGPSResponse, apiConctResponse, map]);
 
   useEffect(() => {
     if (!map || !apiConctResponse?.connections?.length) return;
        polylineInstanceMap.forEach((polyline, key) => {
           if (map && polyline) {
-            polyline.setMap(null); // remove from map
+            polyline.setMap(null);
           }
         });
     setDistanceInfoWindows([]);
@@ -472,9 +699,7 @@ useEffect(() => {
         return;
       }
 
-      // FIXED: Always treat coordinates as [lng, lat] format from your API
       const path = connection.coordinates.map((coord) => {
-        // coord is [longitude, latitude] from your API
         const point = { lat: coord[1], lng: coord[0] };
         bounds.extend(point);
         return point;
@@ -802,6 +1027,20 @@ useEffect(() => {
     });
   }, [selectedRouteIndex, RouteKey]);
 
+
+  useEffect(() => {
+  return () => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+    if (notifierTimeoutRef.current) {
+      clearTimeout(notifierTimeoutRef.current);
+      notifierTimeoutRef.current = null;
+    }
+  };
+}, []);
+
   const handleRouteSelection = (routeKey: string, selectedIndex: number, Length: number,preview:boolean) => {
     const selectedId = `${routeKey}-route${selectedIndex + 1}`;
     const selectedEntry = polylineHistory.get(selectedId);
@@ -878,6 +1117,8 @@ useEffect(() => {
 
   };
 
+
+  //  updateGlobalDataWithSelectedRoute function
   const updateGlobalDataWithSelectedRoute = (
     polyline: google.maps.Polyline,
     routeKey: string,
@@ -888,10 +1129,9 @@ useEffect(() => {
       lat: p.lat(),
       lng: p.lng()
     }));
-  
-    const distance = Length
-  
-    // Extract fromName and toName from routeKey
+
+    const distance = Length;
+
     let fromName = '';
     let toName = '';
     let startLgdCode = '';
@@ -909,14 +1149,13 @@ useEffect(() => {
         break;
       }
     }
-  
+
     if (!fromName || !toName) {
-      console.error('Invalid route key format:', routeKey);
       return;
     }
-  
+
     let endPoint = LocalData.loop.find(p => p.name === toName) || null;
-  
+
     if (!endPoint) {
       const endCoord = path[path.length - 1];
       const result = LocalData.loop.reduce<{
@@ -924,28 +1163,26 @@ useEffect(() => {
         dist: number;
       }>((closest, p) => {
         if (!p.coordinates || p.coordinates.length < 2) return closest;
-        // p.coordinates is [lng, lat], endCoord is {lat, lng}
         const dist = Math.sqrt(
           Math.pow(p.coordinates[0] - endCoord.lng, 2) +
           Math.pow(p.coordinates[1] - endCoord.lat, 2)
         );
         return dist < closest.dist ? { point: p, dist } : closest;
       }, { point: null, dist: Infinity });
-  
+
       endPoint = result.point;
       if (endPoint) {
         toName = endPoint.name;
       } else {
-        console.error(`End point ${toName} not found.`);
         return;
       }
     }
-  
-    // Create new route object
+
     const selectedRoute: LoopEntry = {
       name: endPoint.name,
       coordinates: endPoint.coordinates,
       lgd_code: endPoint.lgd_code,
+      properties: endPoint.properties || {},
       route: {
         features: [
           {
@@ -961,14 +1198,15 @@ useEffect(() => {
         color: '#00FFFF'
       }
     };
-  
+
     setLocalData(prev => {
       const loopCopy = [...prev.loop];
       const existingIndex = loopCopy.findIndex(p => p.name === toName);
-  
+
       if (existingIndex >= 0) {
         loopCopy[existingIndex] = {
           ...loopCopy[existingIndex],
+          properties: loopCopy[existingIndex].properties || {},
           route: selectedRoute.route,
           connection: selectedRoute.connection
         };
@@ -980,7 +1218,6 @@ useEffect(() => {
         ...prev.polylineHistory,
         [`${toName} TO ${fromName}`]: {
           polyline: {
-            // Store coordinates as {lat, lng} objects for polyline history
             coordinates: path
           },
           segmentData: {
@@ -1000,7 +1237,6 @@ useEffect(() => {
 
   
   // ROUTE EDITING FUNCTIONS
-  
 
   const addDragMarkersWithRerouting = (
     polyline: google.maps.Polyline,
@@ -1447,60 +1683,409 @@ const deletePolylineAndDistance = (key: string) => {
 
   const userDataString = localStorage.getItem('userData');
   const UserData = userDataString ? JSON.parse(userDataString) : null;
-
-  async function saveKML(LocalData: GlobalData) {
-    const transformedLoop = LocalData.loop.map((entry) => ({
-      ...entry,
-      coordinates: [entry.coordinates[1], entry.coordinates[0]], 
-    }));
-    const Body = {
-      globalData: {
-        loop: transformedLoop,
-        mainPointName: LocalData.mainPointName,
-        totalLength: LocalData.totalLength,
-        proposedlength: LocalData.proposedlength,
-        existinglength: LocalData.existinglength,
-        dt_code:LocalData.dt_code || '',
-        dt_name:LocalData.dt_name || '',
-        st_code:LocalData.st_code || '',
-        st_name:LocalData.st_name || '',
-      },
-      polylineHistory: LocalData.polylineHistory,
-      user_id: UserData?.user_id ?? 1,
-      user_name: UserData?.uname ?? " "
-    };
-    try {
-      setLoader(true)
-      const response = await fetch(`${BASEURL_Val}/save-to-db`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Body)
-      });
-
-   
-      const result = await response.json();
-         if (!response.ok) {
-          showNotification("error", `Error saving KML: ${result.details}`);
-         }else{
-              showNotification("success", `KML saved successfully`)
-
-         }
-
-    } catch (error) {
-      
-      if (error instanceof Error) {
-        showNotification("error", `Error saving KML: ${error.message}`);
-        console.error('Save KML error:', error);
-      } else {
-        showNotification("error", "An unknown error occurred while saving KML.");
-        console.error('Save KML unknown error:', error);
-      }
-      ;
-    } finally {
-      setLoader(false)
-      setSaveFile(false)
-    }
+ 
+  // saveKML function
+  const saveKML = async (localData: GlobalData) => {
+  if (isSaving) {
+    setSaveFile(false);
+    return;
   }
+
+  if (!localData || !localData.loop || !localData.loop.length) {
+    showNotification("error", "No data available to save");
+    setSaveFile(false);
+    return;
+  }
+
+  try {
+    setIsSaving(true);
+    setLoader(true);
+
+    const userDataString = localStorage.getItem('userData');
+    const UserData = userDataString ? JSON.parse(userDataString) : null;
+
+    // Deduplicate points by name before processing
+    const uniqueLoopPoints = new Map<string, any>();
+    localData.loop.forEach(point => {
+      if (!point.name.includes(" TO ") && !uniqueLoopPoints.has(point.name)) {
+        uniqueLoopPoints.set(point.name, point);
+      }
+    });
+
+    const deduplicatedPoints = Array.from(uniqueLoopPoints.values());
+
+    // Extract administrative data from first point's properties
+    const firstPoint = deduplicatedPoints[0];
+    const adminCodes = {
+      blockCode: firstPoint?.properties?.blk_code || '',
+      blockName: firstPoint?.properties?.blk_name || localData.mainPointName || '',
+      dtCode: firstPoint?.properties?.dt_code || localData.dt_code || '',
+      dtName: firstPoint?.properties?.dt_name || localData.dt_name || '',
+      stCode: firstPoint?.properties?.st_code || localData.st_code || '',
+      stName: firstPoint?.properties?.st_name || localData.st_name || ''
+    };
+
+    // Enhanced function to build comprehensive line properties
+    const buildLineProperties = (routeKey: string, historyEntry: any, adminCodes: any) => {
+      const [startName, endName] = routeKey.split(' TO ');
+      const segmentData = historyEntry.segmentData;
+      const connection = segmentData?.connection;
+      
+      // Find existing properties from various sources
+      let existingProperties = segmentData?.properties || {};
+      
+      // Try to find properties from apiConctResponse
+      if (apiConctResponse?.connections) {
+        const matchingConnection = apiConctResponse.connections.find(
+          (conn: any) => `${conn.start} TO ${conn.end}` === routeKey || 
+                        `${conn.end} TO ${conn.start}` === routeKey
+        );
+        if (matchingConnection?.properties) {
+          existingProperties = { ...matchingConnection.properties, ...existingProperties };
+        }
+        if (matchingConnection?.segmentData?.properties) {
+          existingProperties = { ...matchingConnection.segmentData.properties, ...existingProperties };
+        }
+      }
+
+      // Build comprehensive line properties with all KML standard fields
+      const lineProperties = {
+        // Core identification
+        cs: existingProperties.cs || "",
+        name: existingProperties.name || routeKey,
+        asset_code: existingProperties.asset_code || "",
+        
+        // Administrative codes (from extracted admin data)
+        blk_code: existingProperties.blk_code || adminCodes.blockCode,
+        blk_name: existingProperties.blk_name || adminCodes.blockName,
+        dt_code: existingProperties.dt_code || adminCodes.dtCode,
+        dt_name: existingProperties.dt_name || adminCodes.dtName,
+        st_code: existingProperties.st_code || adminCodes.stCode,
+        st_name: existingProperties.st_name || adminCodes.stName,
+        
+        // Length and measurements
+        seg_length: existingProperties.seg_length || (connection?.length * 1000)?.toString() || "0",
+        length: existingProperties.length || connection?.length?.toString() || "0",
+        cable_len: existingProperties.cable_len || (connection?.length * 1000)?.toString() || "0",
+        
+        // Node information
+        start_node: existingProperties.start_node || startName || "",
+        end_node: existingProperties.end_node || endName || "",
+        s_coil_len: existingProperties.s_coil_len || "0",
+        e_coil_len: existingProperties.e_coil_len || "0",
+        
+        // Technical specifications
+        num_fibre: existingProperties.num_fibre || "24",
+        fibre_pos: existingProperties.fibre_pos || "",
+        fibre_type: existingProperties.fibre_type || "SM",
+        cable_type: existingProperties.cable_type || "Aerial",
+        
+        // Status and phase information
+        status: existingProperties.status || (connection?.existing ? "Accepted" : "Proposed"),
+        phase: existingProperties.phase || (connection?.existing ? "1" : "3"),
+        existing: existingProperties.existing || connection?.existing || false,
+        
+        // Asset classification
+        asset_type: existingProperties.asset_type || "Incremental Cable",
+        type: existingProperties.type || "Incremental Cable",
+        route_type: existingProperties.route_type || "Fiber Optic",
+        
+        // Route and path information
+        route_code: existingProperties.route_code || "",
+        route_name: existingProperties.route_name || routeKey,
+        direction: existingProperties.direction || "",
+        traverse: existingProperties.traverse || "U",
+        
+        // Geographic and location data
+        start_lat: existingProperties.start_lat || "",
+        start_lng: existingProperties.start_lng || "",
+        end_lat: existingProperties.end_lat || "",
+        end_lng: existingProperties.end_lng || "",
+        
+        // Construction and maintenance
+        remarks: existingProperties.remarks || "",
+        obs: existingProperties.obs || "",
+        notes: existingProperties.notes || "",
+        construction_method: existingProperties.construction_method || "",
+        contractor: existingProperties.contractor || "",
+        
+        // Dates and timeline
+        install_date: existingProperties.install_date || "",
+        completion_date: existingProperties.completion_date || "",
+        created_at: existingProperties.created_at || new Date().toISOString(),
+        updated_at: existingProperties.updated_at || new Date().toISOString(),
+        
+        // Network and connectivity
+        ring: existingProperties.ring || "",
+        network_id: existingProperties.network_id || "",
+        segment_id: existingProperties.segment_id || "",
+        
+        // Cost and project information
+        estimated_cost: existingProperties.estimated_cost || "",
+        actual_cost: existingProperties.actual_cost || "",
+        project_code: existingProperties.project_code || "",
+        budget_code: existingProperties.budget_code || "",
+        
+        // Quality and testing
+        test_result: existingProperties.test_result || "",
+        signal_strength: existingProperties.signal_strength || "",
+        attenuation: existingProperties.attenuation || "",
+        
+        // Visual properties
+        color: existingProperties.color || connection?.color || "#00AA00",
+        stroke_width: existingProperties.stroke_width || "4",
+        stroke_opacity: existingProperties.stroke_opacity || "1.0",
+        
+        // System fields
+        GlobalID: existingProperties.GlobalID || "",
+        S_N: existingProperties.S_N || "",
+        FID: existingProperties.FID || "",
+        OBJECTID: existingProperties.OBJECTID || "",
+        
+        // User information
+        created_by: existingProperties.created_by || UserData?.uname || "Unknown User",
+        modified_by: existingProperties.modified_by || UserData?.uname || "Unknown User",
+        user_id: existingProperties.user_id || UserData?.user_id || 1,
+        
+        // Preserve any additional custom properties
+        ...existingProperties
+      };
+
+      return lineProperties;
+    };
+
+    // Process connections with FULL properties
+    const connectionsData = Object.entries(localData.polylineHistory || {}).map(([routeKey, historyEntry]) => {
+      const segmentData = historyEntry.segmentData;
+      const polylineCoords = historyEntry.polyline?.coordinates || [];
+      
+      const lineProperties = buildLineProperties(routeKey, historyEntry, adminCodes);
+      
+      return {
+        routeKey: routeKey,
+        coordinates: polylineCoords,
+        length: segmentData?.connection?.length || 0,
+        existing: segmentData?.connection?.existing ?? false,
+        color: segmentData?.connection?.color || "#00AA00",
+        startCords: segmentData?.startCords || "NULL",
+        endCords: segmentData?.endCords || "NULL",
+        properties: lineProperties
+      };
+    });
+
+    // Build payload with complete data structure
+    const payload = {
+      globalData: {
+        loop: deduplicatedPoints.map((point) => ({
+          name: point.name,
+          coordinates: point.coordinates,
+          lgd_code: point.lgd_code || null,
+          // Include FULL properties with all fields
+          properties: {
+            // Core identification fields
+            FID: point.properties?.FID || "",
+            name: point.properties?.name || point.name,
+            lat: point.properties?.lat || (point.coordinates[1]?.toString() || ""),
+            long: point.properties?.long || (point.coordinates[0]?.toString() || ""),
+            remarks: point.properties?.remarks || "",
+            
+            // Administrative fields
+            blk_code: point.properties?.blk_code || adminCodes.blockCode,
+            blk_name: point.properties?.blk_name || adminCodes.blockName,
+            dt_code: point.properties?.dt_code || adminCodes.dtCode,
+            dt_name: point.properties?.dt_name || adminCodes.dtName,
+            st_code: point.properties?.st_code || adminCodes.stCode,
+            st_name: point.properties?.st_name || adminCodes.stName,
+            
+            // Asset identification
+            lgd_code: point.properties?.lgd_code || point.lgd_code || null,
+            asset_code: point.properties?.asset_code || "",
+            
+            // Location and type fields
+            location: point.properties?.location || "",
+            loc_type: point.properties?.loc_type || "",
+            obs: point.properties?.obs || "",
+            status: point.properties?.status || "Proposed",
+            geo_photo: point.properties?.geo_photo || "",
+            
+            // Technical fields
+            otdr_len: point.properties?.otdr_len || "",
+            conn_str: point.properties?.conn_str || "",
+            backhaul: point.properties?.backhaul || "",
+            phase: point.properties?.phase || "3",
+            route_code: point.properties?.route_code || "",
+            asset_type: point.properties?.asset_type || "FPOI",
+            
+            // Network fields
+            gp_code: point.properties?.gp_code || "",
+            block_ip: point.properties?.block_ip || "",
+            gp_mac_id: point.properties?.gp_mac_id || "",
+            gp_sr_no: point.properties?.gp_sr_no || "",
+            nmsgp_cd: point.properties?.nmsgp_cd || "",
+            nmsblk_cd: point.properties?.nmsblk_cd || "",
+            
+            // Cable and ring fields
+            cable_len: point.properties?.cable_len || "0",
+            ring: point.properties?.ring || "",
+            type: point.properties?.type || point.properties?.asset_type || "FPOI",
+            
+            // System fields
+            GlobalID: point.properties?.GlobalID || "",
+            Label: point.properties?.Label || point.name,
+            
+            // Preserve any additional custom properties
+            ...point.properties
+          },
+          // Include connection data if exists
+          ...(point.connection && {
+            connection: {
+              length: point.connection.length,
+              existing: point.connection.existing,
+              color: point.connection.color
+            }
+          }),
+          // Include route data if exists
+          ...(point.route && {
+            route: point.route
+          })
+        })),
+        // Administrative data
+        mainPointName: adminCodes.blockName,
+        blk_code: adminCodes.blockCode,
+        blk_name: adminCodes.blockName,
+        totalLength: localData.totalLength || 0,
+        existinglength: localData.existinglength || 0,
+        proposedlength: localData.proposedlength || 0,
+        dt_code: adminCodes.dtCode,
+        dt_name: adminCodes.dtName,
+        st_code: adminCodes.stCode,
+        st_name: adminCodes.stName
+      },
+      // Enhanced polylineHistory with comprehensive line properties
+      polylineHistory: Object.fromEntries(
+        Object.entries(localData.polylineHistory || {}).map(([key, value]) => {
+          const lineProperties = buildLineProperties(key, value, adminCodes);
+          
+          return [
+            key,
+            {
+              polyline: value.polyline,
+              segmentData: {
+                connection: value.segmentData?.connection || {
+                  length: 0,
+                  existing: false,
+                  color: "#00AA00"
+                },
+                startCords: value.segmentData?.startCords || "NULL",
+                endCords: value.segmentData?.endCords || "NULL",
+                properties: lineProperties
+              },
+              // Include distanceLabel if exists
+              ...(value.distanceLabel && { distanceLabel: value.distanceLabel })
+            }
+          ];
+        })
+      ),
+      connections: connectionsData,
+      user_id: UserData?.user_id ?? 1,
+      user_name: UserData?.uname ?? "Unknown User",
+      created_at: new Date().toISOString(),
+      // Add metadata
+      metadata: {
+        version: "1.0",
+        export_date: new Date().toISOString(),
+        source: "MapComponent",
+        total_points: deduplicatedPoints.length,
+        total_connections: Object.keys(localData.polylineHistory || {}).length,
+        line_properties_version: "2.0"
+      }
+    };
+
+    const payloadString = JSON.stringify(payload);
+    const payloadSizeMB = new Blob([payloadString]).size / (1024 * 1024);
+
+    if (payloadSizeMB > 50) {
+      showNotification("error", `Payload too large (${payloadSizeMB.toFixed(2)} MB). Please reduce data size.`);
+      setIsSaving(false);
+      setLoader(false);
+      setSaveFile(false);
+      return;
+    }
+
+    const response = await fetch(`${BASEURL_Val}/save-to-db`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: payloadString
+    });
+
+    let result;
+    try {
+      const responseText = await response.text();
+      if (responseText) {
+        result = JSON.parse(responseText);
+      } else {
+        result = { message: "Empty response from server" };
+      }
+    } catch (parseError) {
+      result = { error: "Invalid JSON response from server" };
+    }
+
+    if (!response.ok) {
+      showNotification("error", `Error saving KML: ${result?.details || result?.message || result?.error || `HTTP ${response.status}: ${response.statusText}`}`);
+    } else {
+      showNotification("success", `KML saved successfully! Network ID: ${result?.networkId || 'N/A'} ${result?.message || ''}`);
+      
+      // Update local data with server response if provided
+      if (result?.data) {
+        setLocalData(prev => ({
+          ...prev,
+          ...result.data,
+          // Preserve polylineHistory with updated properties if server returns them
+          polylineHistory: result.data.polylineHistory || prev.polylineHistory
+        }));
+      }
+      
+      // Clear the save flag
+      setSaveFile(false);
+    }
+
+  } catch (error) {
+    console.error('SaveKML Error Details:', error);
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      showNotification("error", "Network error: Unable to connect to server. Please check if the backend is running.");
+    } else if (error instanceof Error) {
+      showNotification("error", `Error saving KML: ${error.message}`);
+    } else {
+      showNotification("error", "An unknown error occurred while saving KML data.");
+    }
+  } finally {
+    setIsSaving(false);
+    setLoader(false);
+    setSaveFile(false);
+  }
+};
+
+useEffect(() => {
+  if (SaveFile && !isSaving) {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    saveTimeoutRef.current = setTimeout(() => {
+      saveKML(LocalData);
+    }, 500);
+  } else if (SaveFile && isSaving) {
+    setSaveFile(false);
+  }
+
+  return () => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+  };
+}, [SaveFile, isSaving, LocalData]);
 
   async function VerifySaveKML(previewKmlData:any) {
      const kmlData = JSON.parse(previewKmlData);     
@@ -1856,23 +2441,22 @@ const deletePolylineAndDistance = (key: string) => {
         {apiGPSResponse?.points?.map((point: GPSPoint, index: number) => {
           const position = {
             lat: point.coordinates[1], 
-            lng: point.coordinates[0],
+            lng: point.coordinates[0], 
           };
+  
           const isPointSame = pointA && !pointB && isSameCoordinate(pointA, position);
 
           return (
             <Marker
-              key={index}
+              key={`marker-${index}-${point.name}`}
               position={position}
               icon={{
-                // url: point?.properties?.icon || 'https://maps.google.com/mapfiles/ms/icons/purple-dot.png',
-                // scaledSize: new window.google.maps.Size(30, 30),
                 url: point?.properties?.icon?.startsWith("http")
                   ? point.properties.icon
-                  :'https://maps.google.com/mapfiles/ms/icons/purple-dot.png'
-
+                  : 'https://maps.google.com/mapfiles/ms/icons/purple-dot.png',
+                scaledSize: new window.google.maps.Size(30, 30),
               }}
-              
+              title={point.name}
               onClick={() => {
                 setPointProperties(point);
                 if (AutoMode) {
