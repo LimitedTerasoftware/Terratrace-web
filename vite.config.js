@@ -9,9 +9,9 @@ export default defineConfig(({ mode }) => {
     // base: "/terratrace/",
     server: {
       proxy: {
-        '/api/v1': {
-           target: 'https://traceapi.tricadtrack.com',
-          // target: 'https://api.keeshondcoin.com',
+        '/Tracking/api/v1/': {
+          //  target: 'https://traceapi.tricadtrack.com',
+          target: 'https://api.keeshondcoin.com',
           changeOrigin: true,
           secure: false,
         },
