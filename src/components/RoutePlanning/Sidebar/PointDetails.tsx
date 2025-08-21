@@ -216,7 +216,7 @@ const PointDetails: React.FC = () => {
         }
 
         // API call to save to database
-        const response = await fetch('https://traceapi.keeshondcoin.com/save-properties', {
+        const response = await fetch('https://api.tricadtrack.com/save-properties', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
