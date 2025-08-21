@@ -289,6 +289,14 @@ const MapComponent: React.FC = () => {
   const notifierTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const routeMarkers = useRef<Map<string, google.maps.Marker[]>>(new Map());
 
+  // Inline default values
+  
+  const DEFAULTS = {
+  EMPTY_STRING: "",
+  ZERO: 0,
+  NULL_VALUE: null
+};
+
   
   // MAP LIFECYCLE CALLBACKS
   
@@ -1775,10 +1783,10 @@ const deletePolylineAndDistance = (key: string) => {
         e_coil_len: existingProperties.e_coil_len || "0",
         
         // Technical specifications
-        num_fibre: existingProperties.num_fibre || "24",
+        num_fibre: existingProperties.num_fibre || "",
         fibre_pos: existingProperties.fibre_pos || "",
-        fibre_type: existingProperties.fibre_type || "SM",
-        cable_type: existingProperties.cable_type || "Aerial",
+        fibre_type: existingProperties.fibre_type || "",
+        cable_type: existingProperties.cable_type || "",
         
         // Status and phase information
         status: existingProperties.status || (connection?.existing ? "Accepted" : "Proposed"),
@@ -1786,15 +1794,15 @@ const deletePolylineAndDistance = (key: string) => {
         existing: existingProperties.existing || connection?.existing || false,
         
         // Asset classification
-        asset_type: existingProperties.asset_type || "Incremental Cable",
-        type: existingProperties.type || "Incremental Cable",
-        route_type: existingProperties.route_type || "Fiber Optic",
+        asset_type: existingProperties.asset_type || "",
+        type: existingProperties.type || "",
+        route_type: existingProperties.route_type || "",
         
         // Route and path information
         route_code: existingProperties.route_code || "",
         route_name: existingProperties.route_name || routeKey,
         direction: existingProperties.direction || "",
-        traverse: existingProperties.traverse || "U",
+        traverse: existingProperties.traverse || "",
         
         // Geographic and location data
         start_lat: existingProperties.start_lat || "",
@@ -1914,7 +1922,7 @@ const deletePolylineAndDistance = (key: string) => {
             backhaul: point.properties?.backhaul || "",
             phase: point.properties?.phase || "3",
             route_code: point.properties?.route_code || "",
-            asset_type: point.properties?.asset_type || "FPOI",
+            asset_type: point.properties?.asset_type || "",
             
             // Network fields
             gp_code: point.properties?.gp_code || "",
@@ -1927,7 +1935,7 @@ const deletePolylineAndDistance = (key: string) => {
             // Cable and ring fields
             cable_len: point.properties?.cable_len || "0",
             ring: point.properties?.ring || "",
-            type: point.properties?.type || point.properties?.asset_type || "FPOI",
+            type: point.properties?.type || point.properties?.asset_type || "",
             
             // System fields
             GlobalID: point.properties?.GlobalID || "",

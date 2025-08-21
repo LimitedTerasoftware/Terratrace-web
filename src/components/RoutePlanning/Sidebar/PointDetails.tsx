@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit, Save, X, AlertCircle, CheckCircle } from 'lucide-react';
+import { Edit, Save, X, AlertCircle, CheckCircle, Plus } from 'lucide-react';
 import { useAppContext } from '../AppContext';
 
 interface NotificationState {
@@ -9,7 +9,7 @@ interface NotificationState {
 }
 
 const PointDetails: React.FC = () => {
-  const { PointProperties, setPointProperties } = useAppContext();
+  const { PointProperties, setPointProperties, previewKmlData, apiGPSResponse, setGPSApiResponse } = useAppContext();
   const [isEditing, setIsEditing] = useState(false);
   const [editedData, setEditedData] = useState<any>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -18,19 +18,47 @@ const PointDetails: React.FC = () => {
     message: '', 
     visible: false 
   });
+  const [showAddFieldDropdown, setShowAddFieldDropdown] = useState(false);
+  const [newFieldKey, setNewFieldKey] = useState('');
+  const [newFieldValue, setNewFieldValue] = useState('');
 
   const BASEURL_Val = import.meta.env.VITE_TraceAPI_URL;
+
+  // Determine if we're in preview mode
+  const isPreviewMode = !!previewKmlData;
 
   // Reset editing state when PointProperties changes
   useEffect(() => {
     if (PointProperties) {
+      let updatedPointProperties = { ...PointProperties };
+      
+      // Auto-add lgd_code if missing in upload mode
+      if (!isPreviewMode && PointProperties.properties) {
+        const hasLgdCode = PointProperties.properties.lgd_code !== undefined;
+        
+        if (!hasLgdCode) {
+          updatedPointProperties = {
+            ...PointProperties,
+            properties: {
+              ...PointProperties.properties,
+              lgd_code: '' // Automatically add empty lgd_code
+            }
+          };
+          
+          // Update context with the new lgd_code field WITHOUT triggering re-render loop
+          setTimeout(() => {
+            setPointProperties(updatedPointProperties);
+          }, 0);
+        }
+      }
+      
       setEditedData({
-        ...PointProperties,
-        properties: { ...PointProperties.properties }
+        ...updatedPointProperties,
+        properties: { ...updatedPointProperties.properties }
       });
     }
     setIsEditing(false);
-  }, [PointProperties]);
+  }, [PointProperties?.name, isPreviewMode]); // Only depend on point name, not full object
 
   // Auto-hide notifications
   useEffect(() => {
@@ -44,6 +72,78 @@ const PointDetails: React.FC = () => {
 
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message, visible: true });
+  };
+
+  // Add custom field to properties
+  const handleAddCustomField = () => {
+    if (!newFieldKey.trim()) {
+      showNotification('error', 'Please enter a field name');
+      return;
+    }
+
+    if (PointProperties?.properties?.hasOwnProperty(newFieldKey.trim())) {
+      showNotification('error', 'Field already exists');
+      return;
+    }
+
+    if (PointProperties?.properties) {
+      const updatedProperties = {
+        ...PointProperties.properties,
+        [newFieldKey.trim()]: newFieldValue.trim()
+      };
+      
+      const updatedPointProperties = {
+        ...PointProperties,
+        properties: updatedProperties
+      };
+      
+      // Update both the context and local edited data
+      setPointProperties(updatedPointProperties);
+      setEditedData(updatedPointProperties);
+      
+      // Reset form and close dropdown
+      setNewFieldKey('');
+      setNewFieldValue('');
+      setShowAddFieldDropdown(false);
+      
+      showNotification('success', `Field "${newFieldKey.trim()}" added successfully!`);
+    }
+  };
+
+  const handleCancelAddField = () => {
+    setNewFieldKey('');
+    setNewFieldValue('');
+    setShowAddFieldDropdown(false);
+  };
+
+  // Check if lgd_code is missing from properties (only for upload mode)
+  const isLgdCodeMissing = () => {
+    if (isPreviewMode || !PointProperties?.properties) return false;
+    const lgdCode = PointProperties.properties.lgd_code;
+    return !lgdCode || lgdCode === 'NULL' || lgdCode === null || lgdCode === undefined || lgdCode === '';
+  };
+
+  // Add lgd_code to properties (only for upload mode)
+  const handleAddLgdCode = () => {
+    if (isPreviewMode) return; // Disable in preview mode
+    
+    if (PointProperties?.properties) {
+      const updatedProperties = {
+        ...PointProperties.properties,
+        lgd_code: '' // Add empty lgd_code that user can fill
+      };
+      
+      const updatedPointProperties = {
+        ...PointProperties,
+        properties: updatedProperties
+      };
+      
+      // Update both the context and local edited data
+      setPointProperties(updatedPointProperties);
+      setEditedData(updatedPointProperties);
+      
+      showNotification('success', 'lgd_code field added. Click Edit to enter the value.');
+    }
   };
 
   const handleEdit = () => {
@@ -85,62 +185,84 @@ const PointDetails: React.FC = () => {
     try {
       setIsLoading(true);
       
-      // Determine if this is a point or line based on the data structure
-      const isPoint = PointProperties.properties !== undefined;
-      const type = isPoint ? "point" : "line";
-      
-      // Prepare the update payload according to your API structure
-      let updatePayload;
-      
-      if (isPoint) {
-        // For GPS points with properties
-        updatePayload = {
-          type: "point",
-          id: editedData.properties?.id || editedData.id || editedData.properties?.FID,
-          properties: editedData.properties
-        };
+      if (isPreviewMode) {
+        // PREVIEW MODE: Save to API (database)
+        const isPoint = PointProperties.properties !== undefined;
+        const type = isPoint ? "point" : "line";
+        
+        let updatePayload;
+        
+        if (isPoint) {
+          // For GPS points with properties
+          updatePayload = {
+            type: "point",
+            id: editedData.properties?.id || editedData.id || editedData.properties?.FID,
+            properties: editedData.properties
+          };
+        } else {
+          // For line/route connections
+          updatePayload = {
+            type: "line",
+            id: editedData.id || editedData.connection_id,
+            properties: {
+              start: editedData.start,
+              end: editedData.end,
+              length: editedData.length,
+              existing: editedData.existing,
+              name: editedData.name || `${editedData.start} TO ${editedData.end}`,
+              ...editedData.properties
+            }
+          };
+        }
+
+        // API call to save to database
+        const response = await fetch('https://traceapi.keeshondcoin.com/save-properties', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updatePayload)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `Update failed: ${response.status}`);
+        }
+
+        showNotification('success', `${type === 'point' ? 'Point' : 'Line'} properties saved to database!`);
+        
       } else {
-        // For line/route connections
-        updatePayload = {
-          type: "line",
-          id: editedData.id || editedData.connection_id,
-          properties: {
-            start: editedData.start,
-            end: editedData.end,
-            length: editedData.length,
-            existing: editedData.existing,
-            name: editedData.name || `${editedData.start} TO ${editedData.end}`,
-            // Include any other line-specific properties
-            ...editedData.properties
-          }
-        };
+        // UPLOAD MODE: Save to browser context (temporary data)
+        // Update the underlying GPS response data to persist changes
+        if (apiGPSResponse?.points && editedData.name) {
+          const updatedPoints = apiGPSResponse.points.map((point: any) => {
+            if (point.name === editedData.name) {
+              return {
+                ...point,
+                ...editedData,
+                properties: {
+                  ...point.properties,
+                  ...editedData.properties
+                }
+              };
+            }
+            return point;
+          });
+          
+          // Update the GPS response to persist changes
+          setGPSApiResponse({ points: updatedPoints });
+        }
+        
+        showNotification('success', 'Properties updated in browser context!');
       }
-
-      // API call to your specific endpoint
-      const response = await fetch('https://traceapi.keeshondcoin.com/save-properties', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatePayload)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Update failed: ${response.status}`);
-      }
-
-      const result = await response.json();
       
-      // Update the context with the new data
+      // Always update the current point context and exit editing mode
       setPointProperties(editedData);
       setIsEditing(false);
       
-      showNotification('success', `${type === 'point' ? 'Point' : 'Line'} properties updated successfully!`);
-      
     } catch (error) {
-      console.error('Error updating properties:', error);
-      showNotification('error', `Failed to update properties: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Error saving properties:', error);
+      showNotification('error', `Failed to save properties: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
@@ -207,6 +329,7 @@ const PointDetails: React.FC = () => {
           display: none;  /* Safari and Chrome */
         }
       `}</style>
+      
       {/* Notification */}
       {notification.visible && (
         <div 
@@ -269,6 +392,78 @@ const PointDetails: React.FC = () => {
         </div>
       </div>
 
+      {/* Add Custom Field Dropdown - Only show in UPLOAD MODE */}
+      {!isPreviewMode && PointProperties.properties && (
+        <div className="mb-3 pb-3 border-b border-gray-200">
+          {!showAddFieldDropdown ? (
+            <button
+              onClick={() => setShowAddFieldDropdown(true)}
+              className="flex items-center gap-1 px-3 py-1.5 text-xs bg-orange-100 hover:bg-orange-200 text-orange-700 rounded transition-colors border border-orange-300"
+              title="Add custom field to this point"
+            >
+              <Plus size={12} />
+              Add Field
+            </button>
+          ) : (
+            <div className="bg-gray-50 border border-gray-200 rounded-md p-3 space-y-3">
+              <div className="flex justify-between items-center">
+                <h4 className="text-sm font-medium text-gray-700">Add Custom Field</h4>
+                <button
+                  onClick={handleCancelAddField}
+                  className="text-gray-400 hover:text-gray-600"
+                  title="Cancel"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Field Name
+                  </label>
+                  <input
+                    type="text"
+                    value={newFieldKey}
+                    onChange={(e) => setNewFieldKey(e.target.value)}
+                    placeholder="Enter field name (e.g., custom_field, remarks)"
+                    className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Field Value
+                  </label>
+                  <input
+                    type="text"
+                    value={newFieldValue}
+                    onChange={(e) => setNewFieldValue(e.target.value)}
+                    placeholder="Enter field value"
+                    className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={handleAddCustomField}
+                  className="flex-1 px-3 py-1.5 text-xs bg-green-100 hover:bg-green-200 text-green-700 rounded transition-colors border border-green-300 font-medium"
+                >
+                  Add Field
+                </button>
+                <button
+                  onClick={handleCancelAddField}
+                  className="flex-1 px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors border border-gray-300"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Content */}
       <div className="space-y-2 overflow-x-auto max-h-96 overflow-y-auto scrollbar-hide">
         <div className="min-w-[600px] pr-2">
@@ -279,6 +474,11 @@ const PointDetails: React.FC = () => {
                 <div className="flex text-sm gap-4 items-start py-1">
                   <div className="w-32 text-gray-900 font-medium whitespace-nowrap flex-shrink-0">
                     {key}
+                    {key === 'lgd_code' && (
+                      <span className="text-orange-600 text-xs ml-1" title="Location Government Directory Code">
+                        *
+                      </span>
+                    )}
                   </div>
                   <div className="text-gray-600 flex-grow min-w-0">
                     {isEditing ? (
@@ -287,7 +487,7 @@ const PointDetails: React.FC = () => {
                       </div>
                     ) : (
                       <span className="truncate block">
-                        {value !== 'NULL' && value !== null && value !== undefined ? String(value) : '-'}
+                        {value !== 'NULL' && value !== null && value !== undefined && value !== '' ? String(value) : '-'}
                       </span>
                     )}
                   </div>
