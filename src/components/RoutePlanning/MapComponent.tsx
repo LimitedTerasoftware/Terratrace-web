@@ -1937,7 +1937,8 @@ const deletePolylineAndDistance = (key: string) => {
   const UserData = userDataString ? JSON.parse(userDataString) : null;
  
   // saveKML function
-  const saveKML = async (localData: GlobalData) => {
+  // Modified saveKML function to handle preview mode
+const saveKML = async (localData: GlobalData) => {
   if (isSaving) {
     setSaveFile(false);
     return;
@@ -1955,6 +1956,31 @@ const deletePolylineAndDistance = (key: string) => {
 
     const userDataString = localStorage.getItem('userData');
     const UserData = userDataString ? JSON.parse(userDataString) : null;
+
+    // Check if we're in preview mode
+    const isPreviewMode = previewKmlData !== null;
+    
+    // Get networkId for preview mode
+    let networkId = null;
+    if (isPreviewMode && previewKmlData) {
+      try {
+        const kmlData = JSON.parse(previewKmlData);
+        networkId = kmlData?.data?.points?.[0]?.network_id || 
+                   kmlData?.data?.network?.id ||
+                   kmlData[0]?.data?.points?.[0]?.network_id ||
+                   kmlData[0]?.data?.network?.id;
+      } catch (error) {
+        console.error('Error parsing previewKmlData for networkId:', error);
+      }
+    }
+
+    if (isPreviewMode && !networkId) {
+      showNotification("error", "Network ID not found for preview mode update");
+      setIsSaving(false);
+      setLoader(false);
+      setSaveFile(false);
+      return;
+    }
 
     // SEND ALL POINTS - No deduplication, only filter out connection names
     const allPoints = localData.loop.filter(point => !point.name.includes(" TO "));
@@ -2085,7 +2111,7 @@ const deletePolylineAndDistance = (key: string) => {
         
         // Network and connectivity
         ring: existingProperties.ring || "",
-        network_id: existingProperties.network_id || "",
+        network_id: existingProperties.network_id || networkId || "",
         segment_id: existingProperties.segment_id || "",
         
         // Database IDs
@@ -2200,7 +2226,8 @@ const deletePolylineAndDistance = (key: string) => {
               properties: {
                 name: key,
                 status: "Reconstructed from map",
-                source: "map_reconstruction"
+                source: "map_reconstruction",
+                network_id: networkId || ""
               }
             });
             
@@ -2225,7 +2252,7 @@ const deletePolylineAndDistance = (key: string) => {
     // Process ALL connections
     const connectionsData = processAllConnections();
 
-    // Build payload with ALL data preserved
+    // Build payload with ALL data preserved (same payload structure for both modes)
     const payload = {
       globalData: {
         // ALL POINTS with complete properties
@@ -2252,6 +2279,9 @@ const deletePolylineAndDistance = (key: string) => {
             // Asset identification
             lgd_code: point.properties?.lgd_code || point.lgd_code || null,
             asset_code: point.properties?.asset_code || "",
+            
+            // Network field - IMPORTANT for preview mode
+            network_id: point.properties?.network_id || networkId || "",
             
             // Location and type fields
             location: point.properties?.location || "",
@@ -2287,7 +2317,6 @@ const deletePolylineAndDistance = (key: string) => {
             
             // Database fields
             id: point.properties?.id || "",
-            network_id: point.properties?.network_id || "",
             created_at: point.properties?.created_at || "",
             updated_at: point.properties?.updated_at || "",
             
@@ -2325,7 +2354,10 @@ const deletePolylineAndDistance = (key: string) => {
         dt_code: adminCodes.dtCode,
         dt_name: adminCodes.dtName,
         st_code: adminCodes.stCode,
-        st_name: adminCodes.stName
+        st_name: adminCodes.stName,
+        
+        // Add network_id for preview mode
+        ...(isPreviewMode && { network_id: networkId })
       },
       
       // ALL polylineHistory data with enhanced properties
@@ -2345,7 +2377,11 @@ const deletePolylineAndDistance = (key: string) => {
                 },
                 startCords: value.segmentData?.startCords || "NULL",
                 endCords: value.segmentData?.endCords || "NULL",
-                properties: lineProperties
+                properties: {
+                  ...lineProperties,
+                  // Ensure network_id is included for preview mode
+                  network_id: lineProperties.network_id || networkId || ""
+                }
               },
               // Preserve additional data
               ...(value.distanceLabel && { distanceLabel: value.distanceLabel }),
@@ -2357,18 +2393,29 @@ const deletePolylineAndDistance = (key: string) => {
       ),
       
       // ALL connections data
-      connections: connectionsData,
+      connections: connectionsData.map(conn => ({
+        ...conn,
+        properties: {
+          ...conn.properties,
+          // Ensure network_id is included for preview mode
+          network_id: conn.properties.network_id || networkId || ""
+        }
+      })),
       
       // User and timestamp data
       user_id: UserData?.user_id ?? 1,
       user_name: UserData?.uname ?? "Unknown User",
       created_at: new Date().toISOString(),
       
+      // Add network_id to root level for preview mode
+      ...(isPreviewMode && { network_id: networkId }),
+      
       // Comprehensive metadata for debugging and validation
       metadata: {
         version: "1.0",
         export_date: new Date().toISOString(),
         source: "MapComponent",
+        mode: isPreviewMode ? "preview_update" : "new_save",
         total_points: allPoints.length,
         total_connections: connectionsData.length,
         connections_breakdown: {
@@ -2380,7 +2427,12 @@ const deletePolylineAndDistance = (key: string) => {
         line_properties_version: "2.0",
         deduplication_applied: false,
         data_sources: ['localData.loop', 'localData.polylineHistory', 'apiConctResponse.connections', 'polylineInstanceMap'],
-        preservation_status: "complete"
+        preservation_status: "complete",
+        ...(isPreviewMode && { 
+          preview_mode: true,
+          network_id: networkId,
+          api_endpoint: "update-network"
+        })
       }
     };
 
@@ -2396,9 +2448,24 @@ const deletePolylineAndDistance = (key: string) => {
       return;
     }
 
+    // Choose API endpoint and method based on mode
+    let apiUrl: string;
+    let requestMethod: string;
+    
+    if (isPreviewMode) {
+      // Preview mode: Use PUT method with update-network endpoint
+      apiUrl = `${BASEURL_Val}/update-network/${networkId}`;
+      requestMethod = 'PUT';
+    } else {
+      // Normal mode: Use POST method with save-to-db endpoint
+      apiUrl = `${BASEURL_Val}/save-to-db`;
+      requestMethod = 'POST';
+    }
+
+
     // Send to backend
-    const response = await fetch(`${BASEURL_Val}/save-to-db`, {
-      method: 'POST',
+    const response = await fetch(apiUrl, {
+      method: requestMethod,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -2420,14 +2487,18 @@ const deletePolylineAndDistance = (key: string) => {
 
     if (!response.ok) {
       const errorMessage = result?.details || result?.message || result?.error || `HTTP ${response.status}: ${response.statusText}`;
-      showNotification("error", `Error saving KML: ${errorMessage}`);
-      console.error('SaveKML API Error:', {
+      const modeText = isPreviewMode ? "updating network" : "saving KML";
+      showNotification("error", `Error ${modeText}: ${errorMessage}`);
+      console.error(`${isPreviewMode ? 'Update Network' : 'SaveKML'} API Error:`, {
         status: response.status,
         statusText: response.statusText,
-        result: result
+        result: result,
+        mode: isPreviewMode ? 'preview' : 'normal',
+        endpoint: apiUrl
       });
     } else {
-      showNotification("success", `KML saved successfully!`);
+      const successMessage = isPreviewMode ? "Network updated successfully!" : "KML saved successfully!";
+      showNotification("success", successMessage);
       
       // Update local data with server response if provided
       if (result?.data) {
@@ -2444,17 +2515,20 @@ const deletePolylineAndDistance = (key: string) => {
     }
 
   } catch (error) {
-    console.error('SaveKML Error Details:', error);
+    console.error('Save/Update Error Details:', error);
+    
+    const isPreviewMode = previewKmlData !== null;
+    const operationText = isPreviewMode ? "updating network" : "saving KML";
     
     // Detailed error handling
     if (error instanceof TypeError && error.message.includes('fetch')) {
-      showNotification("error", "Network error: Unable to connect to server. Please check if the backend is running.");
+      showNotification("error", `Network error: Unable to connect to server while ${operationText}. Please check if the backend is running.`);
     } else if (error instanceof SyntaxError) {
-      showNotification("error", "Data formatting error: Invalid JSON structure detected.");
+      showNotification("error", `Data formatting error while ${operationText}: Invalid JSON structure detected.`);
     } else if (error instanceof Error) {
-      showNotification("error", `Error saving KML: ${error.message}`);
+      showNotification("error", `Error ${operationText}: ${error.message}`);
     } else {
-      showNotification("error", "An unknown error occurred while saving KML data.");
+      showNotification("error", `An unknown error occurred while ${operationText}.`);
     }
     
   } finally {
