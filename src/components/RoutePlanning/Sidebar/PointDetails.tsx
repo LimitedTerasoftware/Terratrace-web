@@ -253,7 +253,7 @@ const PointDetails: React.FC = () => {
           setGPSApiResponse({ points: updatedPoints });
         }
         
-        showNotification('success', 'Properties updated in browser context!');
+        
       }
       
       // Always update the current point context and exit editing mode
@@ -464,114 +464,120 @@ const PointDetails: React.FC = () => {
         </div>
       )}
 
-      {/* Content */}
       <div className="space-y-2 overflow-x-auto max-h-96 overflow-y-auto scrollbar-hide">
-        <div className="min-w-[600px] pr-2">
-          {PointProperties.properties ? (
-            // Render properties
-            Object.entries(PointProperties.properties).map(([key, value], index) => (
-              <div key={index}>
-                <div className="flex text-sm gap-4 items-start py-1">
-                  <div className="w-32 text-gray-900 font-medium whitespace-nowrap flex-shrink-0">
-                    {key}
-                    {key === 'lgd_code' && (
-                      <span className="text-orange-600 text-xs ml-1" title="Location Government Directory Code">
-                        *
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-gray-600 flex-grow min-w-0">
-                    {isEditing ? (
-                      <div className="min-w-[200px]">
-                        {renderEditableField(key, value, true)}
-                      </div>
-                    ) : (
-                      <span className="truncate block">
-                        {value !== 'NULL' && value !== null && value !== undefined && value !== '' ? String(value) : '-'}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <hr className="border-gray-200" />
-              </div>
-            ))
-          ) : (
-            // Render route connection details
-            <div>
-              <div className="flex text-sm gap-4 items-start py-1">
-                <div className="w-32 text-gray-900 font-medium whitespace-nowrap flex-shrink-0">Point A</div>
-                <div className="text-gray-600 flex-grow min-w-0">
-                  {isEditing ? (
-                    <div className="min-w-[200px]">
-                      {renderEditableField('start', PointProperties.start, false)}
-                    </div>
-                  ) : (
-                    PointProperties.start || '-'
-                  )}
-                </div>
-              </div>
-              <hr />
-              
-              <div className="flex text-sm gap-4 items-start py-1">
-                <div className="w-32 text-gray-900 font-medium whitespace-nowrap flex-shrink-0">Point B</div>
-                <div className="text-gray-600 flex-grow min-w-0">
-                  {isEditing ? (
-                    <div className="min-w-[200px]">
-                      {renderEditableField('end', PointProperties.end, false)}
-                    </div>
-                  ) : (
-                    PointProperties.end || '-'
-                  )}
-                </div>
-              </div>
-              <hr />
-              
-              <div className="flex text-sm gap-4 items-start py-1">
-                <div className="w-32 text-gray-900 font-medium whitespace-nowrap flex-shrink-0">Length</div>
-                <div className="text-gray-600 flex-grow min-w-0">
-                  {isEditing ? (
-                    <div className="flex items-center gap-2 min-w-[200px]">
-                      <input
-                        type="number"
-                        value={editedData.length || 0}
-                        onChange={(e) => handleInputChange('length', e.target.value, false)}
-                        className="flex-grow min-w-[120px] px-2 py-1 border border-gray-300 rounded text-sm"
-                        step="0.01"
-                        min="0"
-                      />
-                      <span className="text-xs text-gray-500 whitespace-nowrap">km</span>
-                    </div>
-                  ) : (
-                    `${(PointProperties.length || 0).toFixed(2)} km`
-                  )}
-                </div>
-              </div>
-              <hr />
-              
-              <div className="flex text-sm gap-4 items-start py-1">
-                <div className="w-32 text-gray-900 font-medium whitespace-nowrap flex-shrink-0">Existing</div>
-                <div className="text-gray-600 flex-grow min-w-0">
-                  {isEditing ? (
-                    <div className="min-w-[120px]">
-                      <select
-                        value={editedData.existing ? 'true' : 'false'}
-                        onChange={(e) => handleInputChange('existing', e.target.value === 'true', false)}
-                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                      >
-                        <option value="true">Yes</option>
-                        <option value="false">No</option>
-                      </select>
-                    </div>
-                  ) : (
-                    PointProperties.existing ? 'Yes' : 'No'
-                  )}
-                </div>
-              </div>
-              <hr />
+  <div className="min-w-[600px] pr-2">
+    {PointProperties.properties && Object.keys(PointProperties.properties).length > 0 ? (
+      // Render detailed properties
+      Object.entries(PointProperties.properties).map(([key, value], index) => (
+        <div key={index}>
+          <div className="flex text-sm gap-4 items-start py-1">
+            <div className="w-32 text-gray-900 font-medium whitespace-nowrap flex-shrink-0">
+              {key}
+              {key === 'lgd_code' && (
+                <span className="text-orange-600 text-xs ml-1" title="Location Government Directory Code">
+                  *
+                </span>
+              )}
             </div>
-          )}
+            <div className="text-gray-600 flex-grow min-w-0">
+              {isEditing ? (
+                <div className="min-w-[200px]">
+                  {renderEditableField(key, value, true)}
+                </div>
+              ) : (
+                <span className="truncate block">
+                  {value !== 'NULL' && value !== null && value !== undefined && value !== '' ? String(value) : '-'}
+                </span>
+              )}
+            </div>
+          </div>
+          <hr className="border-gray-200" />
         </div>
+      ))
+    ) : (
+      // Fallback: Show basic route info when no detailed properties available
+      <div>
+        {/* Add a header to show this is basic route info */}
+        <div className="mb-3 p-2 bg-blue-50 rounded-md">
+          <h4 className="text-sm font-medium text-blue-800">Route Connection Details</h4>
+          <p className="text-xs text-blue-600">Basic connection information (detailed properties not available)</p>
+        </div>
+        
+        {/* Existing basic route rendering */}
+        <div className="flex text-sm gap-4 items-start py-1">
+          <div className="w-32 text-gray-900 font-medium whitespace-nowrap flex-shrink-0">Point A</div>
+          <div className="text-gray-600 flex-grow min-w-0">
+            {isEditing ? (
+              <div className="min-w-[200px]">
+                {renderEditableField('start', PointProperties.start, false)}
+              </div>
+            ) : (
+              PointProperties.start || '-'
+            )}
+          </div>
+        </div>
+        <hr />
+        
+        <div className="flex text-sm gap-4 items-start py-1">
+          <div className="w-32 text-gray-900 font-medium whitespace-nowrap flex-shrink-0">Point B</div>
+          <div className="text-gray-600 flex-grow min-w-0">
+            {isEditing ? (
+              <div className="min-w-[200px]">
+                {renderEditableField('end', PointProperties.end, false)}
+              </div>
+            ) : (
+              PointProperties.end || '-'
+            )}
+          </div>
+        </div>
+        <hr />
+        
+        <div className="flex text-sm gap-4 items-start py-1">
+          <div className="w-32 text-gray-900 font-medium whitespace-nowrap flex-shrink-0">Length</div>
+          <div className="text-gray-600 flex-grow min-w-0">
+            {isEditing ? (
+              <div className="flex items-center gap-2 min-w-[200px]">
+                <input
+                  type="number"
+                  value={Number(editedData.length) || 0}
+                  onChange={(e) => handleInputChange('length', e.target.value, false)}
+                  className="flex-grow min-w-[120px] px-2 py-1 border border-gray-300 rounded text-sm"
+                  step="0.01"
+                  min="0"
+                />
+                <span className="text-xs text-gray-500 whitespace-nowrap">km</span>
+              </div>
+            ) : (
+              `${(Number(PointProperties.length) || 0).toFixed(2)} km`
+            )}
+          </div>
+        </div>
+        <hr />
+        
+        <div className="flex text-sm gap-4 items-start py-1">
+          <div className="w-32 text-gray-900 font-medium whitespace-nowrap flex-shrink-0">Existing</div>
+          <div className="text-gray-600 flex-grow min-w-0">
+            {isEditing ? (
+              <div className="min-w-[120px]">
+                <select
+                  value={editedData.existing ? 'true' : 'false'}
+                  onChange={(e) => handleInputChange('existing', e.target.value === 'true', false)}
+                  className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                >
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </select>
+              </div>
+            ) : (
+              PointProperties.existing ? 'Yes' : 'No'
+            )}
+          </div>
+        </div>
+        <hr />
       </div>
+    )}
+  </div>
+</div>
     </div>
   );
 };
