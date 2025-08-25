@@ -1,40 +1,59 @@
 import { ApiPlacemark, ApiPoint, ApiPolyline, ProcessedPlacemark, PlacemarkCategory, PhysicalSurveyApiResponse, ProcessedPhysicalSurvey } from '../../types/kmz';
 
-// placemark categories with colors and icons
+// Enhanced placemark categories with ALL infrastructure types from your API
 export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string }> = {
+  // Geographic Points
+  'GP': { color: '#4ECDC4', icon: '📍' },
+  'FPOI': { color: '#F8C471', icon: '⭐' },
+  'BHQ': { color: '#BF1E00', icon: '🏢' },
+  'BR': { color: '#0030BF', icon: '🌐' },
   'LANDMARK': { color: '#FF6B6B', icon: '🏛️' },
-  'FIBERTURN': { color: '#372AAC', icon: '🔄' },
-  'Bridge': { color: '#45B7D1', icon: '🌁' },
-  'Culvert': { color: '#96CEB4', icon: '🌊' },
+  
+  // Infrastructure - Crossings
   'ROADCROSSING': { color: '#31F527', icon: '🛣️' },
+  'Road Cross': { color: '#FFD700', icon: '🛣️' },
+  'N Highway Cross': { color: '#FF8C00', icon: '🛤️' },
+  
+  // Infrastructure - Water/Drainage  
+  'Bridge': { color: '#45B7D1', icon: '🌉' },
+  'Culvert': { color: '#96CEB4', icon: '🌊' },
+  'Causeways': { color: '#F7DC6F', icon: '🛤️' },
+  
+  // Infrastructure - Rail
   'Level Cross': { color: '#DDA0DD', icon: '🚂' },
   'Rail Under Bridge': { color: '#98D8C8', icon: '🚇' },
-  'Causeways': { color: '#F7DC6F', icon: '🛤️' },
   'Rail Over Bridge': { color: '#BB8FCE', icon: '🚄' },
-  'KILOMETERSTONE': { color: '#35530E', icon: '📍' },
-  'FPOI': { color: '#F8C471', icon: '⭐' },
-  'GP': { color: '#4ECDC4', icon: '⭐' },
-  'BHQ': { color: '#BF1E00', icon: '⭐' },
-  'BR': { color: '#0030BF', icon: '⭐' },
+  
+  // Network Infrastructure
+  'Block Router': { color: '#2E86AB', icon: '📡' },
+  'FIBERTURN': { color: '#372AAC', icon: '🔄' },
   'JOINTCHAMBER': { color: '#FE9A37', icon: '🔗' },
   'ROUTEINDICATOR': { color: '#42D3F2', icon: '🧭' },
+  
+  // Markers & Indicators
+  'KILOMETERSTONE': { color: '#35530E', icon: '📏' },
+  
+  // Cable Types
+  'Incremental Cable': { color: '#61f335', icon: '━━━━' },
+  'Proposed Cable': { color: '#ff0000', icon: '┅┅┅┅' },
+  
+  // Survey Points
   'SURVEYSTART': { color: '#10B981', icon: '🎯'},
+  'ENDSURVEY': { color: '#E7180B', icon: '🎯'},
+  'HOLDSURVEY': { color: '#a93226', icon: '⏸️'},
   'DEPTH': { color: '#3B82F6', icon: '📏'},
-  "MANHOLES": { color: '#06B6D4', icon: '🕳️'},
-  "STARTPIT": { color: '#14B8A6', icon: '🕳️' },
-  "ENDPIT": { color: '#DC2626', icon: '🏁'},
-  "ENDSURVEY": { color: '#E7180B', icon: '🎯'},
-  "HOLDSURVEY": { color: '#a93226', icon: '⏸️'},
-  "BLOWING": { color: '#663300', icon:'💨'},
-  "Incremental Cable":{color:"#61f335",icon:'----'},
-  "Proposed Cable":{color:"#ff0000",icon:'----'},
+  'MANHOLES': { color: '#06B6D4', icon: '🕳️'},
+  'STARTPIT': { color: '#14B8A6', icon: '🕳️' },
+  'ENDPIT': { color: '#DC2626', icon: '🏁'},
+  'BLOWING': { color: '#663300', icon:'💨'},
   'ROUTEFEASIBILITY': { color: '#17A2B8', icon: '🛤️' },
   'AREA': { color: '#FFC107', icon: '📐' },
   'LIVELOCATION': { color: '#DC3545', icon: '📍' },
   'SIDE': { color: '#6F42C1', icon: '↔️' },
   'ROUTEDETAILS': { color: '#09090B', icon: '📋' },
+  
+  // Default
   'point': { color: '#FF0000', icon: '📍' },
-
 };
 
 export function processApiData(apiData: ApiPlacemark): {
@@ -49,16 +68,10 @@ export function processApiData(apiData: ApiPlacemark): {
     categoryCounts[category] = 0;
   });
 
-  // Process points
+  // Process ALL points - REMOVED THE RESTRICTIVE FILTER
   apiData.points.forEach((point, index) => {
-    // Only process points with type "GP" or "FPOI"
-    if(!point.type 
-       || (point.type !== 'GP' && point.type !== 'FPOI' && point.type !== "BHQ" && point.type !== 'BR' && point.type !== "LANDMARK" && point.type !== 'point')
-    ) {
-      return;
-    }
-    
-    const category = getCategoryFromName(point.type);
+    // Get category from point type - process ALL points now
+    const category = getCategoryFromName(point.type || 'FPOI');
     categoryCounts[category] = (categoryCounts[category] || 0) + 1;
 
     processedPlacemarks.push({
@@ -75,7 +88,7 @@ export function processApiData(apiData: ApiPlacemark): {
     });
   });
 
-  // Process polylines
+  // Process polylines (this was already working correctly)
   apiData.polylines.forEach((polyline, index) => {
     const category = getCategoryFromName((polyline.type === 'Incremental Cable' || polyline.type ===  "Proposed Cable" ) ? polyline.type : "Incremental Cable");
     categoryCounts[category] = (categoryCounts[category] || 0) + 1;
@@ -107,25 +120,45 @@ export function processApiData(apiData: ApiPlacemark): {
   return { placemarks: processedPlacemarks, categories };
 }
 
+// Enhanced getCategoryFromName function to handle all infrastructure types
 function getCategoryFromName(name: string): string {
+  if (!name) return 'FPOI';
+  
   const upperName = name.toUpperCase();
   
-  // Check for exact matches first
+  // Direct exact matches first
+  if (PLACEMARK_CATEGORIES[name]) return name;
+  
+  // Check for exact matches in uppercase
   for (const category of Object.keys(PLACEMARK_CATEGORIES)) {
-    if (upperName.includes(category.toUpperCase())) {
+    if (category.toUpperCase() === upperName) {
       return category;
     }
   }
   
-  // Check for partial matches
+  // Specific mappings for your API data types
+  if (upperName === 'ROAD CROSS') return 'Road Cross';
+  if (upperName === 'N HIGHWAY CROSS') return 'N Highway Cross';
+  if (upperName === 'BLOCK ROUTER') return 'Block Router';
+  if (upperName === 'BRIDGE') return 'Bridge';
+  if (upperName === 'CULVERT') return 'Culvert';
+  if (upperName === 'GP') return 'GP';
+  if (upperName === 'FPOI') return 'FPOI';
+  if (upperName === 'BHQ') return 'BHQ';
+  if (upperName === 'BR') return 'BR';
+  if (upperName === 'LANDMARK') return 'LANDMARK';
+  
+  // Partial matches for variations
   if (upperName.includes('BRIDGE')) return 'Bridge';
-  if (upperName.includes('CROSS')) return 'ROADCROSSING';
-  if (upperName.includes('FIBER')) return 'FIBERTURN';
+  if (upperName.includes('CROSS') || upperName.includes('CROSSING')) return 'ROADCROSSING';
   if (upperName.includes('CULVERT')) return 'Culvert';
+  if (upperName.includes('FIBER')) return 'FIBERTURN';
   if (upperName.includes('RAIL')) return 'Level Cross';
   if (upperName.includes('KM') || upperName.includes('KILOMETER')) return 'KILOMETERSTONE';
+  if (upperName.includes('ROUTER')) return 'BR';
+  if (upperName.includes('HIGHWAY')) return 'N Highway Cross';
   
-  // Default category
+  // Default category for unknown types
   return 'FPOI';
 }
 
@@ -137,9 +170,12 @@ export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
   const categoryCounts: Record<string, number> = {};
 
   // Initialize category counts for physical survey categories
-  const physicalSurveyCategories = ['SURVEYSTART', 'ROUTEFEASIBILITY', 'AREA', 'LIVELOCATION', 'SIDE', 'ROUTEDETAILS','LANDMARK','FIBERTURN','Bridge',
-        'Culvert','ROADCROSSING','Causeways','KILOMETERSTONE','FPOI','JOINTCHAMBER','ROUTEINDICATOR' ,'ENDSURVEY','HOLDSURVEY',    
+  const physicalSurveyCategories = [
+    'SURVEYSTART', 'ROUTEFEASIBILITY', 'AREA', 'LIVELOCATION', 'SIDE', 'ROUTEDETAILS',
+    'LANDMARK', 'FIBERTURN', 'Bridge', 'Culvert', 'ROADCROSSING', 'Causeways', 
+    'KILOMETERSTONE', 'FPOI', 'JOINTCHAMBER', 'ROUTEINDICATOR', 'ENDSURVEY', 'HOLDSURVEY'
   ];
+  
   physicalSurveyCategories.forEach(category => {
     categoryCounts[category] = 0;
   });
