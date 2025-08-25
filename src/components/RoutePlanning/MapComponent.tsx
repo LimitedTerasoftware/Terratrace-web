@@ -215,6 +215,43 @@ type Connection = {
   coordinates: [number, number][];
   color?: string;
   existing?: boolean;
+  
+  // Extended properties for database/API integration
+  id?: number;
+  network_id?: number;
+  type?: string;
+  status?: string;
+  user_id?: number;
+  user_name?: string;
+  created_at?: string;
+  updated_at?: string;
+  
+  // Coordinate information
+  start_latlong?: string;
+  end_latlong?: string;
+  start_lgd_code?: string;
+  end_lgd_code?: string;
+  
+  // Additional properties from API responses
+  originalProperties?: Record<string, any>;
+  
+  // Segment data for route information
+  segmentData?: {
+    connection: {
+      length: number;
+      existing: boolean;
+      color?: string;
+    };
+    startCords?: string;
+    endCords?: string;
+    properties?: Record<string, any>;
+  };
+  
+  // Additional metadata fields that might come from KML/API
+  original_name?: string;
+  cs?: string;
+  asset_code?: string;
+  seg_length?: string;
 };
 
 type DistanceLabelProps = {
@@ -236,6 +273,14 @@ interface NotifierState {
   message: string;
   visible: boolean;
 }
+
+interface StandardUserData {
+  user_id: number;
+  uname: string;
+  email?: string;
+  company_id?: number;
+}
+
 
 
 // UTILITY COMPONENTS
@@ -294,6 +339,55 @@ function haversineDistance(a: { lat: number; lng: number }, b: { lat: number; ln
 }
 const BASEURL_Val = import.meta.env.VITE_TraceAPI_URL;
 
+const getStandardUserData = (): StandardUserData => {
+  try {
+    const userDataString = localStorage.getItem('userData');
+    
+    if (!userDataString) {
+      console.warn('No user data found in localStorage');
+      return {
+        user_id: 1,
+        uname: "Anonymous User"
+      };
+    }
+
+    const rawUserData = JSON.parse(userDataString);
+    
+    if (!rawUserData || typeof rawUserData !== 'object') {
+      console.warn('Invalid user data structure in localStorage');
+      return {
+        user_id: 1,
+        uname: "Anonymous User"
+      };
+    }
+
+    const standardUserData: StandardUserData = {
+      user_id: rawUserData.id || 1,                    
+      uname: rawUserData.name || "Anonymous User",
+      email: rawUserData.email || undefined,
+      company_id: rawUserData.company_id || undefined 
+    };
+
+    // Validation
+    if (!standardUserData.user_id || !standardUserData.uname) {
+      console.warn('Incomplete user data, using fallback');
+      return {
+        user_id: 1,
+        uname: "Anonymous User"
+      };
+    }
+
+    return standardUserData;
+
+  } catch (error) {
+    console.error('Error parsing user data from localStorage:', error);
+    return {
+      user_id: 1,
+      uname: "Anonymous User"
+    };
+  }
+};
+
 // MAIN COMPONENT
 const MapComponent: React.FC = () => {
   
@@ -324,7 +418,7 @@ const MapComponent: React.FC = () => {
   const [pointBName, setPointBName] = useState<string>('');
 
   // Route management state
-  const [routeGroups, setRouteGroups] = useState<Map<string, { layers: google.maps.Polyline[] }>>(new Map());
+  const [routeGroups, setRouteGroups] = useState<Map<string, { layers: (google.maps.Polyline | google.maps.InfoWindow)[] }>>(new Map());
   const [polylineHistory, setPolylineHistory] = useState(new Map());
   const [selectedRouteIndex, setSelectedRouteIndex] = useState<number | null>(null);
   const [polylineInstanceMap, setPolylineInstanceMap] = useState<Map<string, google.maps.Polyline>>(new Map());
@@ -787,7 +881,7 @@ const MapComponent: React.FC = () => {
       const proposedConnections = allConnections.filter(conn => !conn.existing);
       
       showNotification("success", 
-        `Successfully loaded KML data: ${allPoints.length} points, ${allConnections.length} connections (${existingConnections.length} existing, ${proposedConnections.length} proposed)`
+        `Successfully loaded KML data`
       );
       
     } catch (error) {
@@ -973,7 +1067,7 @@ useEffect(() => {
       });
       }
       
-      polyline.addListener("click", (e) => {
+      polyline.addListener("click", () => {
   // Create a comprehensive object that includes ALL parsed properties
   const completeLineProperties = {
     // Basic connection info
@@ -1163,7 +1257,11 @@ useEffect(() => {
 
       // Clear existing layers
       if (routeGroups.has(routeKey)) {
-        routeGroups.get(routeKey)!.layers.forEach((layer: google.maps.Polyline) => layer.setMap(null));
+        routeGroups.get(routeKey)!.layers.forEach((layer: google.maps.Polyline | google.maps.InfoWindow) => {
+        if ('setMap' in layer) {
+          layer.setMap(null);
+        }
+      });
         routeGroups.delete(routeKey);
       }
       const newRouteLayers: (google.maps.Polyline | google.maps.InfoWindow)[] = [];
@@ -1244,7 +1342,7 @@ useEffect(() => {
             distanceLabel,
           });
 
-          path.forEach(p => bounds.extend(p));
+          path.forEach((p: google.maps.LatLngLiteral) => bounds.extend(p));
         }
       });
 
@@ -1509,8 +1607,10 @@ useEffect(() => {
     let ghostLine: google.maps.Polyline | null = null;
 
     const handleDragEvents = (marker: google.maps.Marker, getStart: () => google.maps.LatLng, getEnd: () => google.maps.LatLng) => {
-      marker.addListener('drag', (e) => {
+      marker.addListener('drag', (e: google.maps.MapMouseEvent) => {
         const newCoord = e.latLng;
+        if (!newCoord) return;
+        
         const previewPath = [getStart(), newCoord, getEnd()];
         if (!ghostLine) {
           ghostLine = new google.maps.Polyline({
@@ -1526,13 +1626,15 @@ useEffect(() => {
         }
       });
 
-      marker.addListener('dragend', async (e) => {
+      marker.addListener('dragend', async (e: google.maps.MapMouseEvent) => {
         if (ghostLine) {
           ghostLine.setMap(null);
           ghostLine = null;
         }
 
         const newCoord = e.latLng;
+        if (!newCoord) return;
+        
         const start = getStart();
         const end = getEnd();
 
@@ -1540,9 +1642,18 @@ useEffect(() => {
           const res = await axios.post(
             `${BASEURL_Val}/compute-route`,
             {
-              newPos: newCoord,
-              origin: start,
-              destination: end,
+              newPos: {
+                lat: newCoord.lat(),
+                lng: newCoord.lng()
+              },
+              origin: {
+                lat: start.lat(),
+                lng: start.lng()
+              },
+              destination: {
+                lat: end.lat(),
+                lng: end.lng()
+              },
             },
             {
               headers: {
@@ -1552,10 +1663,10 @@ useEffect(() => {
           );
 
           const data = res.data;
-          if (data[0].route.length > 0) {
-            const newCoords = data[0].route.map(([lat, lng]) => ({ lat, lng }));
+          if (data && data[0] && Array.isArray(data[0].route) && data[0].route.length > 0) {
+            const newCoords = data[0].route.map(([lat, lng]: [number, number]) => ({ lat, lng }));
 
-            const currentPath = polyline.getPath().getArray().map(p => ({
+            const currentPath = polyline.getPath().getArray().map((p: google.maps.LatLng) => ({
               lat: p.lat(),
               lng: p.lng(),
             }));
@@ -1571,69 +1682,82 @@ useEffect(() => {
 
             polyline.setPath(newCoords);
             const updatedPath = polyline.getPath().getArray();
-          
-
 
             const newFractions = [0, 0.25, 0.5, 0.75, 1];
 
-            allMarkers.forEach((m, i) => {
-              const idx = Math.floor(updatedPath.length * newFractions[i]);
-              const pos = updatedPath[idx];
-              if (pos) m.setPosition(pos);
+            allMarkers.forEach((m: google.maps.Marker, i: number) => {
+              if (i < newFractions.length) {
+                const idx = Math.floor(updatedPath.length * newFractions[i]);
+                const pos = updatedPath[idx];
+                if (pos) m.setPosition(pos);
+              }
             });
 
-            // routeMarkers.current.set(selectedId, allMarkers);
+            const offsetPointIndex = Math.floor(updatedPath.length * 0.25);
+            const offsetPoint = updatedPath[offsetPointIndex];
+            const distanceKm = data[0].distance || 0;
 
-            const offsetPoint = updatedPath[Math.floor(updatedPath.length * 0.25)];
-            const distanceKm = data[0].distance;
+            if (offsetPoint) {
+              updateGlobalDataWithSelectedRoute(polyline, routeKey, 0, distanceKm);
 
-            updateGlobalDataWithSelectedRoute(polyline, routeKey, 0, distanceKm);
+              const entry = Array.from(polylineHistory.entries()).find(([key]) =>
+                key.startsWith(`${routeKey}-route`)
+              );
+              const oldKey = entry?.[0];
+              let infoWindow = entry?.[1]?.distanceLabel;
+              let oldPos: google.maps.LatLng | null = null;
 
-            const entry = Array.from(polylineHistory.entries()).find(([key]) =>
-              key.startsWith(`${routeKey}-route`)
-            );
-            const oldKey = entry?.[0];
-            let infoWindow = entry?.[1]?.distanceLabel;
-            let oldPos: google.maps.LatLng | null = null;
+              if (infoWindow) {
+                oldPos = infoWindow.getPosition() || null;
+                infoWindow.close();
+              }
 
-            if (infoWindow) {
-              oldPos = infoWindow.getPosition();
-              infoWindow.close();
-            }
-
-            infoWindow = new google.maps.InfoWindow({
-              content: `<div class="distance-label">${distanceKm.toFixed(2)} km</div>`,
-              position: offsetPoint,
-            });
-
-            if (oldKey) {
-              polylineHistory.set(oldKey, {
-                ...(polylineHistory.get(oldKey) ?? {}),
-                polyline,
-                distanceLabel: infoWindow,
+              infoWindow = new google.maps.InfoWindow({
+                content: `<div class="distance-label">${distanceKm.toFixed(2)} km</div>`,
+                position: {
+                  lat: offsetPoint.lat(),
+                  lng: offsetPoint.lng()
+                },
               });
+
+              if (oldKey) {
+                const existingHistory = polylineHistory.get(oldKey);
+                polylineHistory.set(oldKey, {
+                  ...(existingHistory ?? {}),
+                  polyline,
+                  distanceLabel: infoWindow,
+                });
+              }
+
+              setDistanceInfoWindows(prev =>
+                prev.filter(
+                  d =>
+                    !oldPos ||
+                    Math.abs(d.position.lat - oldPos.lat()) > 1e-6 ||
+                    Math.abs(d.position.lng - oldPos.lng()) > 1e-6
+                )
+              );
+
+              setDistanceInfoWindows(prev => [
+                ...prev,
+                { 
+                  position: {
+                    lat: offsetPoint.lat(),
+                    lng: offsetPoint.lng()
+                  }, 
+                  distance: distanceKm 
+                },
+              ]);
+              
+              updateRouteSummary(polyline);
             }
-
-            setDistanceInfoWindows(prev =>
-              prev.filter(
-                d =>
-                  !oldPos ||
-                  Math.abs(d.position.lat - oldPos.lat()) > 1e-6 ||
-                  Math.abs(d.position.lng - oldPos.lng()) > 1e-6
-              )
-            );
-
-            setDistanceInfoWindows(prev => [
-              ...prev,
-              { position: offsetPoint, distance: distanceKm },
-            ]);
-            updateRouteSummary(polyline);
 
           } else {
             alert("No route found");
           }
         } catch (err) {
           console.error("Rerouting failed", err);
+          alert("Failed to calculate new route. Please try again.");
         }
       });
     };
@@ -1783,50 +1907,51 @@ useEffect(() => {
   };
 
   const deleteGlobalRoute = (routeKey: string) => {
-    let fromName = '';
-    let toName = '';
-    setRouteKey('');
-    setSelectRoute('')
-    // Extract fromName and toName from routeKey
-    for (const point of LocalData.loop) {
-      if (routeKey.endsWith(`-${point.name}`)) {
-        toName = point.name;
-        fromName = routeKey.slice(0, routeKey.length - point.name.length - 1);
-        break;
+  let fromName = '';
+  let toName = '';
+  setRouteKey('');
+  setSelectRoute('');
+  
+  for (const point of LocalData.loop) {
+    if (routeKey.endsWith(`-${point.name}`)) {
+      toName = point.name;
+      fromName = routeKey.slice(0, routeKey.length - point.name.length - 1);
+      break;
+    }
+  }
+
+  if (!fromName || !toName) {
+    console.error('Invalid route key format:', routeKey);
+    return;
+  }
+  
+  if (previewKmlData !== null) {
+    deletePolylineAndDistance(`${fromName} TO ${toName}`);
+    return;
+  }
+  
+  setLocalData(prev => {
+    const updatedLoop = prev.loop.map(entry => {
+      if (entry.name === toName) {
+        // Create a new entry without route and connection properties
+        const { route, connection, ...restEntry } = entry;
+        return restEntry as LoopEntry;
       }
-    }
-
-    if (!fromName || !toName) {
-      console.error('Invalid route key format:', routeKey);
-      return;
-    }
-    if(previewKmlData !== null){
-      deletePolylineAndDistance(`${fromName} TO ${toName}`);
-      return;
-     }
-    setLocalData(prev => {
-      const updatedLoop = prev.loop.map(entry => {
-        if (entry.name === toName) {
-          return {
-            ...entry,
-            route: undefined,
-            connection: undefined
-          };
-        }
-        return entry;
-      });
-
-      const updatedHistory = { ...prev.polylineHistory };
-      delete updatedHistory[`${fromName} TO ${toName}`];
-    
-      return {
-        ...prev,
-        loop: updatedLoop,
-        polylineHistory: updatedHistory
-      };
+      return entry;
     });
-  };
-const deletePolylineAndDistance = (key: string) => {
+
+    const updatedHistory = { ...prev.polylineHistory };
+    delete updatedHistory[`${fromName} TO ${toName}`];
+  
+    return {
+      ...prev,
+      loop: updatedLoop,
+      polylineHistory: updatedHistory
+    };
+  });
+};
+
+  const deletePolylineAndDistance = (key: string) => {
  
   // Remove polyline from map
 
@@ -1929,16 +2054,8 @@ const deletePolylineAndDistance = (key: string) => {
     setGPSApiResponse(null)
   };
 
-  
-  // FILE OPERATIONS FUNCTIONS
-  
-
-  const userDataString = localStorage.getItem('userData');
-  const UserData = userDataString ? JSON.parse(userDataString) : null;
- 
   // saveKML function
-  // Modified saveKML function to handle preview mode
-const saveKML = async (localData: GlobalData) => {
+ const saveKML = async (localData: GlobalData) => {
   if (isSaving) {
     setSaveFile(false);
     return;
@@ -1954,14 +2071,11 @@ const saveKML = async (localData: GlobalData) => {
     setIsSaving(true);
     setLoader(true);
 
-    const userDataString = localStorage.getItem('userData');
-    const UserData = userDataString ? JSON.parse(userDataString) : null;
+    const finalUserData = getStandardUserData();
 
-    // Check if we're in preview mode
     const isPreviewMode = previewKmlData !== null;
     
-    // Get networkId for preview mode
-    let networkId = null;
+    let networkId: string | number | null = null;
     if (isPreviewMode && previewKmlData) {
       try {
         const kmlData = JSON.parse(previewKmlData);
@@ -1982,10 +2096,8 @@ const saveKML = async (localData: GlobalData) => {
       return;
     }
 
-    // SEND ALL POINTS - No deduplication, only filter out connection names
     const allPoints = localData.loop.filter(point => !point.name.includes(" TO "));
 
-    // Extract administrative data from first point's properties
     const firstPoint = allPoints[0];
     const adminCodes = {
       blockCode: firstPoint?.properties?.blk_code || '',
@@ -1996,21 +2108,22 @@ const saveKML = async (localData: GlobalData) => {
       stName: firstPoint?.properties?.st_name || localData.st_name || ''
     };
 
-    // Enhanced function to build comprehensive line properties
-    const buildLineProperties = (routeKey: string, historyEntry: any, adminCodes: any, sourceData: any = {}) => {
+    const buildLineProperties = (
+      routeKey: string, 
+      historyEntry: any, 
+      adminCodes: typeof adminCodes, 
+      sourceData: any = {}
+    ): Record<string, any> => {
       const [startName, endName] = routeKey.split(' TO ');
       const segmentData = historyEntry?.segmentData || sourceData;
       const connection = segmentData?.connection;
       
-      // Merge properties from multiple sources
-      let existingProperties = {};
+      let existingProperties: Record<string, any> = {};
       
-      // From historyEntry
       if (historyEntry?.segmentData?.properties) {
         existingProperties = { ...existingProperties, ...historyEntry.segmentData.properties };
       }
       
-      // From sourceData (API connections)
       if (sourceData?.properties) {
         existingProperties = { ...existingProperties, ...sourceData.properties };
       }
@@ -2021,7 +2134,6 @@ const saveKML = async (localData: GlobalData) => {
         existingProperties = { ...existingProperties, ...sourceData.originalProperties };
       }
       
-      // Try to find matching connection from apiConctResponse
       if (apiConctResponse?.connections) {
         const matchingConnection = apiConctResponse.connections.find(
           (conn: any) => `${conn.start} TO ${conn.end}` === routeKey || 
@@ -2040,14 +2152,11 @@ const saveKML = async (localData: GlobalData) => {
         }
       }
 
-      // Build comprehensive line properties with all KML standard fields
-      const lineProperties = {
-        // Core identification
+      const lineProperties: Record<string, any> = {
         cs: existingProperties.cs || "",
         name: existingProperties.name || routeKey,
         asset_code: existingProperties.asset_code || "",
         
-        // Administrative codes
         blk_code: existingProperties.blk_code || adminCodes.blockCode,
         blk_name: existingProperties.blk_name || adminCodes.blockName,
         dt_code: existingProperties.dt_code || adminCodes.dtCode,
@@ -2055,40 +2164,33 @@ const saveKML = async (localData: GlobalData) => {
         st_code: existingProperties.st_code || adminCodes.stCode,
         st_name: existingProperties.st_name || adminCodes.stName,
         
-        // Length and measurements
         seg_length: existingProperties.seg_length || (connection?.length ? (connection.length * 1000).toString() : "0"),
         length: existingProperties.length || connection?.length?.toString() || "0",
         cable_len: existingProperties.cable_len || (connection?.length ? (connection.length * 1000).toString() : "0"),
         
-        // Node information
         start_node: existingProperties.start_node || startName || "",
         end_node: existingProperties.end_node || endName || "",
         s_coil_len: existingProperties.s_coil_len || "0",
         e_coil_len: existingProperties.e_coil_len || "0",
         
-        // Technical specifications
         num_fibre: existingProperties.num_fibre || "24",
         fibre_pos: existingProperties.fibre_pos || "",
         fibre_type: existingProperties.fibre_type || "",
         cable_type: existingProperties.cable_type || "",
         
-        // Status and phase information
         status: existingProperties.status || (connection?.existing ? "Accepted" : "Proposed"),
         phase: existingProperties.phase || (connection?.existing ? "1" : "3"),
         existing: existingProperties.existing !== undefined ? existingProperties.existing : (connection?.existing || false),
         
-        // Asset classification
         asset_type: existingProperties.asset_type || "Incremental Cable",
         type: existingProperties.type || "Incremental Cable",
         route_type: existingProperties.route_type || "",
         
-        // Route and path information
         route_code: existingProperties.route_code || "",
         route_name: existingProperties.route_name || routeKey,
         direction: existingProperties.direction || "",
         traverse: existingProperties.traverse || "",
         
-        // Geographic and location data
         start_lat: existingProperties.start_lat || "",
         start_lng: existingProperties.start_lng || "",
         end_lat: existingProperties.end_lat || "",
@@ -2096,68 +2198,56 @@ const saveKML = async (localData: GlobalData) => {
         start_latlong: existingProperties.start_latlong || "",
         end_latlong: existingProperties.end_latlong || "",
         
-        // Construction and maintenance
         remarks: existingProperties.remarks || "",
         obs: existingProperties.obs || "",
         notes: existingProperties.notes || "",
         construction_method: existingProperties.construction_method || "",
         contractor: existingProperties.contractor || "",
         
-        // Dates and timeline
         install_date: existingProperties.install_date || "",
         completion_date: existingProperties.completion_date || "",
         created_at: existingProperties.created_at || new Date().toISOString(),
         updated_at: existingProperties.updated_at || new Date().toISOString(),
         
-        // Network and connectivity
         ring: existingProperties.ring || "",
-        network_id: existingProperties.network_id || networkId || "",
+        network_id: existingProperties.network_id || networkId?.toString() || "",
         segment_id: existingProperties.segment_id || "",
         
-        // Database IDs
         id: existingProperties.id || "",
         connection_id: existingProperties.connection_id || "",
         
-        // Cost and project information
         estimated_cost: existingProperties.estimated_cost || "",
         actual_cost: existingProperties.actual_cost || "",
         project_code: existingProperties.project_code || "",
         budget_code: existingProperties.budget_code || "",
         
-        // Quality and testing
         test_result: existingProperties.test_result || "",
         signal_strength: existingProperties.signal_strength || "",
         attenuation: existingProperties.attenuation || "",
         
-        // Visual properties
         color: existingProperties.color || connection?.color || "#00AA00",
         stroke_width: existingProperties.stroke_width || "4",
         stroke_opacity: existingProperties.stroke_opacity || "1.0",
         
-        // System fields
         GlobalID: existingProperties.GlobalID || "",
         S_N: existingProperties.S_N || "",
         FID: existingProperties.FID || "",
         OBJECTID: existingProperties.OBJECTID || "",
         
-        // User information
-        created_by: existingProperties.created_by || UserData?.uname || "Unknown User",
-        modified_by: existingProperties.modified_by || UserData?.uname || "Unknown User",
-        user_id: existingProperties.user_id || UserData?.user_id || 1,
-        user_name: existingProperties.user_name || UserData?.uname || "Unknown User",
+        created_by: existingProperties.created_by || finalUserData.uname,
+        modified_by: finalUserData.uname,
+        user_id: existingProperties.user_id || finalUserData.user_id,
+        user_name: finalUserData.uname,
         
-        // Preserve ALL additional custom properties
         ...existingProperties
       };
 
       return lineProperties;
     };
 
-    // ENHANCED CONNECTIONS PROCESSING - NO DATA LOSS
-    const processAllConnections = () => {
-      const allConnections = new Map();
+    const processAllConnections = (): any[] => {
+      const allConnections = new Map<string, any>();
       
-      // 1. Add connections from polylineHistory (user-edited/selected routes)
       Object.entries(localData.polylineHistory || {}).forEach(([routeKey, historyEntry]) => {
         const segmentData = historyEntry.segmentData;
         const polylineCoords = historyEntry.polyline?.coordinates || [];
@@ -2176,13 +2266,11 @@ const saveKML = async (localData: GlobalData) => {
         });
       });
       
-      // 2. Add connections from apiConctResponse that aren't already included
       if (apiConctResponse?.connections) {
-        apiConctResponse.connections.forEach((conn) => {
+        apiConctResponse.connections.forEach((conn: any) => {
           const routeKey = `${conn.start} TO ${conn.end}`;
           const reverseKey = `${conn.end} TO ${conn.start}`;
           
-          // Only add if not already processed from polylineHistory
           if (!allConnections.has(routeKey) && !allConnections.has(reverseKey)) {
             const apiLineProperties = buildLineProperties(routeKey, null, adminCodes, conn);
             
@@ -2201,20 +2289,21 @@ const saveKML = async (localData: GlobalData) => {
         });
       }
       
-      // 3. Check polylineInstanceMap for any connections that might be missing
       if (typeof polylineInstanceMap !== 'undefined' && polylineInstanceMap) {
-        polylineInstanceMap.forEach((polylineInstance, key) => {
+        polylineInstanceMap.forEach((polylineInstance: google.maps.Polyline, key: string) => {
           if (!allConnections.has(key)) {
             console.warn(`Found map connection not in data sources: ${key}`);
             
-            // Reconstruct basic data from map instance
-            let coordinates = [];
+            let coordinates: google.maps.LatLngLiteral[] = [];
             let distance = 0;
             
             try {
               const path = polylineInstance.getPath();
               if (path) {
-                coordinates = path.getArray().map(p => ({ lat: p.lat(), lng: p.lng() }));
+                coordinates = path.getArray().map((p: google.maps.LatLng) => ({ 
+                  lat: p.lat(), 
+                  lng: p.lng() 
+                }));
                 distance = computePathDistance(coordinates);
               }
             } catch (error) {
@@ -2227,7 +2316,7 @@ const saveKML = async (localData: GlobalData) => {
                 name: key,
                 status: "Reconstructed from map",
                 source: "map_reconstruction",
-                network_id: networkId || ""
+                network_id: networkId?.toString() || ""
               }
             });
             
@@ -2249,26 +2338,21 @@ const saveKML = async (localData: GlobalData) => {
       return Array.from(allConnections.values());
     };
 
-    // Process ALL connections
     const connectionsData = processAllConnections();
 
-    // Build payload with ALL data preserved (same payload structure for both modes)
     const payload = {
       globalData: {
-        // ALL POINTS with complete properties
-        loop: allPoints.map((point) => ({
+        loop: allPoints.map((point: LoopEntry) => ({
           name: point.name,
           coordinates: point.coordinates,
           lgd_code: point.lgd_code || null,
           properties: {
-            // Core identification fields
             FID: point.properties?.FID || "",
             name: point.properties?.name || point.name,
             lat: point.properties?.lat || (point.coordinates && point.coordinates[1] ? point.coordinates[1].toString() : ""),
             long: point.properties?.long || (point.coordinates && point.coordinates[0] ? point.coordinates[0].toString() : ""),
             remarks: point.properties?.remarks || "",
             
-            // Administrative fields
             blk_code: point.properties?.blk_code || adminCodes.blockCode,
             blk_name: point.properties?.blk_name || adminCodes.blockName,
             dt_code: point.properties?.dt_code || adminCodes.dtCode,
@@ -2276,21 +2360,22 @@ const saveKML = async (localData: GlobalData) => {
             st_code: point.properties?.st_code || adminCodes.stCode,
             st_name: point.properties?.st_name || adminCodes.stName,
             
-            // Asset identification
             lgd_code: point.properties?.lgd_code || point.lgd_code || null,
             asset_code: point.properties?.asset_code || "",
             
-            // Network field - IMPORTANT for preview mode
-            network_id: point.properties?.network_id || networkId || "",
+            network_id: point.properties?.network_id || networkId?.toString() || "",
             
-            // Location and type fields
+            created_by: point.properties?.created_by || finalUserData.uname,
+            modified_by: finalUserData.uname,
+            user_id: point.properties?.user_id || finalUserData.user_id,
+            user_name: finalUserData.uname,
+            
             location: point.properties?.location || "",
             loc_type: point.properties?.loc_type || "",
             obs: point.properties?.obs || "",
             status: point.properties?.status || "Proposed",
             geo_photo: point.properties?.geo_photo || "",
             
-            // Technical fields
             otdr_len: point.properties?.otdr_len || "",
             conn_str: point.properties?.conn_str || "",
             backhaul: point.properties?.backhaul || "",
@@ -2298,7 +2383,6 @@ const saveKML = async (localData: GlobalData) => {
             route_code: point.properties?.route_code || "",
             asset_type: point.properties?.asset_type || "FPOI",
             
-            // Network fields
             gp_code: point.properties?.gp_code || "",
             block_ip: point.properties?.block_ip || "",
             gp_mac_id: point.properties?.gp_mac_id || "",
@@ -2306,31 +2390,25 @@ const saveKML = async (localData: GlobalData) => {
             nmsgp_cd: point.properties?.nmsgp_cd || "",
             nmsblk_cd: point.properties?.nmsblk_cd || "",
             
-            // Cable and ring fields
             cable_len: point.properties?.cable_len || "0",
             ring: point.properties?.ring || "",
             type: point.properties?.type || point.properties?.asset_type || "FPOI",
             
-            // System fields
             GlobalID: point.properties?.GlobalID || "",
             Label: point.properties?.Label || point.name,
             
-            // Database fields
             id: point.properties?.id || "",
             created_at: point.properties?.created_at || "",
             updated_at: point.properties?.updated_at || "",
             
-            // Icon for visualization
             icon: point.properties?.icon || 
                   (point.properties?.asset_type === "Block Router" ? "https://maps.google.com/mapfiles/ms/icons/blue-dot.png" :
                    point.properties?.asset_type === "BHQ" ? "https://maps.google.com/mapfiles/ms/icons/green-dot.png" :
                    point.properties?.asset_type === "GP" ? "https://maps.google.com/mapfiles/ms/icons/yellow-dot.png" :
                    "https://maps.google.com/mapfiles/ms/icons/red-dot.png"),
             
-            // Preserve ALL additional custom properties
             ...point.properties
           },
-          // Include connection data if exists
           ...(point.connection && {
             connection: {
               length: point.connection.length,
@@ -2338,13 +2416,11 @@ const saveKML = async (localData: GlobalData) => {
               color: point.connection.color
             }
           }),
-          // Include route data if exists
           ...(point.route && {
             route: point.route
           })
         })),
         
-        // Administrative and summary data
         mainPointName: adminCodes.blockName,
         blk_code: adminCodes.blockCode,
         blk_name: adminCodes.blockName,
@@ -2356,11 +2432,9 @@ const saveKML = async (localData: GlobalData) => {
         st_code: adminCodes.stCode,
         st_name: adminCodes.stName,
         
-        // Add network_id for preview mode
         ...(isPreviewMode && { network_id: networkId })
       },
       
-      // ALL polylineHistory data with enhanced properties
       polylineHistory: Object.fromEntries(
         Object.entries(localData.polylineHistory || {}).map(([key, value]) => {
           const lineProperties = buildLineProperties(key, value, adminCodes);
@@ -2379,11 +2453,9 @@ const saveKML = async (localData: GlobalData) => {
                 endCords: value.segmentData?.endCords || "NULL",
                 properties: {
                   ...lineProperties,
-                  // Ensure network_id is included for preview mode
-                  network_id: lineProperties.network_id || networkId || ""
+                  network_id: lineProperties.network_id || networkId?.toString() || ""
                 }
               },
-              // Preserve additional data
               ...(value.distanceLabel && { distanceLabel: value.distanceLabel }),
               ...(value.original && { original: value.original }),
               ...(value.undoStack && { undoStack: value.undoStack })
@@ -2392,25 +2464,20 @@ const saveKML = async (localData: GlobalData) => {
         })
       ),
       
-      // ALL connections data
-      connections: connectionsData.map(conn => ({
+      connections: connectionsData.map((conn: any) => ({
         ...conn,
         properties: {
           ...conn.properties,
-          // Ensure network_id is included for preview mode
-          network_id: conn.properties.network_id || networkId || ""
+          network_id: conn.properties.network_id || networkId?.toString() || ""
         }
       })),
       
-      // User and timestamp data
-      user_id: UserData?.user_id ?? 1,
-      user_name: UserData?.uname ?? "Unknown User",
+      user_id: finalUserData.user_id,
+      user_name: finalUserData.uname,
       created_at: new Date().toISOString(),
       
-      // Add network_id to root level for preview mode
       ...(isPreviewMode && { network_id: networkId }),
       
-      // Comprehensive metadata for debugging and validation
       metadata: {
         version: "1.0",
         export_date: new Date().toISOString(),
@@ -2436,7 +2503,6 @@ const saveKML = async (localData: GlobalData) => {
       }
     };
 
-    // Validate payload size
     const payloadString = JSON.stringify(payload);
     const payloadSizeMB = new Blob([payloadString]).size / (1024 * 1024);
 
@@ -2448,22 +2514,17 @@ const saveKML = async (localData: GlobalData) => {
       return;
     }
 
-    // Choose API endpoint and method based on mode
     let apiUrl: string;
     let requestMethod: string;
     
     if (isPreviewMode) {
-      // Preview mode: Use PUT method with update-network endpoint
       apiUrl = `${BASEURL_Val}/update-network/${networkId}`;
       requestMethod = 'PUT';
     } else {
-      // Normal mode: Use POST method with save-to-db endpoint
       apiUrl = `${BASEURL_Val}/save-to-db`;
       requestMethod = 'POST';
     }
 
-
-    // Send to backend
     const response = await fetch(apiUrl, {
       method: requestMethod,
       headers: {
@@ -2472,7 +2533,7 @@ const saveKML = async (localData: GlobalData) => {
       body: payloadString
     });
 
-    let result;
+    let result: any;
     try {
       const responseText = await response.text();
       if (responseText) {
@@ -2500,17 +2561,14 @@ const saveKML = async (localData: GlobalData) => {
       const successMessage = isPreviewMode ? "Network updated successfully!" : "KML saved successfully!";
       showNotification("success", successMessage);
       
-      // Update local data with server response if provided
       if (result?.data) {
-        setLocalData(prev => ({
+        setLocalData((prev: GlobalData) => ({
           ...prev,
           ...result.data,
-          // Preserve polylineHistory with updated properties if server returns them
           polylineHistory: result.data.polylineHistory || prev.polylineHistory
         }));
       }
       
-      // Clear the save flag
       setSaveFile(false);
     }
 
@@ -2520,7 +2578,6 @@ const saveKML = async (localData: GlobalData) => {
     const isPreviewMode = previewKmlData !== null;
     const operationText = isPreviewMode ? "updating network" : "saving KML";
     
-    // Detailed error handling
     if (error instanceof TypeError && error.message.includes('fetch')) {
       showNotification("error", `Network error: Unable to connect to server while ${operationText}. Please check if the backend is running.`);
     } else if (error instanceof SyntaxError) {
@@ -2560,8 +2617,13 @@ useEffect(() => {
 
   async function VerifySaveKML(previewKmlData:any) {
      const kmlData = JSON.parse(previewKmlData);     
+     const finalUserData = getStandardUserData();
    const Body={
-     networkId:kmlData?.data?.points[0].network_id || 0
+     networkId:kmlData?.data?.points[0].network_id || 0,
+     user_id: finalUserData.user_id,
+     user_name: finalUserData.uname,
+     verified_by: finalUserData.uname,
+     verification_timestamp: new Date().toISOString()
    }
     try {
       setLoader(true)
@@ -2594,79 +2656,78 @@ useEffect(() => {
   }
 
   async function downloadFile(DownloadFile: string) {
-    if (!LocalData) {
-      setError('No data available to download')
-      return;
-    }
-
-    const filteredData = {
-      globalData: {
-        loop: LocalData.loop,
-        mainPointName: LocalData.mainPointName,
-        totalLength: LocalData.totalLength,
-        proposedlength: LocalData.proposedlength,
-        existinglength: LocalData.existinglength,
-        dt_code:LocalData.dt_code || '',
-        dt_name:LocalData.dt_name || '',
-        st_code:LocalData.st_code || '',
-        st_name:LocalData.st_name || '',
-      },
-      polylineHistory: LocalData.polylineHistory,
-      user_id: UserData?.user_id ?? 1,
-      user_name: UserData?.uname ?? " "
-    };
-
-    const payload = JSON.stringify(filteredData);
-    const payloadSizeMB = new Blob([payload]).size / (1024 * 1024);
-
-    if (payloadSizeMB > 50) {
-      setError(`Error: Payload too large (${payloadSizeMB.toFixed(2)} MB`)
-
-      return;
-    }
-
-    try {
-      setLoader(true)
-      const response = await fetch(`${BASEURL_Val}/download/${DownloadFile}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: payload
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        showNotification("error", `${error.error}`)
-
-        return;
-      }
-
-      const blob = await response.blob();
-      const contentDisposition = response.headers.get('Content-Disposition');
-      const filename =
-        contentDisposition?.match(/filename="(.+)"/)?.[1] ||
-        `routes.${DownloadFile}`;
-
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      setDownloadFile("")
-      showNotification("success", `${DownloadFile} file downloaded`)
-
-    } catch (error) {
-      console.error('Download error:', error);
-      showNotification("error", `${error}`)
-
-      setDownloadFile("")
-
-    } finally {
-      setLoader(false)
-    }
+  if (!LocalData) {
+    setError('No data available to download')
+    return;
   }
+
+  const finalUserData = getStandardUserData();
+
+  const filteredData = {
+    globalData: {
+      loop: LocalData.loop,
+      mainPointName: LocalData.mainPointName,
+      totalLength: LocalData.totalLength,
+      proposedlength: LocalData.proposedlength,
+      existinglength: LocalData.existinglength,
+      dt_code: LocalData.dt_code || '',
+      dt_name: LocalData.dt_name || '',
+      st_code: LocalData.st_code || '',
+      st_name: LocalData.st_name || '',
+    },
+    polylineHistory: LocalData.polylineHistory,
+    user_id: finalUserData.user_id,
+    user_name: finalUserData.uname,
+  
+  };
+
+  const payload = JSON.stringify(filteredData);
+  const payloadSizeMB = new Blob([payload]).size / (1024 * 1024);
+
+  if (payloadSizeMB > 50) {
+    setError(`Error: Payload too large (${payloadSizeMB.toFixed(2)} MB`)
+    return;
+  }
+
+  try {
+    setLoader(true)
+    const response = await fetch(`${BASEURL_Val}/download/${DownloadFile}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      showNotification("error", `${error.error}`)
+      return;
+    }
+
+    const blob = await response.blob();
+    const contentDisposition = response.headers.get('Content-Disposition');
+    const filename =
+      contentDisposition?.match(/filename="(.+)"/)?.[1] ||
+      `routes.${DownloadFile}`;
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setDownloadFile("")
+    showNotification("success", `${DownloadFile} file downloaded`)
+
+  } catch (error) {
+    console.error('Download error:', error);
+    showNotification("error", `${error}`)
+    setDownloadFile("")
+  } finally {
+    setLoader(false)
+  }
+}
 
   useEffect(() => {
     if (SaveFile) {
@@ -2689,7 +2750,6 @@ useEffect(() => {
   }, [DownloadFile])
 
   
-  // SEARCH FUNCTIONALITY
 
   useEffect(() => {
     if (searchValue.trim() === '') {
@@ -2719,7 +2779,6 @@ useEffect(() => {
 
     const { lat, lng } = place.location;
 
-    // Remove old marker
     if (searchMarkerRef.current) {
       searchMarkerRef.current.setMap(null);
     }
@@ -2727,7 +2786,6 @@ useEffect(() => {
       infoWindowRef.current.close();
     }
 
-    // Create new marker
     const marker = new google.maps.Marker({
       position: { lat, lng },
       map,
@@ -2755,7 +2813,6 @@ useEffect(() => {
     setSearchValue(`${place.name}`);
   };
 
-  // Initialize places autocomplete - moved outside conditional block
   React.useEffect(() => {
     if (!isLoaded || !map || !window.google?.maps?.places) return;
 
@@ -2781,17 +2838,15 @@ useEffect(() => {
     });
 
     return () => {
-      // Cleanup listener if needed
       google.maps.event.clearInstanceListeners(autocomplete);
     };
-  }, [map, isLoaded]); // Added proper dependencies
+  }, [map, isLoaded]); 
 
   
   // NOTIFICATION FUNCTIONS
   
 
   const showNotification = (type: 'success' | 'error', message: string) => {
-    // Clear any existing timeout to prevent multiple notifications
     if (notifierTimeoutRef.current) {
       clearTimeout(notifierTimeoutRef.current);
       notifierTimeoutRef.current = null;
@@ -2799,7 +2854,6 @@ useEffect(() => {
 
     setNotifier({ type, message, visible: true });
 
-    // Auto-hide notification after 5 seconds for success, 10 seconds for error
     const hideDelay = type === 'success' ? 5000 : 10000;
 
     notifierTimeoutRef.current = setTimeout(() => {
