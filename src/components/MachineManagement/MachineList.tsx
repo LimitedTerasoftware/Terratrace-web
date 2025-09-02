@@ -7,17 +7,17 @@ interface MachineListProps {
   machines: Machine[];
   onEdit: (machine: Machine) => void;
   onDelete: (id: string) => void;
-  Id:number;
-  regids:string[]
+  Id: number;
+  regids: string[]
 }
 
-const MachineList: React.FC<MachineListProps> = ({ machines, onEdit, onDelete,Id,regids}) => {
+const MachineList: React.FC<MachineListProps> = ({ machines, onEdit, onDelete, Id, regids }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<Machine['status'] | 'all'>(Id === 1 ? 'active' : Id === 2 ? 'inactive' : 'all');
   const [selectedMachine, setSelectedMachine] = useState<Machine | null>(null);
-   
+
   const filteredMachines = machines.filter(machine => {
-    const matchesSearch = 
+    const matchesSearch =
       (machine.digitrack_make || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (machine.firm_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (machine.machine_make || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -27,14 +27,13 @@ const MachineList: React.FC<MachineListProps> = ({ machines, onEdit, onDelete,Id
       (machine.digitrack_make || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (machine.truck_make || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (machine.truck_model || "").toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || machine.status === statusFilter;
-      const matchesRecent = !regids || regids.length === 0 
-        ? true 
-        : regids.includes(machine.registration_number);
+    const matchesStatus = statusFilter === 'all' || machine.status === statusFilter;
+    const matchesRecent = !regids || regids.length === 0
+      ? true
+      : regids.includes(machine.registration_number);
     return matchesSearch && matchesStatus && matchesRecent;
   });
 
-  
   const getStatusBadge = (status: Machine['status']) => {
     const statusConfig = {
       active: 'bg-green-100 text-green-800 border-green-200',
@@ -56,89 +55,114 @@ const MachineList: React.FC<MachineListProps> = ({ machines, onEdit, onDelete,Id
     }
   };
 
+  // Custom header styling to match the image
+  const customStyles = {
+    headCells: {
+      style: {
+        fontSize: '11px',
+        fontWeight: '500',
+        textTransform: 'uppercase' as const,
+        letterSpacing: '0.5px',
+        color: '#9CA3AF',
+        backgroundColor: '#F9FAFB',
+        borderBottom: '1px solid #E5E7EB',
+        paddingLeft: '16px',
+        paddingRight: '16px',
+        paddingTop: '12px',
+        paddingBottom: '12px',
+      },
+    },
+    cells: {
+      style: {
+        paddingLeft: '16px',
+        paddingRight: '16px',
+        paddingTop: '12px',
+        paddingBottom: '12px',
+        fontSize: '14px',
+        color: '#111827',
+        borderBottom: '1px solid #F3F4F6',
+      },
+    },
+    rows: {
+      style: {
+        '&:hover': {
+          backgroundColor: '#F9FAFB',
+        },
+      },
+    },
+  };
 
-const columns: TableColumn<Machine>[] = [
-  
-  { name: "Firm Name", selector: row => row.firm_name, sortable: true },
-  { name: "Authorised Person", selector: row => row.authorised_person, sortable: true },
-  { name: "Machine Make", selector: row => row.machine_make, sortable: true },
-  { name: "Digitrack Make", selector: row => row.digitrack_make, sortable: true },
-  { name: "Digitrack Model", selector: row => row.digitrack_model, sortable: true },
-  { name: "Truck Make", selector: row => row.truck_make, sortable: true },
-  { name: "Truck Model", selector: row => row.truck_model, sortable: true },
-  { name: "Registration Number", selector: row => row.registration_number, sortable: true },
-  {
-    name: 'Status',
-    selector: (row) => row.status,
-    sortable: true,
-    cell: (row) => getStatusBadge(row.status),
-  },
-  {
-    name: 'Actions',
-    cell: (row) => (
-      <div className="flex space-x-2">
-        <button
-          onClick={() => setSelectedMachine(row)}
-          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-          title="View Details"
-        >
-          <Eye className="w-4 h-4" />
-        </button>
-        <button
-          onClick={() => onEdit(row)}
-          className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-          title="Edit Machine"
-        >
-          <Edit className="w-4 h-4" />
-        </button>
-        {/* <button
-          onClick={() => handleDelete(row)}
-          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-          title="Delete Machine"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button> */}
-      </div>
-    ),
-    ignoreRowClick: true,
-    allowOverflow: true,
-    button: true,
-  },
+  const columns: TableColumn<Machine>[] = [
+    { name: "Firm Name", selector: row => row.firm_name, sortable: true },
+    { name: "Authorised Person", selector: row => row.authorised_person, sortable: true },
+    { name: "Machine Make", selector: row => row.machine_make, sortable: true },
+    { name: "Digitrack Make", selector: row => row.digitrack_make, sortable: true },
+    { name: "Digitrack Model", selector: row => row.digitrack_model, sortable: true },
+    { name: "Truck Make", selector: row => row.truck_make, sortable: true },
+    { name: "Truck Model", selector: row => row.truck_model, sortable: true },
+    { name: "Registration Number", selector: row => row.registration_number, sortable: true },
+    {
+      name: 'Status',
+      selector: (row) => row.status,
+      sortable: true,
+      cell: (row) => getStatusBadge(row.status),
+    },
+    {
+      name: 'Actions',
+      cell: (row) => (
+        <div className="flex space-x-2">
+          <button
+            onClick={() => setSelectedMachine(row)}
+            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            title="View Details"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => onEdit(row)}
+            className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+            title="Edit Machine"
+          >
+            <Edit className="w-4 h-4" />
+          </button>
+        </div>
+      ),
+      ignoreRowClick: true,
+      allowOverflow: true,
+      button: true,
+    },
   ];
 
   return (
     <div className="bg-white rounded-xl shadow-lg border border-gray-100">
       <div className="p-6 border-b border-gray-200">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-          <h2 className="text-xl font-semibold text-gray-900">Machine Inventory</h2>
-          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search machines..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as Machine['status'] | 'all')}
-                className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
-              >
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="maintenance">Maintenance</option>
-                <option value="retired">Retired</option>
-              </select>
-            </div>
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search machines..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          <div className="relative">
+            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as Machine['status'] | 'all')}
+              className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="retired">Retired</option>
+            </select>
           </div>
         </div>
-        </div>
+      </div>
 
       {filteredMachines.length === 0 ? (
         <div className="p-12 text-center">
@@ -147,27 +171,27 @@ const columns: TableColumn<Machine>[] = [
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No machines found</h3>
           <p className="text-gray-500">
-            {searchTerm || statusFilter !== 'all' 
-              ? 'Try adjusting your search or filter criteria.' 
+            {searchTerm || statusFilter !== 'all'
+              ? 'Try adjusting your search or filter criteria.'
               : 'Add your first machine to get started.'
             }
           </p>
         </div>
       ) : (
         <div className="overflow-x-auto">
-        
           <DataTable
-          columns={columns}
-          data={filteredMachines}
-          pagination
-          highlightOnHover
-          pointerOnHover
-          striped
-          dense
-          responsive
-        />
-
-          </div>
+            columns={columns}
+            data={filteredMachines}
+            pagination
+            highlightOnHover
+            pointerOnHover
+            striped={false}
+            dense={false}
+            responsive
+            customStyles={customStyles}
+            noHeader
+          />
+        </div>
       )}
 
       {/* Machine Details Modal */}
@@ -201,7 +225,7 @@ const columns: TableColumn<Machine>[] = [
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">
-                      Firm Name
+                    Firm Name
                   </label>
                   <p className="text-gray-900">{selectedMachine.firm_name}</p>
                 </div>
@@ -213,13 +237,13 @@ const columns: TableColumn<Machine>[] = [
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">
-                     Authorised Person
+                    Authorised Person
                   </label>
                   <p className="text-gray-900">{selectedMachine.authorised_person}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">
-                     Registration Valid Upto
+                    Registration Valid Upto
                   </label>
                   <p className="text-gray-900">{selectedMachine.registration_valid_upto ? new Date(selectedMachine.registration_valid_upto).toLocaleDateString() : 'N/A'}</p>
                 </div>
@@ -235,21 +259,20 @@ const columns: TableColumn<Machine>[] = [
                   </label>
                   <p className="text-gray-900">{selectedMachine.machine_make}</p>
                 </div>
-                 <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">
-                 Capacity
-                </label>
-                <p className="text-gray-900">{selectedMachine.capacity}</p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Capacity
+                  </label>
+                  <p className="text-gray-900">{selectedMachine.capacity}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    No Of Rods
+                  </label>
+                  <p className="text-gray-900">{selectedMachine.no_of_rods}</p>
+                </div>
               </div>
-               <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">
-                 No Of Rods
-                </label>
-                <p className="text-gray-900">{selectedMachine.no_of_rods}</p>
-              </div>
-              </div>
-             
-             
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">

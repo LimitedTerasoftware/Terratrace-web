@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { AlertCircle, AlertTriangle, CheckCircle, Eye, MoreVertical, Trash, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
+import { AlertCircle, AlertTriangle, CheckCircle, Eye, Trash, X, ChevronDown, RotateCcw, Search, User, Route} from 'lucide-react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAppContext } from './AppContext';
 
 interface UnverifiedNetworksResponse {
@@ -49,10 +49,6 @@ interface VerifiedNetwork {
   user_name: string;
 }
 
-interface Filters {
-  state: string;
-  district: string;
-}
 
 interface State {
   state_id: number;
@@ -68,11 +64,7 @@ interface District {
   district_name: string;
   state_code: string;
 }
-interface Block {
-  block_id: string;
-  block_name: string;
-  district_code: string;
-}
+
 interface StatesResponse {
   success: boolean;
   data: State[];
@@ -80,9 +72,39 @@ interface StatesResponse {
 
 const RouteList = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { setPreviewKmlData } = useAppContext();
   const BASEURL = import.meta.env.VITE_API_BASE;
   const BASEURL_Val = import.meta.env.VITE_TraceAPI_URL;
+
+  // Header component for Route List
+  const RouteListHeader = () => {
+    return (
+      <header className="bg-white shadow-sm border-b border-gray-200 px-7 py-2 mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600">
+              <Route className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Route List Manager</h1>
+              <p className="text-sm text-gray-600">Manage and monitor network route planning</p>
+            </div>
+          </div>
+          <nav>
+            <ol className="flex items-center gap-2">
+              <li>
+                <Link className="font-medium" to="/dashboard">
+                  Dashboard /
+                </Link>
+              </li>
+              <li className="font-medium text-primary">Route List</li>
+            </ol>
+          </nav>
+        </div>
+      </header>
+    );
+  };
 
   // Network data states
   const [unverifiedNetworks, setUnverifiedNetworks] = useState<UnverifiedNetwork[]>([]);
@@ -92,9 +114,8 @@ const RouteList = () => {
   const [unverifiedError, setUnverifiedError] = useState<string | null>(null);
   const [verifiedError, setVerifiedError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'verified' | 'unverified'>('unverified');
-  const [previewLoading, setPreviewLoading] = useState<boolean>(false);
+  const [previewLoading, setPreviewLoading] = useState<number | null>(null);
   const [AllpreviewLoading, setAllPreviewLoading] = useState<boolean>(false);
-
 
   // Load status tracking
   const [unverifiedLoaded, setUnverifiedLoaded] = useState<boolean>(false);
@@ -104,21 +125,13 @@ const RouteList = () => {
   const [selectedUnverifiedNetworks, setSelectedUnverifiedNetworks] = useState<Set<number>>(new Set());
   const [selectedVerifiedNetworks, setSelectedVerifiedNetworks] = useState<Set<number>>(new Set());
 
-  // Filter states
-  const [filters, setFilters] = useState<Filters>({
-    state: '',
-    district: ''
-  });
-
   // Dynamic filter data
   const [states, setStates] = useState<State[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
-  const [blocks, setBlocks] = useState<Block[]>([]);
   const [globalsearch, setGlobalSearch] = useState<string>('');
 
   const [loadingStates, setLoadingStates] = useState<boolean>(false);
   const [loadingDistricts, setLoadingDistricts] = useState<boolean>(false);
-  const [loadingBlock, setLoadingBlock] = useState<boolean>(false);
   const [notification, setNotification] = useState<{
     type: 'success' | 'error' | 'warning';
     message: string;
@@ -131,12 +144,39 @@ const RouteList = () => {
   // Selected filter values (using IDs like the example)
   const [selectedState, setSelectedState] = useState<string>('');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('');
-  const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
+
+  // Add filtered data using useMemo
+  const filteredUnverifiedNetworks = useMemo(() => {
+    if (!globalsearch.trim()) return unverifiedNetworks;
+    
+    const lowerSearch = globalsearch.toLowerCase();
+    return unverifiedNetworks.filter((network) =>
+      Object.values(network).some((value) =>
+        (typeof value === 'string' || typeof value === 'number') &&
+        value.toString().toLowerCase().includes(lowerSearch)
+      )
+    );
+  }, [globalsearch, unverifiedNetworks]);
+
+  const filteredVerifiedNetworks = useMemo(() => {
+    if (!globalsearch.trim()) return verifiedNetworks;
+    
+    const lowerSearch = globalsearch.toLowerCase();
+    return verifiedNetworks.filter((network) =>
+      Object.values(network).some((value) =>
+        (typeof value === 'string' || typeof value === 'number') &&
+        value.toString().toLowerCase().includes(lowerSearch)
+      )
+    );
+  }, [globalsearch, verifiedNetworks]);
   
   // Navigate to GP List page
   const handleGPListClick = (networkId: number, networkName: string) => {
     navigate(`/route-planning/route-list/gplist/${networkId}`, {
-      state: { networkName }
+      state: { 
+        networkName,
+        returnTab: 'verified' // Pass the current tab information
+      }
     });
   };
  const showNotification = (type: 'success' | 'error' | 'warning', message: string) => {
@@ -183,7 +223,7 @@ const RouteList = () => {
   // Handle preview button click
   const handlePreviewClick = async (networkId: number) => {
     try {
-      setPreviewLoading(true);
+      setPreviewLoading(networkId); // Set specific network ID
       
       const response = await fetch(`${BASEURL_Val}/get-networks/${networkId}`);
       
@@ -203,7 +243,7 @@ const RouteList = () => {
       console.error('Error fetching preview data:', error);
       alert(`Error loading preview: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
-      setPreviewLoading(false);
+      setPreviewLoading(null); // Reset to null
     }
   };
  
@@ -216,7 +256,7 @@ const RouteList = () => {
         throw new Error(`Preview API request failed with status ${response.status}`);
     }
       
-     const data = await response.json();
+     await response.json();
      showNotification('success', `Successfully Deleted ${name}`);
    if(type === 'unverified'){
         fetchUnverifiedNetworks();
@@ -268,27 +308,6 @@ const RouteList = () => {
       setLoadingDistricts(false);
     }
   };
-    
- const fetchBlock = async() =>{
-   try {
-      if(selectedDistrict === '') return;
-      setLoadingBlock(true);
-      
-      const response = await fetch(`${BASEURL}/blocksdata?district_code=${selectedDistrict}`);
-      if (!response.ok) throw new Error('Failed to fetch blocks');
-      const data = await response.json();
-      setBlocks(data || []);
-    } catch (error) {
-      console.error('Error fetching blocks:', error);
-      setBlocks([]);
-    } finally {
-      setLoadingBlock(false);
-    }
- }
-
-  useEffect(() => {
-   fetchBlock();
-  }, [selectedDistrict]);
 
   // Fetch unverified networks with filters
   const fetchUnverifiedNetworks = async () => {
@@ -336,14 +355,35 @@ const RouteList = () => {
     }
   };
 
-  // Fetch verified networks
+  // Fetch verified networks with filters (UPDATED)
   const fetchVerifiedNetworks = async () => {
-  
     try {
       setLoadingVerified(true);
       setVerifiedError(null);
       
-      const response = await fetch(`${BASEURL_Val}/get-verified-netwrorks`);
+      let url = `${BASEURL_Val}/get-verified-netwrorks`;
+      const params = new URLSearchParams();
+      
+      // Add same filter logic as unverified networks
+      if (selectedState) {
+        const selectedStateData = states.find(state => state.state_id.toString() === selectedState);
+        if (selectedStateData) {
+          params.append('st_code', selectedStateData.state_code);
+        }
+      }
+      
+      if (selectedDistrict) {
+        const selectedDistrictData = districts.find(district => district.district_id?.toString() === selectedDistrict);
+        if (selectedDistrictData) {
+          params.append('dt_code', selectedDistrictData.district_code);
+        }
+      }
+      
+      if (params.toString()) {
+        url += '?' + params.toString();
+      }
+      
+      const response = await fetch(url);
       
       if (!response.ok) {
         throw new Error(`API request failed with status ${response.status}`);
@@ -365,6 +405,17 @@ const RouteList = () => {
     fetchStates();
   }, []);
 
+  // Handle return from GP List page
+  useEffect(() => {
+    // Check if returning from GP List with a specific tab
+    const returnTab = location.state?.returnTab;
+    if (returnTab === 'verified') {
+      setActiveTab('verified');
+      // Clear the state to prevent this from running again on future navigations
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, navigate, location.pathname]);
+
   // Load districts when state changes
   useEffect(() => {
     if (selectedState) {
@@ -381,6 +432,7 @@ const RouteList = () => {
       setUnverifiedLoaded(false); // Reset to refetch with filters
       fetchUnverifiedNetworks();
     } else if (activeTab === 'verified') {
+      setVerifiedLoaded(false); // Reset to refetch with filters
       fetchVerifiedNetworks();
     }
   }, [activeTab, selectedState, selectedDistrict, states, districts]);
@@ -388,24 +440,35 @@ const RouteList = () => {
   // Handle tab switch
   const handleTabSwitch = (tab: 'verified' | 'unverified') => {
     setActiveTab(tab);
+    // Clear selections when switching tabs
+    setSelectedUnverifiedNetworks(new Set());
+    setSelectedVerifiedNetworks(new Set());
   };
 
   // Handle filter changes
   const handleStateChange = (value: string) => {
     setSelectedState(value);
     setSelectedDistrict(''); // Clear dependent filters
+    // Clear selections when filters change
+    setSelectedUnverifiedNetworks(new Set());
+    setSelectedVerifiedNetworks(new Set());
   };
 
   const handleDistrictChange = (value: string) => {
     setSelectedDistrict(value);
+    // Clear selections when filters change
+    setSelectedUnverifiedNetworks(new Set());
+    setSelectedVerifiedNetworks(new Set());
   };
 
   // Clear all filters
   const clearFilters = () => {
     setSelectedState('');
     setSelectedDistrict('');
-    setSelectedBlock(null);
     setGlobalSearch('');
+    // Clear selections when clearing filters
+    setSelectedUnverifiedNetworks(new Set());
+    setSelectedVerifiedNetworks(new Set());
   };
 
   const handlePreview = async() =>{
@@ -449,12 +512,12 @@ const RouteList = () => {
     });
   };
 
-  // Handle select all unverified
+  // Handle select all unverified (UPDATED to use filtered data)
   const handleSelectAllUnverified = () => {
-    if (selectedUnverifiedNetworks.size === unverifiedNetworks.length) {
+    if (selectedUnverifiedNetworks.size === filteredUnverifiedNetworks.length) {
       setSelectedUnverifiedNetworks(new Set());
     } else {
-      setSelectedUnverifiedNetworks(new Set(unverifiedNetworks.map(network => network.id)));
+      setSelectedUnverifiedNetworks(new Set(filteredUnverifiedNetworks.map(network => network.id)));
     }
   };
 
@@ -471,437 +534,406 @@ const RouteList = () => {
     });
   };
 
-  // Handle select all verified
+  // Handle select all verified (UPDATED to use filtered data)
   const handleSelectAllVerified = () => {
-    if (selectedVerifiedNetworks.size === verifiedNetworks.length) {
+    if (selectedVerifiedNetworks.size === filteredVerifiedNetworks.length) {
       setSelectedVerifiedNetworks(new Set());
     } else {
-      setSelectedVerifiedNetworks(new Set(verifiedNetworks.map(network => network.id)));
+      setSelectedVerifiedNetworks(new Set(filteredVerifiedNetworks.map(network => network.id)));
     }
   };
 
   return (
-    <div className="sm:p-2 lg:p-4 bg-gray-100 dark:bg-gray-900 min-h-screen">
+    <div className="min-h-screen bg-gray-50">
        {AllpreviewLoading && (
         <div className="absolute inset-0 bg-white bg-opacity-70 flex justify-center items-center z-50">
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
         </div>
       )}
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-blue-900 dark:text-blue-100">
-          Route List
-        </h1>
-      </div>
-
-      {/* Search and Filters */}
-      <div className="mb-4">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Search Bar */}
-          <div className="relative w-80">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-              </svg>
-            </div>
-            <input
-              type="text"
-              placeholder="Search..."
-              value={globalsearch}
-              onChange={(e) => {
-                setGlobalSearch(e.target.value);
-              }}
-
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md bg-white text-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
-            />
-          </div>
-
-          {/* State Filter */}
-          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-            <select
-             value={selectedState || ''}
-              onChange={(e) => setSelectedState(e.target.value || '')}
-              disabled={loadingStates}
-              className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
-            >
-              <option value="">All States</option>
-              {states.map((state) => (
-                <option key={state.state_id} value={state.state_id}>
-                  {state.state_name}
-                </option>
-              ))}
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-              {loadingStates ? (
-                <svg className="animate-spin h-4 w-4 text-gray-400" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              ) : (
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              )}
-            </div>
-          </div>
-
-          {/* District Filter */}
-          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-            <select
-              value={selectedDistrict || ''}
-              onChange={(e) => setSelectedDistrict(e.target.value || '')}
-              disabled={!selectedState}
-              className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
-            >
-              <option value="">All Districts</option>
-              {districts.map((district) => (
-                <option key={district.district_id} value={district.district_id}>
-                  {district.district_name}
-                </option>
-              ))}
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-              {loadingDistricts ? (
-                <svg className="animate-spin h-4 w-4 text-gray-400" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              ) : (
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              )}
-            </div>
-          </div>
-
-          {/* Block Filter */}
-          {/* <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-            <select
-              value={selectedBlock || ''}
-              onChange={(e) => setSelectedBlock(e.target.value)}
-              disabled={!selectedDistrict}
-              className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
-            >
-              <option value="">All Blocks</option>
-               {blocks.map((block) => (
-                <option key={block.block_id} value={block.block_id}>
-                  {block.block_name}
-                </option>
-              ))}
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-          </div> */}
-
-          {/* Clear Filters */}
-          <button
-            onClick={clearFilters}
-            className="flex-none h-10 px-4 py-2 text-sm font-medium text-red-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-red-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
-          >
-            <span className="text-red-500 dark:text-red-400 font-medium text-sm">✕</span>
-            <span>Clear Filters</span>
-          </button>
-            <button
-            onClick={handlePreview}
-            className="flex-none h-10 px-4 py-2 text-sm font-medium  text-gray-400 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark: text-gray-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
-          >
-            <span className=" text-gray-400 font-medium text-sm">
-              <Eye className="w-4 h-4" />
-            </span>
-            <span>Preview</span>
-          </button>
-        </div>
-      </div>
       
-      {/* Tabs */}
-      <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
-        <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
-          <li className="mr-2">
-            <button
-              className={`inline-block p-4 rounded-t-lg outline-none ${
-                activeTab === 'unverified'
-                  ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
-                  : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
-              }`}
-              onClick={() => handleTabSwitch('unverified')}
-            >
-              Unverified Networks
-            </button>
-          </li>
-          <li className="mr-2">
-            <button
-              className={`inline-block p-4 rounded-t-lg outline-none ${
-                activeTab === 'verified'
-                  ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
-                  : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
-              }`}
-              onClick={() => handleTabSwitch('verified')}
-            >
-              Verified Networks
-            </button>
-          </li>
-        </ul>
-      </div>
-      
-      {/* Unverified Networks Tab */}
-      {activeTab === 'unverified' && (
-        <div className="overflow-x-auto relative">
-          {unverifiedError && (
-            <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-200 dark:text-red-800" role="alert">
-              <span className="font-medium">Error loading unverified networks:</span> {unverifiedError}
+      <RouteListHeader />
+
+      {/* Main Content Container */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          {/* Tabs */}
+          <div className="border-b border-gray-200 dark:border-gray-700">
+            <ul className="flex flex-wrap -mb-px text-sm font-medium text-center px-6">
+              <li className="mr-2">
+                <button
+                  className={`inline-block p-4 rounded-t-lg outline-none ${
+                    activeTab === 'unverified'
+                      ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
+                      : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
+                  }`}
+                  onClick={() => handleTabSwitch('unverified')}
+                >
+                  Unverified Networks
+                </button>
+              </li>
+              <li className="mr-2">
+                <button
+                  className={`inline-block p-4 rounded-t-lg outline-none ${
+                    activeTab === 'verified'
+                      ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
+                      : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
+                  }`}
+                  onClick={() => handleTabSwitch('verified')}
+                >
+                  Verified Networks
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          {/* Search and Filters */}
+          <div className="p-6 border-b border-gray-200">
+            {/* All filters and actions in one row */}
+            <div className="flex items-center space-x-4">
+              
+              {/* Search Bar */}
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={globalsearch}
+                  onChange={(e) => setGlobalSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              {/* State Filter */}
+              <div className="relative min-w-[160px]">
+                <select
+                  value={selectedState || ''}
+                  onChange={(e) => handleStateChange(e.target.value)}
+                  disabled={loadingStates}
+                  className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+                >
+                  <option value="">All States</option>
+                  {states.map((state) => (
+                    <option key={state.state_id} value={state.state_id}>
+                      {state.state_name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+              </div>
+
+              {/* District Filter */}
+              <div className="relative min-w-[160px]">
+                <select
+                  value={selectedDistrict || ''}
+                  onChange={(e) => handleDistrictChange(e.target.value)}
+                  disabled={!selectedState || loadingDistricts}
+                  className="disabled:opacity-50 disabled:cursor-not-allowed w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">All Districts</option>
+                  {districts.map((district) => (
+                    <option key={district.district_id} value={district.district_id}>
+                      {district.district_name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+              </div>
+
+              {/* Clear Filters Button */}
+              <button
+                onClick={clearFilters}
+                className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 whitespace-nowrap"
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                <span>Reset Filters</span>
+              </button>
+
+              {/* Preview Button */}
+              <button
+                onClick={handlePreview}
+                className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 whitespace-nowrap"
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                <span>Preview</span>
+              </button>
             </div>
-          )}
+          </div>
           
-          <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-            <thead className="text-xs text-gray-700 uppercase bg-gray-200 dark:bg-gray-700 dark:text-gray-400">
-              <tr>
-                <th scope="col" className="px-3 py-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedUnverifiedNetworks.size === unverifiedNetworks.length && unverifiedNetworks.length > 0}
-                    onChange={handleSelectAllUnverified}
-                    className="w-4 h-4 rounded focus:ring-0 outline-none border-2 border-blue-900 checked:bg-blue-900 checked:border-blue-900"
-                    style={{
-                      accentColor: 'rgb(30, 58, 138)'
-                    }}
-                  />
-                </th>
-                <th scope="col" className="px-3 py-2">Network Name</th>
-                <th scope="col" className="px-3 py-2">State Name</th>
-                <th scope="col" className="px-3 py-2">District Name</th>
-                <th scope="col" className="px-3 py-2">Total Length (km)</th>
-                <th scope="col" className="px-3 py-2">User Name</th>
-                <th scope="col" className="px-3 py-2">Created At</th>
-                <th scope="col" className="px-3 py-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loadingUnverified ? (
-                <tr>
-                  <td colSpan={8} className="px-3 py-2">
-                    <div className="flex items-center justify-center">
-                      <svg className="animate-spin h-5 w-5 mr-3 text-blue-500" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Loading...
-                    </div>
-                  </td>
-                </tr>
-              ) : unverifiedNetworks.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-3 py-2">
-                    No unverified networks found.
-                  </td>
-                </tr>
-              ) : (
-                unverifiedNetworks.map((network) => (
-                  <tr key={network.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                    <td className="px-3 py-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedUnverifiedNetworks.has(network.id)}
-                        onChange={() => handleUnverifiedNetworkSelection(network.id)}
-                        className="w-4 h-4 rounded focus:ring-0 outline-none border-2 border-blue-900 checked:bg-blue-900 checked:border-blue-900"
-                        style={{
-                          accentColor: 'rgb(30, 58, 138)'
-                        }}
-                      />
-                    </td>
-                    <td className="px-3 py-2 font-medium text-gray-900 dark:text-white">
-                      {network.name}
-                    </td>
-                    <td className="px-3 py-2 font-medium text-gray-900 dark:text-white">
-                      {network.st_name || 'N/A'}
-                    </td>
-                    <td className="px-3 py-2 font-medium text-gray-900 dark:text-white">
-                      {network.dt_name || 'N/A'}
-                    </td>
-                    <td className="px-3 py-2">
-                      {parseFloat(network.total_length).toFixed(2)}
-                    </td>
-                    <td className="px-3 py-2">
-                      {network.user_name}
-                    </td>
-                    <td className="px-3 py-2">
-                      {new Date(network.created_at).toLocaleDateString()}
-                    </td>
-                  
-                    <td className="px-3 py-2">
-                      <div className="flex items-center gap-3">
-                        {/* Preview Button */}
-                        <button
-                          onClick={() => handlePreviewClick(network.id)}
-                          disabled={previewLoading}
-                          className="flex items-center justify-center w-8 h-8 text-gray-600 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                          title="Preview Route"
-                        >
-                          {previewLoading ? (
-                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                              <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                                fill="none"
-                              />
-                              <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                              />
-                            </svg>
-                          ) : (
-                            <Eye className="w-4 h-4" />
-                          )}
-                        </button>
-
-                        {/* Delete Button */}
-                        <button
-                          onClick={() => handleDeleteClick(network.id,network.name,'unverified')}
-                          className="flex items-center justify-center w-8 h-8 text-red-600 hover:text-red-800 transition-colors duration-200"
-                          title="Delete Route"
-                        >
-                          <Trash className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-
-                  </tr>
-                ))
+          {/* Unverified Networks Tab */}
+          {activeTab === 'unverified' && (
+            <>
+              {unverifiedError && (
+                <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-200 dark:text-red-800" role="alert">
+                  <span className="font-medium">Error loading unverified networks:</span> {unverifiedError}
+                </div>
               )}
-            </tbody>
-          </table>
-        </div>
-      )}
-      
-      {/* Verified Networks Tab */}
-      {activeTab === 'verified' && (
-        <div className="overflow-x-auto relative">
-          {verifiedError && (
-            <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-200 dark:text-red-800" role="alert">
-              <span className="font-medium">Error loading verified networks:</span> {verifiedError}
-            </div>
-            )}
-          
-          <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-            <thead className="text-xs text-gray-700 uppercase bg-gray-200 dark:bg-gray-700 dark:text-gray-400">
-              <tr>
-                <th scope="col" className="px-3 py-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedVerifiedNetworks.size === verifiedNetworks.length && verifiedNetworks.length > 0}
-                    onChange={handleSelectAllVerified}
-                    className="w-4 h-4 rounded focus:ring-0 outline-none border-2 border-blue-900 checked:bg-blue-900 checked:border-blue-900"
-                    style={{
-                      accentColor: 'rgb(30, 58, 138)'
-                    }}
-                  />
-                </th>
-                <th scope="col" className="px-3 py-2">Network Name</th>
-                <th scope="col" className="px-3 py-2">State Name</th>
-                <th scope="col" className="px-3 py-2">District Name</th>
-                <th scope="col" className="px-3 py-2">Total Length (km)</th>
-                <th scope="col" className="px-3 py-2">User Name</th>
-                <th scope="col" className="px-3 py-2">Created At</th>
-                <th scope="col" className="px-3 py-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loadingVerified ? (
-                <tr>
-                  <td colSpan={8} className="px-3 py-2">
-                    <div className="flex items-center justify-center">
-                      <svg className="animate-spin h-5 w-5 mr-3 text-blue-500" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Loading...
-                    </div>
-                  </td>
-                </tr>
-              ) : verifiedNetworks.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-3 py-2">
-                    No verified networks found.
-                  </td>
-                </tr>
-                ) : (
-                verifiedNetworks.map((network) => (
-                  <tr key={network.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                    <td className="px-3 py-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedVerifiedNetworks.has(network.id)}
-                        onChange={() => handleVerifiedNetworkSelection(network.id)}
-                        className="w-4 h-4 rounded focus:ring-0 outline-none border-2 border-blue-900 checked:bg-blue-900 checked:border-blue-900"
-                        style={{
-                          accentColor: 'rgb(30, 58, 138)'
-                        }}
-                      />
-                    </td>
-                    <td className="px-3 py-2 font-medium text-gray-900 dark:text-white">
-                      {network.name}
-                    </td>
-                    <td className="px-3 py-2 font-medium text-gray-900 dark:text-white">
-                      {network.st_name || 'N/A'}
-                    </td>
-                    <td className="px-3 py-2 font-medium text-gray-900 dark:text-white">
-                      {network.dt_name || 'N/A'}
-                    </td>
-                    <td className="px-3 py-2">
-                      {parseFloat(network.total_length).toFixed(2)}
-                    </td>
-                    <td className="px-3 py-2">
-                      {network.user_name}
-                    </td>
-                    <td className="px-3 py-2">
-                      {new Date(network.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex items-center gap-3">
-                        {/* Preview button */}
-                        <button
-                          onClick={() => handlePreviewClick(network.id)}
-                          disabled={previewLoading}
-                          className="flex items-center justify-center w-8 h-8 text-gray-600 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                          title="Preview Route"
-                        >
-                          {previewLoading ? (
-                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+              
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left text-gray-500">
+                  <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th scope="col" className="px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <input
+                          type="checkbox"
+                          checked={selectedUnverifiedNetworks.size === filteredUnverifiedNetworks.length && filteredUnverifiedNetworks.length > 0}
+                          onChange={handleSelectAllUnverified}
+                          className="w-4 h-4 rounded focus:ring-0 outline-none border-2 border-blue-900 checked:bg-blue-900 checked:border-blue-900"
+                          style={{
+                            accentColor: 'rgb(30, 58, 138)'
+                          }}
+                        />
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Network Name</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">State Name</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">District Name</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Length (km)</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Name</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {loadingUnverified ? (
+                      <tr>
+                        <td colSpan={8} className="px-6 py-4">
+                          <div className="flex items-center justify-center">
+                            <svg className="animate-spin h-5 w-5 mr-3 text-blue-500" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                          ) : (
-                            <Eye className="w-4 h-4" />
-                          )}
-                        </button>
-                          <button
-                          onClick={() => handleDeleteClick(network.id,network.name,'verified')}
-                          className="flex items-center justify-center w-8 h-8 text-red-600 hover:text-red-800 transition-colors duration-200"
-                          title="Delete Route"
-                        >
-                          <Trash className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleGPListClick(network.id, network.name)}
-                          className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 outline-none dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-800"
-                        >
-                          GP List
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                            Loading...
+                          </div>
+                        </td>
+                      </tr>
+                    ) : filteredUnverifiedNetworks.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
+                          {globalsearch ? 'No networks match your search criteria.' : 'No unverified networks found.'}
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredUnverifiedNetworks.map((network) => (
+                        <tr key={network.id} className="hover:bg-gray-50">
+                          <td className="px-6 whitespace-nowrap">
+                            <input
+                              type="checkbox"
+                              checked={selectedUnverifiedNetworks.has(network.id)}
+                              onChange={() => handleUnverifiedNetworkSelection(network.id)}
+                              className="w-4 h-4 rounded focus:ring-0 outline-none border-2 border-blue-900 checked:bg-blue-900 checked:border-blue-900"
+                              style={{
+                                accentColor: 'rgb(30, 58, 138)'
+                              }}
+                            />
+                          </td>
+                          <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {network.name}
+                          </td>
+                          <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {network.st_name || 'N/A'}
+                          </td>
+                          <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {network.dt_name || 'N/A'}
+                          </td>
+                          <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {parseFloat(network.total_length).toFixed(2)}
+                          </td>
+                          <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                            <div className="flex items-center">
+                              <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center mr-3">
+                                <User className="w-4 h-4 text-gray-600" />
+                              </div>
+                              <div>{network.user_name}</div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {new Date(network.created_at).toLocaleDateString()}
+                          </td>
+                        
+                          <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                            <div className="flex items-center gap-3">
+                              {/* Preview Button */}
+                              <button
+                                onClick={() => handlePreviewClick(network.id)}
+                                disabled={previewLoading === network.id}
+                                className="flex items-center justify-center w-8 h-8 text-gray-600 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                                title="Preview Route"
+                              >
+                                {previewLoading === network.id ? (
+                                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                    <circle
+                                      className="opacity-25"
+                                      cx="12"
+                                      cy="12"
+                                      r="10"
+                                      stroke="currentColor"
+                                      strokeWidth="4"
+                                      fill="none"
+                                    />
+                                    <path
+                                      className="opacity-75"
+                                      fill="currentColor"
+                                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                    />
+                                  </svg>
+                                ) : (
+                                  <Eye className="w-4 h-4" />
+                                )}
+                              </button>
+
+                              {/* Delete Button */}
+                              <button
+                                onClick={() => handleDeleteClick(network.id,network.name,'unverified')}
+                                className="flex items-center justify-center w-8 h-8 text-red-600 hover:text-red-800 transition-colors duration-200"
+                                title="Delete Route"
+                              >
+                                <Trash className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+          
+          {/* Verified Networks Tab */}
+          {activeTab === 'verified' && (
+            <>
+              {verifiedError && (
+                <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-200 dark:text-red-800" role="alert">
+                  <span className="font-medium">Error loading verified networks:</span> {verifiedError}
+                </div>
               )}
-            </tbody>
-          </table>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left text-gray-500">
+                  <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th scope="col" className="px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <input
+                          type="checkbox"
+                          checked={selectedVerifiedNetworks.size === filteredVerifiedNetworks.length && filteredVerifiedNetworks.length > 0}
+                          onChange={handleSelectAllVerified}
+                          className="w-4 h-4 rounded focus:ring-0 outline-none border-2 border-blue-900 checked:bg-blue-900 checked:border-blue-900"
+                          style={{
+                            accentColor: 'rgb(30, 58, 138)'
+                          }}
+                        />
+                      </th>
+                      <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Network Name</th>
+                      <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">State Name</th>
+                      <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">District Name</th>
+                      <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Length (km)</th>
+                      <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Name</th>
+                      <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
+                      <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {loadingVerified ? (
+                      <tr>
+                        <td colSpan={8} className="px-6 py-4">
+                          <div className="flex items-center justify-center">
+                            <svg className="animate-spin h-5 w-5 mr-3 text-blue-500" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Loading...
+                          </div>
+                        </td>
+                      </tr>
+                    ) : filteredVerifiedNetworks.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
+                          {globalsearch ? 'No networks match your search criteria.' : 'No verified networks found.'}
+                        </td>
+                      </tr>
+                      ) : (
+                      filteredVerifiedNetworks.map((network) => (
+                        <tr key={network.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-2 whitespace-nowrap">
+                            <input
+                              type="checkbox"
+                              checked={selectedVerifiedNetworks.has(network.id)}
+                              onChange={() => handleVerifiedNetworkSelection(network.id)}
+                              className="w-4 h-4 rounded focus:ring-0 outline-none border-2 border-blue-900 checked:bg-blue-900 checked:border-blue-900"
+                              style={{
+                                accentColor: 'rgb(30, 58, 138)'
+                              }}
+                            />
+                          </td>
+                          <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {network.name}
+                          </td>
+                          <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {network.st_name || 'N/A'}
+                          </td>
+                          <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {network.dt_name || 'N/A'}
+                          </td>
+                          <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {parseFloat(network.total_length).toFixed(2)}
+                          </td>
+                          <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                            <div className="flex items-center">
+                              <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center mr-3">
+                                <User className="w-4 h-4 text-gray-600" />
+                              </div>
+                              <div>{network.user_name}</div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {new Date(network.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                            <div className="flex items-center gap-3">
+                              {/* Preview button */}
+                              <button
+                                onClick={() => handlePreviewClick(network.id)}
+                                disabled={previewLoading === network.id}
+                                className="flex items-center justify-center w-8 h-8 text-gray-600 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                                title="Preview Route"
+                              >
+                                {previewLoading === network.id ? (
+                                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                ) : (
+                                  <Eye className="w-4 h-4" />
+                                )}
+                              </button>
+                              
+                              {/* Delete Button */}
+                              <button
+                                onClick={() => handleDeleteClick(network.id,network.name,'verified')}
+                                className="flex items-center justify-center w-8 h-8 text-red-600 hover:text-red-800 transition-colors duration-200"
+                                title="Delete Route"
+                              >
+                                <Trash className="w-4 h-4" />
+                              </button>
+                              
+                              {/* GP List Button */}
+                              <button 
+                                onClick={() => handleGPListClick(network.id, network.name)}
+                                className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 outline-none dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-800"
+                              >
+                                GP List
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </div>
-      )}
+
          {notification.show && (
         <div className={`fixed top-4 right-4 z-[60] min-w-80 max-w-md transform transition-all duration-300 ease-in-out ${
           notification.show ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
@@ -925,7 +957,6 @@ const RouteList = () => {
         </div>
       )}
     </div>
-    
   );
 };
 

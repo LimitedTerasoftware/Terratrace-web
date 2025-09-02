@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { StateData, District, Block } from '../../types/survey';
 import Report from './UGConst';
-import Breadcrumb from '../Breadcrumbs/Breadcrumb';
-import { SheetIcon } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { SheetIcon, Construction } from 'lucide-react';
+import { useSearchParams, Link } from 'react-router-dom';
 
 interface StatesResponse {
     success: boolean;
@@ -16,9 +15,8 @@ type StatusOption = {
 };
 
 const BASEURL = import.meta.env.VITE_API_BASE;
-const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
-function Construction() {
+function ConstructionPage() {
     const [states, setStates] = useState<StateData[]>([]);
     const [districts, setDistricts] = useState<District[]>([]);
     const [blocks, setBlocks] = useState<Block[]>([]);
@@ -33,9 +31,10 @@ function Construction() {
     const [fromdate, setFromDate] = useState<string>('');
     const [todate, setToDate] = useState<string>('');
     const [activeTab, setActiveTab] = useState<'UG'>('UG');
-    const [excel,setExcel]=useState<boolean>(false);
+    const [excel, setExcel] = useState<boolean>(false);
     const [searchParams, setSearchParams] = useSearchParams();
     const [filtersReady, setFiltersReady] = useState(false);
+
     const statusMap: Record<number, string> = {
         1: "Completed",
         0: "Pending",
@@ -48,7 +47,34 @@ function Construction() {
         })
     );
 
-    // Fetch all states
+    const ConstructionHeader = () => {
+        return (
+            <header className="bg-white shadow-sm border-b border-gray-200 px-7 py-2 mb-6">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-orange-500 to-red-600">
+                            <Construction className="h-6 w-6 text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-xl font-bold text-gray-900">Construction Data Manager</h1>
+                            <p className="text-sm text-gray-600">Monitor and analyze construction project data</p>
+                        </div>
+                    </div>
+                    <nav>
+                        <ol className="flex items-center gap-2">
+                            <li>
+                                <Link className="font-medium" to="/dashboard">
+                                    Dashboard /
+                                </Link>
+                            </li>
+                            <li className="font-medium text-primary">Construction Data</li>
+                        </ol>
+                    </nav>
+                </div>
+            </header>
+        );
+    };
+
     const fetchStates = async () => {
         try {
             setLoadingStates(true);
@@ -109,7 +135,6 @@ function Construction() {
             fetchDistricts(selectedState);
         } else {
             setDistricts([]);
-            // setSelectedDistrict('');
         }
     }, [selectedState, states]);
 
@@ -118,34 +143,36 @@ function Construction() {
     }, [selectedDistrict]);
 
     useEffect(() => {
-    const state_id = searchParams.get('state_id') || null;
-    const district_id = searchParams.get('district_id') || null;
-    const block_id = searchParams.get('block_id') || null;
-    const status =searchParams.get('status') || null;
-    const from_date =searchParams.get('from_date') ||'' ;
-    const to_date =searchParams.get('to_date') || "";
-    const search =searchParams.get('search') || "";
+        const state_id = searchParams.get('state_id') || null;
+        const district_id = searchParams.get('district_id') || null;
+        const block_id = searchParams.get('block_id') || null;
+        const status = searchParams.get('status') || null;
+        const from_date = searchParams.get('from_date') || '';
+        const to_date = searchParams.get('to_date') || "";
+        const search = searchParams.get('search') || "";
 
-    setSelectedState(state_id);
-    setSelectedDistrict(district_id);
-    setSelectedBlock(block_id);
-    setSelectedStatus(status !== null ? Number(status) : null);
-    setFromDate(from_date);
-    setToDate(to_date);
-    setGlobalSearch(search)
-    setFiltersReady(true);
-    }, []); 
-    const handleFilterChange = (newState: string | null, newDistrict: string | null,newBlock:string|null,status:number|null,from_date:string|null,to_date:string|null,search:string|null) => {
-    const params: Record<string, string> = {};
-    if (newState) params.state_id = newState;
-    if(newDistrict) params.district_id = newDistrict;
-    if(newBlock) params.block_id = newBlock;
-    if(status) params.status=String(status);
-    if(from_date) params.from_date = from_date;
-    if(to_date) params.to_date = to_date;
-    if(search) params.search = search;
-    setSearchParams(params);
+        setSelectedState(state_id);
+        setSelectedDistrict(district_id);
+        setSelectedBlock(block_id);
+        setSelectedStatus(status !== null ? Number(status) : null);
+        setFromDate(from_date);
+        setToDate(to_date);
+        setGlobalSearch(search)
+        setFiltersReady(true);
+    }, []);
+
+    const handleFilterChange = (newState: string | null, newDistrict: string | null, newBlock: string | null, status: number | null, from_date: string | null, to_date: string | null, search: string | null) => {
+        const params: Record<string, string> = {};
+        if (newState) params.state_id = newState;
+        if (newDistrict) params.district_id = newDistrict;
+        if (newBlock) params.block_id = newBlock;
+        if (status) params.status = String(status);
+        if (from_date) params.from_date = from_date;
+        if (to_date) params.to_date = to_date;
+        if (search) params.search = search;
+        setSearchParams(params);
     };
+
     const clearFilters = () => {
         setSelectedState(null);
         setSelectedDistrict(null);
@@ -154,233 +181,261 @@ function Construction() {
         setGlobalSearch('');
         setFromDate('');
         setToDate('');
-        setSearchParams({}); 
-
+        setSearchParams({});
     };
+
+    const handleStateChange = (value: string) => {
+        setSelectedState(value || null);
+        handleFilterChange(value || null, selectedDistrict, selectedBlock, selectedStatus, fromdate, todate, globalsearch);
+    };
+
+    const handleDistrictChange = (value: string) => {
+        setSelectedDistrict(value || null);
+        handleFilterChange(selectedState, value || null, selectedBlock, selectedStatus, fromdate, todate, globalsearch);
+    };
+
+    const handleBlockChange = (value: string) => {
+        setSelectedBlock(value || null);
+        handleFilterChange(selectedState, selectedDistrict, value || null, selectedStatus, fromdate, todate, globalsearch);
+    };
+
+    const handleStatusChange = (value: string) => {
+        const statusValue = value !== '' ? Number(value) : null;
+        setSelectedStatus(statusValue);
+        handleFilterChange(selectedState, selectedDistrict, selectedBlock, statusValue, fromdate, todate, globalsearch);
+    };
+
+    const handleFromDateChange = (value: string) => {
+        setFromDate(value);
+        handleFilterChange(selectedState, selectedDistrict, selectedBlock, selectedStatus, value, todate, globalsearch);
+    };
+
+    const handleToDateChange = (value: string) => {
+        setToDate(value);
+        handleFilterChange(selectedState, selectedDistrict, selectedBlock, selectedStatus, fromdate, value, globalsearch);
+    };
+
+    const handleSearchChange = (value: string) => {
+        setGlobalSearch(value);
+        handleFilterChange(selectedState, selectedDistrict, selectedBlock, selectedStatus, fromdate, todate, value);
+    };
+
     return (
-        <div className="sm:p-2 lg:p-4 min-h-screen">
-            <div className="mb-6">
-                <Breadcrumb pageName="Construction Data" />
-            </div>
-            {/* Search and Filters */}
-            <div className="mb-4">
-                <div className="flex flex-wrap items-center gap-3">
-                    {/* State Filter */}
-                    <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-                        <select
-                            value={selectedState || ''}
-                            onChange={(e) => {setSelectedState(e.target.value || '');
-                                             handleFilterChange(e.target.value ,selectedDistrict,selectedBlock,selectedStatus,fromdate,todate,globalsearch)}}
-                            disabled={loadingStates}
-                            className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
-                        >
-                            <option value="">All States</option>
-                            {states.map((state) => (
-                                <option key={state.state_id} value={state.state_id}>
-                                    {state.state_name}
-                                </option>
-                            ))}
-                        </select>
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                            {loadingStates ? (
-                                <svg className="animate-spin h-4 w-4 text-gray-400" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                            ) : (
-                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                </svg>
-                            )}
-                        </div>
-                    </div>
+        <div className="min-h-screen bg-gray-50">
+            <ConstructionHeader />
 
-                    {/* District Filter */}
-                    <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-                        <select
-                            value={selectedDistrict || ''}
-                            onChange={(e) => {setSelectedDistrict(e.target.value || '');
-                                                handleFilterChange(selectedState,e.target.value,selectedBlock,selectedStatus,fromdate,todate,globalsearch)
-
-                            }}
-                            disabled={!selectedState}
-                            className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
-                        >
-                            <option value="">All Districts</option>
-                            {districts.map((district) => (
-                                <option key={district.district_id} value={district.district_id}>
-                                    {district.district_name}
-                                </option>
-                            ))}
-                        </select>
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                            {loadingDistricts ? (
-                                <svg className="animate-spin h-4 w-4 text-gray-400" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                            ) : (
-                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                </svg>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Block Filter */}
-                    <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-                        <select
-                            value={selectedBlock || ''}
-                            onChange={(e) => {setSelectedBlock(e.target.value);
-                                                handleFilterChange(selectedState,selectedDistrict,e.target.value ,selectedStatus,fromdate,todate,globalsearch)
-
-                            }}
-                            disabled={!selectedDistrict}
-                            className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
-                        >
-                            <option value="">All Blocks</option>
-                            {blocks.map((block) => (
-                                <option key={block.block_id} value={block.block_id}>
-                                    {block.block_name}
-                                </option>
-                            ))}
-                        </select>
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </div>
-                    </div>
-
-                    {/* Status Filter */}
-                    <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-                        <select
-                            value={selectedStatus !== null ? selectedStatus : ''}
-                            onChange={(e) => {
-                                setSelectedStatus(e.target.value !== '' ? Number(e.target.value) : null);
-                                handleFilterChange(selectedState,selectedDistrict,selectedBlock ,Number(e.target.value),fromdate,todate,globalsearch)
-
-                            }}
-                            className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                        >
-                            <option value="">All Status</option>
-                            {statusOptions.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </div>
-                    </div>
-
-                    {/* Date Filters */}
-                    <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-                        <input
-                            type="date"
-                            value={fromdate}
-                            onChange={(e) => {
-                                setFromDate(e.target.value);
-                                handleFilterChange(selectedState,selectedDistrict,selectedBlock ,selectedStatus,e.target.value,todate,globalsearch)
-
-                            }}
-                            className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                            placeholder="From Date"
-                        />
-                    </div>
-
-                    <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-                        <input
-                            type="date"
-                            value={todate}
-                            onChange={(e) => {
-                                setToDate(e.target.value);
-                                handleFilterChange(selectedState,selectedDistrict,selectedBlock ,selectedStatus,fromdate,e.target.value,globalsearch)}}
-                            className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                            placeholder="To Date"
-                        />
-                    </div>
-
-                    {/* Search Bar */}
-                    <div className="relative w-80">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                            </svg>
-                        </div>
-                        <input
-                            type="text"
-                            placeholder="Search..."
-                            value={globalsearch}
-                            onChange={(e) => {
-                                setGlobalSearch(e.target.value);
-                                handleFilterChange(selectedState,selectedDistrict,selectedBlock ,selectedStatus,fromdate,todate,e.target.value)
-
-                            }}
-
-                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md bg-white text-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
-                        />
-                    </div>
-
-                    {/* Clear Filters */}
-                    <button
-                        onClick={clearFilters}
-                        className="flex-none h-10 px-4 py-2 text-sm font-medium text-red-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-red-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
-                    >
-                        <span className="text-red-500 dark:text-red-400 font-medium text-sm">✕</span>
-                        <span>Clear Filters</span>
-                    </button>
-                      <button
-                        onClick={()=>setExcel(true)}
-                        className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
-                    >
-                        <SheetIcon className="h-4 w-4 text-green-600"/>
-                        Excel
-                    </button>
-
-                </div>
-            </div>
-            {/* Tabs */}
-            <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
-                <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
-                    <li className="mr-2">
-                        <button
-                            className={`inline-block p-4 rounded-t-lg outline-none ${activeTab === 'UG'
-                                    ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
-                                    : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
+            {/* Main Content Container */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                {/* Tabs */}
+                <div className="border-b border-gray-200 dark:border-gray-700">
+                    <ul className="flex flex-wrap -mb-px text-sm font-medium text-center px-6">
+                        <li className="mr-2">
+                            <button
+                                className={`inline-block p-4 rounded-t-lg outline-none ${
+                                    activeTab === 'UG'
+                                        ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
+                                        : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
                                 }`}
-                            onClick={() => setActiveTab('UG')}
+                                onClick={() => setActiveTab('UG')}
+                            >
+                                Underground Construction
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+
+                {/* Search and Filters */}
+                <div className="p-6 border-b border-gray-200">
+                    {/* First Row - Location Filters */}
+                    <div className="flex flex-wrap items-center gap-3 mb-4">
+                        {/* State Filter */}
+                        <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+                            <select
+                                value={selectedState || ''}
+                                onChange={(e) => handleStateChange(e.target.value)}
+                                disabled={loadingStates}
+                                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
+                            >
+                                <option value="">All States</option>
+                                {states.map((state) => (
+                                    <option key={state.state_id} value={state.state_id}>
+                                        {state.state_name}
+                                    </option>
+                                ))}
+                            </select>
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                                {loadingStates ? (
+                                    <svg className="animate-spin h-4 w-4 text-gray-400" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                ) : (
+                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* District Filter */}
+                        <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+                            <select
+                                value={selectedDistrict || ''}
+                                onChange={(e) => handleDistrictChange(e.target.value)}
+                                disabled={!selectedState || loadingDistricts}
+                                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
+                            >
+                                <option value="">All Districts</option>
+                                {districts.map((district) => (
+                                    <option key={district.district_id} value={district.district_id}>
+                                        {district.district_name}
+                                    </option>
+                                ))}
+                            </select>
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                                {loadingDistricts ? (
+                                    <svg className="animate-spin h-4 w-4 text-gray-400" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                ) : (
+                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Block Filter */}
+                        <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+                            <select
+                                value={selectedBlock || ''}
+                                onChange={(e) => handleBlockChange(e.target.value)}
+                                disabled={!selectedDistrict || loadingBlock}
+                                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
+                            >
+                                <option value="">All Blocks</option>
+                                {blocks.map((block) => (
+                                    <option key={block.block_id} value={block.block_id}>
+                                        {block.block_name}
+                                    </option>
+                                ))}
+                            </select>
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                                {loadingBlock ? (
+                                    <svg className="animate-spin h-4 w-4 text-gray-400" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                ) : (
+                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Status Filter */}
+                        <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+                            <select
+                                value={selectedStatus !== null ? selectedStatus : ''}
+                                onChange={(e) => handleStatusChange(e.target.value)}
+                                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                            >
+                                <option value="">All Status</option>
+                                {statusOptions.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+                        </div>
+
+                        {/* Date Filters */}
+                        <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+                            <input
+                                type="date"
+                                value={fromdate}
+                                onChange={(e) => handleFromDateChange(e.target.value)}
+                                className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                placeholder="From Date"
+                            />
+                        </div>
+
+                        <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+                            <input
+                                type="date"
+                                value={todate}
+                                onChange={(e) => handleToDateChange(e.target.value)}
+                                className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                placeholder="To Date"
+                            />
+                        </div>
+
+                        {/* Clear Filters */}
+                        <button
+                            onClick={clearFilters}
+                            className="flex-none h-10 px-4 py-2 text-sm font-medium text-red-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-red-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
                         >
-                            Underground Construction
+                            <span className="text-red-500 dark:text-red-400 font-medium text-sm">✕</span>
+                            <span>Clear Filters</span>
                         </button>
-                    </li>
+                    </div>
 
-                </ul>
+                    {/* Second Row - Search and Excel Export */}
+                    <div className="flex flex-wrap items-center gap-3">
+                        {/* Search Bar */}
+                        <div className="relative w-80">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </div>
+                            <input
+                                type="text"
+                                placeholder="Search..."
+                                value={globalsearch}
+                                onChange={(e) => handleSearchChange(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md bg-white text-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
+                            />
+                        </div>
+
+                        {/* Excel Export Button */}
+                        <button
+                            onClick={() => setExcel(true)}
+                            className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
+                        >
+                            <SheetIcon className="h-4 w-4 text-green-600"/>
+                            Excel
+                        </button>
+                    </div>
+                </div>
+
+                {/* Content Area */}
+                {activeTab === 'UG' && (
+                    <Report 
+                        Data={{
+                            selectedState,
+                            selectedDistrict,
+                            selectedBlock,
+                            selectedStatus,
+                            fromdate,
+                            todate,
+                            globalsearch,
+                            excel,
+                            filtersReady
+                        }}
+                        Onexcel={() => setExcel(false)}
+                    />
+                )}
             </div>
-            
-               {activeTab === 'UG' && (
-                <Report 
-                Data={{
-                    selectedState,
-                    selectedDistrict,
-                    selectedBlock,
-                    selectedStatus,
-                    fromdate,
-                    todate,
-                    globalsearch,excel,filtersReady
-                    
-                }}
-                Onexcel={()=>setExcel(false)}
-                />
-
-
-               )}
         </div>
-
-    )
+    );
 }
 
-export default Construction
+export default ConstructionPage;

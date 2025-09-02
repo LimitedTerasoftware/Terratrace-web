@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Activity as Activity2, MapPin, Clock, TrendingUp } from 'lucide-react';
+import { Activity as Activity2, MapPin, Clock} from 'lucide-react';
 import { Activity } from '../../types/survey';
 import { getMachineOptions } from '../Services/api';
 import { Machine } from '../../types/machine';
@@ -11,12 +11,8 @@ interface StatsPanelProps {
   isLoading: boolean;
 }
 
-const StatsPanel: React.FC<StatsPanelProps> = ({ activities, totalCount,isLoading }) => {
+const StatsPanel: React.FC<StatsPanelProps> = ({ activities,isLoading }) => {
   const navigate= useNavigate();
-  const totalActivities = activities.length;
-  const uniqueMachines = new Set(activities.map(a => a.machine_id)).size;
-  const eventTypes = new Set(activities.map(a => a.eventType)).size;
-
   const recentActivities = activities.filter(a =>
   new Date(a.created_at) > new Date(Date.now() - 24 * 60 * 60 * 1000)
 );
@@ -106,7 +102,7 @@ const recentRegNumbers = recentActivities.map(a => a.registration_number);
       {stats.map((stat, index) => {
         const Icon = stat.icon;
         return (
-          <div key={index} onClick={()=>handleredire(stat.id,stat.regids)} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+          <div key={index} onClick={()=>handleredire(stat.id,stat.regids)} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">{stat.label}</p>

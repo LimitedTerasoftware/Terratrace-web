@@ -1,14 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
-import { ProcessedPlacemark, PlacemarkCategory, ProcessedPhysicalSurvey } from '../../types/kmz';
+import { ProcessedPlacemark, PlacemarkCategory, ProcessedPhysicalSurvey, ProcessedDesktopPlanning } from '../../types/kmz';
 import { PLACEMARK_CATEGORIES } from './PlaceMark';
 
 interface GoogleMapProps {
-  placemarks: (ProcessedPlacemark | ProcessedPhysicalSurvey)[];
+  placemarks: (ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedDesktopPlanning)[];
   categories: PlacemarkCategory[];
   visibleCategories: Set<string>;
-  highlightedPlacemark?: ProcessedPlacemark | ProcessedPhysicalSurvey;
-  onPlacemarkClick: (placemark: ProcessedPlacemark | ProcessedPhysicalSurvey) => void;
+  highlightedPlacemark?: ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedDesktopPlanning;
+  onPlacemarkClick: (placemark: ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedDesktopPlanning) => void;
   className?: string;
 }
 
@@ -90,7 +90,8 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
     placemarks.forEach(placemark => {
       const category = categories.find(cat => 
         cat.name === placemark.category || 
-        (cat.name.startsWith('Physical:') && cat.name.replace('Physical: ', '') === placemark.category)
+        (cat.name.startsWith('Physical:') && cat.name.replace('Physical: ', '') === placemark.category) ||
+        (cat.name.startsWith('Desktop:') && cat.name.replace('Desktop: ', '') === placemark.category)
       );
       if (!category || !visibleCategories.has(category.id)) return;
 
@@ -98,19 +99,65 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
 
       if (placemark.type === 'point') {
         const isPhysicalSurvey = placemark.id.startsWith('physical-');
+        const isDesktopPlanning = placemark.id.startsWith('desktop-');
         
         let markerIcon;
+        
         if (isPhysicalSurvey) {
+          // Physical survey markers (existing)
           markerIcon = {
-              path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-              scale: 5,
+            path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+            scale: 5,
+            fillColor: category.color,
+            fillOpacity: 0.9,
+            strokeColor: '#ffffff',
+            strokeWeight: 3
+          };
+        } else if (isDesktopPlanning) {
+          // Desktop planning markers - distinct shapes
+          const desktopPlacemark = placemark as ProcessedDesktopPlanning;
+          const assetType = desktopPlacemark.assetType || desktopPlacemark.pointType || 'FPOI';
+          
+          if (assetType === 'GP') {
+            markerIcon = {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 14,
+              fillColor: category.color,
+              fillOpacity: 0.9,
+              strokeColor: '#000000',
+              strokeWeight: 3
+            };
+          } else if (assetType === 'BHQ' || assetType === 'Block Router') {
+            markerIcon = {
+              path: 'M-8,-8 L8,-8 L8,8 L-8,8 Z', // Square
+              scale: 1,
               fillColor: category.color,
               fillOpacity: 0.9,
               strokeColor: '#ffffff',
               strokeWeight: 3
             };
+          } else if (assetType === 'FPOI') {
+            markerIcon = {
+              path: 'M0,-12 L8,8 L-8,8 Z', // Triangle
+              scale: 1,
+              fillColor: category.color,
+              fillOpacity: 0.9,
+              strokeColor: '#ffffff',
+              strokeWeight: 2
+            };
+          } else {
+            // Infrastructure points (Bridge, Culvert, etc.)
+            markerIcon = {
+              path: 'M-6,-6 L6,-6 L6,6 L-6,6 Z M-4,-4 L4,-4 L4,4 L-4,4 Z', // Double square
+              scale: 1,
+              fillColor: category.color,
+              fillOpacity: 0.9,
+              strokeColor: '#ffffff',
+              strokeWeight: 2
+            };
+          }
         } else {
-          // External file markers (GP and FPOI)
+          // External file markers (existing logic)
           const pointType = (placemark as ProcessedPlacemark).pointType;
           if (pointType === 'FPOI' || pointType === 'LANDMARK') {
             markerIcon = {
@@ -131,7 +178,6 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
               strokeWeight: 2
             };
           } else if(pointType === 'BHQ'){
-            // Default for other types
             markerIcon = {
               path: google.maps.SymbolPath.CIRCLE,
               scale: 10,
@@ -140,21 +186,20 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
               strokeColor: '#ffffff',
               strokeWeight: 2
             };
-          }else if(pointType === 'BR'){
-            // Default for other types
+          } else if(pointType === 'BR'){
             markerIcon = {
               path: google.maps.SymbolPath.CIRCLE,
               scale: 10,
-              fillColor:category.color,
+              fillColor: category.color,
               fillOpacity: 0.9,
               strokeColor: '#ffffff',
               strokeWeight: 2
             };
-          }else{
-              markerIcon = {
+          } else {
+            markerIcon = {
               path: google.maps.SymbolPath.CIRCLE,
               scale: 10,
-              fillColor:category.color,
+              fillColor: category.color,
               fillOpacity: 0.9,
               strokeColor: '#ffffff',
               strokeWeight: 2
@@ -163,7 +208,7 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
         }
         
         const marker = new google.maps.Marker({
-          position: placemark.coordinates,
+          position: placemark.coordinates as { lat: number; lng: number },
           map: mapInstanceRef.current,
           title: placemark.name,
           icon: markerIcon
@@ -173,32 +218,76 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
           onPlacemarkClick(placemark);
           
           if (infoWindowRef.current) {
-            const physicalInfo = placemark.id.startsWith('physical-') 
-              ? `<p class="text-sm text-gray-600">Survey ID: ${(placemark as ProcessedPhysicalSurvey).surveyId}</p>
-                 <p class="text-sm text-gray-600">Block ID: ${(placemark as ProcessedPhysicalSurvey).blockId}</p>`
-              : '';
-              
-            infoWindowRef.current.setContent(`
-              <div class="p-3">
-                <h3 class="font-semibold text-gray-900 mb-1">${placemark.name}</h3>
-                <p class="text-sm text-gray-600">Category: ${placemark.category}</p>
-                <p class="text-sm text-gray-600">Type: Point</p>
-                ${physicalInfo}
-              </div>
-            `);
+            let infoContent = '';
+            
+            if (isPhysicalSurvey) {
+              const physicalInfo = placemark as ProcessedPhysicalSurvey;
+              infoContent = `
+                <div class="p-3">
+                  <h3 class="font-semibold text-gray-900 mb-1">${placemark.name}</h3>
+                  <p class="text-sm text-gray-600">Category: ${placemark.category}</p>
+                  <p class="text-sm text-gray-600">Type: Physical Survey</p>
+                  <p class="text-sm text-gray-600">Survey ID: ${physicalInfo.surveyId}</p>
+                  <p class="text-sm text-gray-600">Block ID: ${physicalInfo.blockId}</p>
+                </div>
+              `;
+            } else if (isDesktopPlanning) {
+              const desktopInfo = placemark as ProcessedDesktopPlanning;
+              infoContent = `
+                <div class="p-3">
+                  <h3 class="font-semibold text-gray-900 mb-1">${placemark.name}</h3>
+                  <p class="text-sm text-gray-600">Category: ${placemark.category}</p>
+                  <p class="text-sm text-gray-600">Type: Desktop Planning</p>
+                  <p class="text-sm text-gray-600">Asset Type: ${desktopInfo.assetType || 'N/A'}</p>
+                  <p class="text-sm text-gray-600">Status: ${desktopInfo.status || 'N/A'}</p>
+                  ${desktopInfo.ring ? `<p class="text-sm text-gray-600">Ring: ${desktopInfo.ring}</p>` : ''}
+                  ${desktopInfo.lgdCode && desktopInfo.lgdCode !== 'NULL' ? `<p class="text-sm text-gray-600">LGD Code: ${desktopInfo.lgdCode}</p>` : ''}
+                  ${desktopInfo.networkId ? `<p class="text-sm text-gray-600">Network ID: ${desktopInfo.networkId}</p>` : ''}
+                </div>
+              `;
+            } else {
+              // External file info (existing)
+              infoContent = `
+                <div class="p-3">
+                  <h3 class="font-semibold text-gray-900 mb-1">${placemark.name}</h3>
+                  <p class="text-sm text-gray-600">Category: ${placemark.category}</p>
+                  <p class="text-sm text-gray-600">Type: Point</p>
+                </div>
+              `;
+            }
+            
+            infoWindowRef.current.setContent(infoContent);
             infoWindowRef.current.open(mapInstanceRef.current, marker);
           }
         });
 
         markersRef.current.push(marker);
-        bounds.extend(placemark.coordinates);
+        bounds.extend(placemark.coordinates as google.maps.LatLng);
+        
       } else if (placemark.type === 'polyline' && 'coordinates' in placemark && Array.isArray(placemark.coordinates)) {
+        const isDesktopPlanning = placemark.id.startsWith('desktop-');
+        
+        let strokeWeight = 3;
+        let strokeOpacity = 0.8;
+        
+        if (isDesktopPlanning) {
+          const desktopInfo = placemark as ProcessedDesktopPlanning;
+          // Different styles for incremental vs proposed cables
+          if (desktopInfo.connectionType === 'incremental') {
+            strokeWeight = 4;
+            strokeOpacity = 1.0;
+          } else {
+            strokeWeight = 3;
+            strokeOpacity = 0.7;
+          }
+        }
+        
         const polyline = new google.maps.Polyline({
           path: placemark.coordinates,
           geodesic: true,
           strokeColor: category.color,
-          strokeOpacity: 0.8,
-          strokeWeight: 3,
+          strokeOpacity: strokeOpacity,
+          strokeWeight: strokeWeight,
           map: mapInstanceRef.current
         });
 
@@ -206,14 +295,34 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
           onPlacemarkClick(placemark);
           
           if (infoWindowRef.current && event.latLng) {
-            infoWindowRef.current.setContent(`
-              <div class="p-3">
-                <h3 class="font-semibold text-gray-900 mb-1">${placemark.name}</h3>
-                <p class="text-sm text-gray-600">Category: ${placemark.category}</p>
-                <p class="text-sm text-gray-600">Type: Polyline</p>
-                ${'distance' in placemark && placemark.distance ? `<p class="text-sm text-gray-600">Distance: ${placemark.distance}</p>` : ''}
-              </div>
-            `);
+            let infoContent = '';
+            
+            if (isDesktopPlanning) {
+              const desktopInfo = placemark as ProcessedDesktopPlanning;
+              infoContent = `
+                <div class="p-3">
+                  <h3 class="font-semibold text-gray-900 mb-1">${placemark.name}</h3>
+                  <p class="text-sm text-gray-600">Category: ${placemark.category}</p>
+                  <p class="text-sm text-gray-600">Type: Desktop Planning Connection</p>
+                  <p class="text-sm text-gray-600">Connection Type: ${desktopInfo.connectionType}</p>
+                  <p class="text-sm text-gray-600">Length: ${desktopInfo.length} km</p>
+                  <p class="text-sm text-gray-600">Status: ${desktopInfo.status || 'N/A'}</p>
+                  ${desktopInfo.networkId ? `<p class="text-sm text-gray-600">Network ID: ${desktopInfo.networkId}</p>` : ''}
+                </div>
+              `;
+            } else {
+              // External file polyline (existing)
+              infoContent = `
+                <div class="p-3">
+                  <h3 class="font-semibold text-gray-900 mb-1">${placemark.name}</h3>
+                  <p class="text-sm text-gray-600">Category: ${placemark.category}</p>
+                  <p class="text-sm text-gray-600">Type: Polyline</p>
+                  ${'distance' in placemark && placemark.distance ? `<p class="text-sm text-gray-600">Distance: ${placemark.distance}</p>` : ''}
+                </div>
+              `;
+            }
+            
+            infoWindowRef.current.setContent(infoContent);
             infoWindowRef.current.setPosition(event.latLng);
             infoWindowRef.current.open(mapInstanceRef.current);
           }

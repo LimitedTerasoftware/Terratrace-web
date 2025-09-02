@@ -17,6 +17,8 @@ interface Block {
   name: string;
   code: string;
   selected: boolean;
+  parentDistrictId: string; // Track parent district
+  parentStateId: string;   // Track parent state
 }
 
 interface District {
@@ -26,6 +28,7 @@ interface District {
   selected: boolean;
   expanded: boolean;
   blocks: Block[];
+  parentStateId: string;   // Track parent state
 }
 
 interface State {
@@ -37,14 +40,95 @@ interface State {
   districts: District[];
 }
 
+interface PreviewDropdownProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onPhysicalSurvey: () => void;
+  onDesktopPlanning: () => void;
+  position: { x: number; y: number };
+}
 
+const PreviewDropdown: React.FC<PreviewDropdownProps> = ({
+  isOpen,
+  onClose,
+  onPhysicalSurvey,
+  onDesktopPlanning,
+  position
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <>
+      <div 
+        className="fixed inset-0 z-40" 
+        onClick={onClose}
+      />
+      
+      <div 
+        className="absolute z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[180px]"
+        style={{
+          left: position.x,
+          top: position.y,
+        }}
+      >
+        <button
+          onClick={() => {
+            onPhysicalSurvey();
+            onClose();
+          }}
+          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+        >
+          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+          Physical Survey
+        </button>
+        
+        <button
+          onClick={() => {
+            onDesktopPlanning();
+            onClose();
+          }}
+          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+        >
+          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+          Desktop Planning
+        </button>
+      </div>
+    </>
+  );
+};
 
 interface GeographicSelectorProps {
   BASEURL: string;
   onSelectionChange?: (selectedStates: string[], selectedDistricts: string[], selectedBlocks: string[]) => void;
-  onPreview?: (item: { type: 'state' | 'district' | 'block'; selectedStates: string[]; selectedDistricts: string[]; selectedBlocks: string[]; name: string }) => void;
-  onRefresh?: (item: { type: 'state' | 'district' | 'block' | 'universal'; selectedStates: string[]; selectedDistricts: string[]; selectedBlocks: string[]; name: string }) => void;
-  isLoadingPhysical?: boolean
+  onPreview?: (item: { 
+    type: 'state' | 'district' | 'block'; 
+    selectedStates: string[]; 
+    selectedDistricts: string[]; 
+    selectedBlocks: string[]; 
+    name: string;
+    dataType: 'physical' | 'desktop';
+    // Add hierarchy context for specific selections
+    hierarchyContext?: {
+      stateId?: string;
+      districtId?: string;
+      blockId?: string;
+    };
+  }) => void;
+  onRefresh?: (item: { 
+    type: 'state' | 'district' | 'block' | 'universal'; 
+    selectedStates: string[]; 
+    selectedDistricts: string[]; 
+    selectedBlocks: string[]; 
+    name: string;
+    dataType: 'physical' | 'desktop';
+    hierarchyContext?: {
+      stateId?: string;
+      districtId?: string;
+      blockId?: string;
+    };
+  }) => void;
+  isLoadingPhysical?: boolean;
+  isLoadingDesktopPlanning?: boolean;
 }
 
 export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
@@ -52,12 +136,34 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
   onSelectionChange,
   onPreview,
   onRefresh,
-  isLoadingPhysical
+  isLoadingPhysical,
+  isLoadingDesktopPlanning
 }) => {
   const [isDistrictExpanded, setIsDistrictExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [data, setData] = useState<State[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  // Dropdown state
+  const [dropdownState, setDropdownState] = useState<{
+    isOpen: boolean;
+    position: { x: number; y: number };
+    currentItem: {
+      type: 'state' | 'district' | 'block' | 'universal';
+      id: string;
+      name: string;
+      // Add hierarchy context for the current item
+      hierarchyContext?: {
+        stateId?: string;
+        districtId?: string;
+        blockId?: string;
+      };
+    } | null;
+  }>({
+    isOpen: false,
+    position: { x: 0, y: 0 },
+    currentItem: null
+  });
 
   // Fetch states on component mount
   useEffect(() => {
@@ -87,16 +193,17 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
   }, [BASEURL]);
 
   // Fetch districts when state is expanded
-  const fetchDistricts = async (stateCode: string) => {
+  const fetchDistricts = async (stateId: string) => {
     try {
-      const data = await getDistrictData(stateCode);
+      const data = await getDistrictData(stateId);
       const districtsData = data.map((district: any) => ({
         id: district.district_id,
         name: district.district_name,
         code: district.district_code,
         selected: false,
         expanded: false,
-        blocks: []
+        blocks: [],
+        parentStateId: stateId  // Track parent state
       }));
 
       return districtsData;
@@ -108,14 +215,16 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
   };
 
   // Fetch blocks when district is expanded
-  const fetchBlocks = async (districtCode: string) => {
+  const fetchBlocks = async (districtId: string, stateId: string) => {
     try {
-      const data = await getBlockData(districtCode)
+      const data = await getBlockData(districtId)
       const blocksData = data.map((block: any) => ({
         id: block.block_id,
         name: block.block_name,
         code: block.block_code,
-        selected: false
+        selected: false,
+        parentDistrictId: districtId,  // Track parent district
+        parentStateId: stateId         // Track parent state
       }));
       return blocksData;
 
@@ -167,6 +276,7 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
       return state;
     }));
   };
+
   const handleDistrictToggle = async (stateId: string, districtId: string) => {
     setData(prev => prev.map(state => {
       if (state.id === stateId) {
@@ -177,7 +287,7 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
               const newExpanded = !district.expanded;
               // Fetch blocks if expanding and blocks not loaded
               if (newExpanded && district.blocks.length === 0) {
-                fetchBlocks(districtId).then(blocks => {
+                fetchBlocks(districtId, stateId).then(blocks => {
                   setData(prevData => prevData.map(s =>
                     s.id === stateId ? {
                       ...s,
@@ -309,34 +419,6 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
     onSelectionChange?.(selectedStates, selectedDistricts, selectedBlocks);
   };
 
-
-
-  const handlePreview = (type: 'state' | 'district' | 'block', id: string, name: string) => {
-    const selectedIds = getSelectedIds();
-    onPreview?.({
-      type,
-      selectedStates: selectedIds.states,
-      selectedDistricts: selectedIds.districts,
-      selectedBlocks: selectedIds.blocks,
-      name
-    });
-    // onPreview?.({ type,stateId,DistId,BlockId,name });
-  };
-
-  const handleRefresh = (type: 'state' | 'district' | 'block', id: string, name: string) => {
-    // onRefresh?.({ type,stateId,DistId,BlockId,name });
-    const selectedIds = getSelectedIds();
-    onRefresh?.({
-      type,
-      selectedStates: selectedIds.states,
-      selectedDistricts: selectedIds.districts,
-      selectedBlocks: selectedIds.blocks,
-      name,
-
-    });
-
-  };
-
   const getSelectedIds = () => {
     const selectedStates: string[] = [];
     const selectedDistricts: string[] = [];
@@ -359,6 +441,106 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
     };
   };
 
+  // Handle preview dropdown with hierarchy context
+  const handlePreviewClick = (
+    event: React.MouseEvent,
+    type: 'state' | 'district' | 'block' | 'universal',
+    id: string,
+    name: string
+  ) => {
+    event.stopPropagation();
+    
+    // Find hierarchy context based on the clicked item
+    let hierarchyContext: { stateId?: string; districtId?: string; blockId?: string } = {};
+    
+    if (type === 'block') {
+      // Find the block and its parents
+      data.forEach(state => {
+        state.districts.forEach(district => {
+          const block = district.blocks.find(b => b.id === id);
+          if (block) {
+            hierarchyContext = {
+              stateId: state.id,
+              districtId: district.id,
+              blockId: block.id
+            };
+          }
+        });
+      });
+    } else if (type === 'district') {
+      // Find the district and its parent state
+      data.forEach(state => {
+        const district = state.districts.find(d => d.id === id);
+        if (district) {
+          hierarchyContext = {
+            stateId: state.id,
+            districtId: district.id
+          };
+        }
+      });
+    } else if (type === 'state') {
+      hierarchyContext = {
+        stateId: id
+      };
+    }
+    
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const dropdownWidth = 180; // min-width from dropdown
+    
+    setDropdownState({
+      isOpen: true,
+      position: {
+        // Position to the left of the button, but ensure it doesn't go off-screen
+        x: Math.max(10, rect.left - dropdownWidth + rect.width),
+        // Position below the button with some spacing
+        y: rect.bottom + 5
+      },
+      currentItem: { type, id, name, hierarchyContext }
+    });
+  };
+
+  const handlePhysicalSurvey = () => {
+    if (!dropdownState.currentItem) return;
+    
+    const selectedIds = getSelectedIds();
+    onPreview?.({
+      type: dropdownState.currentItem.type,
+      selectedStates: selectedIds.states,
+      selectedDistricts: selectedIds.districts,
+      selectedBlocks: selectedIds.blocks,
+      name: dropdownState.currentItem.name,
+      dataType: 'physical',
+      hierarchyContext: dropdownState.currentItem.hierarchyContext
+    });
+  };
+
+  const handleDesktopPlanning = () => {
+    if (!dropdownState.currentItem) return;
+    
+    const selectedIds = getSelectedIds();
+    onPreview?.({
+      type: dropdownState.currentItem.type,
+      selectedStates: selectedIds.states,
+      selectedDistricts: selectedIds.districts,
+      selectedBlocks: selectedIds.blocks,
+      name: dropdownState.currentItem.name,
+      dataType: 'desktop',
+      hierarchyContext: dropdownState.currentItem.hierarchyContext
+    });
+  };
+
+  const handleRefresh = (type: 'state' | 'district' | 'block', id: string, name: string) => {
+    const selectedIds = getSelectedIds();
+    onRefresh?.({
+      type,
+      selectedStates: selectedIds.states,
+      selectedDistricts: selectedIds.districts,
+      selectedBlocks: selectedIds.blocks,
+      name,
+      dataType: 'physical' // Default to physical for refresh
+    });
+  };
+
   const handleUniversalRefresh = () => {
     const selectedIds = getSelectedIds();
     onRefresh?.({
@@ -367,23 +549,28 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
       selectedDistricts: selectedIds.districts,
       selectedBlocks: selectedIds.blocks,
       name: 'All Selected Items',
+      dataType: 'physical' // Default to physical for universal refresh
     });
   };
 
-
-
-
   return (
     <div className="space-y-4">
+      {/* Preview Dropdown */}
+      <PreviewDropdown
+        isOpen={dropdownState.isOpen}
+        onClose={() => setDropdownState(prev => ({ ...prev, isOpen: false }))}
+        onPhysicalSurvey={handlePhysicalSurvey}
+        onDesktopPlanning={handleDesktopPlanning}
+        position={dropdownState.position}
+      />
 
       {/* District/Division Section */}
       <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
         {/* Header */}
-        <div className="border-b  border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-
+        <div className="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
           <button
             onClick={() => setIsDistrictExpanded(!isDistrictExpanded)}
-            className="w-full flex items-center justify-between p-3 "
+            className="w-full flex items-center justify-between p-3"
           >
             <span className="font-semibold text-gray-900 text-sm">DISTRICT/DIVISION</span>
             <div className="flex items-center gap-2">
@@ -406,7 +593,7 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
                 className={`
                   border-2 border-dashed 
                   w-10 h-10 rounded-full flex items-center justify-center transition-colors 
-                  ${isLoadingPhysical
+                  ${(isLoadingPhysical || isLoadingDesktopPlanning)
                     ? 'border-gray-300 bg-blue-100'
                     : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
                   }
@@ -415,13 +602,12 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
                 `}
                 title='Reload'
               >
-                {isLoadingPhysical ?
+                {(isLoadingPhysical || isLoadingDesktopPlanning) ?
                   <Loader className="h-4 w-4 animate-spin text-blue-400" /> :
                   <RefreshCwIcon size={18} />
                 }
               </button>
             </div>
-
           </button>
         </div>
 
@@ -478,9 +664,9 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
                     {state.selected && (
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-auto">
                         <button
-                          onClick={() => handlePreview('state', state.id, state.name)}
+                          onClick={(e) => handlePreviewClick(e, 'state', state.id, state.name)}
                           className="p-1 hover:bg-gray-100 rounded"
-                          title="Preview"
+                          title="Preview Options"
                         >
                           <Eye className="h-3 w-3 text-gray-500" />
                         </button>
@@ -532,9 +718,9 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
                             {district.selected && (
                               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button
-                                  onClick={() => handlePreview('district', district.id, district.name)}
+                                  onClick={(e) => handlePreviewClick(e, 'district', district.id, district.name)}
                                   className="p-1 hover:bg-gray-100 rounded"
-                                  title="Preview"
+                                  title="Preview Options"
                                 >
                                   <Eye className="h-3 w-3 text-gray-500" />
                                 </button>
@@ -571,9 +757,9 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
                                   {block.selected && (
                                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                       <button
-                                        onClick={() => handlePreview('block', block.id, block.name)}
+                                        onClick={(e) => handlePreviewClick(e, 'block', block.id, block.name)}
                                         className="p-1 hover:bg-gray-100 rounded"
-                                        title="Preview"
+                                        title="Preview Options"
                                       >
                                         <Eye className="h-3 w-3 text-gray-500" />
                                       </button>

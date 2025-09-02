@@ -1,10 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, User, UserRoundCheck, X, CheckCircle, AlertCircle, AlertTriangle } from 'lucide-react';
 
+interface Connection {
+  id?: number;
+  start?: string;
+  end?: string;
+  length?: string | number;
+  color?: string;
+  status?: string;
+}
+
 interface GPListResponse {
   success: boolean;
-  data: any[];
+  data: any[] | { connections?: Connection[] };
   message: string;
 }
 
@@ -28,13 +37,13 @@ const RouteGPList = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  const networkNameFromState = location.state?.networkName || '';
+  const networkName = location.state?.networkName || '';
+  const returnTab = location.state?.returnTab || 'verified'; // Default to verified since GP List only exists there
   
   // Main data states
-  const [gpListData, setGpListData] = useState<any[]>([]);
+  const [gpListData, setGpListData] = useState<any[] | { connections?: Connection[] }>([]);
   const [loadingGPList, setLoadingGPList] = useState<boolean>(false);
   const [gpListError, setGpListError] = useState<string | null>(null);
-  const [networkName, setNetworkName] = useState<string>(networkNameFromState);
   
   // Assignment states
   const [isAssigned, setIsAssigned] = useState<boolean>(false);
@@ -92,12 +101,12 @@ const RouteGPList = () => {
     }
   };
 
-  // Load data on mount
   useEffect(() => {
-    fetchGPList();
+    if (networkId) {
+      fetchGPList();
+    }
   }, [networkId]);
 
-  // Get cable type from color
   const getCableType = (color: string): string => {
     switch (color) {
       case '#000000':
@@ -109,7 +118,6 @@ const RouteGPList = () => {
     }
   };
 
-  // Get badge styling for cable type
   const getCableTypeBadge = (color: string) => {
     const cableType = getCableType(color);
     switch (cableType) {
@@ -122,12 +130,35 @@ const RouteGPList = () => {
     }
   };
 
-  // Navigate back to route list
-  const handleBackClick = () => {
-    navigate('/route-planning/route-list');
+  const getStatusBadge = (status: string) => {
+    const normalizedStatus = status?.toLowerCase() || '';
+    switch (normalizedStatus) {
+      case 'assigned':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+      case 'completed':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
+      case 'in-progress':
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
+      case 'unassigned':
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+    }
   };
 
-  // Open assignment popup
+  const formatStatus = (status: string): string => {
+    if (!status) return 'Unassigned';
+    return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+  };
+
+  const handleBackClick = () => {
+    // Navigate back to route list with the return tab information
+    navigate('/route-planning/route-list', {
+      state: { returnTab: returnTab }
+    });
+  };
+
   const handleAssign = () => {
     if (selectedConnections.size === 0) {
       alert('Please select at least one connection to assign.');
@@ -137,7 +168,6 @@ const RouteGPList = () => {
     fetchUsersList();
   };
 
-  // Fetch available users
   const fetchUsersList = async () => {
     try {
       setLoadingUsers(true);
@@ -160,7 +190,6 @@ const RouteGPList = () => {
     }
   };
 
-  // Show toast notification
   const showNotification = (type: 'success' | 'error' | 'warning', message: string) => {
     setNotification({
       type,
@@ -173,7 +202,6 @@ const RouteGPList = () => {
     }, 5000);
   };
 
-  // Toggle user selection
   const handleUserSelection = (userId: number) => {
     setSelectedUsers(prev => {
       const newSet = new Set(prev);
@@ -186,7 +214,6 @@ const RouteGPList = () => {
     });
   };
 
-  // Submit assignments to API
   const handleFinalAssignment = async () => {
     if (selectedUsers.size === 0) {
       showNotification('error', 'Please select at least one user.');
@@ -199,7 +226,6 @@ const RouteGPList = () => {
       const selectedUsersList = Array.from(selectedUsers);
       const selectedConnectionsList = Array.from(selectedConnections);
       
-      // Create assignment for each connection-user pair
       const assignmentPromises = [];
       
       for (const connectionId of selectedConnectionsList) {
@@ -231,7 +257,6 @@ const RouteGPList = () => {
         }
       }
       
-      // Wait for all assignments
       const results = await Promise.allSettled(assignmentPromises);
       
       const failures = results.filter(result => result.status === 'rejected');
@@ -245,7 +270,6 @@ const RouteGPList = () => {
         showNotification('success', `Successfully assigned ${selectedConnectionsList.length} connection(s) to ${selectedUsersList.length} user(s)!`);
       }
       
-      // Reset states
       setShowAssignPopup(false);
       setSelectedConnections(new Set());
       setSelectedUsers(new Set());
@@ -256,6 +280,8 @@ const RouteGPList = () => {
         setIsAssigned(false);
       }, 3000);
       
+      fetchGPList();
+      
     } catch (error: any) {
       console.error('Error during assignment:', error);
       showNotification('error', `Assignment failed: ${error.message}`);
@@ -264,19 +290,16 @@ const RouteGPList = () => {
     }
   };
 
-  // Close assignment popup
   const closeAssignPopup = () => {
     setShowAssignPopup(false);
     setSelectedUsers(new Set());
     setSearchQuery('');
   };
 
-  // Filter users by search query
   const filteredUsers = usersList.filter(user =>
     user.fullname.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Toggle connection selection
   const handleRowSelection = (connectionId: string | number) => {
     const connectionKey = String(connectionId);
     
@@ -291,8 +314,7 @@ const RouteGPList = () => {
     });
   };
 
-  // Toggle select all connections
-  const handleSelectAll = (connectionsData: any[]) => {
+  const handleSelectAll = (connectionsData: Connection[]) => {
     if (selectedConnections.size === connectionsData.length) {
       setSelectedConnections(new Set());
     } else {
@@ -300,12 +322,10 @@ const RouteGPList = () => {
     }
   };
 
-  // Close notification toast
   const closeNotification = () => {
     setNotification(prev => ({ ...prev, show: false }));
   };
 
-  // Get notification icon
   const getNotificationIcon = (type: 'success' | 'error' | 'warning') => {
     switch (type) {
       case 'success':
@@ -319,7 +339,6 @@ const RouteGPList = () => {
     }
   };
 
-  // Get notification styling
   const getNotificationStyles = (type: 'success' | 'error' | 'warning') => {
     switch (type) {
       case 'success':
@@ -333,7 +352,6 @@ const RouteGPList = () => {
     }
   };
 
-  // Render connections table
   const renderGPListContent = () => {
     if (loadingGPList) {
       return (
@@ -363,12 +381,11 @@ const RouteGPList = () => {
       );
     }
 
-    // Handle different data structures
-    let connectionsData = [];
-    if (gpListData.connections && Array.isArray(gpListData.connections)) {
-      connectionsData = gpListData.connections;
-    } else if (Array.isArray(gpListData)) {
+    let connectionsData: Connection[] = [];
+    if (Array.isArray(gpListData)) {
       connectionsData = gpListData;
+    } else if (gpListData && typeof gpListData === 'object' && 'connections' in gpListData && Array.isArray(gpListData.connections)) {
+      connectionsData = gpListData.connections;
     } else {
       return (
         <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -408,6 +425,7 @@ const RouteGPList = () => {
               <th scope="col" className="px-3 py-2">End Point</th>
               <th scope="col" className="px-3 py-2">Length (km)</th>
               <th scope="col" className="px-3 py-2">Type</th>
+              <th scope="col" className="px-3 py-2">Status</th>
             </tr>
           </thead>
           <tbody>
@@ -435,11 +453,16 @@ const RouteGPList = () => {
                     {connection.end || '-'}
                   </td>
                   <td className="px-3 py-2">
-                    {connection.length ? parseFloat(connection.length).toFixed(3) : '-'}
+                    {connection.length ? parseFloat(String(connection.length)).toFixed(3) : '-'}
                   </td>
                   <td className="px-3 py-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCableTypeBadge(connection.color)}`}>
-                      {getCableType(connection.color)}
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCableTypeBadge(connection.color || '')}`}>
+                      {getCableType(connection.color || '')}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(connection.status || '')}`}>
+                      {formatStatus(connection.status || '')}
                     </span>
                   </td>
                 </tr>
@@ -599,7 +622,7 @@ const RouteGPList = () => {
                     <div className="flex items-center">
                       <svg className="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
                       Assigning...
                     </div>

@@ -9,7 +9,10 @@ interface FilterPanelProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   selectedFilesCount: number;
+  fileCategory?: string; // New optional prop
+  onFileCategoryChange?: (category: string) => void; // New optional prop
 }
+
 interface StateData {
   state_id: string;
   state_name: string;
@@ -27,6 +30,7 @@ interface Block {
   block_name: string;
   district_code: string;
 }
+
 const BASEURL = import.meta.env.VITE_API_BASE;
 
 export const FilterPanel: React.FC<FilterPanelProps> = ({
@@ -34,12 +38,21 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
   onFiltersChange,
   searchQuery,
   onSearchChange,
-  selectedFilesCount
+  selectedFilesCount,
+  fileCategory = '',
+  onFileCategoryChange
 }) => {
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // Category options for the dropdown
+  const categoryOptions = [
+    { value: '', label: 'All Categories' },
+    { value: 'Survey', label: 'Physical Survey' },
+    { value: 'Desktop', label: 'Desktop Planning' }
+  ];
 
   useEffect(() => {
     axios.get(`${BASEURL}/states`)
@@ -58,7 +71,6 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     }
   }, [filters.state]);
 
-  // Fetch blocks when district is selected
   useEffect(() => {
     if (filters.division) {
       axios.get(`${BASEURL}/blocksdata?district_code=${filters.division}`)
@@ -70,11 +82,14 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     }
   }, [filters.division]);
 
-  const hasActiveFilters = Object.values(filters).some(value => value && value !== '');
+  const hasActiveFilters = Object.values(filters).some(value => value && value !== '') || fileCategory !== '';
 
   const clearFilters = () => {
     onFiltersChange({});
     onSearchChange('');
+    if (onFileCategoryChange) {
+      onFileCategoryChange('');
+    }
   };
 
   const handleFilterChange = (key: keyof FilterState, value: string) => {
@@ -83,6 +98,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
       [key]: value || undefined
     });
   };
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-4">
       <div className="flex items-center justify-between">
@@ -113,9 +129,32 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
           </button>
         </div>
       </div>
-      {isExpanded && (
-        <div className="max-h-64 overflow-y-auto">
 
+      {/* File Category Filter - Always visible */}
+      <div>
+        <label className="block text-xs font-medium text-gray-700 mb-1">File Category</label>
+        <div className="relative">
+          <select
+            value={fileCategory}
+            onChange={(e) => onFileCategoryChange?.(e.target.value)}
+            className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-lg shadow-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+          >
+            {categoryOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div> 
+      </div>
+
+      {isExpanded && (
+        <div className="max-h-64 overflow-y-auto space-y-3">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -130,7 +169,6 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
 
           {/* Location Filters */}
           <div className="grid grid-cols-1 gap-3">
-
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">State</label>
               <select
@@ -147,7 +185,6 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
               </select>
             </div>
 
-
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">District</label>
               <select
@@ -163,8 +200,6 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 ))}
               </select>
             </div>
-
-
 
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Block</label>

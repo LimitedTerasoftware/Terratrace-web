@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Machine, MachineFormData } from '../../types/machine';
 import MachineForm from './MachineForm';
 import MachineList from './MachineList';
-import { Settings, BarChart3, Truck } from 'lucide-react';
+import { Settings, BarChart3, Truck, Plus, Cog } from 'lucide-react';
 import axios, { AxiosError } from 'axios';
 import Modal from '../hooks/ModalPopup';
 import { getMachineOptions } from '../Services/api';
@@ -18,6 +18,8 @@ function MachineManagement() {
   const location = useLocation();
   const [machines, setMachines] = useState<Machine[]>([]);
   const [editingMachine, setEditingMachine] = useState<Machine | undefined>(undefined);
+  const [isFormExpanded, setIsFormExpanded] = useState(false);
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
   const [isModalOpen, setModalOpen] = useState(false);
   const [modalData, setModalData] = useState<ModalData>({
@@ -25,119 +27,121 @@ function MachineManagement() {
     message: "",
     type: "info",
   });
-  useEffect(()=>{
+
+  useEffect(() => {
     getMachineOptions().then(data => {
-          setMachines(data);
+      setMachines(data);
+    });
+  }, []);
+
+  const handleAddMachine = async (formData: MachineFormData) => {
+    try {
+      const resp = await axios.post(`${TraceBASEURL}/create-machine`, formData, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
-     
-  },[])
-  const handleAddMachine = async(formData: MachineFormData) => {
- try {
-    const resp = await axios.post(`${TraceBASEURL}/create-machine`, formData, {
-      headers: {
-        'Content-Type': 'application/json'
+
+      if (resp.status === 200 || resp.status === 201) {
+        setModalData({
+          title: "Success!",
+          message: "Machine added successfully.",
+          type: "success",
+        });
+        setModalOpen(true);
+        setIsFormModalOpen(false);
+        getMachineOptions().then(data => {
+          setMachines(data);
+        });
+      } else {
+        setModalData({
+          title: "Error!",
+          message: resp.data || "Unexpected response",
+          type: "error",
+        });
+        setModalOpen(true);
       }
-    });
-
-    if (resp.status === 200 || resp.status === 201) {
+    } catch (error) {
+      const err = error as AxiosError;
+      console.error("Error creating machine:", err.response?.data || err.message);
       setModalData({
-      title: "Success!",
-      message: "Machine added successfully.",
-      type: "success",
-    });
-    setModalOpen(true)
-
-    } else {
-      setModalData({
-      title: "Error!",
-      message: resp.data || "Unexpected response",
-      type: "error",
-    });
-    setModalOpen(true)
-
-
+        title: "Error!",
+        message: err.message || "Unexpected response",
+        type: "error",
+      });
+      setModalOpen(true);
     }
-  } catch (error) {
-    const err = error as AxiosError;
-    console.error("Error creating machine:", err.response?.data || err.message); 
-    setModalData({
-      title: "Error!",
-      message: err.message || "Unexpected response",
-      type: "error",
-    });
-    setModalOpen(true)
-
-   }
-      
   };
 
-  const handleEditMachine = async(formData: MachineFormData) => {
+  const handleEditMachine = async (formData: MachineFormData) => {
     if (editingMachine) {
       try {
-        const response = await axios.put(`${TraceBASEURL}/update-machine/${editingMachine.machine_id}`,formData,{
-          headers:{
-            'Content-Type':'application/json'
+        const response = await axios.put(`${TraceBASEURL}/update-machine/${editingMachine.machine_id}`, formData, {
+          headers: {
+            'Content-Type': 'application/json'
           }
         });
-        if(response.status === 200 || response.status === 201){
-          setMachines(prev => prev.map(machine => 
-            machine.machine_id === editingMachine.machine_id 
+        if (response.status === 200 || response.status === 201) {
+          setMachines(prev => prev.map(machine =>
+            machine.machine_id === editingMachine.machine_id
               ? { ...machine, ...formData, updated_at: new Date() }
               : machine
           ));
-        setModalData({
-          title: "Success!",
-          message: "Machine updated successfully.",
-          type: "success",
-        });
-        setModalOpen(true)
-        }else{
+          setModalData({
+            title: "Success!",
+            message: "Machine updated successfully.",
+            type: "success",
+          });
+          setModalOpen(true);
+          setIsFormModalOpen(false); // Close form after success
+        } else {
           console.error("Unexpected response:", response.status, response.data);
-            setModalData({
+          setModalData({
             title: "Error!",
             message: response.data || "Unexpected response",
             type: "error",
           });
-          setModalOpen(true)
-
+          setModalOpen(true);
         }
       } catch (error) {
         const err = error as AxiosError;
-        console.error("Error creating machine:", err.response?.data || err.message);  
-
+        console.error("Error updating machine:", err.response?.data || err.message);
       }
       setEditingMachine(undefined);
     }
   };
 
-  const handleDeleteMachine = async(id: string) => {
+  const handleDeleteMachine = async (id: string) => {
     try {
       const resp = await axios.post(`${TraceBASEURL}/delete-machine/${id}`);
-      if(resp.status === 200 || resp.status === 201){
-           setModalData({
+      if (resp.status === 200 || resp.status === 201) {
+        setModalData({
           title: "Success!",
           message: "Machine Deleted successfully.",
           type: "success",
         });
-        setModalOpen(true)
+        setModalOpen(true);
         setMachines(prev => prev.filter(machine => machine.machine_id !== id));
-
       }
-      
     } catch (error) {
-        const err = error as AxiosError;
-        console.error("Error deleting machine:", err.response?.data || err.message);  
-
+      const err = error as AxiosError;
+      console.error("Error deleting machine:", err.response?.data || err.message);
     }
+  };
 
+  const handleAddNewMachine = () => {
+    setEditingMachine(undefined);
+    setIsFormModalOpen(true);
   };
 
   const handleStartEdit = (machine: Machine) => {
     setEditingMachine(machine);
+    setIsFormModalOpen(true);
   };
 
   const handleCancelEdit = () => {
     setEditingMachine(undefined);
+    setIsFormModalOpen(false);
   };
 
   const getStatusCounts = () => {
@@ -154,30 +158,127 @@ function MachineManagement() {
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
+          <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-blue-600 rounded-lg">
-                <Settings className="w-6 h-6 text-white" />
+                <Cog className="w-6 h-6 text-white" />
               </div>
-              <div>
+              <div className="flex items-center space-x-3">
                 <h1 className="text-2xl font-bold text-gray-900">Machine Management</h1>
-                <p className="text-gray-600">Manage your construction equipment inventory</p>
+                <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">
+                  Inventory Module
+                </span>
               </div>
             </div>
             
-            {/* Stats Cards */}
-            <div className="hidden md:flex space-x-6">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{machines.length}</div>
-                <div className="text-sm text-gray-500">Total Machines</div>
+            <div className="flex items-center space-x-4">
+              <nav>
+                <ol className="flex items-center gap-2">
+                  <li>
+                    <a 
+                      href="/dashboard" 
+                      className="font-medium text-gray-600 hover:text-blue-600 transition-colors"
+                    >
+                      Dashboard /
+                    </a>
+                  </li>
+                  <li className="font-medium text-blue-600">Machine Management</li>
+                </ol>
+              </nav>
+              
+              <button 
+                onClick={handleAddNewMachine}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add New Machine</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Status Cards */}
+      <div className="bg-gray-50 border-b border-gray-200">
+        <div className="px-1 py-6">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-2xl font-bold text-gray-900">{machines.length}</div>
+                  <div className="text-sm text-gray-600">Total Machines</div>
+                </div>
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Truck className="w-5 h-5 text-blue-600" />
+                </div>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{statusCounts.active || 0}</div>
-                <div className="text-sm text-gray-500">Active</div>
+            </div>
+
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-2xl font-bold text-green-600">{statusCounts.active || 0}</div>
+                  <div className="text-sm text-gray-600">Active</div>
+                </div>
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <div className="w-5 h-5 bg-green-600 rounded-full flex items-center justify-center">
+                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                  </div>
+                </div>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-yellow-600">{statusCounts.maintenance || 0}</div>
-                <div className="text-sm text-gray-500">Maintenance</div>
+            </div>
+
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-2xl font-bold text-gray-600">{statusCounts.inactive || 0}</div>
+                  <div className="text-sm text-gray-600">Inactive</div>
+                </div>
+                <div className="p-2 bg-gray-100 rounded-lg">
+                  <div className="w-5 h-5 bg-gray-500 rounded-full flex items-center justify-center">
+                    <div className="w-2 h-2 bg-white rounded"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-2xl font-bold text-yellow-600">{statusCounts.maintenance || 0}</div>
+                  <div className="text-sm text-gray-600">Under Maintenance</div>
+                </div>
+                <div className="p-2 bg-yellow-100 rounded-lg">
+                  <Settings className="w-5 h-5 text-yellow-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-2xl font-bold text-red-600">12</div>
+                  <div className="text-sm text-gray-600">Due for Service</div>
+                </div>
+                <div className="p-2 bg-red-100 rounded-lg">
+                  <div className="w-5 h-5 bg-red-600 rounded-full flex items-center justify-center">
+                    <Settings className="w-3 h-3 text-white" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-2xl font-bold text-red-600">8</div>
+                  <div className="text-sm text-gray-600">GPS Offline</div>
+                </div>
+                <div className="p-2 bg-red-100 rounded-lg">
+                  <div className="w-5 h-5 bg-red-600 rounded-full flex items-center justify-center">
+                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -185,38 +286,8 @@ function MachineManagement() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="px-1 py-6">
         <div className="space-y-8">
-          {/* Quick Stats - Mobile */}
-          <div className="md:hidden grid grid-cols-2 gap-4">
-            <div className="bg-white p-4 rounded-lg shadow border border-gray-100">
-              <div className="flex items-center space-x-3">
-                <Truck className="w-5 h-5 text-blue-600" />
-                <div>
-                  <div className="text-lg font-bold text-gray-900">{machines.length}</div>
-                  <div className="text-sm text-gray-500">Total Machines</div>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow border border-gray-100">
-              <div className="flex items-center space-x-3">
-                <BarChart3 className="w-5 h-5 text-green-600" />
-                <div>
-                  <div className="text-lg font-bold text-gray-900">{statusCounts.active || 0}</div>
-                  <div className="text-sm text-gray-500">Active</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Machine Form */}
-          <MachineForm
-            machine={editingMachine}
-            onSubmit={editingMachine ? handleEditMachine : handleAddMachine}
-            onCancel={handleCancelEdit}
-            isEditing={!!editingMachine}
-          />
-
           {/* Machine List */}
           <MachineList
             machines={machines}
@@ -226,6 +297,8 @@ function MachineManagement() {
             regids={location.state?.regids}
           />
         </div>
+        
+        {/* Success/Error Modal */}
         <Modal
           isOpen={isModalOpen}
           onClose={() => setModalOpen(false)}
@@ -234,6 +307,21 @@ function MachineManagement() {
           type={modalData.type}
         />
 
+        {/* Machine Form Modal */}
+        {isFormModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <MachineForm
+                machine={editingMachine}
+                onSubmit={editingMachine ? handleEditMachine : handleAddMachine}
+                onCancel={handleCancelEdit}
+                isEditing={!!editingMachine}
+                isExpanded={true}
+                onExpandChange={setIsFormExpanded}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

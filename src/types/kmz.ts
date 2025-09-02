@@ -1,20 +1,27 @@
-export interface Placemark {
+// Existing types (keeping your original structure)
+export interface KMZFile {
   id: string;
-  name: string;
-  description?: string;
-  coordinates?: {
-    lat: number;
-    lng: number;
-    alt?: number;
-  };
-  styleId?: string;
-  icon?: string;
+  filename: string;
+  uploaded_at: string | Date;
+  filepath?: string;
+  file_type?: string;
+  size?: number;
+  originalData?: ArrayBuffer;
+  placemarks?: ProcessedPlacemark[];
+}
+
+export interface FilterState {
   state?: string;
   division?: string;
   block?: string;
-  category?: string;
-  customData?: Record<string, any>;
 }
+
+export interface ViewState {
+  center: { lat: number; lng: number };
+  zoom: number;
+}
+
+// Placemark interfaces
 export interface ApiPlacemark {
   points: ApiPoint[];
   polylines: ApiPolyline[];
@@ -22,53 +29,33 @@ export interface ApiPlacemark {
 
 export interface ApiPoint {
   name: string;
-  type: string | null;
-  styleUrl: string | null;
   coordinates: {
-    longitude: number;
     latitude: number;
+    longitude: number;
   };
+  type?: string;
+  styleUrl?: string;
 }
 
 export interface ApiPolyline {
   name: string;
-  styleUrl: string | null;
-  distance: string | null;
-  type:string | null;
   coordinates: [number, number][];
+  distance?: string;
+  type?: string;
+  styleUrl?: string;
 }
-export interface KMZFile {
+
+export interface ProcessedPlacemark {
   id: string;
-  filename: string;
-  filepath:string;
-  file_type:string;
-  data_id:number;
-  uploaded_at: Date;
-  size: number;
-  placemarks: Placemark[];
-  originalData: ArrayBuffer;
-  styles?: Record<string, any>;
-  state_code: string;
-  dist_code: string;
-  blk_code: string;
+  name: string;
+  category: string;
+  type: 'point' | 'polyline';
+  coordinates: { lat: number; lng: number } | { lat: number; lng: number }[];
+  styleUrl?: string;
+  distance?: string;
+  pointType?: string;
 }
 
-export interface FilterState {
-  state?: string;
-  division?: string;
-  block?: string;
-  category?: string;
-  searchQuery?: string;
-}
-
-export interface ViewState {
-  center: {
-    lat: number;
-    lng: number;
-  };
-  zoom: number;
-  mapType: 'roadmap' | 'satellite' | 'hybrid' | 'terrain';
-}
 export interface PlacemarkCategory {
   id: string;
   name: string;
@@ -78,43 +65,18 @@ export interface PlacemarkCategory {
   icon: string;
 }
 
-export interface ProcessedPlacemark {
-  id: string;
-  name: string;
-  category: string;
-  type: 'point' | 'polyline';
-  coordinates: any;
-  distance?: string|null;
-  styleUrl?: string | null;
-  pointType?: string | null;
-}
-
-
-export interface EventTypeConfig {
-  color: string;
-  icon: string;
-  visible: boolean;
-}
-
-export interface EventTypeCounts {
-  [key: string]: number;
-}
-
-
-// -------PhysicalSUrvey Data -----------------//
-
-
-
-export interface PhysicalSurveyPoint {
-  survey_id: string;
-  latitude: string;
-  longitude: string;
-  event_type: string;
-}
-
+// Physical Survey types
 export interface PhysicalSurveyApiResponse {
   status: boolean;
   data: Record<string, PhysicalSurveyPoint[]>;
+}
+
+export interface PhysicalSurveyPoint {
+  survey_id: string;
+  event_type: string;
+  latitude: string;
+  longitude: string;
+  [key: string]: any;
 }
 
 export interface ProcessedPhysicalSurvey {
@@ -122,11 +84,95 @@ export interface ProcessedPhysicalSurvey {
   name: string;
   category: string;
   type: 'point';
-  coordinates: {
-    lat: number;
-    lng: number;
-  };
+  coordinates: { lat: number; lng: number };
   surveyId: string;
   eventType: string;
   blockId: string;
+}
+
+// Desktop Planning types
+export interface DesktopPlanningApiResponse {
+  status: boolean;
+  data: DesktopPlanningNetwork[];
+}
+
+export interface DesktopPlanningNetwork {
+  id: number;
+  name: string;
+  total_length: string;
+  main_point_name: string;
+  created_at: string;
+  existing_length: string;
+  proposed_length: string;
+  status: string;
+  st_code: string;
+  st_name: string;
+  blk_code: string;
+  blk_name: string;
+  dt_code: string;
+  dt_name: string;
+  user_id: number;
+  user_name: string;
+  points: DesktopPlanningPoint[];
+  connections: DesktopPlanningConnection[];
+}
+
+export interface DesktopPlanningPoint {
+  id: number;
+  network_id: number;
+  name: string;
+  coordinates: string; // "[longitude,latitude]" format
+  lgd_code: string;
+  created_at: string;
+  properties: string; // JSON string
+}
+
+export interface DesktopPlanningConnection {
+  id: number;
+  network_id: number;
+  start_point_id: number | null;
+  end_point_id: number | null;
+  start: string;
+  end: string;
+  length: string;
+  original_name: string;
+  coordinates: string; // "[[lat,lng],[lat,lng],...]" format
+  type: 'proposed' | 'incremental';
+  color: string;
+  created_at: string;
+  start_latlong: string;
+  end_latlong: string;
+  user_id: number | null;
+  user_name: string | null;
+  status: string;
+  properties: string; // JSON string
+}
+
+export interface ProcessedDesktopPlanning {
+  id: string;
+  name: string;
+  category: string;
+  type: 'point' | 'polyline';
+  coordinates: { lat: number; lng: number } | { lat: number; lng: number }[];
+  styleUrl?: string;
+  pointType?: string;
+  assetType?: string;
+  status?: string;
+  ring?: string;
+  networkId?: number;
+  lgdCode?: string;
+  length?: string;
+  connectionType?: 'proposed' | 'incremental';
+  rawProperties?: any;
+}
+
+// Additional types for configuration
+export interface EventTypeConfig {
+  color: string;
+  icon: string;
+  label: string;
+}
+
+export interface EventTypeCounts {
+  [eventType: string]: number;
 }
