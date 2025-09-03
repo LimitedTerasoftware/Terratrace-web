@@ -365,3 +365,105 @@ export type GPMainData = {
     },
     data:GPList[]
 }
+
+export interface GPInstallationData {
+    id: number;
+    user_id: number;
+    state_code: string;
+    district_code: string;
+    block_code: string;
+    gp_code: string;
+    gp_name: string;
+    gp_latitude: string;
+    gp_longitude: string;
+    gp_photos: string; // JSON string array
+    smart_rack: string; // JSON string
+    fdms_shelf: string; // JSON string array
+    ip_mpls_router: string; // JSON string
+    sfp_10g: string; // JSON string array
+    sfp_1g: string; // JSON string array
+    power_system_with_mppt: string; // JSON string
+    power_system_with_out_mppt: string; // JSON string
+    mppt_solar_1kw: string; // JSON string
+    equipment_photo: string; // JSON string array
+    electricity_meter: string; // JSON string
+    earthpit: string; // JSON string
+    gp_contact: string; // JSON string
+    key_person: string; // JSON string
+    created_at: string;
+    updated_at: string;
+    state_name: string;
+    district_name: string;
+    block_name: string;
+}
+
+export interface SmartRackData {
+    make: string;
+    photo: string;
+    serial_no: string;
+    type: string;
+}
+
+export interface FDMSShelfData {
+    count: number;
+    make: string;
+    photo: string;
+    serial_no: string;
+}
+
+export interface IPMPLSRouterData {
+    make: string;
+    photo: string;
+    serial_no: string;
+    type: string;
+}
+
+export interface SFPData {
+    count: string;
+    make: string;
+    photo: string;
+    serial_no: string;
+}
+
+export interface PowerSystemData {
+    available: boolean;
+    make?: string;
+    photo?: string;
+    serial_no?: string;
+}
+
+export interface MPPTSolarData {
+    make: string;
+    photo: string;
+    serial_no: string;
+}
+
+export interface ElectricityMeterData {
+    photo: string;
+    serial_no: string;
+}
+
+export interface EarthpitData {
+    capacity: string;
+    latitude: string;
+    longitude: string;
+    photo: string;
+}
+
+export interface GPContactData {
+    email: string;
+    name: string;
+    phone: string;
+}
+
+export interface KeyPersonData {
+    name: string;
+    phone: string;
+}
+
+export interface InstallationResponse {
+    status: boolean;
+    totalRows: number;
+    filters: Record<string, any>;
+    data: GPInstallationData[];
+}

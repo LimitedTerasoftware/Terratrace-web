@@ -55,6 +55,11 @@ import LiveTrack from './components/DepthChart/LiveTrack';
 import Eventreport from './components/DepthChart/UGConstView';
 import Report from './components/DepthChart/UGConst';
 import Construction from './components/DepthChart/Construction';
+import InstallationPage from './components/DepthChart/Installation/Installation';
+import GPInstallationDetailView from './components/DepthChart/Installation/GPInstallationDetailView';
+import BlockInstallationDetailView from './components/DepthChart/Installation/BlockInstallationDetailView';
+import GPInstallationEdit from './components/DepthChart/Installation/GPInstallationEdit';
+import BlockInstallationEdit from './components/DepthChart/Installation/BlockInstallationEdit';
 import Dashboard from './components/DepthChart/MachineWorkChart/Dashboard';
 import GPListData from './components/GPList';
 //import AuditLogs from './components/AuditLogs';
@@ -577,6 +582,56 @@ function App() {
                   <Construction/>
                 </DefaultLayout>
             </>}/>
+            <Route path='/installation' element={<>
+                <DefaultLayout>
+                  <PageTitle title="Installation Data" />
+                  <InstallationPage/>
+                </DefaultLayout>
+            </>}/>
+              <Route 
+              path="/installation/gp-detail/:id" 
+              element={
+                <>
+                  <DefaultLayout>
+                    <PageTitle title="GP Installation Details" />
+                    <GPInstallationDetailView />
+                  </DefaultLayout>
+                </>}/>
+
+            <Route 
+              path="/installation/block-detail/:id" 
+              element={
+                <>
+                  <DefaultLayout>
+                    <PageTitle title="Block Installation Details" />
+                    <BlockInstallationDetailView />
+                  </DefaultLayout>
+                </>
+              } 
+            />
+            <Route 
+  path="/installation/gp-edit/:id" 
+  element={
+    <>
+      <DefaultLayout>
+        <PageTitle title="Edit GP Installation" />
+        <GPInstallationEdit />
+      </DefaultLayout>
+    </>
+  } 
+/>
+
+<Route 
+  path="/installation/block-edit/:id" 
+  element={
+    <>
+      <DefaultLayout>
+        <PageTitle title="Edit Block Installation" />
+        <BlockInstallationEdit />
+      </DefaultLayout>
+    </>
+  } 
+/>
           </Routes>
           
       )}

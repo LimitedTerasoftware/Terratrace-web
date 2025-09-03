@@ -34,7 +34,8 @@ import {
   LocateFixed,
   Building,
   User2Icon,
-  Globe2Icon
+  Globe2Icon,
+  Settings              // Icon for Installation
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -206,32 +207,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                 <span className={isOpen ? '' : 'hidden'}>Route Builder</span>
                               </NavLink>
                             </li>
-                            {/* Option 3: Reports - internal link
-                          <li>
-                            <NavLink
-                              to="/route-planning/reports"
-                              className={({ isActive }) =>
-                                'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white ' +
-                                (isActive && '!text-white')
-                              }
-                            >
-                              <ClipboardMinus size={16} className="min-w-[16px]" />
-                              Reports
-                            </NavLink>
-                          </li> */}
-                            {/* Option 4: Audit Logs - internal link */}
-                            {/*<li>
-                            <NavLink
-                              to="/route-planning/audit-logs"
-                              className={({ isActive }) =>
-                                'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white ' +
-                                (isActive && '!text-white')
-                              }
-                            >
-                              <Logs size={16} className="min-w-[16px]" />
-                              Audit Logs
-                            </NavLink>
-                          </li>*/}
                           </ul>
                         </div>
 
@@ -245,6 +220,29 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
              {!viewOnly && (
                <SideBarItem icon={ConstructionImg} label="Construction" isOpen={isOpen} isActive={pathname.includes('construction')} path='/construction' />
               )}
+              
+             {/* Add Installation Menu Item */}
+             {!viewOnly && (
+               <li>
+                 <NavLink
+                   to="/installation"
+                   className={`
+                     flex items-center py-2 ${isOpen ? 'px-3 gap-4' : 'px-2 gap-0'} rounded-lg 
+                     transition-colors duration-200 text-bodydark1 
+                     ${pathname.includes('installation') 
+                       ? 'bg-graydark dark:bg-meta-4' 
+                       : 'hover:bg-graydark dark:hover:bg-meta-4'}
+                     ${!isOpen ? 'w-[44px] justify-center' : ''}
+                   `}
+                 >
+                   <div className="min-w-[20px] flex justify-center">
+                     <Settings className="w-5 h-5" />
+                   </div>
+                   {isOpen && <span className="whitespace-nowrap">Installation</span>}
+                 </NavLink>
+               </li>
+             )}
+
               {InvOnly && (
                   <li>
                   <NavLink
@@ -426,115 +424,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
             )}
           </ul>
         </div>
-        {/* <div className="flex-1 px-3 py-2">
-          <h3 className={`mb-2 ${isOpen ? 'ml-4' : 'ml-0'}  text-sm font-semibold text-bodydark2`}>
-            Masters
-          </h3>
-          <ul className="space-y-2">
-
-
-            <SidebarLinkGroup
-              activeCondition={pathname === '/master' || pathname.includes('master')}
-            >
-              {(handleClick, open) => {
-                return (
-                  <React.Fragment>
-                    <NavLink
-                      to="#"
-                      className={`
-                        flex items-center justify-between py-2 px-3 rounded-lg transition-colors duration-200 text-bodydark1
-                        ${(pathname === '/master' || pathname.includes('master'))
-                                              ? 'bg-graydark dark:bg-meta-4'
-                                              : 'hover:bg-graydark dark:hover:bg-meta-4'
-                                            }
-                      `}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        sidebarExpanded
-                          ? handleClick()
-                          : setSidebarExpanded(true);
-                      }}
-
-                    >
-                     
-                      <div className="flex items-center gap-3">
-                        <div className="min-w-[24px] flex justify-center">
-                          <img src={TableIcon} alt="RouteMap" className="w-5 h-5 object-contain" />
-                        </div>
-                        {isOpen && <span>Tables</span>}
-                      </div>
-
-                    
-                      {isOpen && (
-                        open
-                          ? <ChevronUp className="w-4 h-4 text-gray-500" />
-                          : <ChevronDown className="w-4 h-4 text-gray-500" />
-                      )}
-                    </NavLink>
-
-                    
-                    {isOpen && (
-                    <div
-                      className={`translate transform overflow-hidden ${!open && 'hidden'
-                        }`}
-                    >
-                      <ul className="space-y-2 mb-5.5 mt-4 flex flex-col gap-2.5 pl-6">
-                        <li>
-                          <NavLink
-                            to="/master/states"
-
-                            className={({ isActive }) =>
-                              'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white ' +
-                              (isActive && '!text-white')
-                            }
-                          >
-                            States
-                          </NavLink>
-                        </li>
-                        <li>
-                          <NavLink
-                            to="/master/district"
-                            className={({ isActive }) =>
-                              'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white ' +
-                              (isActive && '!text-white')
-                            }
-                          >
-                            Districts
-                          </NavLink>
-                        </li>
-                        <li>
-                          <NavLink
-                            to="/master/blocks"
-                            className={({ isActive }) =>
-                              'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white ' +
-                              (isActive && '!text-white')
-                            }
-                          >
-                            Blocks
-                          </NavLink>
-                        </li>
-                        <li>
-                          <NavLink
-                            to="/master/gpslist"
-                            className={({ isActive }) =>
-                              'group relative flex items-center gap-2.5 rounded-md px-4 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white ' +
-                              (isActive && '!text-white')
-                            }
-                          >
-                            Gp List
-                          </NavLink>
-                        </li>
-                      </ul>
-                    </div>
-                    )}
-                    
-                  </React.Fragment>
-                );
-              }}
-            </SidebarLinkGroup>
-
-          </ul>
-        </div> */}
 
         {/* Profile Section and Dark Mode Toggler at Bottom */}
         <div className="px-2 pb-4 mt-auto">
