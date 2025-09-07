@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { StateData, District, Block } from '../../types/survey';
 import Report from './UGConst';
+import ConstructionStatsPanel from './ConstructionStatsPanel';
 import { SheetIcon, Construction } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
+import { UGConstructionSurveyData } from '../../types/survey';
+import axios from 'axios';
 
 interface StatesResponse {
     success: boolean;
@@ -15,6 +18,7 @@ type StatusOption = {
 };
 
 const BASEURL = import.meta.env.VITE_API_BASE;
+const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
 function ConstructionPage() {
     const [states, setStates] = useState<StateData[]>([]);
@@ -34,6 +38,10 @@ function ConstructionPage() {
     const [excel, setExcel] = useState<boolean>(false);
     const [searchParams, setSearchParams] = useSearchParams();
     const [filtersReady, setFiltersReady] = useState(false);
+    
+    // New state for stats panel
+    const [surveyData, setSurveyData] = useState<UGConstructionSurveyData[]>([]);
+    const [loadingStats, setLoadingStats] = useState<boolean>(false);
 
     const statusMap: Record<number, string> = {
         1: "Completed",
@@ -49,14 +57,14 @@ function ConstructionPage() {
 
     const ConstructionHeader = () => {
         return (
-            <header className="bg-white shadow-sm border-b border-gray-200 px-7 py-2 mb-6">
+            <header className="bg-white shadow-sm border-b border-gray-200 px-7 py-2">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-gradient-to-br from-orange-500 to-red-600">
                             <Construction className="h-6 w-6 text-white" />
                         </div>
                         <div>
-                            <h1 className="text-xl font-bold text-gray-900">Construction Data Manager</h1>
+                            <h1 className="text-xl font-bold text-gray-900">Construction Management</h1>
                             <p className="text-sm text-gray-600">Monitor and analyze construction project data</p>
                         </div>
                     </div>
@@ -89,8 +97,31 @@ function ConstructionPage() {
         }
     };
 
+    // New function to fetch all survey data for stats
+    const fetchSurveyDataForStats = async () => {
+        try {
+            setLoadingStats(true);
+            const response = await axios.get<{ status: boolean; data: UGConstructionSurveyData[] }>(
+                `${TraceBASEURL}/get-survey-data`
+            );
+            
+            if (response.data.status) {
+                setSurveyData(response.data.data);
+            } else {
+                console.error('API returned status=false', response.data);
+                setSurveyData([]);
+            }
+        } catch (error) {
+            console.error('Error fetching survey data for stats', error);
+            setSurveyData([]);
+        } finally {
+            setLoadingStats(false);
+        }
+    };
+
     useEffect(() => {
         fetchStates();
+        fetchSurveyDataForStats(); // Fetch survey data for stats panel
     }, []);
 
     const fetchDistricts = async (stateId: string) => {
@@ -223,6 +254,12 @@ function ConstructionPage() {
     return (
         <div className="min-h-screen bg-gray-50">
             <ConstructionHeader />
+
+            {/* Stats Panel */}
+            <ConstructionStatsPanel 
+                surveys={surveyData} 
+                isLoading={loadingStats} 
+            />
 
             {/* Main Content Container */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">

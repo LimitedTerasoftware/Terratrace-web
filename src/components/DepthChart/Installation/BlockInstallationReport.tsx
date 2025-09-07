@@ -6,7 +6,6 @@ import * as XLSX from "xlsx";
 import DataTable, { TableColumn } from 'react-data-table-component';
 import { useNavigate } from 'react-router-dom';
 
-
 // Block Installation Data Interface
 interface BlockInstallationData {
     id: number;
@@ -129,8 +128,11 @@ const BlockInstallationReport: React.FC<BlockInstallationReportProps> = ({ Data,
       if (Array.isArray(photosData)) {
         return photosData;
       }
-      const parsed = JSON.parse(photosData);
-      return Array.isArray(parsed) ? parsed : [];
+      if (typeof photosData === 'string') {
+        const parsed = JSON.parse(photosData);
+        return Array.isArray(parsed) ? parsed : [];
+      }
+      return [];
     } catch {
       return [];
     }
@@ -141,10 +143,19 @@ const BlockInstallationReport: React.FC<BlockInstallationReportProps> = ({ Data,
       if (typeof dataString === 'object') {
         return dataString;
       }
-      return JSON.parse(dataString);
+      if (typeof dataString === 'string') {
+        return JSON.parse(dataString);
+      }
+      return null;
     } catch {
       return null;
     }
+  };
+
+  // Safe string operations with null checks
+  const safeSubstring = (str: string | null | undefined, start: number, end?: number): string => {
+    if (!str || typeof str !== 'string') return '';
+    return str.substring(start, end);
   };
 
   const customStyles = {
@@ -186,47 +197,50 @@ const BlockInstallationReport: React.FC<BlockInstallationReportProps> = ({ Data,
   const columns: TableColumn<BlockInstallationData>[] = [
     {
       name: "State",
-      selector: row => row.state_code,
+      selector: row => row.state_code || '',
       sortable: true,
       maxWidth: "140px",
       cell: (row) => (
-        <span title={row.state_code} className="truncate">
-          {row.state_code}
+        <span title={row.state_code || ''} className="truncate">
+          {row.state_code || 'N/A'}
         </span>
       ),
     },
     {
       name: "District", 
-      selector: row => row.district_code,
+      selector: row => row.district_code || '',
       sortable: true,
       maxWidth: "150px",
       cell: (row) => (
-        <span title={row.district_code} className="truncate">
-          {row.district_code}
+        <span title={row.district_code || ''} className="truncate">
+          {row.district_code || 'N/A'}
         </span>
       ),
     },
     {
       name: "Block Name",
-      selector: row => row.block_name,
+      selector: row => row.block_name || '',
       sortable: true,
       maxWidth: "200px",
       cell: (row) => (
-        <span title={row.block_name} className="truncate">
-          {row.block_name}
+        <span title={row.block_name || ''} className="truncate">
+          {row.block_name || 'N/A'}
         </span>
       ),
     },
     {
       name: "Location",
-      selector: row => `${row.block_latitude}, ${row.block_longitude}`,
+      selector: row => `${row.block_latitude || ''}, ${row.block_longitude || ''}`,
       sortable: true,
       maxWidth: "180px",
       cell: (row) => (
         <div className="flex items-center min-w-0 w-full">
           <MapPin className="w-3 h-3 text-gray-600 mr-1 flex-shrink-0" />
-          <span className="truncate min-w-0 text-xs" title={`${row.block_latitude}, ${row.block_longitude}`}>
-            {row.block_latitude.substring(0, 8)}, {row.block_longitude.substring(0, 8)}
+          <span 
+            className="truncate min-w-0 text-xs" 
+            title={`${row.block_latitude || 'N/A'}, ${row.block_longitude || 'N/A'}`}
+          >
+            {safeSubstring(row.block_latitude, 0, 8) || 'N/A'}, {safeSubstring(row.block_longitude, 0, 8) || 'N/A'}
           </span>
         </div>
       ),
@@ -236,12 +250,12 @@ const BlockInstallationReport: React.FC<BlockInstallationReportProps> = ({ Data,
       cell: (row) => {
         const contacts = parseEquipmentData(row.block_contacts);
         const contact = Array.isArray(contacts) ? contacts[0] : contacts;
-        return contact ? (
+        return contact && contact.name ? (
           <div className="flex items-center min-w-0 w-full">
             <User className="w-3 h-3 text-gray-600 mr-1 flex-shrink-0" />
             <div className="min-w-0">
               <div className="truncate text-sm font-medium">{contact.name}</div>
-              <div className="truncate text-xs text-gray-500">{contact.phone}</div>
+              <div className="truncate text-xs text-gray-500">{contact.phone || 'N/A'}</div>
             </div>
           </div>
         ) : (
@@ -260,35 +274,26 @@ const BlockInstallationReport: React.FC<BlockInstallationReportProps> = ({ Data,
     },
     {
       name: "Created",
-      selector: row => row.created_at,
+      selector: row => row.created_at || '',
       sortable: true,
       maxWidth: "140px",
-      cell: (row) => moment(row.created_at).format("DD/MM/YYYY"),
+      cell: (row) => row.created_at ? moment(row.created_at).format("DD/MM/YYYY") : 'N/A',
     },
-{
-  name: 'Actions',
-  cell: (row) => (
-    <div className="flex space-x-2">
-      <button
-        onClick={() => navigate(`/installation/block-detail/${row.id}`)}
-        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-        title="View Details"
-      >
-        <Eye className="w-4 h-4" />
-      </button>
-      <button
-        onClick={() => navigate(`/installation/block-detail/${row.id}`)}
-        className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100 outline-none"
-      >
-        View
-      </button>
-    </div>
-  ),
-  ignoreRowClick: true,
-  allowOverflow: true,
-  button: true,
-  maxWidth: "120px",
-},
+    {
+      name: 'Actions',
+      cell: (row) => (
+        <button
+          onClick={() => navigate(`/installation/block-detail/${row.id}`)}
+          className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100 transition-colors outline-none"
+        >
+          View
+        </button>
+      ),
+      ignoreRowClick: true,
+      allowOverflow: true,
+      button: true,
+      maxWidth: "80px",
+    },
   ];
 
   useEffect(() => {
@@ -306,11 +311,11 @@ const BlockInstallationReport: React.FC<BlockInstallationReportProps> = ({ Data,
         ];
 
         const dataRows = filteredData.map(row => [
-          row.state_code, row.district_code, row.block_code, row.block_name,
-          row.block_latitude, row.block_longitude, JSON.stringify(row.block_photos),
-          JSON.stringify(row.smart_rack), JSON.stringify(row.fdms_shelf), JSON.stringify(row.ip_mpls_router),
-          JSON.stringify(row.sfp_10g), JSON.stringify(row.sfp_1g), JSON.stringify(row.sfp_100g), JSON.stringify(row.rfms),
-          JSON.stringify(row.equipment_photo), JSON.stringify(row.block_contacts), row.created_at, row.updated_at
+          row.state_code || '', row.district_code || '', row.block_code || '', row.block_name || '',
+          row.block_latitude || '', row.block_longitude || '', JSON.stringify(row.block_photos || []),
+          JSON.stringify(row.smart_rack || {}), JSON.stringify(row.fdms_shelf || {}), JSON.stringify(row.ip_mpls_router || {}),
+          JSON.stringify(row.sfp_10g || []), JSON.stringify(row.sfp_1g || []), JSON.stringify(row.sfp_100g || []), JSON.stringify(row.rfms || {}),
+          JSON.stringify(row.equipment_photo || []), JSON.stringify(row.block_contacts || {}), row.created_at || '', row.updated_at || ''
         ]);
 
         const worksheet = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
@@ -437,169 +442,6 @@ const BlockInstallationReport: React.FC<BlockInstallationReportProps> = ({ Data,
                 </div>
               }
             />
-          </div>
-        )}
-
-        {/* Block Installation Details Modal */}
-        {selectedInstallation && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6 border-b border-gray-200">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-xl font-semibold text-gray-900">Block Installation Details</h3>
-                  <button
-                    onClick={() => setSelectedInstallation(null)}
-                    className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-              <div className="p-6 space-y-6">
-                {/* Basic Info */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Block Name</label>
-                    <p className="text-gray-900 font-medium">{selectedInstallation.block_name}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">State Code</label>
-                    <p className="text-gray-900">{selectedInstallation.state_code}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">District Code</label>
-                    <p className="text-gray-900">{selectedInstallation.district_code}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Block Code</label>
-                    <p className="text-gray-900">{selectedInstallation.block_code}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Block Latitude</label>
-                    <p className="text-gray-900">{selectedInstallation.block_latitude}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Block Longitude</label>
-                    <p className="text-gray-900">{selectedInstallation.block_longitude}</p>
-                  </div>
-                </div>
-
-                {/* Block Photos Section */}
-                <div className="pt-4 border-t">
-                  <h4 className="font-medium text-gray-700 mb-3 flex items-center gap-2">
-                    <Image className="w-4 h-4 text-blue-600" />
-                    Block Photos
-                  </h4>
-                  {(() => {
-                    const photos = parsePhotosArray(selectedInstallation.block_photos);
-                    return photos.length > 0 ? (
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {photos.map((photo, index) => (
-                          <div key={index} className="aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity">
-                            <img
-                              src={`${baseUrl}${photo}`}
-                              alt={`Block Photo ${index + 1}`}
-                              className="w-full h-full object-cover"
-                              onClick={() => setZoomImage(`${baseUrl}${photo}`)}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-gray-500 text-sm">No block photos available</p>
-                    );
-                  })()}
-                </div>
-
-                {/* Equipment Details */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    {renderEquipmentDetails(selectedInstallation.smart_rack, "Smart Rack")}
-                    {renderEquipmentDetails(selectedInstallation.fdms_shelf, "FDMS Shelf")}
-                    {renderEquipmentDetails(selectedInstallation.ip_mpls_router, "IP MPLS Router")}
-                    {renderEquipmentDetails(selectedInstallation.rfms, "RFMS")}
-                  </div>
-                  <div>
-                    {renderEquipmentDetails(selectedInstallation.sfp_10g, "SFP 10G")}
-                    {renderEquipmentDetails(selectedInstallation.sfp_1g, "SFP 1G")}
-                    {renderEquipmentDetails(selectedInstallation.sfp_100g, "SFP 100G")}
-                  </div>
-                </div>
-
-                {/* Equipment Photos */}
-                {selectedInstallation.equipment_photo && selectedInstallation.equipment_photo.length > 0 && (
-                  <div className="pt-4 border-t">
-                    <h4 className="font-medium text-gray-700 mb-3 flex items-center gap-2">
-                      <Image className="w-4 h-4 text-blue-600" />
-                      Equipment Photos
-                    </h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {selectedInstallation.equipment_photo.map((photo, index) => (
-                        <div key={index} className="aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity">
-                          <img
-                            src={`${baseUrl}${photo}`}
-                            alt={`Equipment Photo ${index + 1}`}
-                            className="w-full h-full object-cover"
-                            onClick={() => setZoomImage(`${baseUrl}${photo}`)}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Contact Information */}
-                <div className="pt-4 border-t">
-                  <h4 className="font-medium text-gray-700 mb-3">Block Contacts</h4>
-                  {(() => {
-                    const contacts = parseEquipmentData(selectedInstallation.block_contacts);
-                    const contactList = Array.isArray(contacts) ? contacts : [contacts].filter(Boolean);
-                    return contactList.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {contactList.map((contact: any, index: number) => (
-                          <div key={index} className="bg-gray-50 p-3 rounded">
-                            <div className="text-sm">
-                              <div className="flex justify-between mb-1">
-                                <span className="text-gray-600">Name:</span>
-                                <span className="font-medium">{contact.name}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Phone:</span>
-                                <span className="font-medium">{contact.phone}</span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : <span className="text-gray-400">No contact info</span>;
-                  })()}
-                </div>
-
-                {/* Timestamps */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Created At</label>
-                    <p className="text-gray-900 text-sm">
-                      {moment(selectedInstallation.created_at).format("DD/MM/YYYY, hh:mm A")}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Last Updated</label>
-                    <p className="text-gray-900 text-sm">
-                      {moment(selectedInstallation.updated_at).format("DD/MM/YYYY, hh:mm A")}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
-                <button
-                  onClick={() => setSelectedInstallation(null)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
           </div>
         )}
 

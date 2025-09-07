@@ -263,37 +263,79 @@ function SmartInventory() {
   
   // Load physical survey data
   const loadPhysicalData = async (state: string[], division: string[], block: string[]) => {
-    try {
-      setIsLoadingPhysical(true);
-      const params: any = {};
+  try {
+    // Add console logging here
+    console.log('=== Physical Survey API Call ===');
+    console.log('Selected States:', state);
+    console.log('Selected Districts:', division);
+    console.log('Selected Blocks:', block);
+    
+    setIsLoadingPhysical(true);
+    const params: any = {};
 
-      if (state.length > 0) params.state_id = state.join(',');
-      if (division.length > 0) params.district_id = division.join(',');
-      if (block.length > 0) params.block_id = block.join(',');
-
-      const response = await axios.get(`${BASEURL}/get-physical-survey`, { params });
-      const result: PhysicalSurveyApiResponse = response.data;
-
-      if (response.status === 200 || response.status === 201) {
-        if (Object.keys(result.data).length > 0) {
-          const { placemarks, categories } = processPhysicalSurveyData(result);
-          setRawPhysicalSurveyData(result);
-          setPhysicalSurveyData(placemarks);
-          setPhysicalSurveyCategories(categories);
-          
-          const physicalCategoryIds = new Set(categories.map(cat => cat.id));
-          setVisibleCategories(prev => new Set([...prev, ...physicalCategoryIds]));
-          
-          showNotification('success', `Loaded ${placemarks.length} physical survey points`);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load physical survey data:', error);
-      showNotification('error', 'Failed to load physical survey data');
-    } finally {
-      setIsLoadingPhysical(false);
+    if (state.length > 0) {
+      params.state_id = state.join(',');
+      console.log('State IDs parameter:', params.state_id);
     }
-  };
+    if (division.length > 0) {
+      params.district_id = division.join(',');
+      console.log('District IDs parameter:', params.district_id);
+    }
+    if (block.length > 0) {
+      params.block_id = block.join(',');
+      console.log('Block IDs parameter:', params.block_id);
+    }
+
+    console.log('Final API params:', params);
+    console.log('API URL:', `${BASEURL}/get-physical-survey`);
+
+    const response = await axios.get(`${BASEURL}/get-physical-survey`, { params });
+    const result: PhysicalSurveyApiResponse = response.data;
+
+    console.log('API Response:', response);
+    console.log('Response Data:', result);
+
+    if (response.status === 200 || response.status === 201) {
+      if (Object.keys(result.data).length > 0) {
+        console.log('Number of blocks in response:', Object.keys(result.data).length);
+        
+        // Log each block's data
+        Object.entries(result.data).forEach(([blockId, points]) => {
+          console.log(`Block ${blockId}: ${points.length} survey points`);
+        });
+
+        const { placemarks, categories } = processPhysicalSurveyData(result);
+        console.log('Processed placemarks count:', placemarks.length);
+        console.log('Processed categories:', categories);
+        
+        setRawPhysicalSurveyData(result);
+        setPhysicalSurveyData(placemarks);
+        setPhysicalSurveyCategories(categories);
+        
+        const physicalCategoryIds = new Set(categories.map(cat => cat.id));
+        setVisibleCategories(prev => new Set([...prev, ...physicalCategoryIds]));
+        
+        showNotification('success', `Loaded ${placemarks.length} physical survey points`);
+      } else {
+        console.log('No data found in API response');
+      }
+    }
+    console.log('=== End Physical Survey API Call ===');
+  } catch (error) {
+    console.error('=== Physical Survey API Error ===');
+    console.error('Error details:', error);
+    if (axios.isAxiosError(error)) {
+      console.error('Response status:', error.response?.status);
+      console.error('Response data:', error.response?.data);
+    }
+    console.error('=== End Physical Survey API Error ===');
+    
+    showNotification('error', 'Failed to load physical survey data');
+  } finally {
+    setIsLoadingPhysical(false);
+  }
+};
+
 
   // Load desktop planning data
   const loadDesktopPlanningData = async (

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Block, District, GPList, GPListFormData, GPMainData, StateData } from '../../types/survey'
 import DataTable, { TableColumn } from 'react-data-table-component';
-import { Edit, Eye, Filter, Search } from 'lucide-react';
+import { Edit, Eye, Filter, Search, X } from 'lucide-react';
 import moment from 'moment';
 import { getBlockData, getDistrictData, getStateData } from '../Services/api';
 
@@ -14,11 +14,14 @@ interface GPListProps {
   OnDist: (id: string) => void;
   OnBlock: (id: string) => void;
 }
+
 const GpListPage: React.FC<GPListProps> = ({ GpList, onEdit, onDelete, OnPage, Onstate, OnDist, OnBlock }) => {
   const [selectedGp, setSelectedGp] = useState<GPList | null>(null);
   const [totalRows, setTotalRows] = useState(GpList?.totalRows || 0);
   const [currentPage, setCurrentPage] = useState(GpList?.currentPage || 0);
   const [perPage, setPerPage] = useState(15);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -30,6 +33,7 @@ const GpListPage: React.FC<GPListProps> = ({ GpList, onEdit, onDelete, OnPage, O
     setTotalRows(GpList?.totalRows || 0);
     setCurrentPage(GpList?.currentPage || 0)
   }, [GpList])
+
   useEffect(() => {
     getStateData().then(data => {
       setStates(data);
@@ -40,34 +44,104 @@ const GpListPage: React.FC<GPListProps> = ({ GpList, onEdit, onDelete, OnPage, O
     if (selectedState) {
       getDistrictData(selectedState).then(data => {
         setDistricts(data);
-
       })
-
     } else {
       setDistricts([])
     }
   }, [selectedState])
+
   useEffect(() => {
     if (selectedDistrict) {
       getBlockData(selectedDistrict).then(data => {
         setBlocks(data);
       })
-
     } else {
       setBlocks([])
     }
   }, [selectedDistrict])
 
+  // Filter data locally for search and type filter
+  const filteredData = GpList?.data?.filter(gp => {
+    const matchesSearch = 
+      (gp.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (gp.st_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (gp.dt_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (gp.blk_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (gp.lgd_code || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (gp.type || "").toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesType = typeFilter === 'all' || gp.type === typeFilter;
+    
+    return matchesSearch && matchesType;
+  }) || [];
+
+  const getTypeBadge = (type: string) => {
+    const typeConfig: Record<string, string> = {
+      GP: 'bg-green-100 text-green-800 border-green-200',
+      ONT: 'bg-purple-100 text-purple-800 border-purple-200',
+      BHQ: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      OLT: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+      FPOI: 'bg-red-100 text-red-800 border-red-200',
+    };
+
+    return (
+      <span className={`px-3 py-1 rounded-full text-xs font-medium border ${typeConfig[type] || 'bg-gray-100 text-gray-800 border-gray-200'}`}>
+        {type}
+      </span>
+    );
+  };
+
+  // Custom header styling to match the machine management
+  const customStyles = {
+    headCells: {
+      style: {
+        fontSize: '11px',
+        fontWeight: '500',
+        textTransform: 'uppercase' as const,
+        letterSpacing: '0.5px',
+        color: '#9CA3AF',
+        backgroundColor: '#F9FAFB',
+        borderBottom: '1px solid #E5E7EB',
+        paddingLeft: '16px',
+        paddingRight: '16px',
+        paddingTop: '12px',
+        paddingBottom: '12px',
+      },
+    },
+    cells: {
+      style: {
+        paddingLeft: '16px',
+        paddingRight: '16px',
+        paddingTop: '12px',
+        paddingBottom: '12px',
+        fontSize: '14px',
+        color: '#111827',
+        borderBottom: '1px solid #F3F4F6',
+      },
+    },
+    rows: {
+      style: {
+        '&:hover': {
+          backgroundColor: '#F9FAFB',
+        },
+      },
+    },
+  };
+
   const columns: TableColumn<GPList>[] = [
+    { name: "GP Name", selector: row => row.name, sortable: true },
     { name: "State", selector: row => row.st_name, sortable: true },
     { name: "District", selector: row => row.dt_name, sortable: true },
     { name: "Block", selector: row => row.blk_name, sortable: true },
-    { name: "Gp Name", selector: row => row.name, sortable: true },
-    { name: "Type", selector: row => row.type, sortable: true },
+    {
+      name: 'Type',
+      selector: (row) => row.type,
+      sortable: true,
+      cell: (row) => getTypeBadge(row.type),
+    },
     { name: "LGD Code", selector: row => row.lgd_code, sortable: true },
-    { name: "Lattitude", selector: row => row.lattitude, sortable: true },
+    { name: "Latitude", selector: row => row.lattitude, sortable: true },
     { name: "Longitude", selector: row => row.longitude, sortable: true },
-    { name: "Remark", selector: row => row.remark, sortable: true },
     { name: "Created at", selector: row => moment(row.created_at).format("DD/MM/YYYY, hh:mm A"), sortable: true },
     {
       name: 'Actions',
@@ -83,17 +157,10 @@ const GpListPage: React.FC<GPListProps> = ({ GpList, onEdit, onDelete, OnPage, O
           <button
             onClick={() => onEdit(row)}
             className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-            title="Edit Machine"
+            title="Edit GP"
           >
             <Edit className="w-4 h-4" />
           </button>
-          {/* <button
-          onClick={() => handleDelete(row)}
-          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-          title="Delete Machine"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button> */}
         </div>
       ),
       ignoreRowClick: true,
@@ -111,25 +178,56 @@ const GpListPage: React.FC<GPListProps> = ({ GpList, onEdit, onDelete, OnPage, O
     setPerPage(newPerPage);
     setCurrentPage(page);
     OnPage(page)
-
   };
-   const handleClearFilters = () => {
+
+  const handleClearFilters = () => {
     setSelectedState(null);
     setSelectedDistrict(null);
     setSelectedBlock(null);
+    setSearchTerm('');
+    setTypeFilter('all');
     Onstate('');
     OnDist('');
     OnBlock('');
- };
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-lg border border-gray-100">
       <div className="p-6 border-b border-gray-200">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-          <h2 className="text-xl font-semibold text-gray-900">GP List</h2>
+        <div className="flex flex-col space-y-4">
+          {/* Search and Type Filter Row */}
+          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search GPs..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+              >
+                <option value="all">All Types</option>
+                <option value="GP">GP</option>
+                <option value="ONT">ONT</option>
+                <option value="BHQ">BHQ</option>
+                <option value="OLT">OLT</option>
+                <option value="FPOI">FPOI</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Geographic Filters Row */}
           <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
             <div className="relative">
               <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-
               <select
                 value={selectedState || ''}
                 onChange={(e) => {
@@ -151,7 +249,6 @@ const GpListPage: React.FC<GPListProps> = ({ GpList, onEdit, onDelete, OnPage, O
             </div>
             <div className="relative">
               <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-
               <select
                 value={selectedDistrict || ''}
                 onChange={(e) => {
@@ -161,7 +258,8 @@ const GpListPage: React.FC<GPListProps> = ({ GpList, onEdit, onDelete, OnPage, O
                     setSelectedDistrict(e.target.value)
                   }
                 }}
-                className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+                disabled={!selectedState}
+                className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">All Districts</option>
                 {districts.map((district) => (
@@ -173,7 +271,6 @@ const GpListPage: React.FC<GPListProps> = ({ GpList, onEdit, onDelete, OnPage, O
             </div>
             <div className="relative">
               <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-
               <select
                 value={selectedBlock || ''}
                 onChange={(e) => {
@@ -183,7 +280,8 @@ const GpListPage: React.FC<GPListProps> = ({ GpList, onEdit, onDelete, OnPage, O
                     setSelectedBlock(e.target.value)
                   }
                 }}
-                className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+                disabled={!selectedDistrict}
+                className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">All Blocks</option>
                 {blocks.map((block) => (
@@ -193,31 +291,35 @@ const GpListPage: React.FC<GPListProps> = ({ GpList, onEdit, onDelete, OnPage, O
                 ))}
               </select>
             </div>
-          <button
-            onClick={handleClearFilters}
-            className="flex-none h-10 px-4 py-2 text-sm font-medium text-red-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-red-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
-          >
-            <span className="text-red-500 dark:text-red-400 font-medium text-sm">✕</span>
-            <span>Clear Filters</span>
-          </button>
+            <button
+              onClick={handleClearFilters}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <X className="w-4 h-4" />
+              Clear Filters
+            </button>
           </div>
         </div>
       </div>
 
-      {GpList?.data?.length === 0 ? (
+      {filteredData.length === 0 ? (
         <div className="p-12 text-center">
           <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
             <Search className="w-8 h-8 text-gray-400" />
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No GP Data</h3>
-
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No GPs found</h3>
+          <p className="text-gray-500">
+            {searchTerm || typeFilter !== 'all' || selectedState || selectedDistrict || selectedBlock
+              ? 'Try adjusting your search or filter criteria.'
+              : 'Add your first GP to get started.'
+            }
+          </p>
         </div>
       ) : (
         <div className="overflow-x-auto">
-
           <DataTable
             columns={columns}
-            data={GpList?.data || []}
+            data={filteredData}
             pagination
             paginationServer
             paginationTotalRows={totalRows}
@@ -227,11 +329,12 @@ const GpListPage: React.FC<GPListProps> = ({ GpList, onEdit, onDelete, OnPage, O
             onChangeRowsPerPage={handlePerRowsChange}
             highlightOnHover
             pointerOnHover
-            striped
-            dense
+            striped={false}
+            dense={false}
             responsive
+            customStyles={customStyles}
+            noHeader
           />
-
         </div>
       )}
 
@@ -246,7 +349,7 @@ const GpListPage: React.FC<GPListProps> = ({ GpList, onEdit, onDelete, OnPage, O
                   onClick={() => setSelectedGp(null)}
                   className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  <Eye className="w-5 h-5" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -254,15 +357,27 @@ const GpListPage: React.FC<GPListProps> = ({ GpList, onEdit, onDelete, OnPage, O
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">
+                    GP Name
+                  </label>
+                  <p className="text-gray-900 font-medium">{selectedGp.name}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Type
+                  </label>
+                  {getTypeBadge(selectedGp.type)}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
                     State
                   </label>
-                  <p className="text-gray-900 font-medium">{selectedGp.st_name}</p>
+                  <p className="text-gray-900">{selectedGp.st_name}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">
                     District
                   </label>
-                  {(selectedGp.dt_name)}
+                  <p className="text-gray-900">{selectedGp.dt_name}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">
@@ -272,25 +387,13 @@ const GpListPage: React.FC<GPListProps> = ({ GpList, onEdit, onDelete, OnPage, O
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">
-                    GP Name
-                  </label>
-                  <p className="text-gray-900">{selectedGp.name}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">
-                    Type
-                  </label>
-                  <p className="text-gray-900">{selectedGp.type}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">
                     LGD Code
                   </label>
                   <p className="text-gray-900">{selectedGp.lgd_code}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">
-                    Lattitude
+                    Latitude
                   </label>
                   <p className="text-gray-900">{selectedGp.lattitude}</p>
                 </div>
@@ -300,9 +403,16 @@ const GpListPage: React.FC<GPListProps> = ({ GpList, onEdit, onDelete, OnPage, O
                   </label>
                   <p className="text-gray-900">{selectedGp.longitude}</p>
                 </div>
-
               </div>
 
+              {selectedGp.remark && (
+                <div className="pt-4 border-t">
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Remarks
+                  </label>
+                  <p className="text-gray-900">{selectedGp.remark}</p>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
                 <div>

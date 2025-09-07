@@ -238,7 +238,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                    <div className="min-w-[20px] flex justify-center">
                      <Settings className="w-5 h-5" />
                    </div>
-                   {isOpen && <span className="whitespace-nowrap">Installation</span>}
+                   {isOpen && <span className="whitespace-nowrap">Equipment Installation</span>}
                  </NavLink>
                </li>
              )}

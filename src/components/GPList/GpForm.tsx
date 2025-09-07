@@ -8,10 +8,11 @@ interface GpFormProps {
     onSubmit: (data: GPListFormData) => void;
     onCancel: () => void;
     isEditing?: boolean;
+    isOpen: boolean; // New prop to control modal visibility
 }
 
 const GpForm: React.FC<GpFormProps> = ({
-    GpList, onSubmit, onCancel, isEditing = false
+    GpList, onSubmit, onCancel, isEditing = false, isOpen
 }) => {
     const [states, setStates] = useState<StateData[]>([]);
     const [districts, setDistricts] = useState<District[]>([]);
@@ -35,7 +36,7 @@ const GpForm: React.FC<GpFormProps> = ({
         remark: ""
     })
     const [errors, setErrors] = useState<Partial<GPListFormData>>({});
-    const [isExpanded, setIsExpanded] = useState(false);
+
     useEffect(() => {
         getStateData().then(data => {
             setStates(data);
@@ -47,27 +48,25 @@ const GpForm: React.FC<GpFormProps> = ({
             getDistrictData(selectedState).then(data => {
                 setDistricts(data);
                 if(formData.dt_code){
-                    const DistCode = data.find((Id:District) =>Id.district_code === formData.dt_code);
+                    const DistCode = data.find((Id:District) =>Id.district_code == formData.dt_code);
                     if(DistCode) setSelectedDistrict(DistCode.district_id);
-
                 }
-
             })
-
         } else {
             setDistricts([])
         }
     }, [selectedState,formData.st_code])
+
     useEffect(() => {
         if (selectedDistrict) {
             getBlockData(selectedDistrict).then(data => {
                 setBlocks(data);
             })
-
         } else {
             setBlocks([])
         }
     }, [selectedDistrict])
+
     useEffect(() => {
         if (GpList) {
             setFormData({
@@ -86,30 +85,31 @@ const GpForm: React.FC<GpFormProps> = ({
             })
             const stateCode = states.find(Id=>Id.state_code === GpList?.st_code);
             if(stateCode) setSelectedState(stateCode?.state_id);
-        }else{
-              setFormData({
-                    name: "",
-                    lattitude: "",
-                    longitude: "",
-                    type: "",
-                    blk_code: "",
-                    blk_name: "",
-                    dt_code: "",
-                    dt_name: "",
-                    st_code: "",
-                    st_name: "",
-                    lgd_code: "",
-                    remark: ""
-                })
-            
+        } else {
+            setFormData({
+                name: "",
+                lattitude: "",
+                longitude: "",
+                type: "",
+                blk_code: "",
+                blk_name: "",
+                dt_code: "",
+                dt_name: "",
+                st_code: "",
+                st_name: "",
+                lgd_code: "",
+                remark: ""
+            })
         }
     }, [GpList])
+
     const handleChange = (field: keyof GPListFormData, value: string | number) => {
         setFormData(prev => ({ ...prev, [field]: value }));
         if (errors[field]) {
             setErrors(prev => ({ ...prev, [field]: undefined }));
         }
     };
+
     const validateForm = (): boolean => {
         const newErrors: Partial<GPListFormData> = {};
 
@@ -136,6 +136,7 @@ const GpForm: React.FC<GpFormProps> = ({
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (validateForm()) {
@@ -156,35 +157,16 @@ const GpForm: React.FC<GpFormProps> = ({
                     remark: ""
                 })
             }
-
         }
-
     };
+
+    if (!isOpen) return null;
+
     return (
-        <>
-
-            <div className="flex justify-end w-full -mt-10">
-                <button
-                    onClick={() => setIsExpanded(!isExpanded)}
-                    className="-mt-10 p-2 text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                    <div className="flex items-center">
-                        {isEditing ? (
-                            <Edit3 className="w-6 h-6 text-blue-600" />
-                        ) : (
-                            <Plus className="w-6 h-6 text-green-600" />
-                        )}
-                        <h2 className="text-xl font-semibold text-gray-900 ml-2">
-                            {isEditing ? 'Edit GPList' : 'Add New GP'}
-                        </h2>
-                    </div>
-                </button>
-            </div>
-
-
-            {(isExpanded || isEditing) && (
-                <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-                    <div className="flex items-center justify-between mb-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="p-6 border-b border-gray-200">
+                    <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
                             {isEditing ? (
                                 <Edit3 className="w-6 h-6 text-blue-600" />
@@ -195,16 +177,15 @@ const GpForm: React.FC<GpFormProps> = ({
                                 {isEditing ? 'Edit GP' : 'Add New GP'}
                             </h2>
                         </div>
-                        {isEditing && (
-                            <button
-                                onClick={onCancel}
-                                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        )}
+                        <button
+                            onClick={onCancel}
+                            className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
                     </div>
-
+                </div>
+                <div className="p-6">
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
@@ -215,7 +196,7 @@ const GpForm: React.FC<GpFormProps> = ({
                                     value={formData.st_code || ''}
                                     onChange={(e) => {
                                         handleChange("st_code", e.target.value);
-                                        const name = states.find((state) => state.state_code === e.target.value);
+                                        const name = states.find((state) => state.state_code == e.target.value);
                                         if (name) {
                                             handleChange('st_name', name?.state_name);
                                             setSelectedState(name?.state_id)
@@ -230,8 +211,6 @@ const GpForm: React.FC<GpFormProps> = ({
                                         </option>
                                     ))}
                                 </select>
-
-
                                 {errors.st_code && (
                                     <p className="mt-1 text-sm text-red-600">{errors.st_code}</p>
                                 )}
@@ -244,7 +223,7 @@ const GpForm: React.FC<GpFormProps> = ({
                                     value={formData.dt_code || ''}
                                     onChange={(e) => {
                                         handleChange("dt_code", e.target.value);
-                                        const name = districts.find((district) => district.district_code === e.target.value);
+                                        const name = districts.find((district) => district.district_code == e.target.value);
                                         if (name) {
                                             handleChange('dt_name', name?.district_name);
                                             setSelectedDistrict(name?.district_id)
@@ -260,8 +239,6 @@ const GpForm: React.FC<GpFormProps> = ({
                                         </option>
                                     ))}
                                 </select>
-
-
                                 {errors.dt_code && (
                                     <p className="mt-1 text-sm text-red-600">{errors.dt_code}</p>
                                 )}
@@ -274,7 +251,7 @@ const GpForm: React.FC<GpFormProps> = ({
                                     value={formData.blk_code || ''}
                                     onChange={(e) => {
                                         handleChange("blk_code", e.target.value);
-                                        const name = blocks.find((block) => block.block_code === e.target.value);
+                                        const name = blocks.find((block) => block.block_code == e.target.value);
                                         if (name) {
                                             handleChange('blk_name', name?.block_name);
                                             setSelectedBlock(name?.block_id)
@@ -290,8 +267,6 @@ const GpForm: React.FC<GpFormProps> = ({
                                         </option>
                                     ))}
                                 </select>
-
-
                                 {errors.blk_code && (
                                     <p className="mt-1 text-sm text-red-600">{errors.blk_code}</p>
                                 )}
@@ -330,7 +305,6 @@ const GpForm: React.FC<GpFormProps> = ({
                                     <p className="mt-1 text-sm text-red-600">{errors.name}</p>
                                 )}
                             </div>
-
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     LGD Code
@@ -358,7 +332,6 @@ const GpForm: React.FC<GpFormProps> = ({
                                 {errors.lattitude && (
                                     <p className="mt-1 text-sm text-red-600">{errors.lattitude}</p>
                                 )}
-
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -374,9 +347,6 @@ const GpForm: React.FC<GpFormProps> = ({
                                     <p className="mt-1 text-sm text-red-600">{errors.longitude}</p>
                                 )}
                             </div>
-
-
-
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -387,20 +357,16 @@ const GpForm: React.FC<GpFormProps> = ({
                                 onChange={(e) => handleChange('remark', e.target.value)}
                                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all border-gray-300`}
                                 placeholder="Enter Remarks"
-
                             />
-
                         </div>
                         <div className="flex justify-end space-x-3 pt-6 border-t">
-                            {isEditing && (
-                                <button
-                                    type="button"
-                                    onClick={onCancel}
-                                    className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-                                >
-                                    Cancel
-                                </button>
-                            )}
+                            <button
+                                type="button"
+                                onClick={onCancel}
+                                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                            >
+                                Cancel
+                            </button>
                             <button
                                 type="submit"
                                 className={`px-8 py-3 rounded-lg text-white font-medium transition-all ${isEditing
@@ -412,8 +378,9 @@ const GpForm: React.FC<GpFormProps> = ({
                         </div>
                     </form>
                 </div>
-            )}</>
-    )
+            </div>
+        </div>
+    );
 }
 
 export default GpForm

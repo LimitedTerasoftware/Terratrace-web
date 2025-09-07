@@ -6,7 +6,7 @@ import { Settings, BarChart3, Truck, Plus, Cog } from 'lucide-react';
 import axios, { AxiosError } from 'axios';
 import Modal from '../hooks/ModalPopup';
 import { getMachineOptions } from '../Services/api';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 
 interface ModalData {
   title: string;
@@ -153,131 +153,129 @@ function MachineManagement() {
 
   const statusCounts = getStatusCounts();
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-blue-600 rounded-lg">
-                <Cog className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex items-center space-x-3">
-                <h1 className="text-2xl font-bold text-gray-900">Machine Management</h1>
-                <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">
-                  Inventory Module
-                </span>
-              </div>
+  const MachineHeader = () => {
+    return (
+      <header className="bg-white shadow-sm border-b border-gray-200 px-7 py-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-blue-400">
+              <Cog className="h-6 w-6 text-white" />
             </div>
-            
-            <div className="flex items-center space-x-4">
-              <nav>
-                <ol className="flex items-center gap-2">
-                  <li>
-                    <a 
-                      href="/dashboard" 
-                      className="font-medium text-gray-600 hover:text-blue-600 transition-colors"
-                    >
-                      Dashboard /
-                    </a>
-                  </li>
-                  <li className="font-medium text-blue-600">Machine Management</li>
-                </ol>
-              </nav>
-              
-              <button 
-                onClick={handleAddNewMachine}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add New Machine</span>
-              </button>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Machine Management</h1>
+              <p className="text-sm text-gray-600">Monitor and manage equipment inventory</p>
             </div>
           </div>
+          
+          <div className="flex items-center gap-4">
+            {/* Add New Machine Button */}
+            <button
+              onClick={handleAddNewMachine}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors shadow-sm"
+            >
+              <Plus className="h-4 w-4" />
+              Add New Machine
+            </button>
+            
+            {/* Breadcrumb Navigation */}
+            <nav>
+              <ol className="flex items-center gap-2">
+                <li>
+                  <Link className="font-medium" to="/dashboard">
+                    Dashboard /
+                  </Link>
+                </li>
+                <li className="font-medium text-primary">Machine Management</li>
+              </ol>
+            </nav>
+          </div>
         </div>
-      </div>
+      </header>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <MachineHeader />
 
       {/* Status Cards */}
-      <div className="bg-gray-50 border-b border-gray-200">
-        <div className="px-1 py-6">
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-2xl font-bold text-gray-900">{machines.length}</div>
-                  <div className="text-sm text-gray-600">Total Machines</div>
-                </div>
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Truck className="w-5 h-5 text-blue-600" />
+      <div className="px-1 py-6">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-gray-900">{machines.length}</div>
+                <div className="text-sm text-gray-600">Total Machines</div>
+              </div>
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Truck className="w-5 h-5 text-blue-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-green-600">{statusCounts.active || 0}</div>
+                <div className="text-sm text-gray-600">Active</div>
+              </div>
+              <div className="p-2 bg-green-100 rounded-lg">
+                <div className="w-5 h-5 bg-green-600 rounded-full flex items-center justify-center">
+                  <div className="w-2 h-2 bg-white rounded-full"></div>
                 </div>
               </div>
             </div>
+          </div>
 
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-2xl font-bold text-green-600">{statusCounts.active || 0}</div>
-                  <div className="text-sm text-gray-600">Active</div>
-                </div>
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <div className="w-5 h-5 bg-green-600 rounded-full flex items-center justify-center">
-                    <div className="w-2 h-2 bg-white rounded-full"></div>
-                  </div>
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-gray-600">{statusCounts.inactive || 0}</div>
+                <div className="text-sm text-gray-600">Inactive</div>
+              </div>
+              <div className="p-2 bg-gray-100 rounded-lg">
+                <div className="w-5 h-5 bg-gray-500 rounded-full flex items-center justify-center">
+                  <div className="w-2 h-2 bg-white rounded"></div>
                 </div>
               </div>
             </div>
+          </div>
 
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-2xl font-bold text-gray-600">{statusCounts.inactive || 0}</div>
-                  <div className="text-sm text-gray-600">Inactive</div>
-                </div>
-                <div className="p-2 bg-gray-100 rounded-lg">
-                  <div className="w-5 h-5 bg-gray-500 rounded-full flex items-center justify-center">
-                    <div className="w-2 h-2 bg-white rounded"></div>
-                  </div>
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-yellow-600">{statusCounts.maintenance || 0}</div>
+                <div className="text-sm text-gray-600">Under Maintenance</div>
+              </div>
+              <div className="p-2 bg-yellow-100 rounded-lg">
+                <Settings className="w-5 h-5 text-yellow-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-red-600">12</div>
+                <div className="text-sm text-gray-600">Due for Service</div>
+              </div>
+              <div className="p-2 bg-red-100 rounded-lg">
+                <div className="w-5 h-5 bg-red-600 rounded-full flex items-center justify-center">
+                  <Settings className="w-3 h-3 text-white" />
                 </div>
               </div>
             </div>
+          </div>
 
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-2xl font-bold text-yellow-600">{statusCounts.maintenance || 0}</div>
-                  <div className="text-sm text-gray-600">Under Maintenance</div>
-                </div>
-                <div className="p-2 bg-yellow-100 rounded-lg">
-                  <Settings className="w-5 h-5 text-yellow-600" />
-                </div>
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-red-600">8</div>
+                <div className="text-sm text-gray-600">GPS Offline</div>
               </div>
-            </div>
-
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-2xl font-bold text-red-600">12</div>
-                  <div className="text-sm text-gray-600">Due for Service</div>
-                </div>
-                <div className="p-2 bg-red-100 rounded-lg">
-                  <div className="w-5 h-5 bg-red-600 rounded-full flex items-center justify-center">
-                    <Settings className="w-3 h-3 text-white" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-2xl font-bold text-red-600">8</div>
-                  <div className="text-sm text-gray-600">GPS Offline</div>
-                </div>
-                <div className="p-2 bg-red-100 rounded-lg">
-                  <div className="w-5 h-5 bg-red-600 rounded-full flex items-center justify-center">
-                    <div className="w-2 h-2 bg-white rounded-full"></div>
-                  </div>
+              <div className="p-2 bg-red-100 rounded-lg">
+                <div className="w-5 h-5 bg-red-600 rounded-full flex items-center justify-center">
+                  <div className="w-2 h-2 bg-white rounded-full"></div>
                 </div>
               </div>
             </div>
@@ -286,7 +284,7 @@ function MachineManagement() {
       </div>
 
       {/* Main Content */}
-      <div className="px-1 py-6">
+      <div className="px-1">
         <div className="space-y-8">
           {/* Machine List */}
           <MachineList

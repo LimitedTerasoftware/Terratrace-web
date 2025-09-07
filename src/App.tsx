@@ -62,6 +62,7 @@ import GPInstallationEdit from './components/DepthChart/Installation/GPInstallat
 import BlockInstallationEdit from './components/DepthChart/Installation/BlockInstallationEdit';
 import Dashboard from './components/DepthChart/MachineWorkChart/Dashboard';
 import GPListData from './components/GPList';
+import ScrollToTop from './components/Breadcrumbs/ScrollToTop';
 //import AuditLogs from './components/AuditLogs';
 
 function App() {
@@ -82,6 +83,7 @@ function App() {
     <Loader />
   ) : (
     <>
+    <ScrollToTop />
       {isAuthRoute ? (
         <Routes>
           <Route

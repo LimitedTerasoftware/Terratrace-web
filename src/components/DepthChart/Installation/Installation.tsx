@@ -1,12 +1,25 @@
 import { useEffect, useState } from 'react'
 import { StateData, District, Block } from '../../../types/survey';
 import MainInstallationReport from './MainInstallationReport';
+import InstallationStatsPanel from './InstallationStatsPanel';
 import { Group, Construction } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
+import axios from 'axios';
 
 interface StatesResponse {
     success: boolean;
     data: StateData[];
+}
+
+// Define installation data interface
+interface InstallationData {
+    id: string;
+    status: 'active' | 'inactive' | 'pending' | 'completed';
+    installation_date: string;
+    state_name?: string;
+    district_name?: string;
+    block_name?: string;
+    type?: 'GP' | 'BLOCK';
 }
 
 type StatusOption = {
@@ -15,6 +28,7 @@ type StatusOption = {
 };
 
 const BASEURL = import.meta.env.VITE_API_BASE;
+const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
 function InstallationPage() {
     const [states, setStates] = useState<StateData[]>([]);
@@ -33,6 +47,10 @@ function InstallationPage() {
     const [excel, setExcel] = useState<boolean>(false);
     const [searchParams, setSearchParams] = useSearchParams();
     const [filtersReady, setFiltersReady] = useState(false);
+    
+    // New state for stats panel
+    const [installationData, setInstallationData] = useState<InstallationData[]>([]);
+    const [loadingStats, setLoadingStats] = useState<boolean>(false);
 
     const statusOptions: StatusOption[] = [
         { value: 'active', label: 'Active' },
@@ -43,14 +61,14 @@ function InstallationPage() {
 
     const InstallationHeader = () => {
         return (
-            <header className="bg-white shadow-sm border-b border-gray-200 px-7 py-2 mb-6">
+            <header className="bg-white shadow-sm border-b border-gray-200 px-7 py-2">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-blue-400">
                             <Group className="h-6 w-6 text-white" />
                         </div>
                         <div>
-                            <h1 className="text-xl font-bold text-gray-900">Installation Data Manager</h1>
+                            <h1 className="text-xl font-bold text-gray-900">Equipment Installation</h1>
                             <p className="text-sm text-gray-600">Monitor and analyze equipment installation data</p>
                         </div>
                     </div>
@@ -83,8 +101,63 @@ function InstallationPage() {
         }
     };
 
+    // New function to fetch installation data for stats
+    const fetchInstallationDataForStats = async () => {
+    try {
+        setLoadingStats(true);
+        
+        // Fetch both GP and Block installation data
+        const [gpResponse, blockResponse] = await Promise.all([
+            axios.get<{ status: boolean; data: any[] }>(
+                `${TraceBASEURL}/get-gp-installation`
+            ),
+            axios.get<{ status: boolean; data: any[] }>(
+                `${TraceBASEURL}/get-block-installation`
+            )
+        ]);
+        
+        const combinedData: InstallationData[] = [];
+        
+        // Process GP installations
+        if (gpResponse.data.status && gpResponse.data.data) {
+            const gpData = gpResponse.data.data.map((item: any) => ({
+                id: item.id?.toString() || '',
+                status: 'completed' as const, // All installations are completed
+                installation_date: item.created_at || '',
+                state_name: item.state_name || '',
+                district_name: item.district_name || '',
+                block_name: item.block_name || '',
+                type: 'GP' as const
+            }));
+            combinedData.push(...gpData);
+        }
+        
+        // Process Block installations
+        if (blockResponse.data.status && blockResponse.data.data) {
+            const blockData = blockResponse.data.data.map((item: any) => ({
+                id: item.id?.toString() || '',
+                status: 'completed' as const, // All installations are completed
+                installation_date: item.created_at || '',
+                state_name: item.state_code || '', // Note: block uses state_code
+                district_name: item.district_code || '', // Note: block uses district_code
+                block_name: item.block_name || '',
+                type: 'BLOCK' as const
+            }));
+            combinedData.push(...blockData);
+        }
+        
+        setInstallationData(combinedData);
+    } catch (error) {
+        console.error('Error fetching installation data for stats', error);
+        setInstallationData([]);
+    } finally {
+        setLoadingStats(false);
+    }
+};
+
     useEffect(() => {
         fetchStates();
+        fetchInstallationDataForStats(); // Fetch installation data for stats panel
     }, []);
 
     const fetchDistricts = async (stateId: string) => {
@@ -231,6 +304,12 @@ function InstallationPage() {
     return (
         <div className="min-h-screen bg-gray-50">
             <InstallationHeader />
+
+            {/* Stats Panel */}
+            <InstallationStatsPanel 
+                installations={installationData} 
+                isLoading={loadingStats} 
+            />
 
             {/* Main Content Container */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
