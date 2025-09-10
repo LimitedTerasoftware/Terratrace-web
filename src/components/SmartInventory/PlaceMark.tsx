@@ -144,222 +144,189 @@ export function resolveMediaUrl(path?: string | null): string {
 // Helper function to extract all images from a survey point
 function extractSurveyImages(point: any): SurveyImage[] {
   const images: SurveyImage[] = [];
-
-  // Only extract images if survey is uploaded
+ 
   if (!point.surveyUploaded || point.surveyUploaded === '' || point.surveyUploaded === 'false') {
     return images;
   }
-
-
+ 
   try {
-    // Survey Start photos
-    if (point.event_type === "SURVEYSTART" && point.start_photos) {
+    // FPOI
+    if (point.fpoiUrl && point.event_type === "FPOI") {
+      images.push({
+        url: resolveMediaUrl(point.fpoiUrl),
+        type: "fpoi",
+        label: "FPOI Photo",
+        coordinates: point.latitude && point.longitude
+                ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
+                : undefined
+      });
+    }
+ 
+    // Kilometer Stone
+    if (point.kmtStoneUrl && point.event_type === "KILOMETERSTONE") {
+      images.push({
+        url: resolveMediaUrl(point.kmtStoneUrl),
+        type: "kilometerstone",
+        label: "KM Stone Photo",
+        coordinates: point.latitude && point.longitude
+                ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
+                : undefined
+      });
+    }
+ 
+    // Landmark
+    if (point.landMarkUrls && point.event_type === "LANDMARK" && point.landMarkType !== "NONE") {
       try {
-        const startPhotos = JSON.parse(point.start_photos || '[]');
-        if (Array.isArray(startPhotos) && startPhotos.length > 0) {
-          startPhotos.forEach((photoPath: string, index: number) => {
-            if (photoPath && photoPath.trim() && photoPath !== 'null') {
-              images.push({
-                url: resolveMediaUrl(photoPath),
-                type: 'start_photo',
-                label: `Survey Start Photo ${index + 1}`
-              });
-            }
+        const parsed = typeof point.landMarkUrls === "string"
+          ? JSON.parse(point.landMarkUrls)
+          : point.landMarkUrls;
+ 
+        if (Array.isArray(parsed)) {
+          parsed.forEach((url: string, index: number) => {
+            images.push({
+              url: resolveMediaUrl(url),
+              type: "landmark",
+              label: `Landmark ${index + 1}`,
+              coordinates: point.latitude && point.longitude
+                ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
+                : undefined
+            });
+          });
+        } else if (typeof parsed === "string") {
+          images.push({
+            url: resolveMediaUrl(parsed),
+            type: "landmark",
+            label: "Landmark",
+            coordinates: point.latitude && point.longitude
+              ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
+              : undefined
           });
         }
       } catch (error) {
-        console.warn('Error parsing start_photos:', error);
+        console.warn("Error parsing landMarkUrls:", error);
       }
     }
-
-    // Survey End photos
-    if (point.event_type === "ENDSURVEY" && point.end_photos) {
-      try {
-        const endPhotos = JSON.parse(point.end_photos || '[]');
-        if (Array.isArray(endPhotos) && endPhotos.length > 0) {
-          endPhotos.forEach((photoPath: string, index: number) => {
-            if (photoPath && photoPath.trim() && photoPath !== 'null') {
-              images.push({
-                url: resolveMediaUrl(photoPath),
-                type: 'end_photo',
-                label: `Survey End Photo ${index + 1}`
-              });
-            }
-          });
-        }
-      } catch (error) {
-        console.warn('Error parsing end_photos:', error);
-      }
+ 
+    // Fiber Turn
+    if (point.fiberTurnUrl && point.event_type === "FIBERTURN") {
+      images.push({
+        url: resolveMediaUrl(point.fiberTurnUrl),
+        type: "fiberturn",
+        label: "Fiber Turn Photo",
+        coordinates: point.latitude && point.longitude
+                ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
+                : undefined
+      });
     }
-
-    // Road Crossing photos
+ 
+    // Survey Start
+    if (point.start_photos && Array.isArray(point.start_photos) && point.start_photos.length > 0 && point.event_type === "SURVEYSTART") {
+      point.start_photos.forEach((url: string, index: number) => {
+        images.push({
+          url: resolveMediaUrl(url),
+          type: "start_photo",
+          label: `Survey Start Photo ${index + 1}`,
+          coordinates: point.latitude && point.longitude
+                ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
+                : undefined
+        });
+      });
+    }
+ 
+    // Survey End
+    if (point.end_photos && Array.isArray(point.end_photos) && point.end_photos.length > 0 && point.event_type === "ENDSURVEY") {
+      point.end_photos.forEach((url: string, index: number) => {
+        images.push({
+          url: resolveMediaUrl(url),
+          type: "end_photo",
+          label: `Survey End Photo ${index + 1}`,
+          coordinates: point.latitude && point.longitude
+                ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
+                : undefined
+        });
+      });
+    }
+ 
+    // Joint Chamber
+    if (point.jointChamberUrl && point.event_type === "JOINTCHAMBER") {
+      images.push({
+        url: resolveMediaUrl(point.jointChamberUrl),
+        type: "jointchamber",
+        label: "Joint Chamber Photo",
+        coordinates: point.latitude && point.longitude
+                ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
+                : undefined
+      });
+    }
+ 
+    // Road Crossing
     if (point.event_type === "ROADCROSSING" && point.road_crossing) {
-      try {
-        const roadCrossing = typeof point.road_crossing === 'string' 
-          ? JSON.parse(point.road_crossing) 
-          : point.road_crossing;
-        
-        if (roadCrossing.startPhoto && roadCrossing.startPhoto.trim() && roadCrossing.startPhoto !== 'null') {
-          images.push({
-            url: resolveMediaUrl(roadCrossing.startPhoto),
-            type: 'road_crossing_start',
-            label: 'Road Crossing Start Photo',
-            coordinates: roadCrossing.startPhotoLat && roadCrossing.startPhotoLong 
-              ? { lat: parseFloat(roadCrossing.startPhotoLat), lng: parseFloat(roadCrossing.startPhotoLong) }
-              : undefined
-          });
-        }
-        
-        if (roadCrossing.endPhoto && roadCrossing.endPhoto.trim() && roadCrossing.endPhoto !== 'null') {
-          images.push({
-            url: resolveMediaUrl(roadCrossing.endPhoto),
-            type: 'road_crossing_end',
-            label: 'Road Crossing End Photo',
-            coordinates: roadCrossing.endPhotoLat && roadCrossing.endPhotoLong 
-              ? { lat: parseFloat(roadCrossing.endPhotoLat), lng: parseFloat(roadCrossing.endPhotoLong) }
-              : undefined
-          });
-        }
-      } catch (error) {
-        console.warn('Error parsing road_crossing:', error);
-      }
-    }
-
-    // Handle LANDMARK photos that might be stored in road_crossing field
-    if (point.event_type === "LANDMARK" && point.road_crossing && images.length === 0) {
-      try {
-        const roadCrossing = typeof point.road_crossing === 'string' 
-          ? JSON.parse(point.road_crossing) 
-          : point.road_crossing;
-        
-        if (roadCrossing.startPhoto && roadCrossing.startPhoto.trim() && roadCrossing.startPhoto !== 'null') {
-          images.push({
-            url: resolveMediaUrl(roadCrossing.startPhoto),
-            type: 'landmark',
-            label: 'Landmark Start Photo',
-            coordinates: roadCrossing.startPhotoLat && roadCrossing.startPhotoLong 
-              ? { lat: parseFloat(roadCrossing.startPhotoLat), lng: parseFloat(roadCrossing.startPhotoLong) }
-              : undefined
-          });
-        }
-        
-        if (roadCrossing.endPhoto && roadCrossing.endPhoto.trim() && roadCrossing.endPhoto !== 'null') {
-          images.push({
-            url: resolveMediaUrl(roadCrossing.endPhoto),
-            type: 'landmark',
-            label: 'Landmark End Photo',
-            coordinates: roadCrossing.endPhotoLat && roadCrossing.endPhotoLong 
-              ? { lat: parseFloat(roadCrossing.endPhotoLat), lng: parseFloat(roadCrossing.endPhotoLong) }
-              : undefined
-          });
-        }
-      } catch (error) {
-        console.warn('Error parsing road_crossing for LANDMARK:', error);
-      }
-    }
-
-    // For all other event types, check the universal fields that might contain images
-    
-    // Check videoUrl field (available on all event types)
-    if (point.videoUrl && point.videoUrl.trim() && point.videoUrl !== 'null') {
-      const eventTypeLabels = {
-        'VIDEORECORD': 'Video Record',
-        'FIBERTURN': 'Fiber Turn Photo',
-        'FPOI': 'FPOI Photo', 
-        'KILOMETERSTONE': 'KM Stone Photo',
-        'JOINTCHAMBER': 'Joint Chamber Photo',
-        'ROUTEINDICATOR': 'Route Indicator Photo',
-        'BRIDGE': 'Bridge Photo',
-        'CULVERT': 'Culvert Photo',
-        'ROUTEFEASIBILITY': 'Route Feasibility Photo',
-        'AREA': 'Area Photo',
-        'SIDE': 'Side Photo',
-        'ROUTEDETAILS': 'Route Details Photo'
-      };
-      
-      if (eventTypeLabels[point.event_type]) {
+      const rc = typeof point.road_crossing === "string" ? JSON.parse(point.road_crossing) : point.road_crossing;
+ 
+      if (rc.startPhoto && rc.startPhoto.trim() && rc.startPhoto !== "null") {
         images.push({
-          url: resolveMediaUrl(point.videoUrl),
-          type: point.event_type.toLowerCase(),
-          label: eventTypeLabels[point.event_type]
+          url: resolveMediaUrl(rc.startPhoto),
+          type: "road_crossing_start",
+          label: "Road Crossing Start Photo",
+          coordinates: rc.startPhotoLat && rc.startPhotoLong
+            ? { lat: parseFloat(rc.startPhotoLat), lng: parseFloat(rc.startPhotoLong) }
+            : undefined
+        });
+      }
+ 
+      if (rc.endPhoto && rc.endPhoto.trim() && rc.endPhoto !== "null") {
+        images.push({
+          url: resolveMediaUrl(rc.endPhoto),
+          type: "road_crossing_end",
+          label: "Road Crossing End Photo",
+          coordinates: rc.endPhotoLat && rc.endPhotoLong
+            ? { lat: parseFloat(rc.endPhotoLat), lng: parseFloat(rc.endPhotoLong) }
+            : undefined
         });
       }
     }
-
-    // Check jointChamberUrl field (available on all event types) - might be used for various image types
-    if (point.jointChamberUrl && point.jointChamberUrl.trim() && point.jointChamberUrl !== 'null' && images.length === 0) {
-      const eventTypeLabels = {
-        'FIBERTURN': 'Fiber Turn Photo',
-        'FPOI': 'FPOI Photo', 
-        'KILOMETERSTONE': 'KM Stone Photo',
-        'JOINTCHAMBER': 'Joint Chamber Photo',
-        'ROUTEINDICATOR': 'Route Indicator Photo',
-        'BRIDGE': 'Bridge Photo',
-        'CULVERT': 'Culvert Photo',
-        'ROUTEFEASIBILITY': 'Route Feasibility Photo',
-        'AREA': 'Area Photo',
-        'SIDE': 'Side Photo',
-        'ROUTEDETAILS': 'Route Details Photo'
-      };
-      
-      if (eventTypeLabels[point.event_type]) {
-        images.push({
-          url: resolveMediaUrl(point.jointChamberUrl),
-          type: point.event_type.toLowerCase(),
-          label: eventTypeLabels[point.event_type]
-        });
-      }
-    }
-
-    // Check if road_crossing contains photos for other event types (fallback)
-    if (images.length === 0 && point.road_crossing) {
+ 
+    // Route Indicator
+    if (point.routeIndicatorUrl && point.event_type === "ROUTEINDICATOR") {
       try {
-        const roadCrossing = typeof point.road_crossing === 'string' 
-          ? JSON.parse(point.road_crossing) 
-          : point.road_crossing;
-        
-        const eventTypeLabels = {
-          'FIBERTURN': 'Fiber Turn Photo',
-          'FPOI': 'FPOI Photo', 
-          'KILOMETERSTONE': 'KM Stone Photo',
-          'JOINTCHAMBER': 'Joint Chamber Photo',
-          'ROUTEINDICATOR': 'Route Indicator Photo',
-          'BRIDGE': 'Bridge Photo',
-          'CULVERT': 'Culvert Photo'
-        };
-        
-        if (eventTypeLabels[point.event_type]) {
-          if (roadCrossing.startPhoto && roadCrossing.startPhoto.trim() && roadCrossing.startPhoto !== 'null') {
+        const parsed = JSON.parse(point.routeIndicatorUrl);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((url: string, index: number) => {
             images.push({
-              url: resolveMediaUrl(roadCrossing.startPhoto),
-              type: point.event_type.toLowerCase(),
-              label: `${eventTypeLabels[point.event_type]} (Start)`,
-              coordinates: roadCrossing.startPhotoLat && roadCrossing.startPhotoLong 
-                ? { lat: parseFloat(roadCrossing.startPhotoLat), lng: parseFloat(roadCrossing.startPhotoLong) }
+              url: resolveMediaUrl(url),
+              type: "routeindicator",
+              label: `Route Indicator Photo ${index + 1}`,
+               coordinates: point.latitude && point.longitude
+                ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
                 : undefined
             });
-          }
-          
-          if (roadCrossing.endPhoto && roadCrossing.endPhoto.trim() && roadCrossing.endPhoto !== 'null') {
-            images.push({
-              url: resolveMediaUrl(roadCrossing.endPhoto),
-              type: point.event_type.toLowerCase(),
-              label: `${eventTypeLabels[point.event_type]} (End)`,
-              coordinates: roadCrossing.endPhotoLat && roadCrossing.endPhotoLong 
-                ? { lat: parseFloat(roadCrossing.endPhotoLat), lng: parseFloat(roadCrossing.endPhotoLong) }
+          });
+        } else if (typeof parsed === "string") {
+          images.push({
+            url: resolveMediaUrl(parsed),
+            type: "routeindicator",
+            label: "Route Indicator Photo",
+             coordinates: point.latitude && point.longitude
+                ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
                 : undefined
-            });
-          }
+          });
         }
-      } catch (error) {
-        console.warn(`Error parsing road_crossing for ${point.event_type}:`, error);
+      } catch (e) {
+        images.push({
+          url: resolveMediaUrl(point.routeIndicatorUrl),
+          type: "routeindicator",
+          label: "Route Indicator Photo",
+           coordinates: point.latitude && point.longitude
+                ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
+                : undefined
+        });
       }
     }
   } catch (error) {
-    console.error('Error extracting survey images:', error);
+    console.error("Error extracting survey images:", error);
   }
-
-  return images;
+ 
+  return images.filter(img => img.url && img.url.trim() !== "");
 }
 
 // Desktop Planning Interfaces

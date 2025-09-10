@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { VideoSurveyService, VideoClip, TrackPoint } from './VideoSurveyService';
-import { Play, Pause, RotateCcw, RotateCw, SkipBack, SkipForward, Volume2, MapPin, Clock } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, MapPin, Clock } from 'lucide-react';
 
 interface SurveyVideoPanelProps {
   open: boolean;
@@ -27,7 +27,7 @@ interface SurveyVideoPanelProps {
   surveySummary?: React.ReactNode;
 }
 
-// Enhanced Video Player Component with FIXED Stable Features
+// Patched Enhanced Video Player
 const EnhancedVideoPlayer: React.FC<{
   videoUrl: string;
   currentTime: number;
@@ -63,15 +63,12 @@ const EnhancedVideoPlayer: React.FC<{
   const [volume, setVolume] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [hasStartedPlaying, setHasStartedPlaying] = useState(false);
-  
-  // FIXED: Use refs to prevent excessive re-renders and stabilize updates
-  const lastUpdateTimeRef = useRef<number>(0);
-  const isSeekingRef = useRef<boolean>(false);
-  const stableUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const currentVideoUrlRef = useRef<string>('');
 
-  // Normalize time to be within video bounds
+  const isSeekingRef = useRef<boolean>(false);
+  const currentVideoUrlRef = useRef<string>('');
+  const initialSyncDoneRef = useRef<boolean>(false);
+
+  // Normalize time
   const normalizeTime = useCallback((time: number): number => {
     const videoTime = startTime ? (time - startTime) / 1000 : time / 1000;
     if (videoTime < 0) return 0;
@@ -79,88 +76,83 @@ const EnhancedVideoPlayer: React.FC<{
     return videoTime;
   }, [startTime, duration]);
 
-  // FIXED: Reset states when video URL changes
+  // Reset on video URL change
   useEffect(() => {
     if (currentVideoUrlRef.current !== videoUrl) {
       currentVideoUrlRef.current = videoUrl;
       setIsLoading(true);
       setIsPlaying(false);
-      setHasStartedPlaying(false);
       setProgress(0);
       setRotation(0);
       isSeekingRef.current = false;
-      lastUpdateTimeRef.current = 0;
-      
-      // Clear any existing intervals
-      if (stableUpdateIntervalRef.current) {
-        clearInterval(stableUpdateIntervalRef.current);
-        stableUpdateIntervalRef.current = null;
-      }
+      initialSyncDoneRef.current = false;
     }
   }, [videoUrl]);
 
-  // FIXED: Sync video with external currentTime (with debouncing)
+  // Sync external currentTime → player
   useEffect(() => {
-  const video = videoRef.current;
-  if (video && !isSeekingRef.current && duration > 0) {
+    const video = videoRef.current;
+    if (!video || isSeekingRef.current || duration <= 0) return;
+
     const targetTime = normalizeTime(currentTime);
     const timeDiff = Math.abs(video.currentTime - targetTime);
-    
-    // Always seek on initial load or if difference is significant
-    if (timeDiff > 0.1 || !hasStartedPlaying) { // <-- Changed from 1.0 to 0.1 for better precision
-      isSeekingRef.current = true;
-      video.currentTime = targetTime;
-      
-      // Ensure the video element recognizes the seek
-      video.addEventListener('seeked', function onSeeked() {
-        isSeekingRef.current = false;
-        video.removeEventListener('seeked', onSeeked);
-      });
-    }
-  }
-}, [currentTime, normalizeTime, duration, hasStartedPlaying]);
 
-  // Handle video metadata loading
+    const shouldSync = !initialSyncDoneRef.current || timeDiff > 0.5;
+    if (!shouldSync) return;
+
+    initialSyncDoneRef.current = true;
+
+    if (timeDiff <= 0.05) {
+      setProgress(targetTime / duration);
+      isSeekingRef.current = false;
+      return;
+    }
+
+    isSeekingRef.current = true;
+    video.currentTime = targetTime;
+    setProgress(targetTime / duration);
+
+    const fallback = setTimeout(() => {
+      isSeekingRef.current = false;
+    }, 400);
+
+    const handleSeeked = () => {
+      isSeekingRef.current = false;
+      clearTimeout(fallback);
+      video.removeEventListener('seeked', handleSeeked);
+    };
+    video.addEventListener('seeked', handleSeeked);
+  }, [currentTime, normalizeTime, duration]);
+
+  // Metadata load
   const handleLoadedMetadata = useCallback(() => {
-    if (videoRef.current) {
-      setDuration(videoRef.current.duration);
+    const el = videoRef.current;
+    if (el) {
+      setDuration(el.duration);
       setIsLoading(false);
+      initialSyncDoneRef.current = false;
+      isSeekingRef.current = false;
     }
   }, []);
 
-  // FIXED: Stable time update mechanism - removes throttling issues
+  // Time updates
   const handleTimeUpdate = useCallback(() => {
-  const video = videoRef.current;
-  if (!video || !hasStartedPlaying || isSeekingRef.current) return;
+    const video = videoRef.current;
+    if (!video || isSeekingRef.current) return;
 
-  const currentVideoTime = video.currentTime;
-  setProgress(currentVideoTime / duration);
+    const currentVideoTime = video.currentTime;
+    setProgress(duration > 0 ? currentVideoTime / duration : 0);
 
-  const timestamp = startTime ? startTime + currentVideoTime * 1000 : currentVideoTime * 1000;
-  
-  // Update at reasonable rate - video natural framerate is enough
-  onTimeUpdate(timestamp);
+    const timestamp = startTime ? startTime + currentVideoTime * 1000 : currentVideoTime * 1000;
+    onTimeUpdate(timestamp);
 
-  if (endTime && timestamp >= endTime) {
-    video.pause();
-    setIsPlaying(false);
-    setHasStartedPlaying(false);
-  }
-}, [duration, startTime, endTime, onTimeUpdate, hasStartedPlaying]);
+    if (endTime && timestamp >= endTime) {
+      video.pause();
+      setIsPlaying(false);
+    }
+  }, [duration, startTime, endTime, onTimeUpdate]);
 
-  // FIXED: Additional stable update mechanism for when video is playing
-  useEffect(() => {
-  if (isPlaying && hasStartedPlaying) {
-    // Don't create additional interval - rely on video's timeupdate event
-    // which fires naturally at the video's framerate
-  }
-  
-  return () => {
-    // Cleanup if needed
-  };
-}, [isPlaying, hasStartedPlaying]);
-
-  // Enhanced playback controls
+  // Play/pause
   const togglePlay = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -168,63 +160,65 @@ const EnhancedVideoPlayer: React.FC<{
     if (isPlaying) {
       video.pause();
       setIsPlaying(false);
-      setHasStartedPlaying(false); // FIXED: Reset playing state on pause
     } else {
       video.play()
-        .then(() => {
-          setIsPlaying(true);
-          setHasStartedPlaying(true);
-        })
-        .catch((err) => {
-          console.warn("Play failed:", err);
-          setIsPlaying(false);
-        });
+        .then(() => setIsPlaying(true))
+        .catch(() => setIsPlaying(false));
     }
   }, [isPlaying]);
 
-  // FIXED: Enhanced seek controls with seeking state management
+  // Seek forward/back
   const seekForward = useCallback(() => {
-    if (videoRef.current) {
+    const video = videoRef.current;
+    if (video && duration > 0) {
       isSeekingRef.current = true;
-      const newTime = Math.min(videoRef.current.currentTime + 5, duration);
-      videoRef.current.currentTime = newTime;
+      const newTime = Math.min(video.currentTime + 5, duration);
+      video.currentTime = newTime;
       setProgress(newTime / duration);
-      setTimeout(() => {
-        isSeekingRef.current = false;
-      }, 100);
+
+      const timestamp = startTime ? startTime + newTime * 1000 : newTime * 1000;
+      onTimeUpdate(timestamp);
+
+      setTimeout(() => { isSeekingRef.current = false; }, 100);
     }
-  }, [duration]);
+  }, [duration, startTime, onTimeUpdate]);
 
   const seekBackward = useCallback(() => {
-    if (videoRef.current) {
+    const video = videoRef.current;
+    if (video && duration > 0) {
       isSeekingRef.current = true;
-      const newTime = Math.max(videoRef.current.currentTime - 5, 0);
-      videoRef.current.currentTime = newTime;
+      const newTime = Math.max(video.currentTime - 5, 0);
+      video.currentTime = newTime;
       setProgress(newTime / duration);
-      setTimeout(() => {
-        isSeekingRef.current = false;
-      }, 100);
+
+      const timestamp = startTime ? startTime + newTime * 1000 : newTime * 1000;
+      onTimeUpdate(timestamp);
+
+      setTimeout(() => { isSeekingRef.current = false; }, 100);
     }
-  }, []);
+  }, [duration, startTime, onTimeUpdate]);
 
-  // FIXED: Seek bar interaction with seeking state
+  // Seek bar
   const handleSeekBarClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!seekBarRef.current || !videoRef.current) return;
+    const bar = seekBarRef.current;
+    const video = videoRef.current;
+    if (!bar || !video || duration <= 0) return;
 
-    const rect = seekBarRef.current.getBoundingClientRect();
+    const rect = bar.getBoundingClientRect();
     const position = (e.clientX - rect.left) / rect.width;
-    const newTime = position * duration;
+    const newTime = Math.max(0, Math.min(1, position)) * duration;
 
     isSeekingRef.current = true;
-    videoRef.current.currentTime = newTime;
-    setProgress(position);
-    
-    setTimeout(() => {
-      isSeekingRef.current = false;
-    }, 100);
-  }, [duration]);
+    video.currentTime = newTime;
+    setProgress(Math.max(0, Math.min(1, position)));
 
-  // Volume control
+    const timestamp = startTime ? startTime + newTime * 1000 : newTime * 1000;
+    onTimeUpdate(timestamp);
+
+    setTimeout(() => { isSeekingRef.current = false; }, 100);
+  }, [duration, startTime, onTimeUpdate]);
+
+  // Volume
   const handleVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value);
     setVolume(newVolume);
@@ -233,53 +227,40 @@ const EnhancedVideoPlayer: React.FC<{
     }
   }, []);
 
-  // Rotation controls
-  const rotateVideo = useCallback((direction: 'cw' | 'ccw') => {
-    const newRotation = direction === 'cw'
-      ? (rotation + 90) % 360
-      : (rotation - 90 + 360) % 360;
-    setRotation(newRotation);
-  }, [rotation]);
-
-  // Video end handler
+  // Video end/error
   const handleVideoEnded = useCallback(() => {
     setIsPlaying(false);
-    setHasStartedPlaying(false);
     if (hasNextVideo && onNextVideo) {
       onNextVideo();
     }
   }, [hasNextVideo, onNextVideo]);
 
-  // Handle video errors
   const handleVideoError = useCallback(() => {
-    console.error('Video error occurred');
     setIsLoading(false);
     setIsPlaying(false);
-    setHasStartedPlaying(false);
   }, []);
 
-  // FIXED: Cleanup on unmount
+  // Keep state synced with element
   useEffect(() => {
-    return () => {
-      if (stableUpdateIntervalRef.current) {
-        clearInterval(stableUpdateIntervalRef.current);
-      }
-    };
-  }, []);
+    const video = videoRef.current;
+    if (!video) return;
 
-  // Find current GPS coordinates for display
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+
+    video.addEventListener('play', handlePlay);
+    video.addEventListener('pause', handlePause);
+
+    return () => {
+      video.removeEventListener('play', handlePlay);
+      video.removeEventListener('pause', handlePause);
+    };
+  }, [videoUrl]);
+
+  // Current coordinates
   const currentCoordinates = useMemo(() => {
     if (!currentPosition || !trackPoints.length) return null;
-    
-    const matchedPoint = trackPoints.find(
-      p => Math.abs(p.lat - currentPosition.lat) < 0.00001 && 
-           Math.abs(p.lng - currentPosition.lng) < 0.00001
-    );
-    
-    return matchedPoint ? {
-      lat: matchedPoint.lat.toFixed(6),
-      lng: matchedPoint.lng.toFixed(6)
-    } : {
+    return {
       lat: currentPosition.lat.toFixed(6),
       lng: currentPosition.lng.toFixed(6)
     };
@@ -288,7 +269,7 @@ const EnhancedVideoPlayer: React.FC<{
   return (
     <div className={`rounded-lg bg-gray-900 shadow-lg ${className}`}>
       <div className="relative w-full h-full flex flex-col overflow-hidden">
-        {/* Position overlay */}
+        {/* Overlay */}
         {currentCoordinates && (
           <div className="absolute top-4 left-4 right-4 bg-black/70 text-white p-3 rounded-lg text-sm z-10 flex items-center justify-between">
             <div className="flex items-center">
@@ -302,20 +283,17 @@ const EnhancedVideoPlayer: React.FC<{
           </div>
         )}
 
-        {/* Loading indicator */}
+        {/* Loading */}
         {isLoading && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20">
             <div className="animate-spin rounded-full h-12 w-12 border-2 border-blue-500 border-t-transparent" />
           </div>
         )}
 
-        {/* Video container with rotation */}
+        {/* Video */}
         <div className="flex-1 relative overflow-hidden flex items-center justify-center">
-          <div 
-            style={{
-              transform: `rotate(${rotation}deg)`,
-              transition: 'transform 0.3s ease'
-            }}
+          <div
+            style={{ transform: `rotate(${rotation}deg)`, transition: 'transform 0.3s ease' }}
             className="max-h-full w-full"
           >
             <video
@@ -324,8 +302,6 @@ const EnhancedVideoPlayer: React.FC<{
               className="max-h-full w-full object-contain"
               onTimeUpdate={handleTimeUpdate}
               onLoadedMetadata={handleLoadedMetadata}
-              onPlay={() => setIsPlaying(true)}
-              onPause={() => setIsPlaying(false)}
               onEnded={handleVideoEnded}
               onError={handleVideoError}
               preload="metadata"
@@ -334,7 +310,7 @@ const EnhancedVideoPlayer: React.FC<{
           </div>
         </div>
 
-        {/* Enhanced video controls */}
+        {/* Controls */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
           {/* Seek bar */}
           <div
@@ -349,85 +325,85 @@ const EnhancedVideoPlayer: React.FC<{
           </div>
 
           <div className="flex items-center justify-between">
-  {/* Left controls */}
-  <div className="flex items-center space-x-2">
-    <button
-      className={`p-1.5 rounded-full ${
-        hasPreviousVideo
-          ? 'bg-gray-800/50 hover:bg-gray-700/50 text-white'
-          : 'bg-gray-800/20 text-gray-500 cursor-not-allowed'
-      }`}
-      onClick={onPreviousVideo}
-      disabled={!hasPreviousVideo}
-      title="Previous video"
-    >
-      <SkipBack size={14} />
-    </button>
+            {/* Left controls */}
+            <div className="flex items-center space-x-2">
+              <button
+                className={`p-1.5 rounded-full ${
+                  hasPreviousVideo
+                    ? 'bg-gray-800/50 hover:bg-gray-700/50 text-white'
+                    : 'bg-gray-800/20 text-gray-500 cursor-not-allowed'
+                }`}
+                onClick={onPreviousVideo}
+                disabled={!hasPreviousVideo}
+                title="Previous video"
+              >
+                <SkipBack size={14} />
+              </button>
 
-    <button
-      className="p-1.5 rounded-full bg-gray-800/50 hover:bg-gray-700/50 text-white"
-      onClick={seekBackward}
-      title="Seek backward 5s"
-    >
-      <SkipBack size={14} />
-    </button>
+              <button
+                className="p-1.5 rounded-full bg-gray-800/50 hover:bg-gray-700/50 text-white"
+                onClick={seekBackward}
+                title="Seek backward 5s"
+              >
+                <SkipBack size={14} />
+              </button>
 
-    <button
-      className="p-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white"
-      onClick={togglePlay}
-      disabled={isLoading}
-    >
-      {isPlaying ? <Pause size={16} /> : <Play size={16} />}
-    </button>
+              <button
+                className="p-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white"
+                onClick={togglePlay}
+                disabled={isLoading}
+              >
+                {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+              </button>
 
-    <button
-      className="p-1.5 rounded-full bg-gray-800/50 hover:bg-gray-700/50 text-white"
-      onClick={seekForward}
-      title="Seek forward 5s"
-    >
-      <SkipForward size={14} />
-    </button>
+              <button
+                className="p-1.5 rounded-full bg-gray-800/50 hover:bg-gray-700/50 text-white"
+                onClick={seekForward}
+                title="Seek forward 5s"
+              >
+                <SkipForward size={14} />
+              </button>
 
-    <button
-      className={`p-1.5 rounded-full ${
-        hasNextVideo
-          ? 'bg-gray-800/50 hover:bg-gray-700/50 text-white'
-          : 'bg-gray-800/20 text-gray-500 cursor-not-allowed'
-      }`}
-      onClick={onNextVideo}
-      disabled={!hasNextVideo}
-      title="Next video"
-    >
-      <SkipForward size={14} />
-    </button>
-  </div>
+              <button
+                className={`p-1.5 rounded-full ${
+                  hasNextVideo
+                    ? 'bg-gray-800/50 hover:bg-gray-700/50 text-white'
+                    : 'bg-gray-800/20 text-gray-500 cursor-not-allowed'
+                }`}
+                onClick={onNextVideo}
+                disabled={!hasNextVideo}
+                title="Next video"
+              >
+                <SkipForward size={14} />
+              </button>
+            </div>
 
-  {/* Center time */}
-  <div className="text-white text-xs mx-2">
-    {VideoSurveyService.formatDuration(normalizeTime(currentTime) * 1000)} / {VideoSurveyService.formatDuration(duration * 1000)}
-  </div>
+            {/* Center time */}
+            <div className="text-white text-xs mx-2">
+              {VideoSurveyService.formatDuration(normalizeTime(currentTime) * 1000)} / {VideoSurveyService.formatDuration(duration * 1000)}
+            </div>
 
-  {/* Right controls */}
-  <div className="flex items-center space-x-2">
-    <Volume2 size={10} className="text-white" />
-    <input type="range" min="0" max="1" step="0.01" value={volume} onChange={handleVolumeChange} className="w-16 accent-blue-500" />
-
-    {/*<button onClick={() => rotateVideo('ccw')} className="p-1.5 rounded-full bg-gray-800/50 hover:bg-gray-700/50 text-white">
-      <RotateCcw size={14} />
-    </button>
-    <button onClick={() => rotateVideo('cw')} className="p-1.5 rounded-full bg-gray-800/50 hover:bg-gray-700/50 text-white">
-      <RotateCw size={14} />
-    </button>*/}
-  </div>
-</div>
-
+            {/* Right controls */}
+            <div className="flex items-center space-x-2">
+              <Volume2 size={10} className="text-white" />
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={volume}
+                onChange={handleVolumeChange}
+                className="w-16 accent-blue-500"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-// Enhanced main component
+// Main Panel
 export default function SurveyVideoPanel(props: SurveyVideoPanelProps) {
   const {
     open, onClose,
@@ -441,7 +417,6 @@ export default function SurveyVideoPanel(props: SurveyVideoPanelProps) {
 
   const clip = availableVideos[currentVideoIndex];
 
-  // Enhanced navigation handlers
   const handlePrevious = useCallback(() => {
     if (currentVideoIndex > 0) {
       const i = currentVideoIndex - 1;
@@ -458,37 +433,20 @@ export default function SurveyVideoPanel(props: SurveyVideoPanelProps) {
     }
   }, [currentVideoIndex, availableVideos.length, onChangeVideoIndex, onTimeChange, availableVideos]);
 
-  // Enhanced selection handlers
-  const handleSetStart = useCallback(() => {
-    onSelectionChange({ ...selection, start: currentTime });
-  }, [selection, currentTime, onSelectionChange]);
-
-  const handleSetEnd = useCallback(() => {
-    onSelectionChange({ ...selection, end: currentTime });
-  }, [selection, currentTime, onSelectionChange]);
-
-  const handleClearSelection = useCallback(() => {
-    onSelectionChange({});
-  }, [onSelectionChange]);
-
-  // Enhanced clip duration formatting
   const clipDurationFormatted = useMemo(() => {
     if (!clip) return '0s';
     const durationMs = clip.endTimeStamp - clip.startTimeStamp;
     return VideoSurveyService.formatDuration(durationMs);
   }, [clip]);
 
-  // Enhanced selection duration calculation
   const selectionDurationFormatted = useMemo(() => {
     if (selection.start == null || selection.end == null) return null;
     const durationMs = selection.end - selection.start;
     return VideoSurveyService.formatDuration(Math.abs(durationMs));
   }, [selection.start, selection.end]);
 
-  // Enhanced clip info with validation
   const clipInfo = useMemo(() => {
     if (!clip) return null;
-    
     return {
       currentIndex: currentVideoIndex + 1,
       totalClips: availableVideos.length,
@@ -518,7 +476,6 @@ export default function SurveyVideoPanel(props: SurveyVideoPanelProps) {
       <div className="p-3 space-y-3 flex-1 overflow-y-auto">
         {clip && availableVideos.length > 0 ? (
           <>
-            {/* Enhanced Video Player */}
             <EnhancedVideoPlayer
               videoUrl={clip.videoUrl}
               currentTime={currentTime}
@@ -534,7 +491,6 @@ export default function SurveyVideoPanel(props: SurveyVideoPanelProps) {
               className="h-64"
             />
 
-            {/* Enhanced Clip Info */}
             {clipInfo && (
               <div className="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg">
                 <div className="font-medium text-gray-800 mb-2">Clip Information</div>
@@ -556,35 +512,6 @@ export default function SurveyVideoPanel(props: SurveyVideoPanelProps) {
               </div>
             )}
 
-            {/* Enhanced Selection Tools
-            <div className="space-y-2">
-               <div className="flex items-center gap-2 text-xs flex-wrap">
-                <button 
-                  className="px-3 py-2 rounded bg-green-100 hover:bg-green-200 text-green-800 transition-colors font-medium" 
-                  onClick={handleSetStart}
-                >
-                  Set Start
-                </button>
-                <button 
-                  className="px-3 py-2 rounded bg-red-100 hover:bg-red-200 text-red-800 transition-colors font-medium" 
-                  onClick={handleSetEnd}
-                >
-                  Set End
-                </button>
-                <button 
-                  className="px-3 py-2 rounded bg-gray-100 hover:bg-gray-200 text-gray-800 transition-colors font-medium" 
-                  onClick={handleClearSelection}
-                >
-                  Clear
-                </button>
-              </div>
-              
-              <div className="text-xs text-gray-600 text-right">
-                Current: {new Date(currentTime).toLocaleTimeString()}
-              </div>
-            </div>*/}
-
-            {/* Enhanced Selection Display */}
             {(selection.start != null || selection.end != null) && (
               <div className="p-3 bg-blue-50 rounded-lg text-xs border border-blue-200">
                 <div className="font-medium text-blue-800 mb-2">Selection Window</div>
@@ -607,7 +534,6 @@ export default function SurveyVideoPanel(props: SurveyVideoPanelProps) {
               </div>
             )}
 
-            {/* Enhanced Summary */}
             <div className="mt-3 p-3 border rounded-lg bg-gray-50">
               <h3 className="text-sm font-semibold mb-2 text-gray-800">Survey Summary</h3>
               {surveySummary || (
@@ -618,19 +544,6 @@ export default function SurveyVideoPanel(props: SurveyVideoPanelProps) {
                 </div>
               )}
             </div>
-
-            {/* Enhanced Instructions 
-            <div className="mt-3 p-3 border rounded-lg bg-blue-50">
-              <h3 className="text-sm font-semibold mb-2 text-blue-800">Enhanced Controls</h3>
-              <ul className="text-xs text-blue-700 space-y-1">
-                <li>• Use enhanced video controls (play, pause, seek ±5s)</li>
-                <li>• Click track points on map to jump to timestamps</li>
-                <li>• Rotate video with rotation controls</li>
-                <li>• Create segments with Start/End selection</li>
-                <li>• Navigate between clips with Prev/Next</li>
-                <li>• Adjust volume with volume slider</li>
-              </ul>
-            </div>*/}
           </>
         ) : (
           <div className="text-sm text-gray-600 p-4 text-center">

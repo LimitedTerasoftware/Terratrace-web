@@ -101,6 +101,9 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
 
+  // NEW: fast lookup for highlight-by-id (fixes duplicate-name issues)
+  const markersByIdRef = useRef<Map<string, google.maps.Marker>>(new Map());
+
   // Enhanced Video Survey overlays
   const surveyPolylineRef = useRef<google.maps.Polyline | null>(null);
   const videoSurveyPolylinesRef = useRef<google.maps.Polyline[]>([]);
@@ -160,6 +163,8 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
     polylinesRef.current.forEach(polyline => polyline.setMap(null));
     markersRef.current = [];
     polylinesRef.current = [];
+    // NEW: also clear the id → marker map
+    markersByIdRef.current.clear();
   }
 
   function clearPhotoOverlays() {
@@ -168,33 +173,33 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
   }
 
   function clearSurveyOverlays() {
-  if (surveyPolylineRef.current) {
-    surveyPolylineRef.current.setMap(null);
-    surveyPolylineRef.current = null;
+    if (surveyPolylineRef.current) {
+      surveyPolylineRef.current.setMap(null);
+      surveyPolylineRef.current = null;
+    }
+    
+    // Clear video survey polylines separately (don't touch regular polylines)
+    videoSurveyPolylinesRef.current.forEach(polyline => polyline.setMap(null));
+    videoSurveyPolylinesRef.current = [];
+    
+    surveyDotsRef.current.forEach(m => m.setMap(null));
+    surveyDotsRef.current = [];
+    
+    if (currentMarkerRef.current) {
+      currentMarkerRef.current.setMap(null);
+      currentMarkerRef.current = null;
+    }
+    
+    // Clear selection markers
+    if (selectionMarkersRef.current.start) {
+      selectionMarkersRef.current.start.setMap(null);
+    }
+    if (selectionMarkersRef.current.end) {
+      selectionMarkersRef.current.end.setMap(null);
+    }
+    selectionMarkersRef.current = {};
+    clearPhotoOverlays();
   }
-  
-  // Clear video survey polylines separately (don't touch regular polylines)
-  videoSurveyPolylinesRef.current.forEach(polyline => polyline.setMap(null));
-  videoSurveyPolylinesRef.current = [];
-  
-  surveyDotsRef.current.forEach(m => m.setMap(null));
-  surveyDotsRef.current = [];
-  
-  if (currentMarkerRef.current) {
-    currentMarkerRef.current.setMap(null);
-    currentMarkerRef.current = null;
-  }
-  
-  // Clear selection markers
-  if (selectionMarkersRef.current.start) {
-    selectionMarkersRef.current.start.setMap(null);
-  }
-  if (selectionMarkersRef.current.end) {
-    selectionMarkersRef.current.end.setMap(null);
-  }
-  selectionMarkersRef.current = {};
-  clearPhotoOverlays();
-}
 
   // Enhanced track point finder
   const findNearestTrackPoint = (timestamp: number): TrackPoint | null => {
@@ -407,7 +412,10 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
           }
         });
 
+        // Keep both lists: the array and the id→marker map (for fast lookup by unique id)
         markersRef.current.push(marker);
+        markersByIdRef.current.set(placemark.id, marker);
+
         bounds.extend(placemark.coordinates as unknown as google.maps.LatLng);
       } else if (placemark.type === 'polyline' && 'coordinates' in placemark && Array.isArray(placemark.coordinates)) {
         const isPhysicalSurvey = placemark.id.startsWith('physical-');
@@ -513,222 +521,221 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
   }, [placemarks, categories, visibleCategories, mapLoaded, videoSurveyMode, photoSurveyMode]);
 
   // Enhanced video survey overlays with segment selection
-useEffect(() => {
-  if (!mapLoaded || !mapInstanceRef.current) return;
+  useEffect(() => {
+    if (!mapLoaded || !mapInstanceRef.current) return;
 
-  if (!videoSurveyMode || !trackPoints.length) {
-    clearSurveyOverlays();
-    trackFittedOnceRef.current = false;
-    return;
-  }
-
-  const needsRecreation = surveyDotsRef.current.length === 0 || 
-                          !surveyPolylineRef.current;
-
-  if (needsRecreation) {
-    clearSurveyOverlays();
-    
-    const map = mapInstanceRef.current;
-    const bounds = new google.maps.LatLngBounds();
-
-    // Helper function to calculate distance between two points
-    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-      const R = 6371e3; // Earth radius in meters
-      const φ1 = (lat1 * Math.PI) / 180;
-      const φ2 = (lat2 * Math.PI) / 180;
-      const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-      const Δλ = ((lon2 - lon1) * Math.PI) / 180;
-
-      const a =
-        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-        Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-      return R * c; // Distance in meters
-    };
-
-    // NEW: Create segmented polylines instead of one continuous line
-    const createSegmentedPolylines = (trackPoints: TrackPoint[]) => {
-      const segments: TrackPoint[][] = [];
-      let currentSegment: TrackPoint[] = [];
-      
-      for (let i = 0; i < trackPoints.length; i++) {
-        const point = trackPoints[i];
-        const prevPoint = trackPoints[i - 1];
-        
-        if (prevPoint) {
-          const timeDiff = point.timestamp - prevPoint.timestamp;
-          const distance = calculateDistance(
-            prevPoint.lat, prevPoint.lng, 
-            point.lat, point.lng
-          );
-          
-          // Break segment if gap is too large
-          // 5 minutes (300000ms) or 1km distance or 500m+ straight line distance
-          const shouldBreakSegment = 
-            timeDiff > 300000 || // 5 minutes gap
-            distance > 1000 ||   // 1km distance
-            (distance > 500 && timeDiff > 60000); // 500m+ distance with 1+ minute gap
-          
-          if (shouldBreakSegment) {
-            // Save current segment if it has enough points
-            if (currentSegment.length > 1) {
-              segments.push([...currentSegment]);
-            }
-            // Start new segment
-            currentSegment = [point];
-            continue;
-          }
-        }
-        
-        currentSegment.push(point);
-      }
-      
-      // Add the last segment
-      if (currentSegment.length > 1) {
-        segments.push(currentSegment);
-      }
-      
-      return segments;
-    };
-
-    // Create segmented polylines
-    const segments = createSegmentedPolylines(trackPoints);
-    console.log(`Created ${segments.length} polyline segments from ${trackPoints.length} track points`);
-
-    // Create separate polyline for each segment
-    segments.forEach((segment, index) => {
-      const polyline = new google.maps.Polyline({
-        path: segment.map(p => ({ lat: p.lat, lng: p.lng })),
-        map: null,
-        strokeColor: '#22C55E',
-        strokeWeight: 4,
-        strokeOpacity: 0.8,
-        geodesic: true,
-      });
-      
-      // Store all polylines for cleanup (you'll need to update polylinesRef or create segmentPolylinesRef)
-      polylinesRef.current.push(polyline);
-    });
-
-    map.addListener('click', handleMapClick);
-
-    // Keep the existing blue dots logic unchanged
-    const totalTrackPoints = trackPoints.length;
-    
-    const calculateMaxDots = (pointCount: number): number => {
-      if (pointCount <= 100) return pointCount;
-      if (pointCount <= 1000) return Math.min(pointCount, 200);
-      if (pointCount <= 2000) return Math.min(pointCount, 350);
-      if (pointCount <= 5000) return Math.min(pointCount, 500);
-      if (pointCount <= 10000) return Math.min(pointCount, 650);
-      if (pointCount <= 15000) return Math.min(pointCount, 800);
-      return 800; // Fixed: was 900, now correctly 800
-    };
-
-    const maxDots = calculateMaxDots(totalTrackPoints);
-    const step = totalTrackPoints <= maxDots ? 1 : Math.ceil(totalTrackPoints / maxDots);
-    
-    const selectedIndices = new Set<number>();
-    selectedIndices.add(0);
-    
-    for (let i = step; i < totalTrackPoints - 1; i += step) {
-      selectedIndices.add(i);
+    if (!videoSurveyMode || !trackPoints.length) {
+      clearSurveyOverlays();
+      trackFittedOnceRef.current = false;
+      return;
     }
-    
-    if (totalTrackPoints > 1) {
-      selectedIndices.add(totalTrackPoints - 1);
-    }
-    
-    const sortedIndices = Array.from(selectedIndices).sort((a, b) => a - b);
-    console.log(`Creating ${sortedIndices.length} blue dots from ${totalTrackPoints} track points`);
-    
-    const markers: google.maps.Marker[] = [];
-    
-    sortedIndices.forEach(index => {
-      const point = trackPoints[index];
-      
-      const dot = new google.maps.Marker({
-        position: { lat: point.lat, lng: point.lng },
-        map: null,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 4,
-          fillColor: '#3B82F6',
-          fillOpacity: 1,
-          strokeColor: '#ffffff',
-          strokeWeight: 2,
-        },
-        title: `Track Point ${index + 1}: ${new Date(point.timestamp).toLocaleTimeString()}`,
-        zIndex: 500,
-        optimized: true,
-        clickable: true,
-      });
-      
-      dot.addListener('click', (e: google.maps.MapMouseEvent) => {
-        e.stop();
-        if (onTrackPointClick) {
-          onTrackPointClick(point);
-        }
-      });
-      
-      markers.push(dot);
-      bounds.extend({ lat: point.lat, lng: point.lng });
-    });
-    
-    markers.forEach(marker => {
-      marker.setMap(map);
-      surveyDotsRef.current.push(marker);
-    });
-    
-    console.log(`Successfully created ${surveyDotsRef.current.length} blue dots and ${segments.length} polyline segments`);
 
-    if (!bounds.isEmpty() && !trackFittedOnceRef.current) {
-      map.fitBounds(bounds, { padding: 60 });
-      trackFittedOnceRef.current = true;
-    }
-  }
+    const needsRecreation = surveyDotsRef.current.length === 0 || 
+                            !surveyPolylineRef.current;
 
-  return () => {
     if (needsRecreation) {
-      google.maps.event.clearListeners(mapInstanceRef.current!, 'click');
-    }
-  };
-}, [mapLoaded, videoSurveyMode, trackPoints]);
+      clearSurveyOverlays();
+      
+      const map = mapInstanceRef.current;
+      const bounds = new google.maps.LatLngBounds();
 
+      // Helper function to calculate distance between two points
+      const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+        const R = 6371e3; // Earth radius in meters
+        const φ1 = (lat1 * Math.PI) / 180;
+        const φ2 = (lat2 * Math.PI) / 180;
+        const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+        const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+        const a =
+          Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+          Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        return R * c; // Distance in meters
+      };
+
+      // NEW: Create segmented polylines instead of one continuous line
+      const createSegmentedPolylines = (trackPoints: TrackPoint[]) => {
+        const segments: TrackPoint[][] = [];
+        let currentSegment: TrackPoint[] = [];
+        
+        for (let i = 0; i < trackPoints.length; i++) {
+          const point = trackPoints[i];
+          const prevPoint = trackPoints[i - 1];
+          
+          if (prevPoint) {
+            const timeDiff = point.timestamp - prevPoint.timestamp;
+            const distance = calculateDistance(
+              prevPoint.lat, prevPoint.lng, 
+              point.lat, point.lng
+            );
+            
+            // Break segment if gap is too large
+            // 5 minutes (300000ms) or 1km distance or 500m+ straight line distance
+            const shouldBreakSegment = 
+              timeDiff > 300000 || // 5 minutes gap
+              distance > 1000 ||   // 1km distance
+              (distance > 500 && timeDiff > 60000); // 500m+ distance with 1+ minute gap
+            
+            if (shouldBreakSegment) {
+              // Save current segment if it has enough points
+              if (currentSegment.length > 1) {
+                segments.push([...currentSegment]);
+              }
+              // Start new segment
+              currentSegment = [point];
+              continue;
+            }
+          }
+          
+          currentSegment.push(point);
+        }
+        
+        // Add the last segment
+        if (currentSegment.length > 1) {
+          segments.push(currentSegment);
+        }
+        
+        return segments;
+      };
+
+      // Create segmented polylines
+      const segments = createSegmentedPolylines(trackPoints);
+      console.log(`Created ${segments.length} polyline segments from ${trackPoints.length} track points`);
+
+      // Create separate polyline for each segment
+      segments.forEach((segment, index) => {
+        const polyline = new google.maps.Polyline({
+          path: segment.map(p => ({ lat: p.lat, lng: p.lng })),
+          map: null,
+          strokeColor: '#22C55E',
+          strokeWeight: 4,
+          strokeOpacity: 0.8,
+          geodesic: true,
+        });
+        
+        // Store all polylines for cleanup (you'll need to update polylinesRef or create segmentPolylinesRef)
+        polylinesRef.current.push(polyline);
+      });
+
+      map.addListener('click', handleMapClick);
+
+      // Keep the existing blue dots logic unchanged
+      const totalTrackPoints = trackPoints.length;
+      
+      const calculateMaxDots = (pointCount: number): number => {
+        if (pointCount <= 100) return pointCount;
+        if (pointCount <= 1000) return Math.min(pointCount, 200);
+        if (pointCount <= 2000) return Math.min(pointCount, 350);
+        if (pointCount <= 5000) return Math.min(pointCount, 500);
+        if (pointCount <= 10000) return Math.min(pointCount, 650);
+        if (pointCount <= 15000) return Math.min(pointCount, 800);
+        return 800; // Fixed: was 900, now correctly 800
+      };
+
+      const maxDots = calculateMaxDots(totalTrackPoints);
+      const step = totalTrackPoints <= maxDots ? 1 : Math.ceil(totalTrackPoints / maxDots);
+      
+      const selectedIndices = new Set<number>();
+      selectedIndices.add(0);
+      
+      for (let i = step; i < totalTrackPoints - 1; i += step) {
+        selectedIndices.add(i);
+      }
+      
+      if (totalTrackPoints > 1) {
+        selectedIndices.add(totalTrackPoints - 1);
+      }
+      
+      const sortedIndices = Array.from(selectedIndices).sort((a, b) => a - b);
+      console.log(`Creating ${sortedIndices.length} blue dots from ${totalTrackPoints} track points`);
+      
+      const markers: google.maps.Marker[] = [];
+      
+      sortedIndices.forEach(index => {
+        const point = trackPoints[index];
+        
+        const dot = new google.maps.Marker({
+          position: { lat: point.lat, lng: point.lng },
+          map: null,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 4,
+            fillColor: '#3B82F6',
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 2,
+          },
+          title: `Track Point ${index + 1}: ${new Date(point.timestamp).toLocaleTimeString()}`,
+          zIndex: 500,
+          optimized: true,
+          clickable: true,
+        });
+        
+        dot.addListener('click', (e: google.maps.MapMouseEvent) => {
+          e.stop();
+          if (onTrackPointClick) {
+            onTrackPointClick(point);
+          }
+        });
+        
+        markers.push(dot);
+        bounds.extend({ lat: point.lat, lng: point.lng });
+      });
+      
+      markers.forEach(marker => {
+        marker.setMap(map);
+        surveyDotsRef.current.push(marker);
+      });
+      
+      console.log(`Successfully created ${surveyDotsRef.current.length} blue dots and ${segments.length} polyline segments`);
+
+      if (!bounds.isEmpty() && !trackFittedOnceRef.current) {
+        map.fitBounds(bounds, { padding: 60 });
+        trackFittedOnceRef.current = true;
+      }
+    }
+
+    return () => {
+      if (needsRecreation) {
+        google.maps.event.clearListeners(mapInstanceRef.current!, 'click');
+      }
+    };
+  }, [mapLoaded, videoSurveyMode, trackPoints]);
 
   // Enhanced selection markers management
   useEffect(() => {
-  if (!mapLoaded || !mapInstanceRef.current || !videoSurveyMode) return;
+    if (!mapLoaded || !mapInstanceRef.current || !videoSurveyMode) return;
 
-  if (currentPosition) {
-    if (!currentMarkerRef.current) {
-      // Create marker only once
-      currentMarkerRef.current = new google.maps.Marker({
-        position: currentPosition,
-        map: mapInstanceRef.current,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 8,
-          fillColor: '#EF4444',
-          fillOpacity: 1,
-          strokeColor: '#ffffff',
-          strokeWeight: 3,
-        },
-        title: 'Current Position',
-        zIndex: 1000,
-        optimized: false, // Important: disable optimization for smooth movement
-      });
-    } else {
-      // Just update position, don't recreate
-      currentMarkerRef.current.setPosition(currentPosition as any);
+    if (currentPosition) {
+      if (!currentMarkerRef.current) {
+        // Create marker only once
+        currentMarkerRef.current = new google.maps.Marker({
+          position: currentPosition,
+          map: mapInstanceRef.current,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: '#EF4444',
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 3,
+          },
+          title: 'Current Position',
+          zIndex: 1000,
+          optimized: false, // Important: disable optimization for smooth movement
+        });
+      } else {
+        // Just update position, don't recreate
+        currentMarkerRef.current.setPosition(currentPosition as any);
+      }
+    } else if (currentMarkerRef.current) {
+      // Only hide/remove if currentPosition is null
+      currentMarkerRef.current.setMap(null);
+      currentMarkerRef.current = null;
     }
-  } else if (currentMarkerRef.current) {
-    // Only hide/remove if currentPosition is null
-    currentMarkerRef.current.setMap(null);
-    currentMarkerRef.current = null;
-  }
-}, [currentPosition, mapLoaded, videoSurveyMode]);
+  }, [currentPosition, mapLoaded, videoSurveyMode]);
 
   // Move the current position marker when currentPosition changes
   useEffect(() => {
@@ -766,7 +773,6 @@ useEffect(() => {
     if (!photoSurveyMode || !photoPoints.length) {
       return;
     }
-
 
     const map = mapInstanceRef.current;
 
@@ -826,14 +832,18 @@ useEffect(() => {
 
   }, [mapLoaded, photoSurveyMode, photoPoints, onPhotoPointClick]);
 
-  // Highlight selected placemark
+  // Highlight selected placemark (UPDATED: resolve by id, not by name)
   useEffect(() => {
     if (!mapLoaded || !highlightedPlacemark || !mapInstanceRef.current) return;
 
     const map = mapInstanceRef.current;
 
     if (highlightedPlacemark.type === 'point') {
-      const marker = markersRef.current.find(m => m.getTitle() === highlightedPlacemark.name);
+      // OLD (buggy): find by title/name ⇒ could be duplicated
+      // const marker = markersRef.current.find(m => m.getTitle() === highlightedPlacemark.name);
+
+      // NEW: find the exact marker by its unique placemark.id
+      const marker = markersByIdRef.current.get(highlightedPlacemark.id);
       if (marker) {
         map.panTo(highlightedPlacemark.coordinates as google.maps.LatLngLiteral);
         map.setZoom(15);

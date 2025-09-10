@@ -1237,6 +1237,18 @@ useEffect(() => {
         {/* RIGHT SIDEBAR - External Files Management */}
         {ShowFiles && (
           <div className="absolute top-0 right-0 h-full bg-white rounded-lg shadow-lg border border-gray-200 p-3 overflow-hidden">
+            {/* Close Button Header */}
+            <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200">
+              <h3 className="text-sm font-semibold text-gray-700">External Files</h3>
+              <button
+                onClick={() => setShowFiles(false)}
+                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                title="Close panel"
+              >
+                <X className="h-4 w-4 text-gray-500" />
+              </button>
+            </div>
+            
             <FilterPanel
               filters={filters}
               onFiltersChange={setFilters}
