@@ -83,12 +83,26 @@ export interface ProcessedPhysicalSurvey {
   id: string;
   name: string;
   category: string;
-  type: 'point';
-  coordinates: { lat: number; lng: number };
+  type: 'point' | 'polyline';
+  coordinates: { lat: number; lng: number } | { lat: number; lng: number }[];
   surveyId: string;
   eventType: string;
   blockId: string;
+  // NEW: Image fields
+  images: SurveyImage[];
+  hasImages: boolean;
 }
+
+export interface SurveyImage {
+  url: string;
+  type: 'start_photo' | 'end_photo' | 'fpoi' | 'route_indicator' | 'kmt_stone' | 
+        'fiber_turn' | 'landmark' | 'joint_chamber' | 'road_crossing' | 
+        'videorecord' | 'route_feasibility' | 'area' | 'side' | 'route_details' | 
+        'hold_survey' | 'bridge' | 'culvert' | 'general';
+  label: string;
+  coordinates?: { lat: number; lng: number };
+}
+
 
 // Desktop Planning types
 export interface DesktopPlanningApiResponse {
