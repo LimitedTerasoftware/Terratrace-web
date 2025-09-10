@@ -1186,6 +1186,8 @@ useEffect(() => {
               transitionImages={[]}
               onRequestTransition={async () => { /* optionally fetch images between clips */ }}
               surveySummary={summaryNode}
+              currentPosition={currentPosition}
+              trackPoints={videoSurveyData.trackPoints}
             />
           </div>
         )}
