@@ -13,7 +13,7 @@ import ResponsivePagination from "./ResponsivePagination";
 import * as XLSX from "xlsx";
 import MapComponent from "./MapComponent";
 import { MediaExportService } from "../hooks/useFullscreen";
-import { CameraOffIcon, ChartBar, CheckCircle, ChevronDown, Download, Eye, EyeIcon, FolderOpen, Globe2Icon, Loader, MapPinIcon, RotateCcw, Search, SheetIcon, SquaresExcludeIcon, TableCellsMerge, User } from "lucide-react";
+import { CameraOffIcon, ChartBar, CheckCircle, ChevronDown, Download, Edit2, Eye, EyeIcon, FolderOpen, Globe2Icon, Loader, MapPinIcon, RotateCcw, Search, SheetIcon, SquaresExcludeIcon, TableCellsMerge, User } from "lucide-react";
 import { hasDownloadAccess, hasViewOnlyAccess } from "../../utils/accessControl";
 import { FaArrowLeft } from "react-icons/fa";
 import { UnderGroundSurveyData } from "../../types/survey";
@@ -89,6 +89,8 @@ const UndergroundSurvey: React.FC = () => {
   const [pageSize, setPageSize] = useState<number>(15);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [editingRow, setEditingRow] = useState<UndergroundSurvey | null>(null);
+  const [gpOptions, setGpOptions] = useState<{ id: string; name: string }[]>([]);
+  const [loadingGPD, setLoadingGPD] = useState(false);
 
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
@@ -110,6 +112,8 @@ const UndergroundSurvey: React.FC = () => {
   const [exportComplete, setExportComplete] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [filtersReady, setFiltersReady] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [selectedActivity, setSelectedActivity] = useState<UndergroundSurvey | null>(null);
 
   const navigate = useNavigate();
 
@@ -287,17 +291,49 @@ const UndergroundSurvey: React.FC = () => {
     }
   };
 
-  // Handle edit
-  const handleEditSave = async () => {
-    if (!editingRow) return;
-    try {
-      await axios.put(`${BASEURL}/underground-surveys/${editingRow.id}`, editingRow);
-      setData((prevData) => prevData.map((item) => (item.id === editingRow.id ? editingRow : item)));
+// inside your component:
+const handleEditSave = async () => {
+  if (!editingRow) return;
+
+  try {
+    const payload = {
+      id: editingRow.id,                  
+      endLocation: editingRow.endLocation,   
+      startLocation: editingRow.startLocation, 
+    
+    };
+
+
+    const res = await axios.post(
+      `${TraceBASEURL}/edit-fiber-survey`,
+      payload,
+      {
+        headers: {
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    if (res.data) {
+      alert("Survey updated successfully!");
       setEditingRow(null);
-    } catch (error) {
-      alert("Failed to update record.");
     }
-  };
+  } catch (err: any) {
+    console.error("Error updating survey:", err);
+    alert("Failed to update survey");
+  }
+};
+
+  // const handleEditSave = async () => {
+  //   if (!editingRow) return;
+  //   try {
+  //     await axios.put(`${TraceBASEURL}/edit-fiber-survey/${editingRow.id}`, editingRow);
+  //     setData((prevData) => prevData.map((item) => (item.id === editingRow.id ? editingRow : item)));
+  //     setEditingRow(null);
+  //   } catch (error) {
+  //     alert("Failed to update record.");
+  //   }
+  // };
 
   useEffect(() => {
     axios.get(`${BASEURL}/states`)
@@ -328,6 +364,32 @@ const UndergroundSurvey: React.FC = () => {
       // setSelectedBlock(null);
     }
   }, [selectedDistrict]);
+
+ useEffect(() => {
+  if (editingRow) {
+    const blockCode = editingRow.block_id; 
+    if (!blockCode) return;
+
+    setLoadingGPD(true);
+    axios.get(`${BASEURL}/gpdata?block_code=${blockCode}`)
+      .then(res => {
+        const data = res.data;
+        const options = data.map((g: any) => ({
+          id: g.id.toString(),
+          name: g.name.toString(),
+        }));
+        setGpOptions(options);
+      })
+      .catch(err => {
+        console.error("Error fetching GP data:", err);
+      })
+      .finally(() => {
+        setLoadingGPD(false);
+      });
+  }
+}, [editingRow?.block_id
+]);
+
 
   const columns = useMemo<ColumnDef<UndergroundSurvey>[]>(
     () => [
@@ -386,6 +448,12 @@ const UndergroundSurvey: React.FC = () => {
               className="text-blue-600 hover:text-blue-900 p-1"
               title="View">
               <Eye className="w-4 h-4" />
+            </button>
+             <button
+              onClick={() => setEditingRow(row.original)}
+              className="text-blue-600 hover:text-blue-900 p-1"
+              title="View">
+              <Edit2 className="w-4 h-4" />
             </button>
           </div>
 
@@ -1380,6 +1448,7 @@ const UndergroundSurvey: React.FC = () => {
                     onChange={(e) => setEditingRow({ ...editingRow, state_name: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     placeholder="State Name"
+                    readOnly
                   />
                   <input
                     type="text"
@@ -1387,6 +1456,7 @@ const UndergroundSurvey: React.FC = () => {
                     onChange={(e) => setEditingRow({ ...editingRow, district_name: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     placeholder="District Name"
+                    readOnly
                   />
                   <input
                     type="text"
@@ -1394,35 +1464,84 @@ const UndergroundSurvey: React.FC = () => {
                     onChange={(e) => setEditingRow({ ...editingRow, block_name: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     placeholder="Block Name"
+                    readOnly
                   />
-                  <input
+                   <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Start GP Name</label>
+                      { loadingGPD ? (
+                        <div className="mt-1">Loading...</div>
+                      ) : (
+                        <select
+                          value={editingRow.startLocation || ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditingRow({ ...editingRow, startLocation: val });
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        >
+                          <option value="">Select Start GP</option>
+                          {gpOptions.map(opt => (
+                            <option value={opt.id} key={opt.id}>
+                              {opt.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">End GP Name</label>
+                      { loadingGPD ? (
+                        <div className="mt-1">Loading...</div>
+                      ) : (
+                        <select
+                          value={editingRow?.endLocation || ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditingRow({ ...editingRow, endLocation: val });
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        >
+                          <option value="">Select End GP</option>
+                          {gpOptions.map(opt => (
+                            <option value={opt.id} key={opt.id}>
+                              {opt.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                 
+                  {/* <input
                     type="text"
                     value={editingRow.startGpName}
                     onChange={(e) => setEditingRow({ ...editingRow, startGpName: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     placeholder="Start GP Name"
-                  />
-                  <input
+                    readOnly
+                  /> */}
+                  {/* <input
                     type="text"
                     value={editingRow.startGpCoordinates}
                     onChange={(e) => setEditingRow({ ...editingRow, startGpCoordinates: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     placeholder="Start GP Coordinates"
-                  />
-                  <input
+                  /> */}
+                  {/* <input
                     type="text"
                     value={editingRow.endGpName}
                     onChange={(e) => setEditingRow({ ...editingRow, endGpName: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     placeholder="End GP Name"
-                  />
-                  <input
+                    readOnly
+                  /> */}
+                  {/* <input
                     type="text"
                     value={editingRow.endGpCoordinates}
                     onChange={(e) => setEditingRow({ ...editingRow, endGpCoordinates: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     placeholder="End GP Coordinates"
-                  />
+                  /> */}
                 </div>
 
                 <div className="flex gap-3 mt-6">
@@ -1442,6 +1561,7 @@ const UndergroundSurvey: React.FC = () => {
               </div>
             </div>
           )}
+        
         </div>
       )}
 
