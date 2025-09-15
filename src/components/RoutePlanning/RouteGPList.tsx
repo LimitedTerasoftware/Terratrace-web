@@ -9,6 +9,8 @@ interface Connection {
   length?: string | number;
   color?: string;
   status?: string;
+  type?: string; 
+  properties?: string | Record<string, any>; // Added properties field
 }
 
 interface GPListResponse {
@@ -107,26 +109,57 @@ const RouteGPList = () => {
     }
   }, [networkId]);
 
-  const getCableType = (color: string): string => {
-    switch (color) {
-      case '#000000':
+  // Updated getCableType function to use the type field from API response
+  const getCableType = (connection: Connection): string => {
+    // First check the top-level type field
+    if (connection.type) {
+      if (connection.type === 'existing') {
         return 'Existing Cable';
-      case '#00FFFF':
+      } else if (connection.type === 'proposed') {
         return 'Proposed Cable';
-      default:
-        return 'Unknown';
+      }
     }
+    
+    // Fallback to properties if available
+    let parsedProperties: any = {};
+    try {
+      if (typeof connection.properties === 'string') {
+        parsedProperties = JSON.parse(connection.properties);
+      } else if (connection.properties) {
+        parsedProperties = connection.properties;
+      }
+    } catch (error) {
+      console.warn('Error parsing properties:', error);
+    }
+    
+    // Check properties type field
+    if (parsedProperties.type) {
+      if (parsedProperties.type.toLowerCase().includes('existing')) {
+        return 'Existing Cable';
+      } else if (parsedProperties.type.toLowerCase().includes('proposed')) {
+        return 'Proposed Cable';
+      }
+    }
+    
+    // Final fallback to status
+    if (connection.status?.toLowerCase() === 'accepted') {
+      return 'Existing Cable';
+    } else if (connection.status?.toLowerCase() === 'proposed') {
+      return 'Proposed Cable';
+    }
+    
+    return 'Unknown';
   };
 
-  const getCableTypeBadge = (color: string) => {
-    const cableType = getCableType(color);
-    switch (cableType) {
-      case 'Existing Cable':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      case 'Proposed Cable':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+  const getCableTypeBadge = (type: string) => {
+    const normalizedType = type?.toLowerCase() || '';
+    
+    if (normalizedType.includes('existing')) {
+      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+    } else if (normalizedType.includes('proposed')) {
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+    } else {
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
     }
   };
 
@@ -456,8 +489,8 @@ const RouteGPList = () => {
                     {connection.length ? parseFloat(String(connection.length)).toFixed(3) : '-'}
                   </td>
                   <td className="px-3 py-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCableTypeBadge(connection.color || '')}`}>
-                      {getCableType(connection.color || '')}
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCableTypeBadge(getCableType(connection))}`}>
+                      {getCableType(connection)}
                     </span>
                   </td>
                   <td className="px-3 py-2">
@@ -554,7 +587,7 @@ const RouteGPList = () => {
                 <div className="flex items-center justify-center py-4">
                   <svg className="animate-spin h-6 w-6 text-blue-500" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                   <span className="ml-2">Loading users...</span>
                 </div>
@@ -622,7 +655,7 @@ const RouteGPList = () => {
                     <div className="flex items-center">
                       <svg className="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
                       Assigning...
                     </div>

@@ -49,7 +49,7 @@ const ModeToggle: React.FC = () => {
         */}
       </div>
       
-      <div className="mb-4">
+      {/*<div className="mb-4">
         <button
           className={`w-full py-2 px-4 text-sm font-medium rounded-md transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${VerifySaveFile === true ? 'bg-[#9D336C] text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-200'}`}
           disabled={previewKmlData === null} 
@@ -57,7 +57,7 @@ const ModeToggle: React.FC = () => {
         >
           <span>Verify</span>
         </button>
-      </div>
+      </div>*/}
       <div className="relative">
               <select
                 value={DownloadFile}

@@ -22,6 +22,8 @@ import {
 import FileUploadModal from './Modalpopup';
 import { GeographicSelector } from './GeographicSelector';
 import SurveyVideoPanel from './SurveyVideoPanel';
+import { useSearchParams } from 'react-router-dom';
+
 
 // Import the VideoSurveyService
 import { 

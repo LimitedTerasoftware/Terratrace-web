@@ -5,6 +5,8 @@ import axios from 'axios';
 import MapIcon from '../../images/icon/icon-Map.svg'
 import UndoIcon from '../../images/icon/undo-icon.svg'
 import { AlertCircle, CheckCircle, X } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+
 
 
 // CONSTANTS & CONFIGURATION
@@ -190,6 +192,33 @@ interface ProcessedConnection {
   [key: string]: any;
 }
 
+interface StateData {
+  state_id: string;
+  state_name: string;
+  state_code: string;
+}
+
+interface District {
+  district_id: string;
+  district_name: string;
+  state_code: string;
+}
+
+interface Block {
+  block_id: string;
+  block_name: string;
+  district_code: string;
+}
+
+interface LocationFilters {
+  state: string;
+  district: string;
+  block: string;
+  state_name?: string;
+  district_name?: string;
+  block_name?: string;
+}
+
 type GPSPoint = {
   name: string;
   coordinates: [number, number];
@@ -282,6 +311,7 @@ interface StandardUserData {
 }
 
 
+const BASEURL = import.meta.env.VITE_API_BASE;
 
 // UTILITY COMPONENTS
 
@@ -476,6 +506,21 @@ const MapComponent: React.FC = () => {
   const notifierTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const routeMarkers = useRef<Map<string, google.maps.Marker[]>>(new Map());
 
+
+const [searchParams, setSearchParams] = useSearchParams();
+const [states, setStates] = useState<StateData[]>([]);
+const [districts, setDistricts] = useState<District[]>([]);
+const [blocks, setBlocks] = useState<Block[]>([]);
+const [selectedState, setSelectedState] = useState<string | null>(null);
+const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
+const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
+const [loadingStates, setLoadingStates] = useState<boolean>(false);
+const [loadingDistricts, setLoadingDistricts] = useState<boolean>(false);
+const [loadingBlocks, setLoadingBlocks] = useState<boolean>(false);
+const [showLocationPanel, setShowLocationPanel] = useState(true);
+const [showLocationFilters, setShowLocationFilters] = useState(true);
+
+
   
   // MAP LIFECYCLE CALLBACKS
   
@@ -496,13 +541,15 @@ const MapComponent: React.FC = () => {
 
 // DATA PROCESSING EFFECTS
 
-  useEffect(() => {
+  // Fixed useEffect for processing previewKmlData with proper distance calculation
+useEffect(() => {
   if (previewKmlData && map && isLoaded) {
     try {
       let parsed: KMLData | KMLData[];
       try {
         parsed = typeof previewKmlData === "string" ? JSON.parse(previewKmlData) : previewKmlData;
       } catch (parseError) {
+        console.error("❌ JSON Parse Error:", parseError);
         showNotification("error", "Invalid KML data format: Unable to parse JSON");
         return;
       }
@@ -515,15 +562,17 @@ const MapComponent: React.FC = () => {
 
       kmlArray.forEach((kmlData: KMLData, idx: number) => {
         if (!kmlData.success || !kmlData.data) {
+          console.warn(`❌ File ${idx + 1}: Invalid or unsuccessful data`);
           processingErrors.push(`KML file ${idx + 1}: Invalid or unsuccessful data`);
           return;
         }
 
         const data = kmlData.data;
 
-        // Process all points
+        // PROCESS POINTS (unchanged from original)
         if (data.points && Array.isArray(data.points)) {
           const points = data.points.map((point: KMLPoint, i: number): ProcessedPoint => {
+            // ... (keep the existing point processing logic)
             let coordinates: number[] = [0, 0];
             try {
               if (typeof point.coordinates === 'string') {
@@ -542,7 +591,7 @@ const MapComponent: React.FC = () => {
                 }
               }
             } catch (error) {
-              // Keep default [0, 0] coordinates
+              // Handle error silently
             }
 
             let parsedProperties: Record<string, any> = {};
@@ -567,7 +616,7 @@ const MapComponent: React.FC = () => {
               st_name: parsedProperties.st_name || data.network?.st_name || ""
             };
 
-            return {
+            const processedPoint: ProcessedPoint = {
               name: point.name || `Unnamed_Point_${i}`,
               coordinates: coordinates,
               lgd_code: point.lgd_code || parsedProperties.lgd_code || "NULL",
@@ -642,15 +691,19 @@ const MapComponent: React.FC = () => {
                 }
               }
             };
+
+            return processedPoint;
           });
 
           allPoints.push(...points);
         } else {
+          console.warn(`❌ File ${idx + 1}: No points data found`);
           processingErrors.push(`KML file ${idx + 1}: No points data found`);
         }
 
-        // Process all connections
+        // PROCESS CONNECTIONS WITH IMPROVED DISTANCE CALCULATION
         if (data.connections && Array.isArray(data.connections)) {
+          // Create point lookup maps
           const pointLookup = new Map<string, ProcessedPoint>();
           const pointLookupByLGD = new Map<string, ProcessedPoint>();
           const pointLookupByBaseName = new Map<string, ProcessedPoint>();
@@ -679,30 +732,8 @@ const MapComponent: React.FC = () => {
             });
           });
 
-          const findPoint = (searchName: string, lgdCode?: string): ProcessedPoint | null => {
-            if (!searchName) return null;
-            
-            if (lgdCode && lgdCode !== "NULL") {
-              const found = pointLookupByLGD.get(lgdCode);
-              if (found) return found;
-            }
-            
-            let found = pointLookup.get(searchName) || pointLookup.get(searchName.toUpperCase());
-            if (found) return found;
-            
-            found = pointLookupByBaseName.get(searchName.replace(/\([^)]*\)$/, '').trim().toUpperCase());
-            if (found) return found;
-            
-            for (const [key, point] of pointLookup.entries()) {
-              if (key.includes(searchName.toUpperCase()) || searchName.toUpperCase().includes(key)) {
-                return point;
-              }
-            }
-            
-            return null;
-          };
-
           const connections = data.connections.map((conn: KMLConnection, i: number): ProcessedConnection => {
+            // Process coordinates
             let convertedCoords: number[][] = [];
             try {
               if (typeof conn.coordinates === 'string') {
@@ -732,9 +763,40 @@ const MapComponent: React.FC = () => {
                 });
               }
             } catch (error) {
+              console.error(`Connection ${i + 1} coordinate parsing error:`, error);
               convertedCoords = [];
             }
 
+            // IMPROVED DISTANCE CALCULATION: Use coordinates if available, fallback to stored length
+            let calculatedDistance = 0;
+            let distanceSource = 'stored';
+            
+            if (convertedCoords.length >= 2) {
+              // Calculate distance from actual coordinates
+              const coordsForDistance = convertedCoords.map(coord => ({
+                lat: coord[1],
+                lng: coord[0]
+              }));
+              calculatedDistance = computePathDistance(coordsForDistance);
+              distanceSource = 'calculated';
+            } else if (conn.length && Number(conn.length) > 0) {
+              // Use stored length as fallback
+              calculatedDistance = Number(conn.length);
+              distanceSource = 'stored';
+            } else {
+              // Last resort: try to calculate from start/end points
+              const startPoint = pointLookup.get(conn.start);
+              const endPoint = pointLookup.get(conn.end);
+              
+              if (startPoint && endPoint && startPoint.coordinates && endPoint.coordinates) {
+                const startCoord = { lat: startPoint.coordinates[1], lng: startPoint.coordinates[0] };
+                const endCoord = { lat: endPoint.coordinates[1], lng: endPoint.coordinates[0] };
+                calculatedDistance = haversineDistance(startCoord, endCoord);
+                distanceSource = 'point_to_point';
+              }
+            }
+
+            // Process properties
             let connectionProperties: Record<string, any> = {};
             try {
               if (conn.properties) {
@@ -745,19 +807,50 @@ const MapComponent: React.FC = () => {
                 }
               }
             } catch (error) {
+              console.error(`Connection ${i + 1} properties parsing error:`, error);
               connectionProperties = {};
             }
+
+            // Find matching points
+            const findPoint = (searchName: string, lgdCode?: string): ProcessedPoint | null => {
+              if (!searchName) return null;
+              
+              if (lgdCode && lgdCode !== "NULL") {
+                const found = pointLookupByLGD.get(lgdCode);
+                if (found) return found;
+              }
+              
+              let found = pointLookup.get(searchName) || pointLookup.get(searchName.toUpperCase());
+              if (found) return found;
+              
+              found = pointLookupByBaseName.get(searchName.replace(/\([^)]*\)$/, '').trim().toUpperCase());
+              if (found) return found;
+              
+              for (const [key, point] of pointLookup.entries()) {
+                if (key.includes(searchName.toUpperCase()) || searchName.toUpperCase().includes(key)) {
+                  return point;
+                }
+              }
+              
+              return null;
+            };
 
             const startPoint = findPoint(conn.start, conn.start_lgd_code);
             const endPoint = findPoint(conn.end, conn.end_lgd_code);
 
-            const isExisting = conn.type === 'existing' || conn.existing === true;
+            // Determine if connection is existing based on multiple criteria
+            const isExisting = conn.type === 'existing' || 
+                             conn.existing === true || 
+                             connectionProperties.existing === true ||
+                             connectionProperties.status === 'Accepted' ||
+                             connectionProperties.phase === '1';
+            
             const connectionColor = isExisting ? "#00AA00" : "#FF0000";
 
-            return {
+            const processedConnection: ProcessedConnection = {
               start: conn.start || "Unknown_Start",
               end: conn.end || "Unknown_End",
-              length: Number(conn.length) || 0,
+              length: calculatedDistance, // Use calculated distance
               name: conn.original_name || conn.name || `${conn.start} TO ${conn.end}`,
               coordinates: convertedCoords,
               color: connectionColor,
@@ -779,7 +872,7 @@ const MapComponent: React.FC = () => {
               
               segmentData: {
                 connection: {
-                  length: Number(conn.length) || 0,
+                  length: calculatedDistance, // Use calculated distance here too
                   existing: isExisting,
                   color: connectionColor
                 },
@@ -790,9 +883,9 @@ const MapComponent: React.FC = () => {
                   name: connectionProperties.name || conn.name || `${conn.start} TO ${conn.end}`,
                   asset_code: connectionProperties.asset_code || conn.asset_code || "",
                   
-                  seg_length: connectionProperties.seg_length || conn.seg_length || (conn.length ? (conn.length * 1000).toString() : "0"),
-                  length: connectionProperties.length || conn.length?.toString() || "0",
-                  cable_len: connectionProperties.cable_len || (conn.length ? (conn.length * 1000).toString() : "0"),
+                  seg_length: connectionProperties.seg_length || conn.seg_length || (calculatedDistance ? (calculatedDistance * 1000).toString() : "0"),
+                  length: connectionProperties.length || calculatedDistance?.toString() || "0",
+                  cable_len: connectionProperties.cable_len || (calculatedDistance ? (calculatedDistance * 1000).toString() : "0"),
                   
                   start_node: connectionProperties.start_node || conn.start,
                   end_node: connectionProperties.end_node || conn.end,
@@ -803,7 +896,7 @@ const MapComponent: React.FC = () => {
                   
                   status: connectionProperties.status || conn.status || (isExisting ? "Accepted" : "Proposed"),
                   phase: connectionProperties.phase || (isExisting ? "1" : "3"),
-                  existing: connectionProperties.existing || isExisting,
+                  existing: connectionProperties.existing !== undefined ? connectionProperties.existing : isExisting,
                   
                   asset_type: connectionProperties.asset_type || "Incremental Cable",
                   type: connectionProperties.type || "Incremental Cable",
@@ -821,6 +914,14 @@ const MapComponent: React.FC = () => {
                   FID: connectionProperties.FID || "",
                   
                   ...connectionProperties,
+                  
+                  // Add distance calculation metadata
+                  _distance_info: {
+                    calculated_distance: calculatedDistance,
+                    original_stored_length: conn.length,
+                    distance_source: distanceSource,
+                    coordinate_count: convertedCoords.length
+                  },
                   
                   _parsing_info: {
                     source_file: idx,
@@ -843,18 +944,36 @@ const MapComponent: React.FC = () => {
                   end_point_matched: !!endPoint,
                   start_match_method: startPoint ? 'found' : 'not_found',
                   end_match_method: endPoint ? 'found' : 'not_found'
+                },
+                distance_calculation: {
+                  method: distanceSource,
+                  calculated_value: calculatedDistance,
+                  original_value: conn.length
                 }
               }
             };
+
+            return processedConnection;
           });
 
           allConnections.push(...connections);
         } else {
+          console.warn(`❌ File ${idx + 1}: No connections data found`);
           processingErrors.push(`KML file ${idx + 1}: No connections data found`);
         }
       });
-
+      
+      // IMPROVED DISTANCE TOTALS CALCULATION
+      const existingConnections = allConnections.filter(conn => conn.existing === true);
+      const proposedConnections = allConnections.filter(conn => conn.existing === false);
+      
+      // Calculate totals using the improved distance values
+      const totalExistingLength = existingConnections.reduce((sum, conn) => sum + (conn.length || 0), 0);
+      const totalProposedLength = proposedConnections.reduce((sum, conn) => sum + (conn.length || 0), 0);
+      const totalLength = totalExistingLength + totalProposedLength;
+      
       if (processingErrors.length > 0) {
+        console.warn("Processing errors encountered:", processingErrors);
         showNotification("error", `Processing warnings: ${processingErrors.join('; ')}`);
       }
 
@@ -871,20 +990,24 @@ const MapComponent: React.FC = () => {
           dt_name: network.dt_name || prev.dt_name,
           st_code: network.st_code || prev.st_code,
           st_name: network.st_name || prev.st_name,
-          totalLength: network.total_length || 0,
-          existinglength: network.existing_length || 0,
-          proposedlength: network.proposed_length || 0
+          // Use calculated totals instead of network values
+          totalLength: totalLength,
+          existinglength: totalExistingLength,
+          proposedlength: totalProposedLength
         }));
       }
 
-      const existingConnections = allConnections.filter(conn => conn.existing);
-      const proposedConnections = allConnections.filter(conn => !conn.existing);
-      
+      // Update component state with calculated distances
+      setExistingDistance(totalExistingLength);
+      setProposedDistance(totalProposedLength);
+
       showNotification("success", 
-        `Successfully loaded KML data`
+        `Successfully loaded KML data: ${existingConnections.length} existing (${totalExistingLength.toFixed(2)}km) + ${proposedConnections.length} proposed (${totalProposedLength.toFixed(2)}km) connections`
       );
       
     } catch (error) {
+      console.error("❌ CRITICAL ERROR in KML processing:", error);
+      console.error("Error stack:", error instanceof Error ? error.stack : 'No stack trace');
       showNotification("error", `Critical error loading KML data: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -966,206 +1089,240 @@ useEffect(() => {
 }, [apiGPSResponse, apiConctResponse, map]);
 
   useEffect(() => {
-    if (!map || !apiConctResponse?.connections?.length) return;
-       polylineInstanceMap.forEach((polyline, key) => {
-          if (map && polyline) {
-            polyline.setMap(null);
-          }
-        });
-    setDistanceInfoWindows([]);
-    const bounds = new window.google.maps.LatLngBounds();
-    let totalExisting = 0;
+  if (!map || !apiConctResponse?.connections?.length) {
+    return;
+  }
+
+  // Clear existing polylines
+  polylineInstanceMap.forEach((polyline, key) => {
+    if (map && polyline) {
+      polyline.setMap(null);
+    }
+  });
+  
+  setDistanceInfoWindows([]);
+  const bounds = new window.google.maps.LatLngBounds();
+  
+  // IMPORTANT: In preview mode, DON'T recalculate distances - use the ones from preview
+  let totalExisting = 0;
+  let totalProposed = 0;
+  let shouldUpdateDistances = previewKmlData === null; // Only update if NOT in preview mode
+  
+  const newPolylineHistory: Record<string, {
+    instance: google.maps.Polyline;
+    data: PolylineEntry;
+  }> = {};
+
+  apiConctResponse.connections.forEach((connection: Connection, index: any) => {
+
+    if (!Array.isArray(connection.coordinates) || connection.coordinates.length < 2) {
+      console.warn(`Skipping invalid connection: ${connection.name}`);
+      return;
+    }
     
-    const newPolylineHistory: Record<string, {
-      instance: google.maps.Polyline;
-      data: PolylineEntry;
-    }> = {};
-  
-    apiConctResponse.connections.forEach((connection: Connection,index:any) => {
-      if (!Array.isArray(connection.coordinates) || connection.coordinates.length < 2) {
-        console.warn(`Skipping invalid connection: ${connection.name}`);
-        return;
-      }
-       const key = `${connection.start} TO ${connection.end}`;
+    const key = `${connection.start} TO ${connection.end}`;
 
-  
-      if (deletedPolylines.has(key)) {
-        return;
-      }
+    if (deletedPolylines.has(key)) {
+      return;
+    }
 
-      const path = connection.coordinates.map((coord) => {
-        const point = { lat: coord[1], lng: coord[0] };
-        bounds.extend(point);
-        return point;
-      });
-     const polyline = new window.google.maps.Polyline({
-        path,
-        geodesic: true,
-        strokeColor: connection.color || "#00AA00",
-        strokeOpacity: 1.0,
-        strokeWeight: 4,
-      });
-  
-      polyline.setMap(map);
-      const offsetIndex = Math.floor(path.length * 0.5);
-      const midPoint = path[offsetIndex];
-  
-      setDistanceInfoWindows(prev => [
-        ...prev,
-        {
-          position: midPoint,
-          distance: connection.length || 0,
-        },
-      ]);
-      
-      const startLgdCode = apiGPSResponse.points.find((point: PointType) => point.name === connection.start);
-      const endLgdCode = apiGPSResponse.points.find((point: PointType) => point.name === connection.end);
-      newPolylineHistory[`${connection.start} TO ${connection.end}`] = {
-        instance: polyline,
-        data: {
-          polyline: { coordinates: path },
-          segmentData: {
-            connection: {
-              length: connection.length || 0,
-              existing: previewKmlData === null ? true : connection.existing ?? false,
-            },
-            startCords: startLgdCode?.properties.lgd_code || '123',
-            endCords: endLgdCode?.properties.lgd_code || '1234',
-          }, 
-        },
-      };
-      if (previewKmlData !== null && connection.existing) {
-        totalExisting += connection.length;
-      }else if(previewKmlData === null){
-         totalExisting += connection.length;
-      }
-      const routeKey = `${connection.start}-${connection.end}`;
+    const path = connection.coordinates.map((coord) => {
+      const point = { lat: coord[1], lng: coord[0] };
+      bounds.extend(point);
+      return point;
+    });
+    
+    const polyline = new window.google.maps.Polyline({
+      path,
+      geodesic: true,
+      strokeColor: connection.color || "#00AA00",
+      strokeOpacity: 1.0,
+      strokeWeight: 4,
+    });
 
-      if(previewKmlData !== null && connection.existing === false){
+    polyline.setMap(map);
+    const offsetIndex = Math.floor(path.length * 0.5);
+    const midPoint = path[offsetIndex];
+
+    setDistanceInfoWindows(prev => [
+      ...prev,
+      {
+        position: midPoint,
+        distance: connection.length || 0,
+      },
+    ]);
+    
+    const startLgdCode = apiGPSResponse.points.find((point: PointType) => point.name === connection.start);
+    const endLgdCode = apiGPSResponse.points.find((point: PointType) => point.name === connection.end);
+    
+    newPolylineHistory[key] = {
+      instance: polyline,
+      data: {
+        polyline: { coordinates: path },
+        segmentData: {
+          connection: {
+            length: connection.length || 0,
+            existing: connection.existing ?? false,
+          },
+          startCords: startLgdCode?.properties.lgd_code || '123',
+          endCords: endLgdCode?.properties.lgd_code || '1234',
+        }, 
+      },
+    };
+    
+    // Calculate totals (but only use them if NOT in preview mode)
+    if (connection.existing === true) {
+      totalExisting += connection.length || 0;
+    } else {
+      totalProposed += connection.length || 0;
+    }
+    
+    const routeKey = `${connection.start}-${connection.end}`;
+
+    // Handle proposed lines for editing
+    if (previewKmlData !== null && connection.existing === false) {
       const segmentKey = `${routeKey}-route${index + 1}`;
       const labelPos = path[Math.floor(path.length / 2)];  
-        polylineHistory.set(segmentKey, {
-            polyline,
-            segmentData: {
-              connection: {
-                length: connection.length,
-                existing:connection.existing ?? false,
-                color: connection.color,
-              },
-            },
-            original: {
-              coords: path.slice(),
-              distance: connection.length,
-              markerPositions: [],
-              labelPos: labelPos ? [labelPos.lat, labelPos.lng] : null,
-              labelText: `${connection.length} km`
-            },
-            undoStack: [],
-            dragMarkers: [],
-
-            
+      
+      polylineHistory.set(segmentKey, {
+        polyline,
+        segmentData: {
+          connection: {
+            length: connection.length,
+            existing: connection.existing ?? false,
+            color: connection.color,
+          },
+        },
+        original: {
+          coords: path.slice(),
+          distance: connection.length,
+          markerPositions: [],
+          labelPos: labelPos ? [labelPos.lat, labelPos.lng] : null,
+          labelText: `${connection.length} km`
+        },
+        undoStack: [],
+        dragMarkers: [],
       });
+    }
+      
+    polyline.addListener("click", () => {
+      const completeLineProperties = {
+        name: connection.name || `${connection.start} TO ${connection.end}`,
+        start: connection.start,
+        end: connection.end,
+        length: Number(connection.length || 0),
+        existing: connection.existing,
+        color: connection.color,
+        
+        properties: {
+          ...(connection.segmentData?.properties || {}),
+          ...(connection.originalProperties || {}),
+          
+          id: connection.id,
+          network_id: connection.network_id,
+          type: connection.type,
+          status: connection.status,
+          user_id: connection.user_id,
+          user_name: connection.user_name,
+          created_at: connection.created_at,
+          updated_at: connection.updated_at,
+          
+          start_node: connection.start,
+          end_node: connection.end,
+          length: Number(connection.length || 0).toString(),
+          existing: connection.existing,
+          connection_name: connection.name,
+          
+          start_latlong: connection.start_latlong,
+          end_latlong: connection.end_latlong,
+          
+          startCords: connection.segmentData?.startCords || "NULL",
+          endCords: connection.segmentData?.endCords || "NULL"
+        },
+        
+        segmentData: connection.segmentData,
+        originalConnectionData: connection
+      };
+      
+      setPointProperties(completeLineProperties);
+      
+      if(previewKmlData !== null){
+        handleRouteSelection(routeKey, index, connection.length, true);
+        setSelectedRouteIndex(index);
       }
-      
-      polyline.addListener("click", () => {
-  // Create a comprehensive object that includes ALL parsed properties
-  const completeLineProperties = {
-    // Basic connection info
-    name: connection.name || `${connection.start} TO ${connection.end}`,
-    start: connection.start,
-    end: connection.end,
-    length: Number(connection.length || 0), // Ensure it's a number
-    existing: connection.existing,
-    color: connection.color,
-    
-    // Add the properties field that PointDetails expects
-    properties: {
-      // Include all segmentData properties
-      ...(connection.segmentData?.properties || {}),
-      
-      // Include original properties
-      ...(connection.originalProperties || {}),
-      
-      // Add basic connection metadata as properties
-      id: connection.id,
-      network_id: connection.network_id,
-      type: connection.type,
-      status: connection.status,
-      user_id: connection.user_id,
-      user_name: connection.user_name,
-      created_at: connection.created_at,
-      updated_at: connection.updated_at,
-      
-      // Add route-specific properties
-      start_node: connection.start,
-      end_node: connection.end,
-      length: Number(connection.length || 0).toString(),
-      existing: connection.existing,
-      connection_name: connection.name,
-      
-      // Add coordinates info
-      start_latlong: connection.start_latlong,
-      end_latlong: connection.end_latlong,
-      
-      // Add segment coordinates info
-      startCords: connection.segmentData?.startCords || "NULL",
-      endCords: connection.segmentData?.endCords || "NULL"
-    },
-    
-    // Keep original segmentData for reference
-    segmentData: connection.segmentData,
-    
-    // Keep original properties for debugging
-    originalConnectionData: connection
-  };
-  
-  setPointProperties(completeLineProperties);
-  
-  if(previewKmlData !== null ){
-      handleRouteSelection(routeKey, index, connection.length, true);
-      setSelectedRouteIndex(index);
-  }
-});
     });
-    
-    setPolylineInstanceMap(prev => {
-      const newMap = new Map(prev);
-       Object.entries(newPolylineHistory).forEach(([key, val]) => {
-        newMap.set(key, val.instance);
-      });
-      return newMap;
+  });
+  
+  setPolylineInstanceMap(prev => {
+    const newMap = new Map(prev);
+    Object.entries(newPolylineHistory).forEach(([key, val]) => {
+      newMap.set(key, val.instance);
     });
-    
+    return newMap;
+  });
+
+  // CRITICAL FIX: Only update distances if NOT in preview mode
+  // In preview mode, the distances should already be set correctly by the preview effect
+  if (shouldUpdateDistances) {
+    console.log(null, {
+      existing: totalExisting.toFixed(3),
+      proposed: totalProposed.toFixed(3)
+    });
     setExistingDistance(totalExisting);
-    map.fitBounds(bounds);
+    setProposedDistance(totalProposed);
+  } else {
+    console.log(null, {
+      current_existing: existingDistance.toFixed(3),
+      current_proposed: proposedDistance.toFixed(3),
+      calculated_existing: totalExisting.toFixed(3),
+      calculated_proposed: totalProposed.toFixed(3),
+      note: "Not updating to preserve preview calculations"
+    });
+  }
   
-    setLocalData(prev => ({
-      ...prev,
-      totalLength: totalExisting,
-      existinglength: totalExisting,
-      polylineHistory: {
-        ...prev.polylineHistory,
-        ...Object.fromEntries(
-          Object.entries(newPolylineHistory).map(([key, val]) => [key, val.data])
-        ),
-      },
-    }));
-  }, [apiConctResponse, map,deletedPolylines]);
+  map.fitBounds(bounds);
+
+  // Update LocalData with calculated totals, but don't override line summary state in preview mode
+  const finalExisting = shouldUpdateDistances ? totalExisting : existingDistance;
+  const finalProposed = shouldUpdateDistances ? totalProposed : proposedDistance;
+
+  setLocalData(prev => ({
+    ...prev,
+    totalLength: finalExisting + finalProposed,
+    existinglength: finalExisting,
+    proposedlength: finalProposed,
+    polylineHistory: {
+      ...prev.polylineHistory,
+      ...Object.fromEntries(
+        Object.entries(newPolylineHistory).map(([key, val]) => [key, val.data])
+      ),
+    },
+  }));
+}, [apiConctResponse, map, deletedPolylines, previewKmlData, existingDistance, proposedDistance]);
 
   useEffect(() => {
-    
-    const total = Object.values(LocalData.polylineHistory || {})
-      .filter(h => h.segmentData?.connection && !h.segmentData.connection.existing)
-      .reduce((sum, h) => sum + (h.segmentData.connection.length || 0), 0);
+  // IMPORTANT: Skip this recalculation in preview mode
+  if (previewKmlData !== null) {
+    return;
+  }
 
-    setLocalData(prev => ({
-      ...prev,
-      totalLength: prev.existinglength + total,
-      proposedlength: Number(total),
+  // Calculate proposed distance from polylineHistory (user-created routes)
+  const proposedFromHistory = Object.values(LocalData.polylineHistory || {})
+    .filter(h => h.segmentData?.connection && !h.segmentData.connection.existing)
+    .reduce((sum, h) => sum + (h.segmentData.connection.length || 0), 0);
 
-    }));
-    setProposedDistance(Number(total));
-  }, [LocalData.polylineHistory]);
+  // Update the total calculations
+  const newTotalLength = LocalData.existinglength + proposedFromHistory;
+
+  setLocalData(prev => ({
+    ...prev,
+    totalLength: newTotalLength,
+    proposedlength: Number(proposedFromHistory),
+  }));
+  
+  setProposedDistance(Number(proposedFromHistory));
+
+}, [LocalData.polylineHistory, LocalData.existinglength, previewKmlData]);
 
   // REF SYNCHRONIZATION EFFECTS
   
@@ -1240,6 +1397,145 @@ useEffect(() => {
       AImodehandle()
     }
   }, [AIMode, map]);
+
+const isLocationValid = !!(selectedState && selectedDistrict && selectedBlock);
+const locationFilters = {
+  state: selectedState || '',
+  district: selectedDistrict || '',
+  block: selectedBlock || '',
+  state_name: states.find(s => s.state_id === selectedState)?.state_name || '',
+  district_name: districts.find(d => d.district_id === selectedDistrict)?.district_name || '',
+  block_name: blocks.find(b => b.block_id === selectedBlock)?.block_name || ''
+};
+
+// 4. ADD THESE FUNCTIONS (same pattern as Construction.tsx)
+const fetchStates = async () => {
+  try {
+    setLoadingStates(true);
+    
+    const response = await fetch(`${BASEURL}/states`);
+    if (!response.ok) throw new Error('Failed to fetch states');
+    
+    const result: { success: boolean; data: StateData[] } = await response.json();
+    
+    setStates(result.success ? result.data : []);
+  } catch (error) {
+    console.error('Error fetching states:', error);
+    setStates([]);
+    showNotification("error", "Failed to load states");
+  } finally {
+    setLoadingStates(false);
+  }
+};
+
+const fetchDistricts = async (stateId: string) => {
+  if (!stateId) {
+    setDistricts([]);
+    return;
+  }
+
+  try {
+    setLoadingDistricts(true);
+    
+    const response = await fetch(`${BASEURL}/districtsdata?state_code=${stateId}`);
+    if (!response.ok) throw new Error('Failed to fetch districts');
+    
+    const data = await response.json();
+    
+    setDistricts(data || []);
+  } catch (error) {
+    console.error('Error fetching districts:', error);
+    setDistricts([]);
+    showNotification("error", "Failed to load districts");
+  } finally {
+    setLoadingDistricts(false);
+  }
+};
+
+const fetchBlocks = async (districtId: string) => {
+  if (!districtId) {
+    setBlocks([]);
+    return;
+  }
+
+  try {
+    setLoadingBlocks(true);
+    
+    const response = await fetch(`${BASEURL}/blocksdata?district_code=${districtId}`);
+    if (!response.ok) throw new Error('Failed to fetch blocks');
+    
+    const data = await response.json();
+    
+    setBlocks(data || []);
+  } catch (error) {
+    console.error('Error fetching blocks:', error);
+    setBlocks([]);
+    showNotification("error", "Failed to load blocks");
+  } finally {
+    setLoadingBlocks(false);
+  }
+};
+
+const handleLocationFilterChange = (newState: string | null, newDistrict: string | null, newBlock: string | null) => {
+  const params: Record<string, string> = {};
+  if (newState) params.state_id = newState;
+  if (newDistrict) params.district_id = newDistrict;
+  if (newBlock) params.block_id = newBlock;
+  setSearchParams(params);
+};
+
+const handleStateChange = (value: string) => {
+  const newState = value || null;
+  setSelectedState(newState);
+  setSelectedDistrict(null);
+  setSelectedBlock(null);
+  handleLocationFilterChange(newState, null, null);
+};
+
+const handleDistrictChange = (value: string) => {
+   const newDistrict = value || null;
+  setSelectedDistrict(newDistrict);
+  setSelectedBlock(null);
+  handleLocationFilterChange(selectedState, newDistrict, null);
+};
+
+const handleBlockChange = (value: string) => {
+  const newBlock = value || null;
+  setSelectedBlock(newBlock);
+  handleLocationFilterChange(selectedState, selectedDistrict, newBlock);
+};
+
+useEffect(() => {
+  fetchStates();
+}, []);
+
+useEffect(() => {
+  if (selectedState) {
+    fetchDistricts(selectedState);
+  } else {
+    setDistricts([]);
+  }
+}, [selectedState]);
+
+useEffect(() => {
+  if (selectedDistrict) {
+    fetchBlocks(selectedDistrict);
+  } else {
+    setBlocks([]);
+  }
+}, [selectedDistrict]);
+
+// Initialize from URL params
+useEffect(() => {
+  const state_id = searchParams.get('state_id') || null;
+  const district_id = searchParams.get('district_id') || null;
+  const block_id = searchParams.get('block_id') || null;
+
+  setSelectedState(state_id);
+  setSelectedDistrict(district_id);
+  setSelectedBlock(block_id);
+}, []);
+
 
   
   // ROUTE CALCULATION FUNCTIONS
@@ -1952,26 +2248,24 @@ useEffect(() => {
 };
 
   const deletePolylineAndDistance = (key: string) => {
- 
+  
   // Remove polyline from map
-
   setPolylineInstanceMap(prev => {
-  const newMap = new Map(prev);
-  const polyline = newMap.get(key);
-  if (polyline) {
-    polyline.setMap(null); // remove from map
-    newMap.delete(key);
-  }
+    const newMap = new Map(prev);
+    const polyline = newMap.get(key);
+    if (polyline) {
+      polyline.setMap(null); // remove from map
+      newMap.delete(key);
+        }
 
-  setDeletedPolylines(prevSet => {
-    const newSet = new Set(prevSet);
-    newSet.add(key); // e.g., "PAKUAHAT TO BAMANGOLA"
-    return newSet;
+    setDeletedPolylines(prevSet => {
+      const newSet = new Set(prevSet);
+      newSet.add(key); // e.g., "PAKUAHAT TO BAMANGOLA"
+      return newSet;
+    });
+
+    return newMap;
   });
-
-  return newMap;
-});
-
 
   // Remove distance InfoWindow
   setDistanceInfoWindows((prev) => {
@@ -1985,15 +2279,46 @@ useEffect(() => {
     });
   });
 
-  // Optionally remove from polylineHistory
+  // Remove from polylineHistory and update distances
   setLocalData((prev) => {
     const updatedHistory = { ...prev.polylineHistory };
+    const deletedEntry = updatedHistory[key];
     delete updatedHistory[key];
+    
+    // Recalculate distances after deletion
+    const deletedLength = deletedEntry?.segmentData?.connection?.length || 0;
+    const wasExisting = deletedEntry?.segmentData?.connection?.existing || false;
+    
+    console.log(``, {
+      key,
+      length: deletedLength,
+      wasExisting
+    });
+    
+    const newExistingLength = wasExisting ? prev.existinglength - deletedLength : prev.existinglength;
+    const newProposedLength = !wasExisting ? prev.proposedlength - deletedLength : prev.proposedlength;
+    
     return {
       ...prev,
       polylineHistory: updatedHistory,
+      existinglength: Math.max(0, newExistingLength),
+      proposedlength: Math.max(0, newProposedLength),
+      totalLength: Math.max(0, newExistingLength + newProposedLength)
     };
   });
+  
+  // Update the component state distances
+  const deletedEntry = LocalData.polylineHistory[key];
+  if (deletedEntry) {
+    const deletedLength = deletedEntry.segmentData?.connection?.length || 0;
+    const wasExisting = deletedEntry.segmentData?.connection?.existing || false;
+    
+    if (wasExisting) {
+      setExistingDistance(prev => Math.max(0, prev - deletedLength));
+    } else {
+      setProposedDistance(prev => Math.max(0, prev - deletedLength));
+    }
+  }
 };
 
 
@@ -2067,6 +2392,13 @@ useEffect(() => {
     return;
   }
 
+  // Validation: Ensure location is selected before saving
+  if (!selectedState || !selectedDistrict || !selectedBlock) {
+    showNotification("error", "Please select State, District, and Block before saving");
+    setSaveFile(false);
+    return;
+  }
+
   try {
     setIsSaving(true);
     setLoader(true);
@@ -2097,15 +2429,17 @@ useEffect(() => {
     }
 
     const allPoints = localData.loop.filter(point => !point.name.includes(" TO "));
-
     const firstPoint = allPoints[0];
+
+    // UPDATED: Use filter selections as primary source, fallback to existing data
     const adminCodes = {
-      blockCode: firstPoint?.properties?.blk_code || '',
-      blockName: firstPoint?.properties?.blk_name || localData.mainPointName || '',
-      dtCode: firstPoint?.properties?.dt_code || localData.dt_code || '',
-      dtName: firstPoint?.properties?.dt_name || localData.dt_name || '',
-      stCode: firstPoint?.properties?.st_code || localData.st_code || '',
-      stName: firstPoint?.properties?.st_name || localData.st_name || ''
+      // Use selected filter values first, then fallback to existing point data
+      blockCode: selectedBlock || firstPoint?.properties?.blk_code || '',
+      blockName: locationFilters.block_name || firstPoint?.properties?.blk_name || localData.mainPointName || '',
+      dtCode: selectedDistrict || firstPoint?.properties?.dt_code || localData.dt_code || '',
+      dtName: locationFilters.district_name || firstPoint?.properties?.dt_name || localData.dt_name || '',
+      stCode: selectedState || firstPoint?.properties?.st_code || localData.st_code || '',
+      stName: locationFilters.state_name || firstPoint?.properties?.st_name || localData.st_name || ''
     };
 
     const buildLineProperties = (
@@ -2353,12 +2687,13 @@ useEffect(() => {
             long: point.properties?.long || (point.coordinates && point.coordinates[0] ? point.coordinates[0].toString() : ""),
             remarks: point.properties?.remarks || "",
             
-            blk_code: point.properties?.blk_code || adminCodes.blockCode,
-            blk_name: point.properties?.blk_name || adminCodes.blockName,
-            dt_code: point.properties?.dt_code || adminCodes.dtCode,
-            dt_name: point.properties?.dt_name || adminCodes.dtName,
-            st_code: point.properties?.st_code || adminCodes.stCode,
-            st_name: point.properties?.st_name || adminCodes.stName,
+            // ENSURE these use the adminCodes from filters
+            blk_code: adminCodes.blockCode,
+            blk_name: adminCodes.blockName,
+            dt_code: adminCodes.dtCode,
+            dt_name: adminCodes.dtName,
+            st_code: adminCodes.stCode,
+            st_name: adminCodes.stName,
             
             lgd_code: point.properties?.lgd_code || point.lgd_code || null,
             asset_code: point.properties?.asset_code || "",
@@ -2421,16 +2756,26 @@ useEffect(() => {
           })
         })),
         
+        // ENSURE globalData also uses filter selections
         mainPointName: adminCodes.blockName,
         blk_code: adminCodes.blockCode,
         blk_name: adminCodes.blockName,
-        totalLength: localData.totalLength || 0,
-        existinglength: localData.existinglength || 0,
-        proposedlength: localData.proposedlength || 0,
         dt_code: adminCodes.dtCode,
         dt_name: adminCodes.dtName,
         st_code: adminCodes.stCode,
         st_name: adminCodes.stName,
+        totalLength: localData.totalLength || 0,
+        existinglength: localData.existinglength || 0,
+        proposedlength: localData.proposedlength || 0,
+        
+        // Add filter metadata for debugging
+        location_filter_metadata: {
+          selected_state_id: selectedState,
+          selected_district_id: selectedDistrict,
+          selected_block_id: selectedBlock,
+          filter_timestamp: new Date().toISOString(),
+          source: "user_location_filters"
+        },
         
         ...(isPreviewMode && { network_id: networkId })
       },
@@ -2883,245 +3228,503 @@ useEffect(() => {
     </div>
   );
 
+  const LocationFilterPanel = () => (
+  <div className="absolute top-4 left-4 z-10 bg-white rounded-lg shadow-lg border border-gray-200 w-80">
+    <div className="p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-gray-700">Location Selection</h3>
+        <button
+          onClick={() => setShowLocationFilters(!showLocationFilters)}
+          className="text-gray-400 hover:text-gray-600"
+        >
+          {showLocationFilters ? '−' : '+'}
+        </button>
+      </div>
+      
+      {!isLocationValid && (
+        <div className="mb-3 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700">
+          Please select State, District, and Block to enable file operations
+        </div>
+      )}
+      
+      {showLocationFilters && (
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">State</label>
+            <select
+              value={locationFilters.state}
+              onChange={(e) => handleLocationFilterChange('state', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Select State</option>
+              {states.map((state) => (
+                <option key={state.state_id} value={state.state_id}>
+                  {state.state_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">District</label>
+            <select
+              value={locationFilters.district}
+              onChange={(e) => handleLocationFilterChange('district', e.target.value)}
+              disabled={!locationFilters.state}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+            >
+              <option value="">Select District</option>
+              {districts.map((district) => (
+                <option key={district.district_id} value={district.district_id}>
+                  {district.district_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Block</label>
+            <select
+              value={locationFilters.block}
+              onChange={(e) => handleLocationFilterChange('block', e.target.value)}
+              disabled={!locationFilters.district}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+            >
+              <option value="">Select Block</option>
+              {blocks.map((block) => (
+                <option key={block.block_id} value={block.block_id}>
+                  {block.block_name}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          {isLocationValid && (
+            <div className="p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">
+              ✓ Location selected: {locationFilters.state_name} → {locationFilters.district_name} → {locationFilters.block_name}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  </div>
+);
+
+
   
   // RENDER
   
 
   return (
-    <div className="relative h-full w-full">
-      {loader && (
-        <div className="absolute top-70 right-150 z-10">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-800 mx-auto mb-4"></div>
-        </div>
-      )}
-      {/* Search Box */}
-      <div className="absolute top-20 left-1 right-200 mx-auto w-45 z-10">
-
-        <div className="relative">
-          <input
-            id="map-search"
-            type="text"
-            placeholder="Find a place"
-            className={`w-full pl-10 pr-4 py-2 rounded-full shadow-md bg-white text-sm placeholder-gray-500 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-opacity duration-300 ${showSearch ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-          />
-
-          {/* Show this icon inside the input only when search is open */}
-          {showSearch && (
-            <span className="absolute left-3 top-2.5 text-xl pointer-events-none">
-              <img src={MapIcon} className="w-5" alt="Map Icon" />
-            </span>
-          )}
-
-          {/* Toggle button: MapIcon when closed, × when open */}
-          <button
-            type="button"
-            className="absolute right-2 top-2 text-gray-500 hover:text-gray-700 z-10"
-            onClick={() => setShowSearch(!showSearch)}
-          >
-            {showSearch ? (
-              '×'
-            ) : (
-              <img src={MapIcon} className="w-5" alt="Open search" />
-            )}
-          </button>
-          {/* Dropdown results */}
-          {searchResults.length > 0 && (
-            <ul className="absolute top-full mt-2 left-0 w-full bg-white shadow-lg rounded-md z-20 max-h-60 overflow-y-auto">
-              {searchResults.map((place, index) => (
-                <li
-                  key={index}
-                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                  onClick={() => handleSelect(place)}
-                >
-                  {place.name} ({place.formatted_address})
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+  <div className="relative h-full w-full">
+    {loader && (
+      <div className="absolute top-70 right-150 z-10">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-800 mx-auto mb-4"></div>
       </div>
+    )}
+    
+    {/* Search Box - Left side (keeping your existing implementation) */}
+    <div className="absolute top-20 left-1 right-200 mx-auto w-45 z-10">
+      <div className="relative">
+        <input
+          id="map-search"
+          type="text"
+          placeholder="Find a place"
+          className={`w-full pl-10 pr-4 py-2 rounded-full shadow-md bg-white text-sm placeholder-gray-500 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-opacity duration-300 ${showSearch ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
+        />
 
-
-      {/* Google Map Component */}
-      <GoogleMap
-        mapContainerStyle={containerStyle}
-        center={center}
-        zoom={15}
-        onLoad={onLoad}
-        onUnmount={onUnmount}
-        mapTypeId="roadmap"
-        options={{
-          // styles: MapStyles,
-          disableDefaultUI: false,
-          zoomControl: true,
-          mapTypeControl: true,
-          streetViewControl: true,
-          fullscreenControl: true,
-          scrollwheel: true
-        }}
-      >
-        {/* Markers */}
-        {apiGPSResponse?.points?.map((point: GPSPoint, index: number) => {
-          const position = {
-            lat: point.coordinates[1], 
-            lng: point.coordinates[0], 
-          };
-  
-          const isPointSame = pointA && !pointB && isSameCoordinate(pointA, position);
-
-          return (
-            <Marker
-              key={`marker-${index}-${point.name}`}
-              position={position}
-              icon={{
-                url: point?.properties?.icon?.startsWith("http")
-                  ? point.properties.icon
-                  : 'https://maps.google.com/mapfiles/ms/icons/purple-dot.png',
-                scaledSize: new window.google.maps.Size(30, 30),
-              }}
-              title={point.name}
-              onClick={() => {
-                setPointProperties(point);
-                if (AutoMode) {
-                  if (!pointA) {
-                    setPointAName(point.name)
-                    setPointA(position)
-                  } else if (!pointB && !isPointSame) {
-                    setPointBName(point.name)
-                    setPointB(position);
-                  }
-                }
-              }}
-            />
-          )
-        })}
-        {distanceInfoWindows.map((info, idx) => (
-          <DistanceLabel
-            key={idx}
-            position={info.position}
-            text={`${info.distance?.toFixed(2)} km`}
-          />
-        ))}
-
-        {AutoMode && (
-          <div className="absolute top-15 right-4 z-50 bg-white text-white rounded-lg shadow-lg w-80 overflow-hidden">
-            {/* Header */}
-            <div className="bg-gray-200 text-blue-800 flex justify-between items-center px-4 py-3">
-              <h2 className="text-lg font-semibold">Route Selection</h2>
-              <button className="text-blue-800 hover:text-blue-600 text-xl font-bold" onClick={() => setAutoMode(false)}>&times;</button>
-            </div>
-
-            {/* Body */}
-            <div className="p-4 space-y-2">
-              <p><span className="font-bold text-black">Point A:</span> <span className="text-gray-700">{pointA ? `${pointAName}` : 'Not Selected'}</span></p>
-              <p><span className="font-bold text-black">Point B:</span> <span className="text-gray-700">{pointB ? `${pointBName}` : 'Not Selected'}</span></p>
-
-              <div className="flex gap-2 pt-2">
-                <button className="flex-1 bg-gray-300 text-black py-2 px-0 rounded-md font-medium flex items-center justify-center hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed" disabled={!pointA || !pointB}
-                  onClick={HandleCalculation}
-
-                >
-                  🧭 Calculate Route
-                </button>
-                <button className="flex-1 bg-gray-300 text-black py-2 px-0 rounded-md font-medium flex items-center justify-center hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed" disabled={RouteKey === ''} onClick={() => { setIsOpen(true) }}>
-                  🗑️ Delete Route
-                </button>
-              </div>
-            </div>
-          </div>
-
+        {/* Show this icon inside the input only when search is open */}
+        {showSearch && (
+          <span className="absolute left-3 top-2.5 text-xl pointer-events-none">
+            <img src={MapIcon} className="w-5" alt="Map Icon" />
+          </span>
         )}
-        {lineSummary && (
-          <div className="absolute top-35 left-3  overflow-hidden">
-            <div className="p-3 rounded-lg shadow-md bg-white w-60 font-sans text-sm text-gray-800">
-              <strong className="text-base mb-2 font-semibold text-blue-900  flex justify-between items-center ">
-                Line Summary
-                <button className="text-blue-800 hover:text-blue-600 text-xl font-bold" onClick={() => setLineSummary(false)}>&times;</button>
 
-              </strong>
-
-              <div className="mb-1.5 flex items-center">
-                <div className="w-5 h-1 rounded-sm mr-2" style={{ backgroundColor: '#0f0' }}></div>
-                Existing Lines: {existingDistance.toFixed(2)}km
-              </div>
-
-              <div className="mb-2.5 flex items-center">
-                <div className="w-5 h-1 rounded-sm mr-2" style={{ backgroundColor: '#f00' }}></div>
-                Proposed Lines: {proposedDistance.toFixed(2)}km
-              </div>
-
-
-
-              <button
-                onClick={() => undoRouteChange(RouteKey)}
-                className="px-3 py-1.5 bg-gray-300 hover:bg-gray-200 rounded cursor-pointer font-bold border-none flex items-center justify-center gap-2"
-              >
-                <img src={UndoIcon} className='w-3' />
-                Undo
-              </button>
-            </div>
-          </div>
-        )}
-      </GoogleMap>
-      {IsOpen && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-            <h2 className="text-xl font-semibold mb-4">Delete Route</h2>
-            <p className="text-gray-700 mb-6">Are you sure you want to delete this route?</p>
-            <div className="flex justify-end space-x-4">
-              <button
-                onClick={() => setIsOpen(false)}
-                className="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-800"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => { deleteRoute(RouteKey, SelectRoute); setIsOpen(false) }}
-                className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {Notifier.visible && (
-        <div
-          className={`fixed top-4 right-4 z-[10000] p-4 rounded-lg shadow-lg flex items-start max-w-md transform transition-all duration-500 ease-in-out ${Notifier.type === 'success'
-            ? 'bg-green-100 border-l-4 border-green-500 text-green-700'
-            : 'bg-red-100 border-l-4 border-red-500 text-red-700'
-            } animate-fadeIn`}
-          style={{ animation: 'fadeIn 0.3s ease-out' }}
+        {/* Toggle button: MapIcon when closed, × when open */}
+        <button
+          type="button"
+          className="absolute right-2 top-2 text-gray-500 hover:text-gray-700 z-10"
+          onClick={() => setShowSearch(!showSearch)}
         >
-          <div className="mr-3 mt-0.5">
-            {Notifier.type === 'success'
-              ? <CheckCircle size={20} className="text-green-500" />
-              : <AlertCircle size={20} className="text-red-500" />
-            }
+          {showSearch ? (
+            '×'
+          ) : (
+            <img src={MapIcon} className="w-5" alt="Open search" />
+          )}
+        </button>
+        
+        {/* Dropdown results */}
+        {searchResults.length > 0 && (
+          <ul className="absolute top-full mt-2 left-0 w-full bg-white shadow-lg rounded-md z-20 max-h-60 overflow-y-auto">
+            {searchResults.map((place, index) => (
+              <li
+                key={index}
+                className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                onClick={() => handleSelect(place)}
+              >
+                {place.name} ({place.formatted_address})
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+
+    {/* Toggle Button for Location Filter - Always visible */}
+    <button
+      onClick={() => setShowLocationPanel(!showLocationPanel)}
+      className="absolute top-14 right-2 z-20 bg-white rounded-lg shadow-lg border border-gray-200 p-3 hover:bg-gray-50 transition-colors"
+      title={showLocationPanel ? "Hide Location Filter" : "Show Location Filter"}
+    >
+      <svg 
+        className="w-5 h-5 text-gray-600" 
+        fill="none" 
+        stroke="currentColor" 
+        viewBox="0 0 24 24"
+      >
+        <path 
+          strokeLinecap="round" 
+          strokeLinejoin="round" 
+          strokeWidth={2} 
+          d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" 
+        />
+        <path 
+          strokeLinecap="round" 
+          strokeLinejoin="round" 
+          strokeWidth={2} 
+          d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" 
+        />
+      </svg>
+    </button>
+
+    {/* Location Filter Panel - Conditionally rendered */}
+    {showLocationPanel && (
+  <div className="absolute top-4 right-16 z-10 bg-white rounded-lg shadow-lg border border-gray-200 w-80">
+    <div className="p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-gray-700">Location Selection</h3>
+        <button
+          onClick={() => setShowLocationFilters(!showLocationFilters)}
+          className="text-gray-400 hover:text-gray-600"
+        >
+          {showLocationFilters ? '−' : '+'}
+        </button>
+      </div>
+      
+      {/* Status indicator */}
+      <div className={`mb-3 p-2 rounded text-xs border ${
+        isLocationValid 
+          ? 'bg-green-50 border-green-200 text-green-700' 
+          : 'bg-amber-50 border-amber-200 text-amber-700'
+      }`}>
+        {isLocationValid ? (
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <span className="font-medium">File uploads enabled</span>
+            </div>
+            <div className="text-xs opacity-75">
+              {locationFilters.state_name} → {locationFilters.district_name} → {locationFilters.block_name}
+            </div>
           </div>
-          <div>
-            <p className="font-bold text-sm">
-              {Notifier.type === 'success' ? 'Success!' : 'Oops!'}
-            </p>
-            <p className="text-sm">
-              {Notifier.message}
-            </p>
+        ) : (
+          <div className="flex items-center gap-2">
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <span>Complete location selection to enable file uploads</span>
           </div>
-          <button
-            onClick={() => setNotifier(prev => ({ ...prev, visible: false }))}
-            className="ml-auto p-1 hover:bg-opacity-20 hover:bg-gray-500 rounded"
-            aria-label="Close notification"
-          >
-            <X size={16} />
-          </button>
+        )}
+      </div>
+      
+      {showLocationFilters && (
+        <div className="space-y-3">
+          {/* State Selection */}
+          <div className="relative">
+            <label className="block text-xs font-medium text-gray-700 mb-1">State</label>
+            <select
+  value={selectedState || ''}
+  onChange={(e) => handleStateChange(e.target.value)}  // Changed from handleLocationFilterChange
+  disabled={loadingStates}
+  className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+>
+  <option value="">Select State</option>
+  {states.map((state) => (
+    <option key={state.state_id} value={state.state_id}>
+      {state.state_name}
+    </option>
+  ))}
+</select>
+
+            <div className="absolute inset-y-0 right-0 top-6 flex items-center pr-2 pointer-events-none">
+              {loadingStates ? (
+                <svg className="animate-spin h-4 w-4 text-gray-400" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              )}
+            </div>
+          </div>
+
+          {/* District Selection */}
+          <div className="relative">
+            <label className="block text-xs font-medium text-gray-700 mb-1">District</label>
+            <select
+  value={selectedDistrict || ''}
+  onChange={(e) => handleDistrictChange(e.target.value)}  // Changed from handleLocationFilterChange
+  disabled={!selectedState || loadingDistricts}
+  className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:opacity-50"
+>
+  <option value="">Select District</option>
+  {districts.map((district) => (
+    <option key={district.district_id} value={district.district_id}>
+      {district.district_name}
+    </option>
+  ))}
+</select>
+            <div className="absolute inset-y-0 right-0 top-6 flex items-center pr-2 pointer-events-none">
+              {loadingDistricts ? (
+                <svg className="animate-spin h-4 w-4 text-gray-400" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              )}
+            </div>
+          </div>
+
+          {/* Block Selection */}
+          <div className="relative">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Block</label>
+            <select
+  value={selectedBlock || ''}
+  onChange={(e) => handleBlockChange(e.target.value)}  // Changed from handleLocationFilterChange
+  disabled={!selectedDistrict || loadingBlocks}
+  className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:opacity-50"
+>
+  <option value="">Select Block</option>
+  {blocks.map((block) => (
+    <option key={block.block_id} value={block.block_id}>
+      {block.block_name}
+    </option>
+  ))}
+</select>
+            <div className="absolute inset-y-0 right-0 top-6 flex items-center pr-2 pointer-events-none">
+              {loadingBlocks ? (
+                <svg className="animate-spin h-4 w-4 text-gray-400" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              )}
+            </div>
+          </div>
+
+          {/* Clear Selection Button */}
+          {(selectedState || selectedDistrict || selectedBlock) && (
+            <button
+              onClick={() => {
+                setSelectedState(null);
+                setSelectedDistrict(null);
+                setSelectedBlock(null);
+                setSearchParams({});
+              }}
+              className="w-full px-3 py-2 text-xs text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Clear Selection
+            </button>
+          )}
         </div>
       )}
     </div>
+  </div>
+)}
 
+    {/* Google Map Component - keeping your existing implementation */}
+    <GoogleMap
+      mapContainerStyle={containerStyle}
+      center={center}
+      zoom={15}
+      onLoad={onLoad}
+      onUnmount={onUnmount}
+      mapTypeId="roadmap"
+      options={{
+        disableDefaultUI: false,
+        zoomControl: true,
+        mapTypeControl: true,
+        streetViewControl: true,
+        fullscreenControl: true,
+        scrollwheel: true
+      }}
+    >
+      {/* Markers - keeping your existing implementation */}
+      {apiGPSResponse?.points?.map((point: GPSPoint, index: number) => {
+        const position = {
+          lat: point.coordinates[1], 
+          lng: point.coordinates[0], 
+        };
 
-  );
+        const isPointSame = pointA && !pointB && isSameCoordinate(pointA, position);
+
+        return (
+          <Marker
+            key={`marker-${index}-${point.name}`}
+            position={position}
+            icon={{
+              url: point?.properties?.icon?.startsWith("http")
+                ? point.properties.icon
+                : 'https://maps.google.com/mapfiles/ms/icons/purple-dot.png',
+              scaledSize: new window.google.maps.Size(30, 30),
+            }}
+            title={point.name}
+            onClick={() => {
+              setPointProperties(point);
+              if (AutoMode) {
+                if (!pointA) {
+                  setPointAName(point.name)
+                  setPointA(position)
+                } else if (!pointB && !isPointSame) {
+                  setPointBName(point.name)
+                  setPointB(position);
+                }
+              }
+            }}
+          />
+        )
+      })}
+      
+      {distanceInfoWindows.map((info, idx) => (
+        <DistanceLabel
+          key={idx}
+          position={info.position}
+          text={`${info.distance?.toFixed(2)} km`}
+        />
+      ))}
+
+      {/* Auto Mode Panel - keeping your existing implementation */}
+      {AutoMode && (
+        <div className="absolute top-15 right-4 z-50 bg-white text-white rounded-lg shadow-lg w-80 overflow-hidden">
+          <div className="bg-gray-200 text-blue-800 flex justify-between items-center px-4 py-3">
+            <h2 className="text-lg font-semibold">Route Selection</h2>
+            <button className="text-blue-800 hover:text-blue-600 text-xl font-bold" onClick={() => setAutoMode(false)}>&times;</button>
+          </div>
+          <div className="p-4 space-y-2">
+            <p><span className="font-bold text-black">Point A:</span> <span className="text-gray-700">{pointA ? `${pointAName}` : 'Not Selected'}</span></p>
+            <p><span className="font-bold text-black">Point B:</span> <span className="text-gray-700">{pointB ? `${pointBName}` : 'Not Selected'}</span></p>
+            <div className="flex gap-2 pt-2">
+              <button className="flex-1 bg-gray-300 text-black py-2 px-0 rounded-md font-medium flex items-center justify-center hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed" disabled={!pointA || !pointB}
+                onClick={HandleCalculation}
+              >
+                🧭 Calculate Route
+              </button>
+              <button className="flex-1 bg-gray-300 text-black py-2 px-0 rounded-md font-medium flex items-center justify-center hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed" disabled={RouteKey === ''} onClick={() => { setIsOpen(true) }}>
+                🗑️ Delete Route
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Line Summary - keeping your existing implementation */}
+      {lineSummary && (
+        <div className="absolute top-35 left-3 overflow-hidden">
+          <div className="p-3 rounded-lg shadow-md bg-white w-60 font-sans text-sm text-gray-800">
+            <strong className="text-base mb-2 font-semibold text-blue-900 flex justify-between items-center">
+              Line Summary
+              <button className="text-blue-800 hover:text-blue-600 text-xl font-bold" onClick={() => setLineSummary(false)}>&times;</button>
+            </strong>
+            <div className="mb-1.5 flex items-center">
+              <div className="w-5 h-1 rounded-sm mr-2" style={{ backgroundColor: '#0f0' }}></div>
+              Existing Lines: {existingDistance.toFixed(2)}km
+            </div>
+            <div className="mb-2.5 flex items-center">
+              <div className="w-5 h-1 rounded-sm mr-2" style={{ backgroundColor: '#f00' }}></div>
+              Proposed Lines: {proposedDistance.toFixed(2)}km
+            </div>
+            <button
+              onClick={() => undoRouteChange(RouteKey)}
+              className="px-3 py-1.5 bg-gray-300 hover:bg-gray-200 rounded cursor-pointer font-bold border-none flex items-center justify-center gap-2"
+            >
+              <img src={UndoIcon} className='w-3' />
+              Undo
+            </button>
+          </div>
+        </div>
+      )}
+    </GoogleMap>
+    
+    {/* Delete Route Modal - keeping your existing implementation */}
+    {IsOpen && (
+      <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+          <h2 className="text-xl font-semibold mb-4">Delete Route</h2>
+          <p className="text-gray-700 mb-6">Are you sure you want to delete this route?</p>
+          <div className="flex justify-end space-x-4">
+            <button
+              onClick={() => setIsOpen(false)}
+              className="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-800"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => { deleteRoute(RouteKey, SelectRoute); setIsOpen(false) }}
+              className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    
+    {/* Notification - keeping your existing implementation */}
+    {Notifier.visible && (
+      <div
+        className={`fixed top-4 right-4 z-[10000] p-4 rounded-lg shadow-lg flex items-start max-w-md transform transition-all duration-500 ease-in-out ${Notifier.type === 'success'
+          ? 'bg-green-100 border-l-4 border-green-500 text-green-700'
+          : 'bg-red-100 border-l-4 border-red-500 text-red-700'
+        } animate-fadeIn`}
+        style={{ animation: 'fadeIn 0.3s ease-out' }}
+      >
+        <div className="mr-3 mt-0.5">
+          {Notifier.type === 'success'
+            ? <CheckCircle size={20} className="text-green-500" />
+            : <AlertCircle size={20} className="text-red-500" />
+          }
+        </div>
+        <div>
+          <p className="font-bold text-sm">
+            {Notifier.type === 'success' ? 'Success!' : 'Oops!'}
+          </p>
+          <p className="text-sm">
+            {Notifier.message}
+          </p>
+        </div>
+        <button
+          onClick={() => setNotifier(prev => ({ ...prev, visible: false }))}
+          className="ml-auto p-1 hover:bg-opacity-20 hover:bg-gray-500 rounded"
+          aria-label="Close notification"
+        >
+          <X size={16} />
+        </button>
+      </div>
+    )}
+  </div>
+);
 };
 
 export default MapComponent;
