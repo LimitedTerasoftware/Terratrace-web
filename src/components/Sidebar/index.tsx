@@ -35,7 +35,8 @@ import {
   Building,
   User2Icon,
   Globe2Icon,
-  Settings              // Icon for Installation
+  Settings,              // Icon for Installation
+  Grid3X3   
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -242,6 +243,28 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                  </NavLink>
                </li>
              )}
+
+             {/* Add Blocks Management above GIS Inventory */}
+              {!viewOnly && (
+                <li>
+                  <NavLink
+                    to="/blocks-management"
+                    className={`
+                      flex items-center py-2 ${isOpen ? 'px-3 gap-4' : 'px-2 gap-0'} rounded-lg 
+                      transition-colors duration-200 text-bodydark1 
+                      ${pathname.includes('blocks-management') 
+                        ? 'bg-graydark dark:bg-meta-4' 
+                        : 'hover:bg-graydark dark:hover:bg-meta-4'}
+                      ${!isOpen ? 'w-[44px] justify-center' : ''}
+                    `}
+                  >
+                    <div className="min-w-[20px] flex justify-center">
+                      <Grid3X3 className="w-5 h-5" />
+                    </div>
+                    {isOpen && <span className="whitespace-nowrap">Blocks Management</span>}
+                  </NavLink>
+                </li>
+              )}
 
               {InvOnly && (
                   <li>

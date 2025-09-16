@@ -63,6 +63,7 @@ import BlockInstallationEdit from './components/DepthChart/Installation/BlockIns
 import Dashboard from './components/DepthChart/MachineWorkChart/Dashboard';
 import GPListData from './components/GPList';
 import ScrollToTop from './components/Breadcrumbs/ScrollToTop';
+import BlocksManagement from './components/BlocksManagement/index';
 //import AuditLogs from './components/AuditLogs';
 
 function App() {
@@ -542,6 +543,17 @@ function App() {
                   <IndexChart />
                 </DefaultLayout>
             </>}/>
+            <Route 
+  path="/blocks-management" 
+  element={
+    <>
+      <DefaultLayout>
+        <PageTitle title="Blocks Management" />
+        <BlocksManagement />
+      </DefaultLayout>
+    </>
+  } 
+/>
              <Route path='/machine-data' element={<>
                 <DefaultLayout>
                   <PageTitle title="Machine-Data" />

@@ -13,7 +13,8 @@ export interface VideoClip {
 export interface TrackPoint { 
   lat: number; 
   lng: number; 
-  timestamp: number; 
+  timestamp: number;
+  surveyId?: string; // Add survey ID
 }
 
 // Enhanced segment selection interface
@@ -365,45 +366,192 @@ export class VideoSurveyService {
   }
 
   /**
-   * Builds GPS track points from LIVELOCATION and VIDEORECORD events
-   */
-  private static buildTrackPoints(rawPhysicalSurveyData: any): TrackPoint[] {
+ * Simplified track point extraction matching video playback page approach
+ */
+private static buildTrackPoints(rawPhysicalSurveyData: any): TrackPoint[] {
+  if (!rawPhysicalSurveyData?.data) {
+    return [];
+  }
+  
+  // Group all data by survey ID first (like video playbook page)
+  const surveyGroups: Record<string, any[]> = {};
+  
+  Object.entries(rawPhysicalSurveyData.data).forEach(([blockId, points]) => {
+    if (!Array.isArray(points)) return;
     
-    if (!rawPhysicalSurveyData?.data) {
-      console.warn('No data found in rawPhysical');
-      return [];
-    }
-    
-    const points: TrackPoint[] = [];
-    
-    Object.entries(rawPhysicalSurveyData.data).forEach(([blockId, rows]) => {
-      
-      if (!Array.isArray(rows)) {
-        console.warn(`Block ${blockId} data is not an array:`, rows);
-        return;
+    points.forEach(point => {
+      if (point.survey_id) {
+        if (!surveyGroups[point.survey_id]) {
+          surveyGroups[point.survey_id] = [];
+        }
+        surveyGroups[point.survey_id].push(point);
       }
-      
-      rows.forEach((r: any, index: number) => {
-        // Process LIVELOCATION points (main GPS track)
-        if (r.event_type === 'LIVELOCATION') {
-          const point = this.processLiveLocationPoint(r, blockId, index);
-          if (point) {
-            points.push(point);
+    });
+  });
+  
+  // Process each survey group separately
+  const allTrackPoints: TrackPoint[] = [];
+  
+  Object.entries(surveyGroups).forEach(([surveyId, surveyPoints]) => {
+    const surveyTrackPoints = surveyPoints
+      .filter(item => {
+        if (item.event_type === 'LIVELOCATION') return true;
+        if (item.event_type === 'VIDEORECORD' && item.surveyUploaded === 'true') {
+          try {
+            const videoDetails = JSON.parse(item.videoDetails);
+            return videoDetails?.startLatitude && videoDetails?.startLongitude &&
+                   videoDetails?.endLatitude && videoDetails?.endLongitude;
+          } catch (error) {
+            return false;
           }
         }
-        
-        // Process VIDEORECORD start/end points
-        if (r.event_type === 'VIDEORECORD' && r.videoDetails) {
-          const videoPoints = this.processVideoRecordPoints(r, blockId, index);
-          points.push(...videoPoints);
+        return false;
+      })
+      .flatMap(item => {
+        if (item.event_type === 'LIVELOCATION') {
+          return [{
+            lat: parseFloat(item.latitude),
+            lng: parseFloat(item.longitude),
+            timestamp: this.getEventTime(item),
+            surveyId: item.survey_id // Add survey ID to track points
+          }];
+        } else if (item.event_type === 'VIDEORECORD') {
+          try {
+            const videoDetails = JSON.parse(item.videoDetails);
+            return [
+              {
+                lat: videoDetails.startLatitude,
+                lng: videoDetails.startLongitude,
+                timestamp: videoDetails.startTimeStamp,
+                surveyId: item.survey_id
+              },
+              {
+                lat: videoDetails.endLatitude,
+                lng: videoDetails.endLongitude,
+                timestamp: videoDetails.endTimeStamp,
+                surveyId: item.survey_id
+              }
+            ];
+          } catch (error) {
+            return [];
+          }
         }
-      });
-    });
+        return [];
+      })
+      .sort((a, b) => a.timestamp - b.timestamp); // Sort within each survey
     
-    
-    // Sort by timestamp and remove duplicates
-    return this.deduplicateTrackPoints(points);
+    allTrackPoints.push(...surveyTrackPoints);
+  });
+  
+  return allTrackPoints;
+}
+
+/**
+ * Get event time (matching video playback page logic)
+ */
+private static getEventTime(item: any, isEnd = false): number {
+  if (item.event_type === "VIDEORECORD") {
+    try {
+      const videoDetails = JSON.parse(item.videoDetails);
+      return isEnd
+        ? videoDetails?.endTimeStamp ?? 0
+        : videoDetails?.startTimeStamp ?? 0;
+    } catch (error) {
+      return 0;
+    }
   }
+  return new Date(item.createdTime || item.created_at).getTime();
+}
+
+/**
+ * Simplified video clip extraction matching video playback page
+ */
+private static buildVideoClips(rawPhysicalSurveyData: any): VideoClip[] {
+  if (!rawPhysicalSurveyData?.data) {
+    return [];
+  }
+  
+  const clips: VideoClip[] = [];
+  
+  Object.entries(rawPhysicalSurveyData.data).forEach(([blockId, points]) => {
+    if (!Array.isArray(points)) return;
+    
+    // Filter video records (same logic as video playback page)
+    const videos = points.filter(item =>
+      item.event_type === "VIDEORECORD" && 
+      item.surveyUploaded === 'true' &&
+      item.videoDetails &&
+      item.videoDetails.trim() !== ""
+    );
+    
+    videos.forEach(video => {
+      try {
+        const videoDetails = JSON.parse(video.videoDetails);
+        
+        // Check for valid video URL (same as video playback page)
+        const videoUrl = videoDetails?.videoUrl?.trim().replace(/(^"|"$)/g, '');
+        if (!videoUrl || videoUrl === "") {
+          return;
+        }
+        
+        clips.push({
+          id: `${video.survey_id}_${videoDetails.startTimeStamp}`,
+          videoUrl: resolveMediaUrl(videoUrl),
+          startTimeStamp: videoDetails.startTimeStamp,
+          endTimeStamp: videoDetails.endTimeStamp,
+          meta: {
+            surveyId: video.survey_id,
+            blockId: blockId,
+            area_type: video.area_type,
+            side_type: video.side_type,
+            route_details: video.route_details,
+            originalVideoDetails: videoDetails
+          }
+        });
+      } catch (error) {
+        console.warn(`Failed to parse video details for survey ${video.survey_id}:`, error);
+      }
+    });
+  });
+  
+  // Sort clips by start timestamp
+  return clips.sort((a, b) => a.startTimeStamp - b.startTimeStamp);
+}
+
+/**
+ * Position interpolation matching video playbook page getPositionAtTime function
+ */
+public static interpolatePosition(trackPoints: TrackPoint[], timestamp: number): { lat: number; lng: number } | null {
+  if (!trackPoints.length) return null;
+  
+  // If timestamp is before first point
+  if (timestamp <= trackPoints[0].timestamp) {
+    return { lat: trackPoints[0].lat, lng: trackPoints[0].lng };
+  }
+  
+  // If timestamp is after last point
+  if (timestamp >= trackPoints[trackPoints.length - 1].timestamp) {
+    const lastPoint = trackPoints[trackPoints.length - 1];
+    return { lat: lastPoint.lat, lng: lastPoint.lng };
+  }
+  
+  // Find two points that timestamp falls between
+  for (let i = 0; i < trackPoints.length - 1; i++) {
+    const current = trackPoints[i];
+    const next = trackPoints[i + 1];
+    
+    if (timestamp >= current.timestamp && timestamp <= next.timestamp) {
+      // Calculate position using linear interpolation (exact same as video page)
+      const ratio = (timestamp - current.timestamp) / (next.timestamp - current.timestamp);
+      return {
+        lat: current.lat + (next.lat - current.lat) * ratio,
+        lng: current.lng + (next.lng - current.lng) * ratio
+      };
+    }
+  }
+  
+  return null;
+}
 
   /**
    * Process a single LIVELOCATION event into a TrackPoint

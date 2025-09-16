@@ -9,6 +9,9 @@ interface NetworksResponse {
   message: string;
   total?: number; // Added for server-side pagination
   total_pages?: number; // Alternative if API returns total pages
+  pagination?: {
+    totalRows?: number;
+  };
 }
 
 interface Network {
@@ -315,7 +318,7 @@ const RouteList = () => {
     }
   };
 
-  // Fetch districts by state ID
+  // Fetch districts by state ID - Simplified approach like Construction.tsx
   const fetchDistricts = async (stateId: string) => {
     if (!stateId) {
       setDistricts([]);
@@ -337,7 +340,7 @@ const RouteList = () => {
     }
   };
 
-  // Fetch blocks by district ID
+  // Fetch blocks by district ID - Simplified approach like Construction.tsx
   const fetchBlocks = async (districtId: string) => {
     if (!districtId) {
       setBlocks([]);
@@ -361,115 +364,101 @@ const RouteList = () => {
 
   // Fetch networks with filters - Updated for server-side pagination
   const fetchNetworks = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      let url = 'https://api.tricadtrack.com/get-verified-netwrorks';
-      const params = new URLSearchParams();
-      
-      // Add pagination
-      params.append('page', currentPage.toString());
-      params.append('limit', itemsPerPage.toString());
-      
-      // Send state_id instead of state_code
-      const stateToUse = selectedState || '6'; // Default to West Bengal's state_id
-      params.append('state_id', stateToUse);
-      
-      // Add other filters
-      if (selectedDistrict) {
-        params.append('district_id', selectedDistrict);
-      }
+  try {
+    setLoading(true);
+    setError(null);
+    
+    let url = 'https://api.tricadtrack.com/get-verified-netwrorks';
+    const params = new URLSearchParams();
+    
+    // Add pagination
+    params.append('page', currentPage.toString());
+    params.append('limit', itemsPerPage.toString());
+    
+    // Convert IDs to codes and send codes to API
+    if (selectedState) {
+  params.append('st_code', selectedState);
+}
+    
+    if (selectedDistrict) {
+  params.append('dt_code', selectedDistrict);
+}
 
-      if (selectedBlock) {
-        params.append('block_id', selectedBlock);
-      }
+    if (selectedBlock) {
+  params.append('blk_code', selectedBlock);
+}
 
-      if (selectedStatus) {
-        params.append('status', selectedStatus);
-      }
-
-      if (fromDate) {
-        params.append('from_date', fromDate);
-      }
-
-      if (toDate) {
-        params.append('to_date', toDate);
-      }
-
-      if (globalsearch.trim()) {
-        params.append('search', globalsearch);
-      }
-      
-      url += '?' + params.toString();
-      console.log('Final API URL:', url);
-      
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
-      }
-      
-      const data: NetworksResponse = await response.json();
-      console.log('API Response:', data);
-      
-      setNetworks(data.success ? data.data : []);
-      // Updated to read from the correct API response structure
-      const totalFromAPI = data.pagination?.totalRows || data.total || data.data.length;
-      setTotalCount(totalFromAPI);
-      
-      console.log('API Response:', data);
-      console.log('Total rows from pagination:', data.pagination?.totalRows);
-      console.log('Total count set to:', totalFromAPI);
-      
-      setNetworksLoaded(true);
-    } catch (error) {
-      console.error('Error fetching networks:', error);
-      setError(error instanceof Error ? error.message : 'Unknown error');
-    } finally {
-      setLoading(false);
+    if (selectedStatus) {
+      params.append('status', selectedStatus);
     }
-  };
+
+    if (fromDate) {
+      params.append('from_date', fromDate);
+    }
+
+    if (toDate) {
+      params.append('to_date', toDate);
+    }
+
+    if (globalsearch.trim()) {
+      params.append('search', globalsearch);
+    }
+    
+    url += '?' + params.toString();
+    
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`API request failed with status ${response.status}`);
+    }
+    
+    const data: NetworksResponse = await response.json();
+    
+    setNetworks(data.success ? data.data : []);
+    const totalFromAPI = data.pagination?.totalRows || data.total || data.data.length;
+    setTotalCount(totalFromAPI);
+    
+    setNetworksLoaded(true);
+  } catch (error) {
+    console.error('Error fetching networks:', error);
+    setError(error instanceof Error ? error.message : 'Unknown error');
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Load states on mount
   useEffect(() => {
     fetchStates();
   }, []);
 
-  // Load districts when state changes
+  // Load districts when state changes - Simplified like Construction.tsx
   useEffect(() => {
     if (selectedState) {
-      const selectedStateData = states.find(state => state.state_id.toString() === selectedState);
-      if (selectedStateData) {
-        fetchDistricts(selectedStateData.state_code);
-      }
+      fetchDistricts(selectedState); // Pass state_id directly
     } else {
       setDistricts([]);
       setSelectedDistrict(null);
     }
-  }, [selectedState, states]);
+  }, [selectedState]);
 
-  // Load blocks when district changes
+  // Load blocks when district changes - Simplified like Construction.tsx
   useEffect(() => {
     if (selectedDistrict) {
-      const selectedDistrictData = districts.find(district => district.district_id?.toString() === selectedDistrict);
-      if (selectedDistrictData) {
-        fetchBlocks(selectedDistrictData.district_code);
-      }
+      fetchBlocks(selectedDistrict); // Pass district_id directly
     } else {
       setBlocks([]);
       setSelectedBlock(null);
     }
-  }, [selectedDistrict, districts]);
+  }, [selectedDistrict]);
 
   // Load data when filters change or page changes
   useEffect(() => {
-    if (filtersReady) {
-      setNetworksLoaded(false);
-      fetchNetworks();
-    }
-  }, [selectedState, selectedDistrict, selectedBlock, selectedStatus, fromDate, toDate, globalsearch, currentPage, states, districts, blocks, filtersReady]);
-
+  if (filtersReady) {
+    setNetworksLoaded(false);
+    fetchNetworks();
+  }
+}, [selectedState, selectedDistrict, selectedBlock, selectedStatus, fromDate, toDate, globalsearch, currentPage, filtersReady, states, districts, blocks]);
   // Handle filter changes
   const handleStateChange = (value: string) => {
     const newState = value || null;

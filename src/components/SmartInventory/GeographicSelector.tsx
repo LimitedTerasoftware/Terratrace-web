@@ -46,6 +46,7 @@ interface PreviewDropdownProps {
   onPhysicalSurvey: () => void;
   onDesktopPlanning: () => void;
   position: { x: number; y: number };
+  dataTypeFilter?: 'physical' | 'desktop';
 }
 
 const PreviewDropdown: React.FC<PreviewDropdownProps> = ({
@@ -53,7 +54,8 @@ const PreviewDropdown: React.FC<PreviewDropdownProps> = ({
   onClose,
   onPhysicalSurvey,
   onDesktopPlanning,
-  position
+  position,
+  dataTypeFilter
 }) => {
   if (!isOpen) return null;
 
@@ -71,27 +73,40 @@ const PreviewDropdown: React.FC<PreviewDropdownProps> = ({
           top: position.y,
         }}
       >
-        <button
-          onClick={() => {
-            onPhysicalSurvey();
-            onClose();
-          }}
-          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-        >
-          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-          Physical Survey
-        </button>
+        {/* Show Physical Survey option only if not filtered or if filter is 'physical' */}
+        {(!dataTypeFilter || dataTypeFilter === 'physical') && (
+          <button
+            onClick={() => {
+              onPhysicalSurvey();
+              onClose();
+            }}
+            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+          >
+            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+            Physical Survey
+          </button>
+        )}
         
-        <button
-          onClick={() => {
-            onDesktopPlanning();
-            onClose();
-          }}
-          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-        >
-          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-          Desktop Planning
-        </button>
+        {/* Show Desktop Planning option only if not filtered or if filter is 'desktop' */}
+        {(!dataTypeFilter || dataTypeFilter === 'desktop') && (
+          <button
+            onClick={() => {
+              onDesktopPlanning();
+              onClose();
+            }}
+            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+          >
+            <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+            Desktop Planning
+          </button>
+        )}
+        
+        {/* Show message if both are filtered out (shouldn't happen in practice) */}
+        {dataTypeFilter && dataTypeFilter !== 'physical' && dataTypeFilter !== 'desktop' && (
+          <div className="px-4 py-2 text-sm text-gray-500">
+            No options available
+          </div>
+        )}
       </div>
     </>
   );
@@ -129,6 +144,7 @@ interface GeographicSelectorProps {
   }) => void;
   isLoadingPhysical?: boolean;
   isLoadingDesktopPlanning?: boolean;
+  dataTypeFilter?: 'physical' | 'desktop'; // New prop to filter preview options
 }
 
 export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
@@ -137,7 +153,8 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
   onPreview,
   onRefresh,
   isLoadingPhysical,
-  isLoadingDesktopPlanning
+  isLoadingDesktopPlanning,
+  dataTypeFilter
 }) => {
   const [isDistrictExpanded, setIsDistrictExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -537,7 +554,7 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
       selectedDistricts: selectedIds.districts,
       selectedBlocks: selectedIds.blocks,
       name,
-      dataType: 'physical' // Default to physical for refresh
+      dataType: dataTypeFilter || 'physical' // Use dataTypeFilter or default to physical
     });
   };
 
@@ -549,9 +566,14 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
       selectedDistricts: selectedIds.districts,
       selectedBlocks: selectedIds.blocks,
       name: 'All Selected Items',
-      dataType: 'physical' // Default to physical for universal refresh
+      dataType: dataTypeFilter || 'physical' // Use dataTypeFilter or default to physical
     });
   };
+
+  // Determine loading state based on data type filter
+  const isUniversalLoading = dataTypeFilter === 'physical' ? isLoadingPhysical : 
+                            dataTypeFilter === 'desktop' ? isLoadingDesktopPlanning : 
+                            (isLoadingPhysical || isLoadingDesktopPlanning);
 
   return (
     <div className="space-y-4">
@@ -562,6 +584,7 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
         onPhysicalSurvey={handlePhysicalSurvey}
         onDesktopPlanning={handleDesktopPlanning}
         position={dropdownState.position}
+        dataTypeFilter={dataTypeFilter}
       />
 
       {/* District/Division Section */}
@@ -572,7 +595,11 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
             onClick={() => setIsDistrictExpanded(!isDistrictExpanded)}
             className="w-full flex items-center justify-between p-3"
           >
-            <span className="font-semibold text-gray-900 text-sm">DISTRICT/DIVISION</span>
+            <span className="font-semibold text-gray-900 text-sm">
+              {dataTypeFilter === 'physical' ? 'PHYSICAL SURVEY AREAS' :
+               dataTypeFilter === 'desktop' ? 'DESKTOP PLANNING AREAS' :
+               'DISTRICT/DIVISION'}
+            </span>
             <div className="flex items-center gap-2">
               <button
                 onClick={(e) => {
@@ -593,16 +620,17 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
                 className={`
                   border-2 border-dashed 
                   w-10 h-10 rounded-full flex items-center justify-center transition-colors 
-                  ${(isLoadingPhysical || isLoadingDesktopPlanning)
+                  ${isUniversalLoading
                     ? 'border-gray-300 bg-blue-100'
                     : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
                   }
                   duration-200 gap-2
                   text-sm font-medium text-gray-700
                 `}
-                title='Reload'
+                title={`Reload ${dataTypeFilter === 'physical' ? 'Physical Survey' : 
+                                  dataTypeFilter === 'desktop' ? 'Desktop Planning' : 'All'} Data`}
               >
-                {(isLoadingPhysical || isLoadingDesktopPlanning) ?
+                {isUniversalLoading ?
                   <Loader className="h-4 w-4 animate-spin text-blue-400" /> :
                   <RefreshCwIcon size={18} />
                 }
@@ -619,7 +647,8 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search"
+                placeholder={`Search ${dataTypeFilter === 'physical' ? 'survey' : 
+                                     dataTypeFilter === 'desktop' ? 'planning' : ''} areas...`}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"

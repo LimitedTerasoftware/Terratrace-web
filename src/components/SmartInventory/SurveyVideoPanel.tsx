@@ -1,33 +1,23 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { VideoSurveyService, VideoClip, TrackPoint } from './VideoSurveyService';
-import { Play, Pause, SkipBack, SkipForward, Volume2, MapPin, Clock } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, MapPin, Clock, X } from 'lucide-react';
 
 interface SurveyVideoPanelProps {
   open: boolean;
   onClose: () => void;
-
-  // video set
   availableVideos: VideoClip[];
   currentVideoIndex: number;
   onChangeVideoIndex: (i: number) => void;
-
-  // absolute survey time
   currentTime: number; // ms
   onTimeChange: (t: number) => void;
-
-  // selection window (absolute ms)
   selection: { start?: number; end?: number };
   onSelectionChange: (sel: { start?: number; end?: number }) => void;
-
-  // GPS track points for enhanced interaction
   trackPoints: TrackPoint[];
   currentPosition?: { lat: number; lng: number };
-
-  // summary block
   surveySummary?: React.ReactNode;
 }
 
-// Patched Enhanced Video Player
+// Enhanced Video Player optimized for split screen
 const EnhancedVideoPlayer: React.FC<{
   videoUrl: string;
   currentTime: number;
@@ -41,6 +31,7 @@ const EnhancedVideoPlayer: React.FC<{
   hasNextVideo?: boolean;
   hasPreviousVideo?: boolean;
   className?: string;
+  currentSurveyId?: string;
 }> = ({
   videoUrl,
   currentTime,
@@ -53,7 +44,8 @@ const EnhancedVideoPlayer: React.FC<{
   onPreviousVideo,
   hasNextVideo = false,
   hasPreviousVideo = false,
-  className = ''
+  className = '',
+  currentSurveyId
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const seekBarRef = useRef<HTMLDivElement>(null);
@@ -61,7 +53,6 @@ const EnhancedVideoPlayer: React.FC<{
   const [duration, setDuration] = useState(0);
   const [progress, setProgress] = useState(0);
   const [volume, setVolume] = useState(1);
-  const [rotation, setRotation] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   const isSeekingRef = useRef<boolean>(false);
@@ -83,7 +74,6 @@ const EnhancedVideoPlayer: React.FC<{
       setIsLoading(true);
       setIsPlaying(false);
       setProgress(0);
-      setRotation(0);
       isSeekingRef.current = false;
       initialSyncDoneRef.current = false;
     }
@@ -124,7 +114,7 @@ const EnhancedVideoPlayer: React.FC<{
     video.addEventListener('seeked', handleSeeked);
   }, [currentTime, normalizeTime, duration]);
 
-  // Metadata load
+  // Event handlers
   const handleLoadedMetadata = useCallback(() => {
     const el = videoRef.current;
     if (el) {
@@ -135,7 +125,6 @@ const EnhancedVideoPlayer: React.FC<{
     }
   }, []);
 
-  // Time updates
   const handleTimeUpdate = useCallback(() => {
     const video = videoRef.current;
     if (!video || isSeekingRef.current) return;
@@ -152,7 +141,6 @@ const EnhancedVideoPlayer: React.FC<{
     }
   }, [duration, startTime, endTime, onTimeUpdate]);
 
-  // Play/pause
   const togglePlay = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -167,7 +155,6 @@ const EnhancedVideoPlayer: React.FC<{
     }
   }, [isPlaying]);
 
-  // Seek forward/back
   const seekForward = useCallback(() => {
     const video = videoRef.current;
     if (video && duration > 0) {
@@ -198,7 +185,6 @@ const EnhancedVideoPlayer: React.FC<{
     }
   }, [duration, startTime, onTimeUpdate]);
 
-  // Seek bar
   const handleSeekBarClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const bar = seekBarRef.current;
     const video = videoRef.current;
@@ -218,7 +204,6 @@ const EnhancedVideoPlayer: React.FC<{
     setTimeout(() => { isSeekingRef.current = false; }, 100);
   }, [duration, startTime, onTimeUpdate]);
 
-  // Volume
   const handleVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value);
     setVolume(newVolume);
@@ -227,7 +212,6 @@ const EnhancedVideoPlayer: React.FC<{
     }
   }, []);
 
-  // Video end/error
   const handleVideoEnded = useCallback(() => {
     setIsPlaying(false);
     if (hasNextVideo && onNextVideo) {
@@ -257,7 +241,6 @@ const EnhancedVideoPlayer: React.FC<{
     };
   }, [videoUrl]);
 
-  // Current coordinates
   const currentCoordinates = useMemo(() => {
     if (!currentPosition || !trackPoints.length) return null;
     return {
@@ -269,16 +252,25 @@ const EnhancedVideoPlayer: React.FC<{
   return (
     <div className={`rounded-lg bg-gray-900 shadow-lg ${className}`}>
       <div className="relative w-full h-full flex flex-col overflow-hidden">
-        {/* Overlay */}
+        {/* Compact Overlay with Date */}
         {currentCoordinates && (
-          <div className="absolute top-4 left-4 right-4 bg-black/70 text-white p-3 rounded-lg text-sm z-10 flex items-center justify-between">
-            <div className="flex items-center">
-              <MapPin size={16} className="mr-2" />
-              <span>{currentCoordinates.lat}°, {currentCoordinates.lng}°</span>
-            </div>
-            <div className="flex items-center ml-4">
-              <Clock size={16} className="mr-2" />
-              <span>{new Date(currentTime).toLocaleTimeString()}</span>
+          <div className="absolute top-2 left-2 right-2 bg-black/70 text-white p-1.5 rounded text-xs z-10">
+            <div className="flex items-center justify-between flex-wrap gap-1">
+              <div className="flex items-center space-x-2 min-w-0">
+                <MapPin size={10} className="flex-shrink-0" />
+                <span className="truncate">{currentCoordinates.lat}°, {currentCoordinates.lng}°</span>
+              </div>
+              <div className="flex items-center space-x-2 flex-shrink-0">
+                <div className="flex items-center space-x-1">
+                  <Clock size={10} />
+                  <span>{new Date(currentTime).toLocaleTimeString()}</span>
+                </div>
+                {startTime && (
+                  <span className="text-gray-300 text-xs">
+                    {new Date(startTime).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -286,32 +278,27 @@ const EnhancedVideoPlayer: React.FC<{
         {/* Loading */}
         {isLoading && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-2 border-blue-500 border-t-transparent" />
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent" />
           </div>
         )}
 
-        {/* Video */}
-        <div className="flex-1 relative overflow-hidden flex items-center justify-center">
-          <div
-            style={{ transform: `rotate(${rotation}deg)`, transition: 'transform 0.3s ease' }}
-            className="max-h-full w-full"
-          >
-            <video
-              ref={videoRef}
-              src={videoUrl}
-              className="max-h-full w-full object-contain"
-              onTimeUpdate={handleTimeUpdate}
-              onLoadedMetadata={handleLoadedMetadata}
-              onEnded={handleVideoEnded}
-              onError={handleVideoError}
-              preload="metadata"
-              playsInline
-            />
-          </div>
+        {/* Video Container - Flexible Height */}
+        <div className="flex-1 relative overflow-hidden flex items-center justify-center bg-black min-h-[240px] max-h-[400px]">
+          <video
+            ref={videoRef}
+            src={videoUrl}
+            className="w-full h-full object-cover"
+            onTimeUpdate={handleTimeUpdate}
+            onLoadedMetadata={handleLoadedMetadata}
+            onEnded={handleVideoEnded}
+            onError={handleVideoError}
+            preload="metadata"
+            playsInline
+          />
         </div>
 
-        {/* Controls */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+        {/* Compact Controls */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-2">
           {/* Seek bar */}
           <div
             ref={seekBarRef}
@@ -325,10 +312,10 @@ const EnhancedVideoPlayer: React.FC<{
           </div>
 
           <div className="flex items-center justify-between">
-            {/* Left controls */}
-            <div className="flex items-center space-x-2">
+            {/* Left controls - Compact */}
+            <div className="flex items-center space-x-1">
               <button
-                className={`p-1.5 rounded-full ${
+                className={`p-1 rounded ${
                   hasPreviousVideo
                     ? 'bg-gray-800/50 hover:bg-gray-700/50 text-white'
                     : 'bg-gray-800/20 text-gray-500 cursor-not-allowed'
@@ -337,35 +324,35 @@ const EnhancedVideoPlayer: React.FC<{
                 disabled={!hasPreviousVideo}
                 title="Previous video"
               >
-                <SkipBack size={14} />
+                <SkipBack size={12} />
               </button>
 
               <button
-                className="p-1.5 rounded-full bg-gray-800/50 hover:bg-gray-700/50 text-white"
+                className="p-1 rounded bg-gray-800/50 hover:bg-gray-700/50 text-white"
                 onClick={seekBackward}
                 title="Seek backward 5s"
               >
-                <SkipBack size={14} />
+                <SkipBack size={12} />
               </button>
 
               <button
-                className="p-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white"
+                className="p-1.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white"
                 onClick={togglePlay}
                 disabled={isLoading}
               >
-                {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+                {isPlaying ? <Pause size={14} /> : <Play size={14} />}
               </button>
 
               <button
-                className="p-1.5 rounded-full bg-gray-800/50 hover:bg-gray-700/50 text-white"
+                className="p-1 rounded bg-gray-800/50 hover:bg-gray-700/50 text-white"
                 onClick={seekForward}
                 title="Seek forward 5s"
               >
-                <SkipForward size={14} />
+                <SkipForward size={12} />
               </button>
 
               <button
-                className={`p-1.5 rounded-full ${
+                className={`p-1 rounded ${
                   hasNextVideo
                     ? 'bg-gray-800/50 hover:bg-gray-700/50 text-white'
                     : 'bg-gray-800/20 text-gray-500 cursor-not-allowed'
@@ -374,17 +361,17 @@ const EnhancedVideoPlayer: React.FC<{
                 disabled={!hasNextVideo}
                 title="Next video"
               >
-                <SkipForward size={14} />
+                <SkipForward size={12} />
               </button>
             </div>
 
-            {/* Center time */}
-            <div className="text-white text-xs mx-2">
+            {/* Center time - Compact */}
+            <div className="text-white text-xs px-2">
               {VideoSurveyService.formatDuration(normalizeTime(currentTime) * 1000)} / {VideoSurveyService.formatDuration(duration * 1000)}
             </div>
 
-            {/* Right controls */}
-            <div className="flex items-center space-x-2">
+            {/* Right controls - Compact */}
+            <div className="flex items-center space-x-1">
               <Volume2 size={10} className="text-white" />
               <input
                 type="range"
@@ -393,7 +380,7 @@ const EnhancedVideoPlayer: React.FC<{
                 step="0.01"
                 value={volume}
                 onChange={handleVolumeChange}
-                className="w-16 accent-blue-500"
+                className="w-12 accent-blue-500"
               />
             </div>
           </div>
@@ -403,7 +390,7 @@ const EnhancedVideoPlayer: React.FC<{
   );
 };
 
-// Main Panel
+// Main Panel Component - Optimized for Split Screen
 export default function SurveyVideoPanel(props: SurveyVideoPanelProps) {
   const {
     open, onClose,
@@ -416,6 +403,17 @@ export default function SurveyVideoPanel(props: SurveyVideoPanelProps) {
   } = props;
 
   const clip = availableVideos[currentVideoIndex];
+
+  // Survey-aware track points filtering
+  const currentSurveyTrackPoints = useMemo(() => {
+    if (!clip?.meta?.surveyId) return trackPoints;
+    return trackPoints.filter(point => point.surveyId === clip.meta.surveyId);
+  }, [trackPoints, clip?.meta?.surveyId]);
+
+  const allSurveyIds = useMemo(() => {
+    const surveyIds = new Set(trackPoints.map(point => point.surveyId).filter(Boolean));
+    return Array.from(surveyIds);
+  }, [trackPoints]);
 
   const handlePrevious = useCallback(() => {
     if (currentVideoIndex > 0) {
@@ -461,21 +459,24 @@ export default function SurveyVideoPanel(props: SurveyVideoPanelProps) {
   if (!open) return null;
 
   return (
-    <aside className="w-full md:w-[280px] xl:w-[380px] h-full border-l bg-white flex flex-col shadow-lg">
-      <div className="flex items-center justify-between p-3 border-b bg-gray-50">
+    <div className="w-full h-full bg-white flex flex-col">
+      {/* Header - Compact */}
+      <div className="flex items-center justify-between p-2 border-b bg-gray-50">
         <h2 className="text-sm font-semibold text-gray-800">Video Survey</h2>
         <button 
           onClick={onClose} 
-          className="text-gray-500 hover:text-gray-800 w-6 h-6 flex items-center justify-center rounded transition-colors"
+          className="text-gray-500 hover:text-gray-800 p-1 rounded transition-colors"
           aria-label="Close video panel"
         >
-          ✕
+          <X size={16} />
         </button>
       </div>
 
-      <div className="p-3 space-y-3 flex-1 overflow-y-auto">
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
         {clip && availableVideos.length > 0 ? (
-          <>
+          <div className="space-y-3 p-3">
+            {/* Video Player */}
             <EnhancedVideoPlayer
               videoUrl={clip.videoUrl}
               currentTime={currentTime}
@@ -483,68 +484,92 @@ export default function SurveyVideoPanel(props: SurveyVideoPanelProps) {
               startTime={clip.startTimeStamp}
               endTime={selection.end}
               currentPosition={currentPosition}
-              trackPoints={trackPoints}
+              trackPoints={currentSurveyTrackPoints}
               onNextVideo={handleNext}
               onPreviousVideo={handlePrevious}
               hasNextVideo={currentVideoIndex < availableVideos.length - 1}
               hasPreviousVideo={currentVideoIndex > 0}
-              className="h-64"
+              className="w-full"
+              currentSurveyId={clip.meta?.surveyId}
             />
 
+            {/* Clip Information - Compact */}
             {clipInfo && (
-              <div className="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg">
-                <div className="font-medium text-gray-800 mb-2">Clip Information</div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>Clip: {clipInfo.currentIndex} of {clipInfo.totalClips}</div>
-                  <div>Duration: {clipInfo.duration}</div>
-                  <div>Start: {clipInfo.startTime}</div>
-                  <div>End: {clipInfo.endTime}</div>
-                </div>
-                <div className="mt-2 pt-2 border-t border-gray-200 flex justify-between text-xs">
-                  <div>Survey ID: {clipInfo.surveyId}</div>
-                  <div className="flex flex-col items-end">
-                    <div>Video ID: {clipInfo.videoId}</div>
-                    <div className="text-gray-600">
-                      Current: {new Date(currentTime).toLocaleTimeString()}
-                    </div>
+              <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
+                <div className="font-medium text-gray-800 mb-1">Clip {clipInfo.currentIndex}/{clipInfo.totalClips}</div>
+                <div className="space-y-1">
+                  <div className="flex justify-between">
+                    <span>Duration:</span>
+                    <span>{clipInfo.duration}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Survey:</span>
+                    <span>{clipInfo.surveyId}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Current:</span>
+                    <span>{new Date(currentTime).toLocaleTimeString()}</span>
                   </div>
                 </div>
               </div>
             )}
 
+            {/* Selection Window - Compact */}
             {(selection.start != null || selection.end != null) && (
-              <div className="p-3 bg-blue-50 rounded-lg text-xs border border-blue-200">
-                <div className="font-medium text-blue-800 mb-2">Selection Window</div>
+              <div className="p-2 bg-blue-50 rounded text-xs border border-blue-200">
+                <div className="font-medium text-blue-800 mb-1">Selection</div>
                 <div className="space-y-1">
                   {selection.start != null && (
-                    <div className="text-blue-700">Start: {new Date(selection.start).toLocaleTimeString()}</div>
+                    <div className="flex justify-between text-blue-700">
+                      <span>Start:</span>
+                      <span>{new Date(selection.start).toLocaleTimeString()}</span>
+                    </div>
                   )}
                   {selection.end != null && (
-                    <div className="text-blue-700">End: {new Date(selection.end).toLocaleTimeString()}</div>
+                    <div className="flex justify-between text-blue-700">
+                      <span>End:</span>
+                      <span>{new Date(selection.end).toLocaleTimeString()}</span>
+                    </div>
                   )}
                   {selectionDurationFormatted && (
-                    <div className="text-blue-700 font-medium">Duration: {selectionDurationFormatted}</div>
-                  )}
-                  {selection.start != null && selection.end != null && clip && (
-                    <div className="text-blue-600 text-xs mt-2 pt-2 border-t border-blue-200">
-                      Selection covers {Math.round(((selection.end - selection.start) / (clip.endTimeStamp - clip.startTimeStamp)) * 100)}% of current clip
+                    <div className="flex justify-between text-blue-700 font-medium">
+                      <span>Duration:</span>
+                      <span>{selectionDurationFormatted}</span>
                     </div>
                   )}
                 </div>
               </div>
             )}
 
-            <div className="mt-3 p-3 border rounded-lg bg-gray-50">
-              <h3 className="text-sm font-semibold mb-2 text-gray-800">Survey Summary</h3>
+            {/* Survey Summary - Compact */}
+            <div className="p-2 border rounded bg-gray-50">
+              <h3 className="text-xs font-semibold mb-1 text-gray-800">Survey Summary</h3>
               {surveySummary || (
                 <div className="text-xs text-gray-600 space-y-1">
-                  <div>No summary available.</div>
-                  <div>Total Duration: {VideoSurveyService.formatDuration(clip.endTimeStamp - clip.startTimeStamp)}</div>
-                  <div>GPS Points: {trackPoints.length}</div>
+                  <div className="flex justify-between">
+                    <span>Survey ID:</span>
+                    <span>{clip?.meta?.surveyId || 'Unknown'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>GPS Points:</span>
+                    <span>{currentSurveyTrackPoints.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Total GPS:</span>
+                    <span>{trackPoints.length}</span>
+                  </div>
+                  {allSurveyIds.length > 1 && (
+                    <div className="pt-1 mt-1 border-t border-gray-200">
+                      <div className="font-medium mb-1">Available Surveys:</div>
+                      <div className="text-gray-500 text-xs break-words">
+                        {allSurveyIds.join(', ')}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          </>
+          </div>
         ) : (
           <div className="text-sm text-gray-600 p-4 text-center">
             <div className="mb-2">No videos available for this survey.</div>
@@ -554,6 +579,6 @@ export default function SurveyVideoPanel(props: SurveyVideoPanelProps) {
           </div>
         )}
       </div>
-    </aside>
+    </div>
   );
 }

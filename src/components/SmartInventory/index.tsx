@@ -365,7 +365,7 @@ function SmartInventory() {
           const allIssues = [...videoValidation.issues, ...photoValidation.issues];
           if (allIssues.length > 0) {
             console.warn('Data quality issues:', allIssues);
-            showNotification('warning', `Data loaded with ${allIssues.length} quality issues`);
+            showNotification('success', `Data loaded`);
           }
 
           const { placemarks, categories } = processPhysicalSurveyData(result);
@@ -744,55 +744,50 @@ function SmartInventory() {
 
   // Process video survey data using VideoSurveyService
   useEffect(() => {
-    if (!isVideoSurveyMode || !rawPhysicalSurveyData) {
-      // Reset to empty state when not in video mode
-      setVideoSurveyData(VideoSurveyService.processPhysicalSurveyData(null));
+  if (!isVideoSurveyMode || !rawPhysicalSurveyData) {
+    setVideoSurveyData(VideoSurveyService.processPhysicalSurveyData(null));
+    return;
+  }
+  
+  try {
+    // Use simplified processing (same as video playback page)
+    const processedVideoData = VideoSurveyService.processPhysicalSurveyData(rawPhysicalSurveyData);
+    
+    // Validation (keep existing)
+    const validation = VideoSurveyService.validateVideoSurveyData(rawPhysicalSurveyData);
+    
+    if (validation.issues.length > 0) {
+      console.warn('Video survey data validation issues:', validation.issues);
+      showNotification('warning', `Video survey data issues: ${validation.issues.length} problems found`);
+    }
+    
+    setVideoSurveyData(processedVideoData);
+    
+    if (processedVideoData.trackPoints.length === 0) {
+      showNotification('warning', 'No valid GPS track points found in survey data');
       return;
     }
     
-    
-    try {
-      // Use VideoSurveyService to process the data
-      const processedVideoData: VideoSurveyData = VideoSurveyService.processPhysicalSurveyData(rawPhysicalSurveyData);
-      
-      // Validate the processed data
-      const validation: ValidationResult = VideoSurveyService.validateVideoSurveyData(rawPhysicalSurveyData);
-      
-      if (validation.issues.length > 0) {
-        console.warn('Video survey data validation issues:', validation.issues);
-        showNotification('warning', `Video survey data issues: ${validation.issues.length} problems found`);
-      }
-      
-      
-      // Update state with processed data
-      setVideoSurveyData(processedVideoData);
-      
-      if (processedVideoData.trackPoints.length === 0) {
-        showNotification('warning', 'No valid GPS track points found in survey data');
-        return;
-      }
-      
-      if (processedVideoData.videoClips.length === 0) {
-        showNotification('info', 'No video clips found in survey data');
-        setCurrentTime(processedVideoData.trackPoints[0]?.timestamp ?? 0);
-        return;
-      }
-      
-      // Initialize with first clip
-      setCurrentVideoIndex(0);
-      setCurrentTime(processedVideoData.videoClips[0].startTimeStamp);
-      
-      showNotification('success', 
-        `Video survey loaded: ${processedVideoData.trackPoints.length} track points, ${processedVideoData.videoClips.length} video clips, duration: ${VideoSurveyService.formatDuration(processedVideoData.metadata.totalDuration)}`
-      );
-      
-    } catch (error) {
-      console.error('Error processing video survey data:', error);
-      showNotification('error', 'Failed to process video survey data');
-      setVideoSurveyData(VideoSurveyService.processPhysicalSurveyData(null));
+    if (processedVideoData.videoClips.length === 0) {
+      showNotification('info', 'No video clips found in survey data');
+      setCurrentTime(processedVideoData.trackPoints[0]?.timestamp ?? 0);
+      return;
     }
     
-  }, [isVideoSurveyMode, rawPhysicalSurveyData]);
+    // Initialize with first clip (same as video playback page)
+    setCurrentVideoIndex(0);
+    setCurrentTime(processedVideoData.videoClips[0].startTimeStamp);
+    
+    showNotification('success', 
+      `Video survey loaded: ${processedVideoData.trackPoints.length} track points, ${processedVideoData.videoClips.length} video clips`
+    );
+    
+  } catch (error) {
+    console.error('Error processing video survey data:', error);
+    showNotification('error', 'Failed to process video survey data');
+    setVideoSurveyData(VideoSurveyService.processPhysicalSurveyData(null));
+  }
+}, [isVideoSurveyMode, rawPhysicalSurveyData]);
 
   // Keep map marker in sync when currentTime changes using VideoSurveyService
   useEffect(() => {
@@ -807,41 +802,73 @@ function SmartInventory() {
   try {
     setShowRightPanel(true);
     
-    // Find the video clip containing this timestamp
-    const clipMatch = VideoSurveyService.findVideoClipForTimestamp(
-      videoSurveyData.videoClips, 
-      point.timestamp
+    // Strategy: Find video from SAME survey first
+    const pointSurveyId = point.surveyId;
+    
+    if (!pointSurveyId) {
+      showNotification('warning', 'Track point has no survey ID');
+      return;
+    }
+    
+    // Filter videos by the clicked point's survey
+    const sameSurveyVideos = videoSurveyData.videoClips.filter(
+      clip => clip.meta?.surveyId === pointSurveyId
     );
     
-    if (clipMatch) {
-      // Always set to the exact point timestamp, regardless of clip
-      setCurrentVideoIndex(clipMatch.index);
-      setCurrentTime(point.timestamp); // <-- FIX: Always use exact point timestamp
+    let selectedClip = null;
+    let selectedIndex = -1;
+    
+    if (sameSurveyVideos.length > 0) {
+      // Look for exact timestamp match within the same survey
+      const clipMatch = VideoSurveyService.findVideoClipForTimestamp(sameSurveyVideos, point.timestamp);
       
-    } else {
-      // No exact clip match - find nearest
-      const nearestMatch = VideoSurveyService.findNearestVideoClip(
-        videoSurveyData.videoClips, 
-        point.timestamp
-      );
-      
-      if (nearestMatch) {
-        setCurrentVideoIndex(nearestMatch.index);
-        // For nearest match, try to use the point timestamp if it's within reasonable range
-        const clipStart = nearestMatch.clip.startTimeStamp;
-        const clipEnd = nearestMatch.clip.endTimeStamp;
+      if (clipMatch) {
+        // Find the actual index in the full video array
+        selectedIndex = videoSurveyData.videoClips.findIndex(clip => clip.id === clipMatch.clip.id);
+        selectedClip = clipMatch.clip;
+        console.log(`Exact match found in Survey ${pointSurveyId}`);
+      } else {
+        // No exact match, find nearest video within same survey
+        const nearestMatch = VideoSurveyService.findNearestVideoClip(sameSurveyVideos, point.timestamp);
         
-        // If point is close to this clip (within 5 seconds), use point timestamp
-        // Otherwise use clip start
-        if (Math.abs(point.timestamp - clipStart) < 5000 || 
-            Math.abs(point.timestamp - clipEnd) < 5000) {
-          setCurrentTime(point.timestamp);
-        } else {
-          setCurrentTime(clipStart);
-          showNotification('info', 'No video found for this exact point. Showing nearest video.');
+        if (nearestMatch) {
+          selectedIndex = videoSurveyData.videoClips.findIndex(clip => clip.id === nearestMatch.clip.id);
+          selectedClip = nearestMatch.clip;
+          
+          const timeDiff = Math.abs(point.timestamp - nearestMatch.clip.startTimeStamp);
+          if (timeDiff > 30000) { // More than 30 seconds away
+            showNotification('success', `Showing nearest video from Survey ${pointSurveyId})`);
+          }
+        }
+      }
+    } else {
+      // Fallback: no videos in same survey - use cross-survey matching with warning
+      console.warn(`No videos found for Survey ${pointSurveyId}, falling back to cross-survey matching`);
+      
+      const clipMatch = VideoSurveyService.findVideoClipForTimestamp(videoSurveyData.videoClips, point.timestamp);
+      
+      if (clipMatch) {
+        selectedClip = clipMatch.clip;
+        selectedIndex = clipMatch.index;
+        showNotification('warning', `No videos in Survey ${pointSurveyId}. Showing from Survey ${selectedClip.meta?.surveyId}`);
+      } else {
+        // Last resort: find any nearest video
+        const nearestMatch = VideoSurveyService.findNearestVideoClip(videoSurveyData.videoClips, point.timestamp);
+        if (nearestMatch) {
+          selectedClip = nearestMatch.clip;
+          selectedIndex = nearestMatch.index;
+          showNotification('warning', `No matching video found. Showing nearest from Survey ${selectedClip.meta?.surveyId}`);
         }
       }
     }
+    
+    if (selectedClip && selectedIndex >= 0) {
+      setCurrentVideoIndex(selectedIndex);
+      setCurrentTime(point.timestamp);
+    } else {
+      showNotification('error', 'No video clips available for this track point');
+    }
+    
   } catch (error) {
     console.error('Error handling track point click:', error);
     showNotification('error', 'Failed to process track point click');
@@ -852,30 +879,61 @@ function SmartInventory() {
 useEffect(() => {
   if (!videoSurveyData.trackPoints.length) return;
   
-  // Find exact position or interpolate
-  const position = VideoSurveyService.interpolatePosition(
-    videoSurveyData.trackPoints, 
-    currentTime
-  );
+  // Get current video clip to determine which survey is active
+  const currentClip = videoSurveyData.videoClips[currentVideoIndex];
   
-  // Snap to nearest blue point if very close (within 100ms)
-  if (position && videoSurveyData.trackPoints.length > 0) {
-    const nearestPoint = videoSurveyData.trackPoints.reduce((closest, point) => {
-      const currentDist = Math.abs(point.timestamp - currentTime);
-      const closestDist = Math.abs(closest.timestamp - currentTime);
-      return currentDist < closestDist ? point : closest;
-    });
+  if (currentClip && currentClip.meta?.surveyId) {
+    // Filter to current survey's points only
+    const currentSurveyPoints = videoSurveyData.trackPoints.filter(
+      point => point.surveyId === currentClip.meta.surveyId
+    ).sort((a, b) => a.timestamp - b.timestamp);
     
-    // If within 100ms of a track point, snap to it exactly
-    if (Math.abs(nearestPoint.timestamp - currentTime) < 100) {
-      setCurrentPosition({ lat: nearestPoint.lat, lng: nearestPoint.lng });
+    if (currentSurveyPoints.length > 0) {
+      // Define survey time boundaries
+      const surveyStart = currentSurveyPoints[0].timestamp;
+      const surveyEnd = currentSurveyPoints[currentSurveyPoints.length - 1].timestamp;
+      
+      // Add buffer for video/GPS sync issues (10 seconds)
+      const buffer = 10000;
+      const extendedStart = surveyStart - buffer;
+      const extendedEnd = surveyEnd + buffer;
+      
+      // Check if currentTime belongs to this survey's time range
+      if (currentTime >= extendedStart && currentTime <= extendedEnd) {
+        // Safe to interpolate within this survey
+        const position = VideoSurveyService.interpolatePosition(currentSurveyPoints, currentTime);
+        setCurrentPosition(position);
+        
+        // Debug logging for troubleshooting
+        if (currentTime < surveyStart || currentTime > surveyEnd) {
+          console.log(`Time ${new Date(currentTime).toLocaleTimeString()} is in buffer zone for Survey ${currentClip.meta.surveyId}`);
+        }
+      } else {
+        // Time is outside this survey's range - hide red dot to prevent wrong positioning
+        console.warn(`Time ${new Date(currentTime).toLocaleTimeString()} outside Survey ${currentClip.meta.surveyId} range [${new Date(surveyStart).toLocaleTimeString()}, ${new Date(surveyEnd).toLocaleTimeString()}]`);
+        setCurrentPosition(null);
+        
+        // Optional: Show notification for significant time differences
+        const distanceFromSurvey = Math.min(
+          Math.abs(currentTime - surveyStart),
+          Math.abs(currentTime - surveyEnd)
+        );
+        
+        if (distanceFromSurvey > 60000) { // More than 1 minute away
+          console.log(`Current time is ${Math.round(distanceFromSurvey/1000)}s away from Survey ${currentClip.meta.surveyId} time range`);
+        }
+      }
     } else {
-      setCurrentPosition(position);
+      // No track points for this survey
+      console.warn(`No track points found for Survey ${currentClip.meta.surveyId}`);
+      setCurrentPosition(null);
     }
   } else {
-    setCurrentPosition(position);
+    // No active video clip or no survey ID
+    setCurrentPosition(null);
   }
-}, [currentTime, videoSurveyData.trackPoints]);
+}, [currentTime, videoSurveyData.trackPoints, videoSurveyData.videoClips, currentVideoIndex]);
+
 
   // Provide a summary node for the video panel using VideoSurveyService
   const summaryNode = useMemo(() => {
@@ -1142,7 +1200,7 @@ useEffect(() => {
       </Sidebar>
 
       {/* MAIN CONTENT - Map */}
-      <main className="flex-1 relative">
+      <main className={`flex-1 relative flex ${showRightPanel || showPhotoPanel ? 'divide-x' : ''}`}>
         {/* File Upload Modal */}
         <FileUploadModal
           isOpen={isModalOpen}
@@ -1152,29 +1210,64 @@ useEffect(() => {
           error={uploadError}
         />
 
-        {/* Google Map */}
-        <GoogleMap
-          placemarks={allPlacemarks}
-          categories={allCategories}
-          visibleCategories={visibleCategories}
-          highlightedPlacemark={highlightedPlacemark}
-          onPlacemarkClick={handlePlacemarkClick}
-          className="w-full h-full"
-          // Video survey overlays using VideoSurveyService data
-          videoSurveyMode={isVideoSurveyMode}
-          trackPoints={videoSurveyData.trackPoints}
-          currentPosition={currentPosition || undefined}
-          selection={selection}
-          onTrackPointClick={handleTrackPointClick}
-          // Photo survey overlays using PhotoSurveyService data
-          photoSurveyMode={isPhotoSurveyMode}
-          photoPoints={photoSurveyData.photoPoints}
-          onPhotoPointClick={handlePhotoPointClick}
-        />
+        {/* LEFT SIDE - Map Container */}
+        <div className={`relative transition-all duration-300 ${
+          showRightPanel || showPhotoPanel 
+            ? 'flex-1 min-w-0' // Flexible width, takes remaining space
+            : 'w-full'         // Full view: map takes full width
+        }`}>
+          {/* Google Map */}
+          <GoogleMap
+            placemarks={allPlacemarks}
+            categories={allCategories}
+            visibleCategories={visibleCategories}
+            highlightedPlacemark={highlightedPlacemark}
+            onPlacemarkClick={handlePlacemarkClick}
+            className="w-full h-full"
+            // Video survey overlays using VideoSurveyService data
+            videoSurveyMode={isVideoSurveyMode}
+            trackPoints={videoSurveyData.trackPoints}
+            currentPosition={currentPosition || undefined}
+            selection={selection}
+            onTrackPointClick={handleTrackPointClick}
+            // Photo survey overlays using PhotoSurveyService data
+            photoSurveyMode={isPhotoSurveyMode}
+            photoPoints={photoSurveyData.photoPoints}
+            onPhotoPointClick={handlePhotoPointClick}
+          />
 
-        {/* RIGHT PANEL: Survey Video Panel (slides over map) */}
+          {/* Map Statistics - Only show when not in split view */}
+          {allPlacemarks.length > 0 && !showRightPanel && !showPhotoPanel && (
+            <div className="absolute bottom-4 left-2 bg-white rounded-lg shadow-lg border border-gray-200 p-3">
+              <div className="text-sm text-gray-600">
+                <div className="font-semibold text-gray-900 mb-1">Map Statistics</div>
+                <div>Total Placemarks: {allPlacemarks.length}</div>
+                <div>External Files: {externalFilePlacemarks.length}</div>
+                <div>Physical Survey: {physicalSurveyData.length}</div>
+                <div>Desktop Planning: {desktopPlanningData.length}</div>
+                <div>Visible Categories: {visibleCategories.size}</div>
+                {isVideoSurveyMode && (
+                  <>
+                    <div>Track Points: {videoSurveyData.trackPoints.length} (all shown)</div>
+                    <div>Video Clips: {videoSurveyData.videoClips.length}</div>
+                    <div>Survey Duration: {VideoSurveyService.formatDuration(videoSurveyData.metadata.totalDuration)}</div>        
+                  </>
+                )}
+                {isPhotoSurveyMode && (
+                  <>
+                    <div>Photo Points: {photoSurveyData.photoPoints.length}</div>
+                    <div>Total Images: {photoSurveyData.metadata.totalImages}</div>
+                    <div>Survey IDs: {photoSurveyData.metadata.surveyIds.length}</div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT SIDE - Video Survey Panel (Split Screen) */}
         {showRightPanel && (
-          <div className="absolute top-0 right-0 h-full shadow-lg">
+          <div className="w-[360px] lg:w-[420px] xl:w-[460px] h-full bg-white border-l shadow-lg flex-shrink-0">
             <SurveyVideoPanel
               open={showRightPanel}
               onClose={() => setShowRightPanel(false)}
@@ -1185,18 +1278,16 @@ useEffect(() => {
               onTimeChange={setCurrentTime}
               selection={selection}
               onSelectionChange={setSelection}
-              transitionImages={[]}
-              onRequestTransition={async () => { /* optionally fetch images between clips */ }}
-              surveySummary={summaryNode}
-              currentPosition={currentPosition}
               trackPoints={videoSurveyData.trackPoints}
+              currentPosition={currentPosition}
+              surveySummary={summaryNode}
             />
           </div>
         )}
 
-        {/* RIGHT PANEL: Photo Survey Panel (slides over map) */}
+        {/* RIGHT SIDE - Photo Survey Panel (Split Screen) */}
         {showPhotoPanel && (
-          <div className="absolute top-0 right-0 h-full shadow-lg">
+          <div className="w-[420px] lg:w-[480px] xl:w-[520px] h-full bg-white border-l shadow-lg flex-shrink-0">
             <PhotoSurveyPanel
               open={showPhotoPanel}
               onClose={() => setShowPhotoPanel(false)}
@@ -1210,37 +1301,11 @@ useEffect(() => {
           </div>
         )}
 
-        {/* Map Statistics */}
-        {allPlacemarks.length > 0 && (
-          <div className="absolute bottom-4 left-2 bg-white rounded-lg shadow-lg border border-gray-200 p-3">
-            <div className="text-sm text-gray-600">
-              <div className="font-semibold text-gray-900 mb-1">Map Statistics</div>
-              <div>Total Placemarks: {allPlacemarks.length}</div>
-              <div>External Files: {externalFilePlacemarks.length}</div>
-              <div>Physical Survey: {physicalSurveyData.length}</div>
-              <div>Desktop Planning: {desktopPlanningData.length}</div>
-              <div>Visible Categories: {visibleCategories.size}</div>
-              {isVideoSurveyMode && (
-                <>
-                  <div>Track Points: {videoSurveyData.trackPoints.length}</div>
-                  <div>Video Clips: {videoSurveyData.videoClips.length}</div>
-                  <div>Survey Duration: {VideoSurveyService.formatDuration(videoSurveyData.metadata.totalDuration)}</div>
-                </>
-              )}
-              {isPhotoSurveyMode && (
-                <>
-                  <div>Photo Points: {photoSurveyData.photoPoints.length}</div>
-                  <div>Total Images: {photoSurveyData.metadata.totalImages}</div>
-                  <div>Survey IDs: {photoSurveyData.metadata.surveyIds.length}</div>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* RIGHT SIDEBAR - External Files Management */}
+        {/* RIGHT SIDEBAR - External Files Management (Overlay when split view is active) */}
         {ShowFiles && (
-          <div className="absolute top-0 right-0 h-full bg-white rounded-lg shadow-lg border border-gray-200 p-3 overflow-hidden">
+          <div className={`absolute top-0 right-0 h-full bg-white rounded-lg shadow-lg border border-gray-200 p-3 overflow-hidden z-20 ${
+            showRightPanel || showPhotoPanel ? 'w-80' : 'w-96'
+          }`}>
             {/* Close Button Header */}
             <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200">
               <h3 className="text-sm font-semibold text-gray-700">External Files</h3>
