@@ -35,8 +35,10 @@ const GOOGLE_MAPS_API_KEY = 'AIzaSyCPHNQoyCkDJ3kOdYZAjZElbhXuJvx-Odg';
 function createImageGalleryHTML(images: any[]): string {
   if (!images || images.length === 0) return '';
 
+  const galleryId = `gallery-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  
   const imageHTML = images.map((image, index) => `
-    <div class="survey-image-container" style="margin: 8px 0;">
+    <div class="survey-image-container" data-gallery="${galleryId}" style="margin: 8px 0;">
       <div class="survey-image-label" style="font-size: 12px; color: #666; margin-bottom: 4px;">
         ${image.label}
       </div>
@@ -54,23 +56,44 @@ function createImageGalleryHTML(images: any[]): string {
           cursor: pointer;
         "
         onclick="window.open('${image.url}', '_blank')"
-        onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+        onerror="
+          this.parentElement.style.display='none';
+          updateImageGalleryCount('${galleryId}');
+        "
       />
-      <div style="display: none; padding: 8px; background: #f5f5f5; border-radius: 4px; font-size: 12px; color: #888;">
-        Image failed to load: ${image.label}
-      </div>
     </div>
   `).join('');
 
   return `
-    <div class="survey-images-section" style="margin-top: 12px; border-top: 1px solid #eee; padding-top: 12px;">
-      <div style="font-weight: 600; margin-bottom: 8px; color: #333;">
-        Survey Images (${images.length})
+    <div id="${galleryId}-section" class="survey-images-section" style="margin-top: 12px; border-top: 1px solid #eee; padding-top: 12px;">
+      <div id="${galleryId}-header" style="font-weight: 600; margin-bottom: 8px; color: #333;">
+        Survey Images
       </div>
-      <div class="survey-images-grid" style="max-height: 400px; overflow-y: auto;">
+      <div id="${galleryId}" class="survey-images-grid" style="max-height: 400px; overflow-y: auto;">
         ${imageHTML}
       </div>
     </div>
+    <script>
+      if (typeof window.updateImageGalleryCount === 'undefined') {
+        window.updateImageGalleryCount = function(galleryId) {
+          const gallery = document.getElementById(galleryId);
+          const countElement = document.getElementById(galleryId + '-count');
+          const sectionElement = document.getElementById(galleryId + '-section');
+          
+          if (gallery && countElement && sectionElement) {
+            const visibleImages = gallery.querySelectorAll('.survey-image-container[data-gallery="' + galleryId + '"]:not([style*="display: none"])').length;
+            
+            if (visibleImages === 0) {
+              // Hide entire section if no images are visible
+              sectionElement.style.display = 'none';
+            } else {
+              // Update count
+              countElement.textContent = visibleImages;
+            }
+          }
+        };
+      }
+    </script>
   `;
 }
 
@@ -880,15 +903,11 @@ useEffect(() => {
         </div>
       )}
       
-      {/* Enhanced Video Survey Mode Indicator */}
-      {/* Video Survey Mode Indicator - matching video playback page */}
+      {/* Enhanced Video Survey Mode Indicator 
 {videoSurveyMode && trackPoints.length > 0 && (
   <div className="absolute top-14 left-2 bg-black/70 text-white p-3 rounded-lg text-sm z-10">
     <div className="font-medium">
       Video Survey Mode
-    </div>
-    <div className="text-xs mt-1">
-      {trackPoints.length} track points • Click blue dots to navigate
     </div>
     {selectionState.mode === 'selecting' && (
       <div className="text-xs text-green-400 mt-1 font-medium">
@@ -896,7 +915,7 @@ useEffect(() => {
       </div>
     )}
   </div>
-)}
+)}*/}
 
       {/* Selection Info Display */}
       {videoSurveyMode && (selection?.start || selection?.end) && (
@@ -920,17 +939,6 @@ useEffect(() => {
         </div>
       )}
 
-      {/* Photo Survey Mode Indicator */}
-      {photoSurveyMode && photoPoints.length > 0 && (
-        <div className="absolute top-14 left-2 bg-yellow-100 border border-yellow-300 rounded-lg px-3 py-2 shadow-sm">
-          <div className="text-sm font-medium text-yellow-800">
-            Photo Survey Mode
-          </div>
-          <div className="text-xs text-yellow-600">
-            {photoPoints.length} photo points • Click icons to view images
-          </div>
-        </div>
-      )}
 
       {/* Combined modes indicator */}
       {videoSurveyMode && photoSurveyMode && trackPoints.length > 0 && photoPoints.length > 0 && (
