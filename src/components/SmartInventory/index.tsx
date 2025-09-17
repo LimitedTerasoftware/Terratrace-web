@@ -282,6 +282,18 @@ function SmartInventory() {
           setProcessedPlacemarks(allPlacemarks);
           setPlacemarkCategories(combinedCategories);
 
+          const autoVisibleCategories = combinedCategories
+        .filter(category => category.visible)
+        .map(category => category.id);
+      
+      if (autoVisibleCategories.length > 0) {
+        setVisibleCategories(prev => {
+          const newSet = new Set(prev);
+          autoVisibleCategories.forEach(categoryId => newSet.add(categoryId));
+          return newSet;
+        });
+      }
+
           if (selectedFiles.length > 1) {
             showNotification("success", `Successfully loaded ${selectedFiles.length} files with ${allPlacemarks.length} placemarks`);
           }
@@ -448,6 +460,18 @@ function SmartInventory() {
           setRawDesktopPlanningData(result);
           setDesktopPlanningData(placemarks);
           setDesktopPlanningCategories(categories);
+
+          const autoVisibleCategories = categories
+          .filter(category => category.visible)
+          .map(category => category.id);
+        
+        if (autoVisibleCategories.length > 0) {
+          setVisibleCategories(prev => {
+            const newSet = new Set(prev);
+            autoVisibleCategories.forEach(categoryId => newSet.add(categoryId));
+            return newSet;
+          });
+        }
 
           showNotification('success', `Loaded ${placemarks.length} desktop planning items from ${result.data.length} network(s) for the selected area`);
         } else {
@@ -1211,7 +1235,7 @@ useEffect(() => {
         />
 
         {/* LEFT SIDE - Map Container */}
-        <div className={`relative transition-all duration-300 ${
+        <div className={`relative ${
           showRightPanel || showPhotoPanel 
             ? 'flex-1 min-w-0' // Flexible width, takes remaining space
             : 'w-full'         // Full view: map takes full width
@@ -1285,9 +1309,8 @@ useEffect(() => {
           </div>
         )}
 
-        {/* RIGHT SIDE - Photo Survey Panel (Split Screen) */}
         {showPhotoPanel && (
-          <div className="w-[420px] lg:w-[480px] xl:w-[520px] h-full bg-white border-l shadow-lg flex-shrink-0">
+          <div className="absolute top-0 right-0 h-full shadow-lg">
             <PhotoSurveyPanel
               open={showPhotoPanel}
               onClose={() => setShowPhotoPanel(false)}

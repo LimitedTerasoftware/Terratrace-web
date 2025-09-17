@@ -953,7 +953,7 @@ export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
     'SURVEYSTART', 'ROUTEFEASIBILITY', 'AREA', 'SIDE', 'ROUTEDETAILS',
     'LANDMARK', 'FIBERTURN', 'Bridge', 'Culvert', 'ROADCROSSING', 'Causeways',
     'KILOMETERSTONE', 'FPOI', 'JOINTCHAMBER', 'ROUTEINDICATOR', 'ENDSURVEY', 'HOLDSURVEY',
-    'SURVEY_ROUTE', 'VIDEORECORD', 'PHOTO_SURVEY', 'VIDEO_SURVEY'
+    'SURVEY_ROUTE', 'PHOTO_SURVEY', 'VIDEO_SURVEY'
   ];
   
   physicalSurveyCategories.forEach(c => categoryCounts[c] = 0);
@@ -1241,7 +1241,7 @@ export function processDesktopPlanningData(apiData: DesktopPlanningApiResponse):
       id: name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
       name,
       count: categoryCounts[name] || 0,
-      visible: false,
+      visible: true,
       color: PLACEMARK_CATEGORIES[name]?.color || '#6B7280',
       icon: PLACEMARK_CATEGORIES[name]?.icon || '📍',
     }))

@@ -245,7 +245,7 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
                                 </button>
                               )}
                               
-                              {/* Visibility toggle */}
+                              {/* Visibility toggle 
                               <button
                                 onClick={() => onCategoryVisibilityChange(category.id, !isVisible)}
                                 className={`p-1 rounded transition-colors ${
@@ -256,7 +256,7 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
                                 title={isVisible ? 'Hide on map' : 'Show on map'}
                               >
                                 {isVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                              </button>
+                              </button>*/}
                             </div>
                           </div>
 
