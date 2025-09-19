@@ -494,6 +494,25 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
     if (isPhysicalSurvey) {
       const physicalInfo = placemark as ProcessedPhysicalSurvey;
       
+      // Parse route details and feasibility
+      let routeDetails: any = {};
+      let routeFeasibility: any = {};
+      
+      try {
+        if (physicalInfo.routeDetails) {
+          routeDetails = typeof physicalInfo.routeDetails === 'string' 
+            ? JSON.parse(physicalInfo.routeDetails) 
+            : physicalInfo.routeDetails;
+        }
+        if (physicalInfo.routeFeasibility) {
+          routeFeasibility = typeof physicalInfo.routeFeasibility === 'string' 
+            ? JSON.parse(physicalInfo.routeFeasibility) 
+            : physicalInfo.routeFeasibility;
+        }
+      } catch (error) {
+        console.warn('Error parsing route details:', error);
+      }
+
       // Calculate route statistics directly here
       const coordinates = placemark.coordinates as google.maps.LatLngLiteral[];
       let totalDistance = 0;
@@ -514,7 +533,18 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
         }
       }
 
-      // Get timing info if available from raw data
+      // CREATE ROUTE NAME AND DETAILS
+      const routeName = physicalInfo.startLgdName && physicalInfo.endLgdName
+        ? `${physicalInfo.startLgdName} to ${physicalInfo.endLgdName}`
+        : `Survey ${physicalInfo.surveyId}`;
+      
+      const routeType = routeDetails.routeType || 'Unknown';
+      const routeBelongsTo = routeDetails.routeBelongsTo || 'Unknown';
+      const roadWidth = routeDetails.roadWidth || 'N/A';
+      const centerToMargin = routeDetails.centerToMargin || 'N/A';
+      const soilType = routeDetails.soilType || 'N/A';
+      const routeFeasible = routeFeasibility.routeFeasible ? 'Yes' : 'No';
+      
       const routePoints = coordinates?.length || 0;
       const distanceKm = (totalDistance / 1000).toFixed(2);
       
@@ -522,21 +552,32 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
         <div class="p-2" style="max-width: 420px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
           <!-- Header -->
           <div class="border-b pb-2 mb-3" style="border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 12px;">
-            <h3 style="font-weight: bold; color: #111827; font-size: 18px; margin-bottom: 4px;">${placemark.name}</h3>
+            <h3 style="font-weight: bold; color: #111827; font-size: 18px; margin-bottom: 4px;">${routeName}</h3>
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="display: inline-block; width: 12px; height: 12px; background-color: #FBBF24; border-radius: 2px;"></span>
               <span style="font-size: 14px; font-weight: 500; color: #92400E;">Physical Survey Route</span>
             </div>
           </div>
 
-          <!-- Survey Identity -->
+          <!-- Route Identity -->
           <div style="margin-bottom: 12px;">
-            <h4 style="font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 14px;">Survey Details</h4>
+            <h4 style="font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 14px;">Route Details</h4>
             <div style="font-size: 13px; line-height: 1.4;">
               <div style="margin-bottom: 4px;"><span style="font-weight: 500; color: #6B7280;">Survey ID:</span> ${physicalInfo.surveyId}</div>
-              <div style="margin-bottom: 4px;"><span style="font-weight: 500; color: #6B7280;">Block ID:</span> ${physicalInfo.blockId}</div>
-              <div style="margin-bottom: 4px;"><span style="font-weight: 500; color: #6B7280;">Event Type:</span> ${physicalInfo.eventType}</div>
-              <div style="margin-bottom: 4px;"><span style="font-weight: 500; color: #6B7280;">Category:</span> ${placemark.category}</div>
+              <div style="margin-bottom: 4px;"><span style="font-weight: 500; color: #6B7280;">Route Type:</span> ${routeType} (${routeBelongsTo})</div>
+              <div style="margin-bottom: 4px;"><span style="font-weight: 500; color: #6B7280;">Road Width:</span> ${roadWidth}m (Margin: ${centerToMargin}m)</div>
+              <div style="margin-bottom: 4px;"><span style="font-weight: 500; color: #6B7280;">Soil Type:</span> ${soilType}</div>
+              <div style="margin-bottom: 4px;"><span style="font-weight: 500; color: #6B7280;">Route Feasible:</span> ${routeFeasible}</div>
+            </div>
+          </div>
+
+          <!-- Location Details -->
+          <div style="margin-bottom: 12px;">
+            <h4 style="font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 14px;">Location</h4>
+            <div style="font-size: 12px; line-height: 1.4;">
+              <div style="margin-bottom: 3px;"><span style="font-weight: 500; color: #6B7280;">Block:</span> ${physicalInfo.blockName || 'N/A'}</div>
+              <div style="margin-bottom: 3px;"><span style="font-weight: 500; color: #6B7280;">District:</span> ${physicalInfo.districtName || 'N/A'}</div>
+              <div style="margin-bottom: 3px;"><span style="font-weight: 500; color: #6B7280;">State:</span> ${physicalInfo.stateName || 'N/A'}</div>
             </div>
           </div>
 
@@ -554,6 +595,16 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
               </div>
             </div>
           </div>
+
+          <!-- Survey Timing -->
+          ${physicalInfo.createdTime ? `
+          <div style="margin-bottom: 12px;">
+            <h4 style="font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 14px;">Survey Time</h4>
+            <div style="font-size: 12px; color: #6B7280;">
+              ${new Date(physicalInfo.createdTime).toLocaleString()}
+            </div>
+          </div>
+          ` : ''}
 
           <!-- Geographic Info -->
           ${coordinates && coordinates.length > 0 ? `
@@ -577,6 +628,7 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
           </div>
         </div>
       `;
+      
     } else if (isDesktopPlanning) {
       // Keep existing desktop planning logic here
       const desktopInfo = placemark as ProcessedDesktopPlanning;
@@ -608,6 +660,7 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
     infoWindowRef.current.open(mapInstanceRef.current!);
   }
 });
+
 
 
         polylinesRef.current.push(polyline);

@@ -20,6 +20,15 @@ export interface ProcessedPhysicalSurvey {
   // Image fields
   images: SurveyImage[];
   hasImages: boolean;
+
+  startLgdName?: string;
+  endLgdName?: string;
+  routeDetails?: any;
+  routeFeasibility?: any;
+  stateName?: string;
+  districtName?: string;
+  blockName?: string;
+  createdTime?: string;
 }
 
 export interface SurveyImage {
@@ -723,50 +732,20 @@ export function processApiData(apiData: ApiPlacemark): {
     }
   });
 
-  // COMPREHENSIVE LOGGING AND ANALYSIS
-  console.log('\n🔍 =========================== KMZ FILE ANALYSIS ===========================');
-  
-  // File format detection
-  console.log('📄 FILE FORMAT:', detectFileFormat(apiData));
-  
-  // Summary stats
-  console.log(`📊 SUMMARY: ${typeAnalysis.length} points, ${polylineAnalysis.length} polylines`);
-  
-  // Point type analysis
-  console.log('\n📍 POINT TYPE ANALYSIS:');
-  console.table(typeAnalysis.map(item => ({
-    Index: item.index,
-    Name: item.name.substring(0, 30),
-    DirectType: item.directType,
-    PropsType: item.propertiesType,
-    ExtractedType: item.extractedType,
-    Category: item.category,
-    HasCoords: item.hasCoordinates
-  })));
 
   // Unique types summary
   const uniqueDirectTypes = [...new Set(typeAnalysis.map(item => item.directType))];
   const uniquePropsTypes = [...new Set(typeAnalysis.map(item => item.propertiesType))];
   const uniqueExtractedTypes = [...new Set(typeAnalysis.map(item => item.extractedType))];
-  
-  console.log('\n🎯 UNIQUE TYPES FOUND:');
-  console.log('Direct Types:', uniqueDirectTypes);
-  console.log('Property Types:', uniquePropsTypes);
-  console.log('Extracted Types:', uniqueExtractedTypes);
 
-  // Property structure analysis
-  console.log('\n🏗️ PROPERTY STRUCTURE ANALYSIS:');
   const sampleProperties = typeAnalysis.slice(0, 3).map(item => ({
     name: item.name,
     type: item.extractedType,
     propertyKeys: item.allProperties ? Object.keys(item.allProperties) : []
   }));
-  console.table(sampleProperties);
 
   // Detailed property sampling
-  console.log('\n🔍 DETAILED PROPERTY SAMPLING:');
   typeAnalysis.slice(0, 5).forEach((item, i) => {
-    console.log(`\n--- Sample ${i + 1}: ${item.name} (${item.extractedType}) ---`);
     if (item.allProperties) {
       const sampleProps = Object.entries(item.allProperties)
         .slice(0, 10)
@@ -782,7 +761,6 @@ export function processApiData(apiData: ApiPlacemark): {
 
   // Polyline analysis
   if (polylineAnalysis.length > 0) {
-    console.log('\n🔗 POLYLINE ANALYSIS:');
     console.table(polylineAnalysis.map(item => ({
       Index: item.index,
       Name: item.name.substring(0, 30),
@@ -795,12 +773,9 @@ export function processApiData(apiData: ApiPlacemark): {
 
     const uniquePolylineTypes = [...new Set(polylineAnalysis.map(item => item.type))];
     const uniqueNormalizedTypes = [...new Set(polylineAnalysis.map(item => item.normalizedType))];
-    console.log('\nOriginal Polyline Types:', uniquePolylineTypes);
-    console.log('Normalized Polyline Types:', uniqueNormalizedTypes);
   }
 
   // Category mapping results
-  console.log('\n📂 CATEGORY MAPPING RESULTS:');
   const categoryResults = Object.entries(categoryCounts)
     .filter(([_, count]) => count > 0)
     .sort(([_, a], [__, b]) => b - a);
@@ -811,11 +786,9 @@ export function processApiData(apiData: ApiPlacemark): {
   const unknownCategories = typeAnalysis.filter(item => item.category === 'FPOI' && item.extractedType !== 'FPOI');
   
   if (nullTypes.length > 0) {
-    console.log(`\n⚠️ Found ${nullTypes.length} points with NULL direct type`);
   }
   
   if (unknownCategories.length > 0) {
-    console.log(`\n❓ Found ${unknownCategories.length} points that defaulted to FPOI category:`);
     console.table(unknownCategories.map(item => ({
       Name: item.name.substring(0, 30),
       ExtractedType: item.extractedType,
@@ -823,8 +796,6 @@ export function processApiData(apiData: ApiPlacemark): {
       PropsType: item.propertiesType
     })));
   }
-
-  console.log('\n✅ =========================== ANALYSIS COMPLETE ===========================\n');
 
   // Create categories array
   const categories: PlacemarkCategory[] = Object.entries(PLACEMARK_CATEGORIES)
@@ -1038,6 +1009,9 @@ export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
       Object.entries(surveyGroups).forEach(([surveyId, routePoints]) => {
         if (routePoints.length > 1) {
           try {
+
+            const firstPoint = points.find(p => p.survey_id === surveyId);
+
             categoryCounts['SURVEY_ROUTE'] = (categoryCounts['SURVEY_ROUTE'] || 0) + 1;
             processedPlacemarks.push({
               id: `physical-route-${blockId}-${surveyId}`,
@@ -1049,7 +1023,16 @@ export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
               eventType: 'SURVEY_ROUTE',
               blockId,
               images: [], 
-              hasImages: false
+              hasImages: false,
+
+              startLgdName: firstPoint?.start_lgd_name,
+              endLgdName: firstPoint?.end_lgd_name,
+              routeDetails: firstPoint?.route_details,
+              routeFeasibility: firstPoint?.route_feasibility,
+              stateName: firstPoint?.state_name,
+              districtName: firstPoint?.district_name,
+              blockName: firstPoint?.block_name,
+              createdTime: firstPoint?.createdTime
             });
           } catch (error) {
             console.error(`Error creating survey route for ${surveyId}:`, error);
