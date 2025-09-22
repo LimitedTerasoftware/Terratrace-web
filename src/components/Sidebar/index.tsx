@@ -261,7 +261,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                     <div className="min-w-[20px] flex justify-center">
                       <Grid3X3 className="w-5 h-5" />
                     </div>
-                    {isOpen && <span className="whitespace-nowrap">Blocks Management</span>}
+                    {isOpen && <span className="whitespace-nowrap">Block Assginment</span>}
                   </NavLink>
                 </li>
               )}

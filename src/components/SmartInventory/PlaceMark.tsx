@@ -131,8 +131,8 @@ export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string 
   'Desktop: Road Cross': { color: '#F59E0B', icon: '🛣️' },
   'Desktop: Railway Cross': { color: '#8B5CF6', icon: '🚂' },
   'Desktop: N Highway Cross': { color: '#EF4444', icon: '🛤️' },
-  'Desktop: Incremental Cable': { color: '#00FF41', icon: '▓▓▓▓' },
-  'Desktop: Proposed Cable': { color: '#FF1744', icon: '▒▒▒▒' },
+  'Desktop: Incremental Cable': { color: '#7CF10F', icon: '▓▓▓▓' },
+  'Desktop: Proposed Cable': { color: '#FF2400', icon: '▒▒▒▒' },
 
   // Tracking
   SURVEY_ROUTE: { color: '#FFFF99', icon: '➡️' },
