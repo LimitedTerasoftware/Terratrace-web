@@ -38,6 +38,36 @@ export interface SurveyImage {
   coordinates?: { lat: number; lng: number }; // For road crossing photos and other geotagged images
 }
 
+// Survey Infrastructure Interface (NEW)
+export interface ProcessedSurveyInfrastructure {
+  id: string;
+  name: string;
+  category: string;
+  type: 'point' | 'polyline';
+  coordinates: { lat: number; lng: number } | { lat: number; lng: number }[];
+  
+  // Survey-specific metadata
+  blockName?: string;
+  districtName?: string;
+  stateName?: string;
+  direction?: string;
+  phase?: string;
+  fiberPosition?: string;
+  roadOffset?: string;
+  
+  // Polyline-specific properties
+  segmentLength?: string;
+  startNode?: string;
+  endNode?: string;
+  numFibre?: string;
+  routeCode?: string;
+  assetType?: string;
+  ring?: string;
+  
+  // Original properties for reference
+  rawProperties?: any;
+}
+
 // Enhanced placemark categories with ALL infrastructure types from your API including PHOTO_SURVEY
 export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string }> = {
   // Geographic Points
@@ -73,8 +103,8 @@ export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string 
   KILOMETERSTONE: { color: '#35530E', icon: '📍' },
 
   // Cable Types
-  'Incremental Cable': { color: '#61f335', icon: '⚡⚡⚡⚡' },
-  'Proposed Cable': { color: '#ff0000', icon: '➖➖➖➖' },
+  'Incremental Cable': { color: '#00FF41', icon: '⚡⚡⚡⚡' },
+  'Proposed Cable': { color: '#FF1744', icon: '➖➖➖➖' },
 
   // Survey Points
   SURVEYSTART: { color: '#10B981', icon: '🎯' },
@@ -101,8 +131,8 @@ export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string 
   'Desktop: Road Cross': { color: '#F59E0B', icon: '🛣️' },
   'Desktop: Railway Cross': { color: '#8B5CF6', icon: '🚂' },
   'Desktop: N Highway Cross': { color: '#EF4444', icon: '🛤️' },
-  'Desktop: Incremental Cable': { color: '#22C55E', icon: '━━━━' },
-  'Desktop: Proposed Cable': { color: '#EF4444', icon: '┅┅┅┅' },
+  'Desktop: Incremental Cable': { color: '#00FF41', icon: '▓▓▓▓' },
+  'Desktop: Proposed Cable': { color: '#FF1744', icon: '▒▒▒▒' },
 
   // Tracking
   SURVEY_ROUTE: { color: '#FFFF99', icon: '➡️' },
@@ -112,9 +142,87 @@ export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string 
   PHOTO_SURVEY: { color: '#DCB14E', icon: '📸' },
   VIDEO_SURVEY: { color: '#7C3AED', icon: '🎬' },
 
+  // NEW: Survey Infrastructure Categories
+  // Educational
+  'School': { color: '#4F46E5', icon: '🏫' },
+  
+  // Financial
+  'Bank': { color: '#059669', icon: '🏦' },
+  'ATM': { color: '#10B981', icon: '🏧' },
+  
+  // Religious
+  'Masjid': { color: '#7C3AED', icon: '🕌' },
+  'Temple': { color: '#F59E0B', icon: '🛕' },
+  
+  // Commercial
+  'Restaurant': { color: '#EF4444', icon: '🍽️' },
+  'Hotel': { color: '#8B5CF6', icon: '🏨' },
+  'Pharmacy': { color: '#06B6D4', icon: '💊' },
+  'Petrol Pump': { color: '#F97316', icon: '⛽' },
+  
+  // Transportation
+  'Bus Stop': { color: '#84CC16', icon: '🚌' },
+  'Railway Station': { color: '#6366F1', icon: '🚂' },
+  
+  // Government/Public Services
+  'Post Office': { color: '#DC2626', icon: '📫' },
+  'Fire Station': { color: '#B91C1C', icon: '🚒' },
+  'Hospital': { color: '#EC4899', icon: '🏥' },
+  'Govt. Office': { color: '#374151', icon: '🏛️' },
+  
+  // Infrastructure Markers
+  'KM Stone': { color: '#35530E', icon: '📍' },
+  'Landmark': { color: '#FF6B6B', icon: '🏛️' },
+  
+  // Telecom Infrastructure
+  'RJIL RI': { color: '#FF1744', icon: '📡' },
+  'VITIL RI': { color: '#2196F3', icon: '📡' },
+  'AIRTEL RI': { color: '#FF5722', icon: '📡' },
+  'RI': { color: '#9C27B0', icon: '📡' },
+  'ASSET': { color: '#607D8B', icon: '🔧' },
+
   // Default
   point: { color: '#FF0000', icon: '📍' },
+
+  // Cable Infrastructure (Survey prefixed) - MOVED TO END
+  'Survey: Block to FPOI Cable': { color: '#1E3A8A', icon: '🔗🔗' },
+
+   // EXTERNAL FILE CATEGORIES - Survey
+  'External Survey: SURVEYSTART': { color: '#10B981', icon: '🎯' },
+  'External Survey: LANDMARK': { color: '#FF6B6B', icon: '🏛️' },
+  'External Survey: FIBERTURN': { color: '#372AAC', icon: '🔄' },
+  'External Survey: Bridge': { color: '#45B7D1', icon: '🌉' },
+  'External Survey: Culvert': { color: '#96CEB4', icon: '🌊' },
+  'External Survey: ROADCROSSING': { color: '#31F527', icon: '🛣️' },
+  'External Survey: KILOMETERSTONE': { color: '#35530E', icon: '📏' },
+  'External Survey: FPOI': { color: '#F8C471', icon: '⭐' },
+  'External Survey: JOINTCHAMBER': { color: '#FE9A37', icon: '🔗' },
+  'External Survey: ROUTEINDICATOR': { color: '#42D3F2', icon: '🧭' },
+  'External Survey: ENDSURVEY': { color: '#E7180B', icon: '🎯' },
+  'External Survey: HOLDSURVEY': { color: '#a93226', icon: '⏸️' },
+  'External Survey: SURVEY_ROUTE': { color: '#FFFF99', icon: '➡️' },
+  'External Survey: PHOTO_SURVEY': { color: '#DCB14E', icon: '📸' },
+  'External Survey: VIDEO_SURVEY': { color: '#7C3AED', icon: '🎬' },
+  'External Survey: GP': { color: '#4ECDC4', icon: '🏠' },
+  'External Survey: BHQ': { color: '#BF1E00', icon: '🏢' },
+  'External Survey: Block Router': { color: '#000000', icon: '🔗' },
+  'External Survey: Incremental Cable': { color: '#06B6D4', icon: '⚡⚡⚡⚡' },
+  'External Survey: Proposed Cable': { color: '#F97316', icon: '➖➖➖➖' },
+
+  // EXTERNAL FILE CATEGORIES - Desktop
+  'External Desktop: GP': { color: '#2DD4BF', icon: '🟢' },
+  'External Desktop: FPOI': { color: '#FBBF24', icon: '📷' },
+  'External Desktop: BHQ': { color: '#DC2626', icon: '🏛️' },
+  'External Desktop: Block Router': { color: '#1F2937', icon: '⚫' },
+  'External Desktop: Bridge': { color: '#3B82F6', icon: '🌉' },
+  'External Desktop: Culvert': { color: '#10B981', icon: '🌊' },
+  'External Desktop: Road Cross': { color: '#F59E0B', icon: '🛣️' },
+  'External Desktop: Railway Cross': { color: '#8B5CF6', icon: '🚂' },
+  'External Desktop: N Highway Cross': { color: '#EF4444', icon: '🛤️' },
+  'External Desktop: Incremental Cable': { color: '#8B5CF6', icon: '▓▓▓▓' },
+  'External Desktop: Proposed Cable': { color: '#F59E0B', icon: '▒▒▒▒' },
 };
+
 
 // Enhanced URL resolution with better error handling
 export function resolveMediaUrl(path?: string | null): string {
@@ -484,6 +592,7 @@ function detectFileFormat(apiData: ApiPlacemark): string {
 }
 
 // Enhanced polyline type normalization
+// Enhanced polyline type normalization
 function normalizePolylineType(type: string): string {
   if (!type || type === 'NULL' || type === 'Unknown Line Type') {
     return 'Incremental Cable';
@@ -491,17 +600,213 @@ function normalizePolylineType(type: string): string {
   
   const upperType = type.toUpperCase();
   
+  // Handle specific survey infrastructure types - ADD THIS
+  if (upperType.includes('BLOCK TO FPOI') || 
+      upperType.includes('BLOCK_TO_FPOI') ||
+      upperType.includes('BLOCKTOFPOI')) {
+    return 'Survey: Block to FPOI Cable';
+  }
+  
+  if (upperType.includes('PROPOSED')) return 'Proposed Cable';
+  if (upperType.includes('INCREMENTAL')) return 'Incremental Cable';
+  if (upperType.includes('RAILWAY CROSS')) return 'Railway Cross';
+  if (upperType.includes('ROAD CROSS')) return 'Road Cross';
+  if (upperType.includes('BRIDGE')) return 'Bridge';
+  if (upperType.includes('CULVERT')) return 'Culvert';
+  
   // Handle OFC variations
   if (upperType.includes('OFC')) {
     return upperType.includes('PROPOSED') ? 'Proposed Cable' : 'Incremental Cable';
   }
   
   // Handle standard cable types
-  if (upperType.includes('PROPOSED')) return 'Proposed Cable';
-  if (upperType.includes('INCREMENTAL')) return 'Incremental Cable';
   if (upperType.includes('CABLE')) return 'Incremental Cable';
   
   return type;
+}
+
+// NEW: Detect if a Survey category file contains actual survey events or infrastructure assets
+export function detectSurveyFileType(apiData: ApiPlacemark): 'physical_survey' | 'infrastructure_assets' {
+  // Check for physical survey event types in points
+  const surveyEventTypes = ['SURVEYSTART', 'ENDSURVEY', 'LIVELOCATION', 'VIDEORECORD', 'LANDMARK', 'ROUTEINDICATOR', 'ROUTEFEASIBILITY'];
+  
+  const hasPhysicalSurveyEvents = (apiData.points || []).some(point => 
+    surveyEventTypes.includes(point.type) || 
+    (point.properties?.event_type && surveyEventTypes.includes(point.properties.event_type))
+  );
+
+  // Check for infrastructure asset types
+  const infrastructureTypes = ['School', 'Bank', 'Landmark', 'Masjid', 'Temple', 'Restaurant', 'Hotel', 'Pharmacy', 'Bus Stop', 'Petrol Pump', 'Post Office', 'Fire Station', 'Hospital', 'Govt. Office', 'ATM', 'KM Stone', 'Railway Station', 'Bridge', 'RJIL RI', 'VITIL RI', 'RI', 'AIRTEL RI', 'ASSET'];
+  
+  const hasInfrastructureAssets = (apiData.points || []).some(point => 
+    infrastructureTypes.includes(point.type) || 
+    (point.properties?.type && infrastructureTypes.includes(point.properties.type))
+  );
+
+  // Check polylines for cable infrastructure
+  const hasCableInfrastructure = (apiData.polylines || []).some(polyline => 
+    polyline.type && (
+      polyline.type.includes('CABLE') ||
+      polyline.type.includes('INCREMENTAL') ||
+      polyline.type.includes('PROPOSED')
+    )
+  );
+
+  // Decision logic: infrastructure assets take precedence if they dominate
+  if (hasInfrastructureAssets && (hasCableInfrastructure || !hasPhysicalSurveyEvents)) {
+    return 'infrastructure_assets';
+  }
+  
+  return 'physical_survey';
+}
+
+// NEW: Process Survey infrastructure files containing asset data (not actual survey events)
+export function processSurveyInfrastructureData(apiData: ApiPlacemark): {
+  placemarks: ProcessedSurveyInfrastructure[];
+  categories: PlacemarkCategory[];
+} {
+  const processedPlacemarks: ProcessedSurveyInfrastructure[] = [];
+  const categoryCounts: Record<string, number> = {};
+
+
+  // Process Points
+  (apiData.points || []).forEach((point, index) => {
+    try {
+      const lat = point.coordinates.latitude;
+      const lng = point.coordinates.longitude;
+      
+      if (!isValidCoordinate(lat, lng)) {
+        console.warn(`Invalid coordinates for survey infrastructure point ${index}:`, { lat, lng });
+        return;
+      }
+
+      // Determine category from type or properties
+      let category = point.type || 'ASSET';
+      
+      // Check if properties has more specific type info
+      if (point.properties?.type && point.properties.type !== point.type) {
+        category = point.properties.type;
+      }
+      
+      // Ensure category exists in our mapping
+      if (!PLACEMARK_CATEGORIES[category]) {
+        console.warn(`Unknown survey infrastructure category: ${category}, defaulting to ASSET`);
+        category = 'ASSET';
+      }
+
+      categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+
+      processedPlacemarks.push({
+        id: `survey-infra-point-${index}`,
+        name: point.properties?.name || point.name || `${category} ${index + 1}`,
+        category,
+        type: 'point',
+        coordinates: { lat, lng },
+        
+        // Extract survey-specific metadata
+        blockName: point.properties?.blk_name,
+        districtName: point.properties?.dt_name,
+        stateName: point.properties?.st_name,
+        direction: point.properties?.direction,
+        phase: point.properties?.phase,
+        fiberPosition: point.properties?.fiber_pos,
+        roadOffset: point.properties?.rd_offset,
+        
+        rawProperties: point.properties
+      });
+
+    } catch (error) {
+      console.error(`Error processing survey infrastructure point ${index}:`, error);
+    }
+  });
+
+  // Process Polylines
+  (apiData.polylines || []).forEach((polyline, index) => {
+    try {
+      if (!polyline.coordinates || !Array.isArray(polyline.coordinates) || polyline.coordinates.length < 2) {
+        console.warn(`Invalid polyline coordinates for survey infrastructure polyline ${index}`);
+        return;
+      }
+
+      // Convert coordinates from [lng, lat, elevation] to {lat, lng}
+      const validCoordinates = polyline.coordinates
+        .filter(coord => Array.isArray(coord) && coord.length >= 2)
+        .filter(coord => isValidCoordinate(coord[1], coord[0])) // lat, lng
+        .map(coord => ({
+          lat: coord[1], // latitude is second
+          lng: coord[0], // longitude is first
+        }));
+
+      if (validCoordinates.length < 2) {
+        console.warn(`Insufficient valid coordinates for survey infrastructure polyline ${index}`);
+        return;
+      }
+
+      // Determine category with Survey: prefix to distinguish from regular infrastructure
+      let category = normalizePolylineType(polyline.type);
+      
+      // Ensure category exists
+      if (!PLACEMARK_CATEGORIES[category]) {
+        console.warn(`Unknown survey infrastructure polyline category: ${category}`);
+        category = 'Survey: Incremental Cable'; // Default fallback
+      }
+
+      categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+
+      // Extract properties
+      const props = (polyline as any).properties || {};
+
+      processedPlacemarks.push({
+        id: `survey-infra-polyline-${index}`,
+        name: polyline.name || props.name || `${category} ${index + 1}`,
+        category,
+        type: 'polyline',
+        coordinates: validCoordinates,
+        
+        // Polyline-specific properties
+        segmentLength: props.seg_length,
+        startNode: props.start_node,
+        endNode: props.end_node,
+        numFibre: props.num_fibre,
+        routeCode: props.route_code,
+        assetType: props.asset_type,
+        ring: props.RING,
+        
+        // Survey metadata
+        blockName: props.blk_name,
+        districtName: props.dt_name,
+        stateName: props.st_name,
+        direction: props.direction,
+        phase: props.phase,
+        
+        rawProperties: props
+      });
+
+    } catch (error) {
+      console.error(`Error processing survey infrastructure polyline ${index}:`, error);
+    }
+  });
+
+  // Create categories array
+  const categories: PlacemarkCategory[] = Object.entries(PLACEMARK_CATEGORIES)
+    .map(([name, config]) => ({
+      id: name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      name,
+      count: categoryCounts[name] || 0,
+      visible: categoryCounts[name] > 0, // Auto-show categories that have data
+      color: config.color,
+      icon: config.icon,
+    }))
+    .filter(category => category.count > 0);
+
+  
+  // Log category distribution
+  const topCategories = categories
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5)
+    .map(c => `${c.name}: ${c.count}`)
+    .join(', ');
+  return { placemarks: processedPlacemarks, categories };
 }
 
 // -----------------------------
@@ -921,8 +1226,7 @@ export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
 
   // Updated to include PHOTO_SURVEY category
   const physicalSurveyCategories = [
-    'SURVEYSTART', 'ROUTEFEASIBILITY', 'AREA', 'SIDE', 'ROUTEDETAILS',
-    'LANDMARK', 'FIBERTURN', 'Bridge', 'Culvert', 'ROADCROSSING', 'Causeways',
+    'SURVEYSTART','LANDMARK', 'FIBERTURN', 'Bridge', 'Culvert', 'ROADCROSSING', 'Causeways',
     'KILOMETERSTONE', 'FPOI', 'JOINTCHAMBER', 'ROUTEINDICATOR', 'ENDSURVEY', 'HOLDSURVEY',
     'SURVEY_ROUTE', 'PHOTO_SURVEY', 'VIDEO_SURVEY'
   ];

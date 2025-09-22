@@ -13,7 +13,9 @@ import {
   processApiData,
   processPhysicalSurveyData,
   processDesktopPlanningData,
-  resolveMediaUrl,            
+  resolveMediaUrl,           
+  processSurveyInfrastructureData,
+  detectSurveyFileType 
 } from './PlaceMark';
 import {
   KMZFile, FilterState, ApiPlacemark, ProcessedPlacemark, PlacemarkCategory,
@@ -120,6 +122,51 @@ function SmartInventory() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showPhotoPanel, setShowPhotoPanel] = useState(false);
 
+  const [externalFilesByCategory, setExternalFilesByCategory] = useState<{
+  survey: { placemarks: ProcessedPlacemark[]; categories: PlacemarkCategory[] };
+  desktop: { placemarks: ProcessedPlacemark[]; categories: PlacemarkCategory[] };
+}>({
+  survey: { placemarks: [], categories: [] },
+  desktop: { placemarks: [], categories: [] }
+});
+
+const getDefaultVisibility = (categoryName: string): boolean => {
+  // Survey file defaults
+  const defaultSurveyCategories = [
+    'External Survey: GP',
+    'External Survey: FPOI', 
+    'External Survey: BHQ',
+    'External Survey: Bridge',
+    'External Survey: Culvert',
+    'External Survey: Block Router',
+    'External Survey: Incremental Cable',
+    'External Survey: Proposed Cable', 
+    'External Survey: Survey: Block to FPOI Cable', 
+    'External Survey: RI',
+    'External Survey: AIRTEL RI',
+    'External Survey: RJIL RI', 
+    'External Survey: VITIL RI',
+    'External Survey: Landmark',
+    'External Survey: KILOMETERSTONE'
+  ];
+
+  // Desktop file defaults  
+  const defaultDesktopCategories = [
+    'External Desktop: GP',
+    'External Desktop: FPOI',
+    'External Desktop: BHQ', 
+    'External Desktop: Bridge',
+    'External Desktop: Culvert',
+    'External Desktop: Block Router',
+    'External Desktop: Incremental Cable',
+    'External Desktop: Proposed Cable'
+  ];
+
+  return defaultSurveyCategories.includes(categoryName) || 
+         defaultDesktopCategories.includes(categoryName);
+};
+
+
   // ==============================================
   // EXTERNAL FILES MANAGEMENT
   // ==============================================
@@ -155,24 +202,29 @@ function SmartInventory() {
 
   // Process selected external files
   useEffect(() => {
-    const handleParsed = async () => {
-      if (selectedFiles.length > 0) {
-        let allPlacemarks: ProcessedPlacemark[] = [];
-        let allCategoryData: Record<string, number> = {};
-        let combinedPhysicalSurveyData: any = { data: {} };
-        let processedFilesData: any[] = [];
+  const handleParsed = async () => {
+    if (selectedFiles.length > 0) {
+      let allPlacemarks: ProcessedPlacemark[] = [];
+      let allCategoryData: Record<string, number> = {};
+      let combinedPhysicalSurveyData: any = { data: {} };
+      let processedFilesData: any[] = [];
 
-        try {
-          for (const file of selectedFiles) {
-            const params: any = {};
-            if (file.filepath) params.filepath = file.filepath;
-            if (file.file_type) params.fileType = file.file_type;
+      try {
+        for (const file of selectedFiles) {
+          const params: any = {};
+          if (file.filepath) params.filepath = file.filepath;
+          if (file.file_type) params.fileType = file.file_type;
 
-            const resp = await axios.get(`${BASEURL}/preview-file`, { params });
-            if (resp.status === 200 || resp.status === 201) {
+          const resp = await axios.get(`${BASEURL}/preview-file`, { params });
+          if (resp.status === 200 || resp.status === 201) {
 
-              if (file.category === 'Survey') {
-                const apiData: ApiPlacemark = resp.data.data.parsed_data;
+            if (file.category === 'Survey') {
+
+              const apiData: ApiPlacemark = resp.data.data.parsed_data;
+              const surveyFileType = detectSurveyFileType(apiData);
+              
+              if (surveyFileType === 'physical_survey') {
+                // Physical survey processing
                 const physicalSurveyData = transformKMLToPhysicalSurvey(apiData, file);
 
                 processedFilesData.push({
@@ -202,19 +254,22 @@ function SmartInventory() {
                 const filePrefix = file.id;
                 const prefixedSurveyPlacemarks = surveyPlacemarks.map(placemark => ({
                   ...placemark,
-                  id: `${filePrefix}-${placemark.id}`
+                  id: `${filePrefix}-${placemark.id}`,
+                  category: `External Survey: ${placemark.category}` // Prefix with External Survey
                 }));
 
                 allPlacemarks = [...allPlacemarks, ...prefixedSurveyPlacemarks];
 
+                // PREFIX CATEGORIES WITH "External Survey:"
                 surveyCategories.forEach(category => {
-                  allCategoryData[category.name] = (allCategoryData[category.name] || 0) + category.count;
+                  const externalCategoryName = `External Survey: ${category.name}`;
+                  allCategoryData[externalCategoryName] = (allCategoryData[externalCategoryName] || 0) + category.count;
                 });
-
               } else {
-                // DESKTOP FILE: Process normally
-                const apiData: ApiPlacemark = resp.data.data.parsed_data;
-
+                // New infrastructure assets processing
+                const { placemarks: infraPlacemarks, categories: infraCategories } = 
+                  processSurveyInfrastructureData(apiData);
+                
                 processedFilesData.push({
                   fileId: file.id,
                   filename: file.filename,
@@ -224,101 +279,150 @@ function SmartInventory() {
                   originalFile: file
                 });
 
-                const { placemarks, categories } = processApiData(apiData);
-
                 const filePrefix = file.id;
-                const prefixedPlacemarks = placemarks.map(placemark => ({
+                const prefixedPlacemarks = infraPlacemarks.map(placemark => ({
                   ...placemark,
-                  id: `${filePrefix}-${placemark.id}`
+                  id: `${filePrefix}-${placemark.id}`,
+                  category: `External Survey: ${placemark.category}` // Prefix with External Survey
                 }));
 
                 allPlacemarks = [...allPlacemarks, ...prefixedPlacemarks];
 
-                categories.forEach(category => {
-                  allCategoryData[category.name] = (allCategoryData[category.name] || 0) + category.count;
+                // PREFIX CATEGORIES WITH "External Survey:"
+                infraCategories.forEach(category => {
+                  const externalCategoryName = `External Survey: ${category.name}`;
+                  allCategoryData[externalCategoryName] = (allCategoryData[externalCategoryName] || 0) + category.count;
                 });
               }
-
             } else {
-              showNotification("error", `Failed to load ${file.filename}: ${resp.data.message}`);
+              // DESKTOP FILE: Process normally but prefix categories
+              const apiData: ApiPlacemark = resp.data.data.parsed_data;
+
+              processedFilesData.push({
+                fileId: file.id,
+                filename: file.filename,
+                category: file.category,
+                rawData: resp.data.data,
+                transformedData: null,
+                originalFile: file
+              });
+
+              const { placemarks, categories } = processApiData(apiData);
+
+              const filePrefix = file.id;
+              const prefixedPlacemarks = placemarks.map(placemark => ({
+                ...placemark,
+                id: `${filePrefix}-${placemark.id}`,
+                category: `External Desktop: ${placemark.category}` // Prefix with External Desktop
+              }));
+
+              allPlacemarks = [...allPlacemarks, ...prefixedPlacemarks];
+
+              // PREFIX CATEGORIES WITH "External Desktop:"
+              categories.forEach(category => {
+                const externalCategoryName = `External Desktop: ${category.name}`;
+                allCategoryData[externalCategoryName] = (allCategoryData[externalCategoryName] || 0) + category.count;
+              });
             }
+
+          } else {
+            showNotification("error", `Failed to load ${file.filename}: ${resp.data.message}`);
           }
-
-          setAllProcessedFiles(processedFilesData);
-
-          if (Object.keys(combinedPhysicalSurveyData.data).length > 0) {
-            setRawPhysicalSurveyData(prevData => {
-              if (prevData && prevData.data) {
-                const mergedData = { ...prevData.data };
-                Object.keys(combinedPhysicalSurveyData.data).forEach(blockId => {
-                  if (!mergedData[blockId]) {
-                    mergedData[blockId] = [];
-                  }
-                  mergedData[blockId] = [
-                    ...mergedData[blockId],
-                    ...combinedPhysicalSurveyData.data[blockId]
-                  ];
-                });
-                return { ...prevData, data: mergedData };
-              }
-              return combinedPhysicalSurveyData;
-            });
-          }
-
-          const combinedCategories = Object.entries(allCategoryData).map(([name, count]) => {
-            const categoryConfig = Object.entries(PLACEMARK_CATEGORIES).find(([key]) => key === name);
-            const config = categoryConfig ? categoryConfig[1] : { color: '#6B7280', icon: '📍' };
-
-            return {
-              id: name.toLowerCase().replace(/\s+/g, '-'),
-              name,
-              count,
-              visible: true,
-              color: (config as any).color,
-              icon: (config as any).icon
-            };
-          }).filter(category => category.count > 0);
-
-          setProcessedPlacemarks(allPlacemarks);
-          setPlacemarkCategories(combinedCategories);
-
-          const autoVisibleCategories = combinedCategories
-        .filter(category => category.visible)
-        .map(category => category.id);
-      
-      if (autoVisibleCategories.length > 0) {
-        setVisibleCategories(prev => {
-          const newSet = new Set(prev);
-          autoVisibleCategories.forEach(categoryId => newSet.add(categoryId));
-          return newSet;
-        });
-      }
-
-          if (selectedFiles.length > 1) {
-            showNotification("success", `Successfully loaded ${selectedFiles.length} files with ${allPlacemarks.length} placemarks`);
-          }
-
-        } catch (error) {
-          console.error('Failed to show preview:', error);
-          showNotification("error", 'Failed to show preview');
         }
-      } else {
-        // Clear external file data when no files selected
-        setProcessedPlacemarks([]);
-        setPlacemarkCategories([]);
-        setAllProcessedFiles([]);
 
-        // Remove external file categories from visible categories
-        setVisibleCategories(prev => {
-          const newSet = new Set(prev);
-          placemarkCategories.forEach(cat => newSet.delete(cat.id));
-          return newSet;
-        });
+        setAllProcessedFiles(processedFilesData);
+
+        if (Object.keys(combinedPhysicalSurveyData.data).length > 0) {
+          setRawPhysicalSurveyData(prevData => {
+            if (prevData && prevData.data) {
+              const mergedData = { ...prevData.data };
+              Object.keys(combinedPhysicalSurveyData.data).forEach(blockId => {
+                if (!mergedData[blockId]) {
+                  mergedData[blockId] = [];
+                }
+                mergedData[blockId] = [
+                  ...mergedData[blockId],
+                  ...combinedPhysicalSurveyData.data[blockId]
+                ];
+              });
+              return { ...prevData, data: mergedData };
+            }
+            return combinedPhysicalSurveyData;
+          });
+        }
+
+        // Create categories with proper external prefixes and CUSTOM COLORS
+        const combinedCategories = Object.entries(allCategoryData).map(([name, count]) => {
+          // Extract the base category name for color/icon lookup
+          const baseCategoryName = name.replace(/^External (Survey|Desktop): /, '');
+          
+          // CUSTOM COLOR MAPPING FOR CABLES
+          let config;
+          if (name === 'External Desktop: Incremental Cable') {
+            config = { color: '#8B5CF6', icon: '▓▓▓▓' }; // Purple
+          } else if (name === 'External Desktop: Proposed Cable') {
+            config = { color: '#F59E0B', icon: '▒▒▒▒' }; // Yellow
+          } else if (name === 'External Survey: Incremental Cable') {
+            config = { color: '#06B6D4', icon: '⚡⚡⚡⚡' }; // Cyan
+          } else if (name === 'External Survey: Proposed Cable') {
+            config = { color: '#F97316', icon: '➖➖➖➖' }; // Orange
+          } else if (name === 'External Survey: Survey: Block to FPOI Cable') {
+            config = { color: '#000000', icon: '🔗🔗' }; // Teal
+          } else {
+            // Fallback to PLACEMARK_CATEGORIES
+            const categoryConfig = Object.entries(PLACEMARK_CATEGORIES).find(([key]) => key === baseCategoryName);
+            config = categoryConfig ? categoryConfig[1] : { color: '#6B7280', icon: '📍' };
+          }
+
+          return {
+            id: name.toLowerCase().replace(/\s+/g, '-'),
+            name,
+            count,
+            visible: getDefaultVisibility(name),
+            color: config.color,
+            icon: config.icon
+          };
+        }).filter(category => category.count > 0);
+
+        setProcessedPlacemarks(allPlacemarks);
+        setPlacemarkCategories(combinedCategories);
+
+        const autoVisibleCategories = combinedCategories
+          .filter(category => category.visible)
+          .map(category => category.id);
+        
+        if (autoVisibleCategories.length > 0) {
+          setVisibleCategories(prev => {
+            const newSet = new Set(prev);
+            autoVisibleCategories.forEach(categoryId => newSet.add(categoryId));
+            return newSet;
+          });
+        }
+
+        if (selectedFiles.length > 1) {
+          showNotification("success", `Successfully loaded ${selectedFiles.length} files with ${allPlacemarks.length} placemarks`);
+        }
+
+      } catch (error) {
+        console.error('Failed to show preview:', error);
+        showNotification("error", 'Failed to show preview');
       }
-    };
-    handleParsed();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedFiles]);
+    } else {
+      // Clear external file data when no files selected
+      setProcessedPlacemarks([]);
+      setPlacemarkCategories([]);
+      setAllProcessedFiles([]);
+
+      // Remove external file categories from visible categories
+      setVisibleCategories(prev => {
+        const newSet = new Set(prev);
+        placemarkCategories.forEach(cat => newSet.delete(cat.id));
+        return newSet;
+      });
+    }
+  };
+  handleParsed();
+}, [selectedFiles]);
 
   // ==============================================
   // API DATA MANAGEMENT (Physical Survey & Desktop Planning)
@@ -850,7 +954,6 @@ function SmartInventory() {
         // Find the actual index in the full video array
         selectedIndex = videoSurveyData.videoClips.findIndex(clip => clip.id === clipMatch.clip.id);
         selectedClip = clipMatch.clip;
-        console.log(`Exact match found in Survey ${pointSurveyId}`);
       } else {
         // No exact match, find nearest video within same survey
         const nearestMatch = VideoSurveyService.findNearestVideoClip(sameSurveyVideos, point.timestamp);
@@ -930,7 +1033,6 @@ useEffect(() => {
         
         // Debug logging for troubleshooting
         if (currentTime < surveyStart || currentTime > surveyEnd) {
-          console.log(`Time ${new Date(currentTime).toLocaleTimeString()} is in buffer zone for Survey ${currentClip.meta.surveyId}`);
         }
       } else {
         // Time is outside this survey's range - hide red dot to prevent wrong positioning
@@ -944,7 +1046,6 @@ useEffect(() => {
         );
         
         if (distanceFromSurvey > 60000) { // More than 1 minute away
-          console.log(`Current time is ${Math.round(distanceFromSurvey/1000)}s away from Survey ${currentClip.meta.surveyId} time range`);
         }
       }
     } else {

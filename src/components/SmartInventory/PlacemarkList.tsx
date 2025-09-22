@@ -1,5 +1,7 @@
+// Updated PlacemarkList.tsx to properly separate external file categories
+
 import React, { useState, useMemo } from 'react';
-import { MapPin, Eye, EyeOff, ChevronDown, ChevronUp, Layers, ChevronRight, Database, FileText, Navigation } from 'lucide-react';
+import { MapPin, Eye, EyeOff, ChevronDown, ChevronUp, Layers, ChevronRight, Database, FileText, Navigation, Upload } from 'lucide-react';
 import { ProcessedPlacemark, PlacemarkCategory, ProcessedPhysicalSurvey } from '../../types/kmz';
 import { PLACEMARK_CATEGORIES } from './PlaceMark';
 
@@ -28,40 +30,87 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
   onPlacemarkClick,
   highlightedPlacemark,
 }) => {
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['physical-survey', 'desktop-planning', 'external-files']));
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['physical-survey', 'desktop-planning', 'external-survey', 'external-desktop']));
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
-  // Separate categories by data source
+  // Separate categories by data source with improved logic
   const layerSections: LayerSection[] = useMemo(() => {
-    const physicalSurveyCategories = categories.filter(cat => cat.id.startsWith('physical-'));
-    const desktopPlanningCategories = categories.filter(cat => cat.name.startsWith('Desktop:'));
-    const externalFileCategories = categories.filter(cat => 
-      !cat.id.startsWith('physical-') && !cat.name.startsWith('Desktop:')
+    const physicalSurveyCategories = categories.filter(cat => 
+      cat.id.startsWith('physical-') && !cat.name.startsWith('External')
+    );
+    
+    const desktopPlanningCategories = categories.filter(cat => 
+      cat.name.startsWith('Desktop:') && !cat.name.startsWith('External')
+    );
+    
+    const externalSurveyCategories = categories.filter(cat => 
+      cat.name.startsWith('External Survey:')
+    );
+    
+    const externalDesktopCategories = categories.filter(cat => 
+      cat.name.startsWith('External Desktop:')
+    );
+    
+    const otherExternalCategories = categories.filter(cat => 
+      !cat.id.startsWith('physical-') && 
+      !cat.name.startsWith('Desktop:') && 
+      !cat.name.startsWith('External Survey:') && 
+      !cat.name.startsWith('External Desktop:')
     );
 
-    return [
-      {
+    const sections: LayerSection[] = [];
+
+    if (physicalSurveyCategories.length > 0) {
+      sections.push({
         id: 'physical-survey',
-        title: 'PHYSICAL SURVEY DATA',
+        title: 'API: PHYSICAL SURVEY DATA',
         icon: <Navigation className="h-4 w-4 text-green-600" />,
         categories: physicalSurveyCategories,
         color: 'from-green-50 to-emerald-50'
-      },
-      {
+      });
+    }
+
+    if (desktopPlanningCategories.length > 0) {
+      sections.push({
         id: 'desktop-planning',
-        title: 'DESKTOP PLANNING',
+        title: 'API: DESKTOP PLANNING',
         icon: <Database className="h-4 w-4 text-blue-600" />,
         categories: desktopPlanningCategories,
         color: 'from-blue-50 to-indigo-50'
-      },
-      {
-        id: 'external-files',
-        title: 'EXTERNAL FILES',
+      });
+    }
+
+    if (externalSurveyCategories.length > 0) {
+      sections.push({
+        id: 'external-survey',
+        title: 'EXTERNAL: SURVEY FILES',
+        icon: <Upload className="h-4 w-4 text-orange-600" />,
+        categories: externalSurveyCategories,
+        color: 'from-orange-50 to-amber-50'
+      });
+    }
+
+    if (externalDesktopCategories.length > 0) {
+      sections.push({
+        id: 'external-desktop',
+        title: 'EXTERNAL: DESKTOP FILES',
         icon: <FileText className="h-4 w-4 text-purple-600" />,
-        categories: externalFileCategories,
+        categories: externalDesktopCategories,
         color: 'from-purple-50 to-violet-50'
-      }
-    ].filter(section => section.categories.length > 0);
+      });
+    }
+
+    if (otherExternalCategories.length > 0) {
+      sections.push({
+        id: 'external-other',
+        title: 'EXTERNAL: OTHER FILES',
+        icon: <FileText className="h-4 w-4 text-gray-600" />,
+        categories: otherExternalCategories,
+        color: 'from-gray-50 to-slate-50'
+      });
+    }
+
+    return sections;
   }, [categories]);
 
   const toggleSectionExpansion = (sectionId: string) => {
@@ -99,17 +148,24 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
     return `text-[${color}]`;
   };
 
-  const getCategoryPlacemarks = (categoryId: string) => {
+  const getCategoryPlacemarks = (categoryId: string, categoryName: string) => {
     return placemarks.filter(p => {
-      if (p.id.startsWith('physical-')) {
-        return p.category === categoryId || 
+      // Handle API Physical Survey data
+      if (p.id.startsWith('physical-') && categoryId.startsWith('physical-')) {
+        return p.category === categoryName || 
                (categoryId.startsWith('physical-') && categoryId.replace('physical-', '').toUpperCase() === p.category);
-      } else if (p.id.startsWith('desktop-')) {
-        return p.category === categoryId;
-      } else {
-        // External file placemarks
-        return p.category === categoryId;
+      } 
+      // Handle API Desktop Planning data
+      else if (p.id.startsWith('desktop-') && categoryName.startsWith('Desktop:')) {
+        return p.category === categoryName;
+      } 
+      // Handle External file data
+      else if (!p.id.startsWith('physical-') && !p.id.startsWith('desktop-')) {
+        // For external files, match the full category name including prefix
+        return p.category === categoryName;
       }
+      
+      return false;
     });
   };
 
@@ -173,9 +229,13 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
+                    {section.icon}
                     <h4 className="text-xs font-semibold text-gray-800">
                       {section.title}
                     </h4>
+                    <span className="text-xs bg-white/50 px-2 py-0.5 rounded-full text-gray-600">
+                      {sectionCount}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     {/* Section Select All */}
@@ -204,9 +264,16 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
                   <div className="space-y-1 max-h-80 overflow-y-auto">
                     {section.categories.map((category) => {
                       const isVisible = visibleCategories.has(category.id);
-                      const categoryPlacemarks = getCategoryPlacemarks(category.id);
+                      const categoryPlacemarks = getCategoryPlacemarks(category.id, category.name);
                       const isExpanded = expandedCategories.has(category.id);
                       const showItems = isVisible && categoryPlacemarks.length > 0;
+                      
+                      // Clean display name (remove prefixes for display)
+                      const displayName = category.name
+                        .replace('External Survey: ', '')
+                        .replace('External Desktop: ', '')
+                        .replace('Desktop: ', '')
+                        .replace('Physical: ', '');
                       
                       return (
                         <div key={category.id}>
@@ -223,7 +290,7 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
                                 {category.icon}
                               </span>
                               <span className="text-sm flex-1 text-gray-700 font-medium">
-                                {category.name.replace('Desktop: ', '').replace('Physical: ', '')}
+                                {displayName}
                               </span>
                               <span 
                                 className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-white ml-2"
@@ -244,19 +311,6 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
                                   {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                 </button>
                               )}
-                              
-                              {/* Visibility toggle 
-                              <button
-                                onClick={() => onCategoryVisibilityChange(category.id, !isVisible)}
-                                className={`p-1 rounded transition-colors ${
-                                  isVisible 
-                                    ? 'text-blue-600 hover:bg-blue-50' 
-                                    : 'text-gray-400 hover:bg-gray-100'
-                                }`}
-                                title={isVisible ? 'Hide on map' : 'Show on map'}
-                              >
-                                {isVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                              </button>*/}
                             </div>
                           </div>
 
@@ -301,12 +355,17 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
                                         )}
                                         {placemark.id.startsWith('physical-') && (
                                           <span className="text-xs bg-green-100 text-green-600 px-1 py-0.5 rounded">
-                                            Survey
+                                            API
                                           </span>
                                         )}
                                         {placemark.id.startsWith('desktop-') && (
                                           <span className="text-xs bg-blue-100 text-blue-600 px-1 py-0.5 rounded">
-                                            Planning
+                                            API
+                                          </span>
+                                        )}
+                                        {!placemark.id.startsWith('physical-') && !placemark.id.startsWith('desktop-') && (
+                                          <span className="text-xs bg-orange-100 text-orange-600 px-1 py-0.5 rounded">
+                                            File
                                           </span>
                                         )}
                                       </div>

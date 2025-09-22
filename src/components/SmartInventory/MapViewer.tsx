@@ -281,398 +281,424 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
   };
 
   // Update map with regular placemarks (kept separate from survey overlays)
-  useEffect(() => {
-    if (!mapLoaded || !mapInstanceRef.current) return;
+  // Complete MapViewer useEffect for updating placemarks
+useEffect(() => {
+  if (!mapLoaded || !mapInstanceRef.current) return;
 
-    clearStandardOverlays();
+  clearStandardOverlays();
 
-    const bounds = new google.maps.LatLngBounds();
-    let hasVisiblePlacemarks = false;
+  const bounds = new google.maps.LatLngBounds();
+  let hasVisiblePlacemarks = false;
 
-    placemarks.forEach(placemark => {
-      const category = categories.find(cat =>
-        cat.name === placemark.category ||
-        (cat.name.startsWith('Physical:') && cat.name.replace('Physical: ', '') === placemark.category) ||
-        (cat.name.startsWith('Desktop:') && cat.name.replace('Desktop: ', '') === placemark.category)
-      );
-      if (!category || !visibleCategories.has(category.id)) return;
+  placemarks.forEach(placemark => {
+    // Enhanced category matching for external files
+    const category = categories.find(cat => {
+      // Direct match first
+      if (cat.name === placemark.category) return true;
+      
+      // Handle Physical Survey API data
+      if (cat.name.startsWith('Physical:') && cat.name.replace('Physical: ', '') === placemark.category) return true;
+      
+      // Handle Desktop Planning API data  
+      if (cat.name.startsWith('Desktop:') && cat.name.replace('Desktop: ', '') === placemark.category) return true;
+      
+      // Handle External Survey files
+      if (cat.name.startsWith('External Survey:') && cat.name === placemark.category) return true;
+      
+      // Handle External Desktop files
+      if (cat.name.startsWith('External Desktop:') && cat.name === placemark.category) return true;
+      
+      return false;
+    });
+    
+    if (!category || !visibleCategories.has(category.id)) return;
 
-      hasVisiblePlacemarks = true;
+    hasVisiblePlacemarks = true;
 
-      if (placemark.type === 'point') {
-        const isPhysicalSurvey = placemark.id.startsWith('physical-');
-        const isDesktopPlanning = placemark.id.startsWith('desktop-');
+    if (placemark.type === 'point') {
+      const isPhysicalSurvey = placemark.id.startsWith('physical-');
+      const isDesktopPlanning = placemark.id.startsWith('desktop-');
+      const isExternalFile = !placemark.id.startsWith('physical-') && !placemark.id.startsWith('desktop-');
 
-        let markerIcon: google.maps.Symbol | google.maps.Icon | undefined;
+      let markerIcon: google.maps.Symbol | google.maps.Icon | undefined;
 
-        if (isPhysicalSurvey) {
+      if (isPhysicalSurvey) {
+        markerIcon = {
+          path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+          scale: 5,
+          fillColor: category.color,
+          fillOpacity: 0.9,
+          strokeColor: '#ffffff',
+          strokeWeight: 3,
+        } as google.maps.Symbol;
+      } else if (isDesktopPlanning) {
+        const desktopPlacemark = placemark as ProcessedDesktopPlanning;
+        const assetType = desktopPlacemark.assetType || desktopPlacemark.pointType || 'FPOI';
+
+        if (assetType === 'GP') {
           markerIcon = {
-            path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-            scale: 5,
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 14,
+            fillColor: category.color,
+            fillOpacity: 0.9,
+            strokeColor: '#000000',
+            strokeWeight: 3,
+          } as google.maps.Symbol;
+        } else if (assetType === 'BHQ' || assetType === 'Block Router') {
+          markerIcon = {
+            path: 'M-8,-8 L8,-8 L8,8 L-8,8 Z',
+            scale: 1,
             fillColor: category.color,
             fillOpacity: 0.9,
             strokeColor: '#ffffff',
             strokeWeight: 3,
           } as google.maps.Symbol;
-        } else if (isDesktopPlanning) {
-          const desktopPlacemark = placemark as ProcessedDesktopPlanning;
-          const assetType = desktopPlacemark.assetType || desktopPlacemark.pointType || 'FPOI';
-
-          if (assetType === 'GP') {
-            markerIcon = {
-              path: google.maps.SymbolPath.CIRCLE,
-              scale: 14,
-              fillColor: category.color,
-              fillOpacity: 0.9,
-              strokeColor: '#000000',
-              strokeWeight: 3,
-            } as google.maps.Symbol;
-          } else if (assetType === 'BHQ' || assetType === 'Block Router') {
-            markerIcon = {
-              path: 'M-8,-8 L8,-8 L8,8 L-8,8 Z',
-              scale: 1,
-              fillColor: category.color,
-              fillOpacity: 0.9,
-              strokeColor: '#ffffff',
-              strokeWeight: 3,
-            } as google.maps.Symbol;
-          } else if (assetType === 'FPOI') {
-            markerIcon = {
-              path: 'M0,-12 L8,8 L-8,8 Z',
-              scale: 1,
-              fillColor: category.color,
-              fillOpacity: 0.9,
-              strokeColor: '#ffffff',
-              strokeWeight: 2,
-            } as google.maps.Symbol;
-          } else {
-            markerIcon = {
-              path: 'M-6,-6 L6,-6 L6,6 L-6,6 Z M-4,-4 L4,-4 L4,4 L-4,4 Z',
-              scale: 1,
-              fillColor: category.color,
-              fillOpacity: 0.9,
-              strokeColor: '#ffffff',
-              strokeWeight: 2,
-            } as google.maps.Symbol;
-          }
-        } else {
-          const pointType = (placemark as ProcessedPlacemark).pointType;
+        } else if (assetType === 'FPOI') {
           markerIcon = {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: pointType === 'FPOI' || pointType === 'LANDMARK' ? 12 : 10,
+            path: 'M0,-12 L8,8 L-8,8 Z',
+            scale: 1,
             fillColor: category.color,
             fillOpacity: 0.9,
             strokeColor: '#ffffff',
-            strokeWeight: pointType === 'FPOI' || pointType === 'LANDMARK' ? 3 : 2,
+            strokeWeight: 2,
+          } as google.maps.Symbol;
+        } else {
+          markerIcon = {
+            path: 'M-6,-6 L6,-6 L6,6 L-6,6 Z M-4,-4 L4,-4 L4,4 L-4,4 Z',
+            scale: 1,
+            fillColor: category.color,
+            fillOpacity: 0.9,
+            strokeColor: '#ffffff',
+            strokeWeight: 2,
           } as google.maps.Symbol;
         }
+      } else {
+        // External files and fallback - use original circular markers
+        const pointType = (placemark as ProcessedPlacemark).pointType;
+        markerIcon = {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: pointType === 'FPOI' || pointType === 'LANDMARK' ? 12 : 10,
+          fillColor: category.color,
+          fillOpacity: 0.9,
+          strokeColor: '#ffffff',
+          strokeWeight: pointType === 'FPOI' || pointType === 'LANDMARK' ? 3 : 2,
+        } as google.maps.Symbol;
+      }
 
-        const marker = new google.maps.Marker({
-          position: placemark.coordinates as { lat: number; lng: number },
-          map: mapInstanceRef.current!,
-          title: placemark.name,
-          icon: markerIcon,
-        });
+      const marker = new google.maps.Marker({
+        position: placemark.coordinates as { lat: number; lng: number },
+        map: mapInstanceRef.current!,
+        title: placemark.name,
+        icon: markerIcon,
+      });
 
-        marker.addListener('click', () => {
-          onPlacemarkClick(placemark);
+      marker.addListener('click', () => {
+        onPlacemarkClick(placemark);
 
-          if (infoWindowRef.current) {
-            const isPhysical = placemark.id.startsWith('physical-');
-            const isDesktop = placemark.id.startsWith('desktop-');
-            let infoContent = '';
+        if (infoWindowRef.current) {
+          const isPhysical = placemark.id.startsWith('physical-');
+          const isDesktop = placemark.id.startsWith('desktop-');
+          const isExternal = !isPhysical && !isDesktop;
+          
+          let infoContent = '';
 
-            if (isPhysical) {
-              const physicalInfo = placemark as ProcessedPhysicalSurvey;
-              
-              const baseInfo = `
-                <div class="p-3" style="max-width: 400px;">
-                  <h3 class="font-semibold text-gray-900 mb-1" style="font-weight: 600; margin-bottom: 4px;">
-                    ${placemark.name}
-                  </h3>
-                  <p class="text-sm text-gray-600">Category: ${placemark.category}</p>
-                  <p class="text-sm text-gray-600">Type: Physical Survey</p>
-                  <p class="text-sm text-gray-600">Survey ID: ${physicalInfo.surveyId || 'N/A'}</p>
-                  <p class="text-sm text-gray-600">Block ID: ${physicalInfo.blockId || 'N/A'}</p>
-                  <p class="text-sm text-gray-600">Event Type: ${physicalInfo.eventType || physicalInfo.category}</p>
-                  <p class="text-sm text-gray-600">Coordinates: ${typeof placemark.coordinates === 'object' && 'lat' in placemark.coordinates 
-                    ? `${placemark.coordinates.lat.toFixed(6)}, ${placemark.coordinates.lng.toFixed(6)}`
-                    : 'N/A'}</p>
-              `;
+          if (isPhysical) {
+            const physicalInfo = placemark as ProcessedPhysicalSurvey;
+            
+            const baseInfo = `
+              <div class="p-3" style="max-width: 400px;">
+                <h3 class="font-semibold text-gray-900 mb-1" style="font-weight: 600; margin-bottom: 4px;">
+                  ${placemark.name}
+                </h3>
+                <p class="text-sm text-gray-600">Category: ${placemark.category}</p>
+                <p class="text-sm text-gray-600">Type: Physical Survey (API)</p>
+                <p class="text-sm text-gray-600">Survey ID: ${physicalInfo.surveyId || 'N/A'}</p>
+                <p class="text-sm text-gray-600">Block ID: ${physicalInfo.blockId || 'N/A'}</p>
+                <p class="text-sm text-gray-600">Event Type: ${physicalInfo.eventType || physicalInfo.category}</p>
+                <p class="text-sm text-gray-600">Coordinates: ${typeof placemark.coordinates === 'object' && 'lat' in placemark.coordinates 
+                  ? `${placemark.coordinates.lat.toFixed(6)}, ${placemark.coordinates.lng.toFixed(6)}`
+                  : 'N/A'}</p>
+            `;
 
-              const imageGallery = (physicalInfo.hasImages && physicalInfo.images) 
-                ? createImageGalleryHTML(physicalInfo.images)
-                : '';
+            const imageGallery = (physicalInfo.hasImages && physicalInfo.images) 
+              ? createImageGalleryHTML(physicalInfo.images)
+              : '';
 
-              infoContent = baseInfo + imageGallery + '</div>';
-              
-            } else if (isDesktop) {
-              const desktopInfo = placemark as ProcessedDesktopPlanning;
-              infoContent = `
-                <div class="p-3">
-                  <h3 class="font-semibold text-gray-900 mb-1">${placemark.name}</h3>
-                  <p class="text-sm text-gray-600">Category: ${placemark.category}</p>
-                  <p class="text-sm text-gray-600">Type: Desktop Planning</p>
-                  <p class="text-sm text-gray-600">Asset Type: ${desktopInfo.assetType || 'N/A'}</p>
-                  <p class="text-sm text-gray-600">Status: ${desktopInfo.status || 'N/A'}</p>
-                  ${desktopInfo.ring ? `<p class="text-sm text-gray-600">Ring: ${desktopInfo.ring}</p>` : ''}
-                  ${desktopInfo.lgdCode && desktopInfo.lgdCode !== 'NULL' ? `<p class="text-sm text-gray-600">LGD Code: ${desktopInfo.lgdCode}</p>` : ''}
-                  ${desktopInfo.networkId ? `<p class="text-sm text-gray-600">Network ID: ${desktopInfo.networkId}</p>` : ''}
-                </div>
-              `;
-            } else {
-              infoContent = `
-                <div class="p-3">
-                  <h3 class="font-semibold text-gray-900 mb-1">${placemark.name}</h3>
-                  <p class="text-sm text-gray-600">Category: ${placemark.category}</p>
-                  <p class="text-sm text-gray-600">Type: Point</p>
-                </div>
-              `;
+            infoContent = baseInfo + imageGallery + '</div>';
+            
+          } else if (isDesktop) {
+            const desktopInfo = placemark as ProcessedDesktopPlanning;
+            infoContent = `
+              <div class="p-3">
+                <h3 class="font-semibold text-gray-900 mb-1">${placemark.name}</h3>
+                <p class="text-sm text-gray-600">Category: ${placemark.category}</p>
+                <p class="text-sm text-gray-600">Type: Desktop Planning (API)</p>
+                <p class="text-sm text-gray-600">Asset Type: ${desktopInfo.assetType || 'N/A'}</p>
+                <p class="text-sm text-gray-600">Status: ${desktopInfo.status || 'N/A'}</p>
+                ${desktopInfo.ring ? `<p class="text-sm text-gray-600">Ring: ${desktopInfo.ring}</p>` : ''}
+                ${desktopInfo.lgdCode && desktopInfo.lgdCode !== 'NULL' ? `<p class="text-sm text-gray-600">LGD Code: ${desktopInfo.lgdCode}</p>` : ''}
+                ${desktopInfo.networkId ? `<p class="text-sm text-gray-600">Network ID: ${desktopInfo.networkId}</p>` : ''}
+              </div>
+            `;
+          } else if (isExternal) {
+            const externalInfo = placemark as ProcessedPlacemark;
+            const sourceType = placemark.category.startsWith('External Survey:') ? 'Survey File' : 
+                             placemark.category.startsWith('External Desktop:') ? 'Desktop File' : 'External File';
+            
+            infoContent = `
+              <div class="p-3">
+                <h3 class="font-semibold text-gray-900 mb-1">${placemark.name}</h3>
+                <p class="text-sm text-gray-600">Category: ${placemark.category.replace(/^External (Survey|Desktop): /, '')}</p>
+                <p class="text-sm text-gray-600">Type: ${sourceType}</p>
+                <p class="text-sm text-gray-600">Point Type: ${externalInfo.pointType || 'N/A'}</p>
+                <p class="text-sm text-gray-600">Coordinates: ${typeof placemark.coordinates === 'object' && 'lat' in placemark.coordinates 
+                  ? `${placemark.coordinates.lat.toFixed(6)}, ${placemark.coordinates.lng.toFixed(6)}`
+                  : 'N/A'}</p>
+              </div>
+            `;
+          }
+
+          infoWindowRef.current.setContent(infoContent);
+          infoWindowRef.current.open(mapInstanceRef.current!, marker);
+        }
+      });
+
+      // Keep both lists: the array and the id→marker map (for fast lookup by unique id)
+      markersRef.current.push(marker);
+      markersByIdRef.current.set(placemark.id, marker);
+
+      bounds.extend(placemark.coordinates as unknown as google.maps.LatLng);
+    } else if (placemark.type === 'polyline' && 'coordinates' in placemark && Array.isArray(placemark.coordinates)) {
+      const isPhysicalSurvey = placemark.id.startsWith('physical-');
+      const isDesktopPlanning = placemark.id.startsWith('desktop-');
+
+      let strokeWeight = 3;
+      let strokeOpacity = 0.8;
+
+      if (isPhysicalSurvey) {
+        const physicalInfo = placemark as ProcessedPhysicalSurvey;
+        if (physicalInfo.eventType === 'SURVEY_ROUTE') {
+          strokeWeight = 5;
+          strokeOpacity = 0.9;
+        }
+      } else if (isDesktopPlanning) {
+        const desktopInfo = placemark as ProcessedDesktopPlanning;
+        if ((desktopInfo as any).connectionType === 'incremental') {
+          strokeWeight = 4;
+          strokeOpacity = 1.0;
+        } else {
+          strokeWeight = 3;
+          strokeOpacity = 0.7;
+        }
+      }
+
+      const polyline = new google.maps.Polyline({
+        path: placemark.coordinates as google.maps.LatLngLiteral[],
+        geodesic: true,
+        strokeColor: categories.find(c => c.name === placemark.category)?.color || '#3b82f6',
+        strokeOpacity: strokeOpacity,
+        strokeWeight: strokeWeight,
+        ...(isPhysicalSurvey && (placemark as ProcessedPhysicalSurvey).eventType === 'SURVEY_ROUTE' ? {
+          strokeColor: '#FFFF2E',
+          icons: [{
+            icon: {
+              path: 'M 0,-1 0,1',
+              strokeOpacity: 1,
+              scale: 1
+            },
+            offset: '22',
+            repeat: '8px'
+          }]
+        } : {}),
+        map: mapInstanceRef.current!,
+      });
+
+      polyline.addListener('click', (event: google.maps.MapMouseEvent) => {
+        onPlacemarkClick(placemark);
+
+        if (infoWindowRef.current && event.latLng) {
+          let infoContent = '';
+
+          if (isPhysicalSurvey) {
+            const physicalInfo = placemark as ProcessedPhysicalSurvey;
+            
+            // Parse route details and feasibility
+            let routeDetails: any = {};
+            let routeFeasibility: any = {};
+            
+            try {
+              if (physicalInfo.routeDetails) {
+                routeDetails = typeof physicalInfo.routeDetails === 'string' 
+                  ? JSON.parse(physicalInfo.routeDetails) 
+                  : physicalInfo.routeDetails;
+              }
+              if (physicalInfo.routeFeasibility) {
+                routeFeasibility = typeof physicalInfo.routeFeasibility === 'string' 
+                  ? JSON.parse(physicalInfo.routeFeasibility) 
+                  : physicalInfo.routeFeasibility;
+              }
+            } catch (error) {
+              console.warn('Error parsing route details:', error);
             }
 
-            infoWindowRef.current.setContent(infoContent);
-            infoWindowRef.current.open(mapInstanceRef.current!, marker);
-          }
-        });
+            // Calculate route statistics directly here
+            const coordinates = placemark.coordinates as google.maps.LatLngLiteral[];
+            let totalDistance = 0;
+            if (coordinates && coordinates.length > 1) {
+              for (let i = 1; i < coordinates.length; i++) {
+                const prev = coordinates[i-1];
+                const curr = coordinates[i];
+                // Haversine formula calculation
+                const R = 6371e3; // Earth radius in meters
+                const φ1 = (prev.lat * Math.PI) / 180;
+                const φ2 = (curr.lat * Math.PI) / 180;
+                const Δφ = ((curr.lat - prev.lat) * Math.PI) / 180;
+                const Δλ = ((curr.lng - prev.lng) * Math.PI) / 180;
+                const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                         Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                totalDistance += R * c;
+              }
+            }
 
-        // Keep both lists: the array and the id→marker map (for fast lookup by unique id)
-        markersRef.current.push(marker);
-        markersByIdRef.current.set(placemark.id, marker);
+            // CREATE ROUTE NAME AND DETAILS
+            const routeName = physicalInfo.startLgdName && physicalInfo.endLgdName
+              ? `${physicalInfo.startLgdName} to ${physicalInfo.endLgdName}`
+              : `Survey ${physicalInfo.surveyId}`;
+            
+            const routeType = routeDetails.routeType || 'Unknown';
+            const routeBelongsTo = routeDetails.routeBelongsTo || 'Unknown';
+            const roadWidth = routeDetails.roadWidth || 'N/A';
+            const centerToMargin = routeDetails.centerToMargin || 'N/A';
+            const soilType = routeDetails.soilType || 'N/A';
+            const routeFeasible = routeFeasibility.routeFeasible ? 'Yes' : 'No';
+            
+            const routePoints = coordinates?.length || 0;
+            const distanceKm = (totalDistance / 1000).toFixed(2);
+            
+            infoContent = `
+              <div class="p-2" style="max-width: 420px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                <!-- Header -->
+                <div class="border-b pb-2 mb-3" style="border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 12px;">
+                  <h3 style="font-weight: bold; color: #111827; font-size: 18px; margin-bottom: 4px;">${routeName}</h3>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="display: inline-block; width: 12px; height: 12px; background-color: #FBBF24; border-radius: 2px;"></span>
+                    <span style="font-size: 14px; font-weight: 500; color: #92400E;">Physical Survey Route</span>
+                  </div>
+                </div>
 
-        bounds.extend(placemark.coordinates as unknown as google.maps.LatLng);
-      } else if (placemark.type === 'polyline' && 'coordinates' in placemark && Array.isArray(placemark.coordinates)) {
-        const isPhysicalSurvey = placemark.id.startsWith('physical-');
-        const isDesktopPlanning = placemark.id.startsWith('desktop-');
+                <!-- Route Identity -->
+                <div style="margin-bottom: 12px;">
+                  <h4 style="font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 14px;">Route Details</h4>
+                  <div style="font-size: 13px; line-height: 1.4;">
+                    <div style="margin-bottom: 4px;"><span style="font-weight: 500; color: #6B7280;">Survey ID:</span> ${physicalInfo.surveyId}</div>
+                    <div style="margin-bottom: 4px;"><span style="font-weight: 500; color: #6B7280;">Route Type:</span> ${routeType} (${routeBelongsTo})</div>
+                    <div style="margin-bottom: 4px;"><span style="font-weight: 500; color: #6B7280;">Road Width:</span> ${roadWidth}m (Margin: ${centerToMargin}m)</div>
+                    <div style="margin-bottom: 4px;"><span style="font-weight: 500; color: #6B7280;">Soil Type:</span> ${soilType}</div>
+                    <div style="margin-bottom: 4px;"><span style="font-weight: 500; color: #6B7280;">Route Feasible:</span> ${routeFeasible}</div>
+                  </div>
+                </div>
 
-        let strokeWeight = 3;
-        let strokeOpacity = 0.8;
+                <!-- Location Details -->
+                <div style="margin-bottom: 12px;">
+                  <h4 style="font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 14px;">Location</h4>
+                  <div style="font-size: 12px; line-height: 1.4;">
+                    <div style="margin-bottom: 3px;"><span style="font-weight: 500; color: #6B7280;">Block:</span> ${physicalInfo.blockName || 'N/A'}</div>
+                    <div style="margin-bottom: 3px;"><span style="font-weight: 500; color: #6B7280;">District:</span> ${physicalInfo.districtName || 'N/A'}</div>
+                    <div style="margin-bottom: 3px;"><span style="font-weight: 500; color: #6B7280;">State:</span> ${physicalInfo.stateName || 'N/A'}</div>
+                  </div>
+                </div>
 
-        if (isPhysicalSurvey) {
-          const physicalInfo = placemark as ProcessedPhysicalSurvey;
-          if (physicalInfo.eventType === 'SURVEY_ROUTE') {
-            strokeWeight = 5;
-            strokeOpacity = 0.9;
-          }
-        } else if (isDesktopPlanning) {
-          const desktopInfo = placemark as ProcessedDesktopPlanning;
-          if ((desktopInfo as any).connectionType === 'incremental') {
-            strokeWeight = 4;
-            strokeOpacity = 1.0;
+                <!-- Route Statistics -->
+                <div style="margin-bottom: 12px;">
+                  <h4 style="font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 14px;">Route Statistics</h4>
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
+                    <div style="background-color: #EFF6FF; padding: 8px; border-radius: 4px;">
+                      <div style="font-weight: 500; color: #1E40AF; margin-bottom: 2px;">Distance</div>
+                      <div style="color: #2563EB; font-weight: 600;">${distanceKm} km</div>
+                    </div>
+                    <div style="background-color: #F0FDF4; padding: 8px; border-radius: 4px;">
+                      <div style="font-weight: 500; color: #166534; margin-bottom: 2px;">GPS Points</div>
+                      <div style="color: #16A34A; font-weight: 600;">${routePoints}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Survey Timing -->
+                ${physicalInfo.createdTime ? `
+                <div style="margin-bottom: 12px;">
+                  <h4 style="font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 14px;">Survey Time</h4>
+                  <div style="font-size: 12px; color: #6B7280;">
+                    ${new Date(physicalInfo.createdTime).toLocaleString()}
+                  </div>
+                </div>
+                ` : ''}
+
+                <!-- Geographic Info -->
+                ${coordinates && coordinates.length > 0 ? `
+                <div style="margin-bottom: 12px;">
+                  <h4 style="font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 14px;">Geographic Bounds</h4>
+                  <div style="font-size: 12px; line-height: 1.4;">
+                    <div style="margin-bottom: 3px;"><span style="font-weight: 500; color: #6B7280;">Start:</span> ${coordinates[0].lat.toFixed(6)}, ${coordinates[0].lng.toFixed(6)}</div>
+                    <div style="margin-bottom: 3px;"><span style="font-weight: 500; color: #6B7280;">End:</span> ${coordinates[coordinates.length - 1].lat.toFixed(6)}, ${coordinates[coordinates.length - 1].lng.toFixed(6)}</div>
+                  </div>
+                </div>
+                ` : ''}
+
+                <!-- Technical Details -->
+                <div style="margin-bottom: 16px;">
+                  <h4 style="font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 14px;">Technical Info</h4>
+                  <div style="font-size: 12px; line-height: 1.4; color: #6B7280;">
+                    <div style="margin-bottom: 3px;">Point Density: ${routePoints > 0 ? (routePoints / Math.max(parseFloat(distanceKm), 0.1)).toFixed(1) : '0'} points/km</div>
+                    <div style="margin-bottom: 3px;">Survey Method: GPS Tracking</div>
+                    <div style="margin-bottom: 3px;">Data Type: LIVELOCATION Events</div>
+                  </div>
+                </div>
+              </div>
+            `;
+            
+          } else if (isDesktopPlanning) {
+            // Keep existing desktop planning logic here
+            const desktopInfo = placemark as ProcessedDesktopPlanning;
+            infoContent = `
+              <div class="p-3">
+                <h3 class="font-semibold text-gray-900 mb-1">${placemark.name}</h3>
+                <p class="text-sm text-gray-600">Category: ${placemark.category}</p>
+                <p class="text-sm text-gray-600">Type: Desktop Planning Connection</p>
+                <p class="text-sm text-gray-600">Connection Type: ${(desktopInfo as any).connectionType || 'N/A'}</p>
+                <p class="text-sm text-gray-600">Length: ${(desktopInfo as any).length || 'N/A'} km</p>
+                <p class="text-sm text-gray-600">Status: ${desktopInfo.status || 'N/A'}</p>
+                ${desktopInfo.networkId ? `<p class="text-sm text-gray-600">Network ID: ${desktopInfo.networkId}</p>` : ''}
+              </div>
+            `;
           } else {
-            strokeWeight = 3;
-            strokeOpacity = 0.7;
+            // External files polylines
+            infoContent = `
+              <div class="p-3">
+                <h3 class="font-semibold text-gray-900 mb-1">${placemark.name}</h3>
+                <p class="text-sm text-gray-600">Category: ${placemark.category.replace(/^External (Survey|Desktop): /, '')}</p>
+                <p class="text-sm text-gray-600">Type: External File Polyline</p>
+                ${'distance' in placemark && (placemark as any).distance ? `<p class="text-sm text-gray-600">Distance: ${(placemark as any).distance}</p>` : ''}
+              </div>
+            `;
           }
+
+          infoWindowRef.current.setContent(infoContent);
+          infoWindowRef.current.setPosition(event.latLng);
+          infoWindowRef.current.open(mapInstanceRef.current!);
         }
+      });
 
-        const polyline = new google.maps.Polyline({
-          path: placemark.coordinates as google.maps.LatLngLiteral[],
-          geodesic: true,
-          strokeColor: categories.find(c => c.name === placemark.category)?.color || '#3b82f6',
-          strokeOpacity: strokeOpacity,
-          strokeWeight: strokeWeight,
-          ...(isPhysicalSurvey && (placemark as ProcessedPhysicalSurvey).eventType === 'SURVEY_ROUTE' ? {
-            strokeColor: '#FFFF2E',
-            icons: [{
-              icon: {
-                path: 'M 0,-1 0,1',
-                strokeOpacity: 1,
-                scale: 1
-              },
-              offset: '22',
-              repeat: '8px'
-            }]
-          } : {}),
-          map: mapInstanceRef.current!,
-        });
-
-        polyline.addListener('click', (event: google.maps.MapMouseEvent) => {
-  onPlacemarkClick(placemark);
-
-  if (infoWindowRef.current && event.latLng) {
-    let infoContent = '';
-
-    if (isPhysicalSurvey) {
-      const physicalInfo = placemark as ProcessedPhysicalSurvey;
-      
-      // Parse route details and feasibility
-      let routeDetails: any = {};
-      let routeFeasibility: any = {};
-      
-      try {
-        if (physicalInfo.routeDetails) {
-          routeDetails = typeof physicalInfo.routeDetails === 'string' 
-            ? JSON.parse(physicalInfo.routeDetails) 
-            : physicalInfo.routeDetails;
-        }
-        if (physicalInfo.routeFeasibility) {
-          routeFeasibility = typeof physicalInfo.routeFeasibility === 'string' 
-            ? JSON.parse(physicalInfo.routeFeasibility) 
-            : physicalInfo.routeFeasibility;
-        }
-      } catch (error) {
-        console.warn('Error parsing route details:', error);
-      }
-
-      // Calculate route statistics directly here
-      const coordinates = placemark.coordinates as google.maps.LatLngLiteral[];
-      let totalDistance = 0;
-      if (coordinates && coordinates.length > 1) {
-        for (let i = 1; i < coordinates.length; i++) {
-          const prev = coordinates[i-1];
-          const curr = coordinates[i];
-          // Haversine formula calculation
-          const R = 6371e3; // Earth radius in meters
-          const φ1 = (prev.lat * Math.PI) / 180;
-          const φ2 = (curr.lat * Math.PI) / 180;
-          const Δφ = ((curr.lat - prev.lat) * Math.PI) / 180;
-          const Δλ = ((curr.lng - prev.lng) * Math.PI) / 180;
-          const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-                   Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-          totalDistance += R * c;
-        }
-      }
-
-      // CREATE ROUTE NAME AND DETAILS
-      const routeName = physicalInfo.startLgdName && physicalInfo.endLgdName
-        ? `${physicalInfo.startLgdName} to ${physicalInfo.endLgdName}`
-        : `Survey ${physicalInfo.surveyId}`;
-      
-      const routeType = routeDetails.routeType || 'Unknown';
-      const routeBelongsTo = routeDetails.routeBelongsTo || 'Unknown';
-      const roadWidth = routeDetails.roadWidth || 'N/A';
-      const centerToMargin = routeDetails.centerToMargin || 'N/A';
-      const soilType = routeDetails.soilType || 'N/A';
-      const routeFeasible = routeFeasibility.routeFeasible ? 'Yes' : 'No';
-      
-      const routePoints = coordinates?.length || 0;
-      const distanceKm = (totalDistance / 1000).toFixed(2);
-      
-      infoContent = `
-        <div class="p-2" style="max-width: 420px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-          <!-- Header -->
-          <div class="border-b pb-2 mb-3" style="border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 12px;">
-            <h3 style="font-weight: bold; color: #111827; font-size: 18px; margin-bottom: 4px;">${routeName}</h3>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="display: inline-block; width: 12px; height: 12px; background-color: #FBBF24; border-radius: 2px;"></span>
-              <span style="font-size: 14px; font-weight: 500; color: #92400E;">Physical Survey Route</span>
-            </div>
-          </div>
-
-          <!-- Route Identity -->
-          <div style="margin-bottom: 12px;">
-            <h4 style="font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 14px;">Route Details</h4>
-            <div style="font-size: 13px; line-height: 1.4;">
-              <div style="margin-bottom: 4px;"><span style="font-weight: 500; color: #6B7280;">Survey ID:</span> ${physicalInfo.surveyId}</div>
-              <div style="margin-bottom: 4px;"><span style="font-weight: 500; color: #6B7280;">Route Type:</span> ${routeType} (${routeBelongsTo})</div>
-              <div style="margin-bottom: 4px;"><span style="font-weight: 500; color: #6B7280;">Road Width:</span> ${roadWidth}m (Margin: ${centerToMargin}m)</div>
-              <div style="margin-bottom: 4px;"><span style="font-weight: 500; color: #6B7280;">Soil Type:</span> ${soilType}</div>
-              <div style="margin-bottom: 4px;"><span style="font-weight: 500; color: #6B7280;">Route Feasible:</span> ${routeFeasible}</div>
-            </div>
-          </div>
-
-          <!-- Location Details -->
-          <div style="margin-bottom: 12px;">
-            <h4 style="font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 14px;">Location</h4>
-            <div style="font-size: 12px; line-height: 1.4;">
-              <div style="margin-bottom: 3px;"><span style="font-weight: 500; color: #6B7280;">Block:</span> ${physicalInfo.blockName || 'N/A'}</div>
-              <div style="margin-bottom: 3px;"><span style="font-weight: 500; color: #6B7280;">District:</span> ${physicalInfo.districtName || 'N/A'}</div>
-              <div style="margin-bottom: 3px;"><span style="font-weight: 500; color: #6B7280;">State:</span> ${physicalInfo.stateName || 'N/A'}</div>
-            </div>
-          </div>
-
-          <!-- Route Statistics -->
-          <div style="margin-bottom: 12px;">
-            <h4 style="font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 14px;">Route Statistics</h4>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
-              <div style="background-color: #EFF6FF; padding: 8px; border-radius: 4px;">
-                <div style="font-weight: 500; color: #1E40AF; margin-bottom: 2px;">Distance</div>
-                <div style="color: #2563EB; font-weight: 600;">${distanceKm} km</div>
-              </div>
-              <div style="background-color: #F0FDF4; padding: 8px; border-radius: 4px;">
-                <div style="font-weight: 500; color: #166534; margin-bottom: 2px;">GPS Points</div>
-                <div style="color: #16A34A; font-weight: 600;">${routePoints}</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Survey Timing -->
-          ${physicalInfo.createdTime ? `
-          <div style="margin-bottom: 12px;">
-            <h4 style="font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 14px;">Survey Time</h4>
-            <div style="font-size: 12px; color: #6B7280;">
-              ${new Date(physicalInfo.createdTime).toLocaleString()}
-            </div>
-          </div>
-          ` : ''}
-
-          <!-- Geographic Info -->
-          ${coordinates && coordinates.length > 0 ? `
-          <div style="margin-bottom: 12px;">
-            <h4 style="font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 14px;">Geographic Bounds</h4>
-            <div style="font-size: 12px; line-height: 1.4;">
-              <div style="margin-bottom: 3px;"><span style="font-weight: 500; color: #6B7280;">Start:</span> ${coordinates[0].lat.toFixed(6)}, ${coordinates[0].lng.toFixed(6)}</div>
-              <div style="margin-bottom: 3px;"><span style="font-weight: 500; color: #6B7280;">End:</span> ${coordinates[coordinates.length - 1].lat.toFixed(6)}, ${coordinates[coordinates.length - 1].lng.toFixed(6)}</div>
-            </div>
-          </div>
-          ` : ''}
-
-          <!-- Technical Details -->
-          <div style="margin-bottom: 16px;">
-            <h4 style="font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 14px;">Technical Info</h4>
-            <div style="font-size: 12px; line-height: 1.4; color: #6B7280;">
-              <div style="margin-bottom: 3px;">Point Density: ${routePoints > 0 ? (routePoints / Math.max(parseFloat(distanceKm), 0.1)).toFixed(1) : '0'} points/km</div>
-              <div style="margin-bottom: 3px;">Survey Method: GPS Tracking</div>
-              <div style="margin-bottom: 3px;">Data Type: LIVELOCATION Events</div>
-            </div>
-          </div>
-        </div>
-      `;
-      
-    } else if (isDesktopPlanning) {
-      // Keep existing desktop planning logic here
-      const desktopInfo = placemark as ProcessedDesktopPlanning;
-      infoContent = `
-        <div class="p-3">
-          <h3 class="font-semibold text-gray-900 mb-1">${placemark.name}</h3>
-          <p class="text-sm text-gray-600">Category: ${placemark.category}</p>
-          <p class="text-sm text-gray-600">Type: Desktop Planning Connection</p>
-          <p class="text-sm text-gray-600">Connection Type: ${(desktopInfo as any).connectionType || 'N/A'}</p>
-          <p class="text-sm text-gray-600">Length: ${(desktopInfo as any).length || 'N/A'} km</p>
-          <p class="text-sm text-gray-600">Status: ${desktopInfo.status || 'N/A'}</p>
-          ${desktopInfo.networkId ? `<p class="text-sm text-gray-600">Network ID: ${desktopInfo.networkId}</p>` : ''}
-        </div>
-      `;
-    } else {
-      // Keep existing default logic here
-      infoContent = `
-        <div class="p-3">
-          <h3 class="font-semibold text-gray-900 mb-1">${placemark.name}</h3>
-          <p class="text-sm text-gray-600">Category: ${placemark.category}</p>
-          <p class="text-sm text-gray-600">Type: Polyline</p>
-          ${'distance' in placemark && (placemark as any).distance ? `<p class="text-sm text-gray-600">Distance: ${(placemark as any).distance}</p>` : ''}
-        </div>
-      `;
+      polylinesRef.current.push(polyline);
+      (placemark.coordinates as google.maps.LatLngLiteral[]).forEach((coord: any) => bounds.extend(coord));
     }
+  });
 
-    infoWindowRef.current.setContent(infoContent);
-    infoWindowRef.current.setPosition(event.latLng);
-    infoWindowRef.current.open(mapInstanceRef.current!);
+  // Fit map to show all visible placemarks (do not interrupt video/photo track fit)
+  if (hasVisiblePlacemarks && !bounds.isEmpty() && !videoSurveyMode && !photoSurveyMode) {
+    mapInstanceRef.current!.fitBounds(bounds, { padding: 50 });
   }
-});
-
-
-
-        polylinesRef.current.push(polyline);
-        (placemark.coordinates as google.maps.LatLngLiteral[]).forEach((coord: any) => bounds.extend(coord));
-      }
-    });
-
-    // Fit map to show all visible placemarks (do not interrupt video/photo track fit)
-    if (hasVisiblePlacemarks && !bounds.isEmpty() && !videoSurveyMode && !photoSurveyMode) {
-      mapInstanceRef.current!.fitBounds(bounds, { padding: 50 });
-    }
-  }, [placemarks, categories, visibleCategories, mapLoaded, videoSurveyMode, photoSurveyMode]);
+}, [placemarks, categories, visibleCategories, mapLoaded, videoSurveyMode, photoSurveyMode]);
 
   // Enhanced video survey overlays with segment selection
   // Enhanced video survey overlays - SIMPLIFIED like video playback page
