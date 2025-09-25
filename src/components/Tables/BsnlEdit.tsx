@@ -84,6 +84,7 @@ function BsnlEdit() {
   const { id } = useParams();
   const [data, setData] = useState<BsnlExchangeEdit | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null); // ADDED: Error state
   const [selectedStateId, setSelectedStateId] = useState<number | null>(null);
   const [states, setStates] = useState<State[]>([]);
   const [districts, setDistricts] = useState<any[]>([]);
@@ -92,16 +93,15 @@ function BsnlEdit() {
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
 
-
   useEffect(() => {
     const fetchData = async () => {
       try {
         const response = await axios.get(`${BASEURL}/bsnl-exchanges/${id}`);
-        // console.log(response.data.data);
         setData(response.data.data[0]);
         setLoading(false);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to fetch data:", error);
+        setError(error.message || "Failed to fetch data"); // ADDED: Set error state
         setLoading(false);
       }
     };
@@ -128,10 +128,8 @@ function BsnlEdit() {
       }
     };
 
-
     fetchStates();
   }, []);
-
 
   // Fetch districts when a state is selected
   useEffect(() => {
@@ -190,24 +188,26 @@ function BsnlEdit() {
     }
   };
 
-
-
+  // FIXED: Added return statements
   if (loading) {
-    <LoadingPage/>
+    return <LoadingPage />;
+  }
+
+  if (error) {
+    return <ErrorPage error={error} />;
   }
 
   if (!data) {
-   <ErrorPage error="No data found"/>
+    return <ErrorPage error="No data found" />;
   }
+
   return (
     <>
       <div className="w-full">
-
         <ToastContainer />
         <Header activeTab="bsnledit" BackBut={true} />
         <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-4 mt-4">
           <div className="border-b border-gray-200">
-
             <form onSubmit={handleEditSave} className="px-6 py-6">
               <div className="grid gap-6 mb-6 md:grid-cols-3">
                 {/* State Name Dropdown */}
@@ -294,7 +294,6 @@ function BsnlEdit() {
 
               <button
                 type="submit"
-
                 className={`text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-green-300  px-6 py-3 rounded-lg font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2`}
               >
                 <Edit3 className="h-4 w-4" />

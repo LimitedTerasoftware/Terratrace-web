@@ -56,7 +56,6 @@ function AerialEdit() {
       try {
         const response = await axios.get(`${BASEURL}/aerial-surveys/${id}`);
         setData(response.data.data);
-        console.log(response.data.data);
         setLoading(false);
       } catch (error) {
         console.error("Failed to fetch data:", error);
@@ -70,8 +69,6 @@ function AerialEdit() {
     const fetchStartGp = async () => {
       try {
         const response = await axios.get(`${BASEURL}/aerial-surveys`);
-        console.log(response.data);
-        console.log("startGp",response.data.data.map((startGp: any) => startGp.startGpName));
         setStartGpName(response.data.data.map((startGp: any) => startGp.startGpName));
         setLoading(false);
       } catch (error) {
@@ -86,8 +83,6 @@ function AerialEdit() {
     const fetchEndGp = async () => {
       try {
         const response = await axios.get(`${BASEURL}/aerial-surveys`);
-        console.log(response.data);
-        console.log("EndGp",response.data.data.map((endGp: any) => endGp.endGpName));
         setEndGpName(response.data.data.map((endGp: any) => endGp.endGpName));
         setLoading(false);
       } catch (error) {

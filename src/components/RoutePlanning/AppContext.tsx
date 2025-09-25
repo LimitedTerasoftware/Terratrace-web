@@ -123,12 +123,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const data = sessionStorage.getItem('previewKmlData');
       setPreviewKmlData(data);
       
-      // Optional: Clear session storage after loading
-      if (data) {
-        console.log('Preview KML data loaded successfully from sessionStorage');
-      } else {
-        console.log('No previewKmlData found in sessionStorage');
-      }
     } catch (error) {
       console.error('Error loading previewKmlData from sessionStorage:', error);
       setPreviewKmlData(null);

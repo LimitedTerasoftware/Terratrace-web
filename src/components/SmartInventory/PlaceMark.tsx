@@ -221,6 +221,59 @@ export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string 
   'External Desktop: N Highway Cross': { color: '#EF4444', icon: '🛤️' },
   'External Desktop: Incremental Cable': { color: '#8B5CF6', icon: '▓▓▓▓' },
   'External Desktop: Proposed Cable': { color: '#F59E0B', icon: '▒▒▒▒' },
+
+    // EXTERNAL FILE CATEGORIES - BSNL
+  'External BSNL: GP': { color: '#4ECDC4', icon: '🏠' },
+  'External BSNL: FPOI': { color: '#F8C471', icon: '⭐' },
+  'External BSNL: BHQ': { color: '#BF1E00', icon: '🏢' },
+  'External BSNL: BR': { color: '#0030BF', icon: '🌐' },
+  'External BSNL: Block Router': { color: '#000000', icon: '🔗' },
+  'External BSNL: LANDMARK': { color: '#FF6B6B', icon: '🛖' },
+  'External BSNL: Bridge': { color: '#45B7D1', icon: '🌉' },
+  'External BSNL: Culvert': { color: '#96CEB4', icon: '🌊' },
+  'External BSNL: ROADCROSSING': { color: '#31F527', icon: '🛣️' },
+  'External BSNL: Road Cross': { color: '#FFD700', icon: '🛣️' },
+  'External BSNL: Railway Cross': { color: '#8B5CF6', icon: '🚂' },
+  'External BSNL: N Highway Cross': { color: '#EF4444', icon: '🛤️' },
+  'External BSNL: KILOMETERSTONE': { color: '#35530E', icon: '📍' },
+  'External BSNL: FIBERTURN': { color: '#372AAC', icon: '🔄' },
+  'External BSNL: JOINTCHAMBER': { color: '#FE9A37', icon: '🔗' },
+  'External BSNL: ROUTEINDICATOR': { color: '#42D3F2', icon: '🧭' },
+  'External BSNL: RI': { color: '#9C27B0', icon: '📡' },
+  'External BSNL: AIRTEL RI': { color: '#FF5722', icon: '📡' },
+  'External BSNL: RJIL RI': { color: '#FF1744', icon: '📡' },
+  'External BSNL: VITIL RI': { color: '#2196F3', icon: '📡' },
+  'External BSNL: SURVEYSTART': { color: '#10B981', icon: '🎯' },
+  'External BSNL: ENDSURVEY': { color: '#E7180B', icon: '🎯' },
+  'External BSNL: HOLDSURVEY': { color: '#a93226', icon: '⏸️' },
+  'External BSNL: SURVEY_ROUTE': { color: '#FFFF99', icon: '➡️' },
+  'External BSNL: PHOTO_SURVEY': { color: '#DCB14E', icon: '📸' },
+  'External BSNL: VIDEO_SURVEY': { color: '#7C3AED', icon: '🎬' },
+  
+  // BSNL Cable Infrastructure (with distinctive colors)
+  'External BSNL: Incremental Cable': { color: '#00FF00', icon: '⚡⚡⚡⚡' }, // Bright Green
+  'External BSNL: Proposed Cable': { color: '#FF0000', icon: '➖➖➖➖' }, // Bright Red
+  'External BSNL: Survey: Block to FPOI Cable': { color: '#FF6B35', icon: '🔗🔗' }, // Orange-red
+  
+  // BSNL Infrastructure Assets
+  'External BSNL: School': { color: '#4F46E5', icon: '🏫' },
+  'External BSNL: Bank': { color: '#059669', icon: '🏦' },
+  'External BSNL: ATM': { color: '#10B981', icon: '🏧' },
+  'External BSNL: Masjid': { color: '#7C3AED', icon: '🕌' },
+  'External BSNL: Temple': { color: '#F59E0B', icon: '🛕' },
+  'External BSNL: Restaurant': { color: '#EF4444', icon: '🍽️' },
+  'External BSNL: Hotel': { color: '#8B5CF6', icon: '🏨' },
+  'External BSNL: Pharmacy': { color: '#06B6D4', icon: '💊' },
+  'External BSNL: Petrol Pump': { color: '#F97316', icon: '⛽' },
+  'External BSNL: Bus Stop': { color: '#84CC16', icon: '🚌' },
+  'External BSNL: Railway Station': { color: '#6366F1', icon: '🚂' },
+  'External BSNL: Post Office': { color: '#DC2626', icon: '📫' },
+  'External BSNL: Fire Station': { color: '#B91C1C', icon: '🚒' },
+  'External BSNL: Hospital': { color: '#EC4899', icon: '🏥' },
+  'External BSNL: Govt. Office': { color: '#374151', icon: '🏛️' },
+  'External BSNL: KM Stone': { color: '#35530E', icon: '📍' },
+  'External BSNL: Landmark': { color: '#FF6B6B', icon: '🛖' },
+  'External BSNL: ASSET': { color: '#FF6B35', icon: '🔧' },
 };
 
 

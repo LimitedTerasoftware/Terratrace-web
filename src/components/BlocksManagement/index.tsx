@@ -3,7 +3,8 @@ import {
   Construction, 
   MapPin, 
   Clock, 
-  CheckCircle, 
+  CheckCircle,
+  AlertCircle, 
   AlertTriangle, 
   Users,
   Search,
@@ -16,15 +17,20 @@ import {
   Edit,
   GitBranch,
   Grid3X3,
-  Loader
+  Loader,
+  UserRoundCheck,
+  List // Added for GP List icon
 } from 'lucide-react';
 import DataTable, { TableColumn } from 'react-data-table-component';
 import moment from 'moment';
+import { useNavigate } from 'react-router-dom'; // Added for navigation
+import UserAssignmentModal from './UserAssginmentModal';
 
 // Types
 interface Block {
   blockName: string;
   blockCode: number;
+  blockId: number;
   district: string;
   length: string;
   stage: string;
@@ -65,6 +71,8 @@ interface ApiDataResponse {
 }
 
 const BlocksManagementPage: React.FC = () => {
+  const navigate = useNavigate(); // Added navigation hook
+  
   // State management
   const [selectedRows, setSelectedRows] = useState<Block[]>([]);
   const [toggleCleared, setToggleCleared] = useState(false);
@@ -85,8 +93,116 @@ const BlocksManagementPage: React.FC = () => {
   const [districts, setDistricts] = useState<District[]>([]);
   const [loadingDistricts, setLoadingDistricts] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [showAssignPopup, setShowAssignPopup] = useState<boolean>(false);
+  const [isAssigned, setIsAssigned] = useState<boolean>(false);
+  const [notification, setNotification] = useState<{
+  type: 'success' | 'error' | 'warning';
+  message: string;
+  show: boolean;
+}>({
+  type: 'success',
+  message: '',
+  show: false
+});
+
+const refetchData = async () => {
+  try {
+    // Refetch both stats and blocks data
+    await Promise.all([
+      refetchStatsData(),
+      refetchBlocksData()
+    ]);
+  } catch (error) {
+    console.error('Error refetching data:', error);
+    showNotification('error', 'Failed to refresh data');
+  }
+};
+
+const refetchStatsData = async () => {
+  try {
+    setStatsLoading(true);
+    const response = await fetch('https://api.tricadtrack.com/dashboard-count?state_code=19');
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const apiResponse: ApiStatsResponse = await response.json();
+    
+    if (apiResponse.status && apiResponse.data) {
+      setStatsData(apiResponse.data);
+    }
+  } catch (error) {
+    console.error('Error refetching stats data:', error);
+  } finally {
+    setStatsLoading(false);
+  }
+};
+
+const refetchBlocksData = async () => {
+  try {
+    setBlocksLoading(true);
+    
+    // Build API URL with current filters
+    const params = new URLSearchParams({
+      state_code: '19',
+      stage: selectedStage || 'survey'
+    });
+    
+    if (selectedDistrict) {
+      params.append('district_code', selectedDistrict);
+    }
+    
+    if (selectedStatus) {
+      params.append('status', selectedStatus);
+    }
+    
+    const response = await fetch(`https://api.tricadtrack.com/dashboard-data?${params.toString()}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const apiResponse: ApiDataResponse = await response.json();
+    
+    if (apiResponse.status && apiResponse.data) {
+      setBlocksData(apiResponse.data);
+    }
+  } catch (error) {
+    console.error('Error refetching blocks data:', error);
+  } finally {
+    setBlocksLoading(false);
+  }
+};
+
+const showNotification = (type: 'success' | 'error' | 'warning', message: string) => {
+  setNotification({
+    type,
+    message,
+    show: true
+  });
+  
+  setTimeout(() => {
+    setNotification(prev => ({ ...prev, show: false }));
+  }, 5000);
+};
+
+const closeNotification = () => {
+  setNotification(prev => ({ ...prev, show: false }));
+};
 
   const BASEURL = import.meta.env.VITE_API_BASE;
+  const TRACE_API_URL = import.meta.env.VITE_TraceAPI_URL;
+
+  // Navigate to GP List page - Added this function
+  const handleGPListClick = (blockId: number, blockName: string) => {
+  navigate(`/blocks-management/gplist/${blockId}`, {
+    state: { 
+      blockName,
+      returnTab: 'blocks'
+    }
+  });
+};
 
   // Fetch stats data from API
   useEffect(() => {
@@ -318,21 +434,64 @@ const BlocksManagementPage: React.FC = () => {
     );
   };
 
+  const handleAssign = () => {
+  if (selectedRows.length === 0) {
+    alert('Please select at least one block to assign.');
+    return;
+  }
+  setShowAssignPopup(true);
+  };
+
+  const handleAssignmentComplete = async (success: boolean, message: string) => {
+  if (success) {
+    // Clear selected rows and reset selection state
+    setSelectedRows([]);
+    setToggleCleared(!toggleCleared);
+    
+    // Show temporary assignment success indicator
+    setIsAssigned(true);
+    setTimeout(() => setIsAssigned(false), 3000);
+    
+    // Show success notification with API response message
+    showNotification('success', message);
+    
+    // Refetch both stats and blocks data to reflect the assignment
+    try {
+      await refetchData();
+    } catch (error) {
+      console.error('Error refreshing data after assignment:', error);
+      showNotification('warning', 'Assignment successful, but failed to refresh data. Please reload the page.');
+    }
+  } else {
+    // Show error notification with API error message
+    showNotification('error', message);
+  }
+};
+
+
   // Filter data - Remove district filtering since API handles it now
   const filteredData = useMemo(() => {
-    return blocksData.filter((block) => {
-      const matchesSearch = !globalsearch.trim() || 
-        Object.values(block).some(value =>
-          (typeof value === 'string' || typeof value === 'number') &&
-          value.toString().toLowerCase().includes(globalsearch.toLowerCase())
-        );
-      
-      const matchesStage = !selectedStage || block.stage.toLowerCase() === selectedStage.toLowerCase();
-      const matchesStatus = !selectedStatus || block.status === selectedStatus;
-      
-      return matchesSearch && matchesStage && matchesStatus;
-    });
-  }, [globalsearch, selectedStage, selectedStatus, blocksData]);
+  return blocksData.filter((block) => {
+    const matchesSearch = !globalsearch.trim() || 
+      Object.values(block).some(value =>
+        (typeof value === 'string' || typeof value === 'number') &&
+        value.toString().toLowerCase().includes(globalsearch.toLowerCase())
+      );
+    
+    const matchesStage = !selectedStage || block.stage.toLowerCase() === selectedStage.toLowerCase();
+    
+    // More explicit status filtering
+    const matchesStatus = (() => {
+      if (!selectedStatus) return true; // Show all when no filter selected
+      if (selectedStatus === 'not-started') {
+        return block.status === null || block.status === 'Unassigned';
+      }
+      return block.status === selectedStatus;
+    })();
+    
+    return matchesSearch && matchesStage && matchesStatus;
+  });
+}, [globalsearch, selectedStage, selectedStatus, blocksData]);
 
   // Get unique contractors for filter dropdown - No change needed
   const uniqueContractors = useMemo(() => {
@@ -371,6 +530,9 @@ const BlocksManagementPage: React.FC = () => {
       case 'reassign':
         break;
       case 'split':
+        break;
+      case 'gplist': // Added GP List action
+        handleGPListClick(block.blockId, block.blockName);
         break;
     }
   };
@@ -428,6 +590,18 @@ const BlocksManagementPage: React.FC = () => {
         </div>
       </div>
     );
+  };
+
+  // Function to calculate dropdown position based on row index and total rows
+  const getDropdownPosition = (rowIndex: number, totalRows: number) => {
+    // If it's one of the last few rows, show dropdown above
+    const threshold = Math.min(3, Math.ceil(totalRows * 0.2)); // Last 20% of rows or 3 rows, whichever is smaller
+    const isNearBottom = rowIndex >= totalRows - threshold;
+    
+    return {
+      positioning: isNearBottom ? 'bottom-8' : 'top-8',
+      zIndex: 'z-[100]' // Higher z-index to ensure it appears above pagination
+    };
   };
 
   // Table Columns
@@ -536,45 +710,59 @@ const BlocksManagementPage: React.FC = () => {
     },
     {
       name: 'Actions',
-      cell: (row) => (
-        <div className="relative" ref={openDropdown === row.blockCode.toString() ? dropdownRef : null}>
-          <button
-            onClick={() => handleDropdownToggle(row.blockCode.toString())}
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            title="More actions"
-          >
-            <MoreVertical className="w-4 h-4" />
-          </button>
-          
-          {openDropdown === row.blockCode.toString() && (
-            <div className="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg border border-gray-200 z-50">
-              <div className="py-1">
-                <button
-                  onClick={() => handleActionClick('preview', row)}
-                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  <Eye className="w-4 h-4 mr-3 text-blue-500" />
-                  Preview
-                </button>
-                <button
-                  onClick={() => handleActionClick('reassign', row)}
-                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  <Edit className="w-4 h-4 mr-3 text-orange-500" />
-                  Reassign
-                </button>
-                <button
-                  onClick={() => handleActionClick('split', row)}
-                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  <GitBranch className="w-4 h-4 mr-3 text-green-500" />
-                  Split
-                </button>
+      cell: (row, index) => {
+        const rowIndex = filteredData.findIndex(item => item.blockCode === row.blockCode);
+        const totalRows = filteredData.length;
+        const dropdownPos = getDropdownPosition(rowIndex, totalRows);
+        
+        return (
+          <div className="relative" ref={openDropdown === row.blockCode.toString() ? dropdownRef : null}>
+            <button
+              onClick={() => handleDropdownToggle(row.blockCode.toString())}
+              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              title="More actions"
+            >
+              <MoreVertical className="w-4 h-4" />
+            </button>
+            
+            {openDropdown === row.blockCode.toString() && (
+              <div className={`absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg border border-gray-200 ${dropdownPos.positioning} ${dropdownPos.zIndex}`}>
+                <div className="py-1">
+                  {/*<button
+                    onClick={() => handleActionClick('preview', row)}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <Eye className="w-4 h-4 mr-3 text-blue-500" />
+                    Preview
+                  </button>
+                  <button
+                    onClick={() => handleActionClick('reassign', row)}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <Edit className="w-4 h-4 mr-3 text-orange-500" />
+                    Reassign
+                  </button>
+                  <button
+                    onClick={() => handleActionClick('split', row)}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <GitBranch className="w-4 h-4 mr-3 text-green-500" />
+                    Split
+                  </button>*/}
+                  {/* Added GP List option */}
+                  <button
+                    onClick={() => handleActionClick('gplist', row)}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <List className="w-4 h-4 mr-3 text-purple-500" />
+                    GP List
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      ),
+            )}
+          </div>
+        );
+      },
       ignoreRowClick: true,
       allowOverflow: true,
       button: true,
@@ -614,6 +802,16 @@ const BlocksManagementPage: React.FC = () => {
         '&:hover': {
           backgroundColor: '#F9FAFB',
         },
+      },
+    },
+    table: {
+      style: {
+        overflow: 'visible', // Allow dropdowns to overflow table boundaries
+      },
+    },
+    tableWrapper: {
+      style: {
+        overflow: 'visible', // Allow dropdowns to overflow wrapper boundaries
       },
     },
   };
@@ -706,7 +904,7 @@ const BlocksManagementPage: React.FC = () => {
                 <option value="">Status</option>
                 <option value="Completed">Completed</option>
                 <option value="In Progress">In Progress</option>
-                <option value="">Not Started</option>
+                <option value="Not started">Not Started</option>
               </select>
               <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
                 <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -750,7 +948,15 @@ const BlocksManagementPage: React.FC = () => {
               />
             </div>
 
-            <button className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors font-medium">
+            <button 
+              onClick={handleAssign}
+              className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors font-medium flex items-center gap-2"
+            >
+              {isAssigned ? (
+                <UserRoundCheck className="w-4 h-4" />
+              ) : (
+                <User className="w-4 h-4" />
+              )}
               Bulk Assign
             </button>
 
@@ -828,7 +1034,7 @@ const BlocksManagementPage: React.FC = () => {
 
         {/* Data Table */}
         {!blocksLoading && !blocksError && filteredData.length > 0 && (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" style={{ overflow: 'visible' }}>
             <DataTable
               columns={columns}
               data={filteredData}
@@ -951,6 +1157,45 @@ const BlocksManagementPage: React.FC = () => {
           </div>
         )}
       </div>
+      <UserAssignmentModal
+        isOpen={showAssignPopup}
+        onClose={() => setShowAssignPopup(false)}
+        selectedItems={selectedRows}
+        itemType="blocks"
+        onAssignmentComplete={handleAssignmentComplete}
+        traceApiUrl={TRACE_API_URL}
+        assignmentApiUrl="https://api.tricadtrack.com/assign-block"
+        selectedStage={selectedStage}
+      />
+
+      {notification.show && (
+  <div className={`fixed top-4 right-4 z-[60] min-w-80 max-w-md transform transition-all duration-300 ease-in-out ${
+    notification.show ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
+  }`}>
+    <div className={`flex items-start p-4 rounded-lg shadow-lg border-l-4 ${
+      notification.type === 'success' ? 'bg-green-500 text-white border-green-600' :
+      notification.type === 'error' ? 'bg-red-500 text-white border-red-600' :
+      'bg-yellow-500 text-white border-yellow-600'
+    }`}>
+      <div className="flex-shrink-0 mr-3">
+        {notification.type === 'success' ? <CheckCircle className="w-5 h-5" /> :
+         notification.type === 'error' ? <AlertCircle className="w-5 h-5" /> :
+         <AlertTriangle className="w-5 h-5" />}
+      </div>
+      <div className="flex-1">
+        <p className="text-sm font-medium leading-5 whitespace-pre-line break-words">
+          {notification.message}
+        </p>
+      </div>
+      <button
+        onClick={closeNotification}
+        className="flex-shrink-0 ml-3 text-white hover:text-gray-200 transition-colors duration-200"
+      >
+        <X className="w-4 h-4" />
+      </button>
+    </div>
+  </div>
+)}
     </div>
   );
 };

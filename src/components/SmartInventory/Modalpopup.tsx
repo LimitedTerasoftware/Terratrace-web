@@ -43,10 +43,11 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClose, onUp
     const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
     const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
     
-    // Category options
+    // Updated category options to include BSNL
     const categoryOptions = [
         { value: 'Survey', label: 'Survey' },
-        { value: 'Desktop', label: 'Desktop' }
+        { value: 'Desktop', label: 'Desktop' },
+        { value: 'BSNL', label: 'BSNL' }
     ];
 
     useEffect(() => {
@@ -304,4 +305,4 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClose, onUp
     );
 };
 
-export default FileUploadModal;
+export default FileUploadModal

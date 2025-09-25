@@ -13,7 +13,7 @@ interface Connection {
   original_name?: string;
   user_id?: string | number;
   user_name?: string;
-  properties?: string | Record<string, any>;
+  properties?: string | Record<string, any>; // Added properties field
 }
 
 interface GPListResponse {
@@ -48,13 +48,13 @@ interface EditFormData {
 
 const BASEURL_Val = import.meta.env.VITE_TraceAPI_URL;
 
-const RouteGPList = () => {
-  const { id: networkId } = useParams();
+const BlockGPList = () => {
+  const { id: blockId  } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   
   const networkName = location.state?.networkName || '';
-  const returnTab = location.state?.returnTab || 'verified';
+  const returnTab = location.state?.returnTab || 'verified'; // Default to verified since GP List only exists there
   
   // Main data states
   const [gpListData, setGpListData] = useState<any[] | { connections?: Connection[] }>([]);
@@ -73,7 +73,7 @@ const RouteGPList = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedUsers, setSelectedUsers] = useState<Set<number>>(new Set());
 
-  // Edit states
+  // Edit states - Added for edit functionality
   const [editingConnection, setEditingConnection] = useState<number | null>(null);
   const [editFormData, setEditFormData] = useState<EditFormData>({
     start: '',
@@ -99,7 +99,7 @@ const RouteGPList = () => {
 
   // Fetch GP connections list
   const fetchGPList = async () => {
-    if (!networkId) {
+    if (!blockId) {
       setGpListError('Network ID is required');
       return;
     }
@@ -108,7 +108,7 @@ const RouteGPList = () => {
       setLoadingGPList(true);
       setGpListError(null);
       
-      const response = await fetch(`${BASEURL_Val}/get-gplist/${networkId}`);
+      const response = await fetch(`${BASEURL_Val}/get-gplist/${blockId}`);
       
       if (!response.ok) {
         throw new Error(`API request failed with status ${response.status}`);
@@ -131,12 +131,12 @@ const RouteGPList = () => {
   };
 
   useEffect(() => {
-    if (networkId) {
+    if (blockId) {
       fetchGPList();
     }
-  }, [networkId]);
+  }, [blockId]);
 
-  // Edit functionality
+  // Edit functionality - Added from RouteGPList
   const handleEditClick = (connection: Connection) => {
     setEditingConnection(connection.id!);
     setEditFormData({
@@ -196,7 +196,8 @@ const RouteGPList = () => {
         throw new Error(`Update failed: ${errorMessage}`);
       }
 
-      const result = await response.json();      
+      const result = await response.json();
+
       showNotification('success', 'Connection updated successfully!');
       setEditingConnection(null);
       fetchGPList(); // Refresh the list
@@ -299,35 +300,35 @@ const RouteGPList = () => {
   };
 
   const getAssignedUserDisplay = (connection: Connection): string => {
-    // Check if connection has assigned status and user information
-    if (connection.status?.toLowerCase() === 'assigned' && connection.user_name) {
-      return connection.user_name;
+  // Check if connection has assigned status and user information
+  if (connection.status?.toLowerCase() === 'assigned' && connection.user_name) {
+    return connection.user_name;
+  }
+  
+  // Check if there's user info in properties
+  let parsedProperties: any = {};
+  try {
+    if (typeof connection.properties === 'string') {
+      parsedProperties = JSON.parse(connection.properties);
+    } else if (connection.properties) {
+      parsedProperties = connection.properties;
     }
-    
-    // Check if there's user info in properties
-    let parsedProperties: any = {};
-    try {
-      if (typeof connection.properties === 'string') {
-        parsedProperties = JSON.parse(connection.properties);
-      } else if (connection.properties) {
-        parsedProperties = connection.properties;
-      }
-    } catch (error) {
-      console.warn('Error parsing properties for user info:', error);
-    }
-    
-    // Check properties for user assignment
-    if (parsedProperties.user_name && connection.status?.toLowerCase() === 'assigned') {
-      return parsedProperties.user_name;
-    }
-    
-    return 'Not Available';
-  };
+  } catch (error) {
+    console.warn('Error parsing properties for user info:', error);
+  }
+  
+  // Check properties for user assignment
+  if (parsedProperties.user_name && connection.status?.toLowerCase() === 'assigned') {
+    return parsedProperties.user_name;
+  }
+  
+  return 'Not Available';
+};
 
   const handleBackClick = () => {
     // Navigate back to route list with the return tab information
-    navigate('/route-planning/route-list', {
-      state: { returnTab: returnTab }
+     navigate('/blocks-management', {
+    state: { returnTab: returnTab }
     });
   };
 
@@ -529,7 +530,7 @@ const RouteGPList = () => {
         <div className="flex items-center justify-center py-8">
           <svg className="animate-spin h-8 w-8 mr-3 text-blue-500" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
           Loading GP List...
         </div>
@@ -604,196 +605,196 @@ const RouteGPList = () => {
           </thead>
           <tbody>
             {connectionsData.map((connection, index) => {
-              const connectionKey = String(connection.id || index);
-              const isSelected = selectedConnections.has(connectionKey);
-              const isEditing = editingConnection === connection.id;
-              
-              return (
-                <tr key={connection.id || index} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                  <td className="px-3 py-2">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => handleRowSelection(connectionKey)}
-                      className="w-4 h-4 rounded focus:ring-0 outline-none border-2 border-blue-900 checked:bg-blue-900 checked:border-blue-900"
-                      style={{
-                        accentColor: 'rgb(30, 58, 138)'
-                      }}
-                    />
-                  </td>
-                  
-                  {/* Route Name */}
-                  <td className="px-3 py-2">
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={editFormData.original_name}
-                        onChange={(e) => handleEditInputChange('original_name', e.target.value)}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                        placeholder="Route name"
-                      />
-                    ) : (
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {connection.original_name || 'N/A'}
-                      </span>
-                    )}
-                  </td>
-                  
-                  {/* Start Point */}
-                  <td className="px-3 py-2">
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={editFormData.start}
-                        onChange={(e) => handleEditInputChange('start', e.target.value)}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                        placeholder="Start point"
-                      />
-                    ) : (
-                      connection.start || '-'
-                    )}
-                  </td>
-                  
-                  {/* End Point */}
-                  <td className="px-3 py-2">
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={editFormData.end}
-                        onChange={(e) => handleEditInputChange('end', e.target.value)}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                        placeholder="End point"
-                      />
-                    ) : (
-                      connection.end || '-'
-                    )}
-                  </td>
-                  
-                  {/* Length */}
-                  <td className="px-3 py-2">
-                    {isEditing ? (
-                      <input
-                        type="number"
-                        step="0.001"
-                        value={editFormData.length}
-                        onChange={(e) => handleEditInputChange('length', e.target.value)}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                        placeholder="Length"
-                      />
-                    ) : (
-                      connection.length ? parseFloat(String(connection.length)).toFixed(3) : '-'
-                    )}
-                  </td>
-                  
-                  {/* Type */}
-                  <td className="px-3 py-2">
-                    {isEditing ? (
-                      <select
-                        value={editFormData.type}
-                        onChange={(e) => handleEditInputChange('type', e.target.value)}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                      >
-                        <option value="proposed">Proposed</option>
-                        <option value="existing">Existing</option>
-                      </select>
-                    ) : (
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCableTypeBadge(getCableType(connection))}`}>
-                        {getCableType(connection)}
-                      </span>
-                    )}
-                  </td>
-                  
-                  {/* Status */}
-                  <td className="px-3 py-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(connection.status || '')}`}>
-                      {formatStatus(connection.status || '')}
+    const connectionKey = String(connection.id || index);
+    const isSelected = selectedConnections.has(connectionKey);
+    const isEditing = editingConnection === connection.id;
+    
+    return (
+      <tr key={connection.id || index} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+        <td className="px-3 py-2">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => handleRowSelection(connectionKey)}
+            className="w-4 h-4 rounded focus:ring-0 outline-none border-2 border-blue-900 checked:bg-blue-900 checked:border-blue-900"
+            style={{
+              accentColor: 'rgb(30, 58, 138)'
+            }}
+          />
+        </td>
+        
+        {/* Route Name */}
+        <td className="px-3 py-2">
+          {isEditing ? (
+            <input
+              type="text"
+              value={editFormData.original_name}
+              onChange={(e) => handleEditInputChange('original_name', e.target.value)}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              placeholder="Route name"
+            />
+          ) : (
+            <span className="text-sm font-medium text-gray-900 dark:text-white">
+              {connection.original_name || 'N/A'}
+            </span>
+          )}
+        </td>
+        
+        {/* Start Point */}
+        <td className="px-3 py-2">
+          {isEditing ? (
+            <input
+              type="text"
+              value={editFormData.start}
+              onChange={(e) => handleEditInputChange('start', e.target.value)}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              placeholder="Start point"
+            />
+          ) : (
+            connection.start || '-'
+          )}
+        </td>
+        
+        {/* End Point */}
+        <td className="px-3 py-2">
+          {isEditing ? (
+            <input
+              type="text"
+              value={editFormData.end}
+              onChange={(e) => handleEditInputChange('end', e.target.value)}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              placeholder="End point"
+            />
+          ) : (
+            connection.end || '-'
+          )}
+        </td>
+        
+        {/* Length */}
+        <td className="px-3 py-2">
+          {isEditing ? (
+            <input
+              type="number"
+              step="0.001"
+              value={editFormData.length}
+              onChange={(e) => handleEditInputChange('length', e.target.value)}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              placeholder="Length"
+            />
+          ) : (
+            connection.length ? parseFloat(String(connection.length)).toFixed(3) : '-'
+          )}
+        </td>
+        
+        {/* Type */}
+        <td className="px-3 py-2">
+          {isEditing ? (
+            <select
+              value={editFormData.type}
+              onChange={(e) => handleEditInputChange('type', e.target.value)}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            >
+              <option value="proposed">Proposed</option>
+              <option value="existing">Existing</option>
+            </select>
+          ) : (
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCableTypeBadge(getCableType(connection))}`}>
+              {getCableType(connection)}
+            </span>
+          )}
+        </td>
+        
+        {/* Status */}
+        <td className="px-3 py-2">
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(connection.status || '')}`}>
+            {formatStatus(connection.status || '')}
+          </span>
+        </td>
+        
+        {/* Assigned To */}
+        <td className="px-3 py-2">
+          {isEditing ? (
+            <div className="space-y-1">
+              <input
+                type="text"
+                value={editFormData.user_name}
+                onChange={(e) => handleEditInputChange('user_name', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                placeholder="User name"
+              />
+              <input
+                type="text"
+                value={editFormData.user_id}
+                onChange={(e) => handleEditInputChange('user_id', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                placeholder="User ID"
+              />
+            </div>
+          ) : (
+            <div className="flex items-center">
+              {getAssignedUserDisplay(connection) !== 'Not Available' ? (
+                <>
+                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center mr-2">
+                    <span className="text-white text-xs font-medium">
+                      {getAssignedUserDisplay(connection).charAt(0).toUpperCase()}
                     </span>
-                  </td>
-                  
-                  {/* Assigned To */}
-                  <td className="px-3 py-2">
-                    {isEditing ? (
-                      <div className="space-y-1">
-                        <input
-                          type="text"
-                          value={editFormData.user_name}
-                          onChange={(e) => handleEditInputChange('user_name', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                          placeholder="User name"
-                        />
-                        <input
-                          type="text"
-                          value={editFormData.user_id}
-                          onChange={(e) => handleEditInputChange('user_id', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                          placeholder="User ID"
-                        />
-                      </div>
-                    ) : (
-                      <div className="flex items-center">
-                        {getAssignedUserDisplay(connection) !== 'Not Available' ? (
-                          <>
-                            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center mr-2">
-                              <span className="text-white text-xs font-medium">
-                                {getAssignedUserDisplay(connection).charAt(0).toUpperCase()}
-                              </span>
-                            </div>
-                            <span className="text-sm font-medium text-gray-900 dark:text-white">
-                              {getAssignedUserDisplay(connection)}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-sm text-gray-500 dark:text-gray-400 italic">
-                            Not Available
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </td>
-                  
-                  {/* Actions */}
-                  <td className="px-3 py-2">
-                    <div className="flex items-center space-x-2">
-                      {isEditing ? (
-                        <>
-                          <button
-                            onClick={() => handleEditSave(connection.id!)}
-                            disabled={loadingEdit}
-                            className="p-1 text-green-600 hover:text-green-800 disabled:opacity-50"
-                            title="Save changes"
-                          >
-                            {loadingEdit ? (
-                              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                            ) : (
-                              <Save className="w-4 h-4" />
-                            )}
-                          </button>
-                          <button
-                            onClick={handleEditCancel}
-                            disabled={loadingEdit}
-                            className="p-1 text-red-600 hover:text-red-800 disabled:opacity-50"
-                            title="Cancel editing"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          onClick={() => handleEditClick(connection)}
-                          className="p-1 text-blue-600 hover:text-blue-800"
-                          title="Edit connection"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+                  </div>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    {getAssignedUserDisplay(connection)}
+                  </span>
+                </>
+              ) : (
+                <span className="text-sm text-gray-500 dark:text-gray-400 italic">
+                  Not Available
+                </span>
+              )}
+            </div>
+          )}
+        </td>
+        
+        {/* Actions - Updated to include edit functionality */}
+        <td className="px-3 py-2">
+          <div className="flex items-center space-x-2">
+            {isEditing ? (
+              <>
+                <button
+                  onClick={() => handleEditSave(connection.id!)}
+                  disabled={loadingEdit}
+                  className="p-1 text-green-600 hover:text-green-800 disabled:opacity-50"
+                  title="Save changes"
+                >
+                  {loadingEdit ? (
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                </button>
+                <button
+                  onClick={handleEditCancel}
+                  disabled={loadingEdit}
+                  className="p-1 text-red-600 hover:text-red-800 disabled:opacity-50"
+                  title="Cancel editing"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => handleEditClick(connection)}
+                className="p-1 text-blue-600 hover:text-blue-800"
+                title="Edit connection"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </td>
+      </tr>
+    );
+  })}
           </tbody>
         </table>
       </div>
@@ -843,7 +844,7 @@ const RouteGPList = () => {
       {showAssignPopup && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[80vh] overflow-hidden">
-            {/* Popup Header */}
+            {/* Header */}
             <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white">
@@ -852,14 +853,13 @@ const RouteGPList = () => {
                 <button
                   onClick={closeAssignPopup}
                   className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  disabled={loadingUsers}
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <X className="w-6 h-6" />
                 </button>
               </div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Selected {selectedConnections.size} connection(s)
+                Selected {selectedConnections.size} connection{selectedConnections.size === 1 ? '' : 's'}
               </p>
             </div>
 
@@ -871,6 +871,7 @@ const RouteGPList = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                disabled={loadingUsers}
               />
             </div>
 
@@ -878,11 +879,11 @@ const RouteGPList = () => {
             <div className="px-6 py-4 max-h-60 overflow-y-auto">
               {loadingUsers ? (
                 <div className="flex items-center justify-center py-4">
-                  <svg className="animate-spin h-6 w-6 text-blue-500" viewBox="0 0 24 24">
+                  <svg className="animate-spin h-6 w-6 text-blue-500 mr-2" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span className="ml-2">Loading users...</span>
+                  <span className="text-gray-600 dark:text-gray-300">Loading users...</span>
                 </div>
               ) : usersError ? (
                 <div className="text-red-600 dark:text-red-400 text-sm">
@@ -909,6 +910,9 @@ const RouteGPList = () => {
                           <p className="text-sm font-medium text-gray-900 dark:text-white">
                             {user.fullname}
                           </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {user.email}
+                          </p>
                         </div>
                       </div>
                       <div className="flex-shrink-0">
@@ -916,10 +920,8 @@ const RouteGPList = () => {
                           type="checkbox"
                           checked={selectedUsers.has(user.id)}
                           onChange={() => handleUserSelection(user.id)}
-                          className="w-4 h-4 rounded focus:ring-0 outline-none border-2 border-blue-900 checked:bg-blue-900 checked:border-blue-900"
-                          style={{
-                            accentColor: 'rgb(30, 58, 138)'
-                          }}
+                          disabled={loadingUsers}
+                          className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300 disabled:opacity-50"
                         />
                       </div>
                     </div>
@@ -928,11 +930,12 @@ const RouteGPList = () => {
               )}
             </div>
 
-            {/* Popup Footer */}
+            {/* Footer */}
             <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
               <button
                 onClick={closeAssignPopup}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 dark:bg-gray-600 dark:text-gray-300 dark:border-gray-500 dark:hover:bg-gray-700"
+                disabled={loadingUsers}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 dark:bg-gray-600 dark:text-gray-300 dark:border-gray-500 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
@@ -941,19 +944,18 @@ const RouteGPList = () => {
                 <button
                   onClick={handleFinalAssignment}
                   disabled={loadingUsers}
-                  className="px-4 py-2 text-sm font-medium text-white rounded-md hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ backgroundColor: '#a855a7' }}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loadingUsers ? (
                     <div className="flex items-center">
                       <svg className="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
                       Assigning...
                     </div>
                   ) : (
-                    `Assign (${selectedUsers.size} user${selectedUsers.size > 1 ? 's' : ''})`
+                    `Assign (${selectedUsers.size} user${selectedUsers.size > 1 ? 's' : ''} selected)`
                   )}
                 </button>
               )}
@@ -989,4 +991,4 @@ const RouteGPList = () => {
   );
 };
 
-export default RouteGPList;
+export default BlockGPList;

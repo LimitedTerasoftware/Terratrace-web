@@ -166,7 +166,6 @@ const GpDetailView = () => {
       const response = await axios.get(
         `${BASEURL_Val}/gp-surveys/${id}` 
       );
-      console.log(response.data.data[0]);
       setDetail(response.data.data[0]); // Adjust based on actual API response structure
     } catch (err: any) {
       setError(err.message || "Failed to fetch data");

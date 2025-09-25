@@ -234,29 +234,32 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
     }
   };
 
+
+
   // Filter data based on search query
   const filteredData = useMemo(() => {
-    if (!searchQuery) return data;
+  if (!searchQuery) return data;
 
-    return data.map(state => ({
-      ...state,
-      districts: state.districts.map(district => ({
-        ...district,
-        blocks: district.blocks.filter(block =>
-          block.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          block.code.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      })).filter(district =>
-        district.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        district.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        district.blocks.length > 0
+  return data.map(state => ({
+    ...state,
+    districts: state.districts.map(district => ({
+      ...district,
+      blocks: district.blocks.filter(block =>
+        block.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (block.code && block.code.toString().toLowerCase().includes(searchQuery.toLowerCase()))
       )
-    })).filter(state =>
-      state.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      state.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      state.districts.length > 0
-    );
-  }, [data, searchQuery]);
+    })).filter(district =>
+      district.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (district.code && district.code.toString().toLowerCase().includes(searchQuery.toLowerCase())) ||
+      district.blocks.length > 0
+    )
+  })).filter(state =>
+    state.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (state.code && state.code.toString().toLowerCase().includes(searchQuery.toLowerCase())) ||
+    state.districts.length > 0
+  );
+}, [data, searchQuery]);
+
 
   const handleStateToggle = async (stateId: string) => {
     setData(prev => prev.map(state => {

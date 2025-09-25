@@ -64,6 +64,8 @@ import Dashboard from './components/DepthChart/MachineWorkChart/Dashboard';
 import GPListData from './components/GPList';
 import ScrollToTop from './components/Breadcrumbs/ScrollToTop';
 import BlocksManagement from './components/BlocksManagement/index';
+import BlockGPList from './components/BlocksManagement/BlockGpList';
+import SurveyDashboard from './components/Dashboards/SurveyDashboard';
 //import AuditLogs from './components/AuditLogs';
 
 function App() {
@@ -138,6 +140,61 @@ function App() {
                    <DefaultLayout>
                   <PageTitle title="Tricad Dashboard" />
                   <ECommerce />
+                  </DefaultLayout>
+                </>
+              }
+            />
+            <Route
+              path="/dashboards/survey-dashboard"
+              element={
+                <>
+                  <DefaultLayout>
+                    <PageTitle title="Survey Dashboard" />
+                    <SurveyDashboard />
+                  </DefaultLayout>
+                </>
+              }
+            />
+            <Route
+              path="/dashboards/construction-dashboard"
+              element={
+                <>
+                  <DefaultLayout>
+                    <PageTitle title="Survey Dashboard" />
+                    <SurveyDashboard />
+                  </DefaultLayout>
+                </>
+              }
+            />
+            <Route
+              path="/dashboards/Executive-dashboard"
+              element={
+                <>
+                  <DefaultLayout>
+                    <PageTitle title="Survey Dashboard" />
+                    <SurveyDashboard />
+                  </DefaultLayout>
+                </>
+              }
+            />
+            <Route
+              path="/dashboards/daily-progress"
+              element={
+                <>
+                  <DefaultLayout>
+                    <PageTitle title="Survey Dashboard" />
+                    <SurveyDashboard />
+                  </DefaultLayout>
+                </>
+              }
+            />
+            <Route
+              path="/dashboards/installation-dashboard"
+              element={
+                <>
+                  <DefaultLayout>
+                    <PageTitle title="Survey Dashboard" />
+                    <SurveyDashboard />
                   </DefaultLayout>
                 </>
               }
@@ -554,6 +611,17 @@ function App() {
     </>
   } 
 />
+<Route
+              path= "/blocks-management/gplist/:id"
+              element={
+                <>
+                   <DefaultLayout>
+                  <PageTitle title="BlockGPList" />
+                  <BlockGPList />
+                  </DefaultLayout>
+                </>
+              }
+            />
              <Route path='/machine-data' element={<>
                 <DefaultLayout>
                   <PageTitle title="Machine-Data" />

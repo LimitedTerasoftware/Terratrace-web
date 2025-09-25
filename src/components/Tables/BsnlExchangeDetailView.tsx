@@ -148,7 +148,6 @@ const BsnlExchangeDetailView = () => {
       const response = await axios.get(
         `${BASEURL_Val}/bsnl-exchanges/${id}`
       );
-      console.log(response.data.data);
       setDetail(response.data.data[0]); // Adjust based on actual API response structure
     } catch (err: any) {
       setError(err.message || "Failed to fetch data");

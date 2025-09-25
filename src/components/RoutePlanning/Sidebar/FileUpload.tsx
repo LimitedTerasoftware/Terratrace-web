@@ -92,9 +92,7 @@ const handleIncrementalPoints = async (file:File) => {
       setPreviewKmlData(null);
       setGPSApiResponse({ points: convertedData.points });
       setConctApiResponse({ connections: convertedData.connections });
-      
-      console.log('KMZ data converted successfully:', convertedData);
-      
+            
     } catch (error) {
       console.error('Error uploading KMZ file:', error);
     } finally {

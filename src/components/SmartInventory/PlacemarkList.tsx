@@ -30,88 +30,106 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
   onPlacemarkClick,
   highlightedPlacemark,
 }) => {
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['physical-survey', 'desktop-planning', 'external-survey', 'external-desktop']));
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['physical-survey', 'desktop-planning', 'external-survey', 'external-desktop','external-bsnl']));
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
   // Separate categories by data source with improved logic
   const layerSections: LayerSection[] = useMemo(() => {
-    const physicalSurveyCategories = categories.filter(cat => 
-      cat.id.startsWith('physical-') && !cat.name.startsWith('External')
-    );
-    
-    const desktopPlanningCategories = categories.filter(cat => 
-      cat.name.startsWith('Desktop:') && !cat.name.startsWith('External')
-    );
-    
-    const externalSurveyCategories = categories.filter(cat => 
-      cat.name.startsWith('External Survey:')
-    );
-    
-    const externalDesktopCategories = categories.filter(cat => 
-      cat.name.startsWith('External Desktop:')
-    );
-    
-    const otherExternalCategories = categories.filter(cat => 
-      !cat.id.startsWith('physical-') && 
-      !cat.name.startsWith('Desktop:') && 
-      !cat.name.startsWith('External Survey:') && 
-      !cat.name.startsWith('External Desktop:')
-    );
+  const physicalSurveyCategories = categories.filter(cat => 
+    cat.id.startsWith('physical-') && !cat.name.startsWith('External')
+  );
+  
+  const desktopPlanningCategories = categories.filter(cat => 
+    cat.name.startsWith('Desktop:') && !cat.name.startsWith('External')
+  );
+  
+  const externalSurveyCategories = categories.filter(cat => 
+    cat.name.startsWith('External Survey:')
+  );
+  
+  const externalDesktopCategories = categories.filter(cat => 
+    cat.name.startsWith('External Desktop:')
+  );
 
-    const sections: LayerSection[] = [];
+  // NEW: External BSNL categories
+  const externalBSNLCategories = categories.filter(cat => 
+    cat.name.startsWith('External BSNL:')
+  );
+  
+  const otherExternalCategories = categories.filter(cat => 
+    !cat.id.startsWith('physical-') && 
+    !cat.name.startsWith('Desktop:') && 
+    !cat.name.startsWith('External Survey:') && 
+    !cat.name.startsWith('External Desktop:') &&
+    !cat.name.startsWith('External BSNL:')
+  );
 
-    if (physicalSurveyCategories.length > 0) {
-      sections.push({
-        id: 'physical-survey',
-        title: 'API: PHYSICAL SURVEY DATA',
-        icon: <Navigation className="h-4 w-4 text-green-600" />,
-        categories: physicalSurveyCategories,
-        color: 'from-green-50 to-emerald-50'
-      });
-    }
+  const sections: LayerSection[] = [];
 
-    if (desktopPlanningCategories.length > 0) {
-      sections.push({
-        id: 'desktop-planning',
-        title: 'API: DESKTOP PLANNING',
-        icon: <Database className="h-4 w-4 text-blue-600" />,
-        categories: desktopPlanningCategories,
-        color: 'from-blue-50 to-indigo-50'
-      });
-    }
+  if (physicalSurveyCategories.length > 0) {
+    sections.push({
+      id: 'physical-survey',
+      title: 'API: PHYSICAL SURVEY DATA',
+      icon: <Navigation className="h-4 w-4 text-green-600" />,
+      categories: physicalSurveyCategories,
+      color: 'from-green-50 to-emerald-50'
+    });
+  }
 
-    if (externalSurveyCategories.length > 0) {
-      sections.push({
-        id: 'external-survey',
-        title: 'EXTERNAL: SURVEY FILES',
-        icon: <Upload className="h-4 w-4 text-orange-600" />,
-        categories: externalSurveyCategories,
-        color: 'from-orange-50 to-amber-50'
-      });
-    }
+  if (desktopPlanningCategories.length > 0) {
+    sections.push({
+      id: 'desktop-planning',
+      title: 'API: DESKTOP PLANNING',
+      icon: <Database className="h-4 w-4 text-blue-600" />,
+      categories: desktopPlanningCategories,
+      color: 'from-blue-50 to-indigo-50'
+    });
+  }
 
-    if (externalDesktopCategories.length > 0) {
-      sections.push({
-        id: 'external-desktop',
-        title: 'EXTERNAL: DESKTOP FILES',
-        icon: <FileText className="h-4 w-4 text-purple-600" />,
-        categories: externalDesktopCategories,
-        color: 'from-purple-50 to-violet-50'
-      });
-    }
+  if (externalSurveyCategories.length > 0) {
+    sections.push({
+      id: 'external-survey',
+      title: 'EXTERNAL: SURVEY FILES',
+      icon: <Upload className="h-4 w-4 text-orange-600" />,
+      categories: externalSurveyCategories,
+      color: 'from-orange-50 to-amber-50'
+    });
+  }
 
-    if (otherExternalCategories.length > 0) {
-      sections.push({
-        id: 'external-other',
-        title: 'EXTERNAL: OTHER FILES',
-        icon: <FileText className="h-4 w-4 text-gray-600" />,
-        categories: otherExternalCategories,
-        color: 'from-gray-50 to-slate-50'
-      });
-    }
+  if (externalDesktopCategories.length > 0) {
+    sections.push({
+      id: 'external-desktop',
+      title: 'EXTERNAL: DESKTOP FILES',
+      icon: <FileText className="h-4 w-4 text-purple-600" />,
+      categories: externalDesktopCategories,
+      color: 'from-purple-50 to-violet-50'
+    });
+  }
 
-    return sections;
-  }, [categories]);
+  // NEW: BSNL section
+  if (externalBSNLCategories.length > 0) {
+    sections.push({
+      id: 'external-bsnl',
+      title: 'EXTERNAL: BSNL FILES',
+      icon: <Upload className="h-4 w-4 text-red-600" />,
+      categories: externalBSNLCategories,
+      color: 'from-red-50 to-pink-50'
+    });
+  }
+
+  if (otherExternalCategories.length > 0) {
+    sections.push({
+      id: 'external-other',
+      title: 'EXTERNAL: OTHER FILES',
+      icon: <FileText className="h-4 w-4 text-gray-600" />,
+      categories: otherExternalCategories,
+      color: 'from-gray-50 to-slate-50'
+    });
+  }
+
+  return sections;
+}, [categories]);
+
 
   const toggleSectionExpansion = (sectionId: string) => {
     setExpandedSections(prev => {
@@ -149,25 +167,26 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
   };
 
   const getCategoryPlacemarks = (categoryId: string, categoryName: string) => {
-    return placemarks.filter(p => {
-      // Handle API Physical Survey data
-      if (p.id.startsWith('physical-') && categoryId.startsWith('physical-')) {
-        return p.category === categoryName || 
-               (categoryId.startsWith('physical-') && categoryId.replace('physical-', '').toUpperCase() === p.category);
-      } 
-      // Handle API Desktop Planning data
-      else if (p.id.startsWith('desktop-') && categoryName.startsWith('Desktop:')) {
-        return p.category === categoryName;
-      } 
-      // Handle External file data
-      else if (!p.id.startsWith('physical-') && !p.id.startsWith('desktop-')) {
-        // For external files, match the full category name including prefix
-        return p.category === categoryName;
-      }
-      
-      return false;
-    });
-  };
+  return placemarks.filter(p => {
+    // Handle API Physical Survey data
+    if (p.id.startsWith('physical-') && categoryId.startsWith('physical-')) {
+      return p.category === categoryName || 
+             (categoryId.startsWith('physical-') && categoryId.replace('physical-', '').toUpperCase() === p.category);
+    } 
+    // Handle API Desktop Planning data
+    else if (p.id.startsWith('desktop-') && categoryName.startsWith('Desktop:')) {
+      return p.category === categoryName;
+    } 
+    // Handle External file data (including BSNL)
+    else if (!p.id.startsWith('physical-') && !p.id.startsWith('desktop-')) {
+      // For external files, match the full category name including prefix
+      // This now includes External Survey:, External Desktop:, and External BSNL:
+      return p.category === categoryName;
+    }
+    
+    return false;
+  });
+};
 
   const totalCount = categories.reduce((sum, cat) => sum + cat.count, 0);
 

@@ -6,7 +6,6 @@ import UserOne from '../../images/user/user-01.png';
 const DropdownUser = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const userData = JSON.parse(localStorage.getItem("userData") || "{}");
-  console.log("userData",userData);
   const handleLogout = () => {
     localStorage.clear(); // Clear all stored data
     window.location.href = "/"; // Redirect to the login page

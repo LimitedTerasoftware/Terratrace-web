@@ -241,7 +241,6 @@ const AerialSurvey: React.FC = () => {
     try {
       const response = await axios.post(`${BASEURL}/aerial-surveys/${id}/accept`);
       if (response.data.status === 1) {
-        console.log("Record accepted successfully!");
         alert("Record accepted successfully!");
       }
     } catch (error) {
@@ -254,7 +253,6 @@ const AerialSurvey: React.FC = () => {
     try {
       const response = await axios.post(`${BASEURL}/aerial-surveys/${id}/reject`);
       if (response.data.status === 1) {
-        console.log("Record rejected successfully!");
         alert("Record rejected successfully!");
       }
     } catch (error) {
