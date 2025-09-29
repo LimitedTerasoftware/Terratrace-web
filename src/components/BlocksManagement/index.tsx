@@ -33,6 +33,7 @@ interface Block {
   blockId: number;
   district: string;
   length: string;
+  no_of_gps: number;
   stage: string;
   status: string | null;
   assignedTo: string;
@@ -76,14 +77,12 @@ const BlocksManagementPage: React.FC = () => {
   // State management
   const [selectedRows, setSelectedRows] = useState<Block[]>([]);
   const [toggleCleared, setToggleCleared] = useState(false);
-  const [selectedBlock, setSelectedBlock] = useState<Block | null>(null);
   const [globalsearch, setGlobalSearch] = useState<string>('');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('');
   const [selectedStage, setSelectedStage] = useState<string>('survey');
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [selectedContractor, setSelectedContractor] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [statsData, setStatsData] = useState<ApiStatsData | null>(null);
   const [statsLoading, setStatsLoading] = useState<boolean>(true);
   const [statsError, setStatsError] = useState<string | null>(null);
@@ -92,7 +91,6 @@ const BlocksManagementPage: React.FC = () => {
   const [blocksError, setBlocksError] = useState<string | null>(null);
   const [districts, setDistricts] = useState<District[]>([]);
   const [loadingDistricts, setLoadingDistricts] = useState<boolean>(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const [showAssignPopup, setShowAssignPopup] = useState<boolean>(false);
   const [isAssigned, setIsAssigned] = useState<boolean>(false);
   const [notification, setNotification] = useState<{
@@ -104,6 +102,8 @@ const BlocksManagementPage: React.FC = () => {
   message: '',
   show: false
 });
+  const [editingBlock, setEditingBlock] = useState<Block | null>(null);
+  const [editFormData, setEditFormData] = useState<any>(null);
 
 const refetchData = async () => {
   try {
@@ -306,18 +306,6 @@ const closeNotification = () => {
     }
   }, [selectedDistrict, selectedStage, selectedStatus, districts]);
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setOpenDropdown(null);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   // Stats Panel Component
   const BlocksStatsPanel: React.FC = () => {
     if (statsLoading) {
@@ -376,7 +364,7 @@ const closeNotification = () => {
         value: statsData.surveyProgress,
         color: 'text-emerald-600',
         bgColor: 'bg-emerald-50',
-        subtitle: parseInt(statsData.surveyProgress) > 0 ? 'In progress' : 'Not started'
+        subtitle: parseInt(statsData.surveyProgress) > 0 ? 'Completed' : 'Not started'
       },
       {
         icon: Construction,
@@ -515,27 +503,151 @@ const closeNotification = () => {
     setSelectedStatus('');
     setSelectedContractor('');
   };
-
-  const handleDropdownToggle = (blockId: string) => {
-    setOpenDropdown(openDropdown === blockId ? null : blockId);
-  };
-
+ 
   const handleActionClick = (action: string, block: Block) => {
-    setOpenDropdown(null);
+  switch (action) {
+    case 'preview':
+      null;
+      break;
+    case 'edit':
+      handleEditBlock(block);
+      break;
+    case 'reassign':
+      // Handle reassign action if needed
+      break;
+    case 'split':
+      // Handle split action if needed
+      break;
+    case 'gplist':
+      handleGPListClick(block.blockId, block.blockName);
+      break;
+    default:
+  }
+};
+
+const handleEditBlock = (block: Block) => {
+  setEditingBlock(block);
+  // Simplified form data with just the essential fields
+  setEditFormData({
+    block_id: block.blockId,
+    stage: block.stage.toLowerCase(), // Current stage of the block
+    status: '',
+    startDate: '',
+    endDate: '',
+    no_of_gps: '',
+    proposed_length: '',
+    incremental_length: '',
+    assigned_to: '',
+    progress: '',
+    remark: ''
+  });
+};
+
+const handleEditFormChange = (field: string, value: any) => {
+  setEditFormData((prev: any) => ({
+    ...prev,
+    [field]: value
+  }));
+};
+
+const handleEditSave = async () => {
+  if (!editingBlock || !editFormData) return;
+
+  try {
+    setLoading(true);
     
-    switch (action) {
-      case 'preview':
-        setSelectedBlock(block);
-        break;
-      case 'reassign':
-        break;
-      case 'split':
-        break;
-      case 'gplist': // Added GP List action
-        handleGPListClick(block.blockId, block.blockName);
-        break;
+    // Prepare updates object, only include non-empty values
+    const updates: any = {};
+    
+    // Map generic fields to stage-specific API fields
+    const stageFieldMapping: Record<string, any> = {
+      desktop: {
+        status: 'desktop_status',
+        startDate: 'desktop_startDate',
+        endDate: 'desktop_endDate'
+      },
+      survey: {
+        status: 'physical_survey_status',
+        startDate: 'physical_startDate',
+        endDate: 'physical_endDate'
+      },
+      boq: {
+        status: 'boq_status'
+      },
+      construction: {
+        status: 'construction_status',
+        startDate: 'construction_startDate',
+        endDate: 'construction_endDate'
+      },
+      installation: {
+        status: 'installation_status',
+        startDate: 'installation_startDate',
+        endDate: 'installation_endDate'
+      }
+    };
+
+    // Apply stage-specific mappings
+    const currentStageMapping = stageFieldMapping[editFormData.stage];
+    if (currentStageMapping) {
+      Object.keys(currentStageMapping).forEach(genericField => {
+        const apiField = currentStageMapping[genericField];
+        if (editFormData[genericField] && editFormData[genericField] !== '') {
+          updates[apiField] = editFormData[genericField];
+        }
+      });
     }
-  };
+
+    // Handle non-stage specific fields
+    ['no_of_gps', 'proposed_length', 'incremental_length', 'assigned_to', 'progress'].forEach(field => {
+      if (editFormData[field] !== '' && editFormData[field] !== null) {
+        const numValue = parseFloat(editFormData[field]);
+        if (!isNaN(numValue)) {
+          updates[field] = numValue;
+        }
+      }
+    });
+
+    // Handle remark
+    if (editFormData.remark && editFormData.remark !== '') {
+      updates.remark = editFormData.remark;
+    }
+
+    const requestBody = {
+      block_id: editFormData.block_id,
+      updates: updates
+    };
+
+    const response = await fetch('https://api.tricadtrack.com/update-block', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+    
+    if (result.status || result.success) {
+      showNotification('success', 'Block updated successfully');
+      setEditingBlock(null);
+      setEditFormData(null);
+      // Refresh data
+      await refetchData();
+    } else {
+      throw new Error(result.message || 'Failed to update block');
+    }
+    
+  } catch (error) {
+    console.error('Error updating block:', error);
+    showNotification('error', error instanceof Error ? error.message : 'Failed to update block');
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Status Badge Component
   const getStatusBadge = (status: string | null) => {
@@ -630,6 +742,16 @@ const closeNotification = () => {
       maxWidth: "100px"
     },
     {
+      name: "GPS",
+      cell: (row) => (
+        <div className="text-sm font-medium text-gray-900">
+          {(row as any).no_of_gps || 0}
+        </div>
+      ),
+      sortable: true,
+      maxWidth: "100px"
+    },
+    {
       name: "Stage",
       selector: row => row.stage,
       sortable: true,
@@ -709,65 +831,53 @@ const closeNotification = () => {
       maxWidth: "100px"
     },
     {
-      name: 'Actions',
-      cell: (row, index) => {
-        const rowIndex = filteredData.findIndex(item => item.blockCode === row.blockCode);
-        const totalRows = filteredData.length;
-        const dropdownPos = getDropdownPosition(rowIndex, totalRows);
+  name: 'Actions',
+  cell: (row) => {
+    return (
+      <div className="flex items-center gap-1">
+        {/* Preview Button */}
+        <button
+          onClick={() => handleActionClick('preview', row)}
+          className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+          title="Preview"
+        >
+          <Eye className="w-4 h-4" />
+        </button>
         
-        return (
-          <div className="relative" ref={openDropdown === row.blockCode.toString() ? dropdownRef : null}>
-            <button
-              onClick={() => handleDropdownToggle(row.blockCode.toString())}
-              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              title="More actions"
-            >
-              <MoreVertical className="w-4 h-4" />
-            </button>
-            
-            {openDropdown === row.blockCode.toString() && (
-              <div className={`absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg border border-gray-200 ${dropdownPos.positioning} ${dropdownPos.zIndex}`}>
-                <div className="py-1">
-                  {/*<button
-                    onClick={() => handleActionClick('preview', row)}
-                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    <Eye className="w-4 h-4 mr-3 text-blue-500" />
-                    Preview
-                  </button>
-                  <button
-                    onClick={() => handleActionClick('reassign', row)}
-                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    <Edit className="w-4 h-4 mr-3 text-orange-500" />
-                    Reassign
-                  </button>
-                  <button
-                    onClick={() => handleActionClick('split', row)}
-                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    <GitBranch className="w-4 h-4 mr-3 text-green-500" />
-                    Split
-                  </button>*/}
-                  {/* Added GP List option */}
-                  <button
-                    onClick={() => handleActionClick('gplist', row)}
-                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    <List className="w-4 h-4 mr-3 text-purple-500" />
-                    GP List
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      },
-      ignoreRowClick: true,
-      allowOverflow: true,
-      button: true,
-      width: "80px",
-    },
+        {/* Edit Button */}
+        <button
+          onClick={() => handleActionClick('edit', row)}
+          className="p-2 text-gray-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+          title="Edit"
+        >
+          <Edit className="w-4 h-4" />
+        </button>
+        
+        {/* Split Button */}
+        <button
+          onClick={() => handleActionClick('split', row)}
+          className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+          title="Split"
+        >
+          <GitBranch className="w-4 h-4" />
+        </button>
+        
+        {/* GP List Button */}
+        <button
+          onClick={() => handleActionClick('gplist', row)}
+          className="px-3 py-1.5 text-xs font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-md transition-colors"
+          title="Go to GP List"
+        >
+          GP List
+        </button>
+      </div>
+    );
+  },
+  ignoreRowClick: true,
+  allowOverflow: false,
+  button: true,
+  width: "180px",
+},
   ];
 
   const customStyles = {
@@ -1056,107 +1166,205 @@ const closeNotification = () => {
           </div>
         )}
 
-        {/* Block Details Modal */}
-        {selectedBlock && (
+        {/* Block Edit Modal */}
+        {editingBlock && editFormData && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6 border-b border-gray-200">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-xl font-semibold text-gray-900">Block Details</h3>
+                  <h3 className="text-xl font-semibold text-gray-900">Edit Block - {editingBlock.blockName}</h3>
                   <button
-                    onClick={() => setSelectedBlock(null)}
+                    onClick={() => {
+                      setEditingBlock(null);
+                      setEditFormData(null);
+                    }}
                     className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
               </div>
+              
               <div className="p-6 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Block Name</label>
-                    <p className="text-gray-900 font-medium">{selectedBlock.blockName}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Block Code</label>
-                    <p className="text-gray-900">#{selectedBlock.blockCode}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">District</label>
-                    <p className="text-gray-900">{selectedBlock.district}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Length</label>
-                    <p className="text-gray-900">{selectedBlock.length}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Stage</label>
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      selectedBlock.stage.toLowerCase() === 'survey' ? 'bg-yellow-100 text-yellow-800' :
-                      selectedBlock.stage.toLowerCase() === 'construction' ? 'bg-orange-100 text-orange-800' :
-                      selectedBlock.stage.toLowerCase() === 'installation' ? 'bg-purple-100 text-purple-800' :
-                      selectedBlock.stage.toLowerCase() === 'desktop' ? 'bg-blue-100 text-blue-800' :
-                      selectedBlock.stage.toLowerCase() === 'boq' ? 'bg-indigo-100 text-indigo-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {selectedBlock.stage}
-                    </span>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Status</label>
-                    {getStatusBadge(selectedBlock.status)}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Assigned To</label>
-                    <p className="text-gray-900">{selectedBlock.assignedTo === 'Unassigned' ? 'Unassigned' : selectedBlock.assignedTo}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Progress</label>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>{selectedBlock.stage} Progress</span>
-                        <span className="font-medium">{selectedBlock.progress}</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-                          style={{ width: `${Math.min(parseFloat(selectedBlock.progress) || 0, 100)}%` }}
-                        ></div>
-                      </div>
+                {/* Basic Information */}
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Number of GPS</label>
+                      <input
+                        type="number"
+                        value={editFormData.no_of_gps}
+                        onChange={(e) => handleEditFormChange('no_of_gps', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter number of GPS"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Progress (%)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={editFormData.progress}
+                        onChange={(e) => handleEditFormChange('progress', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter progress percentage"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Proposed Length (km)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editFormData.proposed_length}
+                        onChange={(e) => handleEditFormChange('proposed_length', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter proposed length"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Incremental Length (km)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editFormData.incremental_length}
+                        onChange={(e) => handleEditFormChange('incremental_length', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter incremental length"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Assigned To (ID)</label>
+                      <input
+                        type="number"
+                        value={editFormData.assigned_to}
+                        onChange={(e) => handleEditFormChange('assigned_to', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter assigned user ID"
+                      />
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Start Date</label>
-                    <p className="text-gray-900">
-                      {selectedBlock.startDate ? moment(selectedBlock.startDate).format("DD/MM/YYYY") : 'Not set'}
-                    </p>
+                </div>
+
+                {/* Stage-specific Information */}
+                <div className="border-t border-gray-200 pt-6">
+                  <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${
+                      editFormData.stage === 'desktop' ? 'bg-blue-500' :
+                      editFormData.stage === 'survey' ? 'bg-yellow-500' :
+                      editFormData.stage === 'boq' ? 'bg-indigo-500' :
+                      editFormData.stage === 'construction' ? 'bg-orange-500' :
+                      editFormData.stage === 'installation' ? 'bg-purple-500' :
+                      'bg-gray-500'
+                    }`}></div>
+                    {editFormData.stage.charAt(0).toUpperCase() + editFormData.stage.slice(1)} Stage
+                  </h4>
+                  
+                  {/* Stage Selector */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Stage</label>
+                    <select
+                      value={editFormData.stage}
+                      onChange={(e) => handleEditFormChange('stage', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="desktop">Desktop Survey</option>
+                      <option value="survey">Physical Survey</option>
+                      <option value="boq">BOQ (Bill of Quantities)</option>
+                      <option value="construction">Construction</option>
+                      <option value="installation">Installation</option>
+                    </select>
                   </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                      <select
+                        value={editFormData.status}
+                        onChange={(e) => handleEditFormChange('status', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Select Status</option>
+                        <option value="Not started">Not Started</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                      </select>
+                    </div>
+                    
+                    {/* Only show date fields for stages that support them (not BOQ) */}
+                    {editFormData.stage !== 'boq' && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                          <input
+                            type="date"
+                            value={editFormData.startDate}
+                            onChange={(e) => handleEditFormChange('startDate', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                          <input
+                            type="date"
+                            value={editFormData.endDate}
+                            onChange={(e) => handleEditFormChange('endDate', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Remarks Section */}
+                <div className="border-t border-gray-200 pt-6">
+                  <h4 className="text-lg font-medium text-gray-900 mb-4">Remarks</h4>
                   <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">End Date</label>
-                    <p className="text-gray-900">
-                      {selectedBlock.endDate ? moment(selectedBlock.endDate).format("DD/MM/YYYY") : 'Not set'}
-                    </p>
+                    <textarea
+                      value={editFormData.remark}
+                      onChange={(e) => handleEditFormChange('remark', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      rows={4}
+                      placeholder="Enter any remarks or comments..."
+                    />
                   </div>
                 </div>
               </div>
+
               <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
                 <button
-                  onClick={() => setSelectedBlock(null)}
+                  onClick={() => {
+                    setEditingBlock(null);
+                    setEditFormData(null);
+                  }}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                  disabled={loading}
                 >
-                  Close
+                  Cancel
                 </button>
                 <button
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  onClick={handleEditSave}
+                  disabled={loading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 flex items-center gap-2"
                 >
-                  {selectedBlock.assignedTo === 'Unassigned' ? 'Assign Block' : 
-                   selectedBlock.status === 'Completed' ? 'View Details' : 'Update Block'}
+                  {loading ? (
+                    <>
+                      <Loader className="w-4 h-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Changes'
+                  )}
                 </button>
               </div>
             </div>
           </div>
         )}
       </div>
+
       <UserAssignmentModal
         isOpen={showAssignPopup}
         onClose={() => setShowAssignPopup(false)}
@@ -1169,33 +1377,33 @@ const closeNotification = () => {
       />
 
       {notification.show && (
-  <div className={`fixed top-4 right-4 z-[60] min-w-80 max-w-md transform transition-all duration-300 ease-in-out ${
-    notification.show ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
-  }`}>
-    <div className={`flex items-start p-4 rounded-lg shadow-lg border-l-4 ${
-      notification.type === 'success' ? 'bg-green-500 text-white border-green-600' :
-      notification.type === 'error' ? 'bg-red-500 text-white border-red-600' :
-      'bg-yellow-500 text-white border-yellow-600'
-    }`}>
-      <div className="flex-shrink-0 mr-3">
-        {notification.type === 'success' ? <CheckCircle className="w-5 h-5" /> :
-         notification.type === 'error' ? <AlertCircle className="w-5 h-5" /> :
-         <AlertTriangle className="w-5 h-5" />}
-      </div>
-      <div className="flex-1">
-        <p className="text-sm font-medium leading-5 whitespace-pre-line break-words">
-          {notification.message}
-        </p>
-      </div>
-      <button
-        onClick={closeNotification}
-        className="flex-shrink-0 ml-3 text-white hover:text-gray-200 transition-colors duration-200"
-      >
-        <X className="w-4 h-4" />
-      </button>
-    </div>
-  </div>
-)}
+        <div className={`fixed top-4 right-4 z-[60] min-w-80 max-w-md transform transition-all duration-300 ease-in-out ${
+          notification.show ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
+        }`}>
+          <div className={`flex items-start p-4 rounded-lg shadow-lg border-l-4 ${
+            notification.type === 'success' ? 'bg-green-500 text-white border-green-600' :
+            notification.type === 'error' ? 'bg-red-500 text-white border-red-600' :
+            'bg-yellow-500 text-white border-yellow-600'
+          }`}>
+            <div className="flex-shrink-0 mr-3">
+              {notification.type === 'success' ? <CheckCircle className="w-5 h-5" /> :
+               notification.type === 'error' ? <AlertCircle className="w-5 h-5" /> :
+               <AlertTriangle className="w-5 h-5" />}
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium leading-5 whitespace-pre-line break-words">
+                {notification.message}
+              </p>
+            </div>
+            <button
+              onClick={closeNotification}
+              className="flex-shrink-0 ml-3 text-white hover:text-gray-200 transition-colors duration-200"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

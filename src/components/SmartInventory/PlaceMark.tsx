@@ -103,8 +103,8 @@ export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string 
   KILOMETERSTONE: { color: '#35530E', icon: '📍' },
 
   // Cable Types
-  'Incremental Cable': { color: '#00FF41', icon: '⚡⚡⚡⚡' },
-  'Proposed Cable': { color: '#FF1744', icon: '➖➖➖➖' },
+  'Incremental Cable': { color: '#00FF41', icon: '⚡' },
+  'Proposed Cable': { color: '#FF1744', icon: '➖' },
 
   // Survey Points
   SURVEYSTART: { color: '#10B981', icon: '🎯' },
@@ -185,7 +185,7 @@ export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string 
   point: { color: '#FF0000', icon: '📍' },
 
   // Cable Infrastructure (Survey prefixed) - MOVED TO END
-  'Survey: Block to FPOI Cable': { color: '#1E3A8A', icon: '🔗🔗' },
+  'Survey: Block to FPOI Cable': { color: '#1E3A8A', icon: '🔗' },
 
    // EXTERNAL FILE CATEGORIES - Survey
   'External Survey: SURVEYSTART': { color: '#10B981', icon: '🎯' },
@@ -206,8 +206,8 @@ export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string 
   'External Survey: GP': { color: '#4ECDC4', icon: '🏠' },
   'External Survey: BHQ': { color: '#BF1E00', icon: '🏢' },
   'External Survey: Block Router': { color: '#000000', icon: '🔗' },
-  'External Survey: Incremental Cable': { color: '#06B6D4', icon: '⚡⚡⚡⚡' },
-  'External Survey: Proposed Cable': { color: '#F97316', icon: '➖➖➖➖' },
+  'External Survey: Incremental Cable': { color: '#06B6D4', icon: '⚡' },
+  'External Survey: Proposed Cable': { color: '#F97316', icon: '➖' },
 
   // EXTERNAL FILE CATEGORIES - Desktop
   'External Desktop: GP': { color: '#2DD4BF', icon: '🟢' },
@@ -221,61 +221,78 @@ export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string 
   'External Desktop: N Highway Cross': { color: '#EF4444', icon: '🛤️' },
   'External Desktop: Incremental Cable': { color: '#8B5CF6', icon: '▓▓▓▓' },
   'External Desktop: Proposed Cable': { color: '#F59E0B', icon: '▒▒▒▒' },
-
-    // EXTERNAL FILE CATEGORIES - BSNL
-  'External BSNL: GP': { color: '#4ECDC4', icon: '🏠' },
-  'External BSNL: FPOI': { color: '#F8C471', icon: '⭐' },
-  'External BSNL: BHQ': { color: '#BF1E00', icon: '🏢' },
-  'External BSNL: BR': { color: '#0030BF', icon: '🌐' },
-  'External BSNL: Block Router': { color: '#000000', icon: '🔗' },
-  'External BSNL: LANDMARK': { color: '#FF6B6B', icon: '🛖' },
-  'External BSNL: Bridge': { color: '#45B7D1', icon: '🌉' },
-  'External BSNL: Culvert': { color: '#96CEB4', icon: '🌊' },
-  'External BSNL: ROADCROSSING': { color: '#31F527', icon: '🛣️' },
-  'External BSNL: Road Cross': { color: '#FFD700', icon: '🛣️' },
-  'External BSNL: Railway Cross': { color: '#8B5CF6', icon: '🚂' },
-  'External BSNL: N Highway Cross': { color: '#EF4444', icon: '🛤️' },
-  'External BSNL: KILOMETERSTONE': { color: '#35530E', icon: '📍' },
-  'External BSNL: FIBERTURN': { color: '#372AAC', icon: '🔄' },
-  'External BSNL: JOINTCHAMBER': { color: '#FE9A37', icon: '🔗' },
-  'External BSNL: ROUTEINDICATOR': { color: '#42D3F2', icon: '🧭' },
-  'External BSNL: RI': { color: '#9C27B0', icon: '📡' },
-  'External BSNL: AIRTEL RI': { color: '#FF5722', icon: '📡' },
-  'External BSNL: RJIL RI': { color: '#FF1744', icon: '📡' },
-  'External BSNL: VITIL RI': { color: '#2196F3', icon: '📡' },
-  'External BSNL: SURVEYSTART': { color: '#10B981', icon: '🎯' },
-  'External BSNL: ENDSURVEY': { color: '#E7180B', icon: '🎯' },
-  'External BSNL: HOLDSURVEY': { color: '#a93226', icon: '⏸️' },
-  'External BSNL: SURVEY_ROUTE': { color: '#FFFF99', icon: '➡️' },
-  'External BSNL: PHOTO_SURVEY': { color: '#DCB14E', icon: '📸' },
-  'External BSNL: VIDEO_SURVEY': { color: '#7C3AED', icon: '🎬' },
-  
-  // BSNL Cable Infrastructure (with distinctive colors)
-  'External BSNL: Incremental Cable': { color: '#00FF00', icon: '⚡⚡⚡⚡' }, // Bright Green
-  'External BSNL: Proposed Cable': { color: '#FF0000', icon: '➖➖➖➖' }, // Bright Red
-  'External BSNL: Survey: Block to FPOI Cable': { color: '#FF6B35', icon: '🔗🔗' }, // Orange-red
   
   // BSNL Infrastructure Assets
-  'External BSNL: School': { color: '#4F46E5', icon: '🏫' },
-  'External BSNL: Bank': { color: '#059669', icon: '🏦' },
-  'External BSNL: ATM': { color: '#10B981', icon: '🏧' },
-  'External BSNL: Masjid': { color: '#7C3AED', icon: '🕌' },
-  'External BSNL: Temple': { color: '#F59E0B', icon: '🛕' },
-  'External BSNL: Restaurant': { color: '#EF4444', icon: '🍽️' },
-  'External BSNL: Hotel': { color: '#8B5CF6', icon: '🏨' },
-  'External BSNL: Pharmacy': { color: '#06B6D4', icon: '💊' },
-  'External BSNL: Petrol Pump': { color: '#F97316', icon: '⛽' },
-  'External BSNL: Bus Stop': { color: '#84CC16', icon: '🚌' },
-  'External BSNL: Railway Station': { color: '#6366F1', icon: '🚂' },
-  'External BSNL: Post Office': { color: '#DC2626', icon: '📫' },
-  'External BSNL: Fire Station': { color: '#B91C1C', icon: '🚒' },
-  'External BSNL: Hospital': { color: '#EC4899', icon: '🏥' },
-  'External BSNL: Govt. Office': { color: '#374151', icon: '🏛️' },
-  'External BSNL: KM Stone': { color: '#35530E', icon: '📍' },
-  'External BSNL: Landmark': { color: '#FF6B6B', icon: '🛖' },
-  'External BSNL: ASSET': { color: '#FF6B35', icon: '🔧' },
+  'External O & M: GP': { color: '#4ECDC4', icon: '🏠' },
+'External O & M: FPOI': { color: '#F8C471', icon: '⭐' },
+'External O & M: BHQ': { color: '#BF1E00', icon: '🏢' },
+'External O & M: BR': { color: '#0030BF', icon: '🌐' },
+'External O & M: Block Router': { color: '#000000', icon: '🔗' },
+'External O & M: LANDMARK': { color: '#FF6B6B', icon: '🏛️' },
+
+// Infrastructure - Crossings and Bridges
+'External O & M: Bridge': { color: '#45B7D1', icon: '🌉' },
+'External O & M: Culvert': { color: '#96CEB4', icon: '🌊' },
+'External O & M: ROADCROSSING': { color: '#31F527', icon: '🛣️' },
+'External O & M: Road Cross': { color: '#FFD700', icon: '🛣️' },
+'External O & M: Railway Cross': { color: '#8B5CF6', icon: '🚂' },
+'External O & M: N Highway Cross': { color: '#EF4444', icon: '🛤️' },
+
+// Network Infrastructure
+'External O & M: KILOMETERSTONE': { color: '#35530E', icon: '📍' },
+'External O & M: FIBERTURN': { color: '#372AAC', icon: '🔄' },
+'External O & M: JOINTCHAMBER': { color: '#FE9A37', icon: '🔗' },
+'External O & M: ROUTEINDICATOR': { color: '#42D3F2', icon: '🧭' },
+
+// Route Indicators (RI)
+'External O & M: RI': { color: '#9C27B0', icon: '📡' },
+'External O & M: AIRTEL RI': { color: '#FF5722', icon: '📡' },
+'External O & M: RJIL RI': { color: '#FF1744', icon: '📡' },
+'External O & M: VITIL RI': { color: '#2196F3', icon: '📡' },
+
+// Survey Points
+'External O & M: SURVEYSTART': { color: '#10B981', icon: '🎯' },
+'External O & M: ENDSURVEY': { color: '#E7180B', icon: '🎯' },
+'External O & M: HOLDSURVEY': { color: '#a93226', icon: '⏸️' },
+'External O & M: SURVEY_ROUTE': { color: '#FFFF99', icon: '➡️' },
+'External O & M: PHOTO_SURVEY': { color: '#DCB14E', icon: '📸' },
+'External O & M: VIDEO_SURVEY': { color: '#7C3AED', icon: '🎬' },
+
+// Cable Infrastructure (distinctive colors for O & M)
+'External O & M: Incremental Cable': { color: '#00FF00', icon: '⚡' }, // Bright Green
+'External O & M: Proposed Cable': { color: '#FF0000', icon: '➖' }, // Bright Red
+'External O & M: Survey: Block to FPOI Cable': { color: '#FF6B35', icon: '🔗' }, // Orange-red
+
+// Infrastructure Assets
+'External O & M: School': { color: '#4F46E5', icon: '🏫' },
+'External O & M: Bank': { color: '#059669', icon: '🏦' },
+'External O & M: ATM': { color: '#10B981', icon: '🏧' },
+'External O & M: Masjid': { color: '#7C3AED', icon: '🕌' },
+'External O & M: Temple': { color: '#F59E0B', icon: '🛕' },
+'External O & M: Restaurant': { color: '#EF4444', icon: '🍽️' },
+'External O & M: Hotel': { color: '#8B5CF6', icon: '🏨' },
+'External O & M: Pharmacy': { color: '#06B6D4', icon: '💊' },
+'External O & M: Petrol Pump': { color: '#F97316', icon: '⛽' },
+'External O & M: Bus Stop': { color: '#84CC16', icon: '🚌' },
+'External O & M: Railway Station': { color: '#6366F1', icon: '🚂' },
+'External O & M: Post Office': { color: '#DC2626', icon: '📫' },
+'External O & M: Fire Station': { color: '#B91C1C', icon: '🚒' },
+'External O & M: Hospital': { color: '#EC4899', icon: '🏥' },
+'External O & M: Govt. Office': { color: '#374151', icon: '🏛️' },
+'External O & M: KM Stone': { color: '#35530E', icon: '📍' },
+'External O & M: Landmark': { color: '#FF6B6B', icon: '🏛️' },
+'External O & M: ASSET': { color: '#FF6B35', icon: '🔧' },
+
 };
 
+export const CATEGORY_DISPLAY_LABELS: Record<string, string> = {
+  'BSNL': 'O & M',
+  'BSNL_Cables': 'O & M',
+};
+
+export function getCategoryDisplayLabel(category: string): string {
+  return CATEGORY_DISPLAY_LABELS[category] || category;
+}
 
 // Enhanced URL resolution with better error handling
 export function resolveMediaUrl(path?: string | null): string {

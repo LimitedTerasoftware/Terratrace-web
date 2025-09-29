@@ -110,7 +110,7 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
   if (externalBSNLCategories.length > 0) {
     sections.push({
       id: 'external-bsnl',
-      title: 'EXTERNAL: BSNL FILES',
+      title: 'EXTERNAL: O & M FILES',
       icon: <Upload className="h-4 w-4 text-red-600" />,
       categories: externalBSNLCategories,
       color: 'from-red-50 to-pink-50'
@@ -289,10 +289,11 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
                       
                       // Clean display name (remove prefixes for display)
                       const displayName = category.name
-                        .replace('External Survey: ', '')
-                        .replace('External Desktop: ', '')
-                        .replace('Desktop: ', '')
-                        .replace('Physical: ', '');
+  .replace('External Survey: ', '')
+  .replace('External Desktop: ', '')
+  .replace('External BSNL: ', 'O & M: ') // Map BSNL to O & M in display
+  .replace('Desktop: ', '')
+  .replace('Physical: ', '');
                       
                       return (
                         <div key={category.id}>

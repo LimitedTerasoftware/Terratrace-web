@@ -85,6 +85,12 @@ const RouteGPList = () => {
     user_name: ''
   });
   const [loadingEdit, setLoadingEdit] = useState<boolean>(false);
+  const [validationErrors, setValidationErrors] = useState<{
+  start?: string;
+  end?: string;
+  original_name?: string;
+  length?: string;
+  }>({});
 
   // Notification state
   const [notification, setNotification] = useState<{
@@ -138,76 +144,219 @@ const RouteGPList = () => {
 
   // Edit functionality
   const handleEditClick = (connection: Connection) => {
-    setEditingConnection(connection.id!);
-    setEditFormData({
-      start: connection.start || '',
-      end: connection.end || '',
-      length: String(connection.length || ''),
-      original_name: connection.original_name || '',
-      type: connection.type || 'proposed',
-      user_id: String(connection.user_id || ''),
-      user_name: connection.user_name || ''
-    });
+  setEditingConnection(connection.id!);
+  setEditFormData({
+    start: connection.start || '',
+    end: connection.end || '',
+    length: String(connection.length || ''),
+    original_name: connection.original_name || '',
+    type: connection.type || 'proposed',
+    user_id: String(connection.user_id || ''),
+    user_name: connection.user_name || ''
+  });
+     setValidationErrors({});
   };
 
   const handleEditInputChange = (field: keyof EditFormData, value: string) => {
-    setEditFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
+  setEditFormData(prev => ({
+    ...prev,
+    [field]: value
+  }));
+  
+  // Validate the field in real-time
+  validateField(field, value);
+};
 
-  const handleEditSave = async (connectionId: number) => {
-    try {
-      setLoadingEdit(true);
-      
-      const updateData = {
-        start: editFormData.start,
-        end: editFormData.end,
-        length: editFormData.length,
-        original_name: editFormData.original_name,
-        type: editFormData.type,
-        user_id: editFormData.user_id,
-        user_name: editFormData.user_name
-      };
-
-      const response = await fetch(`${BASEURL_Val}/update-connections/${connectionId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updateData)
-      });
-
-      if (!response.ok) {
-        // Try to get JSON error first, fallback to text
-        let errorMessage;
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`;
-        } catch {
-          try {
-            const errorText = await response.text();
-            errorMessage = errorText || `HTTP ${response.status}: ${response.statusText}`;
-          } catch {
-            errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-          }
-        }
-        throw new Error(`Update failed: ${errorMessage}`);
+  const validateField = (field: keyof EditFormData, value: string) => {
+  let error = '';
+  
+  switch (field) {
+    case 'start':
+    case 'end':
+      const fieldName = field === 'start' ? 'Start point' : 'End point';
+      const validation = validateCoordinateWithMessage(value, fieldName);
+      if (!validation.isValid && value.trim() !== '') {
+        error = validation.message;
       }
+      break;
+    case 'original_name':
+      if (!value.trim()) {
+        error = 'Route name is required';
+      }
+      break;
+    case 'length':
+      if (!value || parseFloat(value) <= 0) {
+        error = 'Length must be a positive number';
+      }
+      break;
+  }
+  
+  setValidationErrors(prev => ({
+    ...prev,
+    [field]: error
+  }));
+  
+  return error === '';
+};
 
-      const result = await response.json();      
-      showNotification('success', 'Connection updated successfully!');
-      setEditingConnection(null);
-      fetchGPList(); // Refresh the list
-      
-    } catch (error: any) {
-      console.error('Error updating connection:', error);
-      showNotification('error', `Update failed: ${error.message}`);
-    } finally {
-      setLoadingEdit(false);
+  // Validation function for coordinates
+const isValidCoordinate = (coordinate: string): boolean => {
+  if (!coordinate || coordinate.trim() === '') {
+    return false;
+  }
+
+  // Remove whitespace
+  const trimmed = coordinate.trim();
+  
+  // Check if it's a simple number like 123, 1234, 0000 etc.
+  if (/^\d+$/.test(trimmed)) {
+    return false;
+  }
+
+  // Check for valid coordinate patterns
+  // Decimal degrees: -90.123456, 180.654321
+  const decimalPattern = /^-?(?:(?:1[0-7]\d|[1-9]?\d)(?:\.\d+)?|180(?:\.0+)?)$/;
+  
+  // DMS format: 40°26'46"N, 79°58'56"W or similar variations
+  const dmsPattern = /^-?\d{1,3}[°]?\s*\d{1,2}['′]?\s*\d{1,2}(?:\.\d+)?["″]?\s*[NSEW]?$/i;
+  
+  // Coordinate pair format: "lat,lng" or "lat, lng"
+  const coordPairPattern = /^-?\d{1,3}(?:\.\d+)?\s*,\s*-?\d{1,3}(?:\.\d+)?$/;
+  
+  // UTM format basic check
+  const utmPattern = /^\d{1,2}[NSEW]\s+\d+\s+\d+$/i;
+
+  return decimalPattern.test(trimmed) || 
+         dmsPattern.test(trimmed) || 
+         coordPairPattern.test(trimmed) ||
+         utmPattern.test(trimmed);
+};
+
+// Enhanced validation function with more specific error messages
+const validateCoordinateWithMessage = (coordinate: string, fieldName: string): { isValid: boolean; message: string } => {
+  if (!coordinate || coordinate.trim() === '') {
+    return { 
+      isValid: false, 
+      message: `${fieldName} is required` 
+    };
+  }
+
+  const trimmed = coordinate.trim();
+  
+  // Check if it's just numbers (invalid)
+  if (/^\d+$/.test(trimmed)) {
+    return { 
+      isValid: false, 
+      message: `${fieldName} must be valid coordinates` 
+    };
+  }
+
+  // Check if it's zeros (likely invalid)
+  if (/^0+$/.test(trimmed)) {
+    return { 
+      isValid: false, 
+      message: `${fieldName} cannot be all zeros` 
+    };
+  }
+
+  if (!isValidCoordinate(coordinate)) {
+    return { 
+      isValid: false, 
+      message: `${fieldName} must be valid coordinates.` 
+    };
+  }
+
+  return { isValid: true, message: '' };
+};
+
+const getInputClassName = (field: keyof EditFormData) => {
+  const baseClasses = "w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1";
+  const hasError = validationErrors[field];
+  
+  if (hasError) {
+    return `${baseClasses} border-red-300 focus:ring-red-500 bg-red-50 dark:bg-red-900/20 dark:border-red-600 dark:text-white`;
+  }
+  
+  return `${baseClasses} border-gray-300 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white`;
+};
+
+// Updated handleEditSave function with validation
+const handleEditSave = async (connectionId: number) => {
+  // Validate start point
+  const startValidation = validateCoordinateWithMessage(editFormData.start, 'Start point');
+  if (!startValidation.isValid) {
+    showNotification('error', startValidation.message);
+    return;
+  }
+
+  // Validate end point
+  const endValidation = validateCoordinateWithMessage(editFormData.end, 'End point');
+  if (!endValidation.isValid) {
+    showNotification('error', endValidation.message);
+    return;
+  }
+
+  // Validate other required fields
+  if (!editFormData.original_name.trim()) {
+    showNotification('error', 'Route name is required');
+    return;
+  }
+
+  if (!editFormData.length || parseFloat(editFormData.length) <= 0) {
+    showNotification('error', 'Length must be a positive number');
+    return;
+  }
+
+  try {
+    setLoadingEdit(true);
+    
+    const updateData = {
+      start: editFormData.start.trim(),
+      end: editFormData.end.trim(),
+      length: editFormData.length,
+      original_name: editFormData.original_name.trim(),
+      type: editFormData.type,
+      user_id: editFormData.user_id,
+      user_name: editFormData.user_name
+    };
+
+    const response = await fetch(`${BASEURL_Val}/update-connections/${connectionId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updateData)
+    });
+
+    if (!response.ok) {
+      // Try to get JSON error first, fallback to text
+      let errorMessage;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`;
+      } catch {
+        try {
+          const errorText = await response.text();
+          errorMessage = errorText || `HTTP ${response.status}: ${response.statusText}`;
+        } catch {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+      }
+      throw new Error(`Update failed: ${errorMessage}`);
     }
-  };
+
+    const result = await response.json();      
+    showNotification('success', 'Connection updated successfully!');
+    setEditingConnection(null);
+    fetchGPList(); // Refresh the list
+    
+  } catch (error: any) {
+    console.error('Error updating connection:', error);
+    showNotification('error', `Update failed: ${error.message}`);
+  } finally {
+    setLoadingEdit(false);
+  }
+};
 
   const handleEditCancel = () => {
     setEditingConnection(null);
@@ -642,13 +791,18 @@ const RouteGPList = () => {
                   {/* Start Point */}
                   <td className="px-3 py-2">
                     {isEditing ? (
-                      <input
-                        type="text"
-                        value={editFormData.start}
-                        onChange={(e) => handleEditInputChange('start', e.target.value)}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                        placeholder="Start point"
-                      />
+                      <div>
+                        <input
+                          type="text"
+                          value={editFormData.start}
+                          onChange={(e) => handleEditInputChange('start', e.target.value)}
+                          className={getInputClassName('start')}
+                          placeholder="e.g., 40.7128, -74.0060"
+                        />
+                        {validationErrors.start && (
+                          <p className="text-xs text-red-600 mt-1">{validationErrors.start}</p>
+                        )}
+                      </div>
                     ) : (
                       connection.start || '-'
                     )}
@@ -657,13 +811,18 @@ const RouteGPList = () => {
                   {/* End Point */}
                   <td className="px-3 py-2">
                     {isEditing ? (
-                      <input
-                        type="text"
-                        value={editFormData.end}
-                        onChange={(e) => handleEditInputChange('end', e.target.value)}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                        placeholder="End point"
-                      />
+                      <div>
+                        <input
+                          type="text"
+                          value={editFormData.end}
+                          onChange={(e) => handleEditInputChange('end', e.target.value)}
+                          className={getInputClassName('end')}
+                          placeholder="e.g., 41.8781, -87.6298"
+                        />
+                        {validationErrors.end && (
+                          <p className="text-xs text-red-600 mt-1">{validationErrors.end}</p>
+                        )}
+                      </div>
                     ) : (
                       connection.end || '-'
                     )}

@@ -17,6 +17,8 @@ interface VideoPlayerProps {
   hasNextVideo?: boolean;
   hasPreviousVideo?: boolean;
   isPlayingSegment?: boolean;
+   shouldResumeAfterLandmark?: boolean;
+  onResumeComplete?: () => void; // Add this line
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({

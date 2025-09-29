@@ -66,6 +66,10 @@ import ScrollToTop from './components/Breadcrumbs/ScrollToTop';
 import BlocksManagement from './components/BlocksManagement/index';
 import BlockGPList from './components/BlocksManagement/BlockGpList';
 import SurveyDashboard from './components/Dashboards/SurveyDashboard';
+import ConstructionDashboard from './components/Dashboards/ConstructionDashboard';
+import InstallationDashboard from './components/Dashboards/InstallationDashboard';
+import ExecutiveDashboard from './components/Dashboards/ExecutiveDashboard';
+import DailyProgressReport from './components/Dashboards/DailyProgressReport';
 //import AuditLogs from './components/AuditLogs';
 
 function App() {
@@ -161,7 +165,7 @@ function App() {
                 <>
                   <DefaultLayout>
                     <PageTitle title="Survey Dashboard" />
-                    <SurveyDashboard />
+                    <ConstructionDashboard />
                   </DefaultLayout>
                 </>
               }
@@ -172,7 +176,7 @@ function App() {
                 <>
                   <DefaultLayout>
                     <PageTitle title="Survey Dashboard" />
-                    <SurveyDashboard />
+                    <ExecutiveDashboard />
                   </DefaultLayout>
                 </>
               }
@@ -183,7 +187,7 @@ function App() {
                 <>
                   <DefaultLayout>
                     <PageTitle title="Survey Dashboard" />
-                    <SurveyDashboard />
+                    <DailyProgressReport />
                   </DefaultLayout>
                 </>
               }
@@ -194,7 +198,7 @@ function App() {
                 <>
                   <DefaultLayout>
                     <PageTitle title="Survey Dashboard" />
-                    <SurveyDashboard />
+                    <InstallationDashboard />
                   </DefaultLayout>
                 </>
               }

@@ -52,7 +52,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     { value: '', label: 'All Categories' },
     { value: 'Survey', label: 'Physical Survey' },
     { value: 'Desktop', label: 'Desktop Planning' },
-    { value: 'BSNL_Cables', label: 'BSNL' }
+    { value: 'BSNL_Cables', label: 'O & M' }
   ];
 
   useEffect(() => {
