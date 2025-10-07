@@ -48,22 +48,33 @@ interface ConvertedKMZData {
 
 export const convertKMZToStandardFormat = (kmzData: KMZResponse): ConvertedKMZData => {
   // Convert points - remove elevation and keep only [lng, lat]
-  const convertedPoints: GPSPoint[] = kmzData.points.map((point) => ({
-    name: point.name,
-    coordinates: [point.coordinates[0], point.coordinates[1]], // Remove elevation
-    properties: {
-      ...point.properties,
-      type: point.type,
-      icon: point.properties.asset_type || point.type,
-      remarks: point.properties.remarks || '',
-    },
-  }));
+  const convertedPoints: GPSPoint[] = kmzData.points.map((point, index) => {
+    // Ensure point has a valid name
+    const pointName = point.name && point.name.trim() !== '' 
+      ? point.name.trim() 
+      : `KMZ_Point_${index + 1}`;
+
+    return {
+      name: pointName,
+      coordinates: [point.coordinates[0], point.coordinates[1]], // Remove elevation
+      properties: {
+        ...point.properties,
+        type: point.type,
+        icon: point.properties?.asset_type || point.type || 'default',
+        remarks: point.properties?.remarks || '',
+      },
+    };
+  });
 
   // Convert lines to connections
-  const convertedConnections: Connection[] = kmzData.lines.map((line) => {
-    // Extract start and end node names from properties
-    const startNode = line.properties.start_node || '';
-    const endNode = line.properties.end_node || '';
+  const convertedConnections: Connection[] = kmzData.lines.map((line, index) => {
+    // Extract start and end node names from properties with fallbacks
+    const startNode = line.properties?.start_node || 
+                     line.properties?.start || 
+                     `Start_${index + 1}`;
+    const endNode = line.properties?.end_node || 
+                   line.properties?.end || 
+                   `End_${index + 1}`;
     
     // Convert coordinates - remove elevation and keep only [lng, lat]
     const coordinates: [number, number][] = line.coordinates.map(coord => [
@@ -75,33 +86,42 @@ export const convertKMZToStandardFormat = (kmzData: KMZResponse): ConvertedKMZDa
     let length = 0;
     if (line.length) {
       length = parseFloat(line.length);
-    } else if (line.properties.seg_length) {
+    } else if (line.properties?.seg_length) {
       // Convert from meters to kilometers if seg_length is provided
       length = parseFloat(line.properties.seg_length) / 1000;
-    }else if(line.properties.length){
-       length = parseFloat(line.properties.length);
+    } else if (line.properties?.length) {
+      length = parseFloat(line.properties.length);
     }
 
     // Determine if connection is existing based on status or type
-    const existing = line.properties.status === 'Accepted' || 
-                    line.properties.status === 'Existing' ||
-                    line.type === 'Incremental Cable' || line.properties.type === 'Incremental Cable' || line.properties.asset_type === 'Incremental Cable';
+    const existing = line.properties?.status === 'Accepted' || 
+                    line.properties?.status === 'Existing' ||
+                    line.type === 'Incremental Cable' || 
+                    line.properties?.type === 'Incremental Cable' || 
+                    line.properties?.asset_type === 'Incremental Cable';
 
     // Generate color based on type or status
     let color = '#FF0000'; // Default red
-    if (line.type === 'Incremental Cable' || line.properties.type === 'Incremental Cable' || line.properties.asset_type === 'Incremental Cable') {
+    if (line.type === 'Incremental Cable' || 
+        line.properties?.type === 'Incremental Cable' || 
+        line.properties?.asset_type === 'Incremental Cable') {
       color = existing ? '#00AA00' : '#FF0000'; // Green for existing, red for new
     }
+
+    // Ensure connection has a valid name
+    const connectionName = line.name && line.name.trim() !== '' 
+      ? line.name.trim() 
+      : `${startNode} TO ${endNode}`;
 
     return {
       start: startNode,
       end: endNode,
       length: length,
-      name: line.name || `${startNode} TO ${endNode}`,
+      name: connectionName,
       coordinates: coordinates,
       color: color,
       existing: existing,
-      properties:line.properties
+      properties: line.properties || {}
     };
   });
 

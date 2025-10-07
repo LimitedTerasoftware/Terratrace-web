@@ -47,6 +47,7 @@ interface UndergroundSurvey {
   endLocation: string,
   cableType: string,
   routeType: string
+  version: string
 }
 
 interface ApiResponse {
@@ -494,6 +495,13 @@ const handleEditSave = async () => {
             </div>
           </div>
 
+        ),
+      },
+      {
+        accessorKey: "version",
+        header: "Version",
+        cell: ({ row }) => (
+          <span className="text-sm text-gray-700">{row.original.version || 'N/A'}</span>
         ),
       },
       {
@@ -999,6 +1007,7 @@ const handleEditSave = async () => {
         "Block Name": data.block_name,
         "Surviour Name": data.fullname,
         "Surviour Contact Number": data.contact_no,
+        "Version": data.version || 'N/A',
         "Survey ID": data.survey_id,
         "Company ID": data.company_id,
         "User ID": data.user_id,
@@ -1012,7 +1021,7 @@ const handleEditSave = async () => {
         "Is Active": data.is_active,
         "Created At": data.created_at,
         "Updated At": data.updated_at,
-        "Status": statusMap[data.is_active]
+        "Status": statusMap[data.is_active],
       }));
 
       // Create workbook and worksheet

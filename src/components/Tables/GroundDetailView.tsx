@@ -471,16 +471,32 @@ const GroundDetailView: React.FC = () => {
   };
 
   const handleAccept = async () => {
-    try {
-      const response = await axios.post(`${BASEURL_Val}/underground-surveys/${id}/accept`);
-      if (response.data.status === 1) {
-        toast.success("Record Accepted successfully!");
-      }
-    } catch (error) {
-      console.error("Error accepting record:", error);
-      toast.error("Error accepting record");
+  try {
+    // Call both APIs simultaneously using Promise.all
+    const [acceptResponse, surveyStartResponse] = await Promise.all([
+      // Existing accept API
+      axios.post(`${BASEURL_Val}/underground-surveys/${id}/accept`),
+      // New Survey-startDate API
+      axios.post(`${import.meta.env.VITE_TraceAPI_URL}/Survey-startDate`, {
+        block_id: data?.block_id || data?.under_ground_survey_data?.[0]?.survey_id?.split('-')[0] // Adjust this based on how you get block_id
+      })
+    ]);
+
+    // Check if both requests were successful
+    if (acceptResponse.data.status === 1) {
+      toast.success("Record Accepted successfully!");
+    } else {
+      toast.error("Failed to accept record");
     }
-  };
+
+    // You can also check surveyStartResponse if needed
+    console.log("Survey start date response:", surveyStartResponse.data);
+
+  } catch (error) {
+    console.error("Error accepting record:", error);
+    toast.error("Error accepting record");
+  }
+};
 
   // Handle delete
   const handleDelete = async () => {

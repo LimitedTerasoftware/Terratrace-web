@@ -108,7 +108,7 @@ const BlockGPList = () => {
       setLoadingGPList(true);
       setGpListError(null);
       
-      const response = await fetch(`${BASEURL_Val}/get-gplist/${blockId}`);
+      const response = await fetch(`${BASEURL_Val}/gplist-block/${blockId}`);
       
       if (!response.ok) {
         throw new Error(`API request failed with status ${response.status}`);

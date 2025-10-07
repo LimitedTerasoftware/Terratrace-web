@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  Download, 
+  Download,
+  HardHat,
   Mail, 
   X, 
   Trophy, 
@@ -8,9 +9,9 @@ import {
   MoreHorizontal,
   Construction,
   RefreshCw,
-  Clock,
-  TrendingUp,
-  TrendingDown
+  Users,
+  Zap,
+  Hammer
 } from "lucide-react";
 
 // Mock data for construction teams
@@ -19,7 +20,9 @@ const mockTeams = [
     id: 1,
     name: "Team Alpha",
     company: "BuildCorp Ltd",
-    avatar: "🏗️",
+    icon: Users,
+    iconColor: "text-blue-600",
+    iconBg: "bg-blue-100",
     blocks: 15,
     planned: "120 km",
     completed: "90 km",
@@ -37,7 +40,9 @@ const mockTeams = [
     id: 2,
     name: "Team Beta",
     company: "FastTrack Construction",
-    avatar: "🚧",
+    icon: Hammer,
+    iconColor: "text-orange-600",
+    iconBg: "bg-orange-100",
     blocks: 12,
     planned: "100 km",
     completed: "55 km",
@@ -55,7 +60,9 @@ const mockTeams = [
     id: 3,
     name: "Team Gamma",
     company: "BuildCorp Ltd", 
-    avatar: "⚡",
+    icon: Zap,
+    iconColor: "text-purple-600",
+    iconBg: "bg-purple-100",
     blocks: 10,
     planned: "80 km",
     completed: "72 km",
@@ -117,7 +124,7 @@ const ConstructionDashboard: React.FC = () => {
           <div className="flex justify-between items-center p-5 border-b border-gray-200">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
-                <Construction className="w-6 h-6 text-orange-600" />
+                <HardHat className="w-6 h-6 text-orange-600" />
                 <h1 className="text-lg font-bold text-gray-900">Construction Dashboard</h1>
               </div>
               <div className="text-sm text-gray-500">Performance Tracking & Control Tower</div>
@@ -137,7 +144,7 @@ const ConstructionDashboard: React.FC = () => {
 
           {/* Filters */}
           <div className="p-5">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+            <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <select className="px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-700 min-w-[140px]">
                   <option>All Districts</option>
@@ -201,15 +208,17 @@ const ConstructionDashboard: React.FC = () => {
                   </button>
                 </div>
                 
-                <button className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">
-                  <RefreshCw className="w-4 h-4 inline mr-2" />
-                  Reset
+                <button className="relative group px-3 py-2 bg-white border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">
+                  <RefreshCw className="w-4 h-4" />
+                  <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                    Reset Filters
+                  </span>
                 </button>
               </div>
             </div>
 
-            {/* Active Filters */}
-            <div className="flex items-center gap-2">
+            {/* Active Filters - Commented Out */}
+            {/* <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-700 rounded-md text-sm font-medium">
                 North District
                 <button className="ml-1 hover:bg-orange-200 rounded-full p-0.5">
@@ -223,7 +232,7 @@ const ConstructionDashboard: React.FC = () => {
                   <X className="w-3 h-3" />
                 </button>
               </span>
-            </div>
+            </div> */}
           </div>
         </div>
 
@@ -369,49 +378,54 @@ const ConstructionDashboard: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {mockTeams.map((team) => (
-                        <tr key={team.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="text-2xl mr-3">{team.avatar}</div>
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">{team.name}</div>
-                                <div className="text-sm text-gray-500">{team.company}</div>
+                      {mockTeams.map((team) => {
+                        const TeamIcon = team.icon;
+                        return (
+                          <tr key={team.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className={`${team.iconBg} p-2 rounded-lg mr-3`}>
+                                  <TeamIcon className={`w-5 h-5 ${team.iconColor}`} />
+                                </div>
+                                <div>
+                                  <div className="text-sm font-medium text-gray-900">{team.name}</div>
+                                  <div className="text-sm text-gray-500">{team.company}</div>
+                                </div>
                               </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{team.blocks}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{team.planned}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">{team.completed}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{team.trenching}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{team.ducting}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{team.cable}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{team.splices}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">{team.qcPass}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">{team.sla}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">{team.variance}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="space-y-1">
-                              <Badge className={getStatusColor(team.status)}>
-                                {team.status}
-                              </Badge>
-                              <br />
-                              <Badge className={getRiskColor(team.risk)}>
-                                {team.risk}
-                              </Badge>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <div className="flex items-center gap-2">
-                              <button className="text-blue-600 hover:text-blue-800">Reassign</button>
-                              <button className="text-blue-600 hover:text-blue-800">Split</button>
-                              <button className="text-gray-400 hover:text-gray-600">
-                                <MoreHorizontal className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{team.blocks}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{team.planned}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">{team.completed}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{team.trenching}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{team.ducting}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{team.cable}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{team.splices}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">{team.qcPass}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">{team.sla}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">{team.variance}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="space-y-1">
+                                <Badge className={getStatusColor(team.status)}>
+                                  {team.status}
+                                </Badge>
+                                <br />
+                                <Badge className={getRiskColor(team.risk)}>
+                                  {team.risk}
+                                </Badge>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <div className="flex items-center gap-2">
+                                <button className="text-blue-600 hover:text-blue-800">Reassign</button>
+                                <button className="text-blue-600 hover:text-blue-800">Split</button>
+                                <button className="text-gray-400 hover:text-gray-600">
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -427,11 +441,14 @@ const ConstructionDashboard: React.FC = () => {
                         const completed = parseInt(team.completed.replace(' km', ''));
                         const planned = parseInt(team.planned.replace(' km', ''));
                         const percentage = (completed / planned) * 100;
+                        const TeamIcon = team.icon;
                         return (
                           <div key={team.id}>
                             <div className="flex justify-between text-sm mb-2">
                               <span className="font-medium text-gray-700 flex items-center gap-2">
-                                <span className="text-lg">{team.avatar}</span>
+                                <div className={`${team.iconBg} p-1.5 rounded-lg`}>
+                                  <TeamIcon className={`w-4 h-4 ${team.iconColor}`} />
+                                </div>
                                 {team.name}
                               </span>
                               <span className="text-gray-500">{team.completed}/{team.planned}</span>
@@ -456,28 +473,33 @@ const ConstructionDashboard: React.FC = () => {
                   <div className="bg-gray-50 rounded-lg p-6">
                     <h4 className="text-base font-semibold text-gray-900 mb-4">Construction Activities</h4>
                     <div className="space-y-6">
-                      {mockTeams.map((team) => (
-                        <div key={team.id} className="space-y-3">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-lg">{team.avatar}</span>
-                            <span className="font-medium text-gray-900">{team.name}</span>
+                      {mockTeams.map((team) => {
+                        const TeamIcon = team.icon;
+                        return (
+                          <div key={team.id} className="space-y-3">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className={`${team.iconBg} p-1.5 rounded-lg`}>
+                                <TeamIcon className={`w-4 h-4 ${team.iconColor}`} />
+                              </div>
+                              <span className="font-medium text-gray-900">{team.name}</span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 text-xs">
+                              <div className="bg-orange-100 p-2 rounded">
+                                <div className="font-medium text-orange-800">Trenching</div>
+                                <div className="text-orange-600">{team.trenching}</div>
+                              </div>
+                              <div className="bg-blue-100 p-2 rounded">
+                                <div className="font-medium text-blue-800">Ducting</div>
+                                <div className="text-blue-600">{team.ducting}</div>
+                              </div>
+                              <div className="bg-green-100 p-2 rounded">
+                                <div className="font-medium text-green-800">Cable</div>
+                                <div className="text-green-600">{team.cable}</div>
+                              </div>
+                            </div>
                           </div>
-                          <div className="grid grid-cols-3 gap-2 text-xs">
-                            <div className="bg-orange-100 p-2 rounded">
-                              <div className="font-medium text-orange-800">Trenching</div>
-                              <div className="text-orange-600">{team.trenching}</div>
-                            </div>
-                            <div className="bg-blue-100 p-2 rounded">
-                              <div className="font-medium text-blue-800">Ducting</div>
-                              <div className="text-blue-600">{team.ducting}</div>
-                            </div>
-                            <div className="bg-green-100 p-2 rounded">
-                              <div className="font-medium text-green-800">Cable</div>
-                              <div className="text-green-600">{team.cable}</div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -487,10 +509,13 @@ const ConstructionDashboard: React.FC = () => {
                     <div className="space-y-4">
                       {mockTeams.map((team) => {
                         const qcValue = parseInt(team.qcPass.replace('%', ''));
+                        const TeamIcon = team.icon;
                         return (
                           <div key={team.id} className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <span className="text-2xl">{team.avatar}</span>
+                              <div className={`${team.iconBg} p-2 rounded-lg`}>
+                                <TeamIcon className={`w-5 h-5 ${team.iconColor}`} />
+                              </div>
                               <div>
                                 <span className="text-sm font-medium text-gray-900">{team.name}</span>
                                 <div className="text-xs text-gray-500">{team.company}</div>
@@ -513,174 +538,183 @@ const ConstructionDashboard: React.FC = () => {
                   <div className="bg-gray-50 rounded-lg p-6">
                     <h4 className="text-base font-semibold text-gray-900 mb-4">SLA & Risk Overview</h4>
                     <div className="space-y-4">
-                      {mockTeams.map((team) => (
-                        <div key={team.id} className="flex items-center justify-between p-3 bg-white rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <span className="text-2xl">{team.avatar}</span>
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">{team.name}</div>
-                              <div className="text-xs text-gray-500">{team.company}</div>
-                              <div className="text-xs text-gray-600">SLA: {team.sla}</div>
+                      {mockTeams.map((team) => {
+                        const TeamIcon = team.icon;
+                        return (
+                          <div key={team.id} className="flex items-center justify-between p-3 bg-white rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <div className={`${team.iconBg} p-2 rounded-lg`}>
+                                <TeamIcon className={`w-5 h-5 ${team.iconColor}`} />
+                              </div>
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">{team.name}</div>
+                                <div className="text-xs text-gray-500">{team.company}</div>
+                                <div className="text-xs text-gray-600">SLA: {team.sla}</div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge className={getRiskColor(team.risk)}>
+                                {team.risk}
+                              </Badge>
+                              <Badge className={getStatusColor(team.status)}>
+                                {team.status}
+                              </Badge>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Badge className={getRiskColor(team.risk)}>
-                              {team.risk}
-                            </Badge>
-                            <Badge className={getStatusColor(team.status)}>
-                              {team.status}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
               )}
 
               {activeViewTab === 'Insights' && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-                    {/* Top Performers */}
-                    <div className="lg:col-span-2">
-                      <h4 className="text-base font-semibold text-gray-900 mb-4">Top Performers</h4>
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="text-2xl">🏗️</div>
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">Team Alpha</div>
-                            </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* Top Performers */}
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <h4 className="text-base font-semibold text-gray-900 mb-4">Top Performers</h4>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-blue-100 p-2 rounded-lg">
+                            <Users className="w-5 h-5 text-blue-600" />
                           </div>
-                          <span className="text-sm font-medium text-green-600">90 km</span>
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="text-2xl">⚡</div>
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">Team Gamma</div>
-                            </div>
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">Team Alpha</div>
                           </div>
-                          <span className="text-sm font-medium text-green-600">72 km</span>
                         </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="text-2xl">🚧</div>
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">Team Beta</div>
-                            </div>
-                          </div>
-                          <span className="text-sm font-medium text-blue-600">55 km</span>
-                        </div>
+                        <span className="text-sm font-medium text-green-600">90 km</span>
                       </div>
                       
-                      <div className="mt-6 p-3 bg-red-50 rounded-lg">
-                        <div className="flex items-start gap-2">
-                          <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5" />
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-purple-100 p-2 rounded-lg">
+                            <Zap className="w-5 h-5 text-purple-600" />
+                          </div>
                           <div>
-                            <p className="text-sm font-medium text-red-800">Action Required</p>
-                            <p className="text-xs text-red-600 mt-1">Team Beta needs immediate attention</p>
+                            <div className="text-sm font-medium text-gray-900">Team Gamma</div>
                           </div>
                         </div>
+                        <span className="text-sm font-medium text-green-600">72 km</span>
                       </div>
-                    </div>
-
-                    {/* SLA Compliance Gauge */}
-                    <div className="text-center">
-                      <h4 className="text-base font-semibold text-gray-900 mb-4">SLA Compliance</h4>
-                      <div className="relative w-32 h-32 mx-auto">
-                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 120 120">
-                          <circle
-                            cx="60"
-                            cy="60"
-                            r="40"
-                            fill="none"
-                            stroke="#e5e7eb"
-                            strokeWidth="12"
-                          />
-                          <circle
-                            cx="60"
-                            cy="60"
-                            r="40"
-                            fill="none"
-                            stroke="#10b981"
-                            strokeWidth="12"
-                            strokeLinecap="round"
-                            strokeDasharray={`${85 * 2.51} ${(100 - 85) * 2.51}`}
-                            className="transition-all duration-1000"
-                          />
-                        </svg>
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="text-center">
-                            <div className="text-2xl font-bold text-gray-900">85%</div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-orange-100 p-2 rounded-lg">
+                            <Hammer className="w-5 h-5 text-orange-600" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">Team Beta</div>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex justify-between text-xs text-gray-500 mt-2">
-                        <span>0</span>
-                        <span>100</span>
+                        <span className="text-sm font-medium text-blue-600">55 km</span>
                       </div>
                     </div>
-
-                    {/* QC Distribution */}
-                    <div className="text-center">
-                      <h4 className="text-base font-semibold text-gray-900 mb-4">QC Distribution</h4>
-                      <div className="relative w-32 h-32 mx-auto">
-                        <svg className="w-full h-full" viewBox="0 0 120 120">
-                          <circle cx="60" cy="60" r="35" fill="none" stroke="#10b981" strokeWidth="20" strokeDasharray="175.93 43.98" transform="rotate(-90 60 60)" />
-                          <circle cx="60" cy="60" r="35" fill="none" stroke="#ef4444" strokeWidth="20" strokeDasharray="21.99 197.92" strokeDashoffset="-175.93" transform="rotate(-90 60 60)" />
-                          <circle cx="60" cy="60" r="35" fill="none" stroke="#f59e0b" strokeWidth="20" strokeDasharray="21.99 197.92" strokeDashoffset="-197.92" transform="rotate(-90 60 60)" />
-                        </svg>
-                      </div>
-                      <div className="space-y-1 mt-4 text-xs">
-                        <div className="flex items-center justify-center gap-2">
-                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                          <span className="text-gray-600">Passed</span>
-                        </div>
-                        <div className="flex items-center justify-center gap-2">
-                          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                          <span className="text-gray-600">Failed</span>
-                        </div>
-                        <div className="flex items-center justify-center gap-2">
-                          <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                          <span className="text-gray-600">Pending</span>
+                    
+                    <div className="mt-6 p-3 bg-red-50 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-red-800">Action Required</p>
+                          <p className="text-xs text-red-600 mt-1">Team Beta needs immediate attention</p>
                         </div>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Daily Progress */}
-                    <div className="text-center">
-                      <h4 className="text-base font-semibold text-gray-900 mb-4">Daily Progress</h4>
-                      <div className="relative w-32 h-24 mx-auto">
-                        <svg className="w-full h-full" viewBox="0 0 140 80">
-                          <polyline
-                            fill="none"
-                            stroke="#f97316"
-                            strokeWidth="3"
-                            points="10,60 30,45 50,35 70,40 90,30 110,25 130,35"
-                          />
-                          {[
-                            [10, 60], [30, 45], [50, 35], [70, 40], 
-                            [90, 30], [110, 25], [130, 35]
-                          ].map(([x, y], i) => (
-                            <circle key={i} cx={x} cy={y} r="3" fill="#f97316" />
-                          ))}
-                          <line x1="10" y1="70" x2="130" y2="70" stroke="#e5e7eb" strokeWidth="1" />
-                          {[10, 30, 50, 70, 90, 110, 130].map((x, i) => (
-                            <line key={i} x1={x} y1="68" x2={x} y2="72" stroke="#e5e7eb" strokeWidth="1" />
-                          ))}
-                        </svg>
+                  {/* SLA Compliance Gauge */}
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <h4 className="text-base font-semibold text-gray-900 mb-4 text-center">SLA Compliance</h4>
+                    <div className="relative w-32 h-32 mx-auto">
+                      <svg className="w-full h-full transform -rotate-90" viewBox="0 0 120 120">
+                        <circle
+                          cx="60"
+                          cy="60"
+                          r="40"
+                          fill="none"
+                          stroke="#e5e7eb"
+                          strokeWidth="12"
+                        />
+                        <circle
+                          cx="60"
+                          cy="60"
+                          r="40"
+                          fill="none"
+                          stroke="#10b981"
+                          strokeWidth="12"
+                          strokeLinecap="round"
+                          strokeDasharray={`${85 * 2.51} ${(100 - 85) * 2.51}`}
+                          className="transition-all duration-1000"
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-gray-900">85%</div>
+                        </div>
                       </div>
-                      <div className="flex justify-between text-xs text-gray-500 mt-2 px-1">
-                        <span>Mon</span>
-                        <span>Sun</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500 mt-2">
+                      <span>0</span>
+                      <span>100</span>
+                    </div>
+                  </div>
+
+                  {/* QC Distribution */}
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <h4 className="text-base font-semibold text-gray-900 mb-4 text-center">QC Distribution</h4>
+                    <div className="relative w-32 h-32 mx-auto">
+                      <svg className="w-full h-full" viewBox="0 0 120 120">
+                        <circle cx="60" cy="60" r="35" fill="none" stroke="#10b981" strokeWidth="20" strokeDasharray="175.93 43.98" transform="rotate(-90 60 60)" />
+                        <circle cx="60" cy="60" r="35" fill="none" stroke="#ef4444" strokeWidth="20" strokeDasharray="21.99 197.92" strokeDashoffset="-175.93" transform="rotate(-90 60 60)" />
+                        <circle cx="60" cy="60" r="35" fill="none" stroke="#f59e0b" strokeWidth="20" strokeDasharray="21.99 197.92" strokeDashoffset="-197.92" transform="rotate(-90 60 60)" />
+                      </svg>
+                    </div>
+                    <div className="space-y-1 mt-4 text-xs">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span className="text-gray-600">Passed</span>
                       </div>
-                      <div className="text-xs text-gray-600 mt-2">
-                        <div className="font-medium">25 km</div>
-                        <div>avg/day</div>
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                        <span className="text-gray-600">Failed</span>
                       </div>
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                        <span className="text-gray-600">Pending</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Daily Progress */}
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <h4 className="text-base font-semibold text-gray-900 mb-4 text-center">Daily Progress</h4>
+                    <div className="relative w-32 h-24 mx-auto">
+                      <svg className="w-full h-full" viewBox="0 0 140 80">
+                        <polyline
+                          fill="none"
+                          stroke="#f97316"
+                          strokeWidth="3"
+                          points="10,60 30,45 50,35 70,40 90,30 110,25 130,35"
+                        />
+                        {[
+                          [10, 60], [30, 45], [50, 35], [70, 40], 
+                          [90, 30], [110, 25], [130, 35]
+                        ].map(([x, y], i) => (
+                          <circle key={i} cx={x} cy={y} r="3" fill="#f97316" />
+                        ))}
+                        <line x1="10" y1="70" x2="130" y2="70" stroke="#e5e7eb" strokeWidth="1" />
+                        {[10, 30, 50, 70, 90, 110, 130].map((x, i) => (
+                          <line key={i} x1={x} y1="68" x2={x} y2="72" stroke="#e5e7eb" strokeWidth="1" />
+                        ))}
+                      </svg>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500 mt-2 px-1">
+                      <span>Mon</span>
+                      <span>Sun</span>
+                    </div>
+                    <div className="text-xs text-gray-600 mt-2 text-center">
+                      <div className="font-medium">25 km</div>
+                      <div>avg/day</div>
                     </div>
                   </div>
                 </div>

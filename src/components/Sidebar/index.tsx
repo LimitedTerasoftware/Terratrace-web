@@ -20,6 +20,7 @@ import Smart_Inv from '../../images/icon/internet-world-svgrepo-com.svg';
 import Machine from '../../images/icon/mechine.svg';
 import Other from '../../images/logo/dashboard-4-svgrepo-com.svg';
 import ConstructionImg from '../../images/icon/construction-worker.svg'
+import { matchPath } from 'react-router-dom';
 
 import {
   ChevronLeft,
@@ -63,6 +64,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   const [sidebarExpanded, setSidebarExpanded] = useState(
     storedSidebarExpanded === null ? false : storedSidebarExpanded === 'true'
   );
+  
+  const surveyMatch = matchPath({ path: "/survey/*" }, pathname);
+  const constructionMatch = matchPath({ path: "/construction/*" }, pathname);
+  const installationMatch = matchPath({ path: "/installation/*" }, pathname);
+
 
   // close on click outside
   useEffect(() => {
@@ -326,33 +332,44 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                   }}
             </SidebarLinkGroup>
              )}
-             <SideBarItem icon={SurveyIcon} label="Survey" isOpen={isOpen} isActive={pathname.includes('survey')} path='/survey' />
+             <SideBarItem
+              icon={SurveyIcon}
+              label="Survey"
+              isOpen={isOpen}
+              isActive={!!surveyMatch}
+              path="/survey"
+            />
 
              {!viewOnly && (
-               <SideBarItem icon={ConstructionImg} label="Construction" isOpen={isOpen} isActive={pathname.includes('construction')} path='/construction' />
+                <SideBarItem
+                  icon={ConstructionImg}
+                  label="Construction"
+                  isOpen={isOpen}
+                  isActive={!!constructionMatch}
+                  path="/construction"
+                />
               )}
+
               
              {/* Add Installation Menu Item */}
              {!viewOnly && (
-               <li>
-                 <NavLink
-                   to="/installation"
-                   className={`
-                     flex items-center py-2 ${isOpen ? 'px-3 gap-4' : 'px-2 gap-0'} rounded-lg 
-                     transition-colors duration-200 text-bodydark1 
-                     ${pathname.includes('installation') 
-                       ? 'bg-graydark dark:bg-meta-4' 
-                       : 'hover:bg-graydark dark:hover:bg-meta-4'}
-                     ${!isOpen ? 'w-[44px] justify-center' : ''}
-                   `}
-                 >
-                   <div className="min-w-[20px] flex justify-center">
-                     <Settings className="w-5 h-5" />
-                   </div>
-                   {isOpen && <span className="whitespace-nowrap">Equipment Installation</span>}
-                 </NavLink>
-               </li>
-             )}
+                <li>
+                  <NavLink
+                    to="/installation"
+                    className={({ isActive }) =>
+                      `flex items-center py-2 ${isOpen ? "px-3 gap-4" : "px-2 gap-0"} rounded-lg 
+                      transition-colors duration-200 text-bodydark1
+                      ${isActive ? "bg-graydark dark:bg-meta-4 !text-white" : "hover:bg-graydark dark:hover:bg-meta-4"}
+                      ${!isOpen ? "w-[44px] justify-center" : ""}`
+                    }
+                  >
+                    <div className="min-w-[20px] flex justify-center">
+                      <Settings className="w-5 h-5" />
+                    </div>
+                    {isOpen && <span className="whitespace-nowrap">Equipment Installation</span>}
+                  </NavLink>
+                </li>
+              )}
 
              {/* Add Blocks Management above GIS Inventory */}
               {!viewOnly && (

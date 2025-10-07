@@ -4,7 +4,7 @@ import { useAppContext } from './AppContext';
 import axios from 'axios';
 import MapIcon from '../../images/icon/icon-Map.svg'
 import UndoIcon from '../../images/icon/undo-icon.svg'
-import { AlertCircle, CheckCircle, X } from 'lucide-react';
+import { AlertCircle, CheckCircle, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 
 
@@ -464,6 +464,8 @@ const MapComponent: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const [showLegend, setShowLegend] = useState(true);
+
   // Data management state
   const [LocalData, setLocalData] = useState<GlobalData>({
     loop: [],
@@ -517,7 +519,7 @@ const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
 const [loadingStates, setLoadingStates] = useState<boolean>(false);
 const [loadingDistricts, setLoadingDistricts] = useState<boolean>(false);
 const [loadingBlocks, setLoadingBlocks] = useState<boolean>(false);
-const [showLocationPanel, setShowLocationPanel] = useState(true);
+const [showLocationPanel, setShowLocationPanel] = useState(false);
 const [showLocationFilters, setShowLocationFilters] = useState(true);
 
 
@@ -1034,38 +1036,63 @@ useEffect(() => {
     const uniquePoints = new Map<string, any>();
     
     apiGPSResponse.points.forEach((point: any) => {
-      if (!point.name.includes(" TO ")) {
-        uniquePoints.set(point.name, point);
+  // Add null/undefined checks for point.name
+  if (point && point.name && typeof point.name === 'string' && !point.name.includes(" TO ")) {
+    uniquePoints.set(point.name, point);
+  }
+});
+
+// Also add similar checks in other places where point.name is used:
+
+// Around line 1020-1030, in the connectionsByPoint forEach:
+if (apiConctResponse?.connections?.length) {
+  apiConctResponse.connections.forEach((conn: Connection) => {
+    // Add null checks for connection start/end names
+    const from = conn.start && typeof conn.start === 'string' ? conn.start : '';
+    const to = conn.end && typeof conn.end === 'string' ? conn.end : '';
+    
+    [from, to].forEach((point) => {
+      if (point && point.trim() !== '') {  // Only process non-empty strings
+        if (!connectionsByPoint.has(point)) {
+          connectionsByPoint.set(point, []);
+        }
+        connectionsByPoint.get(point)?.push(conn);
       }
     });
-    
-    const newLoopEntries: LoopEntry[] = Array.from(uniquePoints.values()).map((point: any) => {
-      const relatedConnections = connectionsByPoint.get(point.name) || [];
-      const matchedConn = relatedConnections[0];
-      
-      return {
-        name: point.name,
-        coordinates: point.coordinates,
-        lgd_code: point.properties?.lgd_code || "NULL",
-        properties: point.properties || {},
-        ...(matchedConn && {
-          connection: {
-            length: matchedConn.length || 0,
-            existing: previewKmlData === null ? true : matchedConn.existing || false,
-            color: matchedConn.color || "#55ff00",
+  });
+}
+
+// In the newLoopEntries mapping:
+const newLoopEntries: LoopEntry[] = Array.from(uniquePoints.values()).map((point: any) => {
+  // Ensure point has required properties
+  const pointName = point.name || `Unnamed_Point_${Date.now()}`;
+  const relatedConnections = connectionsByPoint.get(pointName) || [];
+  const matchedConn = relatedConnections[0];
+  
+  return {
+    name: pointName,
+    coordinates: point.coordinates || [0, 0],
+    lgd_code: point.properties?.lgd_code || "NULL",
+    properties: point.properties || {},
+    ...(matchedConn && {
+      connection: {
+        length: matchedConn.length || 0,
+        existing: previewKmlData === null ? true : matchedConn.existing || false,
+        color: matchedConn.color || "#55ff00",
+      },
+      route: {
+        features: [
+          {
+            geometry: {
+              coordinates: matchedConn.coordinates?.map(([lat, lng]) => [lng, lat]) || [],
+            },
           },
-          route: {
-            features: [
-              {
-                geometry: {
-                  coordinates: matchedConn.coordinates.map(([lat, lng]) => [lng, lat]),
-                },
-              },
-            ],
-          },
-        }),
-      };
-    });
+        ],
+      },
+    }),
+  };
+});
+
 
     setLocalData((prev: GlobalData) => ({
       ...prev,
@@ -1504,6 +1531,8 @@ const handleBlockChange = (value: string) => {
   setSelectedBlock(newBlock);
   handleLocationFilterChange(selectedState, selectedDistrict, newBlock);
 };
+
+
 
 useEffect(() => {
   fetchStates();
@@ -3310,6 +3339,60 @@ useEffect(() => {
   </div>
 );
 
+const MapLegend = () => {
+  const [showLegend, setShowLegend] = useState(true);
+  
+  const pointTypes = [
+    { label: 'Block Router', icon: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png' },
+    { label: 'BHQ', icon: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png' },
+    { label: 'GP', icon: 'https://maps.google.com/mapfiles/ms/icons/yellow-dot.png' },
+    { label: 'FPOI', icon: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png' }
+  ];
+
+  return (
+    <div className="absolute bottom-2 left-3 z-10 bg-white rounded-lg shadow-lg border border-gray-200">
+      <div className="p-3">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold text-gray-700">Point Indicator</h3>
+          <button
+            onClick={() => setShowLegend(!showLegend)}
+            className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded hover:bg-gray-100"
+            aria-label={showLegend ? "Collapse legend" : "Expand legend"}
+          >
+            {showLegend ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+        
+        {showLegend && (
+          <div className="space-y-3">
+            {/* Point Types */}
+            <div>
+              <p className="text-xs font-medium text-gray-500 mb-2">Point Types</p>
+              <div className="space-y-2">
+                {pointTypes.map((item, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <img 
+                      src={item.icon} 
+                      alt={item.label}
+                      className="w-5 h-5"
+                    />
+                    <span className="text-xs text-gray-600">{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+
 
   
   // RENDER
@@ -3552,7 +3635,8 @@ useEffect(() => {
       )}
     </div>
   </div>
-)}
+)}  
+    <MapLegend />
 
     {/* Google Map Component - keeping your existing implementation */}
     <GoogleMap
@@ -3573,39 +3657,63 @@ useEffect(() => {
     >
       {/* Markers - keeping your existing implementation */}
       {apiGPSResponse?.points?.map((point: GPSPoint, index: number) => {
-        const position = {
-          lat: point.coordinates[1], 
-          lng: point.coordinates[0], 
-        };
+  const position = {
+    lat: point.coordinates[1], 
+    lng: point.coordinates[0], 
+  };
 
-        const isPointSame = pointA && !pointB && isSameCoordinate(pointA, position);
+  const isPointSame = pointA && !pointB && isSameCoordinate(pointA, position);
 
-        return (
-          <Marker
-            key={`marker-${index}-${point.name}`}
-            position={position}
-            icon={{
-              url: point?.properties?.icon?.startsWith("http")
-                ? point.properties.icon
-                : 'https://maps.google.com/mapfiles/ms/icons/purple-dot.png',
-              scaledSize: new window.google.maps.Size(30, 30),
-            }}
-            title={point.name}
-            onClick={() => {
-              setPointProperties(point);
-              if (AutoMode) {
-                if (!pointA) {
-                  setPointAName(point.name)
-                  setPointA(position)
-                } else if (!pointB && !isPointSame) {
-                  setPointBName(point.name)
-                  setPointB(position);
-                }
-              }
-            }}
-          />
-        )
-      })}
+  // ✅ PROPER ICON LOGIC
+  const getIconUrl = (point: any) => {
+    const iconProp = point?.properties?.icon;
+    
+    // If icon is already a valid URL, use it
+    if (iconProp && typeof iconProp === 'string' && iconProp.startsWith('http')) {
+      return iconProp;
+    }
+    
+    // Otherwise, determine icon based on asset_type
+    const assetType = point?.properties?.asset_type;
+    
+    switch(assetType) {
+      case "Block Router":
+        return "https://maps.google.com/mapfiles/ms/icons/blue-dot.png";
+      case "BHQ":
+        return "https://maps.google.com/mapfiles/ms/icons/green-dot.png";
+      case "GP":
+        return "https://maps.google.com/mapfiles/ms/icons/yellow-dot.png";
+      case "FPOI":
+        return "https://maps.google.com/mapfiles/ms/icons/red-dot.png";
+      default:
+        return "https://maps.google.com/mapfiles/ms/icons/red-dot.png";
+    }
+  };
+
+  return (
+    <Marker
+      key={`marker-${index}-${point.name}`}
+      position={position}
+      icon={{
+        url: getIconUrl(point),
+        scaledSize: new window.google.maps.Size(30, 30),
+      }}
+      title={point.name}
+      onClick={() => {
+        setPointProperties(point);
+        if (AutoMode) {
+          if (!pointA) {
+            setPointAName(point.name)
+            setPointA(position)
+          } else if (!pointB && !isPointSame) {
+            setPointBName(point.name)
+            setPointB(position);
+          }
+        }
+      }}
+    />
+  )
+})}
       
       {distanceInfoWindows.map((info, idx) => (
         <DistanceLabel

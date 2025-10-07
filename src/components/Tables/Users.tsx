@@ -7,7 +7,7 @@ import Modal from '../hooks/ModalPopup';
 import { Machine } from "../../types/machine";
 
 interface UsersData {
-  user_id: string;
+  user_id: string | number
   uname: string;
   email: string;
   version: string;
@@ -270,17 +270,18 @@ const Users = () => {
 
   // Filter data
   const filteredData = data.filter(user => {
-    const matchesSearch = 
-      (user.uname || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.user_id || "").toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || 
-      (statusFilter === 'active' && user.is_active === '1') ||
-      (statusFilter === 'inactive' && user.is_active === '0');
-    
-    return matchesSearch && matchesStatus;
-  });
+  const matchesSearch = 
+    (user.uname || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (user.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+    String(user.user_id || "").toLowerCase().includes(searchTerm.toLowerCase()); // Convert to string first
+  
+  const matchesStatus = statusFilter === 'all' || 
+    (statusFilter === 'active' && user.is_active === '1') ||
+    (statusFilter === 'inactive' && user.is_active === '0');
+  
+  return matchesSearch && matchesStatus;
+});
+
 
   // Status counts
   const getStatusCounts = () => {

@@ -14,7 +14,8 @@ import {
   CheckCircle,
   Clock,
   Target,
-  AlertCircle
+  AlertCircle,
+  ClipboardCheck
 } from "lucide-react";
 
 // ────────────────────────────────────────────────────────────────────────────────
@@ -30,16 +31,16 @@ interface Surveyor {
   assigned: number;
   inProgress: number;
   completed: number;
-  kmDoneKm: number; // numeric kilometers
-  pacePerDay: number; // numeric km/day
+  kmDoneKm: number;
+  pacePerDay: number;
   paceUp: boolean;
-  qcPassPct: number; // 0-100
+  qcPassPct: number;
   risk: Risk;
   status: Status;
 }
 
 // ────────────────────────────────────────────────────────────────────────────────
-// Mock Data (normalized to numbers for computation)
+// Mock Data
 // ────────────────────────────────────────────────────────────────────────────────
 const mockSurveyors: Surveyor[] = [
   {
@@ -48,11 +49,11 @@ const mockSurveyors: Surveyor[] = [
     company: "WEST BENGAL",
     avatar: "https://ui-avatars.com/api/?name=Kanha+Patel&background=0D8ABC&color=fff",
     assigned: 5,
-    inProgress: 0, // 0 pending
-    completed: 5,  // 5 accepted
-    kmDoneKm: 60,  // completed * 12
-    pacePerDay: 8.5, // 6 + 5*0.5
-    paceUp: true, // ratio = 1
+    inProgress: 0,
+    completed: 5,
+    kmDoneKm: 60,
+    pacePerDay: 8.5,
+    paceUp: true,
     qcPassPct: 96,
     risk: "Low",
     status: "Excellent",
@@ -63,11 +64,11 @@ const mockSurveyors: Surveyor[] = [
     company: "HIMACHAL PRADESH",
     avatar: "https://ui-avatars.com/api/?name=Uttam+Abhishek+Biharilal&background=0D8ABC&color=fff",
     assigned: 2,
-    inProgress: 1, // pending
-    completed: 1,  // accepted
+    inProgress: 1,
+    completed: 1,
     kmDoneKm: 12,
-    pacePerDay: 6.5, // 6 + 1*0.5
-    paceUp: true, // ratio = 0.5
+    pacePerDay: 6.5,
+    paceUp: true,
     qcPassPct: 90,
     risk: "Medium",
     status: "Good",
@@ -156,14 +157,13 @@ const mockSurveyors: Surveyor[] = [
     inProgress: 0,
     completed: 2,
     kmDoneKm: 24,
-    pacePerDay: 7.0, // 6 + 2*0.5
+    pacePerDay: 7.0,
     paceUp: true,
     qcPassPct: 96,
     risk: "Low",
     status: "Excellent",
   },
 ];
-
 
 // ────────────────────────────────────────────────────────────────────────────────
 // Styling helpers
@@ -188,7 +188,7 @@ const fmtPace = (pace: number) => `${pace.toFixed(1)}/d`;
 const fmtPct = (pct: number) => `${pct}%`;
 
 const downloadCSV = (surveyors: Surveyor[]) => {
-  if (typeof window === "undefined") return; // SSR guard
+  if (typeof window === "undefined") return;
 
   const headers = [
     "Name",
@@ -259,9 +259,9 @@ export default function SurveyDashboard() {
 
   // Filters
   const [scope, setScope] = useState<"Surveyors" | "Teams">("Surveyors");
-  const [district, setDistrict] = useState<"All" | "North District" | "South District">("All"); // demo only
-  const [contractor, setContractor] = useState<"All" | "ABC Surveys Ltd" | "XYZ Mapping Co">("All");
-  const [assignee, setAssignee] = useState<"All" | "Ramesh Kumar" | "Anita Sharma" | "Vikash Singh">("All");
+  const [district, setDistrict] = useState<"All" | "North District" | "South District">("All");
+  const [contractor, setContractor] = useState<"All" | string>("All");
+  const [assignee, setAssignee] = useState<"All" | string>("All");
   const [dateStr, setDateStr] = useState("");
 
   const contractors = useMemo(() => Array.from(new Set(mockSurveyors.map((s) => s.company))), []);
@@ -271,7 +271,6 @@ export default function SurveyDashboard() {
     let rows = [...mockSurveyors];
     if (contractor !== "All") rows = rows.filter((r) => r.company === contractor);
     if (assignee !== "All") rows = rows.filter((r) => r.name === assignee);
-    // district is a demo filter: add a field to data to make it functional in real usage
     return rows;
   }, [contractor, assignee]);
 
@@ -290,6 +289,13 @@ export default function SurveyDashboard() {
     );
   }, [filtered]);
 
+  const resetFilters = () => {
+    setDistrict("All");
+    setContractor("All");
+    setAssignee("All");
+    setDateStr("");
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto">
@@ -297,11 +303,10 @@ export default function SurveyDashboard() {
         <div className="bg-white rounded-lg shadow-sm border mb-6">
           <div className="flex justify-between items-center p-5 border-b border-gray-200">
             <div className="flex items-center gap-2">
-              <Activity className="w-5 h-5 text-blue-600" />
+              <ClipboardCheck className="w-5 h-5 text-blue-600" />
               <h1 className="text-lg font-bold text-gray-900">Survey Dashboard</h1>
               <div className="flex items-center gap-2 text-xs text-gray-500">
-                <div className="w-3 h-3 bg-gray-300 rounded" />
-                <span>Performance Tracking</span>
+                <div className="text-sm text-gray-500"><span>Performance Tracking</span></div>
               </div>
             </div>
 
@@ -326,7 +331,7 @@ export default function SurveyDashboard() {
 
           {/* Filters */}
           <div className="p-5">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+            <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <select
                   className="px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-700 min-w-[140px]"
@@ -341,7 +346,7 @@ export default function SurveyDashboard() {
                 <select
                   className="px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-700 min-w-[140px]"
                   value={contractor}
-                  onChange={(e) => setContractor(e.target.value as any)}
+                  onChange={(e) => setContractor(e.target.value)}
                 >
                   <option value="All">All Contractors</option>
                   {contractors.map((c) => (
@@ -352,7 +357,7 @@ export default function SurveyDashboard() {
                 <select
                   className="px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-700 min-w-[140px]"
                   value={assignee}
-                  onChange={(e) => setAssignee(e.target.value as any)}
+                  onChange={(e) => setAssignee(e.target.value)}
                 >
                   <option value="All">All Assignees</option>
                   {assignees.map((a) => (
@@ -390,14 +395,21 @@ export default function SurveyDashboard() {
                   aria-label="Select date"
                 />
 
-                <button className="p-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50" aria-label="Refresh">
+                <button 
+                  onClick={resetFilters}
+                  className="relative group px-3 py-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50" 
+                  aria-label="Reset filters"
+                >
                   <RefreshCw className="w-4 h-4 text-gray-500" />
+                  <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                    Reset Filters
+                  </span>
                 </button>
               </div>
             </div>
 
-            {/* Active Filter Chips */}
-            <div className="flex items-center gap-2">
+            {/* Active Filter Chips - Commented Out */}
+            {/* <div className="flex items-center gap-2 mt-4">
               {district !== "All" && (
                 <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-md text-sm font-medium">
                   {district}
@@ -423,7 +435,7 @@ export default function SurveyDashboard() {
                   </button>
                 </span>
               )}
-            </div>
+            </div> */}
           </div>
         </div>
 
@@ -451,7 +463,7 @@ export default function SurveyDashboard() {
                 <div className="flex items-center gap-2">
                   <Trophy className="w-4 h-4 text-yellow-500" />
                   <span className="text-sm text-gray-600">Top Performer:</span>
-                  <span className="text-sm font-medium text-blue-600">Ramesh Kumar</span>
+                  <span className="text-sm font-medium text-blue-600">Kanha Patel</span>
                 </div>
               </div>
 
@@ -661,103 +673,127 @@ export default function SurveyDashboard() {
               )}
 
               {activeTab === "Insights" && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 divide-y md:divide-y-0 md:divide-x divide-gray-200">
-                    {/* Top Performers */}
-                    <div className="md:pr-4">
-                      <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                        <Trophy className="w-4 h-4 text-yellow-500" />
-                        Top Performers
-                      </h4>
-                      <div className="space-y-2">
-                        {[...filtered]
-                          .sort((a, b) => b.kmDoneKm - a.kmDoneKm)
-                          .slice(0, 3)
-                          .map((s, index) => (
-                            <div key={s.id} className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white ${
-                                  index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : 'bg-orange-400'
-                                }`}>
-                                  {index + 1}
-                                </div>
-                                <img className="h-6 w-6 rounded-full" src={s.avatar} alt={s.name} />
-                                <div className="text-xs font-medium text-gray-900">{s.name}</div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* Top Performers */}
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <h4 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Trophy className="w-4 h-4 text-yellow-500" />
+                      Top Performers
+                    </h4>
+                    <div className="space-y-3">
+                      {[...filtered]
+                        .sort((a, b) => b.kmDoneKm - a.kmDoneKm)
+                        .slice(0, 3)
+                        .map((s, index) => (
+                          <div key={s.id} className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                                index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : 'bg-orange-400'
+                              }`}>
+                                {index + 1}
                               </div>
-                              <span className="text-xs font-medium text-green-600">{fmtKm(s.kmDoneKm)}</span>
+                              <img className="h-8 w-8 rounded-full" src={s.avatar} alt={s.name} />
+                              <div className="text-sm font-medium text-gray-900">{s.name}</div>
                             </div>
-                          ))}
+                            <span className="text-sm font-medium text-green-600">{fmtKm(s.kmDoneKm)}</span>
+                          </div>
+                        ))}
+                    </div>
+                    
+                    <div className="mt-6 p-3 bg-red-50 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-red-800">Action Required</p>
+                          <p className="text-xs text-red-600 mt-1">{filtered.filter((s) => s.risk !== "Low").length} surveyors need attention</p>
+                        </div>
                       </div>
                     </div>
+                  </div>
 
-                    {/* SLA Compliance */}
-                    <div className="md:px-4">
-                      <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-blue-500" />
-                        SLA Compliance
-                      </h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-gray-600">Overall</span>
-                          <span className="text-xs font-medium">88%</span>
-                        </div>
-                        <ProgressBar pct={88} className="bg-orange-500" />
+                  {/* SLA Compliance */}
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <h4 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-blue-500" />
+                      SLA Compliance
+                    </h4>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Overall</span>
+                        <span className="text-sm font-medium">88%</span>
+                      </div>
+                      <ProgressBar pct={88} className="bg-orange-500" />
 
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-gray-600">On Time</span>
-                          <span className="text-xs font-medium">92%</span>
-                        </div>
-                        <ProgressBar pct={92} className="bg-green-500" />
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">On Time</span>
+                        <span className="text-sm font-medium">92%</span>
+                      </div>
+                      <ProgressBar pct={92} className="bg-green-500" />
 
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-gray-600">Quality</span>
-                          <span className="text-xs font-medium">85%</span>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Quality</span>
+                        <span className="text-sm font-medium">85%</span>
+                      </div>
+                      <ProgressBar pct={85} className="bg-blue-500" />
+                    </div>
+                  </div>
+
+                  {/* Risk Distribution */}
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <h4 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-red-500" />
+                      Risk Distribution
+                    </h4>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-green-500 rounded-full" />
+                          <span className="text-sm text-gray-600">Low Risk</span>
                         </div>
-                        <ProgressBar pct={85} className="bg-blue-500" />
+                        <span className="text-sm font-medium">{filtered.filter((s) => s.risk === "Low").length}</span>
+                      </div>
+
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-yellow-500 rounded-full" />
+                          <span className="text-sm text-gray-600">Medium Risk</span>
+                        </div>
+                        <span className="text-sm font-medium">{filtered.filter((s) => s.risk === "Medium").length}</span>
+                      </div>
+
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-red-500 rounded-full" />
+                          <span className="text-sm text-gray-600">High Risk</span>
+                        </div>
+                        <span className="text-sm font-medium">{filtered.filter((s) => s.risk === "High").length}</span>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Risk Distribution */}
-                    <div className="md:pl-4">
-                      <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4 text-red-500" />
-                        Risk Distribution
-                      </h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
+                  {/* Pace Trends */}
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <h4 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-purple-500" />
+                      Pace Trends
+                    </h4>
+                    <div className="space-y-3">
+                      {filtered.slice(0, 4).map((s) => (
+                        <div key={s.id} className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-green-500 rounded-full" />
-                            <span className="text-xs text-gray-600">Low Risk</span>
+                            <img className="h-6 w-6 rounded-full" src={s.avatar} alt={s.name} />
+                            <span className="text-sm text-gray-900">{s.name.split(" ")[0]}</span>
                           </div>
-                          <span className="text-xs font-medium">{filtered.filter((s) => s.risk === "Low").length}</span>
-                        </div>
-
-                        <div className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-yellow-500 rounded-full" />
-                            <span className="text-xs text-gray-600">Medium Risk</span>
-                          </div>
-                          <span className="text-xs font-medium">{filtered.filter((s) => s.risk === "Medium").length}</span>
-                        </div>
-
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-red-500 rounded-full" />
-                            <span className="text-xs text-gray-600">High Risk</span>
-                          </div>
-                          <span className="text-xs font-medium">{filtered.filter((s) => s.risk === "High").length}</span>
-                        </div>
-                      </div>
-
-                      <div className="mt-3 p-2 bg-red-50 rounded-lg">
-                        <div className="flex items-start gap-2">
-                          <AlertTriangle className="w-3 h-3 text-red-500 mt-0.5" />
-                          <div>
-                            <p className="text-xs font-medium text-red-800">Action Required</p>
-                            <p className="text-xs text-red-600 mt-1">{filtered.filter((s) => s.risk !== "Low").length} surveyors need attention</p>
+                            <span className="text-sm font-medium text-gray-900">{fmtPace(s.pacePerDay)}</span>
+                            {s.paceUp ? (
+                              <TrendingUp className="w-4 h-4 text-green-600" />
+                            ) : (
+                              <TrendingDown className="w-4 h-4 text-red-600" />
+                            )}
                           </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
                   </div>
                 </div>

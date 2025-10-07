@@ -239,244 +239,214 @@ function SmartInventory() {
   }, [filters, searchQuery, fileCategory]);
 
   // Process selected external files
-  useEffect(() => {
-    const handleParsed = async () => {
-      if (selectedFiles.length > 0) {
-        let allPlacemarks: ProcessedPlacemark[] = [];
-        let allCategoryData: Record<string, number> = {};
-        let combinedPhysicalSurveyData: any = { data: {} };
-        let processedFilesData: any[] = [];
+   useEffect(() => {
+  const handleParsed = async () => {
+    if (selectedFiles.length > 0) {
+      let allPlacemarks: ProcessedPlacemark[] = [];
+      let allCategoryData: Record<string, number> = {};
+      let combinedPhysicalSurveyData: any = { data: {} };
+      let processedFilesData: any[] = [];
 
-        try {
-          for (const file of selectedFiles) {
-            const params: any = {};
-            if (file.filepath) params.filepath = file.filepath;
-            if (file.file_type) params.fileType = file.file_type;
+      try {
+        for (const file of selectedFiles) {
+          const params: any = {};
+          if (file.filepath) params.filepath = file.filepath;
+          if (file.file_type) params.fileType = file.file_type;
 
-            const resp = await axios.get(`${BASEURL}/preview-file`, { params });
-            if (resp.status === 200 || resp.status === 201) {
+          const resp = await axios.get(`${BASEURL}/preview-file`, { params });
+          if (resp.status === 200 || resp.status === 201) {
 
-              // FIXED: Include Desktop in the processing pipeline
-              if (file.category === 'Survey' || file.category === 'BSNL_Cables' || file.category === 'Desktop') {
+            if (file.category === 'Survey' || file.category === 'BSNL_Cables' || file.category === 'Desktop') {
+              
+              const apiData: ApiPlacemark = resp.data.data.parsed_data;
+              
+              // ALL Survey and BSNL files go through infrastructure processing first
+              if (file.category === 'Survey' || file.category === 'BSNL_Cables') {
                 
-                const apiData: ApiPlacemark = resp.data.data.parsed_data;
+                // Process through infrastructure pipeline (handles all point types properly)
+                const { placemarks: infraPlacemarks, categories: infraCategories } = 
+                  processSurveyInfrastructureData(apiData);
                 
-                // For Survey and BSNL files, check if it's physical survey or infrastructure
-                if (file.category === 'Survey' || file.category === 'BSNL_Cables') {
-                  const surveyFileType = detectSurveyFileType(apiData);
-                  
-                  if (surveyFileType === 'physical_survey') {
-                    // Physical survey processing
-                    const physicalSurveyData = transformKMLToPhysicalSurvey(apiData, file);
-
-                    processedFilesData.push({
-                      fileId: file.id,
-                      filename: file.filename,
-                      category: file.category,
-                      rawData: resp.data.data,
-                      transformedData: physicalSurveyData,
-                      originalFile: file
-                    });
-
-                    if (physicalSurveyData && physicalSurveyData.data) {
-                      Object.keys(physicalSurveyData.data).forEach(blockId => {
-                        if (!combinedPhysicalSurveyData.data[blockId]) {
-                          combinedPhysicalSurveyData.data[blockId] = [];
-                        }
-                        combinedPhysicalSurveyData.data[blockId] = [
-                          ...combinedPhysicalSurveyData.data[blockId],
-                          ...physicalSurveyData.data[blockId]
-                        ];
-                      });
-                    }
-
-                    const { placemarks: surveyPlacemarks, categories: surveyCategories } =
-                      processPhysicalSurveyData(physicalSurveyData);
-
-                    const filePrefix = file.id;
-                    const prefixedSurveyPlacemarks = surveyPlacemarks.map(placemark => ({
-                      ...placemark,
-                      id: `${filePrefix}-${placemark.id}`,
-                      category: file.category === 'BSNL_Cables' 
-                        ? `External BSNL: ${placemark.category}` 
-                        : `External Survey: ${placemark.category}`
-                    }));
-
-                    allPlacemarks = [...allPlacemarks, ...prefixedSurveyPlacemarks];
-
-                    surveyCategories.forEach(category => {
-                      const externalCategoryName = file.category === 'BSNL_Cables'
-                        ? `External BSNL: ${category.name}`
-                        : `External Survey: ${category.name}`;
-                      allCategoryData[externalCategoryName] = (allCategoryData[externalCategoryName] || 0) + category.count;
-                    });
-                  } else {
-                    // Infrastructure assets processing
-                    const { placemarks: infraPlacemarks, categories: infraCategories } = 
-                      processSurveyInfrastructureData(apiData);
-                    
-                    processedFilesData.push({
-                      fileId: file.id,
-                      filename: file.filename,
-                      category: file.category,
-                      rawData: resp.data.data,
-                      transformedData: null,
-                      originalFile: file
-                    });
-
-                    const filePrefix = file.id;
-                    const prefixedPlacemarks = infraPlacemarks.map(placemark => ({
-                      ...placemark,
-                      id: `${filePrefix}-${placemark.id}`,
-                      category: file.category === 'BSNL_Cables' 
-                        ? `External BSNL: ${placemark.category}` 
-                        : `External Survey: ${placemark.category}`
-                    }));
-
-                    allPlacemarks = [...allPlacemarks, ...prefixedPlacemarks];
-
-                    infraCategories.forEach(category => {
-                      const externalCategoryName = file.category === 'BSNL_Cables'
-                        ? `External BSNL: ${category.name}`
-                        : `External Survey: ${category.name}`;
-                      allCategoryData[externalCategoryName] = (allCategoryData[externalCategoryName] || 0) + category.count;
-                    });
-                  }
-                }
-                // ADDED: Desktop file processing
-                else if (file.category === 'Desktop') {
-                  // Desktop files use the standard processApiData function
-                  const { placemarks: desktopPlacemarks, categories: desktopCategories } = 
-                    processApiData(apiData);
-                  
-                  processedFilesData.push({
-                    fileId: file.id,
-                    filename: file.filename,
-                    category: file.category,
-                    rawData: resp.data.data,
-                    transformedData: null,
-                    originalFile: file
-                  });
-
-                  const filePrefix = file.id;
-                  const prefixedDesktopPlacemarks = desktopPlacemarks.map(placemark => ({
-                    ...placemark,
-                    id: `${filePrefix}-${placemark.id}`,
-                    category: `External Desktop: ${placemark.category}`
-                  }));
-
-                  allPlacemarks = [...allPlacemarks, ...prefixedDesktopPlacemarks];
-
-                  // PREFIX CATEGORIES with External Desktop prefix
-                  desktopCategories.forEach(category => {
-                    const externalCategoryName = `External Desktop: ${category.name}`;
-                    allCategoryData[externalCategoryName] = (allCategoryData[externalCategoryName] || 0) + category.count;
-                  });
-                }
-              } else {
-                showNotification("error", `Failed to load ${file.filename}: ${resp.data.message}`);
-              }
-            }
-          }
-
-          // Rest of the processing logic remains the same...
-          setAllProcessedFiles(processedFilesData);
-
-          if (Object.keys(combinedPhysicalSurveyData.data).length > 0) {
-            setRawPhysicalSurveyData(prevData => {
-              if (prevData && prevData.data) {
-                const mergedData = { ...prevData.data };
-                Object.keys(combinedPhysicalSurveyData.data).forEach(blockId => {
-                  if (!mergedData[blockId]) {
-                    mergedData[blockId] = [];
-                  }
-                  mergedData[blockId] = [
-                    ...mergedData[blockId],
-                    ...combinedPhysicalSurveyData.data[blockId]
-                  ];
+                processedFilesData.push({
+                  fileId: file.id,
+                  filename: file.filename,
+                  category: file.category,
+                  rawData: resp.data.data,
+                  transformedData: null,
+                  originalFile: file
                 });
-                return { ...prevData, data: mergedData };
+
+                const filePrefix = file.id;
+                const prefixedPlacemarks = infraPlacemarks.map(placemark => ({
+                  ...placemark,
+                  id: `${filePrefix}-${placemark.id}`,
+                  category: file.category === 'BSNL_Cables' 
+                    ? `External BSNL: ${placemark.category}` 
+                    : `External Survey: ${placemark.category}`
+                }));
+
+                allPlacemarks = [...allPlacemarks, ...prefixedPlacemarks];
+
+                infraCategories.forEach(category => {
+                  const externalCategoryName = file.category === 'BSNL_Cables'
+                    ? `External BSNL: ${category.name}`
+                    : `External Survey: ${category.name}`;
+                  allCategoryData[externalCategoryName] = (allCategoryData[externalCategoryName] || 0) + category.count;
+                });
+
+                // ADDITIONALLY: Check if this has actual survey data for video/photo modes
+                const surveyFileType = detectSurveyFileType(apiData);
+                if (surveyFileType === 'physical_survey') {
+                  // Transform and add to physical survey data for video/photo processing
+                  const physicalSurveyData = transformKMLToPhysicalSurvey(apiData, file);
+                  
+                  if (physicalSurveyData && physicalSurveyData.data) {
+                    Object.keys(physicalSurveyData.data).forEach(blockId => {
+                      if (!combinedPhysicalSurveyData.data[blockId]) {
+                        combinedPhysicalSurveyData.data[blockId] = [];
+                      }
+                      combinedPhysicalSurveyData.data[blockId] = [
+                        ...combinedPhysicalSurveyData.data[blockId],
+                        ...physicalSurveyData.data[blockId]
+                      ];
+                    });
+                  }
+                }
+
+              } 
+              // Desktop files use standard processApiData function
+              else if (file.category === 'Desktop') {
+                const { placemarks: desktopPlacemarks, categories: desktopCategories } = 
+                  processApiData(apiData);
+                
+                processedFilesData.push({
+                  fileId: file.id,
+                  filename: file.filename,
+                  category: file.category,
+                  rawData: resp.data.data,
+                  transformedData: null,
+                  originalFile: file
+                });
+
+                const filePrefix = file.id;
+                const prefixedDesktopPlacemarks = desktopPlacemarks.map(placemark => ({
+                  ...placemark,
+                  id: `${filePrefix}-${placemark.id}`,
+                  category: `External Desktop: ${placemark.category}`
+                }));
+
+                allPlacemarks = [...allPlacemarks, ...prefixedDesktopPlacemarks];
+
+                desktopCategories.forEach(category => {
+                  const externalCategoryName = `External Desktop: ${category.name}`;
+                  allCategoryData[externalCategoryName] = (allCategoryData[externalCategoryName] || 0) + category.count;
+                });
               }
-              return combinedPhysicalSurveyData;
-            });
-          }
-
-          // Create categories with proper external prefixes and CUSTOM COLORS
-          const combinedCategories = Object.entries(allCategoryData).map(([name, count]) => {
-            const baseCategoryName = name
-              .replace(/^External (Survey|Desktop|BSNL): /, '');
-            
-            let config;
-            if (name === 'External Desktop: Incremental Cable') {
-              config = { color: '#8B5CF6', icon: '████' }; // Purple
-            } else if (name === 'External Desktop: Proposed Cable') {
-              config = { color: '#F59E0B', icon: '████' }; // Yellow
-            } else if (name === 'External Survey: Incremental Cable') {
-              config = { color: '#06B6D4', icon: '⚡' }; // Cyan
-            } else if (name === 'External Survey: Proposed Cable') {
-              config = { color: '#800080', icon: '➖' }; // Purple
-            } else if (name === 'External Survey: Survey: Block to FPOI Cable') {
-              config = { color: '#000000', icon: '🔗🔗' }; // Black
-            } else if (name === 'External BSNL: Incremental Cable') {
-              config = { color: '#00FF00', icon: '⚡' }; // Bright Green for BSNL
-            } else if (name === 'External BSNL: Proposed Cable') {
-              config = { color: '#FF0000', icon: '➖' }; // Bright Red for BSNL
-            } else if (name.startsWith('External BSNL:')) {
-              const categoryConfig = Object.entries(PLACEMARK_CATEGORIES).find(([key]) => key === baseCategoryName);
-              config = categoryConfig ? categoryConfig[1] : { color: '#FF6B35', icon: '📍' };
             } else {
-              const categoryConfig = Object.entries(PLACEMARK_CATEGORIES).find(([key]) => key === baseCategoryName);
-              config = categoryConfig ? categoryConfig[1] : { color: '#6B7280', icon: '📍' };
+              showNotification("error", `Failed to load ${file.filename}: Unsupported category ${file.category}`);
             }
-
-            return {
-              id: name.toLowerCase().replace(/\s+/g, '-'),
-              name,
-              count,
-              visible: getDefaultVisibility(name),
-              color: config.color,
-              icon: config.icon
-            };
-          }).filter(category => category.count > 0);
-
-          setProcessedPlacemarks(allPlacemarks);
-          setPlacemarkCategories(combinedCategories);
-
-          const autoVisibleCategories = combinedCategories
-            .filter(category => category.visible)
-            .map(category => category.id);
-          
-          if (autoVisibleCategories.length > 0) {
-            setVisibleCategories(prev => {
-              const newSet = new Set(prev);
-              autoVisibleCategories.forEach(categoryId => newSet.add(categoryId));
-              return newSet;
-            });
           }
-
-          if (selectedFiles.length > 1) {
-            showNotification("success", `Successfully loaded ${selectedFiles.length} files with ${allPlacemarks.length} placemarks`);
-          }
-
-        } catch (error) {
-          console.error('Failed to show preview:', error);
-          showNotification("error", 'Failed to show preview');
         }
-      } else {
-        // Clear external file data when no files selected
-        setProcessedPlacemarks([]);
-        setPlacemarkCategories([]);
-        setAllProcessedFiles([]);
 
-        setVisibleCategories(prev => {
-          const newSet = new Set(prev);
-          placemarkCategories.forEach(cat => newSet.delete(cat.id));
-          return newSet;
-        });
+        // Rest of the processing logic remains the same...
+        setAllProcessedFiles(processedFilesData);
+
+        // Only set physical survey data if we have actual survey content
+        if (Object.keys(combinedPhysicalSurveyData.data).length > 0) {
+          setRawPhysicalSurveyData(prevData => {
+            if (prevData && prevData.data) {
+              const mergedData = { ...prevData.data };
+              Object.keys(combinedPhysicalSurveyData.data).forEach(blockId => {
+                if (!mergedData[blockId]) {
+                  mergedData[blockId] = [];
+                }
+                mergedData[blockId] = [
+                  ...mergedData[blockId],
+                  ...combinedPhysicalSurveyData.data[blockId]
+                ];
+              });
+              return { ...prevData, data: mergedData };
+            }
+            return combinedPhysicalSurveyData;
+          });
+        }
+
+        // Create categories with proper external prefixes and colors
+        const combinedCategories = Object.entries(allCategoryData).map(([name, count]) => {
+          const baseCategoryName = name
+            .replace(/^External (Survey|Desktop|BSNL): /, '');
+          
+          let config;
+          if (name === 'External Desktop: Incremental Cable') {
+            config = { color: '#8B5CF6', icon: '████' };
+          } else if (name === 'External Desktop: Proposed Cable') {
+            config = { color: '#F59E0B', icon: '████' };
+          } else if (name === 'External Survey: Incremental Cable') {
+            config = { color: '#06B6D4', icon: '⚡' };
+          } else if (name === 'External Survey: Proposed Cable') {
+            config = { color: '#800080', icon: '➖' };
+          } else if (name === 'External Survey: Survey: Block to FPOI Cable') {
+            config = { color: '#000000', icon: '🔗🔗' };
+          } else if (name === 'External BSNL: Incremental Cable') {
+            config = { color: '#00FF00', icon: '⚡' };
+          } else if (name === 'External BSNL: Proposed Cable') {
+            config = { color: '#FF0000', icon: '➖' };
+          } else if (name.startsWith('External BSNL:')) {
+            const categoryConfig = Object.entries(PLACEMARK_CATEGORIES).find(([key]) => key === baseCategoryName);
+            config = categoryConfig ? categoryConfig[1] : { color: '#FF6B35', icon: '📍' };
+          } else {
+            const categoryConfig = Object.entries(PLACEMARK_CATEGORIES).find(([key]) => key === baseCategoryName);
+            config = categoryConfig ? categoryConfig[1] : { color: '#6B7280', icon: '📍' };
+          }
+
+          return {
+            id: name.toLowerCase().replace(/\s+/g, '-'),
+            name,
+            count,
+            visible: getDefaultVisibility(name),
+            color: config.color,
+            icon: config.icon
+          };
+        }).filter(category => category.count > 0);
+
+        setProcessedPlacemarks(allPlacemarks);
+        setPlacemarkCategories(combinedCategories);
+
+        const autoVisibleCategories = combinedCategories
+          .filter(category => category.visible)
+          .map(category => category.id);
+        
+        if (autoVisibleCategories.length > 0) {
+          setVisibleCategories(prev => {
+            const newSet = new Set(prev);
+            autoVisibleCategories.forEach(categoryId => newSet.add(categoryId));
+            return newSet;
+          });
+        }
+
+        if (selectedFiles.length > 1) {
+          showNotification("success", `Successfully loaded ${selectedFiles.length} files with ${allPlacemarks.length} placemarks`);
+        }
+
+      } catch (error) {
+        console.error('Failed to show preview:', error);
+        showNotification("error", 'Failed to show preview');
       }
-    };
-    handleParsed();
-  }, [selectedFiles]);
+    } else {
+      // Clear external file data when no files selected
+      setProcessedPlacemarks([]);
+      setPlacemarkCategories([]);
+      setAllProcessedFiles([]);
+
+      setVisibleCategories(prev => {
+        const newSet = new Set(prev);
+        placemarkCategories.forEach(cat => newSet.delete(cat.id));
+        return newSet;
+      });
+    }
+  };
+  handleParsed();
+}, [selectedFiles]);
 
   // ==============================================
   // API DATA MANAGEMENT (Physical Survey & Desktop Planning)

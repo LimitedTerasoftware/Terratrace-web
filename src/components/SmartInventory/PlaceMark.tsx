@@ -1507,7 +1507,7 @@ export function processDesktopPlanningData(apiData: DesktopPlanningApiResponse):
           console.warn(`Failed to parse properties for desktop point ${point.id}:`, error);
         }
 
-        const assetType = pointProperties.asset_type || pointProperties.type || 'FPOI';
+        const assetType = pointProperties.type || point.type || pointProperties.asset_type || 'FPOI';
         const category = getDesktopPlanningCategory(assetType, 'point');
         categoryCounts[category] = (categoryCounts[category] || 0) + 1;
 
