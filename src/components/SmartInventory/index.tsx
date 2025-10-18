@@ -13,7 +13,9 @@ import {
   processApiData,
   processPhysicalSurveyData,
   processDesktopPlanningData,
-  resolveMediaUrl,            
+  resolveMediaUrl,           
+  processSurveyInfrastructureData,
+  detectSurveyFileType 
 } from './PlaceMark';
 import {
   KMZFile, FilterState, ApiPlacemark, ProcessedPlacemark, PlacemarkCategory,
@@ -22,6 +24,9 @@ import {
 import FileUploadModal from './Modalpopup';
 import { GeographicSelector } from './GeographicSelector';
 import SurveyVideoPanel from './SurveyVideoPanel';
+import { useSearchParams } from 'react-router-dom';
+import { LandmarkModal } from './LandmarkModal';
+import { canAccessFileOperations } from '../../utils/accessControl';
 
 // Import the VideoSurveyService
 import { 
@@ -29,7 +34,8 @@ import {
   VideoClip, 
   TrackPoint, 
   VideoSurveyData,
-  ValidationResult
+  ValidationResult,
+  LandmarkDetectionResult
 } from './VideoSurveyService';
 
 // Import the PhotoSurveyService
@@ -92,6 +98,12 @@ function SmartInventory() {
   const [isLoadingDesktopPlanning, setIsLoadingDesktopPlanning] = useState(false);
   const [rawDesktopPlanningData, setRawDesktopPlanningData] = useState<any>(null);
 
+  // ADD THIS: Rectification Data
+const [rectificationData, setRectificationData] = useState<ProcessedPhysicalSurvey[]>([]);
+const [rectificationCategories, setRectificationCategories] = useState<PlacemarkCategory[]>([]);
+const [isLoadingRectification, setIsLoadingRectification] = useState(false);
+const [rawRectificationData, setRawRectificationData] = useState<any>(null);
+
   // ==============================================
   // MAP STATE
   // ==============================================
@@ -110,6 +122,27 @@ function SmartInventory() {
   const [showRightPanel, setShowRightPanel] = useState(false);
 
   // ==============================================
+  // ENHANCED LANDMARK DETECTION STATE
+  // ==============================================
+  const [landmarkPauseMode, setLandmarkPauseMode] = useState(true);
+  const [currentLandmarks, setCurrentLandmarks] = useState<ProcessedPhysicalSurvey[]>([]);
+  const [previousLandmarks, setPreviousLandmarks] = useState<ProcessedPhysicalSurvey[]>([]);
+  const [showLandmarkModal, setShowLandmarkModal] = useState(false);
+  const [videoWasPausedByLandmark, setVideoWasPausedByLandmark] = useState(false);
+  const [shouldResumeVideo, setShouldResumeVideo] = useState(false);
+  const [lastDetectionTime, setLastDetectionTime] = useState<number>(0);
+  const [landmarkDetectionEnabled, setLandmarkDetectionEnabled] = useState(true);
+  const [lastLandmarkPosition, setLastLandmarkPosition] = useState<{
+  lat: number; 
+  lng: number; 
+  landmarkIds: string;
+  timestamp: number;
+} | null>(null);
+  const [shownLandmarkIds, setShownLandmarkIds] = useState<Set<string>>(new Set());
+  const showFileOperations = canAccessFileOperations();
+
+
+  // ==============================================
   // PHOTO SURVEY STATE (Using PhotoSurveyService)
   // ==============================================
   const [isPhotoSurveyMode, setIsPhotoSurveyMode] = useState(false);
@@ -117,6 +150,68 @@ function SmartInventory() {
   const [currentPhotoPoint, setCurrentPhotoPoint] = useState<PhotoPoint | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showPhotoPanel, setShowPhotoPanel] = useState(false);
+
+  const [externalFilesByCategory, setExternalFilesByCategory] = useState<{
+    survey: { placemarks: ProcessedPlacemark[]; categories: PlacemarkCategory[] };
+    desktop: { placemarks: ProcessedPlacemark[]; categories: PlacemarkCategory[] };
+  }>({
+    survey: { placemarks: [], categories: [] },
+    desktop: { placemarks: [], categories: [] }
+  });
+
+  const getDefaultVisibility = (categoryName: string): boolean => {
+    // Survey file defaults
+    const defaultSurveyCategories = [
+      'External Survey: GP',
+      'External Survey: FPOI', 
+      'External Survey: BHQ',
+      'External Survey: Bridge',
+      'External Survey: Culvert',
+      'External Survey: Block Router',
+      'External Survey: Incremental Cable',
+      'External Survey: Proposed Cable', 
+      'External Survey: Survey: Block to FPOI Cable', 
+      'External Survey: RI',
+      'External Survey: AIRTEL RI',
+      'External Survey: RJIL RI', 
+      'External Survey: VITIL RI',
+      'External Survey: Landmark',
+      'External Survey: KILOMETERSTONE'
+    ];
+
+    // Desktop file defaults  
+    const defaultDesktopCategories = [
+      'External Desktop: GP',
+      'External Desktop: FPOI',
+      'External Desktop: BHQ', 
+      'External Desktop: Bridge',
+      'External Desktop: Culvert',
+      'External Desktop: Block Router',
+      'External Desktop: Incremental Cable',
+      'External Desktop: Proposed Cable'
+    ];
+
+    const defaultBSNLCategories = [
+      'External BSNL: GP',
+      'External BSNL: FPOI',
+      'External BSNL: BHQ',
+      'External BSNL: Bridge',
+      'External BSNL: Culvert',
+      'External BSNL: Block Router',
+      'External BSNL: Incremental Cable',
+      'External BSNL: Proposed Cable',
+      'External BSNL: RI',
+      'External BSNL: AIRTEL RI',
+      'External BSNL: RJIL RI',
+      'External BSNL: VITIL RI',
+      'External BSNL: Landmark',
+      'External BSNL: KILOMETERSTONE'
+    ];
+
+    return defaultSurveyCategories.includes(categoryName) || 
+           defaultDesktopCategories.includes(categoryName) ||
+           defaultBSNLCategories.includes(categoryName);
+  };
 
   // ==============================================
   // EXTERNAL FILES MANAGEMENT
@@ -152,67 +247,34 @@ function SmartInventory() {
   }, [filters, searchQuery, fileCategory]);
 
   // Process selected external files
-  useEffect(() => {
-    const handleParsed = async () => {
-      if (selectedFiles.length > 0) {
-        let allPlacemarks: ProcessedPlacemark[] = [];
-        let allCategoryData: Record<string, number> = {};
-        let combinedPhysicalSurveyData: any = { data: {} };
-        let processedFilesData: any[] = [];
+   useEffect(() => {
+  const handleParsed = async () => {
+    if (selectedFiles.length > 0) {
+      let allPlacemarks: ProcessedPlacemark[] = [];
+      let allCategoryData: Record<string, number> = {};
+      let combinedPhysicalSurveyData: any = { data: {} };
+      let processedFilesData: any[] = [];
 
-        try {
-          for (const file of selectedFiles) {
-            const params: any = {};
-            if (file.filepath) params.filepath = file.filepath;
-            if (file.file_type) params.fileType = file.file_type;
+      try {
+        for (const file of selectedFiles) {
+          const params: any = {};
+          if (file.filepath) params.filepath = file.filepath;
+          if (file.file_type) params.fileType = file.file_type;
 
-            const resp = await axios.get(`${BASEURL}/preview-file`, { params });
-            if (resp.status === 200 || resp.status === 201) {
+          const resp = await axios.get(`${BASEURL}/preview-file`, { params });
+          if (resp.status === 200 || resp.status === 201) {
 
-              if (file.category === 'Survey') {
-                const apiData: ApiPlacemark = resp.data.data.parsed_data;
-                const physicalSurveyData = transformKMLToPhysicalSurvey(apiData, file);
-
-                processedFilesData.push({
-                  fileId: file.id,
-                  filename: file.filename,
-                  category: file.category,
-                  rawData: resp.data.data,
-                  transformedData: physicalSurveyData,
-                  originalFile: file
-                });
-
-                if (physicalSurveyData && physicalSurveyData.data) {
-                  Object.keys(physicalSurveyData.data).forEach(blockId => {
-                    if (!combinedPhysicalSurveyData.data[blockId]) {
-                      combinedPhysicalSurveyData.data[blockId] = [];
-                    }
-                    combinedPhysicalSurveyData.data[blockId] = [
-                      ...combinedPhysicalSurveyData.data[blockId],
-                      ...physicalSurveyData.data[blockId]
-                    ];
-                  });
-                }
-
-                const { placemarks: surveyPlacemarks, categories: surveyCategories } =
-                  processPhysicalSurveyData(physicalSurveyData);
-
-                const filePrefix = file.id;
-                const prefixedSurveyPlacemarks = surveyPlacemarks.map(placemark => ({
-                  ...placemark,
-                  id: `${filePrefix}-${placemark.id}`
-                }));
-
-                allPlacemarks = [...allPlacemarks, ...prefixedSurveyPlacemarks];
-
-                surveyCategories.forEach(category => {
-                  allCategoryData[category.name] = (allCategoryData[category.name] || 0) + category.count;
-                });
-
-              } else {
-                // DESKTOP FILE: Process normally
-                const apiData: ApiPlacemark = resp.data.data.parsed_data;
-
+            if (file.category === 'Survey' || file.category === 'BSNL_Cables' || file.category === 'Desktop') {
+              
+              const apiData: ApiPlacemark = resp.data.data.parsed_data;
+              
+              // ALL Survey and BSNL files go through infrastructure processing first
+              if (file.category === 'Survey' || file.category === 'BSNL_Cables') {
+                
+                // Process through infrastructure pipeline (handles all point types properly)
+                const { placemarks: infraPlacemarks, categories: infraCategories } = 
+                  processSurveyInfrastructureData(apiData);
+                
                 processedFilesData.push({
                   fileId: file.id,
                   filename: file.filename,
@@ -222,89 +284,177 @@ function SmartInventory() {
                   originalFile: file
                 });
 
-                const { placemarks, categories } = processApiData(apiData);
-
                 const filePrefix = file.id;
-                const prefixedPlacemarks = placemarks.map(placemark => ({
+                const prefixedPlacemarks = infraPlacemarks.map(placemark => ({
                   ...placemark,
-                  id: `${filePrefix}-${placemark.id}`
+                  id: `${filePrefix}-${placemark.id}`,
+                  category: file.category === 'BSNL_Cables' 
+                    ? `External BSNL: ${placemark.category}` 
+                    : `External Survey: ${placemark.category}`
                 }));
 
                 allPlacemarks = [...allPlacemarks, ...prefixedPlacemarks];
 
-                categories.forEach(category => {
-                  allCategoryData[category.name] = (allCategoryData[category.name] || 0) + category.count;
+                infraCategories.forEach(category => {
+                  const externalCategoryName = file.category === 'BSNL_Cables'
+                    ? `External BSNL: ${category.name}`
+                    : `External Survey: ${category.name}`;
+                  allCategoryData[externalCategoryName] = (allCategoryData[externalCategoryName] || 0) + category.count;
+                });
+
+                // ADDITIONALLY: Check if this has actual survey data for video/photo modes
+                const surveyFileType = detectSurveyFileType(apiData);
+                if (surveyFileType === 'physical_survey') {
+                  // Transform and add to physical survey data for video/photo processing
+                  const physicalSurveyData = transformKMLToPhysicalSurvey(apiData, file);
+                  
+                  if (physicalSurveyData && physicalSurveyData.data) {
+                    Object.keys(physicalSurveyData.data).forEach(blockId => {
+                      if (!combinedPhysicalSurveyData.data[blockId]) {
+                        combinedPhysicalSurveyData.data[blockId] = [];
+                      }
+                      combinedPhysicalSurveyData.data[blockId] = [
+                        ...combinedPhysicalSurveyData.data[blockId],
+                        ...physicalSurveyData.data[blockId]
+                      ];
+                    });
+                  }
+                }
+
+              } 
+              // Desktop files use standard processApiData function
+              else if (file.category === 'Desktop') {
+                const { placemarks: desktopPlacemarks, categories: desktopCategories } = 
+                  processApiData(apiData);
+                
+                processedFilesData.push({
+                  fileId: file.id,
+                  filename: file.filename,
+                  category: file.category,
+                  rawData: resp.data.data,
+                  transformedData: null,
+                  originalFile: file
+                });
+
+                const filePrefix = file.id;
+                const prefixedDesktopPlacemarks = desktopPlacemarks.map(placemark => ({
+                  ...placemark,
+                  id: `${filePrefix}-${placemark.id}`,
+                  category: `External Desktop: ${placemark.category}`
+                }));
+
+                allPlacemarks = [...allPlacemarks, ...prefixedDesktopPlacemarks];
+
+                desktopCategories.forEach(category => {
+                  const externalCategoryName = `External Desktop: ${category.name}`;
+                  allCategoryData[externalCategoryName] = (allCategoryData[externalCategoryName] || 0) + category.count;
                 });
               }
-
             } else {
-              showNotification("error", `Failed to load ${file.filename}: ${resp.data.message}`);
+              showNotification("error", `Failed to load ${file.filename}: Unsupported category ${file.category}`);
             }
           }
-
-          setAllProcessedFiles(processedFilesData);
-
-          if (Object.keys(combinedPhysicalSurveyData.data).length > 0) {
-            setRawPhysicalSurveyData(prevData => {
-              if (prevData && prevData.data) {
-                const mergedData = { ...prevData.data };
-                Object.keys(combinedPhysicalSurveyData.data).forEach(blockId => {
-                  if (!mergedData[blockId]) {
-                    mergedData[blockId] = [];
-                  }
-                  mergedData[blockId] = [
-                    ...mergedData[blockId],
-                    ...combinedPhysicalSurveyData.data[blockId]
-                  ];
-                });
-                return { ...prevData, data: mergedData };
-              }
-              return combinedPhysicalSurveyData;
-            });
-          }
-
-          const combinedCategories = Object.entries(allCategoryData).map(([name, count]) => {
-            const categoryConfig = Object.entries(PLACEMARK_CATEGORIES).find(([key]) => key === name);
-            const config = categoryConfig ? categoryConfig[1] : { color: '#6B7280', icon: '📍' };
-
-            return {
-              id: name.toLowerCase().replace(/\s+/g, '-'),
-              name,
-              count,
-              visible: true,
-              color: (config as any).color,
-              icon: (config as any).icon
-            };
-          }).filter(category => category.count > 0);
-
-          setProcessedPlacemarks(allPlacemarks);
-          setPlacemarkCategories(combinedCategories);
-
-          if (selectedFiles.length > 1) {
-            showNotification("success", `Successfully loaded ${selectedFiles.length} files with ${allPlacemarks.length} placemarks`);
-          }
-
-        } catch (error) {
-          console.error('Failed to show preview:', error);
-          showNotification("error", 'Failed to show preview');
         }
-      } else {
-        // Clear external file data when no files selected
-        setProcessedPlacemarks([]);
-        setPlacemarkCategories([]);
-        setAllProcessedFiles([]);
 
-        // Remove external file categories from visible categories
-        setVisibleCategories(prev => {
-          const newSet = new Set(prev);
-          placemarkCategories.forEach(cat => newSet.delete(cat.id));
-          return newSet;
-        });
+        // Rest of the processing logic remains the same...
+        setAllProcessedFiles(processedFilesData);
+
+        // Only set physical survey data if we have actual survey content
+        if (Object.keys(combinedPhysicalSurveyData.data).length > 0) {
+          setRawPhysicalSurveyData(prevData => {
+            if (prevData && prevData.data) {
+              const mergedData = { ...prevData.data };
+              Object.keys(combinedPhysicalSurveyData.data).forEach(blockId => {
+                if (!mergedData[blockId]) {
+                  mergedData[blockId] = [];
+                }
+                mergedData[blockId] = [
+                  ...mergedData[blockId],
+                  ...combinedPhysicalSurveyData.data[blockId]
+                ];
+              });
+              return { ...prevData, data: mergedData };
+            }
+            return combinedPhysicalSurveyData;
+          });
+        }
+
+        // Create categories with proper external prefixes and colors
+        const combinedCategories = Object.entries(allCategoryData).map(([name, count]) => {
+          const baseCategoryName = name
+            .replace(/^External (Survey|Desktop|BSNL): /, '');
+          
+          let config;
+          if (name === 'External Desktop: Incremental Cable') {
+            config = { color: '#8B5CF6', icon: '████' };
+          } else if (name === 'External Desktop: Proposed Cable') {
+            config = { color: '#F59E0B', icon: '████' };
+          } else if (name === 'External Survey: Incremental Cable') {
+            config = { color: '#06B6D4', icon: '⚡' };
+          } else if (name === 'External Survey: Proposed Cable') {
+            config = { color: '#800080', icon: '➖' };
+          } else if (name === 'External Survey: Survey: Block to FPOI Cable') {
+            config = { color: '#000000', icon: '🔗🔗' };
+          } else if (name === 'External BSNL: Incremental Cable') {
+            config = { color: '#00FF00', icon: '⚡' };
+          } else if (name === 'External BSNL: Proposed Cable') {
+            config = { color: '#FF0000', icon: '➖' };
+          } else if (name.startsWith('External BSNL:')) {
+            const categoryConfig = Object.entries(PLACEMARK_CATEGORIES).find(([key]) => key === baseCategoryName);
+            config = categoryConfig ? categoryConfig[1] : { color: '#FF6B35', icon: '📍' };
+          } else {
+            const categoryConfig = Object.entries(PLACEMARK_CATEGORIES).find(([key]) => key === baseCategoryName);
+            config = categoryConfig ? categoryConfig[1] : { color: '#6B7280', icon: '📍' };
+          }
+
+          return {
+            id: name.toLowerCase().replace(/\s+/g, '-'),
+            name,
+            count,
+            visible: getDefaultVisibility(name),
+            color: config.color,
+            icon: config.icon
+          };
+        }).filter(category => category.count > 0);
+
+        setProcessedPlacemarks(allPlacemarks);
+        setPlacemarkCategories(combinedCategories);
+
+        const autoVisibleCategories = combinedCategories
+          .filter(category => category.visible)
+          .map(category => category.id);
+        
+        if (autoVisibleCategories.length > 0) {
+          setVisibleCategories(prev => {
+            const newSet = new Set(prev);
+            autoVisibleCategories.forEach(categoryId => newSet.add(categoryId));
+            return newSet;
+          });
+        }
+
+        if (selectedFiles.length > 1) {
+          showNotification("success", `Successfully loaded ${selectedFiles.length} files with ${allPlacemarks.length} placemarks`);
+        }
+
+      } catch (error) {
+        console.error('Failed to show preview:', error);
+        showNotification("error", 'Failed to show preview');
       }
-    };
-    handleParsed();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedFiles]);
+    } else {
+      // Clear external file data when no files selected
+      setProcessedPlacemarks([]);
+      setPlacemarkCategories([]);
+      setAllProcessedFiles([]);
+
+      setVisibleCategories(prev => {
+        const newSet = new Set(prev);
+        placemarkCategories.forEach(cat => newSet.delete(cat.id));
+        return newSet;
+      });
+    }
+  };
+  handleParsed();
+}, [selectedFiles]);
 
   // ==============================================
   // API DATA MANAGEMENT (Physical Survey & Desktop Planning)
@@ -327,10 +477,8 @@ function SmartInventory() {
         params.block_id = block.join(',');
       }
 
-
       const response = await axios.get(`${BASEURL}/get-physical-survey`, { params });
       const result: PhysicalSurveyApiResponse = response.data;
-
 
       if (response.status === 200 || response.status === 201) {
         if (Object.keys(result.data).length > 0) {
@@ -363,7 +511,7 @@ function SmartInventory() {
           const allIssues = [...videoValidation.issues, ...photoValidation.issues];
           if (allIssues.length > 0) {
             console.warn('Data quality issues:', allIssues);
-            showNotification('warning', `Data loaded with ${allIssues.length} quality issues`);
+            showNotification('success', `Data loaded`);
           }
 
           const { placemarks, categories } = processPhysicalSurveyData(result);
@@ -447,6 +595,18 @@ function SmartInventory() {
           setDesktopPlanningData(placemarks);
           setDesktopPlanningCategories(categories);
 
+          const autoVisibleCategories = categories
+          .filter(category => category.visible)
+          .map(category => category.id);
+        
+        if (autoVisibleCategories.length > 0) {
+          setVisibleCategories(prev => {
+            const newSet = new Set(prev);
+            autoVisibleCategories.forEach(categoryId => newSet.add(categoryId));
+            return newSet;
+          });
+        }
+
           showNotification('success', `Loaded ${placemarks.length} desktop planning items from ${result.data.length} network(s) for the selected area`);
         } else {
           showNotification('info', 'No desktop planning data found for selected area');
@@ -467,6 +627,194 @@ function SmartInventory() {
       setIsLoadingDesktopPlanning(false);
     }
   };
+
+  const loadRectificationData = async (state: string[], division: string[], block: string[]) => {
+  try {
+    setIsLoadingRectification(true);
+    const params: any = {};
+
+    if (state.length > 0) {
+      params.state_id = state.join(',');
+    }
+    if (division.length > 0) {
+      params.district_id = division.join(',');
+    }
+    if (block.length > 0) {
+      params.block_id = block.join(',');
+    }
+
+    const response = await axios.get(`${BASEURL}/get-rectification-survey`, { params });
+    const result: PhysicalSurveyApiResponse = response.data;
+
+    if (response.status === 200 || response.status === 201) {
+      if (Object.keys(result.data).length > 0) {
+        // Process rectification data using the same processing function as physical survey
+        const { placemarks, categories } = processPhysicalSurveyData(result);
+
+        // Prefix categories with "Rectification:" to distinguish them
+        const rectificationCategories = categories.map(cat => ({
+          ...cat,
+          id: `rectification-${cat.id}`,
+          name: `Rectification: ${cat.name}`,
+        }));
+
+        const rectificationPlacemarks = placemarks.map(pm => ({
+          ...pm,
+          id: pm.id.replace('physical-', 'rectification-'),
+          category: `Rectification: ${pm.category}`,
+        }));
+
+        setRawRectificationData(result);
+        setRectificationData(rectificationPlacemarks);
+        setRectificationCategories(rectificationCategories);
+
+        // Auto-enable categories that are marked as visible by default
+        const autoVisibleCategories = rectificationCategories
+          .filter(category => category.visible)
+          .map(category => category.id);
+        
+        if (autoVisibleCategories.length > 0) {
+          setVisibleCategories(prev => {
+            const newSet = new Set(prev);
+            autoVisibleCategories.forEach(categoryId => newSet.add(categoryId));
+            return newSet;
+          });
+        }
+
+        showNotification('success', `Loaded ${rectificationPlacemarks.length} rectification points`);
+      } else {
+        showNotification('info', 'No rectification data found for selected area');
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load rectification data:', error);
+    showNotification('error', 'Failed to load rectification data');
+  } finally {
+    setIsLoadingRectification(false);
+  }
+};
+
+  // ==============================================
+  // ENHANCED LANDMARK DETECTION LOGIC
+  // ==============================================
+
+  useEffect(() => {
+  if (!isVideoSurveyMode || !landmarkPauseMode || !landmarkDetectionEnabled || 
+      !videoSurveyData.videoClips.length || showLandmarkModal) {
+    return;
+  }
+  
+  const landmarkDetection = VideoSurveyService.detectLandmarkAtCurrentTime(
+    physicalSurveyData,
+    currentTime,
+    videoSurveyData.trackPoints,
+    visibleCategories,
+    0.00001
+  );
+  
+  if (landmarkDetection.hasLandmark && landmarkDetection.landmarks.length > 0) {
+    // Filter out landmarks we've already shown
+    const newLandmarks = landmarkDetection.landmarks.filter(
+      landmark => !shownLandmarkIds.has(landmark.id)
+    );
+    
+    if (newLandmarks.length > 0) {
+      // Mark these landmarks as shown
+      setShownLandmarkIds(prev => {
+        const updated = new Set(prev);
+        newLandmarks.forEach(landmark => updated.add(landmark.id));
+        return updated;
+      });
+      
+      // Show modal
+      setCurrentLandmarks(newLandmarks);
+      setCurrentPosition(landmarkDetection.position);
+      setShowLandmarkModal(true);
+      setVideoWasPausedByLandmark(true);
+      
+    }
+  }
+}, [
+  currentTime,
+  isVideoSurveyMode,
+  landmarkPauseMode, 
+  landmarkDetectionEnabled,
+  physicalSurveyData,
+  videoSurveyData.trackPoints,
+  visibleCategories,
+  showLandmarkModal,
+  shownLandmarkIds
+]);
+
+// Reset when switching videos/surveys
+useEffect(() => {
+  setShownLandmarkIds(new Set());
+}, [currentVideoIndex]);
+
+  // ==============================================
+  // LANDMARK MODAL HANDLERS
+  // ==============================================
+
+  const handleLandmarkContinue = useCallback(() => {
+    
+    // Close modal and reset landmark state
+    setShowLandmarkModal(false);
+    setCurrentLandmarks([]);
+    setVideoWasPausedByLandmark(false);
+    
+    // Signal video to resume
+    setShouldResumeVideo(true);
+    
+    // Log the action for debugging
+  }, []);
+
+  const handleLandmarkClose = useCallback(() => {
+    
+    // Close modal and reset landmark state
+    setShowLandmarkModal(false);
+    setCurrentLandmarks([]);
+    setVideoWasPausedByLandmark(false);
+    
+    // Don't auto-resume video when user clicks close - let them manually control playback
+    setShouldResumeVideo(false);
+    
+  }, []);
+
+  const handleVideoResumeComplete = useCallback(() => {
+    setShouldResumeVideo(false);
+    setVideoWasPausedByLandmark(false);
+  }, []);
+
+  const handleLandmarkPauseModeToggle = useCallback((enabled: boolean) => {
+    setLandmarkPauseMode(enabled);
+    
+    if (!enabled) {
+      // If disabling landmark pause, close any open modals and reset state
+      setShowLandmarkModal(false);
+      setCurrentLandmarks([]);
+      setPreviousLandmarks([]);
+      setVideoWasPausedByLandmark(false);
+      setShouldResumeVideo(false);
+      
+    } else {
+      null;
+    }
+  }, []);
+
+  const handleLandmarkDetectionToggle = useCallback((enabled: boolean) => {
+    setLandmarkDetectionEnabled(enabled);
+    
+    if (!enabled) {
+      // Reset all landmark-related state when detection is disabled
+      setShowLandmarkModal(false);
+      setCurrentLandmarks([]);
+      setPreviousLandmarks([]);
+      setVideoWasPausedByLandmark(false);
+      setShouldResumeVideo(false);
+      setLastDetectionTime(0);
+      
+    }
+  }, []);
 
   // ==============================================
   // UTILITY FUNCTIONS
@@ -518,7 +866,7 @@ function SmartInventory() {
   // EVENT HANDLERS
   // ==============================================
 
-  // File Upload
+  // File Upload Handler - Updated to support BSNL category
   const handleFileUpload = async (
     desktopFile: File,
     fileName: string,
@@ -531,21 +879,32 @@ function SmartInventory() {
     setUploadError('');
     try {
       const formData = new FormData();
-      formData.append('desktop_planning', desktopFile);
+      
+      // Handle different categories with different form field names
+      if (category === 'BSNL') {
+        // For BSNL category, use 'BSNL_Cables' as form field name
+        formData.append('BSNL_Cables', desktopFile);
+      } else {
+        // For Survey and Desktop categories, use 'desktop_planning' as form field name
+        formData.append('desktop_planning', desktopFile);
+      }
+      
+      // Common form fields for all categories
       formData.append('state_code', stateId);
       formData.append('dtcode', districtId);
       formData.append('block_code', blockId);
       formData.append('FileName', fileName);
       formData.append('category', category);
 
-      const kmzFile = await axios.post(`${BASEURL}/upload-external-data`, formData, {
+      const response = await axios.post(`${BASEURL}/upload-external-data`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      if (kmzFile.status === 200 || kmzFile.status === 201) {
+      if (response.status === 200 || response.status === 201) {
         showNotification("success", `${desktopFile.name} file uploaded successfully in ${category} category`);
       }
 
+      // Reset form state
       setFilters({});
       setSearchQuery('');
       setHighlightedPlacemark(undefined);
@@ -628,44 +987,50 @@ function SmartInventory() {
   };
 
   const handlePreview = (item: {
-    type: 'state' | 'district' | 'block' | 'universal';
-    selectedStates: string[];
-    selectedDistricts: string[];
-    selectedBlocks: string[];
-    name: string;
-    dataType: 'physical' | 'desktop';
-    hierarchyContext?: {
-      stateId?: string;
-      districtId?: string;
-      blockId?: string;
-    };
-  }) => {
-    if (item.dataType === 'physical') {
-      loadPhysicalData(item.selectedStates, item.selectedDistricts, item.selectedBlocks);
-    } else if (item.dataType === 'desktop') {
-      loadDesktopPlanningData(item.selectedStates, item.selectedDistricts, item.selectedBlocks, item.hierarchyContext);
-    }
+  type: 'state' | 'district' | 'block' | 'universal';
+  selectedStates: string[];
+  selectedDistricts: string[];
+  selectedBlocks: string[];
+  name: string;
+  dataType: 'physical' | 'desktop' | 'rectification'; // ADD rectification
+  hierarchyContext?: {
+    stateId?: string;
+    districtId?: string;
+    blockId?: string;
   };
+}) => {
+  if (item.dataType === 'physical') {
+    loadPhysicalData(item.selectedStates, item.selectedDistricts, item.selectedBlocks);
+  } else if (item.dataType === 'desktop') {
+    loadDesktopPlanningData(item.selectedStates, item.selectedDistricts, item.selectedBlocks, item.hierarchyContext);
+  } else if (item.dataType === 'rectification') {
+    // ADD THIS
+    loadRectificationData(item.selectedStates, item.selectedDistricts, item.selectedBlocks);
+  }
+};
 
-  const handleRefresh = (item: {
-    type: 'state' | 'district' | 'block' | 'universal';
-    selectedStates: string[];
-    selectedDistricts: string[];
-    selectedBlocks: string[];
-    name: string;
-    dataType: 'physical' | 'desktop';
-    hierarchyContext?: {
-      stateId?: string;
-      districtId?: string;
-      blockId?: string;
-    };
-  }) => {
-    if (item.dataType === 'physical') {
-      loadPhysicalData(item.selectedStates, item.selectedDistricts, item.selectedBlocks);
-    } else if (item.dataType === 'desktop') {
-      loadDesktopPlanningData(item.selectedStates, item.selectedDistricts, item.selectedBlocks, item.hierarchyContext);
-    }
+const handleRefresh = (item: {
+  type: 'state' | 'district' | 'block' | 'universal';
+  selectedStates: string[];
+  selectedDistricts: string[];
+  selectedBlocks: string[];
+  name: string;
+  dataType: 'physical' | 'desktop' | 'rectification'; // ADD rectification
+  hierarchyContext?: {
+    stateId?: string;
+    districtId?: string;
+    blockId?: string;
   };
+}) => {
+  if (item.dataType === 'physical') {
+    loadPhysicalData(item.selectedStates, item.selectedDistricts, item.selectedBlocks);
+  } else if (item.dataType === 'desktop') {
+    loadDesktopPlanningData(item.selectedStates, item.selectedDistricts, item.selectedBlocks, item.hierarchyContext);
+  } else if (item.dataType === 'rectification') {
+    // ADD THIS
+    loadRectificationData(item.selectedStates, item.selectedDistricts, item.selectedBlocks);
+  }
+};
 
   // Map Handlers
   const handleCategoryVisibilityChange = (categoryId: string, visible: boolean) => {
@@ -728,69 +1093,130 @@ function SmartInventory() {
     };
   }, []);
 
+  function mergeRawSurveyData(physicalData: any, rectificationData: any): any {
+  // If neither exist, return null
+  if (!physicalData && !rectificationData) {
+    return null;
+  }
+  
+  // If only one exists, return it
+  if (!physicalData) return rectificationData;
+  if (!rectificationData) return physicalData;
+  
+  // Both exist - merge them
+  const merged = {
+    status: true,
+    data: { ...physicalData.data }
+  };
+  
+  // Add rectification data to merged object
+  Object.entries(rectificationData.data || {}).forEach(([blockId, points]) => {
+    if (!merged.data[blockId]) {
+      // Block doesn't exist in physical data, add it
+      merged.data[blockId] = [];
+    }
+    
+    // Tag rectification points for identification (optional but useful)
+    const taggedPoints = (points as any[]).map(p => ({
+      ...p,
+      _source: 'rectification', // Helps identify source later if needed
+      _isRectification: true     // Alternative flag
+    }));
+    
+    // Merge rectification points with physical points for this block
+    merged.data[blockId] = [...merged.data[blockId], ...taggedPoints];
+  });
+  
+  return merged;
+}
+
   // ==============================================
   // VIDEO SURVEY INTEGRATION (using VideoSurveyService)
   // ==============================================
 
-  // Watch for Video Survey category toggle to enable/disable mode
   useEffect(() => {
-    const possibleIds = new Set(['video_survey', 'video-survey', 'physical-video_survey']);
-    const isOn = Array.from(visibleCategories).some(id => possibleIds.has(id));
-    setIsVideoSurveyMode(isOn);
-    if (!isOn) setShowRightPanel(false);
-  }, [visibleCategories]);
+  // ✅ PATTERN MATCHING: Match any category ending with 'video_survey' or 'video-survey'
+  const isOn = Array.from(visibleCategories).some(id => 
+    id.includes('video_survey') || id.includes('video-survey')
+  );
+  
+  setIsVideoSurveyMode(isOn);
+  if (!isOn) {
+    setShowRightPanel(false);
+    // Reset landmark state when video mode is disabled
+    setShowLandmarkModal(false);
+    setCurrentLandmarks([]);
+    setPreviousLandmarks([]);
+    setVideoWasPausedByLandmark(false);
+    setShouldResumeVideo(false);
+  }
+}, [visibleCategories]);
 
-  // Process video survey data using VideoSurveyService
-  useEffect(() => {
-    if (!isVideoSurveyMode || !rawPhysicalSurveyData) {
-      // Reset to empty state when not in video mode
+// Process video survey data using VideoSurveyService (ENHANCED with rectification support)
+useEffect(() => {
+  if (!isVideoSurveyMode) {
+    setVideoSurveyData(VideoSurveyService.processPhysicalSurveyData(null));
+    return;
+  }
+  
+  try {
+    // ✅ MERGE: Combine physical and rectification data
+    const combinedData = mergeRawSurveyData(rawPhysicalSurveyData, rawRectificationData);
+    
+    if (!combinedData) {
       setVideoSurveyData(VideoSurveyService.processPhysicalSurveyData(null));
       return;
     }
     
+    // Use simplified processing (same as video playback page)
+    const processedVideoData = VideoSurveyService.processPhysicalSurveyData(combinedData);
     
-    try {
-      // Use VideoSurveyService to process the data
-      const processedVideoData: VideoSurveyData = VideoSurveyService.processPhysicalSurveyData(rawPhysicalSurveyData);
-      
-      // Validate the processed data
-      const validation: ValidationResult = VideoSurveyService.validateVideoSurveyData(rawPhysicalSurveyData);
-      
-      if (validation.issues.length > 0) {
-        console.warn('Video survey data validation issues:', validation.issues);
-        showNotification('warning', `Video survey data issues: ${validation.issues.length} problems found`);
-      }
-      
-      
-      // Update state with processed data
-      setVideoSurveyData(processedVideoData);
-      
-      if (processedVideoData.trackPoints.length === 0) {
-        showNotification('warning', 'No valid GPS track points found in survey data');
-        return;
-      }
-      
-      if (processedVideoData.videoClips.length === 0) {
-        showNotification('info', 'No video clips found in survey data');
-        setCurrentTime(processedVideoData.trackPoints[0]?.timestamp ?? 0);
-        return;
-      }
-      
-      // Initialize with first clip
-      setCurrentVideoIndex(0);
-      setCurrentTime(processedVideoData.videoClips[0].startTimeStamp);
-      
-      showNotification('success', 
-        `Video survey loaded: ${processedVideoData.trackPoints.length} track points, ${processedVideoData.videoClips.length} video clips, duration: ${VideoSurveyService.formatDuration(processedVideoData.metadata.totalDuration)}`
-      );
-      
-    } catch (error) {
-      console.error('Error processing video survey data:', error);
-      showNotification('error', 'Failed to process video survey data');
-      setVideoSurveyData(VideoSurveyService.processPhysicalSurveyData(null));
+    // Validation (keep existing)
+    const validation = VideoSurveyService.validateVideoSurveyData(combinedData);
+    
+    if (validation.issues.length > 0) {
+      console.warn('Video survey data validation issues:', validation.issues);
+      showNotification('warning', `Video survey data issues: ${validation.issues.length} problems found`);
     }
     
-  }, [isVideoSurveyMode, rawPhysicalSurveyData]);
+    setVideoSurveyData(processedVideoData);
+    
+    if (processedVideoData.trackPoints.length === 0) {
+      showNotification('warning', 'No valid GPS track points found in survey data');
+      return;
+    }
+    
+    if (processedVideoData.videoClips.length === 0) {
+      showNotification('info', 'No video clips found in survey data');
+      setCurrentTime(processedVideoData.trackPoints[0]?.timestamp ?? 0);
+      return;
+    }
+    
+    // Initialize with first clip (same as video playback page)
+    setCurrentVideoIndex(0);
+    setCurrentTime(processedVideoData.videoClips[0].startTimeStamp);
+    
+    // Build notification message
+    const sources = [];
+    if (rawPhysicalSurveyData?.data && Object.keys(rawPhysicalSurveyData.data).length > 0) {
+      sources.push('Physical Survey');
+    }
+    if (rawRectificationData?.data && Object.keys(rawRectificationData.data).length > 0) {
+      sources.push('Rectification Survey');
+    }
+    
+    const sourceText = sources.length > 0 ? ` from ${sources.join(' + ')}` : '';
+    
+    showNotification('success', 
+      `Video survey loaded${sourceText}: ${processedVideoData.trackPoints.length} track points, ${processedVideoData.videoClips.length} video clips`
+    );
+    
+  } catch (error) {
+    console.error('Error processing video survey data:', error);
+    showNotification('error', 'Failed to process video survey data');
+    setVideoSurveyData(VideoSurveyService.processPhysicalSurveyData(null));
+  }
+}, [isVideoSurveyMode, rawPhysicalSurveyData, rawRectificationData]);
 
   // Keep map marker in sync when currentTime changes using VideoSurveyService
   useEffect(() => {
@@ -802,78 +1228,124 @@ function SmartInventory() {
 
   // Enhanced track point click handler using VideoSurveyService
   const handleTrackPointClick = useCallback((point: TrackPoint) => {
-  try {
-    setShowRightPanel(true);
-    
-    // Find the video clip containing this timestamp
-    const clipMatch = VideoSurveyService.findVideoClipForTimestamp(
-      videoSurveyData.videoClips, 
-      point.timestamp
-    );
-    
-    if (clipMatch) {
-      // Always set to the exact point timestamp, regardless of clip
-      setCurrentVideoIndex(clipMatch.index);
-      setCurrentTime(point.timestamp); // <-- FIX: Always use exact point timestamp
+    try {
+      setShowRightPanel(true);
       
-    } else {
-      // No exact clip match - find nearest
-      const nearestMatch = VideoSurveyService.findNearestVideoClip(
-        videoSurveyData.videoClips, 
-        point.timestamp
+      // Strategy: Find video from SAME survey first
+      const pointSurveyId = point.surveyId;
+      
+      if (!pointSurveyId) {
+        showNotification('warning', 'Track point has no survey ID');
+        return;
+      }
+      
+      // Filter videos by the clicked point's survey
+      const sameSurveyVideos = videoSurveyData.videoClips.filter(
+        clip => clip.meta?.surveyId === pointSurveyId
       );
       
-      if (nearestMatch) {
-        setCurrentVideoIndex(nearestMatch.index);
-        // For nearest match, try to use the point timestamp if it's within reasonable range
-        const clipStart = nearestMatch.clip.startTimeStamp;
-        const clipEnd = nearestMatch.clip.endTimeStamp;
+      let selectedClip = null;
+      let selectedIndex = -1;
+      
+      if (sameSurveyVideos.length > 0) {
+        // Look for exact timestamp match within the same survey
+        const clipMatch = VideoSurveyService.findVideoClipForTimestamp(sameSurveyVideos, point.timestamp);
         
-        // If point is close to this clip (within 5 seconds), use point timestamp
-        // Otherwise use clip start
-        if (Math.abs(point.timestamp - clipStart) < 5000 || 
-            Math.abs(point.timestamp - clipEnd) < 5000) {
-          setCurrentTime(point.timestamp);
+        if (clipMatch) {
+          // Find the actual index in the full video array
+          selectedIndex = videoSurveyData.videoClips.findIndex(clip => clip.id === clipMatch.clip.id);
+          selectedClip = clipMatch.clip;
         } else {
-          setCurrentTime(clipStart);
-          showNotification('info', 'No video found for this exact point. Showing nearest video.');
+          // No exact match, find nearest video within same survey
+          const nearestMatch = VideoSurveyService.findNearestVideoClip(sameSurveyVideos, point.timestamp);
+          
+          if (nearestMatch) {
+            selectedIndex = videoSurveyData.videoClips.findIndex(clip => clip.id === nearestMatch.clip.id);
+            selectedClip = nearestMatch.clip;
+            
+            const timeDiff = Math.abs(point.timestamp - nearestMatch.clip.startTimeStamp);
+            if (timeDiff > 30000) { // More than 30 seconds away
+              showNotification('success', `Showing nearest video from Survey ${pointSurveyId})`);
+            }
+          }
+        }
+      } else {
+        // Fallback: no videos in same survey - use cross-survey matching with warning
+        console.warn(`No videos found for Survey ${pointSurveyId}, falling back to cross-survey matching`);
+        
+        const clipMatch = VideoSurveyService.findVideoClipForTimestamp(videoSurveyData.videoClips, point.timestamp);
+        
+        if (clipMatch) {
+          selectedClip = clipMatch.clip;
+          selectedIndex = clipMatch.index;
+          showNotification('warning', `No videos in Survey ${pointSurveyId}. Showing from Survey ${selectedClip.meta?.surveyId}`);
+        } else {
+          // Last resort: find any nearest video
+          const nearestMatch = VideoSurveyService.findNearestVideoClip(videoSurveyData.videoClips, point.timestamp);
+          if (nearestMatch) {
+            selectedClip = nearestMatch.clip;
+            selectedIndex = nearestMatch.index;
+            showNotification('warning', `No matching video found. Showing nearest from Survey ${selectedClip.meta?.surveyId}`);
+          }
         }
       }
+      
+      if (selectedClip && selectedIndex >= 0) {
+        setCurrentVideoIndex(selectedIndex);
+        setCurrentTime(point.timestamp);
+      } else {
+        showNotification('error', 'No video clips available for this track point');
+      }
+      
+    } catch (error) {
+      console.error('Error handling track point click:', error);
+      showNotification('error', 'Failed to process track point click');
     }
-  } catch (error) {
-    console.error('Error handling track point click:', error);
-    showNotification('error', 'Failed to process track point click');
-  }
-}, [videoSurveyData.videoClips]);
+  }, [videoSurveyData.videoClips]);
 
-// Enhanced position tracking with blue point snapping
-useEffect(() => {
-  if (!videoSurveyData.trackPoints.length) return;
-  
-  // Find exact position or interpolate
-  const position = VideoSurveyService.interpolatePosition(
-    videoSurveyData.trackPoints, 
-    currentTime
-  );
-  
-  // Snap to nearest blue point if very close (within 100ms)
-  if (position && videoSurveyData.trackPoints.length > 0) {
-    const nearestPoint = videoSurveyData.trackPoints.reduce((closest, point) => {
-      const currentDist = Math.abs(point.timestamp - currentTime);
-      const closestDist = Math.abs(closest.timestamp - currentTime);
-      return currentDist < closestDist ? point : closest;
-    });
+  // Enhanced position tracking with blue point snapping
+  useEffect(() => {
+    if (!videoSurveyData.trackPoints.length) return;
     
-    // If within 100ms of a track point, snap to it exactly
-    if (Math.abs(nearestPoint.timestamp - currentTime) < 100) {
-      setCurrentPosition({ lat: nearestPoint.lat, lng: nearestPoint.lng });
+    // Get current video clip to determine which survey is active
+    const currentClip = videoSurveyData.videoClips[currentVideoIndex];
+    
+    if (currentClip && currentClip.meta?.surveyId) {
+      // Filter to current survey's points only
+      const currentSurveyPoints = videoSurveyData.trackPoints.filter(
+        point => point.surveyId === currentClip.meta.surveyId
+      ).sort((a, b) => a.timestamp - b.timestamp);
+      
+      if (currentSurveyPoints.length > 0) {
+        // Define survey time boundaries
+        const surveyStart = currentSurveyPoints[0].timestamp;
+        const surveyEnd = currentSurveyPoints[currentSurveyPoints.length - 1].timestamp;
+        
+        // Add buffer for video/GPS sync issues (10 seconds)
+        const buffer = 10000;
+        const extendedStart = surveyStart - buffer;
+        const extendedEnd = surveyEnd + buffer;
+        
+        // Check if currentTime belongs to this survey's time range
+        if (currentTime >= extendedStart && currentTime <= extendedEnd) {
+          // Safe to interpolate within this survey
+          const position = VideoSurveyService.interpolatePosition(currentSurveyPoints, currentTime);
+          setCurrentPosition(position);
+        } else {
+          // Time is outside this survey's range - hide red dot to prevent wrong positioning
+          console.warn(`Time ${new Date(currentTime).toLocaleTimeString()} outside Survey ${currentClip.meta.surveyId} range [${new Date(surveyStart).toLocaleTimeString()}, ${new Date(surveyEnd).toLocaleTimeString()}]`);
+          setCurrentPosition(null);
+        }
+      } else {
+        // No track points for this survey
+        console.warn(`No track points found for Survey ${currentClip.meta.surveyId}`);
+        setCurrentPosition(null);
+      }
     } else {
-      setCurrentPosition(position);
+      // No active video clip or no survey ID
+      setCurrentPosition(null);
     }
-  } else {
-    setCurrentPosition(position);
-  }
-}, [currentTime, videoSurveyData.trackPoints]);
+  }, [currentTime, videoSurveyData.trackPoints, videoSurveyData.videoClips, currentVideoIndex]);
 
   // Provide a summary node for the video panel using VideoSurveyService
   const summaryNode = useMemo(() => {
@@ -898,61 +1370,81 @@ useEffect(() => {
 
   // Watch for Photo Survey category toggle to enable/disable mode
   useEffect(() => {
-    const possibleIds = new Set(['photo_survey', 'photo-survey', 'physical-photo_survey']);
-    const isOn = Array.from(visibleCategories).some(id => possibleIds.has(id));
-    setIsPhotoSurveyMode(isOn);
-    if (!isOn) {
-      setShowPhotoPanel(false);
-      setCurrentPhotoPoint(null);
-    }
-  }, [visibleCategories]);
+  // ✅ PATTERN MATCHING: Match any category ending with 'photo_survey' or 'photo-survey'
+  const isOn = Array.from(visibleCategories).some(id => 
+    id.includes('photo_survey') || id.includes('photo-survey')
+  );
+  
+  setIsPhotoSurveyMode(isOn);
+  if (!isOn) {
+    setShowPhotoPanel(false);
+    setCurrentPhotoPoint(null);
+  }
+}, [visibleCategories]);
 
-  // Process photo survey data using PhotoSurveyService
-  useEffect(() => {
-    if (!isPhotoSurveyMode || !rawPhysicalSurveyData) {
-      // Reset to empty state when not in photo mode
+
+// Process photo survey data using PhotoSurveyService (ENHANCED with rectification support)
+useEffect(() => {
+  if (!isPhotoSurveyMode) {
+    setPhotoSurveyData(PhotoSurveyService.processPhysicalSurveyData(null));
+    return;
+  }
+  
+  try {
+    // ✅ MERGE: Combine physical and rectification data
+    const combinedData = mergeRawSurveyData(rawPhysicalSurveyData, rawRectificationData);
+    
+    if (!combinedData) {
       setPhotoSurveyData(PhotoSurveyService.processPhysicalSurveyData(null));
       return;
     }
     
+    // Use PhotoSurveyService to process the data
+    const processedPhotoData: PhotoSurveyData = PhotoSurveyService.processPhysicalSurveyData(combinedData);
     
-    try {
-      // Use PhotoSurveyService to process the data
-      const processedPhotoData: PhotoSurveyData = PhotoSurveyService.processPhysicalSurveyData(rawPhysicalSurveyData);
-      
-      // Validate the processed data
-      const validation: PhotoValidationResult = PhotoSurveyService.validatePhotoSurveyData(rawPhysicalSurveyData);
-      
-      if (validation.issues.length > 0) {
-        console.warn('Photo survey data validation issues:', validation.issues);
-        showNotification('warning', `Photo survey data issues: ${validation.issues.length} problems found`);
-      }
-      
-      
-      // Update state with processed data
-      setPhotoSurveyData(processedPhotoData);
-      
-      if (processedPhotoData.photoPoints.length === 0) {
-        showNotification('info', 'No photo points found in survey data');
-        return;
-      }
-      
-      if (processedPhotoData.metadata.totalImages === 0) {
-        showNotification('warning', 'Photo points found but no valid images');
-        return;
-      }
-      
-      showNotification('success', 
-        `Photo survey loaded: ${processedPhotoData.photoPoints.length} photo points with ${processedPhotoData.metadata.totalImages} images`
-      );
-      
-    } catch (error) {
-      console.error('Error processing photo survey data:', error);
-      showNotification('error', 'Failed to process photo survey data');
-      setPhotoSurveyData(PhotoSurveyService.processPhysicalSurveyData(null));
+    // Validate the processed data
+    const validation: PhotoValidationResult = PhotoSurveyService.validatePhotoSurveyData(combinedData);
+    
+    if (validation.issues.length > 0) {
+      console.warn('Photo survey data validation issues:', validation.issues);
+      showNotification('warning', `Photo survey data issues: ${validation.issues.length} problems found`);
     }
     
-  }, [isPhotoSurveyMode, rawPhysicalSurveyData]);
+    // Update state with processed data
+    setPhotoSurveyData(processedPhotoData);
+    
+    if (processedPhotoData.photoPoints.length === 0) {
+      showNotification('info', 'No photo points found in survey data');
+      return;
+    }
+    
+    if (processedPhotoData.metadata.totalImages === 0) {
+      showNotification('warning', 'Photo points found but no valid images');
+      return;
+    }
+    
+    // Build notification message
+    const sources = [];
+    if (rawPhysicalSurveyData?.data && Object.keys(rawPhysicalSurveyData.data).length > 0) {
+      sources.push('Physical Survey');
+    }
+    if (rawRectificationData?.data && Object.keys(rawRectificationData.data).length > 0) {
+      sources.push('Rectification Survey');
+    }
+    
+    const sourceText = sources.length > 0 ? ` from ${sources.join(' + ')}` : '';
+    
+    showNotification('success', 
+      `Photo survey loaded${sourceText}: ${processedPhotoData.photoPoints.length} photo points with ${processedPhotoData.metadata.totalImages} images`
+    );
+    
+  } catch (error) {
+    console.error('Error processing photo survey data:', error);
+    showNotification('error', 'Failed to process photo survey data');
+    setPhotoSurveyData(PhotoSurveyService.processPhysicalSurveyData(null));
+  }
+  
+}, [isPhotoSurveyMode, rawPhysicalSurveyData, rawRectificationData]);
 
   // Photo point click handler
   const handlePhotoPointClick = useCallback((point: PhotoPoint) => {
@@ -960,7 +1452,6 @@ useEffect(() => {
       setCurrentPhotoPoint(point);
       setCurrentImageIndex(0); // Reset to first image
       setShowPhotoPanel(true);
-      
       
       if (point.images.length === 0) {
         showNotification('warning', 'No images available for this photo point');
@@ -996,23 +1487,33 @@ useEffect(() => {
   // ==============================================
 
   // Separate data for different contexts
-  const allPlacemarks = useMemo(() => {
-    const externalFilePlacemarks = processedPlacemarks;
-    const apiPlacemarks = [...physicalSurveyData, ...desktopPlanningData];
-    return [...externalFilePlacemarks, ...apiPlacemarks];
-  }, [processedPlacemarks, physicalSurveyData, desktopPlanningData]);
-
-  const allCategories = useMemo(() => {
-    const externalFileCategories = placemarkCategories;
-    const apiCategories = [...physicalSurveyCategories, ...desktopPlanningCategories];
-    return [...externalFileCategories, ...apiCategories];
-  }, [placemarkCategories, physicalSurveyCategories, desktopPlanningCategories]);
-
-  // Individual arrays for specific contexts (if needed elsewhere)
+const allPlacemarks = useMemo(() => {
   const externalFilePlacemarks = processedPlacemarks;
-  const apiPlacemarks = [...physicalSurveyData, ...desktopPlanningData];
+  const apiPlacemarks = [
+    ...physicalSurveyData, 
+    ...desktopPlanningData,
+    ...rectificationData // ADD THIS
+  ];
+  return [...externalFilePlacemarks, ...apiPlacemarks];
+}, [processedPlacemarks, physicalSurveyData, desktopPlanningData, rectificationData]); // ADD rectificationData
+
+const allCategories = useMemo(() => {
   const externalFileCategories = placemarkCategories;
-  const apiCategories = [...physicalSurveyCategories, ...desktopPlanningCategories];
+  const apiCategories = [
+    ...physicalSurveyCategories, 
+    ...desktopPlanningCategories,
+    ...rectificationCategories // ADD THIS
+  ];
+  return [...externalFileCategories, ...apiCategories];
+}, [placemarkCategories, physicalSurveyCategories, desktopPlanningCategories, rectificationCategories]); // ADD rectificationCategories
+
+// Individual arrays for specific contexts
+const externalFilePlacemarks = processedPlacemarks;
+const apiPlacemarks = [
+  ...physicalSurveyData, 
+  ...desktopPlanningData,
+  ...rectificationData // ADD THIS
+];
 
   // ==============================================
   // RENDER
@@ -1028,97 +1529,102 @@ useEffect(() => {
       )}
 
       {/* LEFT SIDEBAR - API Data Management */}
-      <Sidebar isOpen={sidebarOpen} onToggle={handleSidebarToggle}>
-        {/* Upload Controls */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => { setModalOpen(true); setUploadError(''); }}
-            disabled={isUploading}
-            className={`
-              w-full px-1 py-3 rounded-lg border-2 border-dashed 
-              ${isUploading
-                ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
-                : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
-              }
-              transition-all duration-200 flex items-center justify-center gap-2
-              text-sm font-medium text-gray-700
-            `}
-          >
-            {isUploading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-transparent" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <Upload className="h-4 w-4" />
-                Upload Kmz / Kml
-              </>
+       <Sidebar isOpen={sidebarOpen} onToggle={handleSidebarToggle}>
+        
+        {/* NEW: Conditionally show Upload Controls */}
+        {showFileOperations && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setModalOpen(true); setUploadError(''); }}
+              disabled={isUploading}
+              className={`
+                w-full px-1 py-3 rounded-lg border-2 border-dashed 
+                ${isUploading
+                  ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
+                  : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
+                }
+                transition-all duration-200 flex items-center justify-center gap-2
+                text-sm font-medium text-gray-700
+              `}
+            >
+              {isUploading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-transparent" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4" />
+                  Upload Kmz / Kml
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={() => { setShowFiles(!ShowFiles); }}
+              className={`
+                border-2 border-dashed 
+                w-20 h-12 rounded-full flex items-center justify-center transition-colors 
+                ${ShowFiles
+                  ? 'border-gray-300 bg-blue-100'
+                  : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
+                }
+                transition-all duration-200 flex items-center justify-center gap-2
+                text-sm font-medium text-gray-700
+              `}
+              title='External Data'
+            >
+              <FilePlus2Icon size={18} />
+            </button>
+          </div>
+        )}
+
+        {/* NEW: Conditionally show Download Controls */}
+        {showFileOperations && (
+          <div className="relative inline-block w-full text-left">
+            <button
+              onClick={() => setOpen(!open)}
+              className={`
+                w-full px-1 py-3 rounded-lg border-2 border-dashed 
+                ${loading
+                  ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
+                  : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
+                }
+                transition-all duration-200 flex items-center justify-center gap-2
+                text-sm font-medium text-gray-700
+              `}
+            >
+              <DownloadIcon size={18} />
+              <span>Download</span>
+              <ChevronDown size={16} />
+            </button>
+
+            {open && (
+              <div className="absolute mt-2 left-0 right-0 w-full rounded-lg shadow-lg bg-white border border-gray-200 z-50">
+                <ul className="py-1 text-sm text-gray-700">
+                  <li>
+                    <button
+                      onClick={() => { downloadShapefile(); setOpen(false); }}
+                      className="w-full px-4 py-2 text-left hover:bg-gray-100"
+                    >
+                      Shapefile
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => { downloadExcel(); setOpen(false); }}
+                      className="w-full px-4 py-2 text-left hover:bg-gray-100"
+                    >
+                      Excel
+                    </button>
+                  </li>
+                </ul>
+              </div>
             )}
-          </button>
+          </div>
+        )}
 
-          <button
-            onClick={() => { setShowFiles(!ShowFiles); }}
-            className={`
-              border-2 border-dashed 
-              w-20 h-12 rounded-full flex items-center justify-center transition-colors 
-              ${ShowFiles
-                ? 'border-gray-300 bg-blue-100'
-                : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
-              }
-              transition-all duration-200 flex items-center justify-center gap-2
-              text-sm font-medium text-gray-700
-            `}
-            title='External Data'
-          >
-            <FilePlus2Icon size={18} />
-          </button>
-        </div>
-
-        {/* Download Controls */}
-        <div className="relative inline-block w-full text-left">
-          <button
-            onClick={() => setOpen(!open)}
-            className={`
-              w-full px-1 py-3 rounded-lg border-2 border-dashed 
-              ${loading
-                ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
-                : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
-              }
-              transition-all duration-200 flex items-center justify-center gap-2
-              text-sm font-medium text-gray-700
-            `}
-          >
-            <DownloadIcon size={18} />
-            <span>Download</span>
-            <ChevronDown size={16} />
-          </button>
-
-          {open && (
-            <div className="absolute mt-2 left-0 right-0 w-full rounded-lg shadow-lg bg-white border border-gray-200 z-50">
-              <ul className="py-1 text-sm text-gray-700">
-                <li>
-                  <button
-                    onClick={() => { downloadShapefile(); setOpen(false); }}
-                    className="w-full px-4 py-2 text-left hover:bg-gray-100"
-                  >
-                    Shapefile
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => { downloadExcel(); setOpen(false); }}
-                    className="w-full px-4 py-2 text-left hover:bg-gray-100"
-                  >
-                    Excel
-                  </button>
-                </li>
-              </ul>
-            </div>
-          )}
-        </div>
-
-        {/* Geographic Selector - API Data Controls */}
+        {/* Rest of the sidebar content - ALWAYS visible */}
         <GeographicSelector
           BASEURL={BASEURL}
           onSelectionChange={handleSelectionChange}
@@ -1126,9 +1632,9 @@ useEffect(() => {
           onRefresh={handleRefresh}
           isLoadingPhysical={isLoadingPhysical}
           isLoadingDesktopPlanning={isLoadingDesktopPlanning}
+          isLoadingRectification={isLoadingRectification}
         />
 
-        {/* Placemark List - ALL Data Display */}
         <PlacemarkList
           placemarks={allPlacemarks}
           categories={allCategories}
@@ -1140,7 +1646,7 @@ useEffect(() => {
       </Sidebar>
 
       {/* MAIN CONTENT - Map */}
-      <main className="flex-1 relative">
+      <main className={`flex-1 relative flex ${showRightPanel || showPhotoPanel ? 'divide-x' : ''}`}>
         {/* File Upload Modal */}
         <FileUploadModal
           isOpen={isModalOpen}
@@ -1150,29 +1656,64 @@ useEffect(() => {
           error={uploadError}
         />
 
-        {/* Google Map */}
-        <GoogleMap
-          placemarks={allPlacemarks}
-          categories={allCategories}
-          visibleCategories={visibleCategories}
-          highlightedPlacemark={highlightedPlacemark}
-          onPlacemarkClick={handlePlacemarkClick}
-          className="w-full h-full"
-          // Video survey overlays using VideoSurveyService data
-          videoSurveyMode={isVideoSurveyMode}
-          trackPoints={videoSurveyData.trackPoints}
-          currentPosition={currentPosition || undefined}
-          selection={selection}
-          onTrackPointClick={handleTrackPointClick}
-          // Photo survey overlays using PhotoSurveyService data
-          photoSurveyMode={isPhotoSurveyMode}
-          photoPoints={photoSurveyData.photoPoints}
-          onPhotoPointClick={handlePhotoPointClick}
-        />
+        {/* LEFT SIDE - Map Container */}
+        <div className={`relative ${
+          showRightPanel || showPhotoPanel 
+            ? 'flex-1 min-w-0' // Flexible width, takes remaining space
+            : 'w-full'         // Full view: map takes full width
+        }`}>
+          {/* Google Map */}
+          <GoogleMap
+            placemarks={allPlacemarks}
+            categories={allCategories}
+            visibleCategories={visibleCategories}
+            highlightedPlacemark={highlightedPlacemark}
+            onPlacemarkClick={handlePlacemarkClick}
+            className="w-full h-full"
+            // Video survey overlays using VideoSurveyService data
+            videoSurveyMode={isVideoSurveyMode}
+            trackPoints={videoSurveyData.trackPoints}
+            currentPosition={currentPosition || undefined}
+            selection={selection}
+            onTrackPointClick={handleTrackPointClick}
+            // Photo survey overlays using PhotoSurveyService data
+            photoSurveyMode={isPhotoSurveyMode}
+            photoPoints={photoSurveyData.photoPoints}
+            onPhotoPointClick={handlePhotoPointClick}
+          />
 
-        {/* RIGHT PANEL: Survey Video Panel (slides over map) */}
+          {/* Map Statistics - Only show when not in split view */}
+          {allPlacemarks.length > 0 && !showRightPanel && !showPhotoPanel && (
+            <div className="absolute bottom-4 left-2 bg-white rounded-lg shadow-lg border border-gray-200 p-3">
+              <div className="text-sm text-gray-600">
+                <div className="font-semibold text-gray-900 mb-1">Map Statistics</div>
+                <div>Total Placemarks: {allPlacemarks.length}</div>
+                <div>External Files: {externalFilePlacemarks.length}</div>
+                <div>Physical Survey: {physicalSurveyData.length}</div>
+                <div>Desktop Planning: {desktopPlanningData.length}</div>
+                <div>Visible Categories: {visibleCategories.size}</div>
+                {isVideoSurveyMode && (
+                  <>
+                    <div>Track Points: {videoSurveyData.trackPoints.length} (all shown)</div>
+                    <div>Video Clips: {videoSurveyData.videoClips.length}</div>
+                    <div>Survey Duration: {VideoSurveyService.formatDuration(videoSurveyData.metadata.totalDuration)}</div>        
+                  </>
+                )}
+                {isPhotoSurveyMode && (
+                  <>
+                    <div>Photo Points: {photoSurveyData.photoPoints.length}</div>
+                    <div>Total Images: {photoSurveyData.metadata.totalImages}</div>
+                    <div>Survey IDs: {photoSurveyData.metadata.surveyIds.length}</div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT SIDE - Video Survey Panel (Split Screen) */}
         {showRightPanel && (
-          <div className="absolute top-0 right-0 h-full shadow-lg">
+          <div className="w-[360px] lg:w-[420px] xl:w-[460px] h-full bg-white border-l shadow-lg flex-shrink-0">
             <SurveyVideoPanel
               open={showRightPanel}
               onClose={() => setShowRightPanel(false)}
@@ -1183,16 +1724,20 @@ useEffect(() => {
               onTimeChange={setCurrentTime}
               selection={selection}
               onSelectionChange={setSelection}
-              transitionImages={[]}
-              onRequestTransition={async () => { /* optionally fetch images between clips */ }}
-              surveySummary={summaryNode}
-              currentPosition={currentPosition}
               trackPoints={videoSurveyData.trackPoints}
+              currentPosition={currentPosition}
+              surveySummary={summaryNode}
+              landmarkPauseEnabled={landmarkPauseMode}
+              showingLandmark={showLandmarkModal}
+              onLandmarkPause={() => {
+              }}
+              shouldResumeAfterLandmark={shouldResumeVideo}
+              onResumeComplete={handleVideoResumeComplete}
             />
           </div>
         )}
 
-        {/* RIGHT PANEL: Photo Survey Panel (slides over map) */}
+        {/* RIGHT SIDE - Photo Survey Panel */}
         {showPhotoPanel && (
           <div className="absolute top-0 right-0 h-full shadow-lg">
             <PhotoSurveyPanel
@@ -1208,37 +1753,11 @@ useEffect(() => {
           </div>
         )}
 
-        {/* Map Statistics */}
-        {allPlacemarks.length > 0 && (
-          <div className="absolute bottom-4 left-2 bg-white rounded-lg shadow-lg border border-gray-200 p-3">
-            <div className="text-sm text-gray-600">
-              <div className="font-semibold text-gray-900 mb-1">Map Statistics</div>
-              <div>Total Placemarks: {allPlacemarks.length}</div>
-              <div>External Files: {externalFilePlacemarks.length}</div>
-              <div>Physical Survey: {physicalSurveyData.length}</div>
-              <div>Desktop Planning: {desktopPlanningData.length}</div>
-              <div>Visible Categories: {visibleCategories.size}</div>
-              {isVideoSurveyMode && (
-                <>
-                  <div>Track Points: {videoSurveyData.trackPoints.length}</div>
-                  <div>Video Clips: {videoSurveyData.videoClips.length}</div>
-                  <div>Survey Duration: {VideoSurveyService.formatDuration(videoSurveyData.metadata.totalDuration)}</div>
-                </>
-              )}
-              {isPhotoSurveyMode && (
-                <>
-                  <div>Photo Points: {photoSurveyData.photoPoints.length}</div>
-                  <div>Total Images: {photoSurveyData.metadata.totalImages}</div>
-                  <div>Survey IDs: {photoSurveyData.metadata.surveyIds.length}</div>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* RIGHT SIDEBAR - External Files Management */}
+        {/* RIGHT SIDEBAR - External Files Management (Overlay when split view is active) */}
         {ShowFiles && (
-          <div className="absolute top-0 right-0 h-full bg-white rounded-lg shadow-lg border border-gray-200 p-3 overflow-hidden">
+          <div className={`absolute top-0 right-0 h-full bg-white rounded-lg shadow-lg border border-gray-200 p-3 overflow-hidden z-20 ${
+            showRightPanel || showPhotoPanel ? 'w-80' : 'w-96'
+          }`}>
             {/* Close Button Header */}
             <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200">
               <h3 className="text-sm font-semibold text-gray-700">External Files</h3>
@@ -1270,6 +1789,84 @@ useEffect(() => {
           </div>
         )}
       </main>
+
+      {/* Enhanced Landmark Modal */}
+      <LandmarkModal
+        isOpen={showLandmarkModal}
+        landmarks={currentLandmarks}
+        onClose={handleLandmarkClose}
+        onContinueVideo={handleLandmarkContinue}
+        currentPosition={currentPosition}
+      />
+
+      {/* Landmark Controls Panel - Only show in video survey mode
+      {isVideoSurveyMode && (
+        <div className="absolute top-4 left-4 bg-white border border-gray-300 rounded-lg p-3 shadow-lg z-10 max-w-sm">
+          <div className="text-sm font-semibold text-gray-800 mb-2">Landmark Detection</div>
+          
+          <div className="mb-2">
+            <label className="flex items-center space-x-2 text-sm">
+              <input
+                type="checkbox"
+                checked={landmarkPauseMode}
+                onChange={(e) => handleLandmarkPauseModeToggle(e.target.checked)}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-gray-700 font-medium">Auto-pause for landmarks</span>
+            </label>
+          </div>
+
+          <div className="mb-2">
+            <label className="flex items-center space-x-2 text-sm">
+              <input
+                type="checkbox"
+                checked={landmarkDetectionEnabled}
+                onChange={(e) => handleLandmarkDetectionToggle(e.target.checked)}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-gray-700 font-medium">Enable landmark detection</span>
+            </label>
+          </div>
+
+          <div className="text-xs text-gray-600 space-y-1 border-t border-gray-200 pt-2">
+            <div className="flex justify-between">
+              <span>Mode:</span>
+              <span className={`font-medium ${landmarkPauseMode && landmarkDetectionEnabled ? 'text-green-600' : 'text-gray-500'}`}>
+                {landmarkPauseMode && landmarkDetectionEnabled ? 'Active' : 'Disabled'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>Current Time:</span>
+              <span className="font-mono">{new Date(currentTime).toLocaleTimeString()}</span>
+            </div>
+            {currentPosition && (
+              <div className="flex justify-between">
+                <span>Position:</span>
+                <span className="font-mono text-xs">{currentPosition.lat.toFixed(6)}, {currentPosition.lng.toFixed(6)}</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span>Modal:</span>
+              <span className={`font-medium ${showLandmarkModal ? 'text-orange-600' : 'text-gray-500'}`}>
+                {showLandmarkModal ? 'Open' : 'Closed'}
+              </span>
+            </div>
+            {currentLandmarks.length > 0 && (
+              <div className="pt-1 border-t border-gray-200">
+                <div className="text-blue-600 font-medium">
+                  Landmarks: {currentLandmarks.map(l => l.eventType).join(', ')}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {landmarkPauseMode && landmarkDetectionEnabled && (
+            <div className="text-xs text-gray-500 mt-2 leading-relaxed">
+              Video will pause when landmarks are detected using precise GPS coordinate matching. Only visible landmark categories are detected.
+            </div>
+          )}
+        </div>
+      )}*/}
 
       {/* Notification System */}
       {Notifier.visible && (

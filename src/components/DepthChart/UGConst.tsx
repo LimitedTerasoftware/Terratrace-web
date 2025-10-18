@@ -174,6 +174,20 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel }) => {
       ),
     },
     {
+  name: "Construction Type",
+  selector: row => row.construction_type || "-",
+  sortable: true,
+  maxWidth: "150px",
+  cell: (row) => (
+    <span 
+      title={row.construction_type || "-"} 
+      className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800 border border-purple-200 whitespace-nowrap truncate"
+    >
+      {row.construction_type || "-"}
+    </span>
+  ),
+},
+    {
       name: "Start GP",
       selector: row => row.start_lgd_name,
       sortable: true,
@@ -273,7 +287,7 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel }) => {
         const headers = [
           "State Name",
           "District Name", "Block Name",
-          "Start Location", "End Location",
+          "Start Location", "End Location","Construction Type",
           "Surveyor Name", "Surveyor Mobile", "Created At", "Updated At",
         ];
 
@@ -283,6 +297,7 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel }) => {
           row.block_name,
           row.start_lgd_name,
           row.end_lgd_name,
+          row.construction_type || "-",
           row.user_name,
           row.user_mobile,
           row.created_at,

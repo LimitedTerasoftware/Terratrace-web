@@ -64,7 +64,6 @@ function HotoEdit() {
         const fetchData = async () => {
             try {
                 const response = await axios.get(`${BASEURL}/hoto-forms/${id}`);
-                console.log("API Response:", response.data); // Debug log
                 
                 // Check if response has data
                 if (response.data && response.data.data && response.data.data.length > 0) {
@@ -88,7 +87,6 @@ function HotoEdit() {
         const fetchStates = async () => {
             try {
                 const response = await axios.get(`${BASEURL}/states`);
-                console.log("States Response:", response.data.data);
                 setStates(response.data.data.map((state: any) => state.state_name));
             } catch (error) {
                 console.error("Failed to fetch states:", error);
@@ -102,7 +100,6 @@ function HotoEdit() {
         const fetchDistricts = async () => {
             try {
                 const response = await axios.get(`${BASEURL}/districtsdata?state_code=1`);
-                console.log("Districts Response:", response.data);
                 setDistricts(response.data.map((district: any) => district.district_name));
             } catch (error) {
                 console.error("Failed to fetch districts:", error);
@@ -116,7 +113,6 @@ function HotoEdit() {
         const fetchBlocks = async () => {
             try {
                 const response = await axios.get(`${BASEURL}/blocksdata?district_code=38`);
-                console.log("Blocks Response:", response.data);
                 setBlocks(response.data.map((block: any) => block.block_name));
             } catch (error) {
                 console.error("Failed to fetch blocks:", error);

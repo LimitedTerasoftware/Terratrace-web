@@ -45,6 +45,7 @@ interface PreviewDropdownProps {
   onClose: () => void;
   onPhysicalSurvey: () => void;
   onDesktopPlanning: () => void;
+  onRectification: () => void; // ADD THIS
   position: { x: number; y: number };
 }
 
@@ -53,6 +54,7 @@ const PreviewDropdown: React.FC<PreviewDropdownProps> = ({
   onClose,
   onPhysicalSurvey,
   onDesktopPlanning,
+  onRectification,
   position
 }) => {
   if (!isOpen) return null;
@@ -92,6 +94,18 @@ const PreviewDropdown: React.FC<PreviewDropdownProps> = ({
           <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
           Desktop Planning
         </button>
+
+        {/* ADD THIS NEW BUTTON */}
+        <button
+          onClick={() => {
+            onRectification(); // ADD THIS HANDLER
+            onClose();
+          }}
+          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+        >
+          <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+          Rectification
+        </button>
       </div>
     </>
   );
@@ -106,7 +120,7 @@ interface GeographicSelectorProps {
     selectedDistricts: string[]; 
     selectedBlocks: string[]; 
     name: string;
-    dataType: 'physical' | 'desktop';
+    dataType: 'physical' | 'desktop' | 'rectification';
     // Add hierarchy context for specific selections
     hierarchyContext?: {
       stateId?: string;
@@ -120,7 +134,7 @@ interface GeographicSelectorProps {
     selectedDistricts: string[]; 
     selectedBlocks: string[]; 
     name: string;
-    dataType: 'physical' | 'desktop';
+    dataType: 'physical' | 'desktop' | 'rectification';
     hierarchyContext?: {
       stateId?: string;
       districtId?: string;
@@ -129,6 +143,7 @@ interface GeographicSelectorProps {
   }) => void;
   isLoadingPhysical?: boolean;
   isLoadingDesktopPlanning?: boolean;
+  isLoadingRectification?: boolean;
 }
 
 export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
@@ -137,7 +152,8 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
   onPreview,
   onRefresh,
   isLoadingPhysical,
-  isLoadingDesktopPlanning
+  isLoadingDesktopPlanning,
+  isLoadingRectification
 }) => {
   const [isDistrictExpanded, setIsDistrictExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -234,29 +250,32 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
     }
   };
 
+
+
   // Filter data based on search query
   const filteredData = useMemo(() => {
-    if (!searchQuery) return data;
+  if (!searchQuery) return data;
 
-    return data.map(state => ({
-      ...state,
-      districts: state.districts.map(district => ({
-        ...district,
-        blocks: district.blocks.filter(block =>
-          block.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          block.code.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      })).filter(district =>
-        district.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        district.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        district.blocks.length > 0
+  return data.map(state => ({
+    ...state,
+    districts: state.districts.map(district => ({
+      ...district,
+      blocks: district.blocks.filter(block =>
+        block.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (block.code && block.code.toString().toLowerCase().includes(searchQuery.toLowerCase()))
       )
-    })).filter(state =>
-      state.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      state.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      state.districts.length > 0
-    );
-  }, [data, searchQuery]);
+    })).filter(district =>
+      district.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (district.code && district.code.toString().toLowerCase().includes(searchQuery.toLowerCase())) ||
+      district.blocks.length > 0
+    )
+  })).filter(state =>
+    state.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (state.code && state.code.toString().toLowerCase().includes(searchQuery.toLowerCase())) ||
+    state.districts.length > 0
+  );
+}, [data, searchQuery]);
+
 
   const handleStateToggle = async (stateId: string) => {
     setData(prev => prev.map(state => {
@@ -529,6 +548,21 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
     });
   };
 
+  const handleRectification = () => {
+    if (!dropdownState.currentItem) return;
+    
+    const selectedIds = getSelectedIds();
+    onPreview?.({
+      type: dropdownState.currentItem.type,
+      selectedStates: selectedIds.states,
+      selectedDistricts: selectedIds.districts,
+      selectedBlocks: selectedIds.blocks,
+      name: dropdownState.currentItem.name,
+      dataType: 'rectification',
+      hierarchyContext: dropdownState.currentItem.hierarchyContext
+    });
+  };
+
   const handleRefresh = (type: 'state' | 'district' | 'block', id: string, name: string) => {
     const selectedIds = getSelectedIds();
     onRefresh?.({
@@ -561,6 +595,7 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
         onClose={() => setDropdownState(prev => ({ ...prev, isOpen: false }))}
         onPhysicalSurvey={handlePhysicalSurvey}
         onDesktopPlanning={handleDesktopPlanning}
+        onRectification={handleRectification}
         position={dropdownState.position}
       />
 
@@ -589,24 +624,25 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
                 <ChevronRight className="h-4 w-4 text-gray-500" />
               )}
               <button
-                onClick={handleUniversalRefresh}
-                className={`
-                  border-2 border-dashed 
-                  w-10 h-10 rounded-full flex items-center justify-center transition-colors 
-                  ${(isLoadingPhysical || isLoadingDesktopPlanning)
-                    ? 'border-gray-300 bg-blue-100'
-                    : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
-                  }
-                  duration-200 gap-2
-                  text-sm font-medium text-gray-700
-                `}
-                title='Reload'
-              >
-                {(isLoadingPhysical || isLoadingDesktopPlanning) ?
-                  <Loader className="h-4 w-4 animate-spin text-blue-400" /> :
-                  <RefreshCwIcon size={18} />
-                }
-              </button>
+  onClick={handleUniversalRefresh}
+  className={`
+    border-2 border-dashed 
+    w-10 h-10 rounded-full flex items-center justify-center transition-colors 
+    ${(isLoadingPhysical || isLoadingDesktopPlanning || isLoadingRectification) // ADD isLoadingRectification
+      ? 'border-gray-300 bg-blue-100'
+      : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
+    }
+    duration-200 gap-2
+    text-sm font-medium text-gray-700
+  `}
+  title='Reload'
+>
+  {(isLoadingPhysical || isLoadingDesktopPlanning || isLoadingRectification) ? // ADD isLoadingRectification
+    <Loader className="h-4 w-4 animate-spin text-blue-400" /> :
+    <RefreshCwIcon size={18} />
+  }
+</button>
+
             </div>
           </button>
         </div>

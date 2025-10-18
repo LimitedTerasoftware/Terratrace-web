@@ -13,7 +13,7 @@ interface Connection {
   original_name?: string;
   user_id?: string | number;
   user_name?: string;
-  properties?: string | Record<string, any>;
+  properties?: string | Record<string, any>; // Added properties field
 }
 
 interface GPListResponse {
@@ -48,13 +48,13 @@ interface EditFormData {
 
 const BASEURL_Val = import.meta.env.VITE_TraceAPI_URL;
 
-const RouteGPList = () => {
-  const { id: networkId } = useParams();
+const BlockGPList = () => {
+  const { id: blockId  } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   
   const networkName = location.state?.networkName || '';
-  const returnTab = location.state?.returnTab || 'verified';
+  const returnTab = location.state?.returnTab || 'verified'; // Default to verified since GP List only exists there
   
   // Main data states
   const [gpListData, setGpListData] = useState<any[] | { connections?: Connection[] }>([]);
@@ -73,7 +73,7 @@ const RouteGPList = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedUsers, setSelectedUsers] = useState<Set<number>>(new Set());
 
-  // Edit states
+  // Edit states - Added for edit functionality
   const [editingConnection, setEditingConnection] = useState<number | null>(null);
   const [editFormData, setEditFormData] = useState<EditFormData>({
     start: '',
@@ -85,12 +85,6 @@ const RouteGPList = () => {
     user_name: ''
   });
   const [loadingEdit, setLoadingEdit] = useState<boolean>(false);
-  const [validationErrors, setValidationErrors] = useState<{
-  start?: string;
-  end?: string;
-  original_name?: string;
-  length?: string;
-  }>({});
 
   // Notification state
   const [notification, setNotification] = useState<{
@@ -105,7 +99,7 @@ const RouteGPList = () => {
 
   // Fetch GP connections list
   const fetchGPList = async () => {
-    if (!networkId) {
+    if (!blockId) {
       setGpListError('Network ID is required');
       return;
     }
@@ -114,7 +108,7 @@ const RouteGPList = () => {
       setLoadingGPList(true);
       setGpListError(null);
       
-      const response = await fetch(`${BASEURL_Val}/get-gplist/${networkId}`);
+      const response = await fetch(`${BASEURL_Val}/gplist-block/${blockId}`);
       
       if (!response.ok) {
         throw new Error(`API request failed with status ${response.status}`);
@@ -137,226 +131,84 @@ const RouteGPList = () => {
   };
 
   useEffect(() => {
-    if (networkId) {
+    if (blockId) {
       fetchGPList();
     }
-  }, [networkId]);
+  }, [blockId]);
 
-  // Edit functionality
+  // Edit functionality - Added from RouteGPList
   const handleEditClick = (connection: Connection) => {
-  setEditingConnection(connection.id!);
-  setEditFormData({
-    start: connection.start || '',
-    end: connection.end || '',
-    length: String(connection.length || ''),
-    original_name: connection.original_name || '',
-    type: connection.type || 'proposed',
-    user_id: String(connection.user_id || ''),
-    user_name: connection.user_name || ''
-  });
-     setValidationErrors({});
+    setEditingConnection(connection.id!);
+    setEditFormData({
+      start: connection.start || '',
+      end: connection.end || '',
+      length: String(connection.length || ''),
+      original_name: connection.original_name || '',
+      type: connection.type || 'proposed',
+      user_id: String(connection.user_id || ''),
+      user_name: connection.user_name || ''
+    });
   };
 
   const handleEditInputChange = (field: keyof EditFormData, value: string) => {
-  setEditFormData(prev => ({
-    ...prev,
-    [field]: value
-  }));
-  
-  // Validate the field in real-time
-  validateField(field, value);
-};
+    setEditFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
 
-  const validateField = (field: keyof EditFormData, value: string) => {
-  let error = '';
-  
-  switch (field) {
-    case 'start':
-    case 'end':
-      const fieldName = field === 'start' ? 'Start point' : 'End point';
-      const validation = validateCoordinateWithMessage(value, fieldName);
-      if (!validation.isValid && value.trim() !== '') {
-        error = validation.message;
-      }
-      break;
-    case 'original_name':
-      if (!value.trim()) {
-        error = 'Route name is required';
-      }
-      break;
-    case 'length':
-      if (!value || parseFloat(value) <= 0) {
-        error = 'Length must be a positive number';
-      }
-      break;
-  }
-  
-  setValidationErrors(prev => ({
-    ...prev,
-    [field]: error
-  }));
-  
-  return error === '';
-};
+  const handleEditSave = async (connectionId: number) => {
+    try {
+      setLoadingEdit(true);
+      
+      const updateData = {
+        start: editFormData.start,
+        end: editFormData.end,
+        length: editFormData.length,
+        original_name: editFormData.original_name,
+        type: editFormData.type,
+        user_id: editFormData.user_id,
+        user_name: editFormData.user_name
+      };
 
-  // Validation function for coordinates
-const isValidCoordinate = (coordinate: string): boolean => {
-  if (!coordinate || coordinate.trim() === '') {
-    return false;
-  }
+      const response = await fetch(`${BASEURL_Val}/update-connections/${connectionId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData)
+      });
 
-  // Remove whitespace
-  const trimmed = coordinate.trim();
-  
-  // Check if it's a simple number like 123, 1234, 0000 etc.
-  if (/^\d+$/.test(trimmed)) {
-    return false;
-  }
-
-  // Check for valid coordinate patterns
-  // Decimal degrees: -90.123456, 180.654321
-  const decimalPattern = /^-?(?:(?:1[0-7]\d|[1-9]?\d)(?:\.\d+)?|180(?:\.0+)?)$/;
-  
-  // DMS format: 40°26'46"N, 79°58'56"W or similar variations
-  const dmsPattern = /^-?\d{1,3}[°]?\s*\d{1,2}['′]?\s*\d{1,2}(?:\.\d+)?["″]?\s*[NSEW]?$/i;
-  
-  // Coordinate pair format: "lat,lng" or "lat, lng"
-  const coordPairPattern = /^-?\d{1,3}(?:\.\d+)?\s*,\s*-?\d{1,3}(?:\.\d+)?$/;
-  
-  // UTM format basic check
-  const utmPattern = /^\d{1,2}[NSEW]\s+\d+\s+\d+$/i;
-
-  return decimalPattern.test(trimmed) || 
-         dmsPattern.test(trimmed) || 
-         coordPairPattern.test(trimmed) ||
-         utmPattern.test(trimmed);
-};
-
-// Enhanced validation function with more specific error messages
-const validateCoordinateWithMessage = (coordinate: string, fieldName: string): { isValid: boolean; message: string } => {
-  if (!coordinate || coordinate.trim() === '') {
-    return { 
-      isValid: false, 
-      message: `${fieldName} is required` 
-    };
-  }
-
-  const trimmed = coordinate.trim();
-  
-  // Check if it's just numbers (invalid)
-  if (/^\d+$/.test(trimmed)) {
-    return { 
-      isValid: false, 
-      message: `${fieldName} must be valid coordinates` 
-    };
-  }
-
-  // Check if it's zeros (likely invalid)
-  if (/^0+$/.test(trimmed)) {
-    return { 
-      isValid: false, 
-      message: `${fieldName} cannot be all zeros` 
-    };
-  }
-
-  if (!isValidCoordinate(coordinate)) {
-    return { 
-      isValid: false, 
-      message: `${fieldName} must be valid coordinates.` 
-    };
-  }
-
-  return { isValid: true, message: '' };
-};
-
-const getInputClassName = (field: keyof EditFormData) => {
-  const baseClasses = "w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1";
-  const hasError = validationErrors[field];
-  
-  if (hasError) {
-    return `${baseClasses} border-red-300 focus:ring-red-500 bg-red-50 dark:bg-red-900/20 dark:border-red-600 dark:text-white`;
-  }
-  
-  return `${baseClasses} border-gray-300 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white`;
-};
-
-// Updated handleEditSave function with validation
-const handleEditSave = async (connectionId: number) => {
-  // Validate start point
-  const startValidation = validateCoordinateWithMessage(editFormData.start, 'Start point');
-  if (!startValidation.isValid) {
-    showNotification('error', startValidation.message);
-    return;
-  }
-
-  // Validate end point
-  const endValidation = validateCoordinateWithMessage(editFormData.end, 'End point');
-  if (!endValidation.isValid) {
-    showNotification('error', endValidation.message);
-    return;
-  }
-
-  // Validate other required fields
-  if (!editFormData.original_name.trim()) {
-    showNotification('error', 'Route name is required');
-    return;
-  }
-
-  if (!editFormData.length || parseFloat(editFormData.length) <= 0) {
-    showNotification('error', 'Length must be a positive number');
-    return;
-  }
-
-  try {
-    setLoadingEdit(true);
-    
-    const updateData = {
-      start: editFormData.start.trim(),
-      end: editFormData.end.trim(),
-      length: editFormData.length,
-      original_name: editFormData.original_name.trim(),
-      type: editFormData.type,
-      user_id: editFormData.user_id,
-      user_name: editFormData.user_name
-    };
-
-    const response = await fetch(`${BASEURL_Val}/update-connections/${connectionId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(updateData)
-    });
-
-    if (!response.ok) {
-      // Try to get JSON error first, fallback to text
-      let errorMessage;
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`;
-      } catch {
+      if (!response.ok) {
+        // Try to get JSON error first, fallback to text
+        let errorMessage;
         try {
-          const errorText = await response.text();
-          errorMessage = errorText || `HTTP ${response.status}: ${response.statusText}`;
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`;
         } catch {
-          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          try {
+            const errorText = await response.text();
+            errorMessage = errorText || `HTTP ${response.status}: ${response.statusText}`;
+          } catch {
+            errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          }
         }
+        throw new Error(`Update failed: ${errorMessage}`);
       }
-      throw new Error(`Update failed: ${errorMessage}`);
-    }
 
-    const result = await response.json();      
-    showNotification('success', 'Connection updated successfully!');
-    setEditingConnection(null);
-    fetchGPList(); // Refresh the list
-    
-  } catch (error: any) {
-    console.error('Error updating connection:', error);
-    showNotification('error', `Update failed: ${error.message}`);
-  } finally {
-    setLoadingEdit(false);
-  }
-};
+      const result = await response.json();
+
+      showNotification('success', 'Connection updated successfully!');
+      setEditingConnection(null);
+      fetchGPList(); // Refresh the list
+      
+    } catch (error: any) {
+      console.error('Error updating connection:', error);
+      showNotification('error', `Update failed: ${error.message}`);
+    } finally {
+      setLoadingEdit(false);
+    }
+  };
 
   const handleEditCancel = () => {
     setEditingConnection(null);
@@ -448,35 +300,20 @@ const handleEditSave = async (connectionId: number) => {
   };
 
   const getAssignedUserDisplay = (connection: Connection): string => {
-    // Check if connection has assigned status and user information
-    if (connection.status?.toLowerCase() === 'assigned' && connection.user_name) {
-      return connection.user_name;
-    }
-    
-    // Check if there's user info in properties
-    let parsedProperties: any = {};
-    try {
-      if (typeof connection.properties === 'string') {
-        parsedProperties = JSON.parse(connection.properties);
-      } else if (connection.properties) {
-        parsedProperties = connection.properties;
-      }
-    } catch (error) {
-      console.warn('Error parsing properties for user info:', error);
-    }
-    
-    // Check properties for user assignment
-    if (parsedProperties.user_name && connection.status?.toLowerCase() === 'assigned') {
-      return parsedProperties.user_name;
-    }
-    
-    return 'Not Available';
-  };
+  // Only check the top-level user_name field
+  // Do NOT check properties at all
+  if (connection.user_name && connection.user_name.trim() !== '') {
+    return connection.user_name;
+  }
+  
+  // If user_name is null/empty, always return "Not Available"
+  return 'Not Available';
+};
 
   const handleBackClick = () => {
     // Navigate back to route list with the return tab information
-    navigate('/route-planning/route-list', {
-      state: { returnTab: returnTab }
+     navigate('/blocks-management', {
+    state: { returnTab: returnTab }
     });
   };
 
@@ -678,7 +515,7 @@ const handleEditSave = async (connectionId: number) => {
         <div className="flex items-center justify-center py-8">
           <svg className="animate-spin h-8 w-8 mr-3 text-blue-500" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
           Loading GP List...
         </div>
@@ -753,206 +590,196 @@ const handleEditSave = async (connectionId: number) => {
           </thead>
           <tbody>
             {connectionsData.map((connection, index) => {
-              const connectionKey = String(connection.id || index);
-              const isSelected = selectedConnections.has(connectionKey);
-              const isEditing = editingConnection === connection.id;
-              
-              return (
-                <tr key={connection.id || index} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                  <td className="px-3 py-2">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => handleRowSelection(connectionKey)}
-                      className="w-4 h-4 rounded focus:ring-0 outline-none border-2 border-blue-900 checked:bg-blue-900 checked:border-blue-900"
-                      style={{
-                        accentColor: 'rgb(30, 58, 138)'
-                      }}
-                    />
-                  </td>
-                  
-                  {/* Route Name */}
-                  <td className="px-3 py-2">
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={editFormData.original_name}
-                        onChange={(e) => handleEditInputChange('original_name', e.target.value)}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                        placeholder="Route name"
-                      />
-                    ) : (
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {connection.original_name || 'N/A'}
-                      </span>
-                    )}
-                  </td>
-                  
-                  {/* Start Point */}
-                  <td className="px-3 py-2">
-                    {isEditing ? (
-                      <div>
-                        <input
-                          type="text"
-                          value={editFormData.start}
-                          onChange={(e) => handleEditInputChange('start', e.target.value)}
-                          className={getInputClassName('start')}
-                          placeholder="e.g., 40.7128, -74.0060"
-                        />
-                        {validationErrors.start && (
-                          <p className="text-xs text-red-600 mt-1">{validationErrors.start}</p>
-                        )}
-                      </div>
-                    ) : (
-                      connection.start || '-'
-                    )}
-                  </td>
-                  
-                  {/* End Point */}
-                  <td className="px-3 py-2">
-                    {isEditing ? (
-                      <div>
-                        <input
-                          type="text"
-                          value={editFormData.end}
-                          onChange={(e) => handleEditInputChange('end', e.target.value)}
-                          className={getInputClassName('end')}
-                          placeholder="e.g., 41.8781, -87.6298"
-                        />
-                        {validationErrors.end && (
-                          <p className="text-xs text-red-600 mt-1">{validationErrors.end}</p>
-                        )}
-                      </div>
-                    ) : (
-                      connection.end || '-'
-                    )}
-                  </td>
-                  
-                  {/* Length */}
-                  <td className="px-3 py-2">
-                    {isEditing ? (
-                      <input
-                        type="number"
-                        step="0.001"
-                        value={editFormData.length}
-                        onChange={(e) => handleEditInputChange('length', e.target.value)}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                        placeholder="Length"
-                      />
-                    ) : (
-                      connection.length ? parseFloat(String(connection.length)).toFixed(3) : '-'
-                    )}
-                  </td>
-                  
-                  {/* Type */}
-                  <td className="px-3 py-2">
-                    {isEditing ? (
-                      <select
-                        value={editFormData.type}
-                        onChange={(e) => handleEditInputChange('type', e.target.value)}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                      >
-                        <option value="proposed">Proposed</option>
-                        <option value="existing">Existing</option>
-                      </select>
-                    ) : (
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCableTypeBadge(getCableType(connection))}`}>
-                        {getCableType(connection)}
-                      </span>
-                    )}
-                  </td>
-                  
-                  {/* Status */}
-                  <td className="px-3 py-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(connection.status || '')}`}>
-                      {formatStatus(connection.status || '')}
-                    </span>
-                  </td>
-                  
-                  {/* Assigned To */}
-                  <td className="px-3 py-2">
-                    {isEditing ? (
-                      <div className="space-y-1">
-                        <input
-                          type="text"
-                          value={editFormData.user_name}
-                          onChange={(e) => handleEditInputChange('user_name', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                          placeholder="User name"
-                        />
-                        <input
-                          type="text"
-                          value={editFormData.user_id}
-                          onChange={(e) => handleEditInputChange('user_id', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                          placeholder="User ID"
-                        />
-                      </div>
-                    ) : (
-                      <div className="flex items-center">
-                        {getAssignedUserDisplay(connection) !== 'Not Available' ? (
-                          <>
-                            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center mr-2">
-                              <span className="text-white text-xs font-medium">
-                                {getAssignedUserDisplay(connection).charAt(0).toUpperCase()}
-                              </span>
-                            </div>
-                            <span className="text-sm font-medium text-gray-900 dark:text-white">
-                              {getAssignedUserDisplay(connection)}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-sm text-gray-500 dark:text-gray-400 italic">
-                            Not Available
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </td>
-                  
-                  {/* Actions */}
-                  <td className="px-3 py-2">
-                    <div className="flex items-center space-x-2">
-                      {isEditing ? (
-                        <>
-                          <button
-                            onClick={() => handleEditSave(connection.id!)}
-                            disabled={loadingEdit}
-                            className="p-1 text-green-600 hover:text-green-800 disabled:opacity-50"
-                            title="Save changes"
-                          >
-                            {loadingEdit ? (
-                              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                            ) : (
-                              <Save className="w-4 h-4" />
-                            )}
-                          </button>
-                          <button
-                            onClick={handleEditCancel}
-                            disabled={loadingEdit}
-                            className="p-1 text-red-600 hover:text-red-800 disabled:opacity-50"
-                            title="Cancel editing"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          onClick={() => handleEditClick(connection)}
-                          className="p-1 text-blue-600 hover:text-blue-800"
-                          title="Edit connection"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+    const connectionKey = String(connection.id || index);
+    const isSelected = selectedConnections.has(connectionKey);
+    const isEditing = editingConnection === connection.id;
+    
+    return (
+      <tr key={connection.id || index} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+        <td className="px-3 py-2">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => handleRowSelection(connectionKey)}
+            className="w-4 h-4 rounded focus:ring-0 outline-none border-2 border-blue-900 checked:bg-blue-900 checked:border-blue-900"
+            style={{
+              accentColor: 'rgb(30, 58, 138)'
+            }}
+          />
+        </td>
+        
+        {/* Route Name */}
+        <td className="px-3 py-2">
+          {isEditing ? (
+            <input
+              type="text"
+              value={editFormData.original_name}
+              onChange={(e) => handleEditInputChange('original_name', e.target.value)}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              placeholder="Route name"
+            />
+          ) : (
+            <span className="text-sm font-medium text-gray-900 dark:text-white">
+              {connection.original_name || 'N/A'}
+            </span>
+          )}
+        </td>
+        
+        {/* Start Point */}
+        <td className="px-3 py-2">
+          {isEditing ? (
+            <input
+              type="text"
+              value={editFormData.start}
+              onChange={(e) => handleEditInputChange('start', e.target.value)}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              placeholder="Start point"
+            />
+          ) : (
+            connection.start || '-'
+          )}
+        </td>
+        
+        {/* End Point */}
+        <td className="px-3 py-2">
+          {isEditing ? (
+            <input
+              type="text"
+              value={editFormData.end}
+              onChange={(e) => handleEditInputChange('end', e.target.value)}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              placeholder="End point"
+            />
+          ) : (
+            connection.end || '-'
+          )}
+        </td>
+        
+        {/* Length */}
+        <td className="px-3 py-2">
+          {isEditing ? (
+            <input
+              type="number"
+              step="0.001"
+              value={editFormData.length}
+              onChange={(e) => handleEditInputChange('length', e.target.value)}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              placeholder="Length"
+            />
+          ) : (
+            connection.length ? parseFloat(String(connection.length)).toFixed(3) : '-'
+          )}
+        </td>
+        
+        {/* Type */}
+        <td className="px-3 py-2">
+          {isEditing ? (
+            <select
+              value={editFormData.type}
+              onChange={(e) => handleEditInputChange('type', e.target.value)}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            >
+              <option value="proposed">Proposed</option>
+              <option value="existing">Existing</option>
+            </select>
+          ) : (
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCableTypeBadge(getCableType(connection))}`}>
+              {getCableType(connection)}
+            </span>
+          )}
+        </td>
+        
+        {/* Status */}
+        <td className="px-3 py-2">
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(connection.status || '')}`}>
+            {formatStatus(connection.status || '')}
+          </span>
+        </td>
+        
+        {/* Assigned To */}
+        <td className="px-3 py-2">
+          {isEditing ? (
+            <div className="space-y-1">
+              <input
+                type="text"
+                value={editFormData.user_name}
+                onChange={(e) => handleEditInputChange('user_name', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                placeholder="User name"
+              />
+              <input
+                type="text"
+                value={editFormData.user_id}
+                onChange={(e) => handleEditInputChange('user_id', e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                placeholder="User ID"
+              />
+            </div>
+          ) : (
+            <div className="flex items-center">
+              {getAssignedUserDisplay(connection) !== 'Not Available' ? (
+  <>
+    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center mr-2">
+      <span className="text-white text-xs font-medium">
+        {getAssignedUserDisplay(connection).charAt(0).toUpperCase()}
+      </span>
+    </div>
+    <span className="text-sm font-medium text-gray-900 dark:text-white">
+      {getAssignedUserDisplay(connection)}
+    </span>
+  </>
+) : (
+  <span className="text-sm text-gray-500 dark:text-gray-400 italic">
+    Not Available
+  </span>
+)}
+            </div>
+          )}
+        </td>
+        
+        {/* Actions - Updated to include edit functionality */}
+        <td className="px-3 py-2">
+          <div className="flex items-center space-x-2">
+            {isEditing ? (
+              <>
+                <button
+                  onClick={() => handleEditSave(connection.id!)}
+                  disabled={loadingEdit}
+                  className="p-1 text-green-600 hover:text-green-800 disabled:opacity-50"
+                  title="Save changes"
+                >
+                  {loadingEdit ? (
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                </button>
+                <button
+                  onClick={handleEditCancel}
+                  disabled={loadingEdit}
+                  className="p-1 text-red-600 hover:text-red-800 disabled:opacity-50"
+                  title="Cancel editing"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => handleEditClick(connection)}
+                className="p-1 text-blue-600 hover:text-blue-800"
+                title="Edit connection"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </td>
+      </tr>
+    );
+  })}
           </tbody>
         </table>
       </div>
@@ -1002,7 +829,7 @@ const handleEditSave = async (connectionId: number) => {
       {showAssignPopup && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[80vh] overflow-hidden">
-            {/* Popup Header */}
+            {/* Header */}
             <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white">
@@ -1011,14 +838,13 @@ const handleEditSave = async (connectionId: number) => {
                 <button
                   onClick={closeAssignPopup}
                   className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  disabled={loadingUsers}
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <X className="w-6 h-6" />
                 </button>
               </div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Selected {selectedConnections.size} connection(s)
+                Selected {selectedConnections.size} connection{selectedConnections.size === 1 ? '' : 's'}
               </p>
             </div>
 
@@ -1030,6 +856,7 @@ const handleEditSave = async (connectionId: number) => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                disabled={loadingUsers}
               />
             </div>
 
@@ -1037,11 +864,11 @@ const handleEditSave = async (connectionId: number) => {
             <div className="px-6 py-4 max-h-60 overflow-y-auto">
               {loadingUsers ? (
                 <div className="flex items-center justify-center py-4">
-                  <svg className="animate-spin h-6 w-6 text-blue-500" viewBox="0 0 24 24">
+                  <svg className="animate-spin h-6 w-6 text-blue-500 mr-2" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span className="ml-2">Loading users...</span>
+                  <span className="text-gray-600 dark:text-gray-300">Loading users...</span>
                 </div>
               ) : usersError ? (
                 <div className="text-red-600 dark:text-red-400 text-sm">
@@ -1068,6 +895,9 @@ const handleEditSave = async (connectionId: number) => {
                           <p className="text-sm font-medium text-gray-900 dark:text-white">
                             {user.fullname}
                           </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {user.email}
+                          </p>
                         </div>
                       </div>
                       <div className="flex-shrink-0">
@@ -1075,10 +905,8 @@ const handleEditSave = async (connectionId: number) => {
                           type="checkbox"
                           checked={selectedUsers.has(user.id)}
                           onChange={() => handleUserSelection(user.id)}
-                          className="w-4 h-4 rounded focus:ring-0 outline-none border-2 border-blue-900 checked:bg-blue-900 checked:border-blue-900"
-                          style={{
-                            accentColor: 'rgb(30, 58, 138)'
-                          }}
+                          disabled={loadingUsers}
+                          className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300 disabled:opacity-50"
                         />
                       </div>
                     </div>
@@ -1087,11 +915,12 @@ const handleEditSave = async (connectionId: number) => {
               )}
             </div>
 
-            {/* Popup Footer */}
+            {/* Footer */}
             <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
               <button
                 onClick={closeAssignPopup}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 dark:bg-gray-600 dark:text-gray-300 dark:border-gray-500 dark:hover:bg-gray-700"
+                disabled={loadingUsers}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 dark:bg-gray-600 dark:text-gray-300 dark:border-gray-500 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
@@ -1100,19 +929,18 @@ const handleEditSave = async (connectionId: number) => {
                 <button
                   onClick={handleFinalAssignment}
                   disabled={loadingUsers}
-                  className="px-4 py-2 text-sm font-medium text-white rounded-md hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ backgroundColor: '#a855a7' }}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loadingUsers ? (
                     <div className="flex items-center">
                       <svg className="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
                       Assigning...
                     </div>
                   ) : (
-                    `Assign (${selectedUsers.size} user${selectedUsers.size > 1 ? 's' : ''})`
+                    `Assign (${selectedUsers.size} user${selectedUsers.size > 1 ? 's' : ''} selected)`
                   )}
                 </button>
               )}
@@ -1148,4 +976,4 @@ const handleEditSave = async (connectionId: number) => {
   );
 };
 
-export default RouteGPList;
+export default BlockGPList;

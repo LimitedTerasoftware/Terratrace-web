@@ -1,4 +1,4 @@
-// Enhanced VideoSurveyService.ts - Centralized video survey data processing with segment selection
+// Enhanced VideoSurveyService.ts - Centralized video survey data processing with enhanced landmark detection
 import { resolveMediaUrl } from './PlaceMark';
 
 // Enhanced core interfaces
@@ -13,7 +13,8 @@ export interface VideoClip {
 export interface TrackPoint { 
   lat: number; 
   lng: number; 
-  timestamp: number; 
+  timestamp: number;
+  surveyId?: string; // Add survey ID
 }
 
 // Enhanced segment selection interface
@@ -40,6 +41,14 @@ export interface ValidationResult {
   isValid: boolean;
 }
 
+// Enhanced landmark detection interfaces
+export interface LandmarkDetectionResult {
+  hasLandmark: boolean;
+  landmarks: any[];
+  position: { lat: number; lng: number } | null;
+  detectionTime: number;
+}
+
 // Enhanced Video Survey Service Class
 export class VideoSurveyService {
   
@@ -55,13 +64,204 @@ export class VideoSurveyService {
     const videoClips = this.buildVideoClips(rawPhysicalSurveyData);
     const metadata = this.generateMetadata(rawPhysicalSurveyData, trackPoints, videoClips);
 
-
     return {
       trackPoints,
       videoClips,
       metadata
     };
   }
+
+  // ==============================================
+  // ENHANCED LANDMARK DETECTION METHODS
+  // ==============================================
+
+  /**
+   * Find landmarks at exact GPS coordinates (coordinate-based, not radius-based)
+   */
+  static findLandmarksAtPosition(
+    physicalSurveyData: any[],
+    currentPosition: { lat: number; lng: number },
+    tolerance: number = 0.0001 // ~10 meters
+  ): any[] {
+    if (!currentPosition) return [];
+    
+    return physicalSurveyData.filter(placemark => {
+      // Only check landmark-type events
+      const landmarkTypes = ['LANDMARK', 'FIBERTURN', 'JOINTCHAMBER', 'KILOMETERSTONE', 'ROUTEINDICATOR'];
+      if (!landmarkTypes.includes(placemark.eventType || placemark.category)) {
+        return false;
+      }
+      
+      // Check if coordinates match within tolerance
+      const latDiff = Math.abs(currentPosition.lat - placemark.coordinates.lat);
+      const lngDiff = Math.abs(currentPosition.lng - placemark.coordinates.lng);
+      
+      return latDiff <= tolerance && lngDiff <= tolerance;
+    });
+  }
+
+  /**
+   * Enhanced landmark detection for video playback with precise coordinate matching
+   */
+  static detectLandmarkAtCurrentTime(
+    physicalSurveyData: any[],
+    currentTime: number,
+    trackPoints: TrackPoint[],
+    visibleCategories: Set<string>,
+    tolerance: number = 0.0001
+  ): LandmarkDetectionResult {
+    // Get current position from track points
+    const currentPosition = this.interpolatePosition(trackPoints, currentTime);
+    
+    if (!currentPosition) {
+      return { 
+        hasLandmark: false, 
+        landmarks: [], 
+        position: null,
+        detectionTime: currentTime
+      };
+    }
+    
+    // Find landmarks at current position using coordinate matching
+    const landmarks = physicalSurveyData.filter(landmark => {
+      const landmarkTypes = ['LANDMARK', 'FIBERTURN', 'JOINTCHAMBER', 'KILOMETERSTONE', 'ROUTEINDICATOR'];
+      if (!landmarkTypes.includes(landmark.eventType || landmark.category)) {
+        return false;
+      }
+      
+      // Check if landmark category is visible on map
+      const categoryId = `physical-${(landmark.category || landmark.eventType).toLowerCase().replace(/\s+/g, '-')}`;
+      if (!visibleCategories.has(categoryId)) {
+        return false;
+      }
+      
+      // Check coordinate proximity using precise matching
+      const latDiff = Math.abs(currentPosition.lat - landmark.coordinates.lat);
+      const lngDiff = Math.abs(currentPosition.lng - landmark.coordinates.lng);
+      
+      return latDiff <= tolerance && lngDiff <= tolerance;
+    });
+    
+    return {
+      hasLandmark: landmarks.length > 0,
+      landmarks,
+      position: currentPosition,
+      detectionTime: currentTime
+    };
+  }
+
+  /**
+   * Check if we should show landmark modal (avoid showing same landmark repeatedly)
+   */
+  static shouldShowLandmarkModal(
+    currentLandmarks: any[],
+    previousLandmarks: any[],
+    showingModal: boolean
+  ): boolean {
+    // If no current landmarks, don't show modal
+    if (currentLandmarks.length === 0) {
+      return false;
+    }
+    
+    // If modal is already showing and landmarks are the same, keep showing
+    if (showingModal && this.areLandmarksSame(currentLandmarks, previousLandmarks)) {
+      return true;
+    }
+    
+    // If modal is not showing and we have new landmarks, show modal
+    if (!showingModal && currentLandmarks.length > 0) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  /**
+   * Compare two landmark arrays to see if they're the same
+   */
+  static areLandmarksSame(landmarks1: any[], landmarks2: any[]): boolean {
+    if (landmarks1.length !== landmarks2.length) return false;
+    
+    const ids1 = landmarks1.map(l => l.id).sort();
+    const ids2 = landmarks2.map(l => l.id).sort();
+    
+    return ids1.every((id, index) => id === ids2[index]);
+  }
+
+  /**
+   * Get landmark statistics for current detection
+   */
+  static getLandmarkStatistics(landmarks: any[]): {
+    totalCount: number;
+    typeBreakdown: Record<string, number>;
+    hasImages: boolean;
+    totalImages: number;
+  } {
+    const typeBreakdown: Record<string, number> = {};
+    let totalImages = 0;
+    let hasImages = false;
+
+    landmarks.forEach(landmark => {
+      const type = landmark.eventType || landmark.category || 'UNKNOWN';
+      typeBreakdown[type] = (typeBreakdown[type] || 0) + 1;
+      
+      if (landmark.hasImages && landmark.images) {
+        hasImages = true;
+        totalImages += landmark.images.length;
+      }
+    });
+
+    return {
+      totalCount: landmarks.length,
+      typeBreakdown,
+      hasImages,
+      totalImages
+    };
+  }
+
+  /**
+   * Filter landmarks by type
+   */
+  static filterLandmarksByType(landmarks: any[], types: string[]): any[] {
+    return landmarks.filter(landmark => {
+      const landmarkType = landmark.eventType || landmark.category;
+      return types.includes(landmarkType);
+    });
+  }
+
+  /**
+   * Get closest landmark to a position (for debugging/analysis)
+   */
+  static getClosestLandmark(
+    physicalSurveyData: any[],
+    targetPosition: { lat: number; lng: number }
+  ): { landmark: any; distance: number } | null {
+    let closest: { landmark: any; distance: number } | null = null;
+    
+    physicalSurveyData.forEach(landmark => {
+      const landmarkTypes = ['LANDMARK', 'FIBERTURN', 'JOINTCHAMBER', 'KILOMETERSTONE', 'ROUTEINDICATOR'];
+      if (!landmarkTypes.includes(landmark.eventType || landmark.category)) {
+        return;
+      }
+      
+      const distance = this.calculateDistance(
+        targetPosition.lat,
+        targetPosition.lng,
+        landmark.coordinates.lat,
+        landmark.coordinates.lng
+      );
+      
+      if (!closest || distance < closest.distance) {
+        closest = { landmark, distance };
+      }
+    });
+    
+    return closest;
+  }
+
+  // ==============================================
+  // ENHANCED SEGMENT SELECTION UTILITIES
+  // ==============================================
 
   /**
    * Enhanced segment selection utilities
@@ -365,260 +565,191 @@ export class VideoSurveyService {
   }
 
   /**
-   * Builds GPS track points from LIVELOCATION and VIDEORECORD events
+   * Simplified track point extraction matching video playback page approach
    */
   private static buildTrackPoints(rawPhysicalSurveyData: any): TrackPoint[] {
-    
     if (!rawPhysicalSurveyData?.data) {
-      console.warn('No data found in rawPhysical');
       return [];
     }
     
-    const points: TrackPoint[] = [];
+    // Group all data by survey ID first (like video playbook page)
+    const surveyGroups: Record<string, any[]> = {};
     
-    Object.entries(rawPhysicalSurveyData.data).forEach(([blockId, rows]) => {
+    Object.entries(rawPhysicalSurveyData.data).forEach(([blockId, points]) => {
+      if (!Array.isArray(points)) return;
       
-      if (!Array.isArray(rows)) {
-        console.warn(`Block ${blockId} data is not an array:`, rows);
-        return;
-      }
-      
-      rows.forEach((r: any, index: number) => {
-        // Process LIVELOCATION points (main GPS track)
-        if (r.event_type === 'LIVELOCATION') {
-          const point = this.processLiveLocationPoint(r, blockId, index);
-          if (point) {
-            points.push(point);
+      points.forEach(point => {
+        if (point.survey_id) {
+          if (!surveyGroups[point.survey_id]) {
+            surveyGroups[point.survey_id] = [];
           }
-        }
-        
-        // Process VIDEORECORD start/end points
-        if (r.event_type === 'VIDEORECORD' && r.videoDetails) {
-          const videoPoints = this.processVideoRecordPoints(r, blockId, index);
-          points.push(...videoPoints);
+          surveyGroups[point.survey_id].push(point);
         }
       });
     });
     
+    // Process each survey group separately
+    const allTrackPoints: TrackPoint[] = [];
     
-    // Sort by timestamp and remove duplicates
-    return this.deduplicateTrackPoints(points);
-  }
-
-  /**
-   * Process a single LIVELOCATION event into a TrackPoint
-   */
-  private static processLiveLocationPoint(record: any, blockId: string, index: number): TrackPoint | null {
-    const lat = Number(record.latitude);
-    const lng = Number(record.longitude);
-    const ts = this.parseTimestamp(record.createdTime) || this.parseTimestamp(record.created_at);
-    
-    if (this.isValidCoordinate(lat, lng) && isFinite(ts)) {
-      return { lat, lng, timestamp: ts };
-    } else {
-      console.warn(`Invalid LIVELOCATION at ${blockId}-${index}:`, { lat, lng, ts });
-      return null;
-    }
-  }
-
-  /**
-   * Process VIDEORECORD events to extract start/end points
-   */
-  private static processVideoRecordPoints(record: any, blockId: string, index: number): TrackPoint[] {
-    const points: TrackPoint[] = [];
-    
-    try {
-      const videoDetails = JSON.parse(record.videoDetails);
+    Object.entries(surveyGroups).forEach(([surveyId, surveyPoints]) => {
+      const surveyTrackPoints = surveyPoints
+        .filter(item => {
+          if (item.event_type === 'LIVELOCATION') return true;
+          if (item.event_type === 'VIDEORECORD' && item.surveyUploaded === 'true') {
+            try {
+              const videoDetails = JSON.parse(item.videoDetails);
+              return videoDetails?.startLatitude && videoDetails?.startLongitude &&
+                     videoDetails?.endLatitude && videoDetails?.endLongitude;
+            } catch (error) {
+              return false;
+            }
+          }
+          return false;
+        })
+        .flatMap(item => {
+          if (item.event_type === 'LIVELOCATION') {
+            return [{
+              lat: parseFloat(item.latitude),
+              lng: parseFloat(item.longitude),
+              timestamp: this.getEventTime(item),
+              surveyId: item.survey_id // Add survey ID to track points
+            }];
+          } else if (item.event_type === 'VIDEORECORD') {
+            try {
+              const videoDetails = JSON.parse(item.videoDetails);
+              return [
+                {
+                  lat: videoDetails.startLatitude,
+                  lng: videoDetails.startLongitude,
+                  timestamp: videoDetails.startTimeStamp,
+                  surveyId: item.survey_id
+                },
+                {
+                  lat: videoDetails.endLatitude,
+                  lng: videoDetails.endLongitude,
+                  timestamp: videoDetails.endTimeStamp,
+                  surveyId: item.survey_id
+                }
+              ];
+            } catch (error) {
+              return [];
+            }
+          }
+          return [];
+        })
+        .sort((a, b) => a.timestamp - b.timestamp); // Sort within each survey
       
-      if (videoDetails?.videoUrl?.trim()) {
-        const startPoint = this.extractVideoPoint(
-          videoDetails.startLatitude,
-          videoDetails.startLongitude,
-          videoDetails.startTimeStamp,
-          'start'
-        );
-        
-        const endPoint = this.extractVideoPoint(
-          videoDetails.endLatitude,
-          videoDetails.endLongitude,
-          videoDetails.endTimeStamp,
-          'end'
-        );
-        
-        if (startPoint) {
-          points.push(startPoint);
-        }
-        
-        if (endPoint) {
-          points.push(endPoint);
-        }
-      }
-    } catch (error) {
-      console.warn('Invalid videoDetails JSON:', record.videoDetails, error);
-    }
+      allTrackPoints.push(...surveyTrackPoints);
+    });
     
-    return points;
+    return allTrackPoints;
   }
 
   /**
-   * Extract and validate a single video point (start or end)
+   * Get event time (matching video playback page logic)
    */
-  private static extractVideoPoint(lat: any, lng: any, timestamp: any, type: string): TrackPoint | null {
-    const latitude = Number(lat);
-    const longitude = Number(lng);
-    const ts = this.parseTimestamp(timestamp);
-    
-    if (this.isValidCoordinate(latitude, longitude) && isFinite(ts)) {
-      return { lat: latitude, lng: longitude, timestamp: ts };
-    }
-    
-    console.warn(`Invalid video ${type} point:`, { lat, lng, timestamp });
-    return null;
-  }
-
-  /**
-   * Remove duplicate track points and sort by timestamp
-   */
-  private static deduplicateTrackPoints(points: TrackPoint[]): TrackPoint[] {
-    // Sort by timestamp
-    points.sort((a, b) => a.timestamp - b.timestamp);
-    
-    // Remove duplicates by timestamp
-    const deduplicated: TrackPoint[] = [];
-    let lastTimestamp = -Infinity;
-    
-    for (const point of points) {
-      if (point.timestamp !== lastTimestamp) {
-        deduplicated.push(point);
-        lastTimestamp = point.timestamp;
+  private static getEventTime(item: any, isEnd = false): number {
+    if (item.event_type === "VIDEORECORD") {
+      try {
+        const videoDetails = JSON.parse(item.videoDetails);
+        return isEnd
+          ? videoDetails?.endTimeStamp ?? 0
+          : videoDetails?.startTimeStamp ?? 0;
+      } catch (error) {
+        return 0;
       }
     }
-    
-    return deduplicated;
+    return new Date(item.createdTime || item.created_at).getTime();
   }
 
   /**
-   * Build video clips from VIDEORECORD events
+   * Simplified video clip extraction matching video playback page
    */
   private static buildVideoClips(rawPhysicalSurveyData: any): VideoClip[] {
+    if (!rawPhysicalSurveyData?.data) {
+      return [];
+    }
+    
     const clips: VideoClip[] = [];
     
-    if (!rawPhysicalSurveyData?.data) {
-      return clips;
-    }
-
-    Object.values(rawPhysicalSurveyData.data).forEach((rows: any) => {
-      if (!Array.isArray(rows)) return;
+    Object.entries(rawPhysicalSurveyData.data).forEach(([blockId, points]) => {
+      if (!Array.isArray(points)) return;
       
-      rows.forEach((record: any) => {
-        if (record.event_type === 'VIDEORECORD' && record.videoDetails) {
-          const clip = this.processVideoRecord(record);
-          if (clip) {
-            clips.push(clip);
+      // Filter video records (same logic as video playback page)
+      const videos = points.filter(item =>
+        item.event_type === "VIDEORECORD" && 
+        item.surveyUploaded === 'true' &&
+        item.videoDetails &&
+        item.videoDetails.trim() !== ""
+      );
+      
+      videos.forEach(video => {
+        try {
+          const videoDetails = JSON.parse(video.videoDetails);
+          
+          // Check for valid video URL (same as video playback page)
+          const videoUrl = videoDetails?.videoUrl?.trim().replace(/(^"|"$)/g, '');
+          if (!videoUrl || videoUrl === "") {
+            return;
           }
+          
+          clips.push({
+            id: `${video.survey_id}_${videoDetails.startTimeStamp}`,
+            videoUrl: resolveMediaUrl(videoUrl),
+            startTimeStamp: videoDetails.startTimeStamp,
+            endTimeStamp: videoDetails.endTimeStamp,
+            meta: {
+              surveyId: video.survey_id,
+              blockId: blockId,
+              area_type: video.area_type,
+              side_type: video.side_type,
+              route_details: video.route_details,
+              originalVideoDetails: videoDetails
+            }
+          });
+        } catch (error) {
+          console.warn(`Failed to parse video details for survey ${video.survey_id}:`, error);
         }
       });
     });
-
+    
     // Sort clips by start timestamp
-    clips.sort((a, b) => a.startTimeStamp - b.startTimeStamp);
-    
-    // Validate clip sequence
-    this.validateClipSequence(clips);
-    
-    return clips;
+    return clips.sort((a, b) => a.startTimeStamp - b.startTimeStamp);
   }
 
   /**
-   * Process a single VIDEORECORD into a VideoClip
+   * Position interpolation matching video playbook page getPositionAtTime function
    */
-  private static processVideoRecord(record: any): VideoClip | null {
-    try {
-      const videoDetails = JSON.parse(record.videoDetails);
-      
-      // Validate video details structure
-      if (!this.isValidVideoDetails(videoDetails)) {
-        return null;
-      }
-      
-      const start = this.parseTimestamp(videoDetails.startTimeStamp);
-      const end = this.parseTimestamp(videoDetails.endTimeStamp);
-      
-      // Validate timestamps
-      if (!isFinite(start) || !isFinite(end)) {
-        console.warn('Invalid timestamps in videoDetails:', { start, end, videoDetails });
-        return null;
-      }
-      
-      if (start >= end) {
-        console.warn('Start timestamp must be before end timestamp:', { start, end });
-        return null;
-      }
-      
-      // Build full URL
-      const url = resolveMediaUrl(videoDetails.videoUrl);
-      if (!url) {
-        console.warn('Failed to resolve video URL:', videoDetails.videoUrl);
-        return null;
-      }
-      
-      return {
-        id: `${record.survey_id}_${start}`,
-        videoUrl: url,
-        startTimeStamp: start,
-        endTimeStamp: end,
-        meta: {
-          surveyId: record.survey_id,
-          area_type: record.area_type,
-          side_type: record.side_type,
-          route_details: record.route_details,
-          originalVideoDetails: videoDetails
-        }
-      };
-      
-    } catch (error) {
-      console.error('Error parsing videoDetails for VIDEORECORD:', {
-        surveyId: record.survey_id,
-        videoDetails: record.videoDetails,
-        error
-      });
-      return null;
-    }
-  }
-
-  /**
-   * Validate video details object structure
-   */
-  private static isValidVideoDetails(videoDetails: any): boolean {
-    if (!videoDetails || typeof videoDetails !== 'object') {
-      console.warn('Invalid videoDetails object:', videoDetails);
-      return false;
+  public static interpolatePosition(trackPoints: TrackPoint[], timestamp: number): { lat: number; lng: number } | null {
+    if (!trackPoints.length) return null;
+    
+    // If timestamp is before first point
+    if (timestamp <= trackPoints[0].timestamp) {
+      return { lat: trackPoints[0].lat, lng: trackPoints[0].lng };
     }
     
-    if (!videoDetails.videoUrl || typeof videoDetails.videoUrl !== 'string' || videoDetails.videoUrl.trim() === '') {
-      console.warn('Missing or empty videoUrl in videoDetails:', videoDetails);
-      return false;
+    // If timestamp is after last point
+    if (timestamp >= trackPoints[trackPoints.length - 1].timestamp) {
+      const lastPoint = trackPoints[trackPoints.length - 1];
+      return { lat: lastPoint.lat, lng: lastPoint.lng };
     }
     
-    return true;
-  }
-
-  /**
-   * Validate clip sequence for overlaps
-   */
-  private static validateClipSequence(clips: VideoClip[]): void {
-    for (let i = 1; i < clips.length; i++) {
-      const prev = clips[i - 1];
-      const curr = clips[i];
+    // Find two points that timestamp falls between
+    for (let i = 0; i < trackPoints.length - 1; i++) {
+      const current = trackPoints[i];
+      const next = trackPoints[i + 1];
       
-      if (curr.startTimeStamp < prev.endTimeStamp) {
-        console.warn('Overlapping video clips detected:', {
-          prevClip: prev.id,
-          currClip: curr.id,
-          overlap: prev.endTimeStamp - curr.startTimeStamp
-        });
+      if (timestamp >= current.timestamp && timestamp <= next.timestamp) {
+        // Calculate position using linear interpolation (exact same as video page)
+        const ratio = (timestamp - current.timestamp) / (next.timestamp - current.timestamp);
+        return {
+          lat: current.lat + (next.lat - current.lat) * ratio,
+          lng: current.lng + (next.lng - current.lng) * ratio
+        };
       }
     }
+    
+    return null;
   }
 
   /**
@@ -703,44 +834,6 @@ export class VideoSurveyService {
       lng >= -180 && lng <= 180 &&
       lat !== 0 && lng !== 0 // Exclude null island
     );
-  }
-
-  /**
-   * Interpolate position along track at specific timestamp
-   */
-  public static interpolatePosition(track: TrackPoint[], timestamp: number): { lat: number; lng: number } | null {
-    if (!track.length) return null;
-    
-    // Handle edge cases
-    if (timestamp <= track[0].timestamp) {
-      return { lat: track[0].lat, lng: track[0].lng };
-    }
-    if (timestamp >= track[track.length - 1].timestamp) {
-      const last = track[track.length - 1];
-      return { lat: last.lat, lng: last.lng };
-    }
-    
-    // Binary search for position
-    let lo = 0, hi = track.length - 1;
-    while (lo + 1 < hi) {
-      const mid = (lo + hi) >> 1;
-      if (track[mid].timestamp <= timestamp) {
-        lo = mid;
-      } else {
-        hi = mid;
-      }
-    }
-    
-    const pointA = track[lo];
-    const pointB = track[hi];
-    const alpha = (timestamp - pointA.timestamp) / (pointB.timestamp - pointA.timestamp);
-    
-    // Simple linear interpolation for coordinates
-    // For more accuracy over long distances, consider great circle interpolation
-    return {
-      lat: pointA.lat + (pointB.lat - pointA.lat) * alpha,
-      lng: pointA.lng + (pointB.lng - pointA.lng) * alpha
-    };
   }
 
   /**
@@ -892,7 +985,20 @@ export class VideoSurveyService {
   }
 
   /**
-   * Enhanced logging helper for debugging
+   * Enhanced logging helper for debugging landmark detection
+   */
+  public static logLandmarkDetection(
+    currentTime: number,
+    currentPosition: { lat: number; lng: number } | null,
+    landmarks: any[],
+    prefix: string = 'Landmark Detection'
+  ): void {
+    console.group(`${prefix} - ${new Date(currentTime).toLocaleTimeString()}`); 
+    console.groupEnd();
+  }
+
+  /**
+   * Enhanced logging helper for debugging selection info
    */
   public static logSelectionInfo(
     selection: SegmentSelection, 
@@ -900,15 +1006,17 @@ export class VideoSurveyService {
     prefix: string = 'Selection'
   ): void {
     if (!selection.start && !selection.end) {
+      null;
       return;
     }
 
     const stats = this.getSelectionStatistics(selection, videoSurveyData.trackPoints, videoSurveyData.videoClips);
     const validation = this.validateSegmentSelection(selection, videoSurveyData.videoClips);
-    
-    console.group(`${prefix} Info`);
+        
     if (validation.issues.length > 0) {
+      console.warn('Selection Issues:', validation.issues);
     }
+    
     console.groupEnd();
   }
 }

@@ -95,8 +95,6 @@ function gpEdit() {
     const fetchStates = async () => {
       try {
         const response = await axios.get(`${BASEURL}/states`);
-        console.log(response.data.data);
-        console.log("states",response.data.data.map((state: any) => state.state_name));
         setStates(response.data.data.map((state: any) => state.state_name));
         setLoading(false);
       } catch (error) {
@@ -111,7 +109,6 @@ function gpEdit() {
     const fetchDistricts = async () => {
       try {
         const response = await axios.get(`${BASEURL}/districtsdata?state_code=1`);
-        console.log("districts",response.data.map((district: any) => district.district_name));
         setDistricts(response.data.map((district: any) => district.district_name));
         setLoading(false);
       } catch (error) {
@@ -126,8 +123,6 @@ function gpEdit() {
     const fetchBlocks = async () => {
       try {
         const response = await axios.get(`${BASEURL}/blocksdata?district_code=38`);
-        console.log(response.data);
-        console.log("Blocks",response.data.map((block: any) => block.block_name));
         setBlocks(response.data.map((block: any) => block.block_name));
         setLoading(false);
       } catch (error) {

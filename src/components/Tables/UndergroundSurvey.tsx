@@ -47,6 +47,7 @@ interface UndergroundSurvey {
   endLocation: string,
   cableType: string,
   routeType: string
+  version: string
 }
 
 interface ApiResponse {
@@ -114,6 +115,14 @@ const UndergroundSurvey: React.FC = () => {
   const [filtersReady, setFiltersReady] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedActivity, setSelectedActivity] = useState<UndergroundSurvey | null>(null);
+
+  const [tempSelectedState, setTempSelectedState] = useState<string | null>(null);
+  const [tempSelectedDistrict, setTempSelectedDistrict] = useState<string | null>(null);
+  const [tempSelectedBlock, setTempSelectedBlock] = useState<string | null>(null);
+  const [tempSelectedStatus, setTempSelectedStatus] = useState<number | null>(null);
+  const [tempFromDate, setTempFromDate] = useState<string>('');
+  const [tempToDate, setTempToDate] = useState<string>('');
+  const [tempGlobalSearch, setTempGlobalSearch] = useState<string>('');
 
   const navigate = useNavigate();
 
@@ -198,25 +207,36 @@ const UndergroundSurvey: React.FC = () => {
   };
 
   useEffect(() => {
-    const state_id = searchParams.get('state_id') || null;
-    const district_id = searchParams.get('district_id') || null;
-    const block_id = searchParams.get('block_id') || null;
-    const pageParam = searchParams.get('page') || '1';
-    const status = searchParams.get('status') || null;
-    const from_date = searchParams.get('from_date') || '';
-    const to_date = searchParams.get('to_date') || "";
-    const search = searchParams.get('search') || "";
+  const state_id = searchParams.get('state_id') || null;
+  const district_id = searchParams.get('district_id') || null;
+  const block_id = searchParams.get('block_id') || null;
+  const pageParam = searchParams.get('page') || '1';
+  const status = searchParams.get('status') || null;
+  const from_date = searchParams.get('from_date') || '';
+  const to_date = searchParams.get('to_date') || "";
+  const search = searchParams.get('search') || "";
 
-    setSelectedState(state_id);
-    setSelectedDistrict(district_id);
-    setSelectedBlock(block_id);
-    setSelectedStatus(status !== null ? Number(status) : null);
-    setFromDate(from_date);
-    setToDate(to_date);
-    setGlobalSearch(search)
-    setPage(Number(pageParam));
-    setFiltersReady(true);
-  }, []);
+  setSelectedState(state_id);
+  setSelectedDistrict(district_id);
+  setSelectedBlock(block_id);
+  setSelectedStatus(status !== null ? Number(status) : null);
+  setFromDate(from_date);
+  setToDate(to_date);
+  setGlobalSearch(search);
+  
+  // Set temp values same as actual values
+  setTempSelectedState(state_id);
+  setTempSelectedDistrict(district_id);
+  setTempSelectedBlock(block_id);
+  setTempSelectedStatus(status !== null ? Number(status) : null);
+  setTempFromDate(from_date);
+  setTempToDate(to_date);
+  setTempGlobalSearch(search);
+  
+  setPage(Number(pageParam));
+  setFiltersReady(true);
+}, []);
+
 
   useEffect(() => {
 
@@ -343,27 +363,25 @@ const handleEditSave = async () => {
 
   // Fetch districts when state is selected
   useEffect(() => {
-    if (selectedState) {
-      axios.get(`${BASEURL}/districtsdata?state_code=${selectedState}`)
-        .then((res) => setDistricts(res.data))
-        .catch((err) => console.error(err));
-    } else {
-      setDistricts([]);
-      // setSelectedDistrict(null);
-    }
-  }, [selectedState]);
+  if (tempSelectedState) {
+    axios.get(`${BASEURL}/districtsdata?state_code=${tempSelectedState}`)
+      .then((res) => setDistricts(res.data))
+      .catch((err) => console.error(err));
+  } else {
+    setDistricts([]);
+  }
+}, [tempSelectedState]);
 
   // Fetch blocks when district is selected
   useEffect(() => {
-    if (selectedDistrict) {
-      axios.get(`${BASEURL}/blocksdata?district_code=${selectedDistrict}`)
-        .then((res) => setBlocks(res.data))
-        .catch((err) => console.error(err));
-    } else {
-      setBlocks([]);
-      // setSelectedBlock(null);
-    }
-  }, [selectedDistrict]);
+  if (tempSelectedDistrict) {
+    axios.get(`${BASEURL}/blocksdata?district_code=${tempSelectedDistrict}`)
+      .then((res) => setBlocks(res.data))
+      .catch((err) => console.error(err));
+  } else {
+    setBlocks([]);
+  }
+}, [tempSelectedDistrict]);
 
  useEffect(() => {
   if (editingRow) {
@@ -465,20 +483,28 @@ const handleEditSave = async () => {
       { accessorKey: "start_location_name", header: " Start GP Name" },
       { accessorKey: "end_location_name", header: "End GP Name" },
       {
-        accessorKey: "routeType",
-        header: "Route Type",
-        cell: ({ row }) => {
-          const type = row.original.routeType?.toUpperCase() || '';
-          return (
-            <span
-              className={type === 'PROPOSED' ? 'text-red-600' : 'text-green-600'}
-            >
-              {type}
-            </span>
-          );
-        },
-
-      },
+  accessorKey: "routeType",
+  header: "Route Type",
+  cell: ({ row }) => {
+    const type = row.original.routeType?.toUpperCase() || '';
+    
+    let colorClass = 'text-gray-600'; // default color
+    
+    if (type === 'PROPOSED') {
+      colorClass = 'text-red-600';
+    } else if (type === 'INCREMENTAL' || type === 'EXISTING') {
+      colorClass = 'text-green-600';
+    } else if (type === 'RECTIFICATION') {
+      colorClass = 'text-blue-700';
+    }
+    
+    return (
+      <span className={colorClass}>
+        {type}
+      </span>
+    );
+  },
+},
       { accessorKey: "cableType", header: "Cable Type" },
       {
         accessorKey: "fullname",
@@ -494,6 +520,13 @@ const handleEditSave = async () => {
             </div>
           </div>
 
+        ),
+      },
+      {
+        accessorKey: "version",
+        header: "Version",
+        cell: ({ row }) => (
+          <span className="text-sm text-gray-700">{row.original.version || 'N/A'}</span>
         ),
       },
       {
@@ -999,6 +1032,7 @@ const handleEditSave = async () => {
         "Block Name": data.block_name,
         "Surviour Name": data.fullname,
         "Surviour Contact Number": data.contact_no,
+        "Version": data.version || 'N/A',
         "Survey ID": data.survey_id,
         "Company ID": data.company_id,
         "User ID": data.user_id,
@@ -1012,7 +1046,7 @@ const handleEditSave = async () => {
         "Is Active": data.is_active,
         "Created At": data.created_at,
         "Updated At": data.updated_at,
-        "Status": statusMap[data.is_active]
+        "Status": statusMap[data.is_active],
       }));
 
       // Create workbook and worksheet
@@ -1042,23 +1076,55 @@ const handleEditSave = async () => {
     (opt) => opt.value === selectedState
   ) || null;
 
+  const handleApplyFilters = () => {
+  setSelectedState(tempSelectedState);
+  setSelectedDistrict(tempSelectedDistrict);
+  setSelectedBlock(tempSelectedBlock);
+  setSelectedStatus(tempSelectedStatus);
+  setFromDate(tempFromDate);
+  setToDate(tempToDate);
+  setGlobalSearch(tempGlobalSearch);
+  setPage(1);
+  
+  handleFilterChange(
+    tempSelectedState,
+    tempSelectedDistrict,
+    tempSelectedBlock,
+    tempSelectedStatus,
+    tempFromDate,
+    tempToDate,
+    tempGlobalSearch,
+    1
+  );
+};
+
   const handleClearFilters = () => {
-    setSelectedState(null);
-    setSelectedDistrict(null);
-    setSelectedBlock(null);
-    setSelectedStatus(null);
-    setGlobalSearch('');
-    setFromDate('');
-    setToDate('');
-    setPage(1);
-    setSelectedRowsMap({})
-    setBlockData([]);
-    const currentTab = searchParams.get('tab') || 'defaultTab';
-    setSearchParams({
-      tab: currentTab,
-      page: '1',
-    });
-  };
+  setSelectedState(null);
+  setSelectedDistrict(null);
+  setSelectedBlock(null);
+  setSelectedStatus(null);
+  setGlobalSearch('');
+  setFromDate('');
+  setToDate('');
+  
+  // Clear temp values as well
+  setTempSelectedState(null);
+  setTempSelectedDistrict(null);
+  setTempSelectedBlock(null);
+  setTempSelectedStatus(null);
+  setTempGlobalSearch('');
+  setTempFromDate('');
+  setTempToDate('');
+  
+  setPage(1);
+  setSelectedRowsMap({});
+  setBlockData([]);
+  const currentTab = searchParams.get('tab') || 'defaultTab';
+  setSearchParams({
+    tab: currentTab,
+    page: '1',
+  });
+};
 
   const handleFilterChange = (newState: string | null, newDistrict: string | null, newBlock: string | null, status: number | null, from_date: string | null, to_date: string | null, search: string | null, newPage = 1,) => {
     const currentTab = searchParams.get('tab') || 'defaultTab';
@@ -1096,11 +1162,11 @@ const handleEditSave = async () => {
               {/* State Filter */}
               <div className="relative">
                 <select
-                  value={selectedState || ''}
+                  value={tempSelectedState || ''}
                   onChange={(e) => {
-                    setSelectedState(e.target.value || null);
-                    handleFilterChange(e.target.value, selectedDistrict, selectedBlock, selectedStatus, fromdate, todate, globalsearch, 1)
-                    setPage(1);
+                    setTempSelectedState(e.target.value || null);
+                    setTempSelectedDistrict(null); // Reset dependent filters
+                    setTempSelectedBlock(null);
                   }}
                   className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
@@ -1112,19 +1178,17 @@ const handleEditSave = async () => {
                   ))}
                 </select>
                 <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
-
               </div>
 
               {/* District Filter */}
               <div className="relative">
                 <select
-                  value={selectedDistrict || ''}
+                  value={tempSelectedDistrict || ''}
                   onChange={(e) => {
-                    handleFilterChange(selectedState, e.target.value, selectedBlock, selectedStatus, fromdate, todate, globalsearch, 1)
-                    setSelectedDistrict(e.target.value || null);
-                    setPage(1);
+                    setTempSelectedDistrict(e.target.value || null);
+                    setTempSelectedBlock(null); // Reset dependent filter
                   }}
-                  disabled={!selectedState}
+                  disabled={!tempSelectedState}
                   className="disabled:opacity-50 disabled:cursor-not-allowed w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">All Districts</option>
@@ -1135,19 +1199,16 @@ const handleEditSave = async () => {
                   ))}
                 </select>
                 <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
-
               </div>
 
               {/* Block Filter */}
               <div className="relative">
                 <select
-                  value={selectedBlock || ''}
+                  value={tempSelectedBlock || ''}
                   onChange={(e) => {
-                    handleFilterChange(selectedState, selectedDistrict, e.target.value, selectedStatus, fromdate, todate, globalsearch, 1)
-                    setSelectedBlock(e.target.value || null);
-                    setPage(1);
+                    setTempSelectedBlock(e.target.value || null);
                   }}
-                  disabled={!selectedDistrict}
+                  disabled={!tempSelectedDistrict}
                   className="disabled:opacity-50 disabled:cursor-not-allowed w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">All Blocks</option>
@@ -1158,17 +1219,14 @@ const handleEditSave = async () => {
                   ))}
                 </select>
                 <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
-
               </div>
 
               {/* Status Filter */}
               <div className="relative">
                 <select
-                  value={selectedStatus !== null ? selectedStatus : ''}
+                  value={tempSelectedStatus !== null ? tempSelectedStatus : ''}
                   onChange={(e) => {
-                    handleFilterChange(selectedState, selectedDistrict, selectedBlock, Number(e.target.value), fromdate, todate, globalsearch, 1)
-                    setSelectedStatus(e.target.value !== '' ? Number(e.target.value) : null);
-                    setPage(1);
+                    setTempSelectedStatus(e.target.value !== '' ? Number(e.target.value) : null);
                   }}
                   className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
@@ -1180,32 +1238,27 @@ const handleEditSave = async () => {
                   ))}
                 </select>
                 <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
-
               </div>
-
 
               {/* Date Filters */}
               <div className="relative">
                 <input
                   type="date"
-                  value={fromdate}
+                  value={tempFromDate}
                   onChange={(e) => {
-                    handleFilterChange(selectedState, selectedDistrict, selectedBlock, selectedStatus, e.target.value, todate, globalsearch, 1)
-                    setFromDate(e.target.value);
-                    setPage(1);
+                    setTempFromDate(e.target.value);
                   }}
-                  className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="From Date"
+                  className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="From Date"
                 />
               </div>
 
               <div className="relative">
                 <input
                   type="date"
-                  value={todate}
+                  value={tempToDate}
                   onChange={(e) => {
-                    handleFilterChange(selectedState, selectedDistrict, selectedBlock, selectedStatus, fromdate, e.target.value, globalsearch, 1)
-                    setToDate(e.target.value);
-                    setPage(1);
+                    setTempToDate(e.target.value);
                   }}
                   className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="To Date"
@@ -1219,27 +1272,37 @@ const handleEditSave = async () => {
                 <input
                   type="text"
                   placeholder="Search..."
-                  value={globalsearch}
+                  value={tempGlobalSearch}
                   onChange={(e) => {
-                    handleFilterChange(selectedState, selectedDistrict, selectedBlock, selectedStatus, fromdate, todate, e.target.value, 1)
-                    setGlobalSearch(e.target.value);
-                    setPage(1);
+                    setTempGlobalSearch(e.target.value);
                   }}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
               </div>
+
+              {/* Apply Filters Button */}
+              <button
+                onClick={handleApplyFilters}
+                className="inline-flex items-center px-4 py-2 border border-blue-600 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <Search className="w-4 h-4 mr-2" />
+                <span>Apply Filters</span>
+              </button>
 
               {/* Clear Filters Button */}
               <button
                 onClick={handleClearFilters}
-                className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"          >
+                className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
                 <RotateCcw className="w-4 h-4 mr-2" />
                 <span>Reset Filters</span>
               </button>
+              
               {DownloadOnly && (
                 <button
                   onClick={exportExcel}
-                  className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-green-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500"  >
+                  className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-green-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500"
+                >
                   <TableCellsMerge className="w-4 h-4 mr-2" />
                   Excel
                 </button>
@@ -1351,7 +1414,7 @@ const handleEditSave = async () => {
           {/* Table */}
 
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div className="overflow-x-hidden"> {/* prevent horizontal scroll */}
+            <div className="overflow-x-auto"> {/* prevent horizontal scroll */}
               <table className="w-full table-auto text-sm text-left text-gray-500">
                 <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
                   {table.getHeaderGroups().map((headerGroup) => (

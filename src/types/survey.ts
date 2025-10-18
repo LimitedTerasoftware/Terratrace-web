@@ -241,6 +241,9 @@ export interface Activity {
   blowingPhotos:string;
   blowingLatLong:string;
   videoDetails:VideoDetails | null;
+  pole_type: string | null;
+  existing_pole: string | null;
+  new_pole: string | null;
  }
 
 export interface ApiResponseMachine {
@@ -294,6 +297,7 @@ export interface UGConstructionSurveyData {
   end_lgd_name:string;
   user_name:string;
   user_mobile:string;
+  construction_type: string | null;
 
 }
 

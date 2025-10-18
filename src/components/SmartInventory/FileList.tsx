@@ -56,7 +56,7 @@ export const FileList: React.FC<FileListProps> = ({
     );
   }
   return (
-    <div className="space-y-2 max-h-150 overflow-y-auto">
+    <div className="space-y-2 max-h-[70vh] overflow-y-auto pb-6 pr-1">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-700">
           Saved Files ({totalFiles})

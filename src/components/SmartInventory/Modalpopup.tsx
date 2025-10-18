@@ -43,10 +43,11 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClose, onUp
     const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
     const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
     
-    // Category options
+    // Updated category options to include BSNL
     const categoryOptions = [
         { value: 'Survey', label: 'Survey' },
-        { value: 'Desktop', label: 'Desktop' }
+        { value: 'Desktop', label: 'Desktop' },
+        { value: 'BSNL_Cables', label: 'O & M' }
     ];
 
     useEffect(() => {
@@ -218,7 +219,7 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClose, onUp
 
                         {/* File Upload */}
                         <div className="flex justify-between items-center mb-2">
-                            <h3 className="font-medium text-sm">Survey File *</h3>
+                            <h3 className="font-medium text-sm">File *</h3>
                             <span className="text-xs text-gray-500">KML/KMZ</span>
                         </div>
                         <div className="relative mb-4">
@@ -304,4 +305,4 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClose, onUp
     );
 };
 
-export default FileUploadModal;
+export default FileUploadModal

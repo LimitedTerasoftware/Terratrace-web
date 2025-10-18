@@ -20,13 +20,52 @@ export interface ProcessedPhysicalSurvey {
   // Image fields
   images: SurveyImage[];
   hasImages: boolean;
+
+  startLgdName?: string;
+  endLgdName?: string;
+  routeDetails?: any;
+  routeFeasibility?: any;
+  stateName?: string;
+  districtName?: string;
+  blockName?: string;
+  createdTime?: string;
 }
 
 export interface SurveyImage {
   url: string;
-  type: 'start_photo' | 'end_photo' | 'fpoi' | 'route_indicator' | 'kmt_stone' | 'fiber_turn' | 'landmark' | 'joint_chamber' | 'road_crossing_start' | 'road_crossing_end' | 'video_thumbnail' | 'bridge' | 'culvert' | 'general';
+  type: 'start_photo' | 'end_photo' | 'fpoi' | 'route_indicator' | 'kmt_stone' | 'fiber_turn' | 'landmark' | 'joint_chamber' | 'road_crossing_start' | 'road_crossing_end' | 'video_thumbnail' | 'bridge' | 'culvert' | 'general' | 'kilometerstone' | 'fiberturn' | 'routeindicator';
   label: string;
   coordinates?: { lat: number; lng: number }; // For road crossing photos and other geotagged images
+}
+
+// Survey Infrastructure Interface (NEW)
+export interface ProcessedSurveyInfrastructure {
+  id: string;
+  name: string;
+  category: string;
+  type: 'point' | 'polyline';
+  coordinates: { lat: number; lng: number } | { lat: number; lng: number }[];
+  
+  // Survey-specific metadata
+  blockName?: string;
+  districtName?: string;
+  stateName?: string;
+  direction?: string;
+  phase?: string;
+  fiberPosition?: string;
+  roadOffset?: string;
+  
+  // Polyline-specific properties
+  segmentLength?: string;
+  startNode?: string;
+  endNode?: string;
+  numFibre?: string;
+  routeCode?: string;
+  assetType?: string;
+  ring?: string;
+  
+  // Original properties for reference
+  rawProperties?: any;
 }
 
 // Enhanced placemark categories with ALL infrastructure types from your API including PHOTO_SURVEY
@@ -64,8 +103,8 @@ export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string 
   KILOMETERSTONE: { color: '#35530E', icon: '📍' },
 
   // Cable Types
-  'Incremental Cable': { color: '#61f335', icon: '⚡⚡⚡⚡' },
-  'Proposed Cable': { color: '#ff0000', icon: '➖➖➖➖' },
+  'Incremental Cable': { color: '#00FF41', icon: '⚡' },
+  'Proposed Cable': { color: '#FF1744', icon: '➖' },
 
   // Survey Points
   SURVEYSTART: { color: '#10B981', icon: '🎯' },
@@ -77,10 +116,20 @@ export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string 
   ENDPIT: { color: '#DC2626', icon: '🔴' },
   BLOWING: { color: '#663300', icon: '💨' },
   ROUTEFEASIBILITY: { color: '#17A2B8', icon: '🛤️' },
-  AREA: { color: '#FFC107', icon: '📍' },
+  AREA: { color: '#FFC107', icon: '📐' },
   LIVELOCATION: { color: '#DC3545', icon: '📍' },
   SIDE: { color: '#6F42C1', icon: '↔️' },
   ROUTEDETAILS: { color: '#09090B', icon: '📋' },
+
+  // Junction Types (Network Infrastructure)
+  'SJC': { color: '#06B6D4', icon: '🔷' },
+  'BJC': { color: '#8B5CF6', icon: '🟣' },
+  'LC': { color: '#F59E0B', icon: '🔶' },
+  
+  // Desktop Planning Junction Categories
+  'Desktop: SJC': { color: '#22D3EE', icon: '🔷' },
+  'Desktop: BJC': { color: '#A78BFA', icon: '🟣' },
+  'Desktop: LC': { color: '#FBBF24', icon: '🔶' },
 
   // Desktop Planning Categories
   'Desktop: GP': { color: '#2DD4BF', icon: '🟢' },
@@ -92,8 +141,8 @@ export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string 
   'Desktop: Road Cross': { color: '#F59E0B', icon: '🛣️' },
   'Desktop: Railway Cross': { color: '#8B5CF6', icon: '🚂' },
   'Desktop: N Highway Cross': { color: '#EF4444', icon: '🛤️' },
-  'Desktop: Incremental Cable': { color: '#22C55E', icon: '━━━━' },
-  'Desktop: Proposed Cable': { color: '#EF4444', icon: '┅┅┅┅' },
+  'Desktop: Incremental Cable': { color: '#7CF10F', icon: '▓▓▓▓' },
+  'Desktop: Proposed Cable': { color: '#FF2400', icon: '▒▒▒▒' },
 
   // Tracking
   SURVEY_ROUTE: { color: '#FFFF99', icon: '➡️' },
@@ -103,9 +152,157 @@ export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string 
   PHOTO_SURVEY: { color: '#DCB14E', icon: '📸' },
   VIDEO_SURVEY: { color: '#7C3AED', icon: '🎬' },
 
+  // NEW: Survey Infrastructure Categories
+  // Educational
+  'School': { color: '#4F46E5', icon: '🏫' },
+  
+  // Financial
+  'Bank': { color: '#059669', icon: '🏦' },
+  'ATM': { color: '#10B981', icon: '🏧' },
+  
+  // Religious
+  'Masjid': { color: '#7C3AED', icon: '🕌' },
+  'Temple': { color: '#F59E0B', icon: '🛕' },
+  
+  // Commercial
+  'Restaurant': { color: '#EF4444', icon: '🍽️' },
+  'Hotel': { color: '#8B5CF6', icon: '🏨' },
+  'Pharmacy': { color: '#06B6D4', icon: '💊' },
+  'Petrol Pump': { color: '#F97316', icon: '⛽' },
+  
+  // Transportation
+  'Bus Stop': { color: '#84CC16', icon: '🚌' },
+  'Railway Station': { color: '#6366F1', icon: '🚂' },
+  
+  // Government/Public Services
+  'Post Office': { color: '#DC2626', icon: '📫' },
+  'Fire Station': { color: '#B91C1C', icon: '🚒' },
+  'Hospital': { color: '#EC4899', icon: '🏥' },
+  'Govt. Office': { color: '#374151', icon: '🏛️' },
+  
+  // Infrastructure Markers
+  'KM Stone': { color: '#35530E', icon: '📍' },
+  'Landmark': { color: '#FF6B6B', icon: '🏛️' },
+  
+  // Telecom Infrastructure
+  'RJIL RI': { color: '#FF1744', icon: '📡' },
+  'VITIL RI': { color: '#2196F3', icon: '📡' },
+  'AIRTEL RI': { color: '#FF5722', icon: '📡' },
+  'RI': { color: '#9C27B0', icon: '📡' },
+  'ASSET': { color: '#607D8B', icon: '🔧' },
+
   // Default
   point: { color: '#FF0000', icon: '📍' },
+
+  // Cable Infrastructure (Survey prefixed) - MOVED TO END
+  'Survey: Block to FPOI Cable': { color: '#1E3A8A', icon: '🔗' },
+
+   // EXTERNAL FILE CATEGORIES - Survey
+  'External Survey: SURVEYSTART': { color: '#10B981', icon: '🎯' },
+  'External Survey: LANDMARK': { color: '#FF6B6B', icon: '🏛️' },
+  'External Survey: FIBERTURN': { color: '#372AAC', icon: '🔄' },
+  'External Survey: Bridge': { color: '#45B7D1', icon: '🌉' },
+  'External Survey: Culvert': { color: '#96CEB4', icon: '🌊' },
+  'External Survey: ROADCROSSING': { color: '#31F527', icon: '🛣️' },
+  'External Survey: KILOMETERSTONE': { color: '#35530E', icon: '📏' },
+  'External Survey: FPOI': { color: '#F8C471', icon: '⭐' },
+  'External Survey: JOINTCHAMBER': { color: '#FE9A37', icon: '🔗' },
+  'External Survey: ROUTEINDICATOR': { color: '#42D3F2', icon: '🧭' },
+  'External Survey: ENDSURVEY': { color: '#E7180B', icon: '🎯' },
+  'External Survey: HOLDSURVEY': { color: '#a93226', icon: '⏸️' },
+  'External Survey: SURVEY_ROUTE': { color: '#FFFF99', icon: '➡️' },
+  'External Survey: PHOTO_SURVEY': { color: '#DCB14E', icon: '📸' },
+  'External Survey: VIDEO_SURVEY': { color: '#7C3AED', icon: '🎬' },
+  'External Survey: GP': { color: '#4ECDC4', icon: '🏠' },
+  'External Survey: BHQ': { color: '#BF1E00', icon: '🏢' },
+  'External Survey: Block Router': { color: '#000000', icon: '🔗' },
+  'External Survey: Incremental Cable': { color: '#06B6D4', icon: '⚡' },
+  'External Survey: Proposed Cable': { color: '#F97316', icon: '➖' },
+
+  // EXTERNAL FILE CATEGORIES - Desktop
+  'External Desktop: GP': { color: '#2DD4BF', icon: '🟢' },
+  'External Desktop: FPOI': { color: '#FBBF24', icon: '📷' },
+  'External Desktop: BHQ': { color: '#DC2626', icon: '🏛️' },
+  'External Desktop: Block Router': { color: '#1F2937', icon: '⚫' },
+  'External Desktop: Bridge': { color: '#3B82F6', icon: '🌉' },
+  'External Desktop: Culvert': { color: '#10B981', icon: '🌊' },
+  'External Desktop: Road Cross': { color: '#F59E0B', icon: '🛣️' },
+  'External Desktop: Railway Cross': { color: '#8B5CF6', icon: '🚂' },
+  'External Desktop: N Highway Cross': { color: '#EF4444', icon: '🛤️' },
+  'External Desktop: Incremental Cable': { color: '#8B5CF6', icon: '▓▓▓▓' },
+  'External Desktop: Proposed Cable': { color: '#F59E0B', icon: '▒▒▒▒' },
+  
+  // BSNL Infrastructure Assets
+  'External O & M: GP': { color: '#4ECDC4', icon: '🏠' },
+'External O & M: FPOI': { color: '#F8C471', icon: '⭐' },
+'External O & M: BHQ': { color: '#BF1E00', icon: '🏢' },
+'External O & M: BR': { color: '#0030BF', icon: '🌐' },
+'External O & M: Block Router': { color: '#000000', icon: '🔗' },
+'External O & M: LANDMARK': { color: '#FF6B6B', icon: '🏛️' },
+
+// Infrastructure - Crossings and Bridges
+'External O & M: Bridge': { color: '#45B7D1', icon: '🌉' },
+'External O & M: Culvert': { color: '#96CEB4', icon: '🌊' },
+'External O & M: ROADCROSSING': { color: '#31F527', icon: '🛣️' },
+'External O & M: Road Cross': { color: '#FFD700', icon: '🛣️' },
+'External O & M: Railway Cross': { color: '#8B5CF6', icon: '🚂' },
+'External O & M: N Highway Cross': { color: '#EF4444', icon: '🛤️' },
+
+// Network Infrastructure
+'External O & M: KILOMETERSTONE': { color: '#35530E', icon: '📍' },
+'External O & M: FIBERTURN': { color: '#372AAC', icon: '🔄' },
+'External O & M: JOINTCHAMBER': { color: '#FE9A37', icon: '🔗' },
+'External O & M: ROUTEINDICATOR': { color: '#42D3F2', icon: '🧭' },
+
+// Route Indicators (RI)
+'External O & M: RI': { color: '#9C27B0', icon: '📡' },
+'External O & M: AIRTEL RI': { color: '#FF5722', icon: '📡' },
+'External O & M: RJIL RI': { color: '#FF1744', icon: '📡' },
+'External O & M: VITIL RI': { color: '#2196F3', icon: '📡' },
+
+// Survey Points
+'External O & M: SURVEYSTART': { color: '#10B981', icon: '🎯' },
+'External O & M: ENDSURVEY': { color: '#E7180B', icon: '🎯' },
+'External O & M: HOLDSURVEY': { color: '#a93226', icon: '⏸️' },
+'External O & M: SURVEY_ROUTE': { color: '#FFFF99', icon: '➡️' },
+'External O & M: PHOTO_SURVEY': { color: '#DCB14E', icon: '📸' },
+'External O & M: VIDEO_SURVEY': { color: '#7C3AED', icon: '🎬' },
+
+// Cable Infrastructure (distinctive colors for O & M)
+'External O & M: Incremental Cable': { color: '#00FF00', icon: '⚡' }, // Bright Green
+'External O & M: Proposed Cable': { color: '#FF0000', icon: '➖' }, // Bright Red
+'External O & M: Survey: Block to FPOI Cable': { color: '#FF6B35', icon: '🔗' }, // Orange-red
+
+// Infrastructure Assets
+'External O & M: School': { color: '#4F46E5', icon: '🏫' },
+'External O & M: Bank': { color: '#059669', icon: '🏦' },
+'External O & M: ATM': { color: '#10B981', icon: '🏧' },
+'External O & M: Masjid': { color: '#7C3AED', icon: '🕌' },
+'External O & M: Temple': { color: '#F59E0B', icon: '🛕' },
+'External O & M: Restaurant': { color: '#EF4444', icon: '🍽️' },
+'External O & M: Hotel': { color: '#8B5CF6', icon: '🏨' },
+'External O & M: Pharmacy': { color: '#06B6D4', icon: '💊' },
+'External O & M: Petrol Pump': { color: '#F97316', icon: '⛽' },
+'External O & M: Bus Stop': { color: '#84CC16', icon: '🚌' },
+'External O & M: Railway Station': { color: '#6366F1', icon: '🚂' },
+'External O & M: Post Office': { color: '#DC2626', icon: '📫' },
+'External O & M: Fire Station': { color: '#B91C1C', icon: '🚒' },
+'External O & M: Hospital': { color: '#EC4899', icon: '🏥' },
+'External O & M: Govt. Office': { color: '#374151', icon: '🏛️' },
+'External O & M: KM Stone': { color: '#35530E', icon: '📍' },
+'External O & M: Landmark': { color: '#FF6B6B', icon: '🏛️' },
+'External O & M: ASSET': { color: '#FF6B35', icon: '🔧' },
+
 };
+
+export const CATEGORY_DISPLAY_LABELS: Record<string, string> = {
+  'BSNL': 'O & M',
+  'BSNL_Cables': 'O & M',
+};
+
+export function getCategoryDisplayLabel(category: string): string {
+  return CATEGORY_DISPLAY_LABELS[category] || category;
+}
 
 // Enhanced URL resolution with better error handling
 export function resolveMediaUrl(path?: string | null): string {
@@ -141,6 +338,27 @@ export function resolveMediaUrl(path?: string | null): string {
   return url;
 }
 
+// Add this helper function for image validation
+function isValidImageUrl(url: string): boolean {
+  if (!url || url.trim() === '' || url === 'null' || url === 'undefined') return false;
+  
+  // Basic URL validation
+  try {
+    const urlObj = new URL(url);
+    // Check if it's a valid protocol
+    if (!['http:', 'https:'].includes(urlObj.protocol)) return false;
+    
+    // Check if it has an image extension or contains image-related paths
+    const pathname = urlObj.pathname.toLowerCase();
+    const hasImageExtension = /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?|$)/i.test(pathname);
+    const hasImagePath = pathname.includes('/image') || pathname.includes('/photo') || pathname.includes('/media');
+    
+    return hasImageExtension || hasImagePath;
+  } catch {
+    return false;
+  }
+}
+
 // Helper function to extract all images from a survey point
 function extractSurveyImages(point: any): SurveyImage[] {
   const images: SurveyImage[] = [];
@@ -150,31 +368,51 @@ function extractSurveyImages(point: any): SurveyImage[] {
   }
  
   try {
-    // FPOI
-    if (point.fpoiUrl && point.event_type === "FPOI") {
-      images.push({
-        url: resolveMediaUrl(point.fpoiUrl),
-        type: "fpoi",
-        label: "FPOI Photo",
-        coordinates: point.latitude && point.longitude
+    // Process start_photos array
+    try {
+      const startPhotos = point.start_photos ? JSON.parse(point.start_photos) : [];
+      if (Array.isArray(startPhotos)) {
+        startPhotos.forEach((photoUrl: string, index: number) => {
+          const resolvedUrl = resolveMediaUrl(photoUrl);
+          if (isValidImageUrl(resolvedUrl)) {
+            images.push({
+              url: resolvedUrl,
+              type: "start_photo",
+              label: `Start Photo ${index + 1}`,
+              coordinates: point.latitude && point.longitude
                 ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
                 : undefined
-      });
+            });
+          }
+        });
+      }
+    } catch (error) {
+      console.warn('Error parsing start_photos:', error);
     }
- 
-    // Kilometer Stone
-    if (point.kmtStoneUrl && point.event_type === "KILOMETERSTONE") {
-      images.push({
-        url: resolveMediaUrl(point.kmtStoneUrl),
-        type: "kilometerstone",
-        label: "KM Stone Photo",
-        coordinates: point.latitude && point.longitude
+
+    // Process end_photos array
+    try {
+      const endPhotos = point.end_photos ? JSON.parse(point.end_photos) : [];
+      if (Array.isArray(endPhotos)) {
+        endPhotos.forEach((photoUrl: string, index: number) => {
+          const resolvedUrl = resolveMediaUrl(photoUrl);
+          if (isValidImageUrl(resolvedUrl)) {
+            images.push({
+              url: resolvedUrl,
+              type: "end_photo",
+              label: `End Photo ${index + 1}`,
+              coordinates: point.latitude && point.longitude
                 ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
                 : undefined
-      });
+            });
+          }
+        });
+      }
+    } catch (error) {
+      console.warn('Error parsing end_photos:', error);
     }
- 
-    // Landmark
+
+    // Process landMarkUrls
     if (point.landMarkUrls && point.event_type === "LANDMARK" && point.landMarkType !== "NONE") {
       try {
         const parsed = typeof point.landMarkUrls === "string"
@@ -183,150 +421,165 @@ function extractSurveyImages(point: any): SurveyImage[] {
  
         if (Array.isArray(parsed)) {
           parsed.forEach((url: string, index: number) => {
+            const resolvedUrl = resolveMediaUrl(url);
+            if (isValidImageUrl(resolvedUrl)) {
+              images.push({
+                url: resolvedUrl,
+                type: "landmark",
+                label: `Landmark Photo ${index + 1}`,
+                coordinates: point.latitude && point.longitude
+                  ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
+                  : undefined
+              });
+            }
+          });
+        } else if (typeof parsed === "string") {
+          const resolvedUrl = resolveMediaUrl(parsed);
+          if (isValidImageUrl(resolvedUrl)) {
             images.push({
-              url: resolveMediaUrl(url),
+              url: resolvedUrl,
               type: "landmark",
-              label: `Landmark ${index + 1}`,
+              label: "Landmark Photo",
               coordinates: point.latitude && point.longitude
                 ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
                 : undefined
             });
-          });
-        } else if (typeof parsed === "string") {
-          images.push({
-            url: resolveMediaUrl(parsed),
-            type: "landmark",
-            label: "Landmark",
-            coordinates: point.latitude && point.longitude
-              ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
-              : undefined
-          });
+          }
         }
       } catch (error) {
         console.warn("Error parsing landMarkUrls:", error);
       }
     }
- 
-    // Fiber Turn
-    if (point.fiberTurnUrl && point.event_type === "FIBERTURN") {
-      images.push({
-        url: resolveMediaUrl(point.fiberTurnUrl),
-        type: "fiberturn",
-        label: "Fiber Turn Photo",
-        coordinates: point.latitude && point.longitude
-                ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
-                : undefined
-      });
-    }
- 
-    // Survey Start
-    if (point.start_photos && Array.isArray(point.start_photos) && point.start_photos.length > 0 && point.event_type === "SURVEYSTART") {
-      point.start_photos.forEach((url: string, index: number) => {
-        images.push({
-          url: resolveMediaUrl(url),
-          type: "start_photo",
-          label: `Survey Start Photo ${index + 1}`,
-          coordinates: point.latitude && point.longitude
-                ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
-                : undefined
-        });
-      });
-    }
- 
-    // Survey End
-    if (point.end_photos && Array.isArray(point.end_photos) && point.end_photos.length > 0 && point.event_type === "ENDSURVEY") {
-      point.end_photos.forEach((url: string, index: number) => {
-        images.push({
-          url: resolveMediaUrl(url),
-          type: "end_photo",
-          label: `Survey End Photo ${index + 1}`,
-          coordinates: point.latitude && point.longitude
-                ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
-                : undefined
-        });
-      });
-    }
- 
-    // Joint Chamber
-    if (point.jointChamberUrl && point.event_type === "JOINTCHAMBER") {
-      images.push({
-        url: resolveMediaUrl(point.jointChamberUrl),
-        type: "jointchamber",
-        label: "Joint Chamber Photo",
-        coordinates: point.latitude && point.longitude
-                ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
-                : undefined
-      });
-    }
- 
-    // Road Crossing
+
+    // Process road_crossing photos
     if (point.event_type === "ROADCROSSING" && point.road_crossing) {
-      const rc = typeof point.road_crossing === "string" ? JSON.parse(point.road_crossing) : point.road_crossing;
+      try {
+        const rc = typeof point.road_crossing === "string" ? JSON.parse(point.road_crossing) : point.road_crossing;
  
-      if (rc.startPhoto && rc.startPhoto.trim() && rc.startPhoto !== "null") {
-        images.push({
-          url: resolveMediaUrl(rc.startPhoto),
-          type: "road_crossing_start",
-          label: "Road Crossing Start Photo",
-          coordinates: rc.startPhotoLat && rc.startPhotoLong
-            ? { lat: parseFloat(rc.startPhotoLat), lng: parseFloat(rc.startPhotoLong) }
-            : undefined
-        });
-      }
+        if (rc.startPhoto) {
+          const resolvedUrl = resolveMediaUrl(rc.startPhoto);
+          if (isValidImageUrl(resolvedUrl)) {
+            images.push({
+              url: resolvedUrl,
+              type: "road_crossing_start",
+              label: "Road Crossing Start Photo",
+              coordinates: rc.startPhotoLat && rc.startPhotoLong
+                ? { lat: parseFloat(rc.startPhotoLat), lng: parseFloat(rc.startPhotoLong) }
+                : point.latitude && point.longitude
+                  ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
+                  : undefined
+            });
+          }
+        }
  
-      if (rc.endPhoto && rc.endPhoto.trim() && rc.endPhoto !== "null") {
-        images.push({
-          url: resolveMediaUrl(rc.endPhoto),
-          type: "road_crossing_end",
-          label: "Road Crossing End Photo",
-          coordinates: rc.endPhotoLat && rc.endPhotoLong
-            ? { lat: parseFloat(rc.endPhotoLat), lng: parseFloat(rc.endPhotoLong) }
-            : undefined
-        });
+        if (rc.endPhoto) {
+          const resolvedUrl = resolveMediaUrl(rc.endPhoto);
+          if (isValidImageUrl(resolvedUrl)) {
+            images.push({
+              url: resolvedUrl,
+              type: "road_crossing_end",
+              label: "Road Crossing End Photo",
+              coordinates: rc.endPhotoLat && rc.endPhotoLong
+                ? { lat: parseFloat(rc.endPhotoLat), lng: parseFloat(rc.endPhotoLong) }
+                : point.latitude && point.longitude
+                  ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
+                  : undefined
+            });
+          }
+        }
+      } catch (error) {
+        console.warn("Error parsing road_crossing:", error);
       }
     }
- 
-    // Route Indicator
-    if (point.routeIndicatorUrl && point.event_type === "ROUTEINDICATOR") {
-      try {
-        const parsed = JSON.parse(point.routeIndicatorUrl);
-        if (Array.isArray(parsed)) {
-          parsed.forEach((url: string, index: number) => {
+
+    // Process individual photo URL fields
+    const photoFields = [
+      { field: 'fpoiUrl', eventType: 'FPOI', type: 'fpoi', label: 'FPOI Photo' },
+      { field: 'kmtStoneUrl', eventType: 'KILOMETERSTONE', type: 'kmt_stone', label: 'KM Stone Photo' },
+      { field: 'fiberTurnUrl', eventType: 'FIBERTURN', type: 'fiber_turn', label: 'Fiber Turn Photo' },
+      { field: 'jointChamberUrl', eventType: 'JOINTCHAMBER', type: 'joint_chamber', label: 'Joint Chamber Photo' },
+      { field: 'routeIndicatorUrl', eventType: 'ROUTEINDICATOR', type: 'route_indicator', label: 'Route Indicator Photo' }
+    ];
+
+    photoFields.forEach(({ field, eventType, type, label }) => {
+      if (point[field] && (point.event_type === eventType || !eventType)) {
+        try {
+          let urls: string[] = [];
+          
+          if (typeof point[field] === 'string') {
+            try {
+              const parsed = JSON.parse(point[field]);
+              if (Array.isArray(parsed)) {
+                urls = parsed;
+              } else if (typeof parsed === 'string') {
+                urls = [parsed];
+              } else {
+                urls = [point[field]];
+              }
+            } catch {
+              urls = [point[field]];
+            }
+          } else if (Array.isArray(point[field])) {
+            urls = point[field];
+          }
+
+          urls.forEach((url: string, index: number) => {
+            const resolvedUrl = resolveMediaUrl(url);
+            if (isValidImageUrl(resolvedUrl)) {
+              images.push({
+                url: resolvedUrl,
+                type: type as any,
+                label: urls.length > 1 ? `${label} ${index + 1}` : label,
+                coordinates: point.latitude && point.longitude
+                  ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
+                  : undefined
+              });
+            }
+          });
+        } catch (error) {
+          console.warn(`Error parsing ${field}:`, error);
+        }
+      }
+    });
+
+    // Generic fallback for any other image fields
+    const genericImageFields = [
+      'imageUrl', 'image_url', 'photoUrl', 'photo_url', 
+      'attachmentUrl', 'attachment_url', 'mediaUrl', 'media_url',
+      'surveyPhoto', 'survey_photo'
+    ];
+
+    genericImageFields.forEach(field => {
+      if (point[field]) {
+        const resolvedUrl = resolveMediaUrl(point[field]);
+        if (isValidImageUrl(resolvedUrl)) {
+          // Check if we haven't already added this URL
+          const exists = images.some(img => img.url === resolvedUrl);
+          
+          if (!exists) {
             images.push({
-              url: resolveMediaUrl(url),
-              type: "routeindicator",
-              label: `Route Indicator Photo ${index + 1}`,
-               coordinates: point.latitude && point.longitude
+              url: resolvedUrl,
+              type: "general",
+              label: `${point.event_type || 'Survey'} Photo`,
+              coordinates: point.latitude && point.longitude
                 ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
                 : undefined
             });
-          });
-        } else if (typeof parsed === "string") {
-          images.push({
-            url: resolveMediaUrl(parsed),
-            type: "routeindicator",
-            label: "Route Indicator Photo",
-             coordinates: point.latitude && point.longitude
-                ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
-                : undefined
-          });
+          }
         }
-      } catch (e) {
-        images.push({
-          url: resolveMediaUrl(point.routeIndicatorUrl),
-          type: "routeindicator",
-          label: "Route Indicator Photo",
-           coordinates: point.latitude && point.longitude
-                ? { lat: parseFloat(point.latitude), lng: parseFloat(point.longitude) }
-                : undefined
-        });
       }
-    }
+    });
+
   } catch (error) {
     console.error("Error extracting survey images:", error);
   }
  
-  return images.filter(img => img.url && img.url.trim() !== "");
+  // Remove duplicates based on URL
+  const uniqueImages = images.filter((img, index, arr) => 
+    arr.findIndex(other => other.url === img.url) === index
+  );
+  
+  return uniqueImages;
 }
 
 // Desktop Planning Interfaces
@@ -405,6 +658,237 @@ export interface ProcessedDesktopPlanning {
   rawProperties?: any;
 }
 
+// File format detection helper
+function detectFileFormat(apiData: ApiPlacemark): string {
+  const hasNullTypes = (apiData.points || []).some(p => p.type === "NULL");
+  const hasOFCPolylines = (apiData.polylines || []).some(p => p.type?.includes("OFC"));
+  const avgPropertyCount = (apiData.points || []).reduce((sum, p) => 
+    sum + (p.properties ? Object.keys(p.properties).length : 0), 0) / (apiData.points?.length || 1);
+  
+  if (hasNullTypes && avgPropertyCount > 40) return "Complex KMZ (Server Export)";
+  if (hasOFCPolylines) return "OFC Network KMZ";
+  if (avgPropertyCount < 20) return "Simple KMZ (Desktop Export)";
+  return "Standard KMZ";
+}
+
+// Enhanced polyline type normalization
+// Enhanced polyline type normalization
+function normalizePolylineType(type: string): string {
+  if (!type || type === 'NULL' || type === 'Unknown Line Type') {
+    return 'Incremental Cable';
+  }
+  
+  const upperType = type.toUpperCase();
+  
+  // Handle specific survey infrastructure types - ADD THIS
+  if (upperType.includes('BLOCK TO FPOI') || 
+      upperType.includes('BLOCK_TO_FPOI') ||
+      upperType.includes('BLOCKTOFPOI')) {
+    return 'Survey: Block to FPOI Cable';
+  }
+  
+  if (upperType.includes('PROPOSED')) return 'Proposed Cable';
+  if (upperType.includes('INCREMENTAL')) return 'Incremental Cable';
+  if (upperType.includes('RAILWAY CROSS')) return 'Railway Cross';
+  if (upperType.includes('ROAD CROSS')) return 'Road Cross';
+  if (upperType.includes('BRIDGE')) return 'Bridge';
+  if (upperType.includes('CULVERT')) return 'Culvert';
+  
+  // Handle OFC variations
+  if (upperType.includes('OFC')) {
+    return upperType.includes('PROPOSED') ? 'Proposed Cable' : 'Incremental Cable';
+  }
+  
+  // Handle standard cable types
+  if (upperType.includes('CABLE')) return 'Incremental Cable';
+  
+  return type;
+}
+
+// NEW: Detect if a Survey category file contains actual survey events or infrastructure assets
+export function detectSurveyFileType(apiData: ApiPlacemark): 'physical_survey' | 'infrastructure_assets' {
+  // Check for physical survey event types in points
+  const surveyEventTypes = ['SURVEYSTART', 'ENDSURVEY', 'LIVELOCATION', 'VIDEORECORD', 'LANDMARK', 'ROUTEINDICATOR', 'ROUTEFEASIBILITY'];
+  
+  const hasPhysicalSurveyEvents = (apiData.points || []).some(point => 
+    surveyEventTypes.includes(point.type) || 
+    (point.properties?.event_type && surveyEventTypes.includes(point.properties.event_type))
+  );
+
+  // Check for infrastructure asset types
+  const infrastructureTypes = ['School', 'Bank', 'Landmark', 'Masjid', 'Temple', 'Restaurant', 'Hotel', 'Pharmacy', 'Bus Stop', 'Petrol Pump', 'Post Office', 'Fire Station', 'Hospital', 'Govt. Office', 'ATM', 'KM Stone', 'Railway Station', 'Bridge', 'RJIL RI', 'VITIL RI', 'RI', 'AIRTEL RI', 'ASSET'];
+  
+  const hasInfrastructureAssets = (apiData.points || []).some(point => 
+    infrastructureTypes.includes(point.type) || 
+    (point.properties?.type && infrastructureTypes.includes(point.properties.type))
+  );
+
+  // Check polylines for cable infrastructure
+  const hasCableInfrastructure = (apiData.polylines || []).some(polyline => 
+    polyline.type && (
+      polyline.type.includes('CABLE') ||
+      polyline.type.includes('INCREMENTAL') ||
+      polyline.type.includes('PROPOSED')
+    )
+  );
+
+  // Decision logic: infrastructure assets take precedence if they dominate
+  if (hasInfrastructureAssets && (hasCableInfrastructure || !hasPhysicalSurveyEvents)) {
+    return 'infrastructure_assets';
+  }
+  
+  return 'physical_survey';
+}
+
+// NEW: Process Survey infrastructure files containing asset data (not actual survey events)
+export function processSurveyInfrastructureData(apiData: ApiPlacemark): {
+  placemarks: ProcessedSurveyInfrastructure[];
+  categories: PlacemarkCategory[];
+} {
+  const processedPlacemarks: ProcessedSurveyInfrastructure[] = [];
+  const categoryCounts: Record<string, number> = {};
+
+
+  // Process Points
+  (apiData.points || []).forEach((point, index) => {
+    try {
+      const lat = point.coordinates.latitude;
+      const lng = point.coordinates.longitude;
+      
+      if (!isValidCoordinate(lat, lng)) {
+        console.warn(`Invalid coordinates for survey infrastructure point ${index}:`, { lat, lng });
+        return;
+      }
+
+      // Determine category from type or properties
+      let category = point.type || 'ASSET';
+      
+      // Check if properties has more specific type info
+      if (point.properties?.type && point.properties.type !== point.type) {
+        category = point.properties.type;
+      }
+      
+      // Ensure category exists in our mapping
+      if (!PLACEMARK_CATEGORIES[category]) {
+        console.warn(`Unknown survey infrastructure category: ${category}, defaulting to ASSET`);
+        category = 'ASSET';
+      }
+
+      categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+
+      processedPlacemarks.push({
+        id: `survey-infra-point-${index}`,
+        name: point.properties?.name || point.name || `${category} ${index + 1}`,
+        category,
+        type: 'point',
+        coordinates: { lat, lng },
+        
+        // Extract survey-specific metadata
+        blockName: point.properties?.blk_name,
+        districtName: point.properties?.dt_name,
+        stateName: point.properties?.st_name,
+        direction: point.properties?.direction,
+        phase: point.properties?.phase,
+        fiberPosition: point.properties?.fiber_pos,
+        roadOffset: point.properties?.rd_offset,
+        
+        rawProperties: point.properties
+      });
+
+    } catch (error) {
+      console.error(`Error processing survey infrastructure point ${index}:`, error);
+    }
+  });
+
+  // Process Polylines
+  (apiData.polylines || []).forEach((polyline, index) => {
+    try {
+      if (!polyline.coordinates || !Array.isArray(polyline.coordinates) || polyline.coordinates.length < 2) {
+        console.warn(`Invalid polyline coordinates for survey infrastructure polyline ${index}`);
+        return;
+      }
+
+      // Convert coordinates from [lng, lat, elevation] to {lat, lng}
+      const validCoordinates = polyline.coordinates
+        .filter(coord => Array.isArray(coord) && coord.length >= 2)
+        .filter(coord => isValidCoordinate(coord[1], coord[0])) // lat, lng
+        .map(coord => ({
+          lat: coord[1], // latitude is second
+          lng: coord[0], // longitude is first
+        }));
+
+      if (validCoordinates.length < 2) {
+        console.warn(`Insufficient valid coordinates for survey infrastructure polyline ${index}`);
+        return;
+      }
+
+      // Determine category with Survey: prefix to distinguish from regular infrastructure
+      let category = normalizePolylineType(polyline.type);
+      
+      // Ensure category exists
+      if (!PLACEMARK_CATEGORIES[category]) {
+        console.warn(`Unknown survey infrastructure polyline category: ${category}`);
+        category = 'Survey: Incremental Cable'; // Default fallback
+      }
+
+      categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+
+      // Extract properties
+      const props = (polyline as any).properties || {};
+
+      processedPlacemarks.push({
+        id: `survey-infra-polyline-${index}`,
+        name: polyline.name || props.name || `${category} ${index + 1}`,
+        category,
+        type: 'polyline',
+        coordinates: validCoordinates,
+        
+        // Polyline-specific properties
+        segmentLength: props.seg_length,
+        startNode: props.start_node,
+        endNode: props.end_node,
+        numFibre: props.num_fibre,
+        routeCode: props.route_code,
+        assetType: props.asset_type,
+        ring: props.RING,
+        
+        // Survey metadata
+        blockName: props.blk_name,
+        districtName: props.dt_name,
+        stateName: props.st_name,
+        direction: props.direction,
+        phase: props.phase,
+        
+        rawProperties: props
+      });
+
+    } catch (error) {
+      console.error(`Error processing survey infrastructure polyline ${index}:`, error);
+    }
+  });
+
+  // Create categories array
+  const categories: PlacemarkCategory[] = Object.entries(PLACEMARK_CATEGORIES)
+    .map(([name, config]) => ({
+      id: name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      name,
+      count: categoryCounts[name] || 0,
+      visible: categoryCounts[name] > 0, // Auto-show categories that have data
+      color: config.color,
+      icon: config.icon,
+    }))
+    .filter(category => category.count > 0);
+
+  
+  // Log category distribution
+  const topCategories = categories
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5)
+    .map(c => `${c.name}: ${c.count}`)
+    .join(', ');
+  return { placemarks: processedPlacemarks, categories };
+}
+
 // -----------------------------
 // Enhanced API Data Processing
 // -----------------------------
@@ -415,10 +899,81 @@ export function processApiData(apiData: ApiPlacemark): {
   const processedPlacemarks: ProcessedPlacemark[] = [];
   const categoryCounts: Record<string, number> = {};
 
+  // Analysis arrays for logging
+  const typeAnalysis: Array<{
+    index: number;
+    name: string;
+    directType: any;
+    propertiesType: any;
+    extractedType: string;
+    category: string;
+    allProperties: any;
+    hasCoordinates: boolean;
+  }> = [];
+
+  const polylineAnalysis: Array<{
+    index: number;
+    name: string;
+    type: any;
+    normalizedType: string;
+    length: any;
+    distance: any;
+    allProperties: any;
+    coordinateCount: number;
+  }> = [];
+
   // Initialize category counts
   Object.keys(PLACEMARK_CATEGORIES).forEach(category => {
     categoryCounts[category] = 0;
   });
+
+  // Enhanced type extraction helper
+  const extractPointType = (point: ApiPoint): string => {
+    try {
+      // First try direct type
+      if (point.type && point.type !== "NULL") {
+        return point.type;
+      }
+      
+      // Fallback to properties
+      if (point.properties?.type && point.properties.type !== "NULL") {
+        return point.properties.type;
+      }
+      
+      // Enhanced name-based inference
+      const name = point.name || '';
+      
+      // Network equipment patterns
+      if (name.includes("OLT") || name.includes("Block Router") || name.includes("BSNL EXCHANGE")) {
+        return "Block Router";
+      }
+      
+      // GP patterns (more comprehensive)
+      if (name.includes(" GP ") || name.endsWith(" GP") || name.match(/\(\d+\)$/)) {
+        return "GP";
+      }
+      
+      // BHQ patterns
+      if (name.includes("BHQ") || name.includes("Block Headquarters") || name.includes("BLOCK OFFICE")) {
+        return "BHQ";
+      }
+      
+      // FPOI patterns
+      if (name.startsWith("FPOI") || name.includes("FPOI")) {
+        return "FPOI";
+      }
+      
+      // Infrastructure patterns
+      if (name.includes("Bridge")) return "Bridge";
+      if (name.includes("Culvert")) return "Culvert";
+      if (name.includes("Cross")) return "Road Cross";
+      
+      return 'FPOI';
+    } catch (error) {
+      console.error('Error in extractPointType:', error);
+      return 'FPOI';
+    }
+  };
 
   // Process ALL points with validation
   (apiData.points || []).forEach((point: ApiPoint, index: number) => {
@@ -427,23 +982,46 @@ export function processApiData(apiData: ApiPlacemark): {
       const lat = point.coordinates.latitude;
       const lng = point.coordinates.longitude;
       
-      if (!isValidCoordinate(lat, lng)) {
+      const hasValidCoords = isValidCoordinate(lat, lng);
+      if (!hasValidCoords) {
         console.warn(`Invalid coordinates for point ${index}:`, { lat, lng });
-        return;
+        // Still analyze the point for type information
       }
 
-      const category = getCategoryFromName(point.type || 'FPOI');
-      categoryCounts[category] = (categoryCounts[category] || 0) + 1;
-
-      processedPlacemarks.push({
-        id: `point-${index}`,
+      const pointType = extractPointType(point);
+      const category = getCategoryFromName(pointType);
+      
+      // Add to analysis
+      typeAnalysis.push({
+        index,
         name: point.name || `Point ${index + 1}`,
+        directType: point.type,
+        propertiesType: point.properties?.type,
+        extractedType: pointType,
         category,
-        type: 'point',
-        coordinates: { lat, lng },
-        styleUrl: (point as any).styleUrl,
-        pointType: point.type,
+        allProperties: point.properties,
+        hasCoordinates: hasValidCoords
       });
+
+      if (hasValidCoords) {
+        // Validate category exists
+        if (!PLACEMARK_CATEGORIES[category]) {
+          console.warn(`Category '${category}' not found in PLACEMARK_CATEGORIES. Using FPOI as fallback.`);
+          categoryCounts['FPOI'] = (categoryCounts['FPOI'] || 0) + 1;
+        } else {
+          categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+        }
+
+        processedPlacemarks.push({
+          id: `point-${index}`,
+          name: point.name || `Point ${index + 1}`,
+          category: PLACEMARK_CATEGORIES[category] ? category : 'FPOI',
+          type: 'point',
+          coordinates: { lat, lng },
+          styleUrl: (point as any).styleUrl,
+          pointType: pointType,
+        });
+      }
     } catch (error) {
       console.error(`Error processing point ${index}:`, error, point);
     }
@@ -481,11 +1059,31 @@ export function processApiData(apiData: ApiPlacemark): {
         return;
       }
 
-      const catName =
-        polyline.type === 'Incremental Cable' || polyline.type === 'Proposed Cable'
-          ? polyline.type
-          : 'Incremental Cable';
-      const category = getCategoryFromName(catName);
+      // Enhanced polyline type processing with name-based fallback
+      let normalizedType = normalizePolylineType(polyline.type);
+      
+      // If type is unclear, check the name for semantic clues
+      if ((normalizedType === 'Incremental Cable') && polyline.name) {
+        const nameLower = polyline.name.toLowerCase();
+        if (nameLower.includes('proposed')) {
+          normalizedType = 'Proposed Cable';
+        }
+      }
+      
+      const category = getCategoryFromName(normalizedType);
+      
+      // Add to polyline analysis
+      polylineAnalysis.push({
+        index,
+        name: polyline.name || `Polyline ${index + 1}`,
+        type: polyline.type,
+        normalizedType,
+        length: (polyline as any).length,
+        distance: (polyline as any).distance,
+        allProperties: (polyline as any).properties,
+        coordinateCount: validCoordinates.length
+      });
+
       categoryCounts[category] = (categoryCounts[category] || 0) + 1;
 
       // Convert coordinates to {lat, lng} format
@@ -518,6 +1116,71 @@ export function processApiData(apiData: ApiPlacemark): {
       console.error(`Error processing polyline ${index}:`, error, polyline);
     }
   });
+
+
+  // Unique types summary
+  const uniqueDirectTypes = [...new Set(typeAnalysis.map(item => item.directType))];
+  const uniquePropsTypes = [...new Set(typeAnalysis.map(item => item.propertiesType))];
+  const uniqueExtractedTypes = [...new Set(typeAnalysis.map(item => item.extractedType))];
+
+  const sampleProperties = typeAnalysis.slice(0, 3).map(item => ({
+    name: item.name,
+    type: item.extractedType,
+    propertyKeys: item.allProperties ? Object.keys(item.allProperties) : []
+  }));
+
+  // Detailed property sampling
+  typeAnalysis.slice(0, 5).forEach((item, i) => {
+    if (item.allProperties) {
+      const sampleProps = Object.entries(item.allProperties)
+        .slice(0, 10)
+        .reduce((obj, [key, value]) => {
+          obj[key] = typeof value === 'string' && value.length > 50 
+            ? value.substring(0, 50) + '...' 
+            : value;
+          return obj;
+        }, {} as any);
+      console.table(sampleProps);
+    }
+  });
+
+  // Polyline analysis
+  if (polylineAnalysis.length > 0) {
+    console.table(polylineAnalysis.map(item => ({
+      Index: item.index,
+      Name: item.name.substring(0, 30),
+      OriginalType: item.type,
+      NormalizedType: item.normalizedType,
+      Length: item.length,
+      Distance: item.distance,
+      Coords: item.coordinateCount
+    })));
+
+    const uniquePolylineTypes = [...new Set(polylineAnalysis.map(item => item.type))];
+    const uniqueNormalizedTypes = [...new Set(polylineAnalysis.map(item => item.normalizedType))];
+  }
+
+  // Category mapping results
+  const categoryResults = Object.entries(categoryCounts)
+    .filter(([_, count]) => count > 0)
+    .sort(([_, a], [__, b]) => b - a);
+  console.table(categoryResults.map(([name, count]) => ({ Category: name, Count: count })));
+
+  // Flag any issues
+  const nullTypes = typeAnalysis.filter(item => item.directType === "NULL");
+  const unknownCategories = typeAnalysis.filter(item => item.category === 'FPOI' && item.extractedType !== 'FPOI');
+  
+  if (nullTypes.length > 0) {
+  }
+  
+  if (unknownCategories.length > 0) {
+    console.table(unknownCategories.map(item => ({
+      Name: item.name.substring(0, 30),
+      ExtractedType: item.extractedType,
+      DirectType: item.directType,
+      PropsType: item.propertiesType
+    })));
+  }
 
   // Create categories array
   const categories: PlacemarkCategory[] = Object.entries(PLACEMARK_CATEGORIES)
@@ -554,42 +1217,83 @@ function getCategoryFromName(name: string): string {
   if (!cleanName) return 'FPOI';
   
   const upperName = cleanName.toUpperCase();
-
+  
   // Direct exact matches first
   if (PLACEMARK_CATEGORIES[cleanName]) return cleanName;
-
+  
   // Case-insensitive exact matches
   for (const category of Object.keys(PLACEMARK_CATEGORIES)) {
     if (category.toUpperCase() === upperName) return category;
   }
-
-  // Specific mappings for your API data types
+  
+  // Enhanced mappings for API data types
   const mappings: Record<string, string> = {
+    // Infrastructure types
     'ROAD CROSS': 'Road Cross',
     'N HIGHWAY CROSS': 'N Highway Cross',
-    'BLOCK ROUTER': 'Block Router',
+    'RAILWAY CROSS': 'Railway Cross',
     'BRIDGE': 'Bridge',
     'CULVERT': 'Culvert',
+    
+    // Network equipment
+    'BLOCK ROUTER': 'Block Router',
+    'BLOCK OFFICE': 'BHQ',
     'GP': 'GP',
     'FPOI': 'FPOI',
     'BHQ': 'BHQ',
     'BR': 'BR',
+    
+    // Junction types - ADD THESE
+    'SJC': 'SJC',
+    'BJC': 'BJC',
+    'LC': 'LC',
+    
+    // Cable types with OFC variations
+    'INCREMENTAL CABLE': 'Incremental Cable',
+    'PROPOSED CABLE': 'Proposed Cable',
+    'INCREMENTAL OFC': 'Incremental Cable',
+    'PROPOSED OFC': 'Proposed Cable',
+    'UNKNOWN LINE TYPE': 'Incremental Cable',
+    'OFC': 'Incremental Cable',
+    'FIBER OPTIC CABLE': 'Incremental Cable',
+    
+    // Other types
     'LANDMARK': 'LANDMARK',
-    'RAILWAY CROSS': 'Railway Cross',
+    'NULL': 'FPOI',
+    'UNKNOWN': 'FPOI',
   };
-
+  
   if (mappings[upperName]) return mappings[upperName];
-
-  // Partial matches for variations
+  
+  // Enhanced partial matches for variations
   if (upperName.includes('BRIDGE')) return 'Bridge';
-  if (upperName.includes('CROSS') || upperName.includes('CROSSING')) return 'ROADCROSSING';
+  if (upperName.includes('CROSS') || upperName.includes('CROSSING')) {
+    if (upperName.includes('ROAD')) return 'Road Cross';
+    if (upperName.includes('HIGHWAY')) return 'N Highway Cross';
+    if (upperName.includes('RAIL')) return 'Railway Cross';
+    return 'Road Cross';
+  }
   if (upperName.includes('CULVERT')) return 'Culvert';
   if (upperName.includes('FIBER')) return 'FIBERTURN';
   if (upperName.includes('RAIL')) return 'Railway Cross';
   if (upperName.includes('KM') || upperName.includes('KILOMETER')) return 'KILOMETERSTONE';
-  if (upperName.includes('ROUTER')) return 'Block Router';
+  if (upperName.includes('ROUTER') || upperName.includes('OLT')) return 'Block Router';
   if (upperName.includes('HIGHWAY')) return 'N Highway Cross';
-
+  if (upperName.includes('CABLE') || upperName.includes('OFC')) {
+    if (upperName.includes('PROPOSED')) return 'Proposed Cable';
+    return 'Incremental Cable';
+  }
+  
+  // Gram Panchayat detection
+  if (upperName.includes(' GP ') || upperName.endsWith(' GP') || upperName.includes('PANCHAYAT')) {
+    return 'GP';
+  }
+  
+  // Block Headquarters detection
+  if (upperName.includes('BHQ') || upperName.includes('HEADQUARTERS') || upperName.includes('BLOCK OFFICE')) {
+    return 'BHQ';
+  }
+  
   // Default category for unknown types
   console.warn(`Unknown category type: ${name}, defaulting to FPOI`);
   return 'FPOI';
@@ -607,10 +1311,9 @@ export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
 
   // Updated to include PHOTO_SURVEY category
   const physicalSurveyCategories = [
-    'SURVEYSTART', 'ROUTEFEASIBILITY', 'AREA', 'SIDE', 'ROUTEDETAILS',
-    'LANDMARK', 'FIBERTURN', 'Bridge', 'Culvert', 'ROADCROSSING', 'Causeways',
+    'SURVEYSTART','LANDMARK', 'FIBERTURN', 'Bridge', 'Culvert', 'ROADCROSSING', 'Causeways',
     'KILOMETERSTONE', 'FPOI', 'JOINTCHAMBER', 'ROUTEINDICATOR', 'ENDSURVEY', 'HOLDSURVEY',
-    'SURVEY_ROUTE', 'VIDEORECORD', 'PHOTO_SURVEY', 'VIDEO_SURVEY'
+    'SURVEY_ROUTE', 'PHOTO_SURVEY', 'VIDEO_SURVEY'
   ];
   
   physicalSurveyCategories.forEach(c => categoryCounts[c] = 0);
@@ -695,6 +1398,9 @@ export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
       Object.entries(surveyGroups).forEach(([surveyId, routePoints]) => {
         if (routePoints.length > 1) {
           try {
+
+            const firstPoint = points.find(p => p.survey_id === surveyId);
+
             categoryCounts['SURVEY_ROUTE'] = (categoryCounts['SURVEY_ROUTE'] || 0) + 1;
             processedPlacemarks.push({
               id: `physical-route-${blockId}-${surveyId}`,
@@ -706,7 +1412,16 @@ export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
               eventType: 'SURVEY_ROUTE',
               blockId,
               images: [], 
-              hasImages: false
+              hasImages: false,
+
+              startLgdName: firstPoint?.start_lgd_name,
+              endLgdName: firstPoint?.end_lgd_name,
+              routeDetails: firstPoint?.route_details,
+              routeFeasibility: firstPoint?.route_feasibility,
+              stateName: firstPoint?.state_name,
+              districtName: firstPoint?.district_name,
+              blockName: firstPoint?.block_name,
+              createdTime: firstPoint?.createdTime
             });
           } catch (error) {
             console.error(`Error creating survey route for ${surveyId}:`, error);
@@ -721,7 +1436,7 @@ export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
       id: `physical-${name.toLowerCase().replace(/\s+/g, '-')}`,
       name,
       count: categoryCounts[name] || 0,
-      visible: name === 'SURVEY_ROUTE' ? true : false, // Only SURVEY_ROUTE is visible by default
+      visible: true, // Only SURVEY_ROUTE is visible by default
       color: PLACEMARK_CATEGORIES[name]?.color || '#6B7280',
       icon: PLACEMARK_CATEGORIES[name]?.icon || '📍'
     }))
@@ -773,6 +1488,9 @@ export function processDesktopPlanningData(apiData: DesktopPlanningApiResponse):
     'Desktop: N Highway Cross',
     'Desktop: Incremental Cable',
     'Desktop: Proposed Cable',
+    'Desktop: SJC',
+    'Desktop: BJC',
+    'Desktop: LC',
   ];
 
   desktopPlanningCategories.forEach(category => {
@@ -807,7 +1525,7 @@ export function processDesktopPlanningData(apiData: DesktopPlanningApiResponse):
           console.warn(`Failed to parse properties for desktop point ${point.id}:`, error);
         }
 
-        const assetType = pointProperties.asset_type || pointProperties.type || 'FPOI';
+        const assetType = pointProperties.type || point.type || pointProperties.asset_type || 'FPOI';
         const category = getDesktopPlanningCategory(assetType, 'point');
         categoryCounts[category] = (categoryCounts[category] || 0) + 1;
 
@@ -865,10 +1583,13 @@ export function processDesktopPlanningData(apiData: DesktopPlanningApiResponse):
           console.warn(`Failed to parse properties for desktop connection ${connection.id}:`, error);
         }
 
-        // Determine category based on connection type
+        // FIXED: Determine category based on connection type from API
+        // API uses "existing" for implemented cables and "proposed" for planned cables
         const connectionType = connection.type || 'proposed';
-        const category =
-          connectionType === 'incremental' ? 'Desktop: Incremental Cable' : 'Desktop: Proposed Cable';
+        const category = connectionType === 'existing' 
+          ? 'Desktop: Incremental Cable'  // Green cables - already implemented
+          : 'Desktop: Proposed Cable';    // Red cables - planned for future
+
         categoryCounts[category] = (categoryCounts[category] || 0) + 1;
 
         processedPlacemarks.push({
@@ -878,7 +1599,7 @@ export function processDesktopPlanningData(apiData: DesktopPlanningApiResponse):
           type: 'polyline',
           coordinates,
           length: connection.length,
-          connectionType: connection.type as 'proposed' | 'incremental',
+          connectionType: connectionType as 'proposed' | 'incremental' | 'existing',
           status: connection.status,
           networkId: network.id,
           rawProperties: connectionProperties,
@@ -895,7 +1616,7 @@ export function processDesktopPlanningData(apiData: DesktopPlanningApiResponse):
       id: name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
       name,
       count: categoryCounts[name] || 0,
-      visible: false,
+      visible: true,
       color: PLACEMARK_CATEGORIES[name]?.color || '#6B7280',
       icon: PLACEMARK_CATEGORIES[name]?.icon || '📍',
     }))
@@ -925,6 +1646,10 @@ function getDesktopPlanningCategory(assetType: string, itemType: 'point' | 'poly
       'ROAD CROSS': 'Desktop: Road Cross',
       'RAILWAY CROSS': 'Desktop: Railway Cross',
       'N HIGHWAY CROSS': 'Desktop: N Highway Cross',
+      // ADD JUNCTION TYPES
+      'SJC': 'Desktop: SJC',
+      'BJC': 'Desktop: BJC',
+      'LC': 'Desktop: LC',
     };
 
     if (pointMappings[upperAssetType]) return pointMappings[upperAssetType];

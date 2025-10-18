@@ -28,6 +28,8 @@ interface BlockInstallationData {
     block_contacts: any;
     created_at: string;
     updated_at: string;
+    state_name?: string;      
+    district_name?: string; 
 }
 
 interface BlockInstallationReportProps {
@@ -197,23 +199,23 @@ const BlockInstallationReport: React.FC<BlockInstallationReportProps> = ({ Data,
   const columns: TableColumn<BlockInstallationData>[] = [
     {
       name: "State",
-      selector: row => row.state_code || '',
+      selector: row => row.state_name || row.state_code || '',
       sortable: true,
-      maxWidth: "140px",
+      maxWidth: "160px",
       cell: (row) => (
-        <span title={row.state_code || ''} className="truncate">
-          {row.state_code || 'N/A'}
+        <span title={row.state_name || row.state_code || ''} className="truncate">
+          {row.state_name || row.state_code || 'N/A'}
         </span>
       ),
     },
     {
       name: "District", 
-      selector: row => row.district_code || '',
+      selector: row => row.district_name || row.district_code || '',
       sortable: true,
-      maxWidth: "150px",
+      maxWidth: "160px",
       cell: (row) => (
-        <span title={row.district_code || ''} className="truncate">
-          {row.district_code || 'N/A'}
+        <span title={row.district_name || row.district_code || ''} className="truncate">
+          {row.district_name || row.district_code || 'N/A'}
         </span>
       ),
     },
@@ -303,19 +305,34 @@ const BlockInstallationReport: React.FC<BlockInstallationReportProps> = ({ Data,
         const workbook = XLSX.utils.book_new();
 
         const headers = [
-          "State Code", "District Code", "Block Code", "Block Name", 
-          "Block Latitude", "Block Longitude", "Block Photos",
-          "Smart Rack Details", "FDMS Shelf Details", "IP MPLS Router",
-          "SFP 10G", "SFP 1G", "SFP 100G", "RFMS",
+          "State Name", "State Code", "District Name", "District Code", 
+          "Block Code", "Block Name", "Block Latitude", "Block Longitude", 
+          "Block Photos", "Smart Rack Details", "FDMS Shelf Details", 
+          "IP MPLS Router", "SFP 10G", "SFP 1G", "SFP 100G", "RFMS",
           "Equipment Photos", "Block Contacts", "Created At", "Updated At"
         ];
 
         const dataRows = filteredData.map(row => [
-          row.state_code || '', row.district_code || '', row.block_code || '', row.block_name || '',
-          row.block_latitude || '', row.block_longitude || '', JSON.stringify(row.block_photos || []),
-          JSON.stringify(row.smart_rack || {}), JSON.stringify(row.fdms_shelf || {}), JSON.stringify(row.ip_mpls_router || {}),
-          JSON.stringify(row.sfp_10g || []), JSON.stringify(row.sfp_1g || []), JSON.stringify(row.sfp_100g || []), JSON.stringify(row.rfms || {}),
-          JSON.stringify(row.equipment_photo || []), JSON.stringify(row.block_contacts || {}), row.created_at || '', row.updated_at || ''
+          row.state_name || '', 
+          row.state_code || '', 
+          row.district_name || '',
+          row.district_code || '', 
+          row.block_code || '', 
+          row.block_name || '',
+          row.block_latitude || '', 
+          row.block_longitude || '', 
+          JSON.stringify(row.block_photos || []),
+          JSON.stringify(row.smart_rack || {}), 
+          JSON.stringify(row.fdms_shelf || {}), 
+          JSON.stringify(row.ip_mpls_router || {}),
+          JSON.stringify(row.sfp_10g || []), 
+          JSON.stringify(row.sfp_1g || []), 
+          JSON.stringify(row.sfp_100g || []), 
+          JSON.stringify(row.rfms || {}),
+          JSON.stringify(row.equipment_photo || []), 
+          JSON.stringify(row.block_contacts || {}), 
+          row.created_at || '', 
+          row.updated_at || ''
         ]);
 
         const worksheet = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
@@ -327,6 +344,7 @@ const BlockInstallationReport: React.FC<BlockInstallationReportProps> = ({ Data,
       exportExcel();
     }
   }, [Data.excel, filteredData, Onexcel]);
+
 
   if (error) {
     return (

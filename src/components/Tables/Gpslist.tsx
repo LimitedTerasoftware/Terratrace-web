@@ -100,7 +100,6 @@ const Gpslist = () => {
       
       if (response.data.result) {
         setMasterData(response.data.data);
-        console.log("Master data loaded:", response.data.data);
       } else {
         throw new Error("Failed to fetch master data");
       }

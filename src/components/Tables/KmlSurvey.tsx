@@ -87,7 +87,6 @@ const KmlSurvey: React.FC = () => {
       const response = await axios.get<ApiResponse>(`${BASEURL}/kml-points`, {
         params: { page, pageSize },
         });
-     // console.log("response", response);
       setData(response.data.data);
       setTotalPages(response.data.totalPages);
     } catch (err: any) {

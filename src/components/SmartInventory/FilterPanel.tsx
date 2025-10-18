@@ -47,11 +47,12 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Category options for the dropdown
+  // Category options for the dropdown - Updated to include BSNL
   const categoryOptions = [
     { value: '', label: 'All Categories' },
     { value: 'Survey', label: 'Physical Survey' },
-    { value: 'Desktop', label: 'Desktop Planning' }
+    { value: 'Desktop', label: 'Desktop Planning' },
+    { value: 'BSNL_Cables', label: 'O & M' }
   ];
 
   useEffect(() => {
