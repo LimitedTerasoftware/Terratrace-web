@@ -300,28 +300,13 @@ const BlockGPList = () => {
   };
 
   const getAssignedUserDisplay = (connection: Connection): string => {
-  // Check if connection has assigned status and user information
-  if (connection.status?.toLowerCase() === 'assigned' && connection.user_name) {
+  // Only check the top-level user_name field
+  // Do NOT check properties at all
+  if (connection.user_name && connection.user_name.trim() !== '') {
     return connection.user_name;
   }
   
-  // Check if there's user info in properties
-  let parsedProperties: any = {};
-  try {
-    if (typeof connection.properties === 'string') {
-      parsedProperties = JSON.parse(connection.properties);
-    } else if (connection.properties) {
-      parsedProperties = connection.properties;
-    }
-  } catch (error) {
-    console.warn('Error parsing properties for user info:', error);
-  }
-  
-  // Check properties for user assignment
-  if (parsedProperties.user_name && connection.status?.toLowerCase() === 'assigned') {
-    return parsedProperties.user_name;
-  }
-  
+  // If user_name is null/empty, always return "Not Available"
   return 'Not Available';
 };
 
@@ -733,21 +718,21 @@ const BlockGPList = () => {
           ) : (
             <div className="flex items-center">
               {getAssignedUserDisplay(connection) !== 'Not Available' ? (
-                <>
-                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center mr-2">
-                    <span className="text-white text-xs font-medium">
-                      {getAssignedUserDisplay(connection).charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">
-                    {getAssignedUserDisplay(connection)}
-                  </span>
-                </>
-              ) : (
-                <span className="text-sm text-gray-500 dark:text-gray-400 italic">
-                  Not Available
-                </span>
-              )}
+  <>
+    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center mr-2">
+      <span className="text-white text-xs font-medium">
+        {getAssignedUserDisplay(connection).charAt(0).toUpperCase()}
+      </span>
+    </div>
+    <span className="text-sm font-medium text-gray-900 dark:text-white">
+      {getAssignedUserDisplay(connection)}
+    </span>
+  </>
+) : (
+  <span className="text-sm text-gray-500 dark:text-gray-400 italic">
+    Not Available
+  </span>
+)}
             </div>
           )}
         </td>

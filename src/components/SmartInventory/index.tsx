@@ -26,6 +26,7 @@ import { GeographicSelector } from './GeographicSelector';
 import SurveyVideoPanel from './SurveyVideoPanel';
 import { useSearchParams } from 'react-router-dom';
 import { LandmarkModal } from './LandmarkModal';
+import { canAccessFileOperations } from '../../utils/accessControl';
 
 // Import the VideoSurveyService
 import { 
@@ -97,6 +98,12 @@ function SmartInventory() {
   const [isLoadingDesktopPlanning, setIsLoadingDesktopPlanning] = useState(false);
   const [rawDesktopPlanningData, setRawDesktopPlanningData] = useState<any>(null);
 
+  // ADD THIS: Rectification Data
+const [rectificationData, setRectificationData] = useState<ProcessedPhysicalSurvey[]>([]);
+const [rectificationCategories, setRectificationCategories] = useState<PlacemarkCategory[]>([]);
+const [isLoadingRectification, setIsLoadingRectification] = useState(false);
+const [rawRectificationData, setRawRectificationData] = useState<any>(null);
+
   // ==============================================
   // MAP STATE
   // ==============================================
@@ -132,6 +139,7 @@ function SmartInventory() {
   timestamp: number;
 } | null>(null);
   const [shownLandmarkIds, setShownLandmarkIds] = useState<Set<string>>(new Set());
+  const showFileOperations = canAccessFileOperations();
 
 
   // ==============================================
@@ -620,6 +628,72 @@ function SmartInventory() {
     }
   };
 
+  const loadRectificationData = async (state: string[], division: string[], block: string[]) => {
+  try {
+    setIsLoadingRectification(true);
+    const params: any = {};
+
+    if (state.length > 0) {
+      params.state_id = state.join(',');
+    }
+    if (division.length > 0) {
+      params.district_id = division.join(',');
+    }
+    if (block.length > 0) {
+      params.block_id = block.join(',');
+    }
+
+    const response = await axios.get(`${BASEURL}/get-rectification-survey`, { params });
+    const result: PhysicalSurveyApiResponse = response.data;
+
+    if (response.status === 200 || response.status === 201) {
+      if (Object.keys(result.data).length > 0) {
+        // Process rectification data using the same processing function as physical survey
+        const { placemarks, categories } = processPhysicalSurveyData(result);
+
+        // Prefix categories with "Rectification:" to distinguish them
+        const rectificationCategories = categories.map(cat => ({
+          ...cat,
+          id: `rectification-${cat.id}`,
+          name: `Rectification: ${cat.name}`,
+        }));
+
+        const rectificationPlacemarks = placemarks.map(pm => ({
+          ...pm,
+          id: pm.id.replace('physical-', 'rectification-'),
+          category: `Rectification: ${pm.category}`,
+        }));
+
+        setRawRectificationData(result);
+        setRectificationData(rectificationPlacemarks);
+        setRectificationCategories(rectificationCategories);
+
+        // Auto-enable categories that are marked as visible by default
+        const autoVisibleCategories = rectificationCategories
+          .filter(category => category.visible)
+          .map(category => category.id);
+        
+        if (autoVisibleCategories.length > 0) {
+          setVisibleCategories(prev => {
+            const newSet = new Set(prev);
+            autoVisibleCategories.forEach(categoryId => newSet.add(categoryId));
+            return newSet;
+          });
+        }
+
+        showNotification('success', `Loaded ${rectificationPlacemarks.length} rectification points`);
+      } else {
+        showNotification('info', 'No rectification data found for selected area');
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load rectification data:', error);
+    showNotification('error', 'Failed to load rectification data');
+  } finally {
+    setIsLoadingRectification(false);
+  }
+};
+
   // ==============================================
   // ENHANCED LANDMARK DETECTION LOGIC
   // ==============================================
@@ -913,44 +987,50 @@ useEffect(() => {
   };
 
   const handlePreview = (item: {
-    type: 'state' | 'district' | 'block' | 'universal';
-    selectedStates: string[];
-    selectedDistricts: string[];
-    selectedBlocks: string[];
-    name: string;
-    dataType: 'physical' | 'desktop';
-    hierarchyContext?: {
-      stateId?: string;
-      districtId?: string;
-      blockId?: string;
-    };
-  }) => {
-    if (item.dataType === 'physical') {
-      loadPhysicalData(item.selectedStates, item.selectedDistricts, item.selectedBlocks);
-    } else if (item.dataType === 'desktop') {
-      loadDesktopPlanningData(item.selectedStates, item.selectedDistricts, item.selectedBlocks, item.hierarchyContext);
-    }
+  type: 'state' | 'district' | 'block' | 'universal';
+  selectedStates: string[];
+  selectedDistricts: string[];
+  selectedBlocks: string[];
+  name: string;
+  dataType: 'physical' | 'desktop' | 'rectification'; // ADD rectification
+  hierarchyContext?: {
+    stateId?: string;
+    districtId?: string;
+    blockId?: string;
   };
+}) => {
+  if (item.dataType === 'physical') {
+    loadPhysicalData(item.selectedStates, item.selectedDistricts, item.selectedBlocks);
+  } else if (item.dataType === 'desktop') {
+    loadDesktopPlanningData(item.selectedStates, item.selectedDistricts, item.selectedBlocks, item.hierarchyContext);
+  } else if (item.dataType === 'rectification') {
+    // ADD THIS
+    loadRectificationData(item.selectedStates, item.selectedDistricts, item.selectedBlocks);
+  }
+};
 
-  const handleRefresh = (item: {
-    type: 'state' | 'district' | 'block' | 'universal';
-    selectedStates: string[];
-    selectedDistricts: string[];
-    selectedBlocks: string[];
-    name: string;
-    dataType: 'physical' | 'desktop';
-    hierarchyContext?: {
-      stateId?: string;
-      districtId?: string;
-      blockId?: string;
-    };
-  }) => {
-    if (item.dataType === 'physical') {
-      loadPhysicalData(item.selectedStates, item.selectedDistricts, item.selectedBlocks);
-    } else if (item.dataType === 'desktop') {
-      loadDesktopPlanningData(item.selectedStates, item.selectedDistricts, item.selectedBlocks, item.hierarchyContext);
-    }
+const handleRefresh = (item: {
+  type: 'state' | 'district' | 'block' | 'universal';
+  selectedStates: string[];
+  selectedDistricts: string[];
+  selectedBlocks: string[];
+  name: string;
+  dataType: 'physical' | 'desktop' | 'rectification'; // ADD rectification
+  hierarchyContext?: {
+    stateId?: string;
+    districtId?: string;
+    blockId?: string;
   };
+}) => {
+  if (item.dataType === 'physical') {
+    loadPhysicalData(item.selectedStates, item.selectedDistricts, item.selectedBlocks);
+  } else if (item.dataType === 'desktop') {
+    loadDesktopPlanningData(item.selectedStates, item.selectedDistricts, item.selectedBlocks, item.hierarchyContext);
+  } else if (item.dataType === 'rectification') {
+    // ADD THIS
+    loadRectificationData(item.selectedStates, item.selectedDistricts, item.selectedBlocks);
+  }
+};
 
   // Map Handlers
   const handleCategoryVisibilityChange = (categoryId: string, visible: boolean) => {
@@ -1013,72 +1093,130 @@ useEffect(() => {
     };
   }, []);
 
+  function mergeRawSurveyData(physicalData: any, rectificationData: any): any {
+  // If neither exist, return null
+  if (!physicalData && !rectificationData) {
+    return null;
+  }
+  
+  // If only one exists, return it
+  if (!physicalData) return rectificationData;
+  if (!rectificationData) return physicalData;
+  
+  // Both exist - merge them
+  const merged = {
+    status: true,
+    data: { ...physicalData.data }
+  };
+  
+  // Add rectification data to merged object
+  Object.entries(rectificationData.data || {}).forEach(([blockId, points]) => {
+    if (!merged.data[blockId]) {
+      // Block doesn't exist in physical data, add it
+      merged.data[blockId] = [];
+    }
+    
+    // Tag rectification points for identification (optional but useful)
+    const taggedPoints = (points as any[]).map(p => ({
+      ...p,
+      _source: 'rectification', // Helps identify source later if needed
+      _isRectification: true     // Alternative flag
+    }));
+    
+    // Merge rectification points with physical points for this block
+    merged.data[blockId] = [...merged.data[blockId], ...taggedPoints];
+  });
+  
+  return merged;
+}
+
   // ==============================================
   // VIDEO SURVEY INTEGRATION (using VideoSurveyService)
   // ==============================================
 
-  // Watch for Video Survey category toggle to enable/disable mode
   useEffect(() => {
-    const possibleIds = new Set(['video_survey', 'video-survey', 'physical-video_survey']);
-    const isOn = Array.from(visibleCategories).some(id => possibleIds.has(id));
-    setIsVideoSurveyMode(isOn);
-    if (!isOn) {
-      setShowRightPanel(false);
-      // Reset landmark state when video mode is disabled
-      setShowLandmarkModal(false);
-      setCurrentLandmarks([]);
-      setPreviousLandmarks([]);
-      setVideoWasPausedByLandmark(false);
-      setShouldResumeVideo(false);
-    }
-  }, [visibleCategories]);
+  // ✅ PATTERN MATCHING: Match any category ending with 'video_survey' or 'video-survey'
+  const isOn = Array.from(visibleCategories).some(id => 
+    id.includes('video_survey') || id.includes('video-survey')
+  );
+  
+  setIsVideoSurveyMode(isOn);
+  if (!isOn) {
+    setShowRightPanel(false);
+    // Reset landmark state when video mode is disabled
+    setShowLandmarkModal(false);
+    setCurrentLandmarks([]);
+    setPreviousLandmarks([]);
+    setVideoWasPausedByLandmark(false);
+    setShouldResumeVideo(false);
+  }
+}, [visibleCategories]);
 
-  // Process video survey data using VideoSurveyService
-  useEffect(() => {
-    if (!isVideoSurveyMode || !rawPhysicalSurveyData) {
+// Process video survey data using VideoSurveyService (ENHANCED with rectification support)
+useEffect(() => {
+  if (!isVideoSurveyMode) {
+    setVideoSurveyData(VideoSurveyService.processPhysicalSurveyData(null));
+    return;
+  }
+  
+  try {
+    // ✅ MERGE: Combine physical and rectification data
+    const combinedData = mergeRawSurveyData(rawPhysicalSurveyData, rawRectificationData);
+    
+    if (!combinedData) {
       setVideoSurveyData(VideoSurveyService.processPhysicalSurveyData(null));
       return;
     }
     
-    try {
-      // Use simplified processing (same as video playback page)
-      const processedVideoData = VideoSurveyService.processPhysicalSurveyData(rawPhysicalSurveyData);
-      
-      // Validation (keep existing)
-      const validation = VideoSurveyService.validateVideoSurveyData(rawPhysicalSurveyData);
-      
-      if (validation.issues.length > 0) {
-        console.warn('Video survey data validation issues:', validation.issues);
-        showNotification('warning', `Video survey data issues: ${validation.issues.length} problems found`);
-      }
-      
-      setVideoSurveyData(processedVideoData);
-      
-      if (processedVideoData.trackPoints.length === 0) {
-        showNotification('warning', 'No valid GPS track points found in survey data');
-        return;
-      }
-      
-      if (processedVideoData.videoClips.length === 0) {
-        showNotification('info', 'No video clips found in survey data');
-        setCurrentTime(processedVideoData.trackPoints[0]?.timestamp ?? 0);
-        return;
-      }
-      
-      // Initialize with first clip (same as video playback page)
-      setCurrentVideoIndex(0);
-      setCurrentTime(processedVideoData.videoClips[0].startTimeStamp);
-      
-      showNotification('success', 
-        `Video survey loaded: ${processedVideoData.trackPoints.length} track points, ${processedVideoData.videoClips.length} video clips`
-      );
-      
-    } catch (error) {
-      console.error('Error processing video survey data:', error);
-      showNotification('error', 'Failed to process video survey data');
-      setVideoSurveyData(VideoSurveyService.processPhysicalSurveyData(null));
+    // Use simplified processing (same as video playback page)
+    const processedVideoData = VideoSurveyService.processPhysicalSurveyData(combinedData);
+    
+    // Validation (keep existing)
+    const validation = VideoSurveyService.validateVideoSurveyData(combinedData);
+    
+    if (validation.issues.length > 0) {
+      console.warn('Video survey data validation issues:', validation.issues);
+      showNotification('warning', `Video survey data issues: ${validation.issues.length} problems found`);
     }
-  }, [isVideoSurveyMode, rawPhysicalSurveyData]);
+    
+    setVideoSurveyData(processedVideoData);
+    
+    if (processedVideoData.trackPoints.length === 0) {
+      showNotification('warning', 'No valid GPS track points found in survey data');
+      return;
+    }
+    
+    if (processedVideoData.videoClips.length === 0) {
+      showNotification('info', 'No video clips found in survey data');
+      setCurrentTime(processedVideoData.trackPoints[0]?.timestamp ?? 0);
+      return;
+    }
+    
+    // Initialize with first clip (same as video playback page)
+    setCurrentVideoIndex(0);
+    setCurrentTime(processedVideoData.videoClips[0].startTimeStamp);
+    
+    // Build notification message
+    const sources = [];
+    if (rawPhysicalSurveyData?.data && Object.keys(rawPhysicalSurveyData.data).length > 0) {
+      sources.push('Physical Survey');
+    }
+    if (rawRectificationData?.data && Object.keys(rawRectificationData.data).length > 0) {
+      sources.push('Rectification Survey');
+    }
+    
+    const sourceText = sources.length > 0 ? ` from ${sources.join(' + ')}` : '';
+    
+    showNotification('success', 
+      `Video survey loaded${sourceText}: ${processedVideoData.trackPoints.length} track points, ${processedVideoData.videoClips.length} video clips`
+    );
+    
+  } catch (error) {
+    console.error('Error processing video survey data:', error);
+    showNotification('error', 'Failed to process video survey data');
+    setVideoSurveyData(VideoSurveyService.processPhysicalSurveyData(null));
+  }
+}, [isVideoSurveyMode, rawPhysicalSurveyData, rawRectificationData]);
 
   // Keep map marker in sync when currentTime changes using VideoSurveyService
   useEffect(() => {
@@ -1232,59 +1370,81 @@ useEffect(() => {
 
   // Watch for Photo Survey category toggle to enable/disable mode
   useEffect(() => {
-    const possibleIds = new Set(['photo_survey', 'photo-survey', 'physical-photo_survey']);
-    const isOn = Array.from(visibleCategories).some(id => possibleIds.has(id));
-    setIsPhotoSurveyMode(isOn);
-    if (!isOn) {
-      setShowPhotoPanel(false);
-      setCurrentPhotoPoint(null);
-    }
-  }, [visibleCategories]);
+  // ✅ PATTERN MATCHING: Match any category ending with 'photo_survey' or 'photo-survey'
+  const isOn = Array.from(visibleCategories).some(id => 
+    id.includes('photo_survey') || id.includes('photo-survey')
+  );
+  
+  setIsPhotoSurveyMode(isOn);
+  if (!isOn) {
+    setShowPhotoPanel(false);
+    setCurrentPhotoPoint(null);
+  }
+}, [visibleCategories]);
 
-  // Process photo survey data using PhotoSurveyService
-  useEffect(() => {
-    if (!isPhotoSurveyMode || !rawPhysicalSurveyData) {
-      // Reset to empty state when not in photo mode
+
+// Process photo survey data using PhotoSurveyService (ENHANCED with rectification support)
+useEffect(() => {
+  if (!isPhotoSurveyMode) {
+    setPhotoSurveyData(PhotoSurveyService.processPhysicalSurveyData(null));
+    return;
+  }
+  
+  try {
+    // ✅ MERGE: Combine physical and rectification data
+    const combinedData = mergeRawSurveyData(rawPhysicalSurveyData, rawRectificationData);
+    
+    if (!combinedData) {
       setPhotoSurveyData(PhotoSurveyService.processPhysicalSurveyData(null));
       return;
     }
     
-    try {
-      // Use PhotoSurveyService to process the data
-      const processedPhotoData: PhotoSurveyData = PhotoSurveyService.processPhysicalSurveyData(rawPhysicalSurveyData);
-      
-      // Validate the processed data
-      const validation: PhotoValidationResult = PhotoSurveyService.validatePhotoSurveyData(rawPhysicalSurveyData);
-      
-      if (validation.issues.length > 0) {
-        console.warn('Photo survey data validation issues:', validation.issues);
-        showNotification('warning', `Photo survey data issues: ${validation.issues.length} problems found`);
-      }
-      
-      // Update state with processed data
-      setPhotoSurveyData(processedPhotoData);
-      
-      if (processedPhotoData.photoPoints.length === 0) {
-        showNotification('info', 'No photo points found in survey data');
-        return;
-      }
-      
-      if (processedPhotoData.metadata.totalImages === 0) {
-        showNotification('warning', 'Photo points found but no valid images');
-        return;
-      }
-      
-      showNotification('success', 
-        `Photo survey loaded: ${processedPhotoData.photoPoints.length} photo points with ${processedPhotoData.metadata.totalImages} images`
-      );
-      
-    } catch (error) {
-      console.error('Error processing photo survey data:', error);
-      showNotification('error', 'Failed to process photo survey data');
-      setPhotoSurveyData(PhotoSurveyService.processPhysicalSurveyData(null));
+    // Use PhotoSurveyService to process the data
+    const processedPhotoData: PhotoSurveyData = PhotoSurveyService.processPhysicalSurveyData(combinedData);
+    
+    // Validate the processed data
+    const validation: PhotoValidationResult = PhotoSurveyService.validatePhotoSurveyData(combinedData);
+    
+    if (validation.issues.length > 0) {
+      console.warn('Photo survey data validation issues:', validation.issues);
+      showNotification('warning', `Photo survey data issues: ${validation.issues.length} problems found`);
     }
     
-  }, [isPhotoSurveyMode, rawPhysicalSurveyData]);
+    // Update state with processed data
+    setPhotoSurveyData(processedPhotoData);
+    
+    if (processedPhotoData.photoPoints.length === 0) {
+      showNotification('info', 'No photo points found in survey data');
+      return;
+    }
+    
+    if (processedPhotoData.metadata.totalImages === 0) {
+      showNotification('warning', 'Photo points found but no valid images');
+      return;
+    }
+    
+    // Build notification message
+    const sources = [];
+    if (rawPhysicalSurveyData?.data && Object.keys(rawPhysicalSurveyData.data).length > 0) {
+      sources.push('Physical Survey');
+    }
+    if (rawRectificationData?.data && Object.keys(rawRectificationData.data).length > 0) {
+      sources.push('Rectification Survey');
+    }
+    
+    const sourceText = sources.length > 0 ? ` from ${sources.join(' + ')}` : '';
+    
+    showNotification('success', 
+      `Photo survey loaded${sourceText}: ${processedPhotoData.photoPoints.length} photo points with ${processedPhotoData.metadata.totalImages} images`
+    );
+    
+  } catch (error) {
+    console.error('Error processing photo survey data:', error);
+    showNotification('error', 'Failed to process photo survey data');
+    setPhotoSurveyData(PhotoSurveyService.processPhysicalSurveyData(null));
+  }
+  
+}, [isPhotoSurveyMode, rawPhysicalSurveyData, rawRectificationData]);
 
   // Photo point click handler
   const handlePhotoPointClick = useCallback((point: PhotoPoint) => {
@@ -1327,23 +1487,33 @@ useEffect(() => {
   // ==============================================
 
   // Separate data for different contexts
-  const allPlacemarks = useMemo(() => {
-    const externalFilePlacemarks = processedPlacemarks;
-    const apiPlacemarks = [...physicalSurveyData, ...desktopPlanningData];
-    return [...externalFilePlacemarks, ...apiPlacemarks];
-  }, [processedPlacemarks, physicalSurveyData, desktopPlanningData]);
-
-  const allCategories = useMemo(() => {
-    const externalFileCategories = placemarkCategories;
-    const apiCategories = [...physicalSurveyCategories, ...desktopPlanningCategories];
-    return [...externalFileCategories, ...apiCategories];
-  }, [placemarkCategories, physicalSurveyCategories, desktopPlanningCategories]);
-
-  // Individual arrays for specific contexts (if needed elsewhere)
+const allPlacemarks = useMemo(() => {
   const externalFilePlacemarks = processedPlacemarks;
-  const apiPlacemarks = [...physicalSurveyData, ...desktopPlanningData];
+  const apiPlacemarks = [
+    ...physicalSurveyData, 
+    ...desktopPlanningData,
+    ...rectificationData // ADD THIS
+  ];
+  return [...externalFilePlacemarks, ...apiPlacemarks];
+}, [processedPlacemarks, physicalSurveyData, desktopPlanningData, rectificationData]); // ADD rectificationData
+
+const allCategories = useMemo(() => {
   const externalFileCategories = placemarkCategories;
-  const apiCategories = [...physicalSurveyCategories, ...desktopPlanningCategories];
+  const apiCategories = [
+    ...physicalSurveyCategories, 
+    ...desktopPlanningCategories,
+    ...rectificationCategories // ADD THIS
+  ];
+  return [...externalFileCategories, ...apiCategories];
+}, [placemarkCategories, physicalSurveyCategories, desktopPlanningCategories, rectificationCategories]); // ADD rectificationCategories
+
+// Individual arrays for specific contexts
+const externalFilePlacemarks = processedPlacemarks;
+const apiPlacemarks = [
+  ...physicalSurveyData, 
+  ...desktopPlanningData,
+  ...rectificationData // ADD THIS
+];
 
   // ==============================================
   // RENDER
@@ -1359,97 +1529,102 @@ useEffect(() => {
       )}
 
       {/* LEFT SIDEBAR - API Data Management */}
-      <Sidebar isOpen={sidebarOpen} onToggle={handleSidebarToggle}>
-        {/* Upload Controls */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => { setModalOpen(true); setUploadError(''); }}
-            disabled={isUploading}
-            className={`
-              w-full px-1 py-3 rounded-lg border-2 border-dashed 
-              ${isUploading
-                ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
-                : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
-              }
-              transition-all duration-200 flex items-center justify-center gap-2
-              text-sm font-medium text-gray-700
-            `}
-          >
-            {isUploading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-transparent" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <Upload className="h-4 w-4" />
-                Upload Kmz / Kml
-              </>
+       <Sidebar isOpen={sidebarOpen} onToggle={handleSidebarToggle}>
+        
+        {/* NEW: Conditionally show Upload Controls */}
+        {showFileOperations && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setModalOpen(true); setUploadError(''); }}
+              disabled={isUploading}
+              className={`
+                w-full px-1 py-3 rounded-lg border-2 border-dashed 
+                ${isUploading
+                  ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
+                  : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
+                }
+                transition-all duration-200 flex items-center justify-center gap-2
+                text-sm font-medium text-gray-700
+              `}
+            >
+              {isUploading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-transparent" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4" />
+                  Upload Kmz / Kml
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={() => { setShowFiles(!ShowFiles); }}
+              className={`
+                border-2 border-dashed 
+                w-20 h-12 rounded-full flex items-center justify-center transition-colors 
+                ${ShowFiles
+                  ? 'border-gray-300 bg-blue-100'
+                  : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
+                }
+                transition-all duration-200 flex items-center justify-center gap-2
+                text-sm font-medium text-gray-700
+              `}
+              title='External Data'
+            >
+              <FilePlus2Icon size={18} />
+            </button>
+          </div>
+        )}
+
+        {/* NEW: Conditionally show Download Controls */}
+        {showFileOperations && (
+          <div className="relative inline-block w-full text-left">
+            <button
+              onClick={() => setOpen(!open)}
+              className={`
+                w-full px-1 py-3 rounded-lg border-2 border-dashed 
+                ${loading
+                  ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
+                  : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
+                }
+                transition-all duration-200 flex items-center justify-center gap-2
+                text-sm font-medium text-gray-700
+              `}
+            >
+              <DownloadIcon size={18} />
+              <span>Download</span>
+              <ChevronDown size={16} />
+            </button>
+
+            {open && (
+              <div className="absolute mt-2 left-0 right-0 w-full rounded-lg shadow-lg bg-white border border-gray-200 z-50">
+                <ul className="py-1 text-sm text-gray-700">
+                  <li>
+                    <button
+                      onClick={() => { downloadShapefile(); setOpen(false); }}
+                      className="w-full px-4 py-2 text-left hover:bg-gray-100"
+                    >
+                      Shapefile
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => { downloadExcel(); setOpen(false); }}
+                      className="w-full px-4 py-2 text-left hover:bg-gray-100"
+                    >
+                      Excel
+                    </button>
+                  </li>
+                </ul>
+              </div>
             )}
-          </button>
+          </div>
+        )}
 
-          <button
-            onClick={() => { setShowFiles(!ShowFiles); }}
-            className={`
-              border-2 border-dashed 
-              w-20 h-12 rounded-full flex items-center justify-center transition-colors 
-              ${ShowFiles
-                ? 'border-gray-300 bg-blue-100'
-                : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
-              }
-              transition-all duration-200 flex items-center justify-center gap-2
-              text-sm font-medium text-gray-700
-            `}
-            title='External Data'
-          >
-            <FilePlus2Icon size={18} />
-          </button>
-        </div>
-
-        {/* Download Controls */}
-        <div className="relative inline-block w-full text-left">
-          <button
-            onClick={() => setOpen(!open)}
-            className={`
-              w-full px-1 py-3 rounded-lg border-2 border-dashed 
-              ${loading
-                ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
-                : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
-              }
-              transition-all duration-200 flex items-center justify-center gap-2
-              text-sm font-medium text-gray-700
-            `}
-          >
-            <DownloadIcon size={18} />
-            <span>Download</span>
-            <ChevronDown size={16} />
-          </button>
-
-          {open && (
-            <div className="absolute mt-2 left-0 right-0 w-full rounded-lg shadow-lg bg-white border border-gray-200 z-50">
-              <ul className="py-1 text-sm text-gray-700">
-                <li>
-                  <button
-                    onClick={() => { downloadShapefile(); setOpen(false); }}
-                    className="w-full px-4 py-2 text-left hover:bg-gray-100"
-                  >
-                    Shapefile
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => { downloadExcel(); setOpen(false); }}
-                    className="w-full px-4 py-2 text-left hover:bg-gray-100"
-                  >
-                    Excel
-                  </button>
-                </li>
-              </ul>
-            </div>
-          )}
-        </div>
-
-        {/* Geographic Selector - API Data Controls */}
+        {/* Rest of the sidebar content - ALWAYS visible */}
         <GeographicSelector
           BASEURL={BASEURL}
           onSelectionChange={handleSelectionChange}
@@ -1457,9 +1632,9 @@ useEffect(() => {
           onRefresh={handleRefresh}
           isLoadingPhysical={isLoadingPhysical}
           isLoadingDesktopPlanning={isLoadingDesktopPlanning}
+          isLoadingRectification={isLoadingRectification}
         />
 
-        {/* Placemark List - ALL Data Display */}
         <PlacemarkList
           placemarks={allPlacemarks}
           categories={allCategories}

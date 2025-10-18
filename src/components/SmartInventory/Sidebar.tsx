@@ -8,6 +8,26 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, children }) => {
+  // Get user email from localStorage
+  const getUserEmail = (): string => {
+    try {
+      const userDataString = localStorage.getItem('userData');
+      if (!userDataString) return '';
+      
+      const userData = JSON.parse(userDataString);
+      return userData.email || '';
+    } catch (error) {
+      console.error('Error getting user email:', error);
+      return '';
+    }
+  };
+
+  // Check if current user is the restricted survey user
+  const isRestrictedSurveyUser = (): boolean => {
+    const email = getUserEmail();
+    return email.toLowerCase() === 'survey.terasoftware.com';
+  };
+
   // Safe toggle handler with error boundary
   const handleToggle = () => {
     try {
@@ -68,7 +88,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, children }) 
           {/* Content */}
           {isOpen && (
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
-              {children}
+              {/* Pass the restriction check to children via React.cloneElement */}
+              {React.Children.map(children, child => {
+                if (React.isValidElement(child)) {
+                  return React.cloneElement(child as React.ReactElement<any>, {
+                    hideFileOperations: isRestrictedSurveyUser()
+                  });
+                }
+                return child;
+              })}
             </div>
           )}
         </div>

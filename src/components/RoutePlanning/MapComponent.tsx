@@ -451,6 +451,7 @@ const MapComponent: React.FC = () => {
   const [routeGroups, setRouteGroups] = useState<Map<string, { layers: (google.maps.Polyline | google.maps.InfoWindow)[] }>>(new Map());
   const [polylineHistory, setPolylineHistory] = useState(new Map());
   const [selectedRouteIndex, setSelectedRouteIndex] = useState<number | null>(null);
+    const [markerInstanceMap, setMarkerInstanceMap] = useState<Map<string, google.maps.Marker>>(new Map());
   const [polylineInstanceMap, setPolylineInstanceMap] = useState<Map<string, google.maps.Polyline>>(new Map());
   const [deletedPolylines, setDeletedPolylines] = useState<Set<string>>(new Set());
 
@@ -508,7 +509,6 @@ const MapComponent: React.FC = () => {
   const notifierTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const routeMarkers = useRef<Map<string, google.maps.Marker[]>>(new Map());
 
-
 const [searchParams, setSearchParams] = useSearchParams();
 const [states, setStates] = useState<StateData[]>([]);
 const [districts, setDistricts] = useState<District[]>([]);
@@ -543,7 +543,6 @@ const [showLocationFilters, setShowLocationFilters] = useState(true);
 
 // DATA PROCESSING EFFECTS
 
-  // Fixed useEffect for processing previewKmlData with proper distance calculation
 useEffect(() => {
   if (previewKmlData && map && isLoaded) {
     try {
@@ -557,6 +556,23 @@ useEffect(() => {
       }
 
       const kmlArray: KMLData[] = Array.isArray(parsed) ? parsed : [parsed];
+      
+      console.log("=== PREVIEW KML DATA RECEIVED ===", {
+        rawData: parsed,
+        summary: {
+          totalFiles: kmlArray.length,
+          pointsPerFile: kmlArray.map((kml, idx) => ({
+            fileIndex: idx,
+            pointsCount: kml.data?.points?.length || 0,
+            connectionsCount: kml.data?.connections?.length || 0
+          })),
+          totalPoints: kmlArray.reduce((sum, kml) => sum + (kml.data?.points?.length || 0), 0),
+          totalConnections: kmlArray.reduce((sum, kml) => sum + (kml.data?.connections?.length || 0), 0),
+          networkInfo: kmlArray[0]?.data?.network || null
+        },
+        samplePoints: kmlArray[0]?.data?.points?.slice(0, 3) || [],
+        sampleConnections: kmlArray[0]?.data?.connections?.slice(0, 3) || []
+      });
 
       let allPoints: ProcessedPoint[] = [];
       let allConnections: ProcessedConnection[] = [];
@@ -571,21 +587,25 @@ useEffect(() => {
 
         const data = kmlData.data;
 
-        // PROCESS POINTS (unchanged from original)
+        // PROCESS POINTS
         if (data.points && Array.isArray(data.points)) {
           const points = data.points.map((point: KMLPoint, i: number): ProcessedPoint => {
-            // ... (keep the existing point processing logic)
             let coordinates: number[] = [0, 0];
+            
+            // 🔥 CRITICAL FIX: Parse coordinates if they're a string
             try {
-              if (typeof point.coordinates === 'string') {
-                const coordsArray = JSON.parse(point.coordinates);
-                if (Array.isArray(coordsArray) && coordsArray.length >= 2) {
-                  coordinates = [Number(coordsArray[0]) || 0, Number(coordsArray[1]) || 0];
-                }
-              } else if (Array.isArray(point.coordinates) && point.coordinates.length >= 2) {
-                coordinates = [Number(point.coordinates[0]) || 0, Number(point.coordinates[1]) || 0];
-              } else if (point.coordinates && typeof point.coordinates === 'object') {
-                const coords = point.coordinates as any;
+              let coordsToProcess = point.coordinates;
+              
+              // If coordinates is a string, parse it first
+              if (typeof coordsToProcess === 'string') {
+                coordsToProcess = JSON.parse(coordsToProcess);
+              }
+              
+              // Now handle the parsed/original coordinates
+              if (Array.isArray(coordsToProcess) && coordsToProcess.length >= 2) {
+                coordinates = [Number(coordsToProcess[0]) || 0, Number(coordsToProcess[1]) || 0];
+              } else if (coordsToProcess && typeof coordsToProcess === 'object') {
+                const coords = coordsToProcess as any;
                 if (coords.lat !== undefined && coords.lng !== undefined) {
                   coordinates = [Number(coords.lng) || 0, Number(coords.lat) || 0];
                 } else if (coords[0] !== undefined && coords[1] !== undefined) {
@@ -593,7 +613,8 @@ useEffect(() => {
                 }
               }
             } catch (error) {
-              // Handle error silently
+              console.error(`Point ${i} coordinate parsing error:`, error, point.coordinates);
+              coordinates = [0, 0];
             }
 
             let parsedProperties: Record<string, any> = {};
@@ -606,6 +627,7 @@ useEffect(() => {
                 }
               }
             } catch (error) {
+              console.error(`Point ${i} properties parsing error:`, error);
               parsedProperties = {};
             }
 
@@ -618,8 +640,11 @@ useEffect(() => {
               st_name: parsedProperties.st_name || data.network?.st_name || ""
             };
 
+            // 🔥 FIX: Use properties.name first (for BJC-11, SJC-15, etc.)
+            const pointName = parsedProperties.name || point.name || `Unnamed_Point_${i}`;
+
             const processedPoint: ProcessedPoint = {
-              name: point.name || `Unnamed_Point_${i}`,
+              name: pointName,  // ✅ Now gets "BJC-11" instead of "BJC"
               coordinates: coordinates,
               lgd_code: point.lgd_code || parsedProperties.lgd_code || "NULL",
               properties: {
@@ -629,7 +654,7 @@ useEffect(() => {
                 updated_at: point.updated_at,
                 
                 FID: parsedProperties.FID || point.FID || "",
-                name: parsedProperties.name || point.name,
+                name: pointName,  // ✅ Use the same name
                 lat: parsedProperties.lat || coordinates[1]?.toString() || "",
                 long: parsedProperties.long || coordinates[0]?.toString() || "",
                 remarks: parsedProperties.remarks || "",
@@ -650,7 +675,22 @@ useEffect(() => {
                 backhaul: parsedProperties.backhaul || "",
                 phase: parsedProperties.phase || "3",
                 route_code: parsedProperties.route_code || "",
-                asset_type: parsedProperties.asset_type || "FPOI",
+                
+                // 🔥 FIX: Use properties.type first (BJC, SJC, LC, etc.)
+                asset_type: parsedProperties.type || point.type || parsedProperties.asset_type || "FPOI",
+                type: parsedProperties.type || point.type || parsedProperties.asset_type || "FPOI",
+                
+                olt_code: parsedProperties.olt_code || "",
+                olt_ip: parsedProperties.olt_ip || "",
+                rd_offset: parsedProperties.rd_offset || "",
+                coil_2_ont: parsedProperties.coil_2_ont || "",
+                coil_2_olt: parsedProperties.coil_2_olt || "",
+                direction: parsedProperties.direction || "",
+                fiber_pos: parsedProperties.fiber_pos || "",
+                created_us: parsedProperties.created_us || "",
+                created_da: parsedProperties.created_da || "",
+                last_edite: parsedProperties.last_edite || "",
+                last_edi_1: parsedProperties.last_edi_1 || "",
                 
                 gp_code: parsedProperties.gp_code || "",
                 block_ip: parsedProperties.block_ip || "",
@@ -661,15 +701,19 @@ useEffect(() => {
                 
                 cable_len: parsedProperties.cable_len || "0",
                 ring: parsedProperties.ring || "",
-                type: parsedProperties.type || parsedProperties.asset_type || "FPOI",
                 
-                GlobalID: parsedProperties.GlobalID || "",
-                Label: parsedProperties.Label || point.name,
+                GlobalID: parsedProperties.GlobalID || parsedProperties.globalid || "",
+                Label: parsedProperties.Label || pointName,
                 
+                // 🔥 FIX: Icon logic based on type
                 icon: parsedProperties.icon || 
-                      (parsedProperties.asset_type === "Block Router" ? "https://maps.google.com/mapfiles/ms/icons/blue-dot.png" :
-                       parsedProperties.asset_type === "BHQ" ? "https://maps.google.com/mapfiles/ms/icons/green-dot.png" :
-                       parsedProperties.asset_type === "GP" ? "https://maps.google.com/mapfiles/ms/icons/yellow-dot.png" :
+                      (parsedProperties.type === "Block Router" || point.type === "Block Router" ? "https://maps.google.com/mapfiles/ms/icons/blue-dot.png" :
+                       parsedProperties.type === "BHQ" || point.type === "BHQ" ? "https://maps.google.com/mapfiles/ms/icons/green-dot.png" :
+                       parsedProperties.type === "GP" || point.type === "GP" ? "https://maps.google.com/mapfiles/ms/icons/yellow-dot.png" :
+                       parsedProperties.type === "BJC" || point.type === "BJC" ? "https://maps.google.com/mapfiles/ms/icons/purple-dot.png" :
+                       parsedProperties.type === "SJC" || point.type === "SJC" ? "https://maps.google.com/mapfiles/ms/icons/orange-dot.png" :
+                       parsedProperties.type === "LC" || point.type === "LC" ? "https://maps.google.com/mapfiles/ms/icons/pink-dot.png" :
+                       parsedProperties.type === "N Highway Cross" || point.type === "N Highway Cross" ? "https://maps.google.com/mapfiles/ms/icons/yellow-dot.png" :
                        "https://maps.google.com/mapfiles/ms/icons/red-dot.png"),
                 
                 ...(i === 0 && data.network && {
@@ -687,9 +731,12 @@ useEffect(() => {
                 _parsing_info: {
                   source_file: idx,
                   original_coordinates_type: typeof point.coordinates,
+                  original_coordinates_value: point.coordinates,
                   original_properties_type: typeof point.properties,
                   coordinates_parsed_successfully: coordinates[0] !== 0 || coordinates[1] !== 0,
-                  properties_parsed_successfully: Object.keys(parsedProperties).length > 0
+                  properties_parsed_successfully: Object.keys(parsedProperties).length > 0,
+                  original_point_name: point.name,
+                  properties_point_name: parsedProperties.name
                 }
               }
             };
@@ -697,15 +744,17 @@ useEffect(() => {
             return processedPoint;
           });
 
+          console.log(`✅ Processed ${points.length} points from file ${idx + 1}`);
+          console.log("Sample processed point:", points[0]);
+          
           allPoints.push(...points);
         } else {
           console.warn(`❌ File ${idx + 1}: No points data found`);
           processingErrors.push(`KML file ${idx + 1}: No points data found`);
         }
 
-        // PROCESS CONNECTIONS WITH IMPROVED DISTANCE CALCULATION
+        // PROCESS CONNECTIONS
         if (data.connections && Array.isArray(data.connections)) {
-          // Create point lookup maps
           const pointLookup = new Map<string, ProcessedPoint>();
           const pointLookupByLGD = new Map<string, ProcessedPoint>();
           const pointLookupByBaseName = new Map<string, ProcessedPoint>();
@@ -735,31 +784,29 @@ useEffect(() => {
           });
 
           const connections = data.connections.map((conn: KMLConnection, i: number): ProcessedConnection => {
-            // Process coordinates
             let convertedCoords: number[][] = [];
+            
+            // 🔥 CRITICAL FIX: Parse connection coordinates if they're a string
             try {
-              if (typeof conn.coordinates === 'string') {
-                const coordsArray = JSON.parse(conn.coordinates);
-                if (Array.isArray(coordsArray)) {
-                  convertedCoords = coordsArray.map((coord: any) => {
-                    if (Array.isArray(coord) && coord.length >= 2) {
-                      const [first, second] = coord;
-                      const num1 = Number(first) || 0;
-                      const num2 = Number(second) || 0;
-                      
-                      if (Math.abs(num1) > Math.abs(num2) && Math.abs(num2) < 90) {
-                        return [num1, num2];
-                      } else {
-                        return [num2, num1];
-                      }
-                    }
-                    return coord;
-                  });
-                }
-              } else if (Array.isArray(conn.coordinates)) {
-                convertedCoords = conn.coordinates.map((coord: any) => {
+              let coordsToProcess = conn.coordinates;
+              
+              if (typeof coordsToProcess === 'string') {
+                coordsToProcess = JSON.parse(coordsToProcess);
+              }
+              
+              if (Array.isArray(coordsToProcess)) {
+                convertedCoords = coordsToProcess.map((coord: any) => {
                   if (Array.isArray(coord) && coord.length >= 2) {
-                    return [Number(coord[0]) || 0, Number(coord[1]) || 0];
+                    const [first, second] = coord;
+                    const num1 = Number(first) || 0;
+                    const num2 = Number(second) || 0;
+                    
+                    // Detect which is lat and which is lng
+                    if (Math.abs(num1) > Math.abs(num2) && Math.abs(num2) < 90) {
+                      return [num1, num2]; // [lng, lat]
+                    } else {
+                      return [num2, num1]; // [lat, lng] → swap to [lng, lat]
+                    }
                   }
                   return coord;
                 });
@@ -769,12 +816,11 @@ useEffect(() => {
               convertedCoords = [];
             }
 
-            // IMPROVED DISTANCE CALCULATION: Use coordinates if available, fallback to stored length
+            // Calculate distance
             let calculatedDistance = 0;
             let distanceSource = 'stored';
             
             if (convertedCoords.length >= 2) {
-              // Calculate distance from actual coordinates
               const coordsForDistance = convertedCoords.map(coord => ({
                 lat: coord[1],
                 lng: coord[0]
@@ -782,23 +828,11 @@ useEffect(() => {
               calculatedDistance = computePathDistance(coordsForDistance);
               distanceSource = 'calculated';
             } else if (conn.length && Number(conn.length) > 0) {
-              // Use stored length as fallback
               calculatedDistance = Number(conn.length);
               distanceSource = 'stored';
-            } else {
-              // Last resort: try to calculate from start/end points
-              const startPoint = pointLookup.get(conn.start);
-              const endPoint = pointLookup.get(conn.end);
-              
-              if (startPoint && endPoint && startPoint.coordinates && endPoint.coordinates) {
-                const startCoord = { lat: startPoint.coordinates[1], lng: startPoint.coordinates[0] };
-                const endCoord = { lat: endPoint.coordinates[1], lng: endPoint.coordinates[0] };
-                calculatedDistance = haversineDistance(startCoord, endCoord);
-                distanceSource = 'point_to_point';
-              }
             }
 
-            // Process properties
+            // Parse connection properties
             let connectionProperties: Record<string, any> = {};
             try {
               if (conn.properties) {
@@ -813,7 +847,6 @@ useEffect(() => {
               connectionProperties = {};
             }
 
-            // Find matching points
             const findPoint = (searchName: string, lgdCode?: string): ProcessedPoint | null => {
               if (!searchName) return null;
               
@@ -840,7 +873,6 @@ useEffect(() => {
             const startPoint = findPoint(conn.start, conn.start_lgd_code);
             const endPoint = findPoint(conn.end, conn.end_lgd_code);
 
-            // Determine if connection is existing based on multiple criteria
             const isExisting = conn.type === 'existing' || 
                              conn.existing === true || 
                              connectionProperties.existing === true ||
@@ -852,7 +884,7 @@ useEffect(() => {
             const processedConnection: ProcessedConnection = {
               start: conn.start || "Unknown_Start",
               end: conn.end || "Unknown_End",
-              length: calculatedDistance, // Use calculated distance
+              length: calculatedDistance,
               name: conn.original_name || conn.name || `${conn.start} TO ${conn.end}`,
               coordinates: convertedCoords,
               color: connectionColor,
@@ -874,7 +906,7 @@ useEffect(() => {
               
               segmentData: {
                 connection: {
-                  length: calculatedDistance, // Use calculated distance here too
+                  length: calculatedDistance,
                   existing: isExisting,
                   color: connectionColor
                 },
@@ -884,101 +916,95 @@ useEffect(() => {
                   cs: connectionProperties.cs || conn.cs || "",
                   name: connectionProperties.name || conn.name || `${conn.start} TO ${conn.end}`,
                   asset_code: connectionProperties.asset_code || conn.asset_code || "",
-                  
                   seg_length: connectionProperties.seg_length || conn.seg_length || (calculatedDistance ? (calculatedDistance * 1000).toString() : "0"),
                   length: connectionProperties.length || calculatedDistance?.toString() || "0",
                   cable_len: connectionProperties.cable_len || (calculatedDistance ? (calculatedDistance * 1000).toString() : "0"),
-                  
                   start_node: connectionProperties.start_node || conn.start,
                   end_node: connectionProperties.end_node || conn.end,
-                  
                   num_fibre: connectionProperties.num_fibre || "24",
-                  fibre_type: connectionProperties.fibre_type || "",
-                  cable_type: connectionProperties.cable_type || "",
-                  
                   status: connectionProperties.status || conn.status || (isExisting ? "Accepted" : "Proposed"),
                   phase: connectionProperties.phase || (isExisting ? "1" : "3"),
                   existing: connectionProperties.existing !== undefined ? connectionProperties.existing : isExisting,
-                  
                   asset_type: connectionProperties.asset_type || "Incremental Cable",
                   type: connectionProperties.type || "Incremental Cable",
                   route_code: connectionProperties.route_code || "",
-                  
                   blk_code: connectionProperties.blk_code || data.network?.blk_code || "",
                   blk_name: connectionProperties.blk_name || data.network?.main_point_name || "",
                   dt_code: connectionProperties.dt_code || data.network?.dt_code || "",
                   dt_name: connectionProperties.dt_name || data.network?.dt_name || "",
                   st_code: connectionProperties.st_code || data.network?.st_code || "",
                   st_name: connectionProperties.st_name || data.network?.st_name || "",
-                  
-                  GlobalID: connectionProperties.GlobalID || "",
-                  S_N: connectionProperties.S_N || "",
-                  FID: connectionProperties.FID || "",
-                  
-                  ...connectionProperties,
-                  
-                  // Add distance calculation metadata
-                  _distance_info: {
-                    calculated_distance: calculatedDistance,
-                    original_stored_length: conn.length,
-                    distance_source: distanceSource,
-                    coordinate_count: convertedCoords.length
-                  },
-                  
-                  _parsing_info: {
-                    source_file: idx,
-                    start_point_found: !!startPoint,
-                    end_point_found: !!endPoint,
-                    coordinates_count: convertedCoords.length,
-                    original_coordinates_type: typeof conn.coordinates,
-                    original_properties_type: typeof conn.properties
-                  }
+                  ...connectionProperties
                 }
               },
               
-              originalProperties: connectionProperties,
-              
-              _metadata: {
-                source_file: idx,
-                parsing_timestamp: new Date().toISOString(),
-                point_matching: {
-                  start_point_matched: !!startPoint,
-                  end_point_matched: !!endPoint,
-                  start_match_method: startPoint ? 'found' : 'not_found',
-                  end_match_method: endPoint ? 'found' : 'not_found'
-                },
-                distance_calculation: {
-                  method: distanceSource,
-                  calculated_value: calculatedDistance,
-                  original_value: conn.length
-                }
-              }
+              originalProperties: connectionProperties
             };
 
             return processedConnection;
           });
 
+          console.log(`✅ Processed ${connections.length} connections from file ${idx + 1}`);
           allConnections.push(...connections);
-        } else {
-          console.warn(`❌ File ${idx + 1}: No connections data found`);
-          processingErrors.push(`KML file ${idx + 1}: No connections data found`);
         }
       });
       
-      // IMPROVED DISTANCE TOTALS CALCULATION
+      // ==========================================
+      // ✅ NO JUNCTION EXTRACTION NEEDED - ALREADY IN POINTS
+      // ==========================================
+      
+      console.log("=== ALL POINTS ALREADY INCLUDE JUNCTIONS ===", {
+        totalPoints: allPoints.length,
+        pointsByType: allPoints.reduce((acc, p) => {
+          const type = p.properties?.type || p.properties?.asset_type || 'Unknown';
+          acc[type] = (acc[type] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>),
+        pointsByName: {
+          BJC: allPoints.filter(p => /BJC/i.test(p.name)).length,
+          SJC: allPoints.filter(p => /SJC/i.test(p.name)).length,
+          LC: allPoints.filter(p => /LC|LUP/i.test(p.name)).length,
+          GP: allPoints.filter(p => /GP/i.test(p.name)).length,
+          BHQ: allPoints.filter(p => /BHQ/i.test(p.name)).length,
+          Other: allPoints.filter(p => 
+            !/BJC|SJC|LC|LUP|GP|BHQ/i.test(p.name)
+          ).length
+        },
+        samplePointNames: allPoints.slice(0, 20).map(p => ({
+          name: p.name,
+          type: p.properties?.type,
+          originalName: p.properties?._parsing_info?.original_point_name
+        }))
+      });
+      
+      // Calculate totals
       const existingConnections = allConnections.filter(conn => conn.existing === true);
       const proposedConnections = allConnections.filter(conn => conn.existing === false);
       
-      // Calculate totals using the improved distance values
       const totalExistingLength = existingConnections.reduce((sum, conn) => sum + (conn.length || 0), 0);
       const totalProposedLength = proposedConnections.reduce((sum, conn) => sum + (conn.length || 0), 0);
       const totalLength = totalExistingLength + totalProposedLength;
-      
-      if (processingErrors.length > 0) {
-        console.warn("Processing errors encountered:", processingErrors);
-        showNotification("error", `Processing warnings: ${processingErrors.join('; ')}`);
-      }
 
+      console.log("=== FINAL PROCESSED DATA ===", {
+        points: {
+          total: allPoints.length,
+          samplePoint: allPoints[0],
+          coordinateCheck: allPoints.slice(0, 5).map(p => ({
+            name: p.name,
+            coords: p.coordinates,
+            valid: p.coordinates[0] !== 0 && p.coordinates[1] !== 0
+          }))
+        },
+        connections: {
+          total: allConnections.length,
+          existing: existingConnections.length,
+          proposed: proposedConnections.length,
+          totalExistingLength: totalExistingLength.toFixed(3),
+          totalProposedLength: totalProposedLength.toFixed(3)
+        }
+      });
+
+      // Set the processed data
       setGPSApiResponse({ points: allPoints });
       setConctApiResponse({ connections: allConnections });
 
@@ -992,19 +1018,28 @@ useEffect(() => {
           dt_name: network.dt_name || prev.dt_name,
           st_code: network.st_code || prev.st_code,
           st_name: network.st_name || prev.st_name,
-          // Use calculated totals instead of network values
           totalLength: totalLength,
           existinglength: totalExistingLength,
           proposedlength: totalProposedLength
         }));
       }
 
-      // Update component state with calculated distances
+      console.log("=== AFTER PROCESSING KML ===", {
+        allPointsCount: allPoints.length,
+        pointTypes: allPoints.reduce((acc, p) => {
+          const type = p.properties?.type || p.properties?.asset_type || 'Unknown';
+          acc[type] = (acc[type] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>),
+        pointsWithIds: allPoints.filter(p => p.properties?.id).length,
+        pointsWithoutIds: allPoints.filter(p => !p.properties?.id).length
+      });
+
       setExistingDistance(totalExistingLength);
       setProposedDistance(totalProposedLength);
 
       showNotification("success", 
-        `Successfully loaded KML data: ${existingConnections.length} existing (${totalExistingLength.toFixed(2)}km) + ${proposedConnections.length} proposed (${totalProposedLength.toFixed(2)}km) connections`
+        `Successfully loaded KML data: ${allPoints.length} points, ${existingConnections.length} existing + ${proposedConnections.length} proposed connections`
       );
       
     } catch (error) {
@@ -1015,84 +1050,99 @@ useEffect(() => {
   }
 }, [previewKmlData, map, isLoaded, setGPSApiResponse, setConctApiResponse, setLocalData]);
 
+
+// ==========================================
+// 2️⃣ RENDER POINTS ON MAP
+// ==========================================
 useEffect(() => {
   if (apiGPSResponse?.points?.length && map) {
+    console.log("=== RENDERING POINTS ON MAP ===");
+    console.log("Total points to render:", apiGPSResponse.points.length);
+    
     setPointProperties(apiGPSResponse?.points[0]);
     
     const connectionsByPoint = new Map<string, Connection[]>();
     
     if (apiConctResponse?.connections?.length) {
       apiConctResponse.connections.forEach((conn: Connection) => {
-        const [from, to] = [conn.start, conn.end];
-        [from, to].forEach((point) => {
-          if (!connectionsByPoint.has(point)) {
-            connectionsByPoint.set(point, []);
+        const from = conn.start && typeof conn.start === 'string' ? conn.start : '';
+        const to = conn.end && typeof conn.end === 'string' ? conn.end : '';
+        
+        [from, to].forEach((pointName) => {
+          if (pointName && pointName.trim() !== '') {
+            if (!connectionsByPoint.has(pointName)) {
+              connectionsByPoint.set(pointName, []);
+            }
+            connectionsByPoint.get(pointName)?.push(conn);
           }
-          connectionsByPoint.get(point)?.push(conn);
         });
       });
     }
     
-    const uniquePoints = new Map<string, any>();
-    
-    apiGPSResponse.points.forEach((point: any) => {
-  // Add null/undefined checks for point.name
-  if (point && point.name && typeof point.name === 'string' && !point.name.includes(" TO ")) {
-    uniquePoints.set(point.name, point);
-  }
-});
+    const validPoints = apiGPSResponse.points.filter((point: any) => {
+      return point && 
+             point.name && 
+             typeof point.name === 'string' && 
+             point.coordinates && 
+             Array.isArray(point.coordinates) && 
+             point.coordinates.length >= 2;
+    });
 
-// Also add similar checks in other places where point.name is used:
-
-// Around line 1020-1030, in the connectionsByPoint forEach:
-if (apiConctResponse?.connections?.length) {
-  apiConctResponse.connections.forEach((conn: Connection) => {
-    // Add null checks for connection start/end names
-    const from = conn.start && typeof conn.start === 'string' ? conn.start : '';
-    const to = conn.end && typeof conn.end === 'string' ? conn.end : '';
+    console.log(`Rendering ${validPoints.length} valid points`);
     
-    [from, to].forEach((point) => {
-      if (point && point.trim() !== '') {  // Only process non-empty strings
-        if (!connectionsByPoint.has(point)) {
-          connectionsByPoint.set(point, []);
-        }
-        connectionsByPoint.get(point)?.push(conn);
+    console.log("=== POINT NAME MAPPING DEBUG ===", {
+      samplePoints: validPoints.slice(0, 10).map((p: any) => ({
+        originalName: p.name,
+        propertiesName: p.properties?.name,
+        finalName: p.properties?.name || p.name,
+        type: p.properties?.type
+      }))
+    });
+
+    const newLoopEntries: LoopEntry[] = validPoints.map((point: any) => {
+      // 🔥 FIX: Use properties.name first (for BJC-11, SJC-15, etc.)
+      const pointName = point.properties?.name || point.name || `Unnamed_Point_${Date.now()}`;
+      const relatedConnections = connectionsByPoint.get(pointName) || [];
+      const matchedConn = relatedConnections[0];
+      
+      return {
+        name: pointName,  // ✅ Now uses "BJC-11" instead of "BJC"
+        coordinates: point.coordinates || [0, 0],
+        lgd_code: point.properties?.lgd_code || point.lgd_code || "NULL",
+        properties: point.properties || {},
+        ...(matchedConn && {
+          connection: {
+            length: matchedConn.length || 0,
+            existing: previewKmlData === null ? true : matchedConn.existing || false,
+            color: matchedConn.color || "#55ff00",
+          },
+          route: {
+            features: [
+              {
+                geometry: {
+                  coordinates: matchedConn.coordinates?.map(([lng, lat]) => [lng, lat]) || [],
+                },
+              },
+            ],
+          },
+        }),
+      };
+    });
+
+    console.log("=== NEW LOOP ENTRIES DEBUG ===", {
+      totalEntries: newLoopEntries.length,
+      sampleNames: newLoopEntries.slice(0, 10).map(e => e.name),
+      junctionCounts: {
+        BJC: newLoopEntries.filter(e => /BJC/i.test(e.name)).length,
+        SJC: newLoopEntries.filter(e => /SJC/i.test(e.name)).length,
+        LC: newLoopEntries.filter(e => /LC|LUP/i.test(e.name)).length
+      },
+      genericNames: {
+        justBJC: newLoopEntries.filter(e => e.name === 'BJC').length,
+        justSJC: newLoopEntries.filter(e => e.name === 'SJC').length,
+        justLC: newLoopEntries.filter(e => e.name === 'LC').length
       }
     });
-  });
-}
-
-// In the newLoopEntries mapping:
-const newLoopEntries: LoopEntry[] = Array.from(uniquePoints.values()).map((point: any) => {
-  // Ensure point has required properties
-  const pointName = point.name || `Unnamed_Point_${Date.now()}`;
-  const relatedConnections = connectionsByPoint.get(pointName) || [];
-  const matchedConn = relatedConnections[0];
-  
-  return {
-    name: pointName,
-    coordinates: point.coordinates || [0, 0],
-    lgd_code: point.properties?.lgd_code || "NULL",
-    properties: point.properties || {},
-    ...(matchedConn && {
-      connection: {
-        length: matchedConn.length || 0,
-        existing: previewKmlData === null ? true : matchedConn.existing || false,
-        color: matchedConn.color || "#55ff00",
-      },
-      route: {
-        features: [
-          {
-            geometry: {
-              coordinates: matchedConn.coordinates?.map(([lat, lng]) => [lng, lat]) || [],
-            },
-          },
-        ],
-      },
-    }),
-  };
-});
-
 
     setLocalData((prev: GlobalData) => ({
       ...prev,
@@ -1105,24 +1155,413 @@ const newLoopEntries: LoopEntry[] = Array.from(uniquePoints.values()).map((point
     }));
     
     const bounds = new window.google.maps.LatLngBounds();
-    (apiGPSResponse.points as PointType[]).forEach((point) => {
-      if (Array.isArray(point.coordinates) && point.coordinates.length === 2 && !point.name.includes(" TO ")) {
+    validPoints.forEach((point: any) => {
+      if (Array.isArray(point.coordinates) && point.coordinates.length >= 2) {
         bounds.extend({ lat: point.coordinates[1], lng: point.coordinates[0] });
       }
     });
    
     map.fitBounds(bounds);
   }
-}, [apiGPSResponse, apiConctResponse, map]);
+}, [apiGPSResponse, apiConctResponse, map, previewKmlData]);
 
-  useEffect(() => {
-  if (!map || !apiConctResponse?.connections?.length) {
+
+// ==========================================
+// 2️⃣B: RENDER POINT MARKERS ON MAP (NEW!)
+// ==========================================
+useEffect(() => {
+  if (!map || !LocalData.loop || LocalData.loop.length === 0) {
     return;
   }
 
+  console.log("=== RENDERING POINT MARKERS ===");
+  console.log("Total points to render as markers:", LocalData.loop.length);
+
+  // Clear existing markers
+  markerInstanceMap.forEach((marker) => {
+    if (marker) {
+      marker.setMap(null);
+    }
+  });
+
+  const newMarkerMap = new Map<string, google.maps.Marker>();
+  let renderedCount = 0;
+  let skippedCount = 0;
+
+  LocalData.loop.forEach((point: LoopEntry, index: number) => {
+    // Validate coordinates
+    if (!point.coordinates || 
+        !Array.isArray(point.coordinates) || 
+        point.coordinates.length < 2) {
+      console.warn(`Skipping point ${point.name}: Invalid coordinates`, point.coordinates);
+      skippedCount++;
+      return;
+    }
+
+    const [lng, lat] = point.coordinates;
+    
+    // Validate lat/lng values
+    if (typeof lat !== 'number' || typeof lng !== 'number' || 
+        lat === 0 || lng === 0 ||
+        isNaN(lat) || isNaN(lng) ||
+        Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+      console.warn(`Skipping point ${point.name}: Invalid lat/lng values`, { lat, lng });
+      skippedCount++;
+      return;
+    }
+
+    const position = { lat, lng };
+
+    // Get icon based on asset type
+    const assetType = point.properties?.asset_type || point.properties?.type;
+    let iconUrl: string;
+
+    switch (assetType) {
+      case "Block Router":
+        iconUrl = "https://maps.google.com/mapfiles/ms/icons/blue-dot.png";
+        break;
+      case "BHQ":
+        iconUrl = "https://maps.google.com/mapfiles/ms/icons/green-dot.png";
+        break;
+      case "GP":
+        iconUrl = "https://maps.google.com/mapfiles/ms/icons/yellow-dot.png";
+        break;
+      case "BJC":
+        iconUrl = "https://maps.google.com/mapfiles/ms/icons/purple-dot.png";
+        break;
+      case "SJC":
+        iconUrl = "https://maps.google.com/mapfiles/ms/icons/orange-dot.png";
+        break;
+      case "LC":
+        iconUrl = "https://maps.google.com/mapfiles/ms/icons/pink-dot.png";
+        break;
+      case "N Highway Cross":
+        iconUrl = "https://maps.google.com/mapfiles/ms/icons/yellow-dot.png";
+        break;
+      case "FPOI":
+      default:
+        iconUrl = point.properties?.icon || "https://maps.google.com/mapfiles/ms/icons/red-dot.png";
+    }
+
+    // Create marker
+    const marker = new google.maps.Marker({
+      position,
+      map,
+      title: point.name,
+      icon: {
+        url: iconUrl,
+        scaledSize: new google.maps.Size(32, 32),
+      },
+      animation: google.maps.Animation.DROP,
+      optimized: true,
+    });
+
+    // Add click listener
+    marker.addListener("click", () => {
+      setPointProperties({
+        name: point.name,
+        coordinates: point.coordinates,
+        lgd_code: point.lgd_code,
+        properties: point.properties,
+        ...(point.connection && { connection: point.connection }),
+        ...(point.route && { route: point.route })
+      });
+    });
+
+    newMarkerMap.set(point.name, marker);
+    renderedCount++;
+
+    // Log every 10th marker
+    if ((index + 1) % 10 === 0) {
+      console.log(`Progress: ${index + 1}/${LocalData.loop.length} markers rendered`);
+    }
+  });
+
+  setMarkerInstanceMap(newMarkerMap);
+
+  console.log("=== MARKER RENDERING COMPLETE ===", {
+    totalPoints: LocalData.loop.length,
+    renderedMarkers: renderedCount,
+    skippedMarkers: skippedCount,
+    renderRate: `${((renderedCount / LocalData.loop.length) * 100).toFixed(1)}%`,
+    markerBreakdown: {
+      "Block Router": Array.from(newMarkerMap.values()).filter(m => 
+        m.getIcon()?.url?.includes("blue-dot")
+      ).length,
+      "BHQ": Array.from(newMarkerMap.values()).filter(m => 
+        m.getIcon()?.url?.includes("green-dot")
+      ).length,
+      "GP": Array.from(newMarkerMap.values()).filter(m => 
+        m.getIcon()?.url?.includes("yellow-dot")
+      ).length,
+      "BJC": Array.from(newMarkerMap.values()).filter(m => 
+        m.getIcon()?.url?.includes("purple-dot")
+      ).length,
+      "SJC": Array.from(newMarkerMap.values()).filter(m => 
+        m.getIcon()?.url?.includes("orange-dot")
+      ).length,
+      "LC": Array.from(newMarkerMap.values()).filter(m => 
+        m.getIcon()?.url?.includes("pink-dot")
+      ).length,
+      "FPOI/Other": Array.from(newMarkerMap.values()).filter(m => 
+        m.getIcon()?.url?.includes("red-dot")
+      ).length
+    }
+  });
+
+  // Log details about skipped markers
+  if (skippedCount > 0) {
+    console.warn(`⚠️ Skipped ${skippedCount} markers due to invalid coordinates`);
+    
+    const skippedPoints = LocalData.loop.filter(point => {
+      if (!point.coordinates || !Array.isArray(point.coordinates) || point.coordinates.length < 2) {
+        return true;
+      }
+      const [lng, lat] = point.coordinates;
+      return !lat || !lng || lat === 0 || lng === 0 || isNaN(lat) || isNaN(lng);
+    });
+
+    console.warn("Skipped points details:", skippedPoints.map(p => ({
+      name: p.name,
+      coordinates: p.coordinates,
+      reason: !p.coordinates ? "No coordinates" : 
+              p.coordinates.length < 2 ? "Insufficient coordinates" :
+              "Invalid lat/lng values"
+    })));
+  }
+
+}, [LocalData.loop, map]);
+
+
+// ==========================================
+// 3️⃣ SYNC ALL CONNECTIONS WITH UNIQUE KEYS
+// ==========================================
+// ==========================================
+// 3️⃣ SYNC ALL CONNECTIONS WITH UNIQUE KEYS
+// ==========================================
+useEffect(() => {
+  if (!apiConctResponse?.connections?.length) {
+    return;
+  }
+
+  console.log("=== FULL SYNC: REBUILDING ALL CONNECTIONS ===");
+  console.log("API Connections Count:", apiConctResponse.connections.length);
+  console.log("Deleted Count:", deletedPolylines.size);
+
+  const completePolylineHistory: Record<string, any> = {};
+  let processedCount = 0;
+  let skippedCount = 0;
+  const duplicateKeyWarnings: string[] = [];
+
+  apiConctResponse.connections.forEach((connection: Connection, idx: number) => {
+    // ✅ CREATE UNIQUE KEY USING ID OR INDEX
+    const baseKey = `${connection.start} TO ${connection.end}`;
+    const uniqueKey = connection.id 
+      ? `${baseKey}_${connection.id}`
+      : `${baseKey}_${idx}`;
+    
+    // ✅ CORRECTED: Track duplicates by checking existing keys with same base
+    const existingKeysWithSameBase = Object.keys(completePolylineHistory).filter(k => 
+      k.startsWith(baseKey + "_") || k === baseKey
+    );
+    
+    if (existingKeysWithSameBase.length > 0) {
+      duplicateKeyWarnings.push(
+        `Duplicate route: ${baseKey} (instance #${existingKeysWithSameBase.length + 1}, key: ${uniqueKey})`
+      );
+    }
+
+    // Check if user deleted this specific connection
+    const isDeleted = deletedPolylines.has(baseKey) || 
+                     deletedPolylines.has(uniqueKey);
+    
+    if (isDeleted) {
+      console.log(`[${idx + 1}/${apiConctResponse.connections.length}] SKIPPED (user deleted): ${uniqueKey}`);
+      skippedCount++;
+      return;
+    }
+
+    // Convert coordinates
+    const path = connection.coordinates?.map((coord) => ({
+      lat: coord[1],
+      lng: coord[0]
+    })) || [];
+
+    if (path.length === 0) {
+      console.warn(`[${idx + 1}/${apiConctResponse.connections.length}] SKIPPED (no coordinates): ${uniqueKey}`);
+      skippedCount++;
+      return;
+    }
+
+    const midPoint = path.length > 0 ? path[Math.floor(path.length / 2)] : null;
+
+    // Find matching points
+    const startPoint = apiGPSResponse?.points?.find((point: PointType) => 
+      point.name === connection.start
+    );
+    const endPoint = apiGPSResponse?.points?.find((point: PointType) => 
+      point.name === connection.end
+    );
+
+    // ✅ STORE WITH UNIQUE KEY
+    completePolylineHistory[uniqueKey] = {
+      polyline: {
+        coordinates: path
+      },
+      segmentData: {
+        connection: {
+          length: connection.length || 0,
+          existing: connection.existing ?? false,
+          color: connection.color || (connection.existing ? "#00AA00" : "#FF0000")
+        },
+        startCords: startPoint?.properties?.lgd_code || 
+                    connection.start_lgd_code || 
+                    connection.segmentData?.startCords || 
+                    "NULL",
+        endCords: endPoint?.properties?.lgd_code || 
+                  connection.end_lgd_code || 
+                  connection.segmentData?.endCords || 
+                  "NULL",
+        properties: {
+          // Merge all property sources
+          ...(connection.originalProperties || {}),
+          ...(connection.segmentData?.properties || {}),
+          ...(connection.properties || {}),
+          
+          // Critical fields
+          name: connection.name || baseKey,
+          start_node: connection.start,
+          end_node: connection.end,
+          length: (connection.length || 0).toString(),
+          seg_length: ((connection.length || 0) * 1000).toString(),
+          cable_len: ((connection.length || 0) * 1000).toString(),
+          existing: connection.existing ?? false,
+          status: connection.status || (connection.existing ? "Accepted" : "Proposed"),
+          phase: connection.phase || (connection.existing ? "1" : "3"),
+          type: connection.type || "Incremental Cable",
+          asset_type: connection.type || "Incremental Cable",
+          
+          // IDs - CRITICAL FOR UNIQUENESS
+          id: connection.id,
+          network_id: connection.network_id,
+          objectid: connection.segmentData?.properties?.objectid || "",
+          
+          // Admin codes
+          blk_code: connection.segmentData?.properties?.blk_code || 
+                    startPoint?.properties?.blk_code || "",
+          blk_name: connection.segmentData?.properties?.blk_name || 
+                    startPoint?.properties?.blk_name || "",
+          dt_code: connection.segmentData?.properties?.dt_code || 
+                   startPoint?.properties?.dt_code || "",
+          dt_name: connection.segmentData?.properties?.dt_name || 
+                   startPoint?.properties?.dt_name || "",
+          st_code: connection.segmentData?.properties?.st_code || 
+                   startPoint?.properties?.st_code || "",
+          st_name: connection.segmentData?.properties?.st_name || 
+                   startPoint?.properties?.st_name || "",
+          
+          // All other metadata
+          cs: connection.segmentData?.properties?.cs || "",
+          asset_code: connection.segmentData?.properties?.asset_code || "",
+          olt_code: connection.segmentData?.properties?.olt_code || "",
+          route_code: connection.segmentData?.properties?.route_code || "",
+          ring: connection.segmentData?.properties?.ring || "",
+          GlobalID: connection.segmentData?.properties?.GlobalID || 
+                   connection.segmentData?.properties?.globalid || "",
+          S_N: connection.segmentData?.properties?.S_N || "",
+          FID: connection.segmentData?.properties?.FID || "",
+          num_fibre: connection.segmentData?.properties?.num_fibre || "24 F",
+          fibre_type: connection.segmentData?.properties?.fibre_type || "",
+          cable_type: connection.segmentData?.properties?.cable_type || "",
+          fiber_pos: connection.segmentData?.properties?.fiber_pos || "",
+          direction: connection.segmentData?.properties?.direction || "",
+          traverse: connection.segmentData?.properties?.traverse || "",
+          owner: connection.segmentData?.properties?.owner || "BBNL",
+          remarks: connection.segmentData?.properties?.remarks || "",
+          obs: connection.segmentData?.properties?.obs || "",
+          s_coil_len: connection.segmentData?.properties?.s_coil_len || "0.0",
+          e_coil_len: connection.segmentData?.properties?.e_coil_len || "0.0",
+          created_us: connection.segmentData?.properties?.created_us || "",
+          created_da: connection.segmentData?.properties?.created_da || "",
+          last_edite: connection.segmentData?.properties?.last_edite || "",
+          last_edi_1: connection.segmentData?.properties?.last_edi_1 || "",
+          mp4: connection.segmentData?.properties?.mp4 || "NULL",
+          ontcode: connection.segmentData?.properties?.ontcode || "NULL",
+          svcready: connection.segmentData?.properties?.svcready || "NULL",
+          st_length_: connection.segmentData?.properties?.st_length_ || "",
+          no: connection.segmentData?.properties?.no || "",
+          "s.no": connection.segmentData?.properties?.["s.no"] || ""
+        }
+      },
+      original: {
+        coords: path.slice(),
+        distance: connection.length || 0,
+        markerPositions: [],
+        labelPos: midPoint ? [midPoint.lat, midPoint.lng] : null,
+        labelText: `${(connection.length || 0).toFixed(2)} km`,
+        properties: {
+          ...(connection.properties || {}),
+          ...(connection.segmentData?.properties || {})
+        }
+      },
+      undoStack: [],
+      dragMarkers: [],
+      
+      // ✅ ADD METADATA TO TRACK ORIGINAL KEY
+      _metadata: {
+        originalKey: baseKey,
+        uniqueKey: uniqueKey,
+        connectionId: connection.id,
+        arrayIndex: idx
+      }
+    };
+
+    processedCount++;
+    
+    if ((idx + 1) % 10 === 0) {
+      console.log(`Progress: ${idx + 1}/${apiConctResponse.connections.length} connections processed`);
+    }
+  });
+
+  // Show warnings about duplicates
+  if (duplicateKeyWarnings.length > 0) {
+    console.warn("⚠️ DUPLICATE ROUTES DETECTED:", duplicateKeyWarnings);
+    console.warn(`Total duplicates: ${duplicateKeyWarnings.length}`);
+  }
+
+  console.log("=== SYNC COMPLETE ===", {
+    totalApiConnections: apiConctResponse.connections.length,
+    processedConnections: processedCount,
+    skippedConnections: skippedCount,
+    finalPolylineHistoryCount: Object.keys(completePolylineHistory).length,
+    duplicatesFound: duplicateKeyWarnings.length,
+    shouldMatch: (processedCount === Object.keys(completePolylineHistory).length),
+    sampleKeys: Object.keys(completePolylineHistory).slice(0, 5)
+  });
+
+  // ✅ REPLACE polylineHistory completely
+  setLocalData(prev => ({
+    ...prev,
+    polylineHistory: completePolylineHistory
+  }));
+
+}, [apiConctResponse, apiGPSResponse, deletedPolylines, previewKmlData]);
+
+
+// ==========================================
+// 4️⃣ RENDER POLYLINES ON MAP + UPDATE DISTANCES
+// ==========================================
+useEffect(() => {
+  if (!map || !LocalData.polylineHistory || Object.keys(LocalData.polylineHistory).length === 0) {
+    return;
+  }
+
+  console.log("=== RENDERING POLYLINES ON MAP ===");
+  console.log("Polylines to render:", Object.keys(LocalData.polylineHistory).length);
+  
   // Clear existing polylines
-  polylineInstanceMap.forEach((polyline, key) => {
-    if (map && polyline) {
+  polylineInstanceMap.forEach((polyline) => {
+    if (polyline) {
       polyline.setMap(null);
     }
   });
@@ -1130,226 +1569,111 @@ const newLoopEntries: LoopEntry[] = Array.from(uniquePoints.values()).map((point
   setDistanceInfoWindows([]);
   const bounds = new window.google.maps.LatLngBounds();
   
-  // IMPORTANT: In preview mode, DON'T recalculate distances - use the ones from preview
+  const newPolylineMap = new Map<string, google.maps.Polyline>();
+  const newDistanceWindows: { position: google.maps.LatLngLiteral; distance: number }[] = [];
+  
+  // ✅ ADD: Track distances while rendering
   let totalExisting = 0;
   let totalProposed = 0;
-  let shouldUpdateDistances = previewKmlData === null; // Only update if NOT in preview mode
   
-  const newPolylineHistory: Record<string, {
-    instance: google.maps.Polyline;
-    data: PolylineEntry;
-  }> = {};
-
-  apiConctResponse.connections.forEach((connection: Connection, index: any) => {
-
-    if (!Array.isArray(connection.coordinates) || connection.coordinates.length < 2) {
-      console.warn(`Skipping invalid connection: ${connection.name}`);
-      return;
-    }
+  // Render each polyline
+  Object.entries(LocalData.polylineHistory).forEach(([key, entry]: [string, any]) => {
+    const path = entry.polyline?.coordinates || [];
     
-    const key = `${connection.start} TO ${connection.end}`;
-
-    if (deletedPolylines.has(key)) {
+    if (path.length < 2) {
+      console.warn(`Skipping polyline with insufficient coordinates: ${key}`);
       return;
     }
-
-    const path = connection.coordinates.map((coord) => {
-      const point = { lat: coord[1], lng: coord[0] };
-      bounds.extend(point);
-      return point;
-    });
     
     const polyline = new window.google.maps.Polyline({
       path,
       geodesic: true,
-      strokeColor: connection.color || "#00AA00",
+      strokeColor: entry.segmentData?.connection?.color || "#00AA00",
       strokeOpacity: 1.0,
       strokeWeight: 4,
     });
 
     polyline.setMap(map);
-    const offsetIndex = Math.floor(path.length * 0.5);
-    const midPoint = path[offsetIndex];
-
-    setDistanceInfoWindows(prev => [
-      ...prev,
-      {
-        position: midPoint,
-        distance: connection.length || 0,
-      },
-    ]);
+    newPolylineMap.set(key, polyline);
     
-    const startLgdCode = apiGPSResponse.points.find((point: PointType) => point.name === connection.start);
-    const endLgdCode = apiGPSResponse.points.find((point: PointType) => point.name === connection.end);
+    // Add bounds
+    path.forEach((p: google.maps.LatLngLiteral) => bounds.extend(p));
     
-    newPolylineHistory[key] = {
-      instance: polyline,
-      data: {
-        polyline: { coordinates: path },
-        segmentData: {
-          connection: {
-            length: connection.length || 0,
-            existing: connection.existing ?? false,
-          },
-          startCords: startLgdCode?.properties.lgd_code || '123',
-          endCords: endLgdCode?.properties.lgd_code || '1234',
-        }, 
-      },
-    };
+    // Add distance label
+    const midPoint = path[Math.floor(path.length * 0.5)];
+    const distance = entry.segmentData?.connection?.length || 0;
+    const isExisting = entry.segmentData?.connection?.existing || false;
     
-    // Calculate totals (but only use them if NOT in preview mode)
-    if (connection.existing === true) {
-      totalExisting += connection.length || 0;
+    // ✅ ADD: Accumulate distances
+    if (isExisting) {
+      totalExisting += distance;
     } else {
-      totalProposed += connection.length || 0;
+      totalProposed += distance;
     }
     
-    const routeKey = `${connection.start}-${connection.end}`;
-
-    // Handle proposed lines for editing
-    if (previewKmlData !== null && connection.existing === false) {
-      const segmentKey = `${routeKey}-route${index + 1}`;
-      const labelPos = path[Math.floor(path.length / 2)];  
-      
-      polylineHistory.set(segmentKey, {
-        polyline,
-        segmentData: {
-          connection: {
-            length: connection.length,
-            existing: connection.existing ?? false,
-            color: connection.color,
-          },
-        },
-        original: {
-          coords: path.slice(),
-          distance: connection.length,
-          markerPositions: [],
-          labelPos: labelPos ? [labelPos.lat, labelPos.lng] : null,
-          labelText: `${connection.length} km`
-        },
-        undoStack: [],
-        dragMarkers: [],
-      });
-    }
-      
+    newDistanceWindows.push({
+      position: midPoint,
+      distance: distance,
+    });
+    
+    // Add click handler
     polyline.addListener("click", () => {
-      const completeLineProperties = {
-        name: connection.name || `${connection.start} TO ${connection.end}`,
-        start: connection.start,
-        end: connection.end,
-        length: Number(connection.length || 0),
-        existing: connection.existing,
-        color: connection.color,
-        
-        properties: {
-          ...(connection.segmentData?.properties || {}),
-          ...(connection.originalProperties || {}),
-          
-          id: connection.id,
-          network_id: connection.network_id,
-          type: connection.type,
-          status: connection.status,
-          user_id: connection.user_id,
-          user_name: connection.user_name,
-          created_at: connection.created_at,
-          updated_at: connection.updated_at,
-          
-          start_node: connection.start,
-          end_node: connection.end,
-          length: Number(connection.length || 0).toString(),
-          existing: connection.existing,
-          connection_name: connection.name,
-          
-          start_latlong: connection.start_latlong,
-          end_latlong: connection.end_latlong,
-          
-          startCords: connection.segmentData?.startCords || "NULL",
-          endCords: connection.segmentData?.endCords || "NULL"
-        },
-        
-        segmentData: connection.segmentData,
-        originalConnectionData: connection
+      const metadata = entry._metadata || {};
+      const baseKey = metadata.originalKey || key.split('_')[0];
+      
+      const lineProperties = {
+        name: entry.segmentData?.properties?.name || baseKey,
+        start: entry.segmentData?.properties?.start_node,
+        end: entry.segmentData?.properties?.end_node,
+        length: distance,
+        existing: entry.segmentData?.connection?.existing,
+        color: entry.segmentData?.connection?.color,
+        properties: entry.segmentData?.properties
       };
       
-      setPointProperties(completeLineProperties);
+      setPointProperties(lineProperties);
       
-      if(previewKmlData !== null){
-        handleRouteSelection(routeKey, index, connection.length, true);
-        setSelectedRouteIndex(index);
+      if (previewKmlData !== null) {
+        const routeIndex = metadata.arrayIndex || 0;
+        handleRouteSelection(baseKey, routeIndex, distance, true);
+        setSelectedRouteIndex(routeIndex);
       }
     });
   });
   
-  setPolylineInstanceMap(prev => {
-    const newMap = new Map(prev);
-    Object.entries(newPolylineHistory).forEach(([key, val]) => {
-      newMap.set(key, val.instance);
-    });
-    return newMap;
+  setPolylineInstanceMap(newPolylineMap);
+  setDistanceInfoWindows(newDistanceWindows);
+  
+  // ✅ ADD: Update distance state variables
+  console.log("=== UPDATING DISTANCES ===", {
+    existingDistance: totalExisting.toFixed(3),
+    proposedDistance: totalProposed.toFixed(3),
+    totalDistance: (totalExisting + totalProposed).toFixed(3)
   });
-
-  // CRITICAL FIX: Only update distances if NOT in preview mode
-  // In preview mode, the distances should already be set correctly by the preview effect
-  if (shouldUpdateDistances) {
-    console.log(null, {
-      existing: totalExisting.toFixed(3),
-      proposed: totalProposed.toFixed(3)
-    });
-    setExistingDistance(totalExisting);
-    setProposedDistance(totalProposed);
-  } else {
-    console.log(null, {
-      current_existing: existingDistance.toFixed(3),
-      current_proposed: proposedDistance.toFixed(3),
-      calculated_existing: totalExisting.toFixed(3),
-      calculated_proposed: totalProposed.toFixed(3),
-      note: "Not updating to preserve preview calculations"
-    });
-  }
   
-  map.fitBounds(bounds);
-
-  // Update LocalData with calculated totals, but don't override line summary state in preview mode
-  const finalExisting = shouldUpdateDistances ? totalExisting : existingDistance;
-  const finalProposed = shouldUpdateDistances ? totalProposed : proposedDistance;
-
+  setExistingDistance(totalExisting);
+  setProposedDistance(totalProposed);
+  
+  // ✅ ADD: Update LocalData with calculated totals
   setLocalData(prev => ({
     ...prev,
-    totalLength: finalExisting + finalProposed,
-    existinglength: finalExisting,
-    proposedlength: finalProposed,
-    polylineHistory: {
-      ...prev.polylineHistory,
-      ...Object.fromEntries(
-        Object.entries(newPolylineHistory).map(([key, val]) => [key, val.data])
-      ),
-    },
-  }));
-}, [apiConctResponse, map, deletedPolylines, previewKmlData, existingDistance, proposedDistance]);
-
-  useEffect(() => {
-  // IMPORTANT: Skip this recalculation in preview mode
-  if (previewKmlData !== null) {
-    return;
-  }
-
-  // Calculate proposed distance from polylineHistory (user-created routes)
-  const proposedFromHistory = Object.values(LocalData.polylineHistory || {})
-    .filter(h => h.segmentData?.connection && !h.segmentData.connection.existing)
-    .reduce((sum, h) => sum + (h.segmentData.connection.length || 0), 0);
-
-  // Update the total calculations
-  const newTotalLength = LocalData.existinglength + proposedFromHistory;
-
-  setLocalData(prev => ({
-    ...prev,
-    totalLength: newTotalLength,
-    proposedlength: Number(proposedFromHistory),
+    totalLength: totalExisting + totalProposed,
+    existinglength: totalExisting,
+    proposedlength: totalProposed
   }));
   
-  setProposedDistance(Number(proposedFromHistory));
-
-}, [LocalData.polylineHistory, LocalData.existinglength, previewKmlData]);
+  if (!bounds.isEmpty()) {
+    map.fitBounds(bounds);
+  }
+  
+  console.log("✅ Rendered polylines:", newPolylineMap.size);
+  console.log("✅ Distance Summary:", {
+    existing: `${totalExisting.toFixed(2)}km`,
+    proposed: `${totalProposed.toFixed(2)}km`,
+    total: `${(totalExisting + totalProposed).toFixed(2)}km`
+  });
+  
+}, [LocalData.polylineHistory, map, previewKmlData]);
 
   // REF SYNCHRONIZATION EFFECTS
   
@@ -1705,6 +2029,21 @@ useEffect(() => {
 
   useEffect(() => {
   return () => {
+    // Clear all markers
+    markerInstanceMap.forEach((marker) => {
+      if (marker) {
+        marker.setMap(null);
+      }
+    });
+    
+    // Clear all polylines
+    polylineInstanceMap.forEach((polyline) => {
+      if (polyline) {
+        polyline.setMap(null);
+      }
+    });
+    
+    // Clear timeouts
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = null;
@@ -2353,60 +2692,70 @@ useEffect(() => {
 
   // MAP CLEANUP FUNCTIONS
   
-  const clearMapData = () =>
-  {
-    polylineInstanceMap.forEach(polyline => {
-      polyline.setMap(null);
-    });
+  const clearMapData = () => {
+  // Clear polylines
+  polylineInstanceMap.forEach(polyline => {
+    polyline.setMap(null);
+  });
 
-    polylineHistory.forEach((entry, key) => {
-      if (entry.polyline) {
-        entry.polyline.setMap(null);
-      }
-    });
-
-    polylineHistory.clear();
-
-    setDistanceInfoWindows([]);
-
-    editMarkers.forEach((marker) => {
+  // ✅ ADD THIS: Clear markers
+  markerInstanceMap.forEach(marker => {
+    if (marker) {
       marker.setMap(null);
-    });
-    setEditMarkers([]);
-    for (const [key, markers] of routeMarkers.current.entries()) {
-      markers.forEach(m => m.setMap(null));
     }
-    routeMarkers.current.clear();
+  });
+  
+  // Clear polyline history
+  polylineHistory.forEach((entry, key) => {
+    if (entry.polyline) {
+      entry.polyline.setMap(null);
+    }
+  });
 
-    setLocalData({
-      loop: [],
-      mainPointName: null,
-      totalLength: 0,
-      existinglength: 0,
-      proposedlength: 0,
-      polylineHistory: {},
-      dt_code:'',
-      dt_name: '',
-      st_code:'',
-      st_name:'',
-    });
-    setPolylineHistory(new Map())
-    setRouteGroups(new Map())
-    setIsOpen(false)
-    setRouteKey('')
-    setSelectRoute('')
-    setSelectRoute(null);
-    setProposedDistance(0);
-    setExistingDistance(0);
-    setSelectedRouteIndex(null);
-    setError('')
-    //  setMapInstance(null)
-    setPointA(null)
-    setPointB(null)
-    setMap(null)
-    setConctApiResponse(null)
-    setGPSApiResponse(null)
-  };
+  polylineHistory.clear();
+  setDistanceInfoWindows([]);
+
+  editMarkers.forEach((marker) => {
+    marker.setMap(null);
+  });
+  setEditMarkers([]);
+  
+  for (const [key, markers] of routeMarkers.current.entries()) {
+    markers.forEach(m => m.setMap(null));
+  }
+  routeMarkers.current.clear();
+
+  setLocalData({
+    loop: [],
+    mainPointName: null,
+    totalLength: 0,
+    existinglength: 0,
+    proposedlength: 0,
+    polylineHistory: {},
+    dt_code:'',
+    dt_name: '',
+    st_code:'',
+    st_name:'',
+  });
+  
+  setPolylineHistory(new Map());
+  setRouteGroups(new Map());
+  setPolylineInstanceMap(new Map()); // ✅ ADD: Clear polyline map
+  setMarkerInstanceMap(new Map());   // ✅ ADD: Clear marker map
+  setIsOpen(false);
+  setRouteKey('');
+  setSelectRoute('');
+  setSelectRoute(null);
+  setProposedDistance(0);
+  setExistingDistance(0);
+  setSelectedRouteIndex(null);
+  setError('');
+  setPointA(null);
+  setPointB(null);
+  setMap(null);
+  setConctApiResponse(null);
+  setGPSApiResponse(null);
+};
 
   // saveKML function
  const saveKML = async (localData: GlobalData) => {
@@ -2415,13 +2764,34 @@ useEffect(() => {
     return;
   }
 
+  console.log("=== DEBUG: LocalData.loop BEFORE SAVE ===", {
+    totalPoints: localData.loop.length,
+    pointBreakdown: localData.loop.reduce((acc, point) => {
+      const type = point.properties?.type || point.properties?.asset_type || 'Unknown';
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>),
+    samplePoints: localData.loop.slice(0, 10).map(p => ({
+      name: p.name,
+      hasId: !!p.properties?.id,
+      hasNetworkId: !!p.properties?.network_id,
+      lgd_code: p.lgd_code,
+      coordinates: p.coordinates,
+      type: p.properties?.type || p.properties?.asset_type
+    })),
+    junctionBreakdown: {
+      BJC: localData.loop.filter(p => /BJC/i.test(p.name)).length,
+      SJC: localData.loop.filter(p => /SJC/i.test(p.name)).length,
+      LC: localData.loop.filter(p => /LC|LUP/i.test(p.name)).length
+    }
+  });
+
   if (!localData || !localData.loop || !localData.loop.length) {
     showNotification("error", "No data available to save");
     setSaveFile(false);
     return;
   }
 
-  // Validation: Ensure location is selected before saving
   if (!selectedState || !selectedDistrict || !selectedBlock) {
     showNotification("error", "Please select State, District, and Block before saving");
     setSaveFile(false);
@@ -2433,7 +2803,6 @@ useEffect(() => {
     setLoader(true);
 
     const finalUserData = getStandardUserData();
-
     const isPreviewMode = previewKmlData !== null;
     
     let networkId: string | number | null = null;
@@ -2457,12 +2826,53 @@ useEffect(() => {
       return;
     }
 
-    const allPoints = localData.loop.filter(point => !point.name.includes(" TO "));
+    // 🔥 UPDATED FILTER: Include all valid points including junctions
+    const allPoints = localData.loop.filter(point => {
+      // Filter out connection names (contains " TO ")
+      if (point.name.includes(" TO ")) return false;
+      
+      // Include points if they have:
+      // 1. Valid ID or network_id (from database)
+      // 2. Valid lgd_code (GPS points)
+      // 3. Junction flag
+      // 4. Junction-like names (BJC, SJC, LC, LUP, JC)
+      // 5. Valid coordinates
+      const hasValidId = point.properties?.id || point.properties?.network_id;
+      const hasLgdCode = point.lgd_code && point.lgd_code !== "NULL";
+      const isJunction = point.properties?.is_junction === true;
+      const hasJunctionName = /^(BJC|SJC|LC|LUP|JC)/i.test(point.name);
+      const hasValidCoords = point.coordinates && 
+                             Array.isArray(point.coordinates) && 
+                             point.coordinates.length >= 2 &&
+                             point.coordinates[0] !== 0 && 
+                             point.coordinates[1] !== 0;
+      
+      return hasValidId || hasLgdCode || isJunction || hasJunctionName || hasValidCoords;
+    });
+
+    console.log("=== POINTS TO SAVE ===", {
+      totalInLoop: localData.loop.length,
+      filteredPoints: allPoints.length,
+      breakdown: {
+        withId: allPoints.filter(p => p.properties?.id || p.properties?.network_id).length,
+        withLgdCode: allPoints.filter(p => p.lgd_code && p.lgd_code !== "NULL").length,
+        withJunctionFlag: allPoints.filter(p => p.properties?.is_junction).length,
+        withJunctionName: allPoints.filter(p => /^(BJC|SJC|LC|LUP)/i.test(p.name)).length,
+        BJC: allPoints.filter(p => /BJC/i.test(p.name)).length,
+        SJC: allPoints.filter(p => /SJC/i.test(p.name)).length,
+        LC: allPoints.filter(p => /LC|LUP/i.test(p.name)).length,
+        GP: allPoints.filter(p => /GP/i.test(p.name)).length
+      },
+      samplePointNames: allPoints.slice(0, 20).map(p => p.name),
+      removedPoints: localData.loop.filter(p => 
+        !p.name.includes(" TO ") && 
+        !allPoints.find(ap => ap.name === p.name)
+      ).map(p => p.name)
+    });
+
     const firstPoint = allPoints[0];
 
-    // UPDATED: Use filter selections as primary source, fallback to existing data
     const adminCodes = {
-      // Use selected filter values first, then fallback to existing point data
       blockCode: selectedBlock || firstPoint?.properties?.blk_code || '',
       blockName: locationFilters.block_name || firstPoint?.properties?.blk_name || localData.mainPointName || '',
       dtCode: selectedDistrict || firstPoint?.properties?.dt_code || localData.dt_code || '',
@@ -2471,252 +2881,114 @@ useEffect(() => {
       stName: locationFilters.state_name || firstPoint?.properties?.st_name || localData.st_name || ''
     };
 
-    const buildLineProperties = (
-      routeKey: string, 
-      historyEntry: any, 
-      adminCodes: typeof adminCodes, 
-      sourceData: any = {}
-    ): Record<string, any> => {
-      const [startName, endName] = routeKey.split(' TO ');
-      const segmentData = historyEntry?.segmentData || sourceData;
-      const connection = segmentData?.connection;
+    if (!localData.polylineHistory || Object.keys(localData.polylineHistory).length === 0) {
+      showNotification("error", "No connection data available. Please wait for data to load.");
+      setSaveFile(false);
+      setLoader(false);
+      setIsSaving(false);
+      return;
+    }
+
+    console.log("✅ Saving with polylineHistory entries:", Object.keys(localData.polylineHistory).length);
+
+    // Build connections data
+    const connectionsData = Object.entries(localData.polylineHistory || {}).map(([key, value]) => {
+      const [startName, endName] = key.split(' TO ');
+      return {
+        name: key,
+        start: startName,
+        end: endName,
+        length: value.segmentData?.connection?.length || 0,
+        existing: value.segmentData?.connection?.existing || false,
+        color: value.segmentData?.connection?.color || "#00AA00",
+        coordinates: value.polyline?.coordinates || [],
+        properties: value.segmentData?.properties || {},
+        segmentData: value.segmentData
+      };
+    });
+
+    console.log("=== SAVE VERIFICATION ===", {
+      apiConctResponseLength: apiConctResponse?.connections?.length || 0,
+      connectionsDataLength: connectionsData.length,
+      localDataPolylineHistoryKeys: Object.keys(localData.polylineHistory || {}).length,
+      allMatch: (apiConctResponse?.connections?.length || 0) === connectionsData.length,
+      missingCount: (apiConctResponse?.connections?.length || 0) - connectionsData.length,
+      sampleKeys: Object.keys(localData.polylineHistory || {}).slice(0, 5)
+    });
+
+    // Helper function to build line properties
+    const buildLineProperties = (key: string, value: any, adminCodes: any) => {
+      const [startName, endName] = key.split(' TO ');
       
-      let existingProperties: Record<string, any> = {};
-      
-      if (historyEntry?.segmentData?.properties) {
-        existingProperties = { ...existingProperties, ...historyEntry.segmentData.properties };
-      }
-      
-      if (sourceData?.properties) {
-        existingProperties = { ...existingProperties, ...sourceData.properties };
-      }
-      if (sourceData?.segmentData?.properties) {
-        existingProperties = { ...existingProperties, ...sourceData.segmentData.properties };
-      }
-      if (sourceData?.originalProperties) {
-        existingProperties = { ...existingProperties, ...sourceData.originalProperties };
-      }
+      let existingProperties: Record<string, any> = {
+        ...value.segmentData?.properties,
+        ...value.original?.properties
+      };
       
       if (apiConctResponse?.connections) {
         const matchingConnection = apiConctResponse.connections.find(
-          (conn: any) => `${conn.start} TO ${conn.end}` === routeKey || 
-                        `${conn.end} TO ${conn.start}` === routeKey
+          (conn: any) => `${conn.start} TO ${conn.end}` === key || 
+                        `${conn.end} TO ${conn.start}` === key
         );
         if (matchingConnection) {
-          if (matchingConnection.properties) {
-            existingProperties = { ...existingProperties, ...matchingConnection.properties };
-          }
-          if (matchingConnection.segmentData?.properties) {
-            existingProperties = { ...existingProperties, ...matchingConnection.segmentData.properties };
-          }
-          if (matchingConnection.originalProperties) {
-            existingProperties = { ...existingProperties, ...matchingConnection.originalProperties };
-          }
+          existingProperties = {
+            ...existingProperties,
+            ...matchingConnection.properties,
+            ...matchingConnection.segmentData?.properties,
+            ...matchingConnection.originalProperties
+          };
         }
       }
-
-      const lineProperties: Record<string, any> = {
+      
+      const storedLength = existingProperties.length || value.segmentData?.connection?.length || 0;
+      const storedSegLength = existingProperties.seg_length || (storedLength * 1000).toString();
+      
+      return {
+        ...existingProperties,
         cs: existingProperties.cs || "",
-        name: existingProperties.name || routeKey,
+        name: existingProperties.name || key,
         asset_code: existingProperties.asset_code || "",
-        
-        blk_code: existingProperties.blk_code || adminCodes.blockCode,
-        blk_name: existingProperties.blk_name || adminCodes.blockName,
-        dt_code: existingProperties.dt_code || adminCodes.dtCode,
-        dt_name: existingProperties.dt_name || adminCodes.dtName,
-        st_code: existingProperties.st_code || adminCodes.stCode,
-        st_name: existingProperties.st_name || adminCodes.stName,
-        
-        seg_length: existingProperties.seg_length || (connection?.length ? (connection.length * 1000).toString() : "0"),
-        length: existingProperties.length || connection?.length?.toString() || "0",
-        cable_len: existingProperties.cable_len || (connection?.length ? (connection.length * 1000).toString() : "0"),
-        
-        start_node: existingProperties.start_node || startName || "",
-        end_node: existingProperties.end_node || endName || "",
-        s_coil_len: existingProperties.s_coil_len || "0",
-        e_coil_len: existingProperties.e_coil_len || "0",
-        
-        num_fibre: existingProperties.num_fibre || "24",
-        fibre_pos: existingProperties.fibre_pos || "",
-        fibre_type: existingProperties.fibre_type || "",
-        cable_type: existingProperties.cable_type || "",
-        
-        status: existingProperties.status || (connection?.existing ? "Accepted" : "Proposed"),
-        phase: existingProperties.phase || (connection?.existing ? "1" : "3"),
-        existing: existingProperties.existing !== undefined ? existingProperties.existing : (connection?.existing || false),
-        
-        asset_type: existingProperties.asset_type || "Incremental Cable",
+        blk_code: adminCodes.blockCode,
+        blk_name: adminCodes.blockName,
+        dt_code: adminCodes.dtCode,
+        dt_name: adminCodes.dtName,
+        st_code: adminCodes.stCode,
+        st_name: adminCodes.stName,
+        seg_length: storedSegLength,
+        length: storedLength.toString(),
+        cable_len: storedSegLength,
+        start_node: startName || "",
+        end_node: endName || "",
+        num_fibre: existingProperties.num_fibre || "24 F",
+        status: existingProperties.status || (value.segmentData?.connection?.existing ? "Accepted" : "Proposed"),
+        phase: existingProperties.phase || (value.segmentData?.connection?.existing ? "1" : "3"),
+        existing: existingProperties.existing !== undefined ? existingProperties.existing : (value.segmentData?.connection?.existing || false),
         type: existingProperties.type || "Incremental Cable",
-        route_type: existingProperties.route_type || "",
-        
-        route_code: existingProperties.route_code || "",
-        route_name: existingProperties.route_name || routeKey,
-        direction: existingProperties.direction || "",
-        traverse: existingProperties.traverse || "",
-        
-        start_lat: existingProperties.start_lat || "",
-        start_lng: existingProperties.start_lng || "",
-        end_lat: existingProperties.end_lat || "",
-        end_lng: existingProperties.end_lng || "",
-        start_latlong: existingProperties.start_latlong || "",
-        end_latlong: existingProperties.end_latlong || "",
-        
-        remarks: existingProperties.remarks || "",
-        obs: existingProperties.obs || "",
-        notes: existingProperties.notes || "",
-        construction_method: existingProperties.construction_method || "",
-        contractor: existingProperties.contractor || "",
-        
-        install_date: existingProperties.install_date || "",
-        completion_date: existingProperties.completion_date || "",
-        created_at: existingProperties.created_at || new Date().toISOString(),
-        updated_at: existingProperties.updated_at || new Date().toISOString(),
-        
-        ring: existingProperties.ring || "",
-        network_id: existingProperties.network_id || networkId?.toString() || "",
-        segment_id: existingProperties.segment_id || "",
-        
-        id: existingProperties.id || "",
-        connection_id: existingProperties.connection_id || "",
-        
-        estimated_cost: existingProperties.estimated_cost || "",
-        actual_cost: existingProperties.actual_cost || "",
-        project_code: existingProperties.project_code || "",
-        budget_code: existingProperties.budget_code || "",
-        
-        test_result: existingProperties.test_result || "",
-        signal_strength: existingProperties.signal_strength || "",
-        attenuation: existingProperties.attenuation || "",
-        
-        color: existingProperties.color || connection?.color || "#00AA00",
-        stroke_width: existingProperties.stroke_width || "4",
-        stroke_opacity: existingProperties.stroke_opacity || "1.0",
-        
-        GlobalID: existingProperties.GlobalID || "",
-        S_N: existingProperties.S_N || "",
-        FID: existingProperties.FID || "",
-        OBJECTID: existingProperties.OBJECTID || "",
-        
+        asset_type: existingProperties.asset_type || "Incremental Cable",
         created_by: existingProperties.created_by || finalUserData.uname,
         modified_by: finalUserData.uname,
         user_id: existingProperties.user_id || finalUserData.user_id,
-        user_name: finalUserData.uname,
-        
-        ...existingProperties
+        user_name: finalUserData.uname
       };
-
-      return lineProperties;
     };
 
-    const processAllConnections = (): any[] => {
-      const allConnections = new Map<string, any>();
-      
-      Object.entries(localData.polylineHistory || {}).forEach(([routeKey, historyEntry]) => {
-        const segmentData = historyEntry.segmentData;
-        const polylineCoords = historyEntry.polyline?.coordinates || [];
-        const lineProperties = buildLineProperties(routeKey, historyEntry, adminCodes);
-        
-        allConnections.set(routeKey, {
-          routeKey: routeKey,
-          coordinates: polylineCoords,
-          length: segmentData?.connection?.length || 0,
-          existing: segmentData?.connection?.existing ?? false,
-          color: segmentData?.connection?.color || "#00AA00",
-          startCords: segmentData?.startCords || "NULL",
-          endCords: segmentData?.endCords || "NULL",
-          properties: lineProperties,
-          source: 'polylineHistory'
-        });
-      });
-      
-      if (apiConctResponse?.connections) {
-        apiConctResponse.connections.forEach((conn: any) => {
-          const routeKey = `${conn.start} TO ${conn.end}`;
-          const reverseKey = `${conn.end} TO ${conn.start}`;
-          
-          if (!allConnections.has(routeKey) && !allConnections.has(reverseKey)) {
-            const apiLineProperties = buildLineProperties(routeKey, null, adminCodes, conn);
-            
-            allConnections.set(routeKey, {
-              routeKey: routeKey,
-              coordinates: conn.coordinates || [],
-              length: conn.length || 0,
-              existing: conn.existing ?? false,
-              color: conn.color || "#00AA00",
-              startCords: conn.segmentData?.startCords || "NULL",
-              endCords: conn.segmentData?.endCords || "NULL",
-              properties: apiLineProperties,
-              source: 'apiResponse'
-            });
-          }
-        });
-      }
-      
-      if (typeof polylineInstanceMap !== 'undefined' && polylineInstanceMap) {
-        polylineInstanceMap.forEach((polylineInstance: google.maps.Polyline, key: string) => {
-          if (!allConnections.has(key)) {
-            console.warn(`Found map connection not in data sources: ${key}`);
-            
-            let coordinates: google.maps.LatLngLiteral[] = [];
-            let distance = 0;
-            
-            try {
-              const path = polylineInstance.getPath();
-              if (path) {
-                coordinates = path.getArray().map((p: google.maps.LatLng) => ({ 
-                  lat: p.lat(), 
-                  lng: p.lng() 
-                }));
-                distance = computePathDistance(coordinates);
-              }
-            } catch (error) {
-              console.warn(`Error reading path for ${key}:`, error);
-            }
-            
-            const reconstructedProperties = buildLineProperties(key, null, adminCodes, {
-              connection: { length: distance, existing: false },
-              properties: {
-                name: key,
-                status: "Reconstructed from map",
-                source: "map_reconstruction",
-                network_id: networkId?.toString() || ""
-              }
-            });
-            
-            allConnections.set(key, {
-              routeKey: key,
-              coordinates: coordinates,
-              length: distance,
-              existing: false,
-              color: polylineInstance.get('strokeColor') || "#00AA00",
-              startCords: "NULL",
-              endCords: "NULL",
-              properties: reconstructedProperties,
-              source: 'mapInstance'
-            });
-          }
-        });
-      }
-      
-      return Array.from(allConnections.values());
-    };
-
-    const connectionsData = processAllConnections();
-
+    // Build payload
     const payload = {
       globalData: {
         loop: allPoints.map((point: LoopEntry) => ({
           name: point.name,
           coordinates: point.coordinates,
-          lgd_code: point.lgd_code || null,
+          lgd_code: point.lgd_code || "NULL",
+          
+          // Mark junction points
+          is_junction: point.properties?.is_junction || /^(BJC|SJC|LC|LUP|JC)/i.test(point.name),
+          
           properties: {
             FID: point.properties?.FID || "",
             name: point.properties?.name || point.name,
             lat: point.properties?.lat || (point.coordinates && point.coordinates[1] ? point.coordinates[1].toString() : ""),
             long: point.properties?.long || (point.coordinates && point.coordinates[0] ? point.coordinates[0].toString() : ""),
-            remarks: point.properties?.remarks || "",
             
-            // ENSURE these use the adminCodes from filters
             blk_code: adminCodes.blockCode,
             blk_name: adminCodes.blockName,
             dt_code: adminCodes.dtCode,
@@ -2724,52 +2996,66 @@ useEffect(() => {
             st_code: adminCodes.stCode,
             st_name: adminCodes.stName,
             
-            lgd_code: point.properties?.lgd_code || point.lgd_code || null,
+            lgd_code: point.properties?.lgd_code || point.lgd_code || "NULL",
             asset_code: point.properties?.asset_code || "",
             
-            network_id: point.properties?.network_id || networkId?.toString() || "",
+            asset_type: point.properties?.asset_type || point.properties?.type || "FPOI",
+            type: point.properties?.type || point.properties?.asset_type || "FPOI",
             
+            status: point.properties?.status || "Proposed",
+            phase: point.properties?.phase || "3",
+            
+            // Junction metadata
+            is_junction: point.properties?.is_junction || /^(BJC|SJC|LC|LUP|JC)/i.test(point.name),
+            junction_source_connection: point.properties?.junction_source_connection || "",
+            junction_coordinate_index: point.properties?.junction_coordinate_index || 0,
+            
+            network_id: point.properties?.network_id || networkId?.toString() || "",
             created_by: point.properties?.created_by || finalUserData.uname,
             modified_by: finalUserData.uname,
             user_id: point.properties?.user_id || finalUserData.user_id,
             user_name: finalUserData.uname,
             
+            icon: point.properties?.icon || 
+                  (point.properties?.asset_type === "Block Router" || point.properties?.type === "Block Router" ? "https://maps.google.com/mapfiles/ms/icons/blue-dot.png" :
+                   point.properties?.asset_type === "BHQ" || point.properties?.type === "BHQ" ? "https://maps.google.com/mapfiles/ms/icons/green-dot.png" :
+                   point.properties?.asset_type === "GP" || point.properties?.type === "GP" ? "https://maps.google.com/mapfiles/ms/icons/yellow-dot.png" :
+                   point.properties?.asset_type === "BJC" || point.properties?.type === "BJC" ? "https://maps.google.com/mapfiles/ms/icons/purple-dot.png" :
+                   point.properties?.asset_type === "SJC" || point.properties?.type === "SJC" ? "https://maps.google.com/mapfiles/ms/icons/orange-dot.png" :
+                   point.properties?.asset_type === "LC" || point.properties?.type === "LC" ? "https://maps.google.com/mapfiles/ms/icons/pink-dot.png" :
+                   "https://maps.google.com/mapfiles/ms/icons/red-dot.png"),
+            
+            // Preserve all other properties
+            remarks: point.properties?.remarks || "",
             location: point.properties?.location || "",
             loc_type: point.properties?.loc_type || "",
             obs: point.properties?.obs || "",
-            status: point.properties?.status || "Proposed",
             geo_photo: point.properties?.geo_photo || "",
-            
             otdr_len: point.properties?.otdr_len || "",
             conn_str: point.properties?.conn_str || "",
             backhaul: point.properties?.backhaul || "",
-            phase: point.properties?.phase || "3",
             route_code: point.properties?.route_code || "",
-            asset_type: point.properties?.asset_type || "FPOI",
-            
+            olt_code: point.properties?.olt_code || "",
+            olt_ip: point.properties?.olt_ip || "",
+            rd_offset: point.properties?.rd_offset || "",
+            coil_2_ont: point.properties?.coil_2_ont || "",
+            coil_2_olt: point.properties?.coil_2_olt || "",
+            direction: point.properties?.direction || "",
+            fiber_pos: point.properties?.fiber_pos || "",
+            created_us: point.properties?.created_us || "",
+            created_da: point.properties?.created_da || "",
+            last_edite: point.properties?.last_edite || "",
+            last_edi_1: point.properties?.last_edi_1 || "",
             gp_code: point.properties?.gp_code || "",
             block_ip: point.properties?.block_ip || "",
             gp_mac_id: point.properties?.gp_mac_id || "",
             gp_sr_no: point.properties?.gp_sr_no || "",
             nmsgp_cd: point.properties?.nmsgp_cd || "",
             nmsblk_cd: point.properties?.nmsblk_cd || "",
-            
             cable_len: point.properties?.cable_len || "0",
             ring: point.properties?.ring || "",
-            type: point.properties?.type || point.properties?.asset_type || "FPOI",
-            
-            GlobalID: point.properties?.GlobalID || "",
+            GlobalID: point.properties?.GlobalID || point.properties?.globalid || "",
             Label: point.properties?.Label || point.name,
-            
-            id: point.properties?.id || "",
-            created_at: point.properties?.created_at || "",
-            updated_at: point.properties?.updated_at || "",
-            
-            icon: point.properties?.icon || 
-                  (point.properties?.asset_type === "Block Router" ? "https://maps.google.com/mapfiles/ms/icons/blue-dot.png" :
-                   point.properties?.asset_type === "BHQ" ? "https://maps.google.com/mapfiles/ms/icons/green-dot.png" :
-                   point.properties?.asset_type === "GP" ? "https://maps.google.com/mapfiles/ms/icons/yellow-dot.png" :
-                   "https://maps.google.com/mapfiles/ms/icons/red-dot.png"),
             
             ...point.properties
           },
@@ -2785,7 +3071,6 @@ useEffect(() => {
           })
         })),
         
-        // ENSURE globalData also uses filter selections
         mainPointName: adminCodes.blockName,
         blk_code: adminCodes.blockCode,
         blk_name: adminCodes.blockName,
@@ -2797,7 +3082,6 @@ useEffect(() => {
         existinglength: localData.existinglength || 0,
         proposedlength: localData.proposedlength || 0,
         
-        // Add filter metadata for debugging
         location_filter_metadata: {
           selected_state_id: selectedState,
           selected_district_id: selectedDistrict,
@@ -2805,13 +3089,16 @@ useEffect(() => {
           filter_timestamp: new Date().toISOString(),
           source: "user_location_filters"
         },
-        
         ...(isPreviewMode && { network_id: networkId })
       },
       
+      // Polyline history with embedded connection data
       polylineHistory: Object.fromEntries(
         Object.entries(localData.polylineHistory || {}).map(([key, value]) => {
           const lineProperties = buildLineProperties(key, value, adminCodes);
+          const [startName, endName] = key.split(' TO ');
+          
+          const matchingConnection = connectionsData.find(conn => conn.name === key);
           
           return [
             key,
@@ -2830,26 +3117,45 @@ useEffect(() => {
                   network_id: lineProperties.network_id || networkId?.toString() || ""
                 }
               },
-              ...(value.distanceLabel && { distanceLabel: value.distanceLabel }),
-              ...(value.original && { original: value.original }),
-              ...(value.undoStack && { undoStack: value.undoStack })
+              
+              // Embedded connection data
+              connection: matchingConnection ? {
+                name: matchingConnection.name,
+                start: matchingConnection.start,
+                end: matchingConnection.end,
+                length: matchingConnection.length,
+                existing: matchingConnection.existing,
+                color: matchingConnection.color,
+                coordinates: matchingConnection.coordinates,
+                properties: {
+                  ...matchingConnection.properties,
+                  network_id: matchingConnection.properties.network_id || networkId?.toString() || ""
+                },
+                segmentData: matchingConnection.segmentData
+              } : {
+                name: key,
+                start: startName,
+                end: endName,
+                length: value.segmentData?.connection?.length || 0,
+                existing: value.segmentData?.connection?.existing || false,
+                color: value.segmentData?.connection?.color || "#00AA00",
+                coordinates: value.polyline?.coordinates || [],
+                properties: {
+                  ...lineProperties,
+                  network_id: lineProperties.network_id || networkId?.toString() || ""
+                }
+              }
             }
           ];
         })
       ),
       
-      connections: connectionsData.map((conn: any) => ({
-        ...conn,
-        properties: {
-          ...conn.properties,
-          network_id: conn.properties.network_id || networkId?.toString() || ""
-        }
-      })),
+      // Empty connections array (backend might check for existence)
+      connections: [],
       
       user_id: finalUserData.user_id,
       user_name: finalUserData.uname,
       created_at: new Date().toISOString(),
-      
       ...(isPreviewMode && { network_id: networkId }),
       
       metadata: {
@@ -2859,29 +3165,37 @@ useEffect(() => {
         mode: isPreviewMode ? "preview_update" : "new_save",
         total_points: allPoints.length,
         total_connections: connectionsData.length,
+        point_breakdown: {
+          BJC: allPoints.filter(p => /BJC/i.test(p.name)).length,
+          SJC: allPoints.filter(p => /SJC/i.test(p.name)).length,
+          LC: allPoints.filter(p => /LC|LUP/i.test(p.name)).length,
+          GP: allPoints.filter(p => /GP/i.test(p.name)).length,
+          BHQ: allPoints.filter(p => /BHQ/i.test(p.name)).length,
+          Other: allPoints.filter(p => !/BJC|SJC|LC|LUP|GP|BHQ/i.test(p.name)).length
+        },
         connections_breakdown: {
           from_polylineHistory: Object.keys(localData.polylineHistory || {}).length,
           from_apiResponse: apiConctResponse?.connections?.length || 0,
-          from_mapInstance: (typeof polylineInstanceMap !== 'undefined' && polylineInstanceMap) ? polylineInstanceMap.size : 0,
           total_processed: connectionsData.length
         },
-        line_properties_version: "2.0",
-        deduplication_applied: false,
-        data_sources: ['localData.loop', 'localData.polylineHistory', 'apiConctResponse.connections', 'polylineInstanceMap'],
-        preservation_status: "complete",
-        ...(isPreviewMode && { 
-          preview_mode: true,
-          network_id: networkId,
-          api_endpoint: "update-network"
-        })
+        connection_data_location: "embedded_in_polylineHistory",
+        connections_array_status: "empty_placeholder"
       }
     };
+
+    console.log("=== COMPLETE PAYLOAD SUMMARY ===", {
+      totalPoints: payload.globalData.loop.length,
+      pointBreakdown: payload.metadata.point_breakdown,
+      totalConnections: payload.metadata.total_connections,
+      networkId: networkId,
+      mode: payload.metadata.mode
+    });
 
     const payloadString = JSON.stringify(payload);
     const payloadSizeMB = new Blob([payloadString]).size / (1024 * 1024);
 
     if (payloadSizeMB > 50) {
-      showNotification("error", `Payload too large (${payloadSizeMB.toFixed(2)} MB). Please reduce data size.`);
+      showNotification("error", `Payload too large (${payloadSizeMB.toFixed(2)} MB)`);
       setIsSaving(false);
       setLoader(false);
       setSaveFile(false);
@@ -2898,6 +3212,11 @@ useEffect(() => {
       apiUrl = `${BASEURL_Val}/save-to-db`;
       requestMethod = 'POST';
     }
+    
+    console.log("\n🚀 Sending request to backend...\n");
+
+    console.log("📦 PAYLOAD:", JSON.stringify(payload, null, 2));
+
 
     const response = await fetch(apiUrl, {
       method: requestMethod,
@@ -2920,43 +3239,20 @@ useEffect(() => {
       result = { error: "Invalid JSON response from server" };
     }
 
-    if (!response.ok) {
-      const errorMessage = result?.details || result?.message || result?.error || `HTTP ${response.status}: ${response.statusText}`;
-      const modeText = isPreviewMode ? "updating network" : "saving KML";
-      showNotification("error", `Error ${modeText}: ${errorMessage}`);
-      console.error(`${isPreviewMode ? 'Update Network' : 'SaveKML'} API Error:`, {
-        status: response.status,
-        statusText: response.statusText,
-        result: result,
-        mode: isPreviewMode ? 'preview' : 'normal',
-        endpoint: apiUrl
-      });
-    } else {
+    if (response.ok) {
       const successMessage = isPreviewMode ? "Network updated successfully!" : "KML saved successfully!";
-      showNotification("success", successMessage);
-      
-      if (result?.data) {
-        setLocalData((prev: GlobalData) => ({
-          ...prev,
-          ...result.data,
-          polylineHistory: result.data.polylineHistory || prev.polylineHistory
-        }));
-      }
-      
+      showNotification("success", `${successMessage}\nPoints: ${allPoints.length} • Connections: ${connectionsData.length}`);
       setSaveFile(false);
+    } else {
+      throw new Error(result?.message || result?.error || 'Save failed');
     }
 
   } catch (error) {
-    console.error('Save/Update Error Details:', error);
-    
+    console.error('Save Error:', error);
     const isPreviewMode = previewKmlData !== null;
     const operationText = isPreviewMode ? "updating network" : "saving KML";
     
-    if (error instanceof TypeError && error.message.includes('fetch')) {
-      showNotification("error", `Network error: Unable to connect to server while ${operationText}. Please check if the backend is running.`);
-    } else if (error instanceof SyntaxError) {
-      showNotification("error", `Data formatting error while ${operationText}: Invalid JSON structure detected.`);
-    } else if (error instanceof Error) {
+    if (error instanceof Error) {
       showNotification("error", `Error ${operationText}: ${error.message}`);
     } else {
       showNotification("error", `An unknown error occurred while ${operationText}.`);
@@ -3346,6 +3642,10 @@ const MapLegend = () => {
     { label: 'Block Router', icon: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png' },
     { label: 'BHQ', icon: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png' },
     { label: 'GP', icon: 'https://maps.google.com/mapfiles/ms/icons/yellow-dot.png' },
+    { label: 'BJC (Box Junction)', icon: 'https://maps.google.com/mapfiles/ms/icons/purple-dot.png' },
+    { label: 'SJC (Splice Junction)', icon: 'https://maps.google.com/mapfiles/ms/icons/orange-dot.png' },
+    { label: 'LC (Loop Chamber)', icon: 'https://maps.google.com/mapfiles/ms/icons/pink-dot.png' },
+    { label: 'N Highway Cross', icon: 'https://maps.google.com/mapfiles/ms/icons/yellow-dot.png' },
     { label: 'FPOI', icon: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png' }
   ];
 
@@ -3656,63 +3956,90 @@ const MapLegend = () => {
       }}
     >
       {/* Markers - keeping your existing implementation */}
-      {apiGPSResponse?.points?.map((point: GPSPoint, index: number) => {
+       {apiGPSResponse?.points?.map((point: GPSPoint, index: number) => {
+  // Validate point data
+  if (!point || !point.coordinates || !Array.isArray(point.coordinates) || point.coordinates.length < 2) {
+    console.warn(`Skipping invalid point at index ${index}:`, point);
+    return null;
+  }
+
+  // 🔥 CRITICAL FIX: Check for valid coordinate values
+  const lng = Number(point.coordinates[0]);
+  const lat = Number(point.coordinates[1]);
+  
+  if (isNaN(lng) || isNaN(lat) || 
+    (lng === 0 && lat === 0) ||  // Only skip if BOTH are zero
+    Math.abs(lat) > 90 || 
+    Math.abs(lng) > 180) {
+  console.warn(`Skipping point with invalid coordinates...`);
+  return null;
+}
+
   const position = {
-    lat: point.coordinates[1], 
-    lng: point.coordinates[0], 
+    lat: lat,
+    lng: lng,
   };
 
   const isPointSame = pointA && !pointB && isSameCoordinate(pointA, position);
 
-  // ✅ PROPER ICON LOGIC
-  const getIconUrl = (point: any) => {
-    const iconProp = point?.properties?.icon;
-    
-    // If icon is already a valid URL, use it
-    if (iconProp && typeof iconProp === 'string' && iconProp.startsWith('http')) {
-      return iconProp;
-    }
-    
-    // Otherwise, determine icon based on asset_type
-    const assetType = point?.properties?.asset_type;
-    
-    switch(assetType) {
-      case "Block Router":
-        return "https://maps.google.com/mapfiles/ms/icons/blue-dot.png";
-      case "BHQ":
-        return "https://maps.google.com/mapfiles/ms/icons/green-dot.png";
-      case "GP":
-        return "https://maps.google.com/mapfiles/ms/icons/yellow-dot.png";
-      case "FPOI":
-        return "https://maps.google.com/mapfiles/ms/icons/red-dot.png";
-      default:
-        return "https://maps.google.com/mapfiles/ms/icons/red-dot.png";
-    }
+  // ✅ PROPER ICON LOGIC - Fixed to handle all point types
+  const getIconUrl = (point: any): string => {
+  const properties = point?.properties || {};
+  const iconProp = properties.icon;
+  
+  // If icon is already a valid URL, use it
+  if (iconProp && typeof iconProp === 'string' && iconProp.startsWith('http')) {
+    return iconProp;
+  }
+  
+  // Check multiple property sources for asset type
+  const assetType = properties.asset_type || 
+                   properties.type || 
+                   point.type || 
+                   point.name?.includes('BJC') ? 'BJC' :
+                   point.name?.includes('SJC') ? 'SJC' :
+                   point.name?.includes('LC') ? 'LC' : '';
+  
+  // Map asset types to icons
+  const iconMap: Record<string, string> = {
+    "Block Router": "https://maps.google.com/mapfiles/ms/icons/blue-dot.png",
+    "BHQ": "https://maps.google.com/mapfiles/ms/icons/green-dot.png",
+    "GP": "https://maps.google.com/mapfiles/ms/icons/yellow-dot.png",
+    "BJC": "https://maps.google.com/mapfiles/ms/icons/purple-dot.png",
+    "SJC": "https://maps.google.com/mapfiles/ms/icons/orange-dot.png",
+    "LC": "https://maps.google.com/mapfiles/ms/icons/pink-dot.png",
+    "N Highway Cross": "https://maps.google.com/mapfiles/ms/icons/yellow-dot.png",
+    "FPOI": "https://maps.google.com/mapfiles/ms/icons/red-dot.png"
   };
+  
+  return iconMap[assetType] || "https://maps.google.com/mapfiles/ms/icons/red-dot.png";
+};
+
+  const pointName = point.name || `Point_${index}`;
 
   return (
     <Marker
-      key={`marker-${index}-${point.name}`}
+      key={`marker-${index}-${pointName}-${lat}-${lng}`}
       position={position}
       icon={{
         url: getIconUrl(point),
         scaledSize: new window.google.maps.Size(30, 30),
       }}
-      title={point.name}
+      title={pointName}
       onClick={() => {
         setPointProperties(point);
         if (AutoMode) {
           if (!pointA) {
-            setPointAName(point.name)
-            setPointA(position)
+            setPointAName(pointName);
+            setPointA(position);
           } else if (!pointB && !isPointSame) {
-            setPointBName(point.name)
+            setPointBName(pointName);
             setPointB(position);
           }
         }
       }}
     />
-  )
+  );
 })}
       
       {distanceInfoWindows.map((info, idx) => (

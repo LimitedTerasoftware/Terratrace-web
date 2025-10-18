@@ -12,9 +12,21 @@ import ImageModal from './ImageUploadModal';
 import * as XLSX from "xlsx";
 import { getDistanceFromLatLonInMeters } from '../../utils/calculations';
 
+
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const BASEURL_Val = import.meta.env.VITE_API_BASE;
 const baseUrl = import.meta.env.VITE_Image_URL;
+
+const parsePoleData = (poleDataString: string | null): { fitting_type?: string; line_type?: string; pole_material?: string } | null => {
+  if (!poleDataString || poleDataString.trim() === "") return null;
+  
+  try {
+    return JSON.parse(poleDataString);
+  } catch (e) {
+    console.error("Error parsing pole data:", e);
+    return null;
+  }
+};
 
 function Eventreport() {
     const location = useLocation();
@@ -302,6 +314,81 @@ function Eventreport() {
         { name: "Road Type", selector: row => row.roadType || "-", sortable: true },
         { name: "Soil Type", selector: row => row.soilType || "-", sortable: true },
         { name: "Area Type", selector: row => row.area_type || "-", sortable: true },
+        { 
+  name: "Pole Type", 
+  selector: row => {
+    const poleData = parsePoleData(row.pole_type);
+    return poleData?.pole_material || "-";
+  },
+  sortable: true,
+  maxWidth: "150px",
+  cell: (row) => {
+    const poleData = parsePoleData(row.pole_type);
+    if (!poleData) return <span>-</span>;
+    
+    return (
+      <div className="text-xs">
+        <div className="font-medium text-gray-900">{poleData.pole_material || "-"}</div>
+        <div className="text-gray-500">{poleData.fitting_type || "-"}</div>
+        <div className="text-gray-500">{poleData.line_type || "-"}</div>
+      </div>
+    );
+  },
+},
+{ 
+  name: "Existing Pole", 
+  selector: row => {
+    const poleData = parsePoleData(row.existing_pole);
+    return poleData?.pole_material || "-";
+  },
+  sortable: true,
+  minWidth: "280px",
+  cell: (row) => {
+    const poleData = parsePoleData(row.existing_pole);
+    if (!poleData) return <span className="text-gray-400">-</span>;
+    
+    return (
+      <div className="flex flex-wrap gap-1">
+        {poleData.pole_material && (
+          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-500 text-white border border-blue-600">
+            {poleData.pole_material}
+          </span>
+        )}
+        {poleData.fitting_type && (
+          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-emerald-500 text-white border border-emerald-600">
+            {poleData.fitting_type}
+          </span>
+        )}
+        {poleData.line_type && (
+          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-violet-500 text-white border border-violet-600">
+            {poleData.line_type}
+          </span>
+        )}
+      </div>
+    );
+  },
+},
+{ 
+  name: "New Pole", 
+  selector: row => {
+    const poleData = parsePoleData(row.new_pole);
+    return poleData?.pole_material || "-";
+  },
+  sortable: true,
+  maxWidth: "150px",
+  cell: (row) => {
+    const poleData = parsePoleData(row.new_pole);
+    if (!poleData) return <span>-</span>;
+    
+    return (
+      <div className="text-xs">
+        <div className="font-medium text-gray-900">{poleData.pole_material || "-"}</div>
+        <div className="text-gray-500">{poleData.fitting_type || "-"}</div>
+        <div className="text-gray-500">{poleData.line_type || "-"}</div>
+      </div>
+    );
+  },
+},
         { name: "Side Type", selector: row => row.cableLaidOn || "-", sortable: true },
         { name: "Crossing Type", selector: row => row.crossingType || "-", sortable: true },
         { name: "Crossing Length", selector: row => row.crossingLength || "-", sortable: true },
@@ -409,11 +496,27 @@ function Eventreport() {
         imageLinks = `=HYPERLINK("${baseUrl}${rawPhotoData}", "${item.eventType}_Img")`;
       }
     }
+
+    const poleTypeData = parsePoleData(item.pole_type);
+  const existingPoleData = parsePoleData(item.existing_pole);
+  const newPoleData = parsePoleData(item.new_pole);
+  
+  const formatPoleForExcel = (poleData: any) => {
+    if (!poleData) return "-";
+    return [
+      poleData.pole_material,
+      poleData.fitting_type,
+      poleData.line_type
+    ].filter(Boolean).join(" | ");
+  };
+
    return [
     MainData.state_name, MainData.district_name, MainData.block_name, item.start_lgd_name, item.end_lgd_name,item.machine_registration_number,
     item.firm_name,item.eventType,latitude,longitude,imageLinks,VideoUrl,item.routeBelongsTo, item.roadType,
     item.cableLaidOn, item.soilType, item.crossingType,item.crossingLength, item.executionModality,item.depthMeters,
-    item.distance,item.dgps_accuracy,item.dgps_siv,item.roadWidth, item.landmark_type,item.landmark_description,item.Roadfesibility, item.area_type,
+    item.distance,item.dgps_accuracy,item.dgps_siv,item.roadWidth, item.landmark_type,item.landmark_description,item.Roadfesibility, item.area_type,formatPoleForExcel(poleTypeData),      // Pole Type
+    formatPoleForExcel(existingPoleData),  // Existing Pole
+    formatPoleForExcel(newPoleData),
     item.road_margin,VehicalImg,downloadUrl,item.authorised_person,item.contractor_details, item.vehicleserialno,item.created_at, item.updated_at
   ];});
 

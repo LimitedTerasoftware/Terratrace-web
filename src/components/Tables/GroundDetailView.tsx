@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import { FaArrowLeft } from "react-icons/fa";
 import { useParams, useNavigate } from "react-router-dom";
@@ -12,6 +12,9 @@ import DataTable from "react-data-table-component";
 import { hasDownloadAccess, hasViewOnlyAccess } from "../../utils/accessControl";
 import ImageModal from "../DepthChart/ImageUploadModal";
 import UnderGroundSurveyImageModal from "./UnderGroundSurveyImageModal";
+import AddEventModal from "./AddEventModal";
+import MediaCarousel from "./MediaCarousel";
+import { Image as ImageIcon, Video } from "lucide-react";
 
 
 interface PatrollerDetails {
@@ -60,6 +63,13 @@ interface VideoDetails {
   endTimeStamp: number;
   videoUrl: string;
 }
+
+interface MediaItem {
+  type: 'image' | 'video';
+  url: string;
+  label: string;
+}
+
 interface UnderGroundSurveyData {
   id: number;
   survey_id: string;
@@ -138,6 +148,12 @@ const GroundDetailView: React.FC = () => {
   const [videoSizes, setVideoSizes] = useState<Record<string, number>>({});
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedActivity, setSelectedActivity] = useState<UnderGroundSurveyData | null>(null);
+  const [isAddEventModalOpen, setIsAddEventModalOpen] = useState<boolean>(false);
+  
+  // New state for media carousel
+  const [isCarouselOpen, setIsCarouselOpen] = useState<boolean>(false);
+  const [carouselMedia, setCarouselMedia] = useState<MediaItem[]>([]);
+  const [carouselInitialIndex, setCarouselInitialIndex] = useState<number>(0);
   
   const { id } = useParams();
   const navigate = useNavigate();
@@ -162,6 +178,8 @@ const GroundDetailView: React.FC = () => {
       }
     } catch (error) {
       console.error(`Failed to fetch video size for ${url}:`, error);
+      // Set to 0 to indicate failed
+      setVideoSizes((prev) => ({ ...prev, [url]: 0 }));
     }
   };
 
@@ -204,7 +222,156 @@ const GroundDetailView: React.FC = () => {
           setIsModalOpen(false);
           setSelectedActivity(null);
       };
-  const columns = [
+
+  // Function to extract all media from a row
+  const extractMediaFromRow = (row: UnderGroundSurveyData): MediaItem[] => {
+    const mediaItems: MediaItem[] = [];
+
+    // FPOI
+    if (row.event_type === "FPOI" && row.fpoiUrl) {
+      mediaItems.push({
+        type: 'image',
+        url: `${baseUrl}${row.fpoiUrl}`,
+        label: 'FPOI Photo'
+      });
+    }
+
+    // Survey Start Photos
+    if (row.event_type === "SURVEYSTART" && row.start_photos) {
+      row.start_photos.forEach((photo, index) => {
+        mediaItems.push({
+          type: 'image',
+          url: `${baseUrl}${photo}`,
+          label: `Start Photo ${index + 1}`
+        });
+      });
+    }
+
+    // Survey End Photos
+    if (row.event_type === "ENDSURVEY" && row.end_photos) {
+      row.end_photos.forEach((photo, index) => {
+        mediaItems.push({
+          type: 'image',
+          url: `${baseUrl}${photo}`,
+          label: `End Photo ${index + 1}`
+        });
+      });
+    }
+
+    // Route Indicator URLs
+    if (row.event_type === "ROUTEINDICATOR" && row.routeIndicatorUrl) {
+      let urls = [];
+      try {
+        const parsed = JSON.parse(row.routeIndicatorUrl);
+        if (Array.isArray(parsed)) {
+          urls = parsed;
+        } else if (typeof parsed === "string") {
+          urls = [parsed];
+        }
+      } catch (e) {
+        urls = [row.routeIndicatorUrl];
+      }
+
+      urls.forEach((url, index) => {
+        if (url) {
+          mediaItems.push({
+            type: 'image',
+            url: `${baseUrl}${url}`,
+            label: `Route Indicator ${urls.length > 1 ? index + 1 : ''}`
+          });
+        }
+      });
+    }
+
+    // Joint Chamber
+    if (row.event_type === "JOINTCHAMBER" && row.jointChamberUrl) {
+      mediaItems.push({
+        type: 'image',
+        url: `${baseUrl}${row.jointChamberUrl}`,
+        label: 'Joint Chamber Photo'
+      });
+    }
+
+    // Road Crossing
+    if (row.event_type === "ROADCROSSING" && row.road_crossing) {
+      if (row.road_crossing.startPhoto) {
+        mediaItems.push({
+          type: 'image',
+          url: `${baseUrl}${row.road_crossing.startPhoto}`,
+          label: 'Road Crossing Start'
+        });
+      }
+      if (row.road_crossing.endPhoto) {
+        mediaItems.push({
+          type: 'image',
+          url: `${baseUrl}${row.road_crossing.endPhoto}`,
+          label: 'Road Crossing End'
+        });
+      }
+    }
+
+    // Kilometer Stone
+    if (row.event_type === "KILOMETERSTONE" && row.kmtStoneUrl) {
+      mediaItems.push({
+        type: 'image',
+        url: `${baseUrl}${row.kmtStoneUrl}`,
+        label: 'KM Stone Photo'
+      });
+    }
+
+    // Landmark
+    if (row.event_type === "LANDMARK" && row.landMarkUrls && row.landMarkType !== "NONE") {
+      try {
+        const urls = JSON.parse(row.landMarkUrls);
+        urls.filter((url: string) => url).forEach((url: string, index: number) => {
+          mediaItems.push({
+            type: 'image',
+            url: `${baseUrl}${url}`,
+            label: `Landmark Photo ${index + 1}`
+          });
+        });
+      } catch (e) {
+        console.error('Error parsing landmark URLs', e);
+      }
+    }
+
+    // Fiber Turn
+    if (row.event_type === "FIBERTURN" && row.fiberTurnUrl) {
+      mediaItems.push({
+        type: 'image',
+        url: `${baseUrl}${row.fiberTurnUrl}`,
+        label: 'Fiber Turn Photo'
+      });
+    }
+
+    // Video
+    if (row.event_type === "VIDEORECORD") {
+      const mainUrl = row.videoUrl?.trim().replace(/^"|"$/g, "");
+      const fallbackUrl = row.videoDetails?.videoUrl?.trim().replace(/^"|"$/g, "");
+      const videoUrl = mainUrl || fallbackUrl;
+
+      if (videoUrl) {
+        mediaItems.push({
+          type: 'video',
+          url: `${baseUrl}${videoUrl}`,
+          label: 'Survey Video'
+        });
+      }
+    }
+
+    return mediaItems;
+  };
+
+  // Function to open carousel
+  const openCarousel = (row: UnderGroundSurveyData, initialIndex: number = 0) => {
+    const media = extractMediaFromRow(row);
+    setCarouselMedia(media);
+    setCarouselInitialIndex(initialIndex);
+    setIsCarouselOpen(true);
+  };
+
+  // Using useMemo to define columns so they update when videoSizes changes
+  const columns = useMemo(() => [
     {
       name:"Actions",
       cell:(row:UnderGroundSurveyData)=>(
@@ -215,9 +382,8 @@ const GroundDetailView: React.FC = () => {
 
       ),
       ignoreRowClick: true,
-      allowOverflow: true,
       button: true,
-
+      width: '120px',
     },
     {
       name: "Event Type",
@@ -253,128 +419,47 @@ const GroundDetailView: React.FC = () => {
       selector: (row: UnderGroundSurveyData) => row.routeIndicatorType || "-",
     },
     {
-      name: "Image",
-      cell: (row: UnderGroundSurveyData) => (
-        <div className="text-blue-600">
-          {row.event_type === "FPOI" && row.fpoiUrl && (
-            <span className="underline cursor-pointer" onClick={() => setZoomImage(`${baseUrl}${row.fpoiUrl}`)}>
-              fpoiUrl<br />
-            </span>
-          )}
-          {row.event_type === "SURVEYSTART" &&
-            row.start_photos?.map((p, i) => (
-              <span key={i} className="underline cursor-pointer" onClick={() => setZoomImage(`${baseUrl}${p}`)}>
-                start_photo_{i + 1}<br />
-              </span>
-            ))}
-          {row.event_type === "ENDSURVEY" &&
-            row.end_photos?.map((p, i) => (
-              <span key={i} className="underline cursor-pointer" onClick={() => setZoomImage(`${baseUrl}${p}`)}>
-                end_photo_{i + 1}<br />
-              </span>
-            ))}
-          {row.event_type === "ROUTEINDICATOR" && row.routeIndicatorUrl && (() => {
-            let urls = [];
-
-            try {
-              const parsed = JSON.parse(row.routeIndicatorUrl);
-              if (Array.isArray(parsed)) {
-                urls = parsed;
-              } else if (typeof parsed === "string") {
-                urls = [parsed];
-              } else {
-                urls = [];
-              }
-            } catch (e) {
-              urls = [row.routeIndicatorUrl];
-            }
-
-            return urls.map((url, index) => (
-              <span
-                key={index}
-                className="underline cursor-pointer block"
-                onClick={() => setZoomImage(`${baseUrl}${url}`)}
-              >
-                RouteIndicatorUrl {urls.length > 1 ? index + 1 : ""}
-                <br />
-              </span>
-            ));
-          })()}
-          {row.event_type === "JOINTCHAMBER" && row.jointChamberUrl && (
-            <span className="underline cursor-pointer" onClick={() => setZoomImage(`${baseUrl}${row.jointChamberUrl}`)}>
-              JointChamberUrl<br />
-            </span>
-          )}
-          {row.event_type === "ROADCROSSING" && row.road_crossing?.startPhoto && (
-            <span className="underline cursor-pointer" onClick={() => setZoomImage(`${baseUrl}${row.road_crossing?.startPhoto}`)}>
-              startPhoto_URL<br />
-            </span>
-          )}
-          {row.event_type === "ROADCROSSING" && row.road_crossing?.endPhoto && (
-            <span className="underline cursor-pointer" onClick={() => setZoomImage(`${baseUrl}${row.road_crossing?.endPhoto}`)}>
-              endPhoto_URL<br />
-            </span>
-          )}
-          {row.event_type === "KILOMETERSTONE" && row.kmtStoneUrl && (
-            <span className="underline cursor-pointer" onClick={() => setZoomImage(`${baseUrl}${row.kmtStoneUrl}`)}>
-              KmStone_URL<br />
-            </span>
-          )}
-          {row.event_type === "LANDMARK" &&
-            row.landMarkUrls &&
-            row.landMarkType !== "NONE" && (
-              JSON.parse(row.landMarkUrls)
-                .filter((url: string) => url)
-                .map((url: string, index: number) => (
-                  <span
-                    key={index}
-                    className="underline cursor-pointer block"
-                    onClick={() => setZoomImage(`${baseUrl}${url}`)}
-                  >
-                    Landmark_URL {index + 1}
-                  </span>
-                ))
-            )}
-
-          {row.event_type === "FIBERTURN" && row.fiberTurnUrl && (
-            <span className="underline cursor-pointer" onClick={() => setZoomImage(`${baseUrl}${row.fiberTurnUrl}`)}>
-              Fiberturn_URL<br />
-            </span>
-          )}
-
-
-          {!row.fpoiUrl &&
-            (!row.start_photos || row.start_photos.length === 0) &&
-            (!row.end_photos || row.end_photos.length === 0) &&
-            !row.routeIndicatorUrl &&
-            !row.jointChamberUrl &&
-            !row.kmtStoneUrl &&
-            !row.landMarkUrls &&
-            !row.fiberTurnUrl &&
-            (!row.road_crossing?.startPhoto || row.road_crossing.startPhoto === "") &&
-            (!row.road_crossing?.endPhoto || row.road_crossing.endPhoto === "") && <span>-</span>}
-
-        </div>
-      ),
-    },
-    {
-      name: "Video",
+      name: "Media",
       cell: (row: UnderGroundSurveyData) => {
-        if (row.event_type === "VIDEORECORD") {
-          const mainUrl = row.videoUrl?.trim().replace(/^"|"$/g, "");
-          const fallbackUrl = row.videoDetails?.videoUrl?.trim().replace(/^"|"$/g, "");
-          const videoUrl = mainUrl || fallbackUrl;
-
-          return videoUrl ? (
-            <button className="text-blue-600 underline" onClick={() => setSelectedVideoUrl(videoUrl)}>
-              Play Video
-            </button>
-          ) : (
-            "-"
-          );
+        const mediaItems = extractMediaFromRow(row);
+        
+        if (mediaItems.length === 0) {
+          return <span className="text-gray-400">-</span>;
         }
-        return "-";
+
+        const imageCount = mediaItems.filter(item => item.type === 'image').length;
+        const videoCount = mediaItems.filter(item => item.type === 'video').length;
+        const hasImages = imageCount > 0;
+        const hasVideos = videoCount > 0;
+
+        return (
+          <button
+            onClick={() => openCarousel(row)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors cursor-pointer"
+            title="Click to view media"
+          >
+            {hasImages && (
+              <div className="flex items-center gap-1">
+                <ImageIcon size={16} className="text-blue-600" />
+                <span className="text-xs text-blue-600 font-medium">
+                  {imageCount}
+                </span>
+              </div>
+            )}
+            {hasVideos && (
+              <div className="flex items-center gap-1">
+                <Video size={16} className="text-purple-600" />
+                <span className="text-xs text-purple-600 font-medium">
+                  {videoCount}
+                </span>
+              </div>
+            )}
+          </button>
+        );
       },
+      ignoreRowClick: true,
+      button: true,
+      width: '140px',
     },
     {
       name: "Video Size",
@@ -385,17 +470,20 @@ const GroundDetailView: React.FC = () => {
           const videoUrl = mainUrl || fallbackUrl;
 
           const sizeInBytes = videoSizes[videoUrl || ""];
-          if (sizeInBytes) {
+          if (sizeInBytes !== undefined) {
+            if (sizeInBytes === 0) {
+              return <span className="text-red-600 font-medium">Failed</span>;
+            }
             const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(2);
-            return `${sizeInMB} MB`;
+            return <span className="text-green-600 font-medium">{sizeInMB} MB</span>;
           } else {
-            return "Loading...";
+            return <span className="text-gray-500">Loading...</span>;
           }
         }
         return "-";
       },
+      width: '120px',
     },
-
     {
       name: "Route Type",
       selector: (row: UnderGroundSurveyData) => row.route_details.routeType || "-",
@@ -445,7 +533,7 @@ const GroundDetailView: React.FC = () => {
       selector: (row: UnderGroundSurveyData) =>
         new Date(row.createdTime || row.created_at || "").toLocaleString(),
     },
-  ];
+  ], [videoSizes]); // Re-create columns when videoSizes changes
 
   const customStyles = {
     headRow: {
@@ -881,14 +969,25 @@ const GroundDetailView: React.FC = () => {
 
       <div className="container mx-auto p-6">
         <ToastContainer />
-        <button
-          className="flex items-center gap-2 text-blue-500 hover:text-blue-700 mb-6"
-          onClick={() => window.history.back()}
-        >
-          <FaArrowLeft className="h-5 w-5" />
-          Back
-        </button>
-        <h1 className="text-2xl font-bold mb-4">UnderGround Survey Detail View</h1>
+        <div className="flex items-center gap-4 mb-6">
+  {/* Back Button */}
+  <button
+    onClick={() => window.history.back()}
+    className="flex items-center gap-2 text-blue-500 hover:text-blue-700 transition-colors"
+  >
+    <FaArrowLeft className="h-5 w-5" />
+    <span className="font-medium">Back</span>
+  </button>
+
+  {/* Divider */}
+  <div className="h-6 border-l border-gray-300"></div>
+
+  {/* Page Title */}
+  <h1 className="text-2xl font-bold text-gray-800">
+    UnderGround Survey Detail View
+  </h1>
+</div>
+
         <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
           <div className="flex flex-wrap justify-between items-center">
             {/* Left: Tabs */}
@@ -1019,6 +1118,14 @@ const GroundDetailView: React.FC = () => {
                 </button>
 
                 <button
+                  className="bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded flex items-center gap-2"
+                  onClick={() => setIsAddEventModalOpen(true)}
+                >
+                  <span className="text-xl">+</span>
+                  Add Event
+                </button>
+
+                <button
                   className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded"
                   onClick={() => {
                     handleAccept();
@@ -1067,7 +1174,16 @@ const GroundDetailView: React.FC = () => {
           baseUrl={baseUrl}
           onUpdate={() => fetchSurveyData()}
             />
-      {/* Modal for video preview */}
+      
+      {/* Media Carousel Modal */}
+      <MediaCarousel
+        isOpen={isCarouselOpen}
+        onClose={() => setIsCarouselOpen(false)}
+        mediaItems={carouselMedia}
+        initialIndex={carouselInitialIndex}
+      />
+
+      {/* Modal for video preview (keeping for backward compatibility) */}
       {selectedVideoUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
           <div className="relative w-full max-w-3xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
@@ -1092,6 +1208,17 @@ const GroundDetailView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Add Event Modal */}
+      <AddEventModal
+        isOpen={isAddEventModalOpen}
+        onClose={() => setIsAddEventModalOpen(false)}
+        surveyId={data?.under_ground_survey_data?.[0]?.survey_id || id || ''}
+        onSuccess={() => {
+          fetchSurveyData();
+          toast.success('Event added successfully!');
+        }}
+      />
     </>
   );
 };

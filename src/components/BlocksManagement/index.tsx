@@ -25,6 +25,8 @@ import DataTable, { TableColumn } from 'react-data-table-component';
 import moment from 'moment';
 import { useNavigate } from 'react-router-dom'; // Added for navigation
 import UserAssignmentModal from './UserAssginmentModal';
+import * as XLSX from 'xlsx';
+
 
 // Types
 interface Block {
@@ -37,6 +39,8 @@ interface Block {
   stage: string;
   status: string | null;
   assignedTo: string;
+  surveyDocs?: number;
+  connectionDocs?: number;
   progress: string;
   startDate: string | null;
   endDate: string | null;
@@ -77,11 +81,6 @@ const BlocksManagementPage: React.FC = () => {
   // State management
   const [selectedRows, setSelectedRows] = useState<Block[]>([]);
   const [toggleCleared, setToggleCleared] = useState(false);
-  const [globalsearch, setGlobalSearch] = useState<string>('');
-  const [selectedDistrict, setSelectedDistrict] = useState<string>('');
-  const [selectedStage, setSelectedStage] = useState<string>('survey');
-  const [selectedStatus, setSelectedStatus] = useState<string>('');
-  const [selectedContractor, setSelectedContractor] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [statsData, setStatsData] = useState<ApiStatsData | null>(null);
   const [statsLoading, setStatsLoading] = useState<boolean>(true);
@@ -104,6 +103,112 @@ const BlocksManagementPage: React.FC = () => {
 });
   const [editingBlock, setEditingBlock] = useState<Block | null>(null);
   const [editFormData, setEditFormData] = useState<any>(null);
+  const [users, setUsers] = useState<any[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState<boolean>(false);
+  const [userSearchQuery, setUserSearchQuery] = useState<string>('');
+const [showUserDropdown, setShowUserDropdown] = useState<boolean>(false);
+const [isExporting, setIsExporting] = useState<boolean>(false);
+
+
+
+const FILTERS_STORAGE_KEY = 'blocks_management_filters';
+
+const fetchUsers = async () => {
+  try {
+    setLoadingUsers(true);
+    const response = await fetch(`${TRACE_API_URL}/user-list`); // ✅ Correct endpoint
+    if (!response.ok) throw new Error('Failed to fetch users');
+    
+    const data = await response.json();
+    // ✅ Correct data structure - it's nested in data.usersList
+    setUsers(data.data.usersList || []); 
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    showNotification('error', 'Failed to load users list');
+    setUsers([]);
+  } finally {
+    setLoadingUsers(false);
+  }
+};
+
+const saveFiltersToStorage = () => {
+  const filters = {
+    selectedDistrict,
+    selectedStage,
+    selectedStatus,
+    selectedContractor,
+    globalsearch
+  };
+  sessionStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(filters));
+};
+
+const loadFiltersFromStorage = () => {
+  const saved = sessionStorage.getItem(FILTERS_STORAGE_KEY);
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch (error) {
+      console.error('Error parsing saved filters:', error);
+      return null;
+    }
+  }
+  return null;
+};
+
+const clearFiltersFromStorage = () => {
+  sessionStorage.removeItem(FILTERS_STORAGE_KEY);
+};
+
+// Initialize with saved filters or defaults
+const savedFilters = loadFiltersFromStorage();
+
+const [selectedDistrict, setSelectedDistrict] = useState<string>(
+  savedFilters?.selectedDistrict || ''
+);
+const [selectedStage, setSelectedStage] = useState<string>(
+  savedFilters?.selectedStage || 'survey'
+);
+const [selectedStatus, setSelectedStatus] = useState<string>(
+  savedFilters?.selectedStatus || ''
+);
+const [selectedContractor, setSelectedContractor] = useState<string>(
+  savedFilters?.selectedContractor || ''
+);
+const [globalsearch, setGlobalSearch] = useState<string>(
+  savedFilters?.globalsearch || ''
+);
+
+const filteredUsersForAssignment = useMemo(() => {
+  if (!userSearchQuery.trim()) return users;
+  return users.filter(user =>
+    user.fullname.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+    user.email.toLowerCase().includes(userSearchQuery.toLowerCase())
+  );
+}, [users, userSearchQuery]);
+
+// Get selected user display name
+const getSelectedUserName = (userId: string) => {
+  if (!userId) return '';
+  const user = users.find(u => u.id === parseInt(userId));
+  return user ? user.fullname : '';
+};
+
+useEffect(() => {
+  const handleClickOutside = (event: MouseEvent) => {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.user-dropdown-container')) {
+      setShowUserDropdown(false);
+    }
+  };
+
+  if (showUserDropdown) {
+    document.addEventListener('mousedown', handleClickOutside);
+  }
+
+  return () => {
+    document.removeEventListener('mousedown', handleClickOutside);
+  };
+}, [showUserDropdown]);
 
 const refetchData = async () => {
   try {
@@ -196,6 +301,7 @@ const closeNotification = () => {
 
   // Navigate to GP List page - Added this function
   const handleGPListClick = (blockId: number, blockName: string) => {
+  // Filters are already saved in sessionStorage via useEffect
   navigate(`/blocks-management/gplist/${blockId}`, {
     state: { 
       blockName,
@@ -203,6 +309,10 @@ const closeNotification = () => {
     }
   });
 };
+
+useEffect(() => {
+  saveFiltersToStorage();
+}, [selectedDistrict, selectedStage, selectedStatus, selectedContractor, globalsearch]);
 
   // Fetch stats data from API
   useEffect(() => {
@@ -502,6 +612,7 @@ const closeNotification = () => {
     setSelectedStage('survey');
     setSelectedStatus('');
     setSelectedContractor('');
+    clearFiltersFromStorage();
   };
  
   const handleActionClick = (action: string, block: Block) => {
@@ -525,20 +636,34 @@ const closeNotification = () => {
   }
 };
 
-const handleEditBlock = (block: Block) => {
+
+const handleEditBlock = async (block: Block) => {
   setEditingBlock(block);
-  // Simplified form data with just the essential fields
+  
+  // Fetch users if not already loaded
+  if (users.length === 0) {
+    await fetchUsers();
+  }
+  
+  // Try to find the current user's ID by matching the name
+  // ✅ Use 'fullname' field from API response
+  const currentUser = users.find(u => 
+    u.fullname === block.assignedTo || 
+    u.email === block.assignedTo
+  );
+  
+  // Pre-fill the form with existing data from the block
   setEditFormData({
     block_id: block.blockId,
-    stage: block.stage.toLowerCase(), // Current stage of the block
-    status: '',
-    startDate: '',
-    endDate: '',
-    no_of_gps: '',
+    stage: block.stage.toLowerCase(),
+    status: block.status || '',
+    startDate: block.startDate ? block.startDate.split('T')[0] : '',
+    endDate: block.endDate ? block.endDate.split('T')[0] : '',
+    no_of_gps: block.no_of_gps || '',
     proposed_length: '',
     incremental_length: '',
-    assigned_to: '',
-    progress: '',
+    assigned_to: currentUser?.id || '', // ✅ Use 'id' field
+    progress: block.progress ? parseFloat(block.progress.replace('%', '')) : '',
     remark: ''
   });
 };
@@ -675,34 +800,37 @@ const handleEditSave = async () => {
   };
 
   // Progress Component
-  const getProgressComponent = (stage: string, progress: string) => {
-    const progressValue = parseFloat(progress) || 0;
-    
-    const getStageLabel = () => {
-      switch (stage.toLowerCase()) {
-        case 'survey':
-          return `Survey ${progressValue.toFixed(1)}%`;
-        case 'construction':
-          return `Constr ${progressValue.toFixed(1)}%`;
-        case 'installation':
-          return `Install ${progressValue.toFixed(1)}%`;
-        default:
-          return `${progressValue.toFixed(1)}%`;
-      }
-    };
-
-    return (
-      <div className="space-y-1">
-        <div className="text-sm font-medium text-gray-900">{getStageLabel()}</div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div 
-            className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-            style={{ width: `${Math.min(progressValue, 100)}%` }}
-          ></div>
-        </div>
-      </div>
-    );
+  // Progress Component
+const getProgressComponent = (stage: string, progress: string) => {
+  const progressValue = parseFloat(progress) || 0;
+  // Cap the display value at 100
+  const displayValue = Math.min(progressValue, 100);
+  
+  const getStageLabel = () => {
+    switch (stage.toLowerCase()) {
+      case 'survey':
+        return `Survey ${displayValue.toFixed(1)}%`;
+      case 'construction':
+        return `Constr ${displayValue.toFixed(1)}%`;
+      case 'installation':
+        return `Install ${displayValue.toFixed(1)}%`;
+      default:
+        return `${displayValue.toFixed(1)}%`;
+    }
   };
+
+  return (
+    <div className="space-y-1">
+      <div className="text-sm font-medium text-gray-900">{getStageLabel()}</div>
+      <div className="w-full bg-gray-200 rounded-full h-2">
+        <div 
+          className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+          style={{ width: `${Math.min(progressValue, 100)}%` }}
+        ></div>
+      </div>
+    </div>
+  );
+};
 
   // Function to calculate dropdown position based on row index and total rows
   const getDropdownPosition = (rowIndex: number, totalRows: number) => {
@@ -803,33 +931,34 @@ const handleEditSave = async () => {
       minWidth: "140px"
     },
     {
-      name: "Start Date",
-      cell: (row) => (
-        <div className="text-sm">
-          {row.startDate ? (
-            <div>{moment(row.startDate).format("DD MMM")}</div>
-          ) : (
-            <span className="text-gray-400">-</span>
-          )}
-        </div>
-      ),
-      sortable: true,
-      maxWidth: "100px"
-    },
-    {
-      name: "End Date",
-      cell: (row) => (
-        <div className="text-sm">
-          {row.endDate ? (
-            <div>{moment(row.endDate).format("DD MMM")}</div>
-          ) : (
-            <span className="text-gray-400">-</span>
-          )}
-        </div>
-      ),
-      sortable: true,
-      maxWidth: "100px"
-    },
+  name: "Start Date",
+  cell: (row) => (
+    <div className="text-sm">
+      {row.startDate ? (
+        <div>{moment.utc(row.startDate).format("DD/MM/YY")}</div>
+      ) : (
+        <span className="text-gray-400">-</span>
+      )}
+    </div>
+  ),
+  sortable: true,
+  maxWidth: "100px"
+},
+{
+  name: "End Date",
+  cell: (row) => (
+    <div className="text-sm">
+      {row.endDate ? (
+        <div>{moment.utc(row.endDate).format("DD/MM/YY")}</div>
+      ) : (
+        <span className="text-gray-400">-</span>
+      )}
+    </div>
+  ),
+  sortable: true,
+  maxWidth: "100px"
+},
+
     {
   name: 'Actions',
   cell: (row) => {
@@ -925,6 +1054,78 @@ const handleEditSave = async () => {
       },
     },
   };
+
+  const handleExportToExcel = () => {
+  setIsExporting(true);
+  
+  try {
+    // Prepare data for export
+    const exportData = filteredData.map((block, index) => ({
+      'S.No': index + 1,
+      'Block Name': block.blockName,
+      'Block Code': block.blockCode,
+      'Block ID': block.blockId,
+      'District': block.district,
+      'Length': block.length,
+      'No. of GPS': block.no_of_gps,
+      'Stage': block.stage.charAt(0).toUpperCase() + block.stage.slice(1),
+      'Status': block.status || 'Not Started',
+      'Assigned To': block.assignedTo,
+      'Progress': block.progress,
+      'Survey Docs': block.surveyDocs || 0,
+      'Connection Docs': block.connectionDocs || 0,
+      'Start Date': block.startDate ? moment(block.startDate).format('DD/MM/YYYY') : '-',
+      'End Date': block.endDate ? moment(block.endDate).format('DD/MM/YYYY') : '-'
+    }));
+
+    // Create worksheet
+    const ws = XLSX.utils.json_to_sheet(exportData);
+
+    // Set column widths
+    const columnWidths = [
+      { wch: 6 },  // S.No
+      { wch: 25 }, // Block Name
+      { wch: 12 }, // Block Code
+      { wch: 10 }, // Block ID
+      { wch: 20 }, // District
+      { wch: 12 }, // Length
+      { wch: 12 }, // No. of GPS
+      { wch: 15 }, // Stage
+      { wch: 15 }, // Status
+      { wch: 25 }, // Assigned To
+      { wch: 12 }, // Progress
+      { wch: 12 }, // Survey Docs
+      { wch: 15 }, // Connection Docs
+      { wch: 12 }, // Start Date
+      { wch: 12 }  // End Date
+    ];
+    ws['!cols'] = columnWidths;
+
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Blocks Data');
+
+    // Generate filename with timestamp and filters
+    const timestamp = moment().format('YYYY-MM-DD_HH-mm-ss');
+    const stageName = selectedStage.charAt(0).toUpperCase() + selectedStage.slice(1);
+    const districtName = selectedDistrict 
+      ? districts.find(d => d.district_code === selectedDistrict)?.district_name || 'AllDistricts'
+      : 'AllDistricts';
+    const statusName = selectedStatus || 'AllStatus';
+    
+    const filename = `Blocks_${stageName}_${districtName}_${statusName}_${timestamp}.xlsx`;
+
+    // Download file
+    XLSX.writeFile(wb, filename);
+
+    showNotification('success', `Successfully exported ${exportData.length} records to Excel`);
+  } catch (error) {
+    console.error('Error exporting to Excel:', error);
+    showNotification('error', 'Failed to export data to Excel');
+  } finally {
+    setIsExporting(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -1074,9 +1275,22 @@ const handleEditSave = async () => {
               Reassign
             </button>
 
-            <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors font-medium">
-              <SheetIcon className="w-4 h-4" />
-              Export
+            <button
+              onClick={handleExportToExcel}
+              disabled={isExporting || filteredData.length === 0}
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isExporting ? (
+                <>
+                  <Loader className="w-4 h-4 animate-spin" />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <SheetIcon className="w-4 h-4" />
+                  Export
+                </>
+              )}
             </button>
 
             <button
@@ -1168,201 +1382,296 @@ const handleEditSave = async () => {
 
         {/* Block Edit Modal */}
         {editingBlock && editFormData && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6 border-b border-gray-200">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-xl font-semibold text-gray-900">Edit Block - {editingBlock.blockName}</h3>
-                  <button
-                    onClick={() => {
-                      setEditingBlock(null);
-                      setEditFormData(null);
-                    }}
-                    className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-              
-              <div className="p-6 space-y-6">
-                {/* Basic Information */}
-                <div>
-                  <h4 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Number of GPS</label>
-                      <input
-                        type="number"
-                        value={editFormData.no_of_gps}
-                        onChange={(e) => handleEditFormChange('no_of_gps', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Enter number of GPS"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Progress (%)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="100"
-                        value={editFormData.progress}
-                        onChange={(e) => handleEditFormChange('progress', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Enter progress percentage"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Proposed Length (km)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={editFormData.proposed_length}
-                        onChange={(e) => handleEditFormChange('proposed_length', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Enter proposed length"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Incremental Length (km)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={editFormData.incremental_length}
-                        onChange={(e) => handleEditFormChange('incremental_length', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Enter incremental length"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Assigned To (ID)</label>
-                      <input
-                        type="number"
-                        value={editFormData.assigned_to}
-                        onChange={(e) => handleEditFormChange('assigned_to', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Enter assigned user ID"
-                      />
-                    </div>
-                  </div>
-                </div>
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+      {/* Header - Fixed */}
+      <div className="p-6 border-b border-gray-200 flex-shrink-0">
+        <div className="flex justify-between items-center">
+          <h3 className="text-xl font-semibold text-gray-900">Edit Block - {editingBlock.blockName}</h3>
+          <button
+            onClick={() => {
+              setEditingBlock(null);
+              setEditFormData(null);
+            }}
+            className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+      
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-6 space-y-6">
+          {/* Assignment Section - Now Editable */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+  <div className="space-y-2">
+    <div className="flex items-center gap-1.5">
+      <User className="w-3.5 h-3.5 text-blue-600" />
+      <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">
+        Assigned To
+      </p>
+    </div>
+    
+    {/* Current Assignment Display */}
+    <div className="bg-white border border-blue-200 rounded-md p-2">
+      <p className="text-xs text-gray-500 mb-0.5">Currently Assigned</p>
+      <p className="text-sm font-semibold text-gray-900">
+        {editingBlock.assignedTo && editingBlock.assignedTo !== 'Unassigned' 
+          ? editingBlock.assignedTo 
+          : 'Not Assigned'}
+      </p>
+    </div>
 
-                {/* Stage-specific Information */}
-                <div className="border-t border-gray-200 pt-6">
-                  <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded-full ${
-                      editFormData.stage === 'desktop' ? 'bg-blue-500' :
-                      editFormData.stage === 'survey' ? 'bg-yellow-500' :
-                      editFormData.stage === 'boq' ? 'bg-indigo-500' :
-                      editFormData.stage === 'construction' ? 'bg-orange-500' :
-                      editFormData.stage === 'installation' ? 'bg-purple-500' :
-                      'bg-gray-500'
-                    }`}></div>
-                    {editFormData.stage.charAt(0).toUpperCase() + editFormData.stage.slice(1)} Stage
-                  </h4>
-                  
-                  {/* Stage Selector */}
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Stage</label>
-                    <select
-                      value={editFormData.stage}
-                      onChange={(e) => handleEditFormChange('stage', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="desktop">Desktop Survey</option>
-                      <option value="survey">Physical Survey</option>
-                      <option value="boq">BOQ (Bill of Quantities)</option>
-                      <option value="construction">Construction</option>
-                      <option value="installation">Installation</option>
-                    </select>
-                  </div>
+    {/* Change Assignment Dropdown */}
+    <div>
+      <label className="block text-xs font-medium text-gray-700 mb-1.5">
+        Change Assignment
+      </label>
+      <div className="relative user-dropdown-container">
+        {/* Search Input */}
+        <div className="relative">
+          <input
+            type="text"
+            value={editFormData.assigned_to ? getSelectedUserName(editFormData.assigned_to) : userSearchQuery}
+            onChange={(e) => {
+              setUserSearchQuery(e.target.value);
+              setShowUserDropdown(true);
+              if (!e.target.value) {
+                handleEditFormChange('assigned_to', '');
+              }
+            }}
+            onFocus={() => setShowUserDropdown(true)}
+            disabled={loadingUsers}
+            className="w-full px-2.5 py-1.5 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            placeholder="Search and select user..."
+          />
+          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+            {loadingUsers ? (
+              <Loader className="w-3.5 h-3.5 animate-spin text-gray-400" />
+            ) : (
+              <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            )}
+          </div>
+        </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                      <select
-                        value={editFormData.status}
-                        onChange={(e) => handleEditFormChange('status', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Select Status</option>
-                        <option value="Not started">Not Started</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Completed">Completed</option>
-                      </select>
-                    </div>
-                    
-                    {/* Only show date fields for stages that support them (not BOQ) */}
-                    {editFormData.stage !== 'boq' && (
-                      <>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
-                          <input
-                            type="date"
-                            value={editFormData.startDate}
-                            onChange={(e) => handleEditFormChange('startDate', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
-                          <input
-                            type="date"
-                            value={editFormData.endDate}
-                            onChange={(e) => handleEditFormChange('endDate', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                      </>
-                    )}
+        {/* Dropdown List */}
+        {showUserDropdown && filteredUsersForAssignment.length > 0 && (
+          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+            {filteredUsersForAssignment.map((user) => (
+              <div
+                key={user.id}
+                onClick={() => {
+                  handleEditFormChange('assigned_to', user.id.toString());
+                  setUserSearchQuery('');
+                  setShowUserDropdown(false);
+                }}
+                className={`px-2.5 py-1.5 cursor-pointer hover:bg-blue-50 transition-colors ${
+                  editFormData.assigned_to === user.id.toString() ? 'bg-blue-100' : ''
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
+                    {user.fullname.charAt(0).toUpperCase()}
                   </div>
-                </div>
-
-                {/* Remarks Section */}
-                <div className="border-t border-gray-200 pt-6">
-                  <h4 className="text-lg font-medium text-gray-900 mb-4">Remarks</h4>
-                  <div>
-                    <textarea
-                      value={editFormData.remark}
-                      onChange={(e) => handleEditFormChange('remark', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      rows={4}
-                      placeholder="Enter any remarks or comments..."
-                    />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-gray-900 truncate">{user.fullname}</p>
+                    <p className="text-xs text-gray-500 truncate">{user.email}</p>
                   </div>
                 </div>
               </div>
+            ))}
+          </div>
+        )}
 
-              <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
-                <button
-                  onClick={() => {
-                    setEditingBlock(null);
-                    setEditFormData(null);
-                  }}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-                  disabled={loading}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleEditSave}
-                  disabled={loading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 flex items-center gap-2"
-                >
-                  {loading ? (
-                    <>
-                      <Loader className="w-4 h-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    'Save Changes'
-                  )}
-                </button>
+        {/* No results */}
+        {showUserDropdown && userSearchQuery && filteredUsersForAssignment.length === 0 && (
+          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg p-2">
+            <p className="text-xs text-gray-500 text-center">No users found</p>
+          </div>
+        )}
+      </div>
+      
+      {editFormData.assigned_to && (
+        <p className="mt-1.5 text-xs text-green-600 flex items-center gap-1">
+          <CheckCircle className="w-3 h-3" />
+          Will be saved on "Save Changes"
+        </p>
+      )}
+    </div>
+  </div>
+</div>
+
+          {/* Basic Information */}
+          <div>
+            <h4 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Number of GPS</label>
+                <input
+                  type="number"
+                  value={editFormData.no_of_gps}
+                  onChange={(e) => handleEditFormChange('no_of_gps', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter number of GPS"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Progress (%)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  value={editFormData.progress}
+                  onChange={(e) => handleEditFormChange('progress', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter progress percentage"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Proposed Length (km)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editFormData.proposed_length}
+                  onChange={(e) => handleEditFormChange('proposed_length', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter proposed length"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Incremental Length (km)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editFormData.incremental_length}
+                  onChange={(e) => handleEditFormChange('incremental_length', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter incremental length"
+                />
               </div>
             </div>
           </div>
-        )}
+
+          {/* Stage-specific Information */}
+          <div className="border-t border-gray-200 pt-6">
+            <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${
+                editFormData.stage === 'desktop' ? 'bg-blue-500' :
+                editFormData.stage === 'survey' ? 'bg-yellow-500' :
+                editFormData.stage === 'boq' ? 'bg-indigo-500' :
+                editFormData.stage === 'construction' ? 'bg-orange-500' :
+                editFormData.stage === 'installation' ? 'bg-purple-500' :
+                'bg-gray-500'
+              }`}></div>
+              {editFormData.stage.charAt(0).toUpperCase() + editFormData.stage.slice(1)} Stage
+            </h4>
+            
+            {/* Stage Selector */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Stage</label>
+              <select
+                value={editFormData.stage}
+                onChange={(e) => handleEditFormChange('stage', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="desktop">Desktop Survey</option>
+                <option value="survey">Physical Survey</option>
+                <option value="boq">BOQ (Bill of Quantities)</option>
+                <option value="construction">Construction</option>
+                <option value="installation">Installation</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                <select
+                  value={editFormData.status}
+                  onChange={(e) => handleEditFormChange('status', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Status</option>
+                  <option value="Not started">Not Started</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </div>
+              
+              {editFormData.stage !== 'boq' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                    <input
+                      type="date"
+                      value={editFormData.startDate}
+                      onChange={(e) => handleEditFormChange('startDate', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                    <input
+                      type="date"
+                      value={editFormData.endDate}
+                      onChange={(e) => handleEditFormChange('endDate', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Remarks Section */}
+          <div className="border-t border-gray-200 pt-6">
+            <h4 className="text-lg font-medium text-gray-900 mb-4">Remarks</h4>
+            <div>
+              <textarea
+                value={editFormData.remark}
+                onChange={(e) => handleEditFormChange('remark', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={4}
+                placeholder="Enter any remarks or comments..."
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer - Fixed */}
+      <div className="p-6 border-t border-gray-200 flex justify-end space-x-3 flex-shrink-0">
+        <button
+          onClick={() => {
+            setEditingBlock(null);
+            setEditFormData(null);
+          }}
+          className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+          disabled={loading}
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleEditSave}
+          disabled={loading}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 flex items-center gap-2"
+        >
+          {loading ? (
+            <>
+              <Loader className="w-4 h-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            'Save Changes'
+          )}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       </div>
 
       <UserAssignmentModal

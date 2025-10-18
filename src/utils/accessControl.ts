@@ -13,8 +13,10 @@ const VIEW_ONLY_EMAILS = "wb@terasoftware.com";
 const DOWNLOAD_EMAILS = "nexus@terasoftware.com";
 const SmartInvViewEmail = "survey@terasoftware.com";
 const SmartInvView = ["survey@terasoftware.com", "admin@terasoftware.com"];
-
 const DOWNLOAD_ONLY_EMAILS = ["nexus@terasoftware.com", "admin@terasoftware.com"];
+
+// Restricted user who cannot access file operations (Upload KMZ/KML, Download, External Files)
+const RESTRICTED_FILE_OPS_EMAIL = "survey@terasoftware.com";
 
 export const getUser = (): User | null => {
   const user = localStorage.getItem("userData");
@@ -34,11 +36,25 @@ export const hasDownloadAccess = (): boolean => {
 };
 
 export const hasInvOnlyAccess = (): boolean => {
- const user = getUser();
+  const user = getUser();
   const email = user?.email?.toLowerCase();
   return SmartInvView.includes(email ?? "");
 };
 
+/**
+ * Check if user is restricted from file operations
+ * Returns true if user should NOT see Upload KMZ/KML, Download, and External Files buttons
+ */
+export const isRestrictedFromFileOperations = (): boolean => {
+  const user = getUser();
+  const email = user?.email?.toLowerCase();
+  return email === RESTRICTED_FILE_OPS_EMAIL.toLowerCase();
+};
 
-
-
+/**
+ * Check if user can access file operations (Upload/Download/External Files)
+ * Returns true if user CAN see the file operation buttons
+ */
+export const canAccessFileOperations = (): boolean => {
+  return !isRestrictedFromFileOperations();
+};

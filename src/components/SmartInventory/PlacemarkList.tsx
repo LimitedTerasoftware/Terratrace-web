@@ -42,6 +42,10 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
   const desktopPlanningCategories = categories.filter(cat => 
     cat.name.startsWith('Desktop:') && !cat.name.startsWith('External')
   );
+
+  const rectificationCategories = categories.filter(cat => 
+    cat.id.startsWith('rectification-') || cat.name.startsWith('Rectification:')
+  );
   
   const externalSurveyCategories = categories.filter(cat => 
     cat.name.startsWith('External Survey:')
@@ -61,7 +65,9 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
     !cat.name.startsWith('Desktop:') && 
     !cat.name.startsWith('External Survey:') && 
     !cat.name.startsWith('External Desktop:') &&
-    !cat.name.startsWith('External BSNL:')
+    !cat.name.startsWith('External BSNL:') &&
+    !cat.id.startsWith('rectification-') &&
+    !cat.name.startsWith('Rectification:') 
   );
 
   const sections: LayerSection[] = [];
@@ -83,6 +89,16 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
       icon: <Database className="h-4 w-4 text-blue-600" />,
       categories: desktopPlanningCategories,
       color: 'from-blue-50 to-indigo-50'
+    });
+  }
+
+  if (rectificationCategories.length > 0) {
+    sections.push({
+      id: 'rectification',
+      title: 'API: RECTIFICATION SURVEY',
+      icon: <Navigation className="h-4 w-4 text-orange-600" />,
+      categories: rectificationCategories,
+      color: 'from-orange-50 to-amber-50'
     });
   }
 
@@ -177,6 +193,12 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
     else if (p.id.startsWith('desktop-') && categoryName.startsWith('Desktop:')) {
       return p.category === categoryName;
     } 
+     // Handle API Rectification data
+    else if (p.id.startsWith('rectification-') && categoryName.startsWith('Rectification:')) {
+  // Match both with and without prefix
+  return p.category === categoryName || 
+         p.category === categoryName.replace('Rectification: ', '');
+}
     // Handle External file data (including BSNL)
     else if (!p.id.startsWith('physical-') && !p.id.startsWith('desktop-')) {
       // For external files, match the full category name including prefix

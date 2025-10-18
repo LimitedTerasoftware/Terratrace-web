@@ -47,7 +47,7 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClose, onUp
     const categoryOptions = [
         { value: 'Survey', label: 'Survey' },
         { value: 'Desktop', label: 'Desktop' },
-        { value: 'BSNL', label: 'O & M' }
+        { value: 'BSNL_Cables', label: 'O & M' }
     ];
 
     useEffect(() => {

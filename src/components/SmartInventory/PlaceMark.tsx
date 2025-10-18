@@ -121,6 +121,16 @@ export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string 
   SIDE: { color: '#6F42C1', icon: '↔️' },
   ROUTEDETAILS: { color: '#09090B', icon: '📋' },
 
+  // Junction Types (Network Infrastructure)
+  'SJC': { color: '#06B6D4', icon: '🔷' },
+  'BJC': { color: '#8B5CF6', icon: '🟣' },
+  'LC': { color: '#F59E0B', icon: '🔶' },
+  
+  // Desktop Planning Junction Categories
+  'Desktop: SJC': { color: '#22D3EE', icon: '🔷' },
+  'Desktop: BJC': { color: '#A78BFA', icon: '🟣' },
+  'Desktop: LC': { color: '#FBBF24', icon: '🔶' },
+
   // Desktop Planning Categories
   'Desktop: GP': { color: '#2DD4BF', icon: '🟢' },
   'Desktop: FPOI': { color: '#FBBF24', icon: '📷' },
@@ -1216,7 +1226,7 @@ function getCategoryFromName(name: string): string {
     if (category.toUpperCase() === upperName) return category;
   }
   
-  // Enhanced mappings for API data types (includes all missing mappings from analysis)
+  // Enhanced mappings for API data types
   const mappings: Record<string, string> = {
     // Infrastructure types
     'ROAD CROSS': 'Road Cross',
@@ -1227,24 +1237,29 @@ function getCategoryFromName(name: string): string {
     
     // Network equipment
     'BLOCK ROUTER': 'Block Router',
-    'BLOCK OFFICE': 'BHQ', // From analysis: BLOCK OFFICE should map to BHQ
+    'BLOCK OFFICE': 'BHQ',
     'GP': 'GP',
     'FPOI': 'FPOI',
     'BHQ': 'BHQ',
     'BR': 'BR',
     
+    // Junction types - ADD THESE
+    'SJC': 'SJC',
+    'BJC': 'BJC',
+    'LC': 'LC',
+    
     // Cable types with OFC variations
     'INCREMENTAL CABLE': 'Incremental Cable',
     'PROPOSED CABLE': 'Proposed Cable',
-    'INCREMENTAL OFC': 'Incremental Cable', // From analysis
-    'PROPOSED OFC': 'Proposed Cable', // From analysis
-    'UNKNOWN LINE TYPE': 'Incremental Cable', // From analysis
+    'INCREMENTAL OFC': 'Incremental Cable',
+    'PROPOSED OFC': 'Proposed Cable',
+    'UNKNOWN LINE TYPE': 'Incremental Cable',
     'OFC': 'Incremental Cable',
     'FIBER OPTIC CABLE': 'Incremental Cable',
     
     // Other types
     'LANDMARK': 'LANDMARK',
-    'NULL': 'FPOI', // Handle NULL types
+    'NULL': 'FPOI',
     'UNKNOWN': 'FPOI',
   };
   
@@ -1256,7 +1271,7 @@ function getCategoryFromName(name: string): string {
     if (upperName.includes('ROAD')) return 'Road Cross';
     if (upperName.includes('HIGHWAY')) return 'N Highway Cross';
     if (upperName.includes('RAIL')) return 'Railway Cross';
-    return 'Road Cross'; // Default crossing type
+    return 'Road Cross';
   }
   if (upperName.includes('CULVERT')) return 'Culvert';
   if (upperName.includes('FIBER')) return 'FIBERTURN';
@@ -1421,7 +1436,7 @@ export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
       id: `physical-${name.toLowerCase().replace(/\s+/g, '-')}`,
       name,
       count: categoryCounts[name] || 0,
-      visible: name === 'SURVEY_ROUTE' ? true : false, // Only SURVEY_ROUTE is visible by default
+      visible: true, // Only SURVEY_ROUTE is visible by default
       color: PLACEMARK_CATEGORIES[name]?.color || '#6B7280',
       icon: PLACEMARK_CATEGORIES[name]?.icon || '📍'
     }))
@@ -1473,6 +1488,9 @@ export function processDesktopPlanningData(apiData: DesktopPlanningApiResponse):
     'Desktop: N Highway Cross',
     'Desktop: Incremental Cable',
     'Desktop: Proposed Cable',
+    'Desktop: SJC',
+    'Desktop: BJC',
+    'Desktop: LC',
   ];
 
   desktopPlanningCategories.forEach(category => {
@@ -1628,6 +1646,10 @@ function getDesktopPlanningCategory(assetType: string, itemType: 'point' | 'poly
       'ROAD CROSS': 'Desktop: Road Cross',
       'RAILWAY CROSS': 'Desktop: Railway Cross',
       'N HIGHWAY CROSS': 'Desktop: N Highway Cross',
+      // ADD JUNCTION TYPES
+      'SJC': 'Desktop: SJC',
+      'BJC': 'Desktop: BJC',
+      'LC': 'Desktop: LC',
     };
 
     if (pointMappings[upperAssetType]) return pointMappings[upperAssetType];

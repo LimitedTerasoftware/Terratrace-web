@@ -301,6 +301,8 @@ useEffect(() => {
       
       // Handle Desktop Planning API data  
       if (cat.name.startsWith('Desktop:') && cat.name.replace('Desktop: ', '') === placemark.category) return true;
+
+      if (cat.name.startsWith('Rectification:') && cat.name.replace('Rectification: ', '') === placemark.category) return true;
       
       // Handle External Survey files
       if (cat.name.startsWith('External Survey:') && cat.name === placemark.category) return true;
@@ -318,11 +320,12 @@ useEffect(() => {
     if (placemark.type === 'point') {
       const isPhysicalSurvey = placemark.id.startsWith('physical-');
       const isDesktopPlanning = placemark.id.startsWith('desktop-');
-      const isExternalFile = !placemark.id.startsWith('physical-') && !placemark.id.startsWith('desktop-');
+      const isRectification = placemark.id.startsWith('rectification-'); 
+      const isExternalFile = !placemark.id.startsWith('physical-') && !placemark.id.startsWith('desktop-') && !placemark.id.startsWith('rectification-');
 
       let markerIcon: google.maps.Symbol | google.maps.Icon | undefined;
 
-      if (isPhysicalSurvey) {
+       if (isPhysicalSurvey || isRectification) {
         markerIcon = {
           path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
           scale: 5,
@@ -332,58 +335,78 @@ useEffect(() => {
           strokeWeight: 3,
         } as google.maps.Symbol;
       } else if (isDesktopPlanning) {
-        const desktopPlacemark = placemark as ProcessedDesktopPlanning;
-        const assetType = desktopPlacemark.assetType || desktopPlacemark.pointType || 'FPOI';
+  const desktopPlacemark = placemark as ProcessedDesktopPlanning;
+  const assetType = desktopPlacemark.assetType || desktopPlacemark.pointType || 'FPOI';
 
-        if (assetType === 'GP') {
-          markerIcon = {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 14,
-            fillColor: category.color,
-            fillOpacity: 0.9,
-            strokeColor: '#000000',
-            strokeWeight: 3,
-          } as google.maps.Symbol;
-        } else if (assetType === 'BHQ' || assetType === 'Block Router') {
-          markerIcon = {
-            path: 'M-8,-8 L8,-8 L8,8 L-8,8 Z',
-            scale: 1,
-            fillColor: category.color,
-            fillOpacity: 0.9,
-            strokeColor: '#ffffff',
-            strokeWeight: 3,
-          } as google.maps.Symbol;
-        } else if (assetType === 'FPOI') {
-          markerIcon = {
-            path: 'M0,-12 L8,8 L-8,8 Z',
-            scale: 1,
-            fillColor: category.color,
-            fillOpacity: 0.9,
-            strokeColor: '#ffffff',
-            strokeWeight: 2,
-          } as google.maps.Symbol;
-        } else {
-          markerIcon = {
-            path: 'M-6,-6 L6,-6 L6,6 L-6,6 Z M-4,-4 L4,-4 L4,4 L-4,4 Z',
-            scale: 1,
-            fillColor: category.color,
-            fillOpacity: 0.9,
-            strokeColor: '#ffffff',
-            strokeWeight: 2,
-          } as google.maps.Symbol;
-        }
-      } else {
-        // External files and fallback - use original circular markers
-        const pointType = (placemark as ProcessedPlacemark).pointType;
-        markerIcon = {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: pointType === 'FPOI' || pointType === 'LANDMARK' ? 12 : 10,
-          fillColor: category.color,
-          fillOpacity: 0.9,
-          strokeColor: '#ffffff',
-          strokeWeight: pointType === 'FPOI' || pointType === 'LANDMARK' ? 3 : 2,
-        } as google.maps.Symbol;
-      }
+  if (assetType === 'GP') {
+    markerIcon = {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 14,
+      fillColor: category.color,
+      fillOpacity: 0.9,
+      strokeColor: '#000000',
+      strokeWeight: 3,
+    } as google.maps.Symbol;
+  } else if (assetType === 'BHQ' || assetType === 'Block Router') {
+    markerIcon = {
+      path: 'M-8,-8 L8,-8 L8,8 L-8,8 Z',
+      scale: 1,
+      fillColor: category.color,
+      fillOpacity: 0.9,
+      strokeColor: '#ffffff',
+      strokeWeight: 3,
+    } as google.maps.Symbol;
+  } else if (assetType === 'FPOI') {
+    markerIcon = {
+      path: 'M0,-12 L8,8 L-8,8 Z',
+      scale: 1,
+      fillColor: category.color,
+      fillOpacity: 0.9,
+      strokeColor: '#ffffff',
+      strokeWeight: 2,
+    } as google.maps.Symbol;
+  } 
+  // ADD JUNCTION TYPES HERE
+  else if (assetType === 'SJC') {
+    markerIcon = {
+      path: 'M-6,-6 L6,-6 L6,6 L-6,6 Z', // Diamond shape
+      scale: 1.2,
+      fillColor: category.color,
+      fillOpacity: 0.9,
+      strokeColor: '#ffffff',
+      strokeWeight: 2,
+      rotation: 45, // Rotate square to make diamond
+    } as google.maps.Symbol;
+  } else if (assetType === 'BJC') {
+    markerIcon = {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 8,
+      fillColor: category.color,
+      fillOpacity: 0.9,
+      strokeColor: '#ffffff',
+      strokeWeight: 2,
+    } as google.maps.Symbol;
+  } else if (assetType === 'LC') {
+    markerIcon = {
+      path: 'M0,-8 L8,0 L0,8 L-8,0 Z', // Diamond
+      scale: 1,
+      fillColor: category.color,
+      fillOpacity: 0.9,
+      strokeColor: '#ffffff',
+      strokeWeight: 2,
+    } as google.maps.Symbol;
+  }
+  else {
+    markerIcon = {
+      path: 'M-6,-6 L6,-6 L6,6 L-6,6 Z M-4,-4 L4,-4 L4,4 L-4,4 Z',
+      scale: 1,
+      fillColor: category.color,
+      fillOpacity: 0.9,
+      strokeColor: '#ffffff',
+      strokeWeight: 2,
+    } as google.maps.Symbol;
+  }
+}
 
       const marker = new google.maps.Marker({
         position: placemark.coordinates as { lat: number; lng: number },
@@ -398,11 +421,13 @@ useEffect(() => {
         if (infoWindowRef.current) {
           const isPhysical = placemark.id.startsWith('physical-');
           const isDesktop = placemark.id.startsWith('desktop-');
-          const isExternal = !isPhysical && !isDesktop;
+          const isRectification = placemark.id.startsWith('rectification-');
+          const isExternal = !isPhysical && !isDesktop && !isRectification;
+    
           
           let infoContent = '';
 
-          if (isPhysical) {
+          if (isPhysical || isRectification) {
             const physicalInfo = placemark as ProcessedPhysicalSurvey;
             
             const baseInfo = `
@@ -519,8 +544,8 @@ useEffect(() => {
         if (infoWindowRef.current && event.latLng) {
           let infoContent = '';
 
-          if (isPhysicalSurvey) {
-            const physicalInfo = placemark as ProcessedPhysicalSurvey;
+          if (isPhysicalSurvey || isRectification) {
+      const physicalInfo = placemark as ProcessedPhysicalSurvey;
             
             // Parse route details and feasibility
             let routeDetails: any = {};

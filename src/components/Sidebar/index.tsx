@@ -204,7 +204,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                             <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Survey Dashboard</span>
                           </NavLink>
                         </li>
-                        <li>
+                        {/*<li>
                           <NavLink
                             to="/dashboards/construction-dashboard"
                             className={({ isActive }) =>
@@ -214,7 +214,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                             <HardHat size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
                             <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Construction Dashboard</span>
                           </NavLink>
-                        </li>
+                        </li>*/}
+                        
                         <li>
                           <NavLink
                             to="/dashboards/installation-dashboard"
@@ -226,7 +227,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                             <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Installation Dashboard</span>
                           </NavLink>
                         </li>
-                        <li>
+                        {/*<li>
                           <NavLink
                             to="/dashboards/executive-dashboard"
                             className={({ isActive }) =>
@@ -247,7 +248,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                             <Calendar size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
                             <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Daily Progress Report</span>
                           </NavLink>
-                        </li>
+                        </li>*/}
                       </ul>
                     </div>
                   </React.Fragment>
