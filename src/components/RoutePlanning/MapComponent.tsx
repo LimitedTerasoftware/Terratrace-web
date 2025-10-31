@@ -454,6 +454,8 @@ const MapComponent: React.FC = () => {
     const [markerInstanceMap, setMarkerInstanceMap] = useState<Map<string, google.maps.Marker>>(new Map());
   const [polylineInstanceMap, setPolylineInstanceMap] = useState<Map<string, google.maps.Polyline>>(new Map());
   const [deletedPolylines, setDeletedPolylines] = useState<Set<string>>(new Set());
+  const [newConnections, setNewConnections] = useState<ProcessedConnection[]>([]);
+
 
   // Distance and route tracking state
   const [distanceInfoWindows, setDistanceInfoWindows] = useState<
@@ -521,6 +523,7 @@ const [loadingDistricts, setLoadingDistricts] = useState<boolean>(false);
 const [loadingBlocks, setLoadingBlocks] = useState<boolean>(false);
 const [showLocationPanel, setShowLocationPanel] = useState(false);
 const [showLocationFilters, setShowLocationFilters] = useState(true);
+
 
 
   
@@ -1558,6 +1561,7 @@ useEffect(() => {
 
   console.log("=== RENDERING POLYLINES ON MAP ===");
   console.log("Polylines to render:", Object.keys(LocalData.polylineHistory).length);
+  console.log("New connections to render:", newConnections.length);
   
   // Clear existing polylines
   polylineInstanceMap.forEach((polyline) => {
@@ -1572,11 +1576,11 @@ useEffect(() => {
   const newPolylineMap = new Map<string, google.maps.Polyline>();
   const newDistanceWindows: { position: google.maps.LatLngLiteral; distance: number }[] = [];
   
-  // ✅ ADD: Track distances while rendering
+  // Track distances while rendering
   let totalExisting = 0;
   let totalProposed = 0;
   
-  // Render each polyline
+  // Render each polyline from polylineHistory
   Object.entries(LocalData.polylineHistory).forEach(([key, entry]: [string, any]) => {
     const path = entry.polyline?.coordinates || [];
     
@@ -1585,10 +1589,13 @@ useEffect(() => {
       return;
     }
     
+    const isExisting = entry.segmentData?.connection?.existing !== false;
+    const polylineColor = isExisting ? "#00AA00" : "#FF0000";
+    
     const polyline = new window.google.maps.Polyline({
       path,
       geodesic: true,
-      strokeColor: entry.segmentData?.connection?.color || "#00AA00",
+      strokeColor: polylineColor,
       strokeOpacity: 1.0,
       strokeWeight: 4,
     });
@@ -1602,9 +1609,8 @@ useEffect(() => {
     // Add distance label
     const midPoint = path[Math.floor(path.length * 0.5)];
     const distance = entry.segmentData?.connection?.length || 0;
-    const isExisting = entry.segmentData?.connection?.existing || false;
     
-    // ✅ ADD: Accumulate distances
+    // Accumulate distances
     if (isExisting) {
       totalExisting += distance;
     } else {
@@ -1626,8 +1632,8 @@ useEffect(() => {
         start: entry.segmentData?.properties?.start_node,
         end: entry.segmentData?.properties?.end_node,
         length: distance,
-        existing: entry.segmentData?.connection?.existing,
-        color: entry.segmentData?.connection?.color,
+        existing: isExisting,
+        color: polylineColor,
         properties: entry.segmentData?.properties
       };
       
@@ -1641,10 +1647,61 @@ useEffect(() => {
     });
   });
   
+  // Also render new connections that aren't in polylineHistory yet
+  newConnections.forEach((conn, idx) => {
+    if (!conn.coordinates || conn.coordinates.length < 2) {
+      return;
+    }
+    
+    const path = conn.coordinates.map(coord => ({
+      lat: coord[1],
+      lng: coord[0]
+    }));
+    
+    const polyline = new window.google.maps.Polyline({
+      path,
+      geodesic: true,
+      strokeColor: "#FF0000", // Always red for new proposed routes
+      strokeOpacity: 1.0,
+      strokeWeight: 4,
+    });
+
+    polyline.setMap(map);
+    newPolylineMap.set(`new_connection_${idx}`, polyline);
+    
+    // Add bounds
+    path.forEach((p: google.maps.LatLngLiteral) => bounds.extend(p));
+    
+    // Add to proposed distance
+    totalProposed += conn.length;
+    
+    // Add distance label
+    const midPoint = path[Math.floor(path.length * 0.5)];
+    newDistanceWindows.push({
+      position: midPoint,
+      distance: conn.length,
+    });
+    
+    // Add click handler
+    polyline.addListener("click", () => {
+      const lineProperties = {
+        name: conn.name,
+        start: conn.start,
+        end: conn.end,
+        length: conn.length,
+        existing: false,
+        color: "#FF0000",
+        properties: conn.segmentData?.properties
+      };
+      
+      setPointProperties(lineProperties);
+    });
+  });
+  
   setPolylineInstanceMap(newPolylineMap);
   setDistanceInfoWindows(newDistanceWindows);
   
-  // ✅ ADD: Update distance state variables
+  // Update distance state variables
   console.log("=== UPDATING DISTANCES ===", {
     existingDistance: totalExisting.toFixed(3),
     proposedDistance: totalProposed.toFixed(3),
@@ -1654,7 +1711,7 @@ useEffect(() => {
   setExistingDistance(totalExisting);
   setProposedDistance(totalProposed);
   
-  // ✅ ADD: Update LocalData with calculated totals
+  // Update LocalData with calculated totals
   setLocalData(prev => ({
     ...prev,
     totalLength: totalExisting + totalProposed,
@@ -1673,7 +1730,7 @@ useEffect(() => {
     total: `${(totalExisting + totalProposed).toFixed(2)}km`
   });
   
-}, [LocalData.polylineHistory, map, previewKmlData]);
+}, [LocalData.polylineHistory, map, previewKmlData, newConnections]);
 
   // REF SYNCHRONIZATION EFFECTS
   
@@ -1895,113 +1952,134 @@ useEffect(() => {
   
 
   const HandleCalculation = async () => {
-    if (!pointA || !pointB || !pointAName || !pointBName || !mapInstance) return;
+  if (!mapInstance || !pointA || !pointB) return;
+  
+  // Use the actual point names that were set when markers were clicked
+  const routeKeyFormat = `${pointAName}-${pointBName}`;
+  
+  const url = `${BASEURL_Val}/show-route?lat1=${pointA.lat}&lng1=${pointA.lng}&lat2=${pointB.lat}&lng2=${pointB.lng}`;
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    const routes = Array.isArray(data) ? data.slice(0, 3) : [data];
+    const routeKey = routeKeyFormat; // Use the formatted key
 
-    const url = `${BASEURL_Val}/show-route?lat1=${pointA.lat}&lng1=${pointA.lng}&lat2=${pointB.lat}&lng2=${pointB.lng}`;
-    try {
-      const response = await fetch(url);
-      const data = await response.json();
-      const routes = Array.isArray(data) ? data.slice(0, 3) : [data];
-      const routeKey = `${pointAName}-${pointBName}`;
-
-      // Clear existing layers
-      if (routeGroups.has(routeKey)) {
-        routeGroups.get(routeKey)!.layers.forEach((layer: google.maps.Polyline | google.maps.InfoWindow) => {
+    // Clear existing layers
+    if (routeGroups.has(routeKey)) {
+      routeGroups.get(routeKey)!.layers.forEach((layer: google.maps.Polyline | google.maps.InfoWindow) => {
         if ('setMap' in layer) {
           layer.setMap(null);
         }
       });
-        routeGroups.delete(routeKey);
-      }
-      const newRouteLayers: (google.maps.Polyline | google.maps.InfoWindow)[] = [];
-      const newInfoWindows: { position: google.maps.LatLngLiteral; distance: number }[] = [];
-      const bounds = new google.maps.LatLngBounds();
-
-      routes.forEach((routeData, index) => {
-        if (Array.isArray(routeData.route)) {
-          const path = routeData.route.map((coord: [number, number]) => ({
-            lat: coord[0],
-            lng: coord[1],
-          }));
-
-          const polyline = new google.maps.Polyline({
-            path,
-            strokeColor: colors[index],
-            strokeOpacity: 0.8,
-            strokeWeight: selectedRouteIndex === index ? 8 : 4,
-            zIndex: selectedRouteIndex === index ? 999 : 1,
-            map: mapInstance,
-          });
-
-          polyline.addListener("click", () => {
-            setPointProperties({
-              name: `${pointAName} - ${pointBName}`,
-              start: pointAName,
-              end: pointBName,
-              length: routeData.distance,
-              existing: false
-
-            });
-
-            handleRouteSelection(routeKey, index, routeData.distance,false);
-            setSelectedRouteIndex(index);
-          });
-          polyline.addListener("mouseover", () => {
-            polyline.setOptions({ strokeWeight: 6 });
-          });
-          polyline.addListener("mouseout", () => {
-            polyline.setOptions({ strokeWeight: selectedRouteIndex === index ? 8 : 4 });
-          });
-          newRouteLayers.push(polyline);
-
-          const offsetPoint = path[Math.floor(path.length * 0.25)];
-          const distanceLabel = new google.maps.InfoWindow({
-            content: `<div class="distance-label">${routeData.distance.toFixed(2)} km</div>`,
-            position: offsetPoint,
-          });
-          // distanceLabel.open(mapInstance);
-          newRouteLayers.push(distanceLabel);
-
-          newInfoWindows.push({
-            position: offsetPoint,
-            distance: routeData.distance,
-          });
-          const labelPos = path[Math.floor(path.length / 2)];
-
-          const segmentKey = `${routeKey}-route${index + 1}`;
-          polylineHistory.set(segmentKey, {
-            polyline,
-            segmentData: {
-              connection: {
-                length: routeData.distance,
-                existing: false,
-                color: colors[index],
-              },
-            },
-            original: {
-              coords: path.slice(),
-              distance: routeData.distance,
-              markerPositions: [],
-              labelPos: labelPos ? [labelPos.lat, labelPos.lng] : null,
-              labelText: `${routeData.distance} km`
-            },
-            undoStack: [],
-            dragMarkers: [],
-
-            distanceLabel,
-          });
-
-          path.forEach((p: google.maps.LatLngLiteral) => bounds.extend(p));
-        }
-      });
-
-      routeGroups.set(routeKey, { layers: newRouteLayers });
-      setDistanceInfoWindows(prev => [...prev, ...newInfoWindows]);
-      mapInstance.fitBounds(bounds);
-    } catch (err) {
-      console.error(err);
+      routeGroups.delete(routeKey);
     }
+    
+    const newRouteLayers: (google.maps.Polyline | google.maps.InfoWindow)[] = [];
+    const newInfoWindows: { position: google.maps.LatLngLiteral; distance: number }[] = [];
+    const bounds = new google.maps.LatLngBounds();
+
+    routes.forEach((routeData, index) => {
+      if (Array.isArray(routeData.route)) {
+        const path = routeData.route.map((coord: [number, number]) => ({
+          lat: coord[0],
+          lng: coord[1],
+        }));
+
+        const polyline = new google.maps.Polyline({
+          path,
+          strokeColor: colors[index],
+          strokeOpacity: 0.8,
+          strokeWeight: selectedRouteIndex === index ? 8 : 4,
+          zIndex: selectedRouteIndex === index ? 999 : 1,
+          map: mapInstance,
+        });
+
+        polyline.addListener("click", () => {
+          setPointProperties({
+            name: `${pointAName} - ${pointBName}`,
+            start: pointAName,
+            end: pointBName,
+            length: routeData.distance,
+            existing: false
+          });
+
+          handleRouteSelection(routeKey, index, routeData.distance, false);
+          setSelectedRouteIndex(index);
+        });
+        
+        polyline.addListener("mouseover", () => {
+          polyline.setOptions({ strokeWeight: 6 });
+        });
+        
+        polyline.addListener("mouseout", () => {
+          polyline.setOptions({ strokeWeight: selectedRouteIndex === index ? 8 : 4 });
+        });
+        
+        newRouteLayers.push(polyline);
+
+        const offsetPoint = path[Math.floor(path.length * 0.25)];
+        const distanceLabel = new google.maps.InfoWindow({
+          content: `<div class="distance-label">${routeData.distance.toFixed(2)} km</div>`,
+          position: offsetPoint,
+        });
+        
+        newRouteLayers.push(distanceLabel);
+
+        newInfoWindows.push({
+          position: offsetPoint,
+          distance: routeData.distance,
+        });
+        
+        const labelPos = path[Math.floor(path.length / 2)];
+        const segmentKey = `${routeKey}-route${index + 1}`;
+        
+        polylineHistory.set(segmentKey, {
+          polyline,
+          segmentData: {
+            connection: {
+              length: routeData.distance,
+              existing: false,
+              color: colors[index],
+            },
+            // Add start and end cords from the actual points
+            startCords: LocalData.loop.find(p => p.name === pointAName)?.lgd_code || 'NULL',
+            endCords: LocalData.loop.find(p => p.name === pointBName)?.lgd_code || 'NULL',
+          },
+          original: {
+            coords: path.slice(),
+            distance: routeData.distance,
+            markerPositions: [],
+            labelPos: labelPos ? [labelPos.lat, labelPos.lng] : null,
+            labelText: `${routeData.distance} km`
+          },
+          undoStack: [],
+          dragMarkers: [],
+          distanceLabel,
+        });
+
+        path.forEach((p: google.maps.LatLngLiteral) => bounds.extend(p));
+      }
+    });
+
+    routeGroups.set(routeKey, { layers: newRouteLayers });
+    setDistanceInfoWindows(prev => [...prev, ...newInfoWindows]);
+    mapInstance.fitBounds(bounds);
+    
+    // Show notification about route calculation
+    showNotification("success", `Route calculated: ${pointAName} to ${pointBName}`);
+    
+  } catch (err) {
+    console.error(err);
+    showNotification("error", "Failed to calculate route");
+  }
+};
+
+useEffect(() => {
+  return () => {
+    // Clear new connections on unmount
+    setNewConnections([]);
   };
+}, []);
 
   
   // ROUTE SELECTION FUNCTIONS
@@ -2134,120 +2212,213 @@ useEffect(() => {
 
   //  updateGlobalDataWithSelectedRoute function
   const updateGlobalDataWithSelectedRoute = (
-    polyline: google.maps.Polyline,
-    routeKey: string,
-    index: number,
-    Length: number
-  ) => {
-    const path = polyline.getPath().getArray().map(p => ({
-      lat: p.lat(),
-      lng: p.lng()
-    }));
+  polyline: google.maps.Polyline,
+  routeKey: string,
+  index: number,
+  Length: number
+) => {
+  const path = polyline.getPath().getArray().map(p => ({
+    lat: p.lat(),
+    lng: p.lng()
+  }));
 
-    const distance = Length;
+  const distance = Length;
 
-    let fromName = '';
-    let toName = '';
-    let startLgdCode = '';
-    let endLgdCode = '';
-    
-    for (const point of LocalData.loop) {
-      if (routeKey.endsWith(`-${point.name}`)) {
-        toName = point.name;
-        endLgdCode = point.lgd_code;
-        fromName = routeKey.slice(0, routeKey.length - point.name.length - 1);
-        const fromPoint = LocalData.loop.find(p => p.name === fromName);
-        if (fromPoint) {
-          startLgdCode = fromPoint.lgd_code;
-        }
-        break;
-      }
-    }
+  // Parse the route key to get start and end names
+  let fromName = '';
+  let toName = '';
+  let startLgdCode = '';
+  let endLgdCode = '';
+  
+  // Extract names from routeKey (format: "PointA-PointB")
+  const parts = routeKey.split('-');
+  if (parts.length >= 2) {
+    fromName = parts[0];
+    toName = parts.slice(1).join('-'); // Handle names with hyphens
+  }
+  
+  // Find LGD codes from LocalData.loop
+  const fromPoint = LocalData.loop.find(p => p.name === fromName);
+  const toPoint = LocalData.loop.find(p => p.name === toName);
+  
+  if (fromPoint) {
+    startLgdCode = fromPoint.lgd_code || 'NULL';
+  }
+  if (toPoint) {
+    endLgdCode = toPoint.lgd_code || 'NULL';
+  }
 
-    if (!fromName || !toName) {
+  if (!fromName || !toName) {
+    console.error('Could not parse route names from:', routeKey);
+    return;
+  }
+
+  let endPoint = toPoint || null;
+
+  if (!endPoint) {
+    const endCoord = path[path.length - 1];
+    const result = LocalData.loop.reduce<{
+      point: LoopEntry | null;
+      dist: number;
+    }>((closest, p) => {
+      if (!p.coordinates || p.coordinates.length < 2) return closest;
+      const dist = Math.sqrt(
+        Math.pow(p.coordinates[0] - endCoord.lng, 2) +
+        Math.pow(p.coordinates[1] - endCoord.lat, 2)
+      );
+      return dist < closest.dist ? { point: p, dist } : closest;
+    }, { point: null, dist: Infinity });
+
+    endPoint = result.point;
+    if (endPoint) {
+      toName = endPoint.name;
+      endLgdCode = endPoint.lgd_code || 'NULL';
+    } else {
+      console.error('Could not find endpoint for route');
       return;
     }
+  }
 
-    let endPoint = LocalData.loop.find(p => p.name === toName) || null;
-
-    if (!endPoint) {
-      const endCoord = path[path.length - 1];
-      const result = LocalData.loop.reduce<{
-        point: LoopEntry | null;
-        dist: number;
-      }>((closest, p) => {
-        if (!p.coordinates || p.coordinates.length < 2) return closest;
-        const dist = Math.sqrt(
-          Math.pow(p.coordinates[0] - endCoord.lng, 2) +
-          Math.pow(p.coordinates[1] - endCoord.lat, 2)
-        );
-        return dist < closest.dist ? { point: p, dist } : closest;
-      }, { point: null, dist: Infinity });
-
-      endPoint = result.point;
-      if (endPoint) {
-        toName = endPoint.name;
-      } else {
-        return;
-      }
-    }
-
-    const selectedRoute: LoopEntry = {
-      name: endPoint.name,
-      coordinates: endPoint.coordinates,
-      lgd_code: endPoint.lgd_code,
-      properties: endPoint.properties || {},
-      route: {
-        features: [
-          {
-            geometry: {
-              coordinates: polyline.getPath().getArray().map(p => [p.lng(), p.lat()])
-            }
-          }
-        ]
-      },
+  // Create a new connection object for the proposed route
+  const newConnection: ProcessedConnection = {
+    name: `${fromName} TO ${toName}`,
+    start: fromName,
+    end: toName,
+    length: distance,
+    existing: false, // New routes are always proposed
+    color: '#FF0000', // Red for proposed
+    coordinates: path.map(p => [p.lng, p.lat]),
+    type: 'Incremental Cable',
+    status: 'Proposed',
+    segmentData: {
       connection: {
         length: distance,
         existing: false,
-        color: '#00FFFF'
+        color: '#FF0000'
+      },
+      startCords: startLgdCode,
+      endCords: endLgdCode,
+      properties: {
+        start_node: fromName,
+        end_node: toName,
+        length: distance.toString(),
+        seg_length: (distance * 1000).toString(),
+        existing: false,
+        type: 'Incremental Cable',
+        status: 'Proposed',
+        phase: '3',
+        created_at: new Date().toISOString(),
+        user_created: true // Mark as user-created route
+      }
+    },
+    originalProperties: {
+      user_created: true,
+      creation_mode: 'auto_mode',
+      created_at: new Date().toISOString()
+    }
+  };
+
+  // Add to new connections state
+  setNewConnections(prev => {
+    // Check if this connection already exists
+    const exists = prev.some(conn => 
+      (conn.start === fromName && conn.end === toName) ||
+      (conn.start === toName && conn.end === fromName)
+    );
+    
+    if (!exists) {
+      return [...prev, newConnection];
+    }
+    return prev;
+  });
+
+  // Update the selected route in LocalData.loop
+  const selectedRoute: LoopEntry = {
+    name: endPoint.name,
+    coordinates: endPoint.coordinates,
+    lgd_code: endPoint.lgd_code,
+    properties: endPoint.properties || {},
+    route: {
+      features: [
+        {
+          geometry: {
+            coordinates: polyline.getPath().getArray().map(p => [p.lng(), p.lat()])
+          }
+        }
+      ]
+    },
+    connection: {
+      length: distance,
+      existing: false,
+      color: '#FF0000'
+    }
+  };
+
+  // Update LocalData with new route and update distances
+  setLocalData(prev => {
+    const loopCopy = [...prev.loop];
+    const existingIndex = loopCopy.findIndex(p => p.name === toName);
+
+    if (existingIndex >= 0) {
+      loopCopy[existingIndex] = {
+        ...loopCopy[existingIndex],
+        properties: loopCopy[existingIndex].properties || {},
+        route: selectedRoute.route,
+        connection: selectedRoute.connection
+      };
+    } else {
+      loopCopy.push(selectedRoute);
+    }
+  
+    const updatedHistory = {
+      ...prev.polylineHistory,
+      [`${fromName} TO ${toName}`]: {
+        polyline: {
+          coordinates: path
+        },
+        segmentData: {
+          connection: {
+            length: distance,
+            existing: false,
+            color: '#FF0000'
+          },
+          startCords: startLgdCode,
+          endCords: endLgdCode,
+          properties: {
+            start_node: fromName,
+            end_node: toName,
+            length: distance.toString(),
+            seg_length: (distance * 1000).toString(),
+            existing: false,
+            status: 'Proposed',
+            type: 'Incremental Cable',
+            phase: '3',
+            user_created: true
+          }
+        },
+        distanceLabel: `${distance.toFixed(2)} km`
       }
     };
 
-    setLocalData(prev => {
-      const loopCopy = [...prev.loop];
-      const existingIndex = loopCopy.findIndex(p => p.name === toName);
+    // Update total lengths
+    const newProposedLength = prev.proposedlength + distance;
+    const newTotalLength = prev.existinglength + newProposedLength;
 
-      if (existingIndex >= 0) {
-        loopCopy[existingIndex] = {
-          ...loopCopy[existingIndex],
-          properties: loopCopy[existingIndex].properties || {},
-          route: selectedRoute.route,
-          connection: selectedRoute.connection
-        };
-      } else {
-        loopCopy.push(selectedRoute);
-      }
-    
-      const updatedHistory = {
-        ...prev.polylineHistory,
-        [`${toName} TO ${fromName}`]: {
-          polyline: {
-            coordinates: path
-          },
-          segmentData: {
-            connection: selectedRoute.connection,
-            startCords: startLgdCode,
-            endCords: endLgdCode,
-          },
-        }
-      };
-      return {
-        ...prev,
-        loop: loopCopy,
-        polylineHistory: updatedHistory
-      };
-    });
-  };
+    return {
+      ...prev,
+      loop: loopCopy,
+      polylineHistory: updatedHistory,
+      proposedlength: newProposedLength,
+      totalLength: newTotalLength
+    };
+  });
+
+  // Update distance states immediately
+  setProposedDistance(prev => prev + distance);
+  
+  // Show notification
+  showNotification("success", `New route created: ${fromName} to ${toName} (${distance.toFixed(2)} km)`);
+};
 
   
   // ROUTE EDITING FUNCTIONS
@@ -2696,6 +2867,7 @@ useEffect(() => {
   // Clear polylines
   polylineInstanceMap.forEach(polyline => {
     polyline.setMap(null);
+    setNewConnections([]);
   });
 
   // ✅ ADD THIS: Clear markers
@@ -2759,312 +2931,162 @@ useEffect(() => {
 
   // saveKML function
  const saveKML = async (localData: GlobalData) => {
-  if (isSaving) {
-    setSaveFile(false);
-    return;
-  }
-
-  console.log("=== DEBUG: LocalData.loop BEFORE SAVE ===", {
-    totalPoints: localData.loop.length,
-    pointBreakdown: localData.loop.reduce((acc, point) => {
-      const type = point.properties?.type || point.properties?.asset_type || 'Unknown';
-      acc[type] = (acc[type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>),
-    samplePoints: localData.loop.slice(0, 10).map(p => ({
-      name: p.name,
-      hasId: !!p.properties?.id,
-      hasNetworkId: !!p.properties?.network_id,
-      lgd_code: p.lgd_code,
-      coordinates: p.coordinates,
-      type: p.properties?.type || p.properties?.asset_type
-    })),
-    junctionBreakdown: {
-      BJC: localData.loop.filter(p => /BJC/i.test(p.name)).length,
-      SJC: localData.loop.filter(p => /SJC/i.test(p.name)).length,
-      LC: localData.loop.filter(p => /LC|LUP/i.test(p.name)).length
-    }
-  });
-
-  if (!localData || !localData.loop || !localData.loop.length) {
-    showNotification("error", "No data available to save");
-    setSaveFile(false);
-    return;
-  }
-
-  if (!selectedState || !selectedDistrict || !selectedBlock) {
-    showNotification("error", "Please select State, District, and Block before saving");
-    setSaveFile(false);
-    return;
-  }
-
   try {
+    if (isSaving) {
+      console.log("Save already in progress, skipping...");
+      return;
+    }
+    
     setIsSaving(true);
     setLoader(true);
 
     const finalUserData = getStandardUserData();
     const isPreviewMode = previewKmlData !== null;
-    
-    let networkId: string | number | null = null;
-    if (isPreviewMode && previewKmlData) {
-      try {
-        const kmlData = JSON.parse(previewKmlData);
-        networkId = kmlData?.data?.points?.[0]?.network_id || 
-                   kmlData?.data?.network?.id ||
-                   kmlData[0]?.data?.points?.[0]?.network_id ||
-                   kmlData[0]?.data?.network?.id;
-      } catch (error) {
-        console.error('Error parsing previewKmlData for networkId:', error);
-      }
-    }
+    const networkId = isPreviewMode && previewKmlData 
+      ? JSON.parse(previewKmlData)?.data?.network?.id 
+      : null;
 
-    if (isPreviewMode && !networkId) {
-      showNotification("error", "Network ID not found for preview mode update");
-      setIsSaving(false);
-      setLoader(false);
-      setSaveFile(false);
-      return;
-    }
-
-    // 🔥 UPDATED FILTER: Include all valid points including junctions
-    const allPoints = localData.loop.filter(point => {
-      // Filter out connection names (contains " TO ")
-      if (point.name.includes(" TO ")) return false;
-      
-      // Include points if they have:
-      // 1. Valid ID or network_id (from database)
-      // 2. Valid lgd_code (GPS points)
-      // 3. Junction flag
-      // 4. Junction-like names (BJC, SJC, LC, LUP, JC)
-      // 5. Valid coordinates
-      const hasValidId = point.properties?.id || point.properties?.network_id;
-      const hasLgdCode = point.lgd_code && point.lgd_code !== "NULL";
-      const isJunction = point.properties?.is_junction === true;
-      const hasJunctionName = /^(BJC|SJC|LC|LUP|JC)/i.test(point.name);
-      const hasValidCoords = point.coordinates && 
-                             Array.isArray(point.coordinates) && 
-                             point.coordinates.length >= 2 &&
-                             point.coordinates[0] !== 0 && 
-                             point.coordinates[1] !== 0;
-      
-      return hasValidId || hasLgdCode || isJunction || hasJunctionName || hasValidCoords;
+    console.log("=== STARTING SAVE OPERATION ===", {
+      mode: isPreviewMode ? 'UPDATE' : 'CREATE',
+      networkId: networkId,
+      userData: finalUserData
     });
 
-    console.log("=== POINTS TO SAVE ===", {
-      totalInLoop: localData.loop.length,
-      filteredPoints: allPoints.length,
-      breakdown: {
-        withId: allPoints.filter(p => p.properties?.id || p.properties?.network_id).length,
-        withLgdCode: allPoints.filter(p => p.lgd_code && p.lgd_code !== "NULL").length,
-        withJunctionFlag: allPoints.filter(p => p.properties?.is_junction).length,
-        withJunctionName: allPoints.filter(p => /^(BJC|SJC|LC|LUP)/i.test(p.name)).length,
-        BJC: allPoints.filter(p => /BJC/i.test(p.name)).length,
-        SJC: allPoints.filter(p => /SJC/i.test(p.name)).length,
-        LC: allPoints.filter(p => /LC|LUP/i.test(p.name)).length,
-        GP: allPoints.filter(p => /GP/i.test(p.name)).length
-      },
-      samplePointNames: allPoints.slice(0, 20).map(p => p.name),
-      removedPoints: localData.loop.filter(p => 
-        !p.name.includes(" TO ") && 
-        !allPoints.find(ap => ap.name === p.name)
-      ).map(p => p.name)
-    });
-
-    const firstPoint = allPoints[0];
-
+    // Get admin codes
     const adminCodes = {
-      blockCode: selectedBlock || firstPoint?.properties?.blk_code || '',
-      blockName: locationFilters.block_name || firstPoint?.properties?.blk_name || localData.mainPointName || '',
-      dtCode: selectedDistrict || firstPoint?.properties?.dt_code || localData.dt_code || '',
-      dtName: locationFilters.district_name || firstPoint?.properties?.dt_name || localData.dt_name || '',
-      stCode: selectedState || firstPoint?.properties?.st_code || localData.st_code || '',
-      stName: locationFilters.state_name || firstPoint?.properties?.st_name || localData.st_name || ''
+      blockCode: selectedBlock || localData.dt_code || "",
+      blockName: blocks.find(b => b.block_id === selectedBlock)?.block_name || localData.mainPointName || "",
+      dtCode: selectedDistrict || localData.dt_code || "",
+      dtName: districts.find(d => d.district_id === selectedDistrict)?.district_name || localData.dt_name || "",
+      stCode: selectedState || localData.st_code || "",
+      stName: states.find(s => s.state_id === selectedState)?.state_name || localData.st_name || ""
     };
 
-    if (!localData.polylineHistory || Object.keys(localData.polylineHistory).length === 0) {
-      showNotification("error", "No connection data available. Please wait for data to load.");
-      setSaveFile(false);
-      setLoader(false);
-      setIsSaving(false);
-      return;
-    }
-
-    console.log("✅ Saving with polylineHistory entries:", Object.keys(localData.polylineHistory).length);
-
-    // Build connections data
-    const connectionsData = Object.entries(localData.polylineHistory || {}).map(([key, value]) => {
+    // Collect all points
+    const allPoints: LoopEntry[] = localData.loop || [];
+    
+    // Build connections data from both existing connections and new connections
+    const existingConnectionsData = Object.entries(localData.polylineHistory || {}).map(([key, value]: [string, any]) => {
       const [startName, endName] = key.split(' TO ');
+      
       return {
         name: key,
         start: startName,
         end: endName,
         length: value.segmentData?.connection?.length || 0,
-        existing: value.segmentData?.connection?.existing || false,
+        existing: value.segmentData?.connection?.existing !== false, // Default to true for loaded connections
         color: value.segmentData?.connection?.color || "#00AA00",
         coordinates: value.polyline?.coordinates || [],
         properties: value.segmentData?.properties || {},
-        segmentData: value.segmentData
+        segmentData: value.segmentData,
+        user_created: value.segmentData?.properties?.user_created || false
       };
     });
 
-    console.log("=== SAVE VERIFICATION ===", {
-      apiConctResponseLength: apiConctResponse?.connections?.length || 0,
-      connectionsDataLength: connectionsData.length,
-      localDataPolylineHistoryKeys: Object.keys(localData.polylineHistory || {}).length,
-      allMatch: (apiConctResponse?.connections?.length || 0) === connectionsData.length,
-      missingCount: (apiConctResponse?.connections?.length || 0) - connectionsData.length,
-      sampleKeys: Object.keys(localData.polylineHistory || {}).slice(0, 5)
+    // Merge with new connections (avoiding duplicates)
+    const allConnectionsData = [...existingConnectionsData];
+    
+    newConnections.forEach(newConn => {
+      const exists = allConnectionsData.some(conn => 
+        (conn.start === newConn.start && conn.end === newConn.end) ||
+        (conn.start === newConn.end && conn.end === newConn.start) ||
+        conn.name === newConn.name
+      );
+      
+      if (!exists) {
+        allConnectionsData.push({
+          name: newConn.name,
+          start: newConn.start,
+          end: newConn.end,
+          length: newConn.length,
+          existing: false,
+          color: newConn.color,
+          coordinates: newConn.coordinates,
+          properties: newConn.segmentData?.properties || {},
+          segmentData: newConn.segmentData,
+          user_created: true
+        });
+      }
+    });
+
+    console.log("=== CONNECTIONS DATA ===", {
+      existingConnections: existingConnectionsData.length,
+      newConnections: newConnections.length,
+      totalConnections: allConnectionsData.length,
+      userCreatedRoutes: allConnectionsData.filter(c => c.user_created).length
+    });
+
+    // Calculate accurate totals
+    let totalExisting = 0;
+    let totalProposed = 0;
+    
+    allConnectionsData.forEach(conn => {
+      if (conn.existing) {
+        totalExisting += conn.length;
+      } else {
+        totalProposed += conn.length;
+      }
     });
 
     // Helper function to build line properties
-    const buildLineProperties = (key: string, value: any, adminCodes: any) => {
-      const [startName, endName] = key.split(' TO ');
-      
-      let existingProperties: Record<string, any> = {
-        ...value.segmentData?.properties,
-        ...value.original?.properties
-      };
-      
-      if (apiConctResponse?.connections) {
-        const matchingConnection = apiConctResponse.connections.find(
-          (conn: any) => `${conn.start} TO ${conn.end}` === key || 
-                        `${conn.end} TO ${conn.start}` === key
-        );
-        if (matchingConnection) {
-          existingProperties = {
-            ...existingProperties,
-            ...matchingConnection.properties,
-            ...matchingConnection.segmentData?.properties,
-            ...matchingConnection.originalProperties
-          };
-        }
-      }
-      
-      const storedLength = existingProperties.length || value.segmentData?.connection?.length || 0;
-      const storedSegLength = existingProperties.seg_length || (storedLength * 1000).toString();
+    const buildLineProperties = (connection: any, adminCodes: any) => {
+      const existingProps = connection.properties || {};
       
       return {
-        ...existingProperties,
-        cs: existingProperties.cs || "",
-        name: existingProperties.name || key,
-        asset_code: existingProperties.asset_code || "",
+        ...existingProps,
+        cs: existingProps.cs || "",
+        name: connection.name,
+        asset_code: existingProps.asset_code || "",
         blk_code: adminCodes.blockCode,
         blk_name: adminCodes.blockName,
         dt_code: adminCodes.dtCode,
         dt_name: adminCodes.dtName,
         st_code: adminCodes.stCode,
         st_name: adminCodes.stName,
-        seg_length: storedSegLength,
-        length: storedLength.toString(),
-        cable_len: storedSegLength,
-        start_node: startName || "",
-        end_node: endName || "",
-        num_fibre: existingProperties.num_fibre || "24 F",
-        status: existingProperties.status || (value.segmentData?.connection?.existing ? "Accepted" : "Proposed"),
-        phase: existingProperties.phase || (value.segmentData?.connection?.existing ? "1" : "3"),
-        existing: existingProperties.existing !== undefined ? existingProperties.existing : (value.segmentData?.connection?.existing || false),
-        type: existingProperties.type || "Incremental Cable",
-        asset_type: existingProperties.asset_type || "Incremental Cable",
-        created_by: existingProperties.created_by || finalUserData.uname,
+        seg_length: (connection.length * 1000).toString(),
+        length: connection.length.toString(),
+        cable_len: (connection.length * 1000).toString(),
+        start_node: connection.start || "",
+        end_node: connection.end || "",
+        num_fibre: existingProps.num_fibre || "24 F",
+        status: connection.existing ? "Accepted" : "Proposed",
+        phase: connection.existing ? "1" : "3",
+        existing: connection.existing,
+        type: existingProps.type || "Incremental Cable",
+        asset_type: existingProps.asset_type || "Incremental Cable",
+        created_by: existingProps.created_by || finalUserData.uname,
         modified_by: finalUserData.uname,
-        user_id: existingProperties.user_id || finalUserData.user_id,
-        user_name: finalUserData.uname
+        user_id: existingProps.user_id || finalUserData.user_id,
+        user_name: finalUserData.uname,
+        user_created: connection.user_created || false,
+        coordinates: connection.coordinates || []
       };
     };
 
-    // Build payload
+    // Build the complete payload
     const payload = {
       globalData: {
         loop: allPoints.map((point: LoopEntry) => ({
           name: point.name,
           coordinates: point.coordinates,
           lgd_code: point.lgd_code || "NULL",
-          
-          // Mark junction points
           is_junction: point.properties?.is_junction || /^(BJC|SJC|LC|LUP|JC)/i.test(point.name),
-          
           properties: {
-            FID: point.properties?.FID || "",
-            name: point.properties?.name || point.name,
-            lat: point.properties?.lat || (point.coordinates && point.coordinates[1] ? point.coordinates[1].toString() : ""),
-            long: point.properties?.long || (point.coordinates && point.coordinates[0] ? point.coordinates[0].toString() : ""),
-            
+            ...point.properties,
             blk_code: adminCodes.blockCode,
             blk_name: adminCodes.blockName,
             dt_code: adminCodes.dtCode,
             dt_name: adminCodes.dtName,
             st_code: adminCodes.stCode,
             st_name: adminCodes.stName,
-            
-            lgd_code: point.properties?.lgd_code || point.lgd_code || "NULL",
-            asset_code: point.properties?.asset_code || "",
-            
-            asset_type: point.properties?.asset_type || point.properties?.type || "FPOI",
-            type: point.properties?.type || point.properties?.asset_type || "FPOI",
-            
-            status: point.properties?.status || "Proposed",
-            phase: point.properties?.phase || "3",
-            
-            // Junction metadata
-            is_junction: point.properties?.is_junction || /^(BJC|SJC|LC|LUP|JC)/i.test(point.name),
-            junction_source_connection: point.properties?.junction_source_connection || "",
-            junction_coordinate_index: point.properties?.junction_coordinate_index || 0,
-            
             network_id: point.properties?.network_id || networkId?.toString() || "",
             created_by: point.properties?.created_by || finalUserData.uname,
             modified_by: finalUserData.uname,
             user_id: point.properties?.user_id || finalUserData.user_id,
-            user_name: finalUserData.uname,
-            
-            icon: point.properties?.icon || 
-                  (point.properties?.asset_type === "Block Router" || point.properties?.type === "Block Router" ? "https://maps.google.com/mapfiles/ms/icons/blue-dot.png" :
-                   point.properties?.asset_type === "BHQ" || point.properties?.type === "BHQ" ? "https://maps.google.com/mapfiles/ms/icons/green-dot.png" :
-                   point.properties?.asset_type === "GP" || point.properties?.type === "GP" ? "https://maps.google.com/mapfiles/ms/icons/yellow-dot.png" :
-                   point.properties?.asset_type === "BJC" || point.properties?.type === "BJC" ? "https://maps.google.com/mapfiles/ms/icons/purple-dot.png" :
-                   point.properties?.asset_type === "SJC" || point.properties?.type === "SJC" ? "https://maps.google.com/mapfiles/ms/icons/orange-dot.png" :
-                   point.properties?.asset_type === "LC" || point.properties?.type === "LC" ? "https://maps.google.com/mapfiles/ms/icons/pink-dot.png" :
-                   "https://maps.google.com/mapfiles/ms/icons/red-dot.png"),
-            
-            // Preserve all other properties
-            remarks: point.properties?.remarks || "",
-            location: point.properties?.location || "",
-            loc_type: point.properties?.loc_type || "",
-            obs: point.properties?.obs || "",
-            geo_photo: point.properties?.geo_photo || "",
-            otdr_len: point.properties?.otdr_len || "",
-            conn_str: point.properties?.conn_str || "",
-            backhaul: point.properties?.backhaul || "",
-            route_code: point.properties?.route_code || "",
-            olt_code: point.properties?.olt_code || "",
-            olt_ip: point.properties?.olt_ip || "",
-            rd_offset: point.properties?.rd_offset || "",
-            coil_2_ont: point.properties?.coil_2_ont || "",
-            coil_2_olt: point.properties?.coil_2_olt || "",
-            direction: point.properties?.direction || "",
-            fiber_pos: point.properties?.fiber_pos || "",
-            created_us: point.properties?.created_us || "",
-            created_da: point.properties?.created_da || "",
-            last_edite: point.properties?.last_edite || "",
-            last_edi_1: point.properties?.last_edi_1 || "",
-            gp_code: point.properties?.gp_code || "",
-            block_ip: point.properties?.block_ip || "",
-            gp_mac_id: point.properties?.gp_mac_id || "",
-            gp_sr_no: point.properties?.gp_sr_no || "",
-            nmsgp_cd: point.properties?.nmsgp_cd || "",
-            nmsblk_cd: point.properties?.nmsblk_cd || "",
-            cable_len: point.properties?.cable_len || "0",
-            ring: point.properties?.ring || "",
-            GlobalID: point.properties?.GlobalID || point.properties?.globalid || "",
-            Label: point.properties?.Label || point.name,
-            
-            ...point.properties
+            user_name: finalUserData.uname
           },
           ...(point.connection && {
-            connection: {
-              length: point.connection.length,
-              existing: point.connection.existing,
-              color: point.connection.color
-            }
+            connection: point.connection
           }),
           ...(point.route && {
             route: point.route
@@ -3078,9 +3100,9 @@ useEffect(() => {
         dt_name: adminCodes.dtName,
         st_code: adminCodes.stCode,
         st_name: adminCodes.stName,
-        totalLength: localData.totalLength || 0,
-        existinglength: localData.existinglength || 0,
-        proposedlength: localData.proposedlength || 0,
+        totalLength: totalExisting + totalProposed,
+        existinglength: totalExisting,
+        proposedlength: totalProposed,
         
         location_filter_metadata: {
           selected_state_id: selectedState,
@@ -3092,66 +3114,49 @@ useEffect(() => {
         ...(isPreviewMode && { network_id: networkId })
       },
       
-      // Polyline history with embedded connection data
+      // Include actual connections array with all connections
+      connections: allConnectionsData.map(conn => {
+        const lineProps = buildLineProperties(conn, adminCodes);
+        return {
+          name: conn.name,
+          start: conn.start,
+          end: conn.end,
+          length: conn.length,
+          coordinates: conn.coordinates,
+          existing: conn.existing,
+          color: conn.color,
+          type: lineProps.type,
+          status: lineProps.status,
+          properties: lineProps,
+          segmentData: conn.segmentData,
+          user_created: conn.user_created || false,
+          network_id: networkId?.toString() || ""
+        };
+      }),
+      
+      // Also update polylineHistory with complete data
       polylineHistory: Object.fromEntries(
-        Object.entries(localData.polylineHistory || {}).map(([key, value]) => {
-          const lineProperties = buildLineProperties(key, value, adminCodes);
-          const [startName, endName] = key.split(' TO ');
-          
-          const matchingConnection = connectionsData.find(conn => conn.name === key);
-          
+        allConnectionsData.map(conn => {
           return [
-            key,
+            conn.name,
             {
-              polyline: value.polyline,
-              segmentData: {
-                connection: value.segmentData?.connection || {
-                  length: 0,
-                  existing: false,
-                  color: "#00AA00"
-                },
-                startCords: value.segmentData?.startCords || "NULL",
-                endCords: value.segmentData?.endCords || "NULL",
-                properties: {
-                  ...lineProperties,
-                  network_id: lineProperties.network_id || networkId?.toString() || ""
-                }
+              polyline: {
+                coordinates: conn.coordinates
               },
-              
-              // Embedded connection data
-              connection: matchingConnection ? {
-                name: matchingConnection.name,
-                start: matchingConnection.start,
-                end: matchingConnection.end,
-                length: matchingConnection.length,
-                existing: matchingConnection.existing,
-                color: matchingConnection.color,
-                coordinates: matchingConnection.coordinates,
-                properties: {
-                  ...matchingConnection.properties,
-                  network_id: matchingConnection.properties.network_id || networkId?.toString() || ""
+              segmentData: {
+                connection: {
+                  length: conn.length,
+                  existing: conn.existing,
+                  color: conn.color
                 },
-                segmentData: matchingConnection.segmentData
-              } : {
-                name: key,
-                start: startName,
-                end: endName,
-                length: value.segmentData?.connection?.length || 0,
-                existing: value.segmentData?.connection?.existing || false,
-                color: value.segmentData?.connection?.color || "#00AA00",
-                coordinates: value.polyline?.coordinates || [],
-                properties: {
-                  ...lineProperties,
-                  network_id: lineProperties.network_id || networkId?.toString() || ""
-                }
+                startCords: conn.segmentData?.startCords || "NULL",
+                endCords: conn.segmentData?.endCords || "NULL",
+                properties: buildLineProperties(conn, adminCodes)
               }
             }
           ];
         })
       ),
-      
-      // Empty connections array (backend might check for existence)
-      connections: [],
       
       user_id: finalUserData.user_id,
       user_name: finalUserData.uname,
@@ -3164,7 +3169,8 @@ useEffect(() => {
         source: "MapComponent",
         mode: isPreviewMode ? "preview_update" : "new_save",
         total_points: allPoints.length,
-        total_connections: connectionsData.length,
+        total_connections: allConnectionsData.length,
+        user_created_connections: allConnectionsData.filter(c => c.user_created).length,
         point_breakdown: {
           BJC: allPoints.filter(p => /BJC/i.test(p.name)).length,
           SJC: allPoints.filter(p => /SJC/i.test(p.name)).length,
@@ -3174,19 +3180,24 @@ useEffect(() => {
           Other: allPoints.filter(p => !/BJC|SJC|LC|LUP|GP|BHQ/i.test(p.name)).length
         },
         connections_breakdown: {
-          from_polylineHistory: Object.keys(localData.polylineHistory || {}).length,
-          from_apiResponse: apiConctResponse?.connections?.length || 0,
-          total_processed: connectionsData.length
-        },
-        connection_data_location: "embedded_in_polylineHistory",
-        connections_array_status: "empty_placeholder"
+          existing: allConnectionsData.filter(c => c.existing).length,
+          proposed: allConnectionsData.filter(c => !c.existing).length,
+          total: allConnectionsData.length,
+          existing_length: totalExisting.toFixed(3),
+          proposed_length: totalProposed.toFixed(3),
+          total_length: (totalExisting + totalProposed).toFixed(3)
+        }
       }
     };
 
     console.log("=== COMPLETE PAYLOAD SUMMARY ===", {
       totalPoints: payload.globalData.loop.length,
-      pointBreakdown: payload.metadata.point_breakdown,
-      totalConnections: payload.metadata.total_connections,
+      totalConnections: payload.connections.length,
+      existingConnections: payload.metadata.connections_breakdown.existing,
+      proposedConnections: payload.metadata.connections_breakdown.proposed,
+      userCreatedConnections: payload.metadata.user_created_connections,
+      totalExistingLength: payload.metadata.connections_breakdown.existing_length,
+      totalProposedLength: payload.metadata.connections_breakdown.proposed_length,
       networkId: networkId,
       mode: payload.metadata.mode
     });
@@ -3215,9 +3226,6 @@ useEffect(() => {
     
     console.log("\n🚀 Sending request to backend...\n");
 
-    console.log("📦 PAYLOAD:", JSON.stringify(payload, null, 2));
-
-
     const response = await fetch(apiUrl, {
       method: requestMethod,
       headers: {
@@ -3241,8 +3249,11 @@ useEffect(() => {
 
     if (response.ok) {
       const successMessage = isPreviewMode ? "Network updated successfully!" : "KML saved successfully!";
-      showNotification("success", `${successMessage}\nPoints: ${allPoints.length} • Connections: ${connectionsData.length}`);
+      showNotification("success", `${successMessage}\nPoints: ${allPoints.length} • Connections: ${allConnectionsData.length}`);
       setSaveFile(false);
+      
+      // Clear new connections after successful save
+      setNewConnections([]);
     } else {
       throw new Error(result?.message || result?.error || 'Save failed');
     }

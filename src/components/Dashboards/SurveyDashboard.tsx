@@ -30,10 +30,10 @@ interface APIUser {
   email: string;
   version: string;
   company_name: string;
-  completed: string;
-  assigned: string;
-  in_progress: string;
-  total_connections: number;
+  completed_surveys: string;
+  pending_surveys: string;
+  rejected_surveys: string;
+  total_surveys: number;
   total_kms: string;
 }
 
@@ -56,9 +56,11 @@ interface Surveyor {
   name: string;
   company: string;
   avatar: string;
-  assigned: number;
-  inProgress: number;
+  version: string;
+  pending: number;
+  rejected: number;
   completed: number;
+  total: number;
   kmDoneKm: number;
 }
 
@@ -90,17 +92,21 @@ const downloadCSV = (surveyors: Surveyor[]) => {
   const headers = [
     "Name",
     "Company",
-    "Assigned",
-    "InProgress",
+    "Version",
     "Completed",
+    "Pending",
+    "Rejected",
+    "Total Surveys",
     "KmDone",
   ];
   const rows = surveyors.map((s) => [
     s.name,
     s.company,
-    s.assigned,
-    s.inProgress,
+    s.version,
     s.completed,
+    s.pending,
+    s.rejected,
+    s.total,
     s.kmDoneKm,
   ]);
   const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
@@ -157,7 +163,8 @@ export default function SurveyDashboard() {
   const [selectedDistrictCode, setSelectedDistrictCode] = useState<string>("");
   const [contractor, setContractor] = useState<"All" | string>("All");
   const [assignee, setAssignee] = useState<"All" | string>("All");
-  const [dateStr, setDateStr] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   const BASEURL = import.meta.env.VITE_API_BASE || 'https://api.tricadtrack.com';
 
@@ -182,31 +189,50 @@ export default function SurveyDashboard() {
     fetchDistricts();
   }, []);
 
-  // Fetch data on mount
+  // Fetch data on mount and when dates change
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         
+        // Build URL with date parameters if dates are selected
+        let usersUrl = 'https://api.tricadtrack.com/get-users-survey?state_code=6';
+        let statsUrl = 'https://api.tricadtrack.com/get-survey-count?state_code=19';
+        
+        if (startDate && endDate) {
+          usersUrl += `&from_date=${startDate}&to_date=${endDate}`;
+          statsUrl += `&from_date=${startDate}&to_date=${endDate}`;
+        } else if (startDate) {
+          // If only start date is provided, use it for both
+          usersUrl += `&from_date=${startDate}&to_date=${startDate}`;
+          statsUrl += `&from_date=${startDate}&to_date=${startDate}`;
+        } else if (endDate) {
+          // If only end date is provided, use it for both
+          usersUrl += `&from_date=${endDate}&to_date=${endDate}`;
+          statsUrl += `&from_date=${endDate}&to_date=${endDate}`;
+        }
+        
         // Fetch users survey data
-        const usersResponse = await fetch('https://api.tricadtrack.com/get-users-survey?state_code=19');
+        const usersResponse = await fetch(usersUrl);
         const usersData = await usersResponse.json();
         
         // Fetch stats data
-        const statsResponse = await fetch('https://api.tricadtrack.com/get-survey-count?state_code=19');
+        const statsResponse = await fetch(statsUrl);
         const statsData = await statsResponse.json();
         
         if (usersData.success && usersData.data) {
           const transformedData: Surveyor[] = usersData.data
-            .filter((user: APIUser) => user.user_id !== null && user.username !== null) // Filter out null entries
+            .filter((user: APIUser) => user.user_id !== null && user.username !== null)
             .map((user: APIUser) => ({
               id: user.user_id,
               name: user.username?.trim() || 'Unknown',
               company: user.company_name || 'N/A',
               avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username?.trim() || 'Unknown')}&background=0D8ABC&color=fff`,
-              assigned: parseInt(user.assigned) || 0,
-              inProgress: parseInt(user.in_progress) || 0,
-              completed: parseInt(user.completed) || 0,
+              version: user.version || 'N/A',
+              pending: parseInt(user.pending_surveys) || 0,
+              rejected: parseInt(user.rejected_surveys) || 0,
+              completed: parseInt(user.completed_surveys) || 0,
+              total: user.total_surveys || 0,
               kmDoneKm: parseFloat(user.total_kms) || 0,
             }));
           setSurveyors(transformedData);
@@ -224,7 +250,7 @@ export default function SurveyDashboard() {
     };
     
     fetchData();
-  }, []);
+  }, [startDate, endDate]);
 
   const contractors = useMemo(() => Array.from(new Set(surveyors.map((s) => s.company))), [surveyors]);
   const assignees = useMemo(() => surveyors.map((s) => s.name), [surveyors]);
@@ -241,11 +267,13 @@ export default function SurveyDashboard() {
   const totals = useMemo(() => {
     return filtered.reduce(
       (acc, s) => {
-        acc.assigned += s.assigned;
+        acc.total += s.total;
         acc.completed += s.completed;
+        acc.pending += s.pending;
+        acc.rejected += s.rejected;
         return acc;
       },
-      { assigned: 0, completed: 0 }
+      { total: 0, completed: 0, pending: 0, rejected: 0 }
     );
   }, [filtered]);
 
@@ -254,7 +282,8 @@ export default function SurveyDashboard() {
     setSelectedDistrictCode("");
     setContractor("All");
     setAssignee("All");
-    setDateStr("");
+    setStartDate("");
+    setEndDate("");
   };
 
   if (loading) {
@@ -378,13 +407,29 @@ export default function SurveyDashboard() {
                   </button>
                 </div>
 
-                <input
-                  type="date"
-                  value={dateStr}
-                  onChange={(e) => setDateStr(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-700 w-40"
-                  aria-label="Select date"
-                />
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-700 w-40 cursor-pointer"
+                      aria-label="Start date"
+                      placeholder="Start Date"
+                    />
+                  </div>
+                  <span className="text-gray-500 text-sm">to</span>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-700 w-40 cursor-pointer"
+                      aria-label="End date"
+                      placeholder="End Date"
+                    />
+                  </div>
+                </div>
 
                 <button 
                   onClick={resetFilters}
@@ -418,7 +463,7 @@ export default function SurveyDashboard() {
                   <Trophy className="w-4 h-4 text-yellow-500" />
                   <span className="text-sm text-gray-600">Top Performer:</span>
                   <span className="text-sm font-medium text-blue-600">
-                    {[...filtered].sort((a, b) => b.kmDoneKm - a.kmDoneKm)[0]?.name || 'N/A'}
+                    {[...filtered].sort((a, b) => b.completed - a.completed)[0]?.name || 'N/A'}
                   </span>
                 </div>
               </div>
@@ -468,9 +513,11 @@ export default function SurveyDashboard() {
                     <thead className="bg-gray-50">
                       <tr>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Surveyor</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Not Started</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">In Progress</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Version</th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Completed</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pending</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rejected</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Surveys</th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">KM Done</th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                       </tr>
@@ -487,9 +534,21 @@ export default function SurveyDashboard() {
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{s.assigned}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{s.inProgress}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{s.completed}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                              {s.version}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm text-green-600 font-medium">{s.completed}</span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm text-orange-600 font-medium">{s.pending}</span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm text-red-600 font-medium">{s.rejected}</span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{s.total}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{fmtKm(s.kmDoneKm)}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             <div className="flex items-center gap-2">
@@ -512,16 +571,15 @@ export default function SurveyDashboard() {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Completion Status Chart */}
                     <div className="bg-gray-50 rounded-lg p-4">
-                      <h4 className="text-base font-semibold text-gray-900 mb-3">Task Completion Status</h4>
+                      <h4 className="text-base font-semibold text-gray-900 mb-3">Survey Completion Status</h4>
                       <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
                         {filtered.map((s) => {
-                          const total = s.completed + s.inProgress + s.assigned;
-                          const completionPct = total > 0 ? (s.completed / total) * 100 : 0;
+                          const completionPct = s.total > 0 ? (s.completed / s.total) * 100 : 0;
                           return (
                             <div key={s.id}>
                               <div className="flex justify-between text-sm mb-1">
                                 <span className="font-medium text-gray-700 truncate mr-2" title={s.name}>{s.name}</span>
-                                <span className="text-gray-500 whitespace-nowrap">{s.completed}/{total}</span>
+                                <span className="text-gray-500 whitespace-nowrap">{s.completed}/{s.total}</span>
                               </div>
                               <div className="w-full bg-gray-200 rounded-full h-2">
                                 <div
@@ -583,11 +641,11 @@ export default function SurveyDashboard() {
                   <div className="bg-gray-50 rounded-lg p-6">
                     <h4 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
                       <Trophy className="w-4 h-4 text-yellow-500" />
-                      Top Performers
+                      Top Performers (By Completed Surveys)
                     </h4>
                     <div className="space-y-3">
                       {[...filtered]
-                        .sort((a, b) => b.kmDoneKm - a.kmDoneKm)
+                        .sort((a, b) => b.completed - a.completed)
                         .slice(0, 3)
                         .map((s, index) => (
                           <div key={s.id} className="flex items-center justify-between">
@@ -600,7 +658,29 @@ export default function SurveyDashboard() {
                               <img className="h-8 w-8 rounded-full" src={s.avatar} alt={s.name} />
                               <div className="text-sm font-medium text-gray-900">{s.name}</div>
                             </div>
-                            <span className="text-sm font-medium text-green-600">{fmtKm(s.kmDoneKm)}</span>
+                            <span className="text-sm font-medium text-green-600">{s.completed} surveys</span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+
+                  {/* At Risk Surveyors */}
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <h4 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-red-500" />
+                      High Rejection Rate
+                    </h4>
+                    <div className="space-y-3">
+                      {[...filtered]
+                        .sort((a, b) => b.rejected - a.rejected)
+                        .slice(0, 3)
+                        .map((s) => (
+                          <div key={s.id} className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <img className="h-8 w-8 rounded-full" src={s.avatar} alt={s.name} />
+                              <div className="text-sm font-medium text-gray-900">{s.name}</div>
+                            </div>
+                            <span className="text-sm font-medium text-red-600">{s.rejected} rejected</span>
                           </div>
                         ))}
                     </div>
