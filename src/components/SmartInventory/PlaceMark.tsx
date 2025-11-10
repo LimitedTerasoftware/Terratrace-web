@@ -5,6 +5,9 @@ import {
   ProcessedPlacemark,
   PlacemarkCategory,
   PhysicalSurveyApiResponse,
+  RectificationApiResponse,
+  RectificationItem,
+  ProcessedRectification,
 } from '../../types/kmz';
 
 // Enhanced interfaces with image support
@@ -151,6 +154,15 @@ export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string 
   VIDEORECORD: { color: '#8B5CF6', icon: '🎥' },
   PHOTO_SURVEY: { color: '#DCB14E', icon: '📸' },
   VIDEO_SURVEY: { color: '#7C3AED', icon: '🎬' },
+
+  // Rectification Categories (NEW)
+    'Rectification: Chamber Installation': { color: '#9333EA', icon: '🔧' },
+  'Rectification: Closer Replacement': { color: '#9333EA', icon: '🔄' },
+  'Rectification: Route Under Road': { color: '#9333EA', icon: '🛣️' },
+  'Rectification: Patch Replacement': { color: '#9333EA', icon: '🔨' }, // Purple with black center line
+  'Rectification: Cable Repair': { color: '#9333EA', icon: '⚡' },
+  'Rectification: Joint Repair': { color: '#9333EA', icon: '🔗' },
+  'Rectification: Other': { color: '#9333EA', icon: '🔧' },
 
   // NEW: Survey Infrastructure Categories
   // Educational
@@ -1431,12 +1443,12 @@ export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
     }
   });
 
-  const categories: PlacemarkCategory[] = physicalSurveyCategories
+    const categories: PlacemarkCategory[] = physicalSurveyCategories
     .map(name => ({
       id: `physical-${name.toLowerCase().replace(/\s+/g, '-')}`,
       name,
       count: categoryCounts[name] || 0,
-      visible: true, // Only SURVEY_ROUTE is visible by default
+      visible: name === 'SURVEY_ROUTE', // Only SURVEY_ROUTE visible by default
       color: PLACEMARK_CATEGORIES[name]?.color || '#6B7280',
       icon: PLACEMARK_CATEGORIES[name]?.icon || '📍'
     }))
@@ -1660,4 +1672,198 @@ function getDesktopPlanningCategory(assetType: string, itemType: 'point' | 'poly
 
   // Polyline categories based on connection type are handled in the main processing function
   return 'Desktop: Proposed Cable';
+}
+
+// -----------------------------
+// Rectification Survey Processing (NEW)
+// -----------------------------
+export function processRectificationData(apiData: RectificationApiResponse | null): {
+  placemarks: ProcessedRectification[];
+  categories: PlacemarkCategory[];
+} {
+  if (!apiData || !apiData.data) {
+    return { placemarks: [], categories: [] };
+  }
+
+  const processedPlacemarks: ProcessedRectification[] = [];
+  const categoryCounts: Record<string, number> = {};
+
+  // Initialize rectification category counts
+  const rectificationCategories = [
+    'Rectification: Chamber Installation',
+    'Rectification: Closer Replacement',
+    'Rectification: Route Under Road',
+    'Rectification: Patch Replacement',
+    'Rectification: Cable Repair',
+    'Rectification: Joint Repair',
+    'Rectification: Other',
+  ];
+
+  rectificationCategories.forEach(category => {
+    categoryCounts[category] = 0;
+  });
+
+  // Process each block's rectification items
+  Object.entries(apiData.data).forEach(([blockId, items]) => {
+    if (!Array.isArray(items)) return;
+
+    items.forEach(item => {
+      try {
+        // Parse coordinates
+        const startLat = parseFloat(item.start_lat);
+        const startLng = parseFloat(item.start_long);
+
+        if (!isValidCoordinate(startLat, startLng)) {
+          console.warn(`Invalid start coordinates for rectification item ${item.id}:`, { startLat, startLng });
+          return;
+        }
+
+        // Determine if this is a polyline or point
+        const hasEndCoordinates = item.end_lat && item.end_long;
+        const isPolyline = hasEndCoordinates && item.length;
+
+        let coordinates: { lat: number; lng: number } | { lat: number; lng: number }[];
+
+        if (isPolyline) {
+          const endLat = parseFloat(item.end_lat!);
+          const endLng = parseFloat(item.end_long!);
+
+          if (!isValidCoordinate(endLat, endLng)) {
+            console.warn(`Invalid end coordinates for rectification item ${item.id}:`, { endLat, endLng });
+            return;
+          }
+
+          coordinates = [
+            { lat: startLat, lng: startLng },
+            { lat: endLat, lng: endLng }
+          ];
+        } else {
+          coordinates = { lat: startLat, lng: startLng };
+        }
+
+        // Parse images from JSON string array
+        let imageUrls: string[] = [];
+        try {
+          if (!item.image || item.image === 'null' || item.image === '[]') {
+            imageUrls = [];
+          } else {
+            // The API returns images in format: "[path1, path2]" or "[path1]"
+            // This is NOT valid JSON (missing quotes), so we need to parse it manually
+            const imageString = item.image.trim();
+            
+            // Remove outer brackets
+            const withoutBrackets = imageString.replace(/^\[|\]$/g, '').trim();
+            
+            if (withoutBrackets) {
+              // Split by comma and clean each path
+              imageUrls = withoutBrackets
+                .split(',')
+                .map(path => path.trim())
+                .filter(path => path && path !== 'null');
+              
+              console.log(`Parsed images for rectification item ${item.id}:`, imageUrls);
+            }
+          }
+        } catch (error) {
+          console.warn(`Failed to parse images for rectification item ${item.id}:`, error);
+          imageUrls = [];
+        }
+
+        // Map images to SurveyImage format
+        const images: SurveyImage[] = imageUrls.map((url, index) => ({
+          url: resolveMediaUrl(url),
+          type: 'general',
+          label: `Rectification Photo ${index + 1}`
+        }));
+
+        // Determine category based on work_to_be_done
+        const category = getRectificationCategory(item.work_to_be_done);
+        categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+
+        // Create processed rectification placemark
+        processedPlacemarks.push({
+          id: `rectification-${blockId}-${item.id}`,
+          name: `${item.work_to_be_done} - ${item.gp}`,
+          category,
+          type: isPolyline ? 'polyline' : 'point',
+          coordinates,
+          surveyId: `Block-${blockId}`,
+          eventType: item.work_to_be_done,
+          blockId: item.block_id,
+          blockName: item.blk_name,
+          gpName: item.gp,
+          lgdCode: item.lgd_code,
+          accuracy: item.accuracy,
+          length: item.length,
+          workToBeDone: item.work_to_be_done,
+          images,
+          hasImages: images.length > 0,
+          createdTime: item.created_at,
+        });
+      } catch (error) {
+        console.error('Error processing rectification item:', item, error);
+      }
+    });
+  });
+
+  // Create categories array
+  const categories: PlacemarkCategory[] = rectificationCategories
+    .map(name => ({
+      id: `rectification-${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+      name,
+      count: categoryCounts[name] || 0,
+      visible: true,
+      color: PLACEMARK_CATEGORIES[name]?.color || '#6B7280',
+      icon: PLACEMARK_CATEGORIES[name]?.icon || '🔧',
+    }))
+    .filter(category => category.count > 0);
+
+  return { placemarks: processedPlacemarks, categories };
+}
+
+// Helper function to map work_to_be_done to category
+function getRectificationCategory(workType: string): string {
+  if (!workType) return 'Rectification: Other';
+
+  const normalizedWork = workType.toUpperCase().trim();
+
+  // Chamber Installation patterns
+  if (normalizedWork.includes('CHAMBER INSTALLATION') || 
+      normalizedWork.includes('CHAMBER') && normalizedWork.includes('INSTALL')) {
+    return 'Rectification: Chamber Installation';
+  }
+
+  // Closer Replacement patterns
+  if (normalizedWork.includes('CLOSER REPLACEMENT') || 
+      normalizedWork.includes('CLOSURE REPLACEMENT')) {
+    return 'Rectification: Closer Replacement';
+  }
+
+  // Route Under Road patterns
+  if (normalizedWork.includes('ROUTE UNDER ROAD') || 
+      normalizedWork.includes('UNDER ROAD') ||
+      normalizedWork.includes('ROAD CROSSING')) {
+    return 'Rectification: Route Under Road';
+  }
+
+  // Patch Replacement patterns
+  if (normalizedWork.includes('PATCH REPLACEMENT') || 
+      normalizedWork.includes('PATCH') && normalizedWork.includes('REPLACE')) {
+    return 'Rectification: Patch Replacement';
+  }
+
+  // Cable Repair patterns
+  if (normalizedWork.includes('CABLE REPAIR') || 
+      normalizedWork.includes('CABLE') && normalizedWork.includes('FIX')) {
+    return 'Rectification: Cable Repair';
+  }
+
+  // Joint Repair patterns
+  if (normalizedWork.includes('JOINT REPAIR') || 
+      normalizedWork.includes('JOINT') && normalizedWork.includes('FIX')) {
+    return 'Rectification: Joint Repair';
+  }
+
+  // Default
+  return 'Rectification: Other';
 }

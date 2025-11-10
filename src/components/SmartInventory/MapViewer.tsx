@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
-import { ProcessedPlacemark, PlacemarkCategory, ProcessedPhysicalSurvey, ProcessedDesktopPlanning } from '../../types/kmz';
+import { ProcessedPlacemark, PlacemarkCategory, ProcessedPhysicalSurvey, ProcessedDesktopPlanning, ProcessedRectification } from '../../types/kmz';
 import { PLACEMARK_CATEGORIES } from './PlaceMark';
 
 // Video & Photo Survey types
@@ -8,11 +8,11 @@ import { TrackPoint } from './VideoSurveyService';
 import { PhotoPoint } from './PhotoSurveyService';
 
 interface GoogleMapProps {
-  placemarks: (ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedDesktopPlanning)[];
+  placemarks: (ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedDesktopPlanning | ProcessedRectification)[];
   categories: PlacemarkCategory[];
   visibleCategories: Set<string>;
-  highlightedPlacemark?: ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedDesktopPlanning;
-  onPlacemarkClick: (placemark: ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedDesktopPlanning) => void;
+  highlightedPlacemark?: ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedDesktopPlanning | ProcessedRectification;
+  onPlacemarkClick: (placemark: ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedDesktopPlanning | ProcessedRectification) => void;
   className?: string;
 
   // Enhanced Video Survey integration
@@ -280,8 +280,54 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
     }
   };
 
-  // Update map with regular placemarks (kept separate from survey overlays)
-  // Complete MapViewer useEffect for updating placemarks
+// Helper function to fetch actual route from API (add this BEFORE the component or at the top of the file after imports)
+async function fetchActualRoute(
+  startLat: number,
+  startLng: number,
+  endLat: number,
+  endLng: number
+): Promise<{ coordinates: google.maps.LatLngLiteral[]; distance: number } | null> {
+  try {
+    const url = `https://api.tricadtrack.com/show-route?lat1=${startLat}&lng1=${startLng}&lat2=${endLat}&lng2=${endLng}`;
+    
+    console.log('Fetching route from:', url);
+    
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      console.error('Route API error:', response.status, response.statusText);
+      return null;
+    }
+    
+    const data = await response.json();
+    
+    // API returns: [{"route": [[lat, lng], [lat, lng], ...], "distance": 4.167}]
+    if (data && Array.isArray(data) && data.length > 0 && data[0].route) {
+      const routeCoords = data[0].route;
+      
+      // Convert [lat, lng] arrays to {lat, lng} objects
+      const formattedCoords = routeCoords.map((coord: number[]) => ({
+        lat: coord[0],
+        lng: coord[1]
+      }));
+      
+      console.log(`Route fetched: ${formattedCoords.length} points, ${data[0].distance} km`);
+      
+      return {
+        coordinates: formattedCoords,
+        distance: data[0].distance
+      };
+    }
+    
+    console.warn('Invalid route data structure:', data);
+    return null;
+  } catch (error) {
+    console.error('Error fetching route:', error);
+    return null;
+  }
+}
+
+// Now the complete useEffect:
 useEffect(() => {
   if (!mapLoaded || !mapInstanceRef.current) return;
 
@@ -427,7 +473,7 @@ useEffect(() => {
           
           let infoContent = '';
 
-          if (isPhysical || isRectification) {
+          if (isPhysical) {
             const physicalInfo = placemark as ProcessedPhysicalSurvey;
             
             const baseInfo = `
@@ -447,6 +493,43 @@ useEffect(() => {
 
             const imageGallery = (physicalInfo.hasImages && physicalInfo.images) 
               ? createImageGalleryHTML(physicalInfo.images)
+              : '';
+
+            infoContent = baseInfo + imageGallery + '</div>';
+            
+          } else if (isRectification) {
+            const rectInfo = placemark as ProcessedRectification;
+            
+            // Debug logging for images
+            console.log('Rectification Images:', {
+              hasImages: rectInfo.hasImages,
+              imageCount: rectInfo.images?.length || 0,
+              images: rectInfo.images
+            });
+            
+            const baseInfo = `
+              <div class="p-3" style="max-width: 400px;">
+                <h3 class="font-semibold text-gray-900 mb-2" style="font-weight: 600; margin-bottom: 8px;">
+                  ${placemark.name}
+                </h3>
+                <div class="text-sm text-gray-700 space-y-1" style="font-size: 14px;">
+                  <div><strong>Work Type:</strong> ${rectInfo.workToBeDone}</div>
+                  <div><strong>Category:</strong> ${placemark.category}</div>
+                  <div><strong>Type:</strong> Rectification Survey (API)</div>
+                  <div><strong>Block:</strong> ${rectInfo.blockName}</div>
+                  <div><strong>GP:</strong> ${rectInfo.gpName}</div>
+                  <div><strong>LGD Code:</strong> ${rectInfo.lgdCode}</div>
+                  ${rectInfo.accuracy ? `<div><strong>Accuracy:</strong> ${rectInfo.accuracy}m</div>` : ''}
+                  ${rectInfo.length ? `<div><strong>Length:</strong> ${rectInfo.length} km</div>` : ''}
+                  <div><strong>Coordinates:</strong> ${typeof placemark.coordinates === 'object' && 'lat' in placemark.coordinates 
+                    ? `${placemark.coordinates.lat.toFixed(6)}, ${placemark.coordinates.lng.toFixed(6)}`
+                    : 'N/A'}</div>
+                  ${rectInfo.createdTime ? `<div><strong>Created:</strong> ${new Date(rectInfo.createdTime).toLocaleDateString()}</div>` : ''}
+                </div>
+            `;
+
+            const imageGallery = (rectInfo.hasImages && rectInfo.images && rectInfo.images.length > 0) 
+              ? createImageGalleryHTML(rectInfo.images)
               : '';
 
             infoContent = baseInfo + imageGallery + '</div>';
@@ -496,6 +579,7 @@ useEffect(() => {
     } else if (placemark.type === 'polyline' && 'coordinates' in placemark && Array.isArray(placemark.coordinates)) {
       const isPhysicalSurvey = placemark.id.startsWith('physical-');
       const isDesktopPlanning = placemark.id.startsWith('desktop-');
+      const isRectification = placemark.id.startsWith('rectification-');
 
       let strokeWeight = 3;
       let strokeOpacity = 0.8;
@@ -515,6 +599,10 @@ useEffect(() => {
           strokeWeight = 3;
           strokeOpacity = 0.7;
         }
+      } else if (isRectification) {
+        // Rectification polylines get larger width and purple color
+        strokeWeight = 6;
+        strokeOpacity = 0.95;
       }
 
       const polyline = new google.maps.Polyline({
@@ -538,13 +626,124 @@ useEffect(() => {
         map: mapInstanceRef.current!,
       });
 
+      // Create initial black center line for Patch Replacement (will be removed if actual route loads)
+      let initialCenterLine: google.maps.Polyline | null = null;
+      if (isRectification && placemark.category === 'Rectification: Patch Replacement') {
+        initialCenterLine = new google.maps.Polyline({
+          path: placemark.coordinates as google.maps.LatLngLiteral[],
+          geodesic: true,
+          strokeColor: '#000000',
+          strokeOpacity: 1,
+          strokeWeight: 1.5,
+          map: mapInstanceRef.current!,
+          zIndex: 100,
+        });
+        
+        polylinesRef.current.push(initialCenterLine);
+      }
+
+      // NEW: Fetch and render actual route for rectification polylines
+      if (isRectification && Array.isArray(placemark.coordinates) && placemark.coordinates.length === 2) {
+        const coords = placemark.coordinates as google.maps.LatLngLiteral[];
+        const startCoord = coords[0];
+        const endCoord = coords[1];
+        
+        // Fetch actual route from API
+        fetchActualRoute(startCoord.lat, startCoord.lng, endCoord.lat, endCoord.lng)
+          .then(routeData => {
+            if (routeData && routeData.coordinates.length > 2) {
+              // Hide the straight line polyline
+              polyline.setMap(null);
+              
+              // IMPORTANT: Remove the initial straight black center line for Patch Replacement
+              if (initialCenterLine) {
+                initialCenterLine.setMap(null);
+                const centerLineIndex = polylinesRef.current.indexOf(initialCenterLine);
+                if (centerLineIndex > -1) {
+                  polylinesRef.current.splice(centerLineIndex, 1);
+                }
+              }
+              
+              // Create new polyline with actual route
+              const actualPolyline = new google.maps.Polyline({
+                path: routeData.coordinates,
+                geodesic: false, // Don't geodesic since we have actual route
+                strokeColor: categories.find(c => c.name === placemark.category)?.color || '#9333EA',
+                strokeOpacity: strokeOpacity,
+                strokeWeight: strokeWeight,
+                map: mapInstanceRef.current!,
+              });
+              
+              // Replace in ref array
+              const index = polylinesRef.current.indexOf(polyline);
+              if (index > -1) {
+                polylinesRef.current[index] = actualPolyline;
+              } else {
+                polylinesRef.current.push(actualPolyline);
+              }
+              
+              // Add click listener to the new polyline (reuse same handler)
+              actualPolyline.addListener('click', (event: google.maps.MapMouseEvent) => {
+                google.maps.event.trigger(polyline, 'click', event);
+              });
+              
+              // If this is Patch Replacement, NOW add black center line to actual route
+              if (placemark.category === 'Rectification: Patch Replacement') {
+                const actualCenterLine = new google.maps.Polyline({
+                  path: routeData.coordinates,
+                  geodesic: false,
+                  strokeColor: '#000000',
+                  strokeOpacity: 1,
+                  strokeWeight: 1.5,
+                  map: mapInstanceRef.current!,
+                  zIndex: 100,
+                });
+                
+                polylinesRef.current.push(actualCenterLine);
+              }
+              
+              // NEW: Update start/end markers to match actual route coordinates
+              const actualStartCoord = routeData.coordinates[0];
+              const actualEndCoord = routeData.coordinates[routeData.coordinates.length - 1];
+              
+              // Find existing start/end markers
+              const startMarkerId = `${placemark.id}-start`;
+              const endMarkerId = `${placemark.id}-end`;
+              
+              const existingStartMarker = markersByIdRef.current.get(startMarkerId);
+              const existingEndMarker = markersByIdRef.current.get(endMarkerId);
+              
+              // Update start marker position
+              if (existingStartMarker) {
+                existingStartMarker.setPosition(actualStartCoord);
+              }
+              
+              // Update end marker position
+              if (existingEndMarker) {
+                existingEndMarker.setPosition(actualEndCoord);
+              }
+              
+              console.log(`✓ Actual route rendered for: ${placemark.name} (${routeData.distance} km, ${routeData.coordinates.length} points)`);
+              console.log(`  Start moved: ${startCoord.lat},${startCoord.lng} → ${actualStartCoord.lat},${actualStartCoord.lng}`);
+              console.log(`  End moved: ${endCoord.lat},${endCoord.lng} → ${actualEndCoord.lat},${actualEndCoord.lng}`);
+            } else {
+              console.warn(`Using straight line for ${placemark.name} - route fetch failed or too short`);
+            }
+          })
+          .catch(error => {
+            console.error(`Error rendering actual route for ${placemark.name}:`, error);
+            // Keep the straight line on error (including the black center line if it was created)
+          });
+      }
+      
       polyline.addListener('click', (event: google.maps.MapMouseEvent) => {
         onPlacemarkClick(placemark);
 
         if (infoWindowRef.current && event.latLng) {
           let infoContent = '';
+          const isRectification = placemark.id.startsWith('rectification-');
 
-          if (isPhysicalSurvey || isRectification) {
+          if (isPhysicalSurvey) {
       const physicalInfo = placemark as ProcessedPhysicalSurvey;
             
             // Parse route details and feasibility
@@ -598,14 +797,14 @@ useEffect(() => {
             const soilType = routeDetails.soilType || 'N/A';
             const routeFeasible = routeFeasibility.routeFeasible ? 'Yes' : 'No';
             
-            const routePoints = coordinates?.length || 0;
             const distanceKm = (totalDistance / 1000).toFixed(2);
-            
+            const routePoints = coordinates.length;
+
             infoContent = `
-              <div class="p-2" style="max-width: 420px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                <!-- Header -->
-                <div class="border-b pb-2 mb-3" style="border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 12px;">
-                  <h3 style="font-weight: bold; color: #111827; font-size: 18px; margin-bottom: 4px;">${routeName}</h3>
+              <div class="p-4" style="max-width: 450px; font-family: system-ui, -apple-system, sans-serif;">
+                <!-- Title Banner -->
+                <div style="background: linear-gradient(135deg, #FBBF24 0%, #F59E0B 100%); padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+                  <h3 style="color: white; font-size: 16px; font-weight: 600; margin: 0; margin-bottom: 4px;">${routeName}</h3>
                   <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="display: inline-block; width: 12px; height: 12px; background-color: #FBBF24; border-radius: 2px;"></span>
                     <span style="font-size: 14px; font-weight: 500; color: #92400E;">Physical Survey Route</span>
@@ -682,6 +881,46 @@ useEffect(() => {
               </div>
             `;
             
+          } else if (isRectification) {
+            // RECTIFICATION POLYLINE HANDLING
+            const rectInfo = placemark as ProcessedRectification;
+            const coordinates = placemark.coordinates as google.maps.LatLngLiteral[];
+            const startCoord = coordinates[0];
+            const endCoord = coordinates[coordinates.length - 1];
+
+            // Debug logging for images
+            console.log('Rectification Polyline Images:', {
+              hasImages: rectInfo.hasImages,
+              imageCount: rectInfo.images?.length || 0,
+              images: rectInfo.images
+            });
+
+            const baseInfo = `
+              <div class="p-3" style="max-width: 400px;">
+                <h3 class="font-semibold text-gray-900 mb-2" style="font-weight: 600; margin-bottom: 8px;">
+                  ${placemark.name}
+                </h3>
+                <div class="text-sm text-gray-700 space-y-1" style="font-size: 14px;">
+                  <div><strong>Work Type:</strong> ${rectInfo.workToBeDone}</div>
+                  <div><strong>Category:</strong> ${placemark.category}</div>
+                  <div><strong>Type:</strong> Rectification Survey (API)</div>
+                  <div><strong>Block:</strong> ${rectInfo.blockName}</div>
+                  <div><strong>GP:</strong> ${rectInfo.gpName}</div>
+                  <div><strong>LGD Code:</strong> ${rectInfo.lgdCode}</div>
+                  <div><strong>Length:</strong> ${rectInfo.length} km</div>
+                  ${rectInfo.accuracy ? `<div><strong>Accuracy:</strong> ${rectInfo.accuracy}m</div>` : ''}
+                  <div><strong>Start:</strong> ${startCoord.lat.toFixed(6)}, ${startCoord.lng.toFixed(6)}</div>
+                  <div><strong>End:</strong> ${endCoord.lat.toFixed(6)}, ${endCoord.lng.toFixed(6)}</div>
+                  ${rectInfo.createdTime ? `<div><strong>Created:</strong> ${new Date(rectInfo.createdTime).toLocaleDateString()}</div>` : ''}
+                </div>
+            `;
+
+            const imageGallery = (rectInfo.hasImages && rectInfo.images && rectInfo.images.length > 0) 
+              ? createImageGalleryHTML(rectInfo.images)
+              : '';
+
+            infoContent = baseInfo + imageGallery + '</div>';
+            
           } else if (isDesktopPlanning) {
             // Keep existing desktop planning logic here
             const desktopInfo = placemark as ProcessedDesktopPlanning;
@@ -715,6 +954,203 @@ useEffect(() => {
       });
 
       polylinesRef.current.push(polyline);
+      
+      // NEW: Add start and end point markers for rectification polylines
+      if (isRectification && Array.isArray(placemark.coordinates) && placemark.coordinates.length >= 2) {
+        const rectInfo = placemark as ProcessedRectification;
+        const coords = placemark.coordinates as google.maps.LatLngLiteral[];
+        const startCoord = coords[0];
+        const endCoord = coords[coords.length - 1];
+        
+        // Helper function to find matching point placemarks at a coordinate
+        const findMatchingPoint = (coord: google.maps.LatLngLiteral) => {
+          return placemarks.find(p => {
+            if (p.type !== 'point') return false;
+            if (!p.id.startsWith('rectification-')) return false;
+            
+            const pCoord = p.coordinates as { lat: number; lng: number };
+            // Match within ~1 meter tolerance (0.00001 degrees ≈ 1.1 meters)
+            return Math.abs(pCoord.lat - coord.lat) < 0.00001 && 
+                   Math.abs(pCoord.lng - coord.lng) < 0.00001;
+          });
+        };
+        
+        const startPointData = findMatchingPoint(startCoord);
+        const endPointData = findMatchingPoint(endCoord);
+        
+        // Start point marker (Green circle with S)
+        const startMarker = new google.maps.Marker({
+          position: startCoord,
+          map: mapInstanceRef.current!,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: '#10B981', // Green
+            fillOpacity: 0.95,
+            strokeColor: '#ffffff',
+            strokeWeight: 2,
+          },
+          title: `Start: ${placemark.name}`,
+          label: {
+            text: 'S',
+            color: '#ffffff',
+            fontSize: '10px',
+            fontWeight: 'bold',
+          },
+          zIndex: 200,
+        });
+        
+        // End point marker (Red circle with E)
+        const endMarker = new google.maps.Marker({
+          position: endCoord,
+          map: mapInstanceRef.current!,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: '#EF4444', // Red
+            fillOpacity: 0.95,
+            strokeColor: '#ffffff',
+            strokeWeight: 2,
+          },
+          title: `End: ${placemark.name}`,
+          label: {
+            text: 'E',
+            color: '#ffffff',
+            fontSize: '10px',
+            fontWeight: 'bold',
+          },
+          zIndex: 200,
+        });
+        
+        // Enhanced click listener for start marker
+        startMarker.addListener('click', () => {
+          if (infoWindowRef.current) {
+            let infoContent = '';
+            
+            if (startPointData) {
+              // Show the actual point data if it exists
+              const pointInfo = startPointData as ProcessedRectification;
+              
+              const baseInfo = `
+                <div class="p-3" style="max-width: 400px;">
+                  <div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); padding: 10px; border-radius: 6px; margin-bottom: 12px;">
+                    <h3 class="font-semibold text-white mb-1" style="font-weight: 600; font-size: 15px;">
+                      START POINT
+                    </h3>
+                    <div style="font-size: 12px; color: #D1FAE5;">${pointInfo.name}</div>
+                  </div>
+                  <div class="text-sm text-gray-700 space-y-1" style="font-size: 14px;">
+                    <div><strong>Work Type:</strong> ${pointInfo.workToBeDone}</div>
+                    <div><strong>Category:</strong> ${pointInfo.category.replace('Rectification: ', '')}</div>
+                    <div><strong>GP:</strong> ${pointInfo.gpName}</div>
+                    <div><strong>Block:</strong> ${pointInfo.blockName}</div>
+                    <div><strong>LGD Code:</strong> ${pointInfo.lgdCode}</div>
+                    ${pointInfo.accuracy ? `<div><strong>Accuracy:</strong> ${pointInfo.accuracy}m</div>` : ''}
+                    <div><strong>Coordinates:</strong> ${startCoord.lat.toFixed(6)}, ${startCoord.lng.toFixed(6)}</div>
+                    ${pointInfo.createdTime ? `<div style="font-size: 12px; color: #6B7280; margin-top: 8px;"><strong>Created:</strong> ${new Date(pointInfo.createdTime).toLocaleDateString()}</div>` : ''}
+                  </div>
+              `;
+              
+              const imageGallery = (pointInfo.hasImages && pointInfo.images && pointInfo.images.length > 0) 
+                ? createImageGalleryHTML(pointInfo.images)
+                : '';
+              
+              infoContent = baseInfo + imageGallery + '</div>';
+            } else {
+              // Show polyline start information
+              infoContent = `
+                <div class="p-3" style="max-width: 350px;">
+                  <div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); padding: 10px; border-radius: 6px; margin-bottom: 12px;">
+                    <h3 class="font-semibold text-white mb-1" style="font-weight: 600; font-size: 15px;">
+                      START POINT
+                    </h3>
+                    <div style="font-size: 12px; color: #D1FAE5;">Route Start Location</div>
+                  </div>
+                  <div class="text-sm text-gray-700 space-y-1">
+                    <div><strong>Route:</strong> ${rectInfo.workToBeDone}</div>
+                    <div><strong>GP:</strong> ${rectInfo.gpName}</div>
+                    <div><strong>Block:</strong> ${rectInfo.blockName}</div>
+                    <div><strong>Total Length:</strong> ${rectInfo.length || 'N/A'} km</div>
+                    <div><strong>Coordinates:</strong> ${startCoord.lat.toFixed(6)}, ${startCoord.lng.toFixed(6)}</div>
+                    ${rectInfo.accuracy ? `<div><strong>Accuracy:</strong> ${rectInfo.accuracy}m</div>` : ''}
+                  </div>
+                </div>
+              `;
+            }
+            
+            infoWindowRef.current.setContent(infoContent);
+            infoWindowRef.current.open(mapInstanceRef.current!, startMarker);
+          }
+        });
+        
+        // Enhanced click listener for end marker
+        endMarker.addListener('click', () => {
+          if (infoWindowRef.current) {
+            let infoContent = '';
+            
+            if (endPointData) {
+              // Show the actual point data if it exists
+              const pointInfo = endPointData as ProcessedRectification;
+              
+              const baseInfo = `
+                <div class="p-3" style="max-width: 400px;">
+                  <div style="background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%); padding: 10px; border-radius: 6px; margin-bottom: 12px;">
+                    <h3 class="font-semibold text-white mb-1" style="font-weight: 600; font-size: 15px;">
+                      END POINT
+                    </h3>
+                    <div style="font-size: 12px; color: #FEE2E2;">${pointInfo.name}</div>
+                  </div>
+                  <div class="text-sm text-gray-700 space-y-1" style="font-size: 14px;">
+                    <div><strong>Work Type:</strong> ${pointInfo.workToBeDone}</div>
+                    <div><strong>Category:</strong> ${pointInfo.category.replace('Rectification: ', '')}</div>
+                    <div><strong>GP:</strong> ${pointInfo.gpName}</div>
+                    <div><strong>Block:</strong> ${pointInfo.blockName}</div>
+                    <div><strong>LGD Code:</strong> ${pointInfo.lgdCode}</div>
+                    ${pointInfo.accuracy ? `<div><strong>Accuracy:</strong> ${pointInfo.accuracy}m</div>` : ''}
+                    <div><strong>Coordinates:</strong> ${endCoord.lat.toFixed(6)}, ${endCoord.lng.toFixed(6)}</div>
+                    ${pointInfo.createdTime ? `<div style="font-size: 12px; color: #6B7280; margin-top: 8px;"><strong>Created:</strong> ${new Date(pointInfo.createdTime).toLocaleDateString()}</div>` : ''}
+                  </div>
+              `;
+              
+              const imageGallery = (pointInfo.hasImages && pointInfo.images && pointInfo.images.length > 0) 
+                ? createImageGalleryHTML(pointInfo.images)
+                : '';
+              
+              infoContent = baseInfo + imageGallery + '</div>';
+            } else {
+              // Show polyline end information
+              infoContent = `
+                <div class="p-3" style="max-width: 350px;">
+                  <div style="background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%); padding: 10px; border-radius: 6px; margin-bottom: 12px;">
+                    <h3 class="font-semibold text-white mb-1" style="font-weight: 600; font-size: 15px;">
+                      END POINT
+                    </h3>
+                    <div style="font-size: 12px; color: #FEE2E2;">Route End Location</div>
+                  </div>
+                  <div class="text-sm text-gray-700 space-y-1">
+                    <div><strong>Route:</strong> ${rectInfo.workToBeDone}</div>
+                    <div><strong>GP:</strong> ${rectInfo.gpName}</div>
+                    <div><strong>Block:</strong> ${rectInfo.blockName}</div>
+                    <div><strong>Total Length:</strong> ${rectInfo.length || 'N/A'} km</div>
+                    <div><strong>Coordinates:</strong> ${endCoord.lat.toFixed(6)}, ${endCoord.lng.toFixed(6)}</div>
+                    ${rectInfo.accuracy ? `<div><strong>Accuracy:</strong> ${rectInfo.accuracy}m</div>` : ''}
+                  </div>
+                </div>
+              `;
+            }
+            
+            infoWindowRef.current.setContent(infoContent);
+            infoWindowRef.current.open(mapInstanceRef.current!, endMarker);
+          }
+        });
+        
+        // Store markers for cleanup
+        markersRef.current.push(startMarker);
+        markersRef.current.push(endMarker);
+        markersByIdRef.current.set(`${placemark.id}-start`, startMarker);
+        markersByIdRef.current.set(`${placemark.id}-end`, endMarker);
+      }
+      
       (placemark.coordinates as google.maps.LatLngLiteral[]).forEach((coord: any) => bounds.extend(coord));
     }
   });
@@ -766,6 +1202,7 @@ useEffect(() => {
       });
       
       polylinesRef.current.push(polyline);
+      
     }
   });
   

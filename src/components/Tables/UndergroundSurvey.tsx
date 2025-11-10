@@ -47,7 +47,7 @@ interface UndergroundSurvey {
   endLocation: string,
   cableType: string,
   routeType: string
-  version: string
+  versions: string
 }
 
 interface ApiResponse {
@@ -526,7 +526,7 @@ const handleEditSave = async () => {
         accessorKey: "version",
         header: "Version",
         cell: ({ row }) => (
-          <span className="text-sm text-gray-700">{row.original.version || 'N/A'}</span>
+          <span className="text-sm text-gray-700">{row.original.versions || 'N/A'}</span>
         ),
       },
       {
@@ -1032,7 +1032,7 @@ const handleEditSave = async () => {
         "Block Name": data.block_name,
         "Surviour Name": data.fullname,
         "Surviour Contact Number": data.contact_no,
-        "Version": data.version || 'N/A',
+        "Version": data.versions || 'N/A',
         "Survey ID": data.survey_id,
         "Company ID": data.company_id,
         "User ID": data.user_id,

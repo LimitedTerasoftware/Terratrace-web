@@ -12,7 +12,7 @@ import SidebarLinkGroup from './SidebarLinkGroup';
 import User from '../../images/icon/user-icon.svg';
 import TableIcon from '../../images/icon/table-icon.svg';
 import Logo from '../../images/logo/logo.png';
-import { hasInvOnlyAccess, hasViewOnlyAccess} from "../../utils/accessControl";
+import { hasInvOnlyAccess, hasViewOnlyAccess, isIEUser} from "../../utils/accessControl";
 import DropdownUser from './DropDownUser'; // Import the dropdownuser component
 import DarkModeSwitcher from './DarkModeSwitcher'; // Import the dark mode switcher
 import KML from '../../images/icon/kml-file.svg';
@@ -58,6 +58,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   const sidebar = useRef<any>(null);
   const viewOnly = hasViewOnlyAccess();
   const InvOnly = hasInvOnlyAccess();
+  const ieUser = isIEUser();
   
 
   const storedSidebarExpanded = localStorage.getItem('sidebar-expanded');
@@ -150,6 +151,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
 
           <ul className="space-y-2">
             {/* Dashboards Menu Group - Now includes Main Dashboard */}
+            {!ieUser && (
             <SidebarLinkGroup activeCondition={pathname.includes('dashboards') || pathname === '/dashboard' || pathname === '/'}>
               {(handleClick, open) => {
                 return (
@@ -204,7 +206,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                             <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Survey Dashboard</span>
                           </NavLink>
                         </li>
-                        {/*<li>
+                        <li>
                           <NavLink
                             to="/dashboards/construction-dashboard"
                             className={({ isActive }) =>
@@ -214,7 +216,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                             <HardHat size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
                             <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Construction Dashboard</span>
                           </NavLink>
-                        </li>*/}
+                        </li>
                         
                         <li>
                           <NavLink
@@ -227,7 +229,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                             <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Installation Dashboard</span>
                           </NavLink>
                         </li>
-                        {/*<li>
+                        <li>
                           <NavLink
                             to="/dashboards/executive-dashboard"
                             className={({ isActive }) =>
@@ -238,7 +240,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                             <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Executive Dashboard</span>
                           </NavLink>
                         </li>
-                        <li>
+                        {/*<li>
                           <NavLink
                             to="/dashboards/daily-progress"
                             className={({ isActive }) =>
@@ -255,8 +257,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                 );
               }}
             </SidebarLinkGroup>
+            )}
 
-            {!viewOnly && (
+            {/* Route Planning - Show ONLY for IE user or with original condition (!viewOnly) */}
+            {(ieUser || !viewOnly) && (
             <SidebarLinkGroup
                   activeCondition={pathname.includes('route-planning')}
                 >
@@ -333,6 +337,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                   }}
             </SidebarLinkGroup>
              )}
+             
+             {/* Survey - Visible for everyone including IE user */}
              <SideBarItem
               icon={SurveyIcon}
               label="Survey"
@@ -341,7 +347,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
               path="/survey"
             />
 
-             {!viewOnly && (
+             {/* Construction - Original condition (!viewOnly) but hide for IE user */}
+             {!viewOnly && !ieUser && (
                 <SideBarItem
                   icon={ConstructionImg}
                   label="Construction"
@@ -352,8 +359,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
               )}
 
               
-             {/* Add Installation Menu Item */}
-             {!viewOnly && (
+             {/* Add Installation Menu Item - Hide for IE user */}
+             {!viewOnly && !ieUser && (
                 <li>
                   <NavLink
                     to="/installation"
@@ -372,8 +379,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                 </li>
               )}
 
-             {/* Add Blocks Management above GIS Inventory */}
-              {!viewOnly && (
+             {/* Add Blocks Management above GIS Inventory - Hide for IE user */}
+              {!viewOnly && !ieUser && (
                 <li>
                   <NavLink
                     to="/blocks-management"
@@ -394,7 +401,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                 </li>
               )}
 
-              {InvOnly && (
+              {/* GIS Inventory - Show for InvOnly OR IE user */}
+              {(InvOnly || ieUser) && (
                   <li>
                   <NavLink
                     to="/smart-inventory"
@@ -411,7 +419,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                   </NavLink>
                 </li>
               )}
-              {!viewOnly && (
+              
+              {/* Machine Management - Hide for IE user */}
+              {!viewOnly && !ieUser && (
                 <>
               
                 <SidebarLinkGroup activeCondition={pathname.includes('machine-management')}>
@@ -484,6 +494,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
 
            
                 {/* <SideBarItem icon={KML} label="Filter GP Points" isOpen={isOpen} isActive={pathname.includes('gp-points-filter')} path='/gp-points-filter' /> */}
+                {/* Master Data - Hide for IE user */}
+                {!ieUser && (
                 <SidebarLinkGroup
                   activeCondition={pathname.includes('managementlist')}
                 >
@@ -565,6 +577,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                     );
                   }}
                 </SidebarLinkGroup>
+                )}
               </>
             )}
             {!viewOnly && (

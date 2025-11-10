@@ -15,11 +15,13 @@ import {
   processDesktopPlanningData,
   resolveMediaUrl,           
   processSurveyInfrastructureData,
-  detectSurveyFileType 
+  detectSurveyFileType,
+  processRectificationData
 } from './PlaceMark';
 import {
   KMZFile, FilterState, ApiPlacemark, ProcessedPlacemark, PlacemarkCategory,
-  PhysicalSurveyApiResponse, ProcessedPhysicalSurvey, DesktopPlanningApiResponse, ProcessedDesktopPlanning
+  PhysicalSurveyApiResponse, ProcessedPhysicalSurvey, DesktopPlanningApiResponse, ProcessedDesktopPlanning,
+  RectificationApiResponse, ProcessedRectification
 } from '../../types/kmz';
 import FileUploadModal from './Modalpopup';
 import { GeographicSelector } from './GeographicSelector';
@@ -98,11 +100,11 @@ function SmartInventory() {
   const [isLoadingDesktopPlanning, setIsLoadingDesktopPlanning] = useState(false);
   const [rawDesktopPlanningData, setRawDesktopPlanningData] = useState<any>(null);
 
-  // ADD THIS: Rectification Data
-const [rectificationData, setRectificationData] = useState<ProcessedPhysicalSurvey[]>([]);
-const [rectificationCategories, setRectificationCategories] = useState<PlacemarkCategory[]>([]);
-const [isLoadingRectification, setIsLoadingRectification] = useState(false);
-const [rawRectificationData, setRawRectificationData] = useState<any>(null);
+  // Rectification Data
+  const [rectificationData, setRectificationData] = useState<ProcessedRectification[]>([]);
+  const [rectificationCategories, setRectificationCategories] = useState<PlacemarkCategory[]>([]);
+  const [isLoadingRectification, setIsLoadingRectification] = useState(false);
+  const [rawRectificationData, setRawRectificationData] = useState<RectificationApiResponse | null>(null);
 
   // ==============================================
   // MAP STATE
@@ -208,9 +210,20 @@ const [rawRectificationData, setRawRectificationData] = useState<any>(null);
       'External BSNL: KILOMETERSTONE'
     ];
 
+    // Rectification defaults
+    const defaultRectificationCategories = [
+      'Rectification: Chamber Installation',
+      'Rectification: Closer Replacement',
+      'Rectification: Route Under Road',
+      'Rectification: Patch Replacement',
+      'Rectification: Cable Repair',
+      'Rectification: Joint Repair',
+    ];
+
     return defaultSurveyCategories.includes(categoryName) || 
            defaultDesktopCategories.includes(categoryName) ||
-           defaultBSNLCategories.includes(categoryName);
+           defaultBSNLCategories.includes(categoryName) ||
+           defaultRectificationCategories.includes(categoryName);
   };
 
   // ==============================================
@@ -629,70 +642,67 @@ const [rawRectificationData, setRawRectificationData] = useState<any>(null);
   };
 
   const loadRectificationData = async (state: string[], division: string[], block: string[]) => {
-  try {
-    setIsLoadingRectification(true);
-    const params: any = {};
+    try {
+      setIsLoadingRectification(true);
+      const params: any = {};
 
-    if (state.length > 0) {
-      params.state_id = state.join(',');
-    }
-    if (division.length > 0) {
-      params.district_id = division.join(',');
-    }
-    if (block.length > 0) {
-      params.block_id = block.join(',');
-    }
-
-    const response = await axios.get(`${BASEURL}/get-rectification-survey`, { params });
-    const result: PhysicalSurveyApiResponse = response.data;
-
-    if (response.status === 200 || response.status === 201) {
-      if (Object.keys(result.data).length > 0) {
-        // Process rectification data using the same processing function as physical survey
-        const { placemarks, categories } = processPhysicalSurveyData(result);
-
-        // Prefix categories with "Rectification:" to distinguish them
-        const rectificationCategories = categories.map(cat => ({
-          ...cat,
-          id: `rectification-${cat.id}`,
-          name: `Rectification: ${cat.name}`,
-        }));
-
-        const rectificationPlacemarks = placemarks.map(pm => ({
-          ...pm,
-          id: pm.id.replace('physical-', 'rectification-'),
-          category: `Rectification: ${pm.category}`,
-        }));
-
-        setRawRectificationData(result);
-        setRectificationData(rectificationPlacemarks);
-        setRectificationCategories(rectificationCategories);
-
-        // Auto-enable categories that are marked as visible by default
-        const autoVisibleCategories = rectificationCategories
-          .filter(category => category.visible)
-          .map(category => category.id);
-        
-        if (autoVisibleCategories.length > 0) {
-          setVisibleCategories(prev => {
-            const newSet = new Set(prev);
-            autoVisibleCategories.forEach(categoryId => newSet.add(categoryId));
-            return newSet;
-          });
-        }
-
-        showNotification('success', `Loaded ${rectificationPlacemarks.length} rectification points`);
-      } else {
-        showNotification('info', 'No rectification data found for selected area');
+      if (state.length > 0) {
+        params.state_id = state.join(',');
       }
+      if (division.length > 0) {
+        params.district_id = division.join(',');
+      }
+      if (block.length > 0) {
+        params.block_id = block.join(',');
+      }
+
+      const response = await axios.get(`${BASEURL}/get-rectification-survey`, { params });
+      const apiData: RectificationApiResponse = response.data;
+
+      if (response.status === 200 || response.status === 201) {
+        if (apiData.status && apiData.data && Object.keys(apiData.data).length > 0) {
+          // Process rectification data using the NEW rectification processor
+          const { placemarks, categories } = processRectificationData(apiData);
+
+          setRawRectificationData(apiData);
+          setRectificationData(placemarks);
+          setRectificationCategories(categories);
+
+          // Set default visibility for rectification categories
+          setVisibleCategories(prev => {
+            const newVisible = new Set(prev);
+            categories.forEach(cat => {
+              if (getDefaultVisibility(cat.name)) {
+                newVisible.add(cat.id);
+              }
+            });
+            return newVisible;
+          });
+
+          console.log('Rectification data loaded:', {
+            totalPlacemarks: placemarks.length,
+            categories: categories.map(c => `${c.name}: ${c.count}`),
+            blocks: Object.keys(apiData.data || {})
+          });
+
+          showNotification('success', `Loaded ${placemarks.length} rectification items from ${Object.keys(apiData.data).length} blocks`);
+        } else {
+          showNotification('info', 'No rectification data found for selected area');
+          setRectificationData([]);
+          setRectificationCategories([]);
+          setRawRectificationData(null);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load rectification data:', error);
+      showNotification('error', 'Failed to load rectification data');
+      setRectificationData([]);
+      setRectificationCategories([]);
+      setRawRectificationData(null);
+    } finally {
+      setIsLoadingRectification(false);
     }
-  } catch (error) {
-    console.error('Failed to load rectification data:', error);
-    showNotification('error', 'Failed to load rectification data');
-  } finally {
-    setIsLoadingRectification(false);
-  }
-};
+  };
 
   // ==============================================
   // ENHANCED LANDMARK DETECTION LOGIC

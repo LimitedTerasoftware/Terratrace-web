@@ -180,6 +180,62 @@ export interface ProcessedDesktopPlanning {
   rawProperties?: any;
 }
 
+// Rectification Survey Types
+export interface RectificationApiResponse {
+  status: boolean;
+  data: {
+    [blockId: string]: RectificationItem[];
+  };
+}
+
+export interface RectificationItem {
+  id: number;
+  st_code: number;
+  dt_code: number;
+  blk_code: number;
+  block_id: number;
+  blk_name: string;
+  gp: string;
+  lgd_code: string;
+  work_to_be_done: string;
+  length: string | null;
+  start_lat: string;
+  start_long: string;
+  end_lat: string | null;
+  end_long: string | null;
+  accuracy: string;
+  image: string; // JSON array string like "[url1, url2]"
+  created_at: string;
+}
+
+export interface ProcessedRectification {
+  id: string;
+  name: string;
+  category: string;
+  type: 'point' | 'polyline';
+  coordinates: { lat: number; lng: number } | { lat: number; lng: number }[];
+  surveyId: string;
+  eventType: string;
+  blockId: string | number;
+  blockName?: string;
+  
+  // Rectification-specific fields
+  gpName?: string;
+  lgdCode?: string;
+  accuracy?: string;
+  length?: string | null;
+  workToBeDone?: string;
+  
+  // Image fields
+  images: SurveyImage[];
+  hasImages: boolean;
+  
+  // Metadata
+  createdTime?: string;
+  stateName?: string;
+  districtName?: string;
+}
+
 // Additional types for configuration
 export interface EventTypeConfig {
   color: string;

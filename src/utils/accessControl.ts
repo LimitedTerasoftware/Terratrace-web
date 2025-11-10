@@ -18,6 +18,9 @@ const DOWNLOAD_ONLY_EMAILS = ["nexus@terasoftware.com", "admin@terasoftware.com"
 // Restricted user who cannot access file operations (Upload KMZ/KML, Download, External Files)
 const RESTRICTED_FILE_OPS_EMAIL = "survey@terasoftware.com";
 
+// IE user with limited sidebar access (Survey, GIS Inventory, Route Planning only)
+const IE_USER_EMAIL = "ie@terasoftware.com";
+
 export const getUser = (): User | null => {
   const user = localStorage.getItem("userData");
   return user ? JSON.parse(user) as User : null;
@@ -57,4 +60,14 @@ export const isRestrictedFromFileOperations = (): boolean => {
  */
 export const canAccessFileOperations = (): boolean => {
   return !isRestrictedFromFileOperations();
+};
+
+/**
+ * Check if user is IE user with limited sidebar access
+ * Returns true if user can only see Survey, GIS Inventory, and Route Planning
+ */
+export const isIEUser = (): boolean => {
+  const user = getUser();
+  const email = user?.email?.toLowerCase();
+  return email === IE_USER_EMAIL.toLowerCase();
 };

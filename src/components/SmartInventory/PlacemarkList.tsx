@@ -2,16 +2,16 @@
 
 import React, { useState, useMemo } from 'react';
 import { MapPin, Eye, EyeOff, ChevronDown, ChevronUp, Layers, ChevronRight, Database, FileText, Navigation, Upload } from 'lucide-react';
-import { ProcessedPlacemark, PlacemarkCategory, ProcessedPhysicalSurvey } from '../../types/kmz';
+import { ProcessedPlacemark, PlacemarkCategory, ProcessedPhysicalSurvey, ProcessedRectification } from '../../types/kmz';
 import { PLACEMARK_CATEGORIES } from './PlaceMark';
 
 interface PlacemarkListProps {
   categories: PlacemarkCategory[];
-  placemarks: (ProcessedPlacemark | ProcessedPhysicalSurvey)[];
+  placemarks: (ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedRectification)[];
   visibleCategories: Set<string>;
   onCategoryVisibilityChange: (categoryId: string, visible: boolean) => void;
-  onPlacemarkClick: (placemark: ProcessedPlacemark | ProcessedPhysicalSurvey) => void;
-  highlightedPlacemark?: ProcessedPlacemark | ProcessedPhysicalSurvey;
+  onPlacemarkClick: (placemark: ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedRectification) => void;
+  highlightedPlacemark?: ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedRectification;
 }
 
 interface LayerSection {

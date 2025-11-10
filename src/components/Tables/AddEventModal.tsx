@@ -198,7 +198,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
 
     try {
       // Using the correct upload endpoint
-      const response = await axios.post('http://localhost:5173/api/v1/upload-image', formData, {
+      const response = await axios.post('https://traceapi.tricadtrack.com/api/v1/upload-image', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
