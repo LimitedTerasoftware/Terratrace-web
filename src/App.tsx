@@ -70,6 +70,8 @@ import ConstructionDashboard from './components/Dashboards/ConstructionDashboard
 import InstallationDashboard from './components/Dashboards/InstallationDashboard';
 import ExecutiveDashboard from './components/Dashboards/ExecutiveDashboard';
 import DailyProgressReport from './components/Dashboards/DailyProgressReport';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import Terms from './pages/Terms';
 //import AuditLogs from './components/AuditLogs';
 
 function App() {
@@ -718,7 +720,29 @@ function App() {
     </>
   } 
 />
+
+<Route 
+  path="/privacy" 
+  element={
+    <>
+        <PageTitle title="PrivacyPolicy" />
+        <PrivacyPolicy />
+    
+    </>
+  } 
+/>
+<Route 
+  path="/terms" 
+  element={
+    <>
+        <PageTitle title="Terms" />
+        <Terms />
+    
+    </>
+  } 
+/>
           </Routes>
+          
           
       )}
     </>
