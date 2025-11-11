@@ -3,15 +3,15 @@
 import React, { useState, useMemo } from 'react';
 import { MapPin, Eye, EyeOff, ChevronDown, ChevronUp, Layers, ChevronRight, Database, FileText, Navigation, Upload } from 'lucide-react';
 import { ProcessedPlacemark, PlacemarkCategory, ProcessedPhysicalSurvey, ProcessedRectification } from '../../types/kmz';
-import { PLACEMARK_CATEGORIES } from './PlaceMark';
+import { PLACEMARK_CATEGORIES, ProcessedGPData, ProcessedBlockData } from './PlaceMark'; 
 
 interface PlacemarkListProps {
   categories: PlacemarkCategory[];
-  placemarks: (ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedRectification)[];
+  placemarks: (ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedRectification | ProcessedGPData | ProcessedBlockData)[];
   visibleCategories: Set<string>;
   onCategoryVisibilityChange: (categoryId: string, visible: boolean) => void;
-  onPlacemarkClick: (placemark: ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedRectification) => void;
-  highlightedPlacemark?: ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedRectification;
+  onPlacemarkClick: (placemark: ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedRectification | ProcessedGPData | ProcessedBlockData) => void;
+  highlightedPlacemark?: ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedRectification | ProcessedGPData | ProcessedBlockData;
 }
 
 interface LayerSection {

@@ -12,7 +12,7 @@ import SidebarLinkGroup from './SidebarLinkGroup';
 import User from '../../images/icon/user-icon.svg';
 import TableIcon from '../../images/icon/table-icon.svg';
 import Logo from '../../images/logo/logo.png';
-import { hasInvOnlyAccess, hasViewOnlyAccess, isIEUser} from "../../utils/accessControl";
+import { hasInvOnlyAccess, hasViewOnlyAccess, isIEUser, hasInstallationAccess} from "../../utils/accessControl";
 import DropdownUser from './DropDownUser'; // Import the dropdownuser component
 import DarkModeSwitcher from './DarkModeSwitcher'; // Import the dark mode switcher
 import KML from '../../images/icon/kml-file.svg';
@@ -59,6 +59,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   const viewOnly = hasViewOnlyAccess();
   const InvOnly = hasInvOnlyAccess();
   const ieUser = isIEUser();
+  const installationAccess = hasInstallationAccess();
   
 
   const storedSidebarExpanded = localStorage.getItem('sidebar-expanded');
@@ -359,8 +360,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
               )}
 
               
-             {/* Add Installation Menu Item - Hide for IE user */}
-             {!viewOnly && !ieUser && (
+             {/* Add Installation Menu Item - Hide for IE user, Allow for installation access users */}
+             {(!viewOnly && !ieUser) || installationAccess ? (
                 <li>
                   <NavLink
                     to="/installation"
@@ -377,7 +378,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                     {isOpen && <span className="whitespace-nowrap">Equipment Installation</span>}
                   </NavLink>
                 </li>
-              )}
+              ) : null}
 
              {/* Add Blocks Management above GIS Inventory - Hide for IE user */}
               {!viewOnly && !ieUser && (

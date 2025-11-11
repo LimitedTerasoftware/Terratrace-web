@@ -246,3 +246,51 @@ export interface EventTypeConfig {
 export interface EventTypeCounts {
   [eventType: string]: number;
 }
+
+export interface PhysicalSurveyApiResponse {
+  status: boolean;
+  data: {
+    [blockId: string]: PhysicalSurveyPoint[];
+  };
+  gp_data?: Array<{
+    gpCoordinates: string;
+    poleCoordinates: string;
+    earthPitCoordinates: string;
+    photos: string[];
+  }>;
+  blk_data?: {
+    block_id: number;
+    bsnlCordinates: string;
+    bsnlCableEntryPhoto: string;
+    bsnlCableExitPhoto: string;
+    bsnlExistingRackPhoto: string;
+    bsnlLayoutPhoto: string;
+    bsnlProposedRackPhoto: string;
+    bsnlUPSPhoto: string;
+  };
+}
+
+export interface PhysicalSurveyPoint {
+  id: number;
+  survey_id: string;
+  event_type: string;
+  latitude: string;
+  longitude: string;
+
+  gp_data?: Array<{
+    gpCoordinates: string;
+    poleCoordinates: string;
+    earthPitCoordinates: string;
+    photos: string[];
+  }>;
+  blk_data?: {
+    block_id: number;
+    bsnlCordinates: string;
+    bsnlCableEntryPhoto: string;
+    bsnlCableExitPhoto: string;
+    bsnlExistingRackPhoto: string;
+    bsnlLayoutPhoto: string;
+    bsnlProposedRackPhoto: string;
+    bsnlUPSPhoto: string;
+  };
+}

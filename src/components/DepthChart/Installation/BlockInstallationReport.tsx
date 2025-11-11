@@ -26,10 +26,11 @@ interface BlockInstallationData {
     rfms: any;
     equipment_photo: string[];
     block_contacts: any;
+    status?: string;
     created_at: string;
     updated_at: string;
     state_name?: string;      
-    district_name?: string; 
+    district_name?: string;
 }
 
 interface BlockInstallationReportProps {
@@ -117,10 +118,52 @@ const BlockInstallationReport: React.FC<BlockInstallationReportProps> = ({ Data,
     setSelectedRows([]);
   };
 
-  const getStatusBadge = () => {
+  // Updated getStatusBadge to accept status parameter
+  type StatusType = 'ACCEPT' | 'PENDING' | 'REJECT';
+
+  interface StatusConfig {
+    bg: string;
+    text: string;
+    border: string;
+    label: string;
+  }
+
+  const isValidStatus = (status: string): status is StatusType => {
+    return ['ACCEPT', 'PENDING', 'REJECT'].includes(status);
+  };
+
+  const getStatusBadge = (status?: string) => {
+    const statusConfig: Record<StatusType, StatusConfig> = {
+      'ACCEPT': { 
+        bg: 'bg-green-100', 
+        text: 'text-green-800', 
+        border: 'border-green-200', 
+        label: 'Accepted' 
+      },
+      'PENDING': { 
+        bg: 'bg-yellow-100', 
+        text: 'text-yellow-800', 
+        border: 'border-yellow-200', 
+        label: 'Pending' 
+      },
+      'REJECT': { 
+        bg: 'bg-red-100', 
+        text: 'text-red-800', 
+        border: 'border-red-200', 
+        label: 'Rejected' 
+      }
+    };
+    
+    // Default to PENDING if no status or invalid status
+    const validStatus = status && isValidStatus(status.toUpperCase()) 
+      ? status.toUpperCase() as StatusType 
+      : 'PENDING';
+    
+    const config = statusConfig[validStatus];
+    
     return (
-      <span className="px-3 py-1 rounded-full text-xs font-medium border bg-green-100 text-green-800 border-green-200 whitespace-nowrap">
-        Installed
+      <span className={`px-3 py-1 rounded-full text-xs font-medium border ${config.bg} ${config.text} ${config.border} whitespace-nowrap`}>
+        {config.label}
       </span>
     );
   };
@@ -232,26 +275,25 @@ const BlockInstallationReport: React.FC<BlockInstallationReportProps> = ({ Data,
     },
     {
       name: "Location",
-      selector: row => `${row.block_latitude || ''}, ${row.block_longitude || ''}`,
-      sortable: true,
-      maxWidth: "180px",
       cell: (row) => (
         <div className="flex items-center min-w-0 w-full">
           <MapPin className="w-3 h-3 text-gray-600 mr-1 flex-shrink-0" />
           <span 
-            className="truncate min-w-0 text-xs" 
+            className="truncate text-xs"
             title={`${row.block_latitude || 'N/A'}, ${row.block_longitude || 'N/A'}`}
           >
             {safeSubstring(row.block_latitude, 0, 8) || 'N/A'}, {safeSubstring(row.block_longitude, 0, 8) || 'N/A'}
           </span>
         </div>
       ),
+      minWidth: "150px",
+      maxWidth: "180px",
     },
     {
       name: "Contact Person",
       cell: (row) => {
         const contacts = parseEquipmentData(row.block_contacts);
-        const contact = Array.isArray(contacts) ? contacts[0] : contacts;
+        const contact = contacts && contacts.length > 0 ? contacts[0] : null;
         return contact && contact.name ? (
           <div className="flex items-center min-w-0 w-full">
             <User className="w-3 h-3 text-gray-600 mr-1 flex-shrink-0" />
@@ -269,10 +311,10 @@ const BlockInstallationReport: React.FC<BlockInstallationReportProps> = ({ Data,
     },
     {
       name: 'Status',
-      selector: () => 'installed',
+      selector: (row) => row.status || 'PENDING',
       sortable: true,
-      maxWidth: "100px",
-      cell: () => getStatusBadge(),
+      maxWidth: "120px",
+      cell: (row) => getStatusBadge(row.status),
     },
     {
       name: "Created",
@@ -309,7 +351,7 @@ const BlockInstallationReport: React.FC<BlockInstallationReportProps> = ({ Data,
           "Block Code", "Block Name", "Block Latitude", "Block Longitude", 
           "Block Photos", "Smart Rack Details", "FDMS Shelf Details", 
           "IP MPLS Router", "SFP 10G", "SFP 1G", "SFP 100G", "RFMS",
-          "Equipment Photos", "Block Contacts", "Created At", "Updated At"
+          "Equipment Photos", "Block Contacts", "Status", "Created At", "Updated At"
         ];
 
         const dataRows = filteredData.map(row => [
@@ -330,7 +372,8 @@ const BlockInstallationReport: React.FC<BlockInstallationReportProps> = ({ Data,
           JSON.stringify(row.sfp_100g || []), 
           JSON.stringify(row.rfms || {}),
           JSON.stringify(row.equipment_photo || []), 
-          JSON.stringify(row.block_contacts || {}), 
+          JSON.stringify(row.block_contacts || {}),
+          row.status || 'PENDING',
           row.created_at || '', 
           row.updated_at || ''
         ]);

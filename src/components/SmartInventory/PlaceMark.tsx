@@ -34,6 +34,36 @@ export interface ProcessedPhysicalSurvey {
   createdTime?: string;
 }
 
+export interface ProcessedGPData {
+  id: string;
+  name: string;
+  category: string;
+  type: 'point';
+  coordinates: { lat: number; lng: number };
+  surveyId: string;
+  eventType: string;
+  blockId: string;
+  gpCoordinates: { lat: number; lng: number };
+  poleCoordinates: { lat: number; lng: number };
+  earthPitCoordinates: { lat: number; lng: number };
+  images: SurveyImage[];
+  hasImages: boolean;
+  itemType: 'gp' | 'pole' | 'earthpit';
+}
+
+export interface ProcessedBlockData {
+  id: string;
+  name: string;
+  category: string;
+  type: 'point';
+  coordinates: { lat: number; lng: number };
+  surveyId: string;
+  eventType: string;
+  blockId: string;
+  images: SurveyImage[];
+  hasImages: boolean;
+}
+
 export interface SurveyImage {
   url: string;
   type: 'start_photo' | 'end_photo' | 'fpoi' | 'route_indicator' | 'kmt_stone' | 'fiber_turn' | 'landmark' | 'joint_chamber' | 'road_crossing_start' | 'road_crossing_end' | 'video_thumbnail' | 'bridge' | 'culvert' | 'general' | 'kilometerstone' | 'fiberturn' | 'routeindicator';
@@ -123,6 +153,12 @@ export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string 
   LIVELOCATION: { color: '#DC3545', icon: '📍' },
   SIDE: { color: '#6F42C1', icon: '↔️' },
   ROUTEDETAILS: { color: '#09090B', icon: '📋' },
+
+  // GP Installation Categories
+  'GP_LOCATION': { color: '#6B21A8', icon: '🏘️' },
+  
+  // Block Installation Category
+  'BSNL_BLOCK': { color: '#C2410C', icon: '🏢' }, 
 
   // Junction Types (Network Infrastructure)
   'SJC': { color: '#06B6D4', icon: '🔷' },
@@ -1315,17 +1351,17 @@ function getCategoryFromName(name: string): string {
 // Enhanced Physical Survey Processing with Images and PHOTO_SURVEY category
 // -----------------------------
 export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
-  placemarks: ProcessedPhysicalSurvey[];
+  placemarks: (ProcessedPhysicalSurvey | ProcessedGPData | ProcessedBlockData)[];
   categories: PlacemarkCategory[];
 } {
-  const processedPlacemarks: ProcessedPhysicalSurvey[] = [];
+  const processedPlacemarks: (ProcessedPhysicalSurvey | ProcessedGPData | ProcessedBlockData)[] = [];
   const categoryCounts: Record<string, number> = {};
 
-  // Updated to include PHOTO_SURVEY category
+  // Updated to include only GP_LOCATION and BSNL_BLOCK categories
   const physicalSurveyCategories = [
     'SURVEYSTART','LANDMARK', 'FIBERTURN', 'Bridge', 'Culvert', 'ROADCROSSING', 'Causeways',
     'KILOMETERSTONE', 'FPOI', 'JOINTCHAMBER', 'ROUTEINDICATOR', 'ENDSURVEY', 'HOLDSURVEY',
-    'SURVEY_ROUTE', 'PHOTO_SURVEY', 'VIDEO_SURVEY'
+    'SURVEY_ROUTE', 'PHOTO_SURVEY', 'VIDEO_SURVEY', 'GP_LOCATION', 'BSNL_BLOCK'
   ];
   
   physicalSurveyCategories.forEach(c => categoryCounts[c] = 0);
@@ -1335,7 +1371,164 @@ export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
 
     points.forEach((point, index) => {
       try {
-        // Validate coordinates
+        // NEW: Check if this "point" is actually GP data
+        if (point.gp_data && Array.isArray(point.gp_data)) {
+          console.log(`Found GP data in block ${blockId} with ${point.gp_data.length} items`);
+          
+          point.gp_data.forEach((gpItem: any, gpIndex: number) => {
+            try {
+              // Parse GP coordinates
+              const gpCoordsParts = gpItem.gpCoordinates.split(',').map((c: string) => c.trim());
+              const gpLat = parseFloat(gpCoordsParts[0]);
+              const gpLng = parseFloat(gpCoordsParts[1]);
+
+              // Parse Pole coordinates (for reference only)
+              const poleCoordsParts = gpItem.poleCoordinates.split(',').map((c: string) => c.trim());
+              const poleLat = parseFloat(poleCoordsParts[0]);
+              const poleLng = parseFloat(poleCoordsParts[1]);
+
+              // Parse Earth Pit coordinates (for reference only)
+              const earthPitCoordsParts = gpItem.earthPitCoordinates.split(',').map((c: string) => c.trim());
+              const earthPitLat = parseFloat(earthPitCoordsParts[0]);
+              const earthPitLng = parseFloat(earthPitCoordsParts[1]);
+
+              // Process photos array
+              const images: SurveyImage[] = [];
+              if (gpItem.photos && Array.isArray(gpItem.photos)) {
+                gpItem.photos.forEach((photoPath: string) => {
+                  // Skip null, empty strings, empty arrays
+                  if (!photoPath || photoPath === 'null' || photoPath === '[]' || photoPath.trim() === '') {
+                    return;
+                  }
+
+                  // Handle JSON array strings like "[\"uploads\/images\/file.jpg\"]"
+                  if (photoPath.startsWith('[') && photoPath.endsWith(']')) {
+                    try {
+                      const parsed = JSON.parse(photoPath.replace(/\\/g, ''));
+                      if (Array.isArray(parsed) && parsed.length > 0) {
+                        parsed.forEach((url: string) => {
+                          const resolvedUrl = resolveMediaUrl(url);
+                          if (isValidImageUrl(resolvedUrl)) {
+                            images.push({
+                              url: resolvedUrl,
+                              type: 'general',
+                              label: `GP Installation Photo ${images.length + 1}`
+                            });
+                          }
+                        });
+                      }
+                    } catch (e) {
+                      console.warn('Failed to parse photo array:', photoPath);
+                    }
+                  } else {
+                    // Regular photo path
+                    const resolvedUrl = resolveMediaUrl(photoPath);
+                    if (isValidImageUrl(resolvedUrl)) {
+                      images.push({
+                        url: resolvedUrl,
+                        type: 'general',
+                        label: `GP Installation Photo ${images.length + 1}`
+                      });
+                    }
+                  }
+                });
+              }
+
+              // Create ONLY ONE marker at GP Location (includes all coordinate data for reference)
+              if (isValidCoordinate(gpLat, gpLng)) {
+                categoryCounts['GP_LOCATION'] = (categoryCounts['GP_LOCATION'] || 0) + 1;
+                processedPlacemarks.push({
+                  id: `gp-location-${blockId}-${gpIndex}`,
+                  name: `GP Installation ${gpIndex + 1}`,
+                  category: 'GP_LOCATION',
+                  type: 'point',
+                  coordinates: { lat: gpLat, lng: gpLng }, // Only GP coordinates for marker position
+                  surveyId: `gp-${blockId}-${gpIndex}`,
+                  eventType: 'GP_LOCATION',
+                  blockId: blockId,
+                  // Store all three coordinates for InfoWindow display
+                  gpCoordinates: { lat: gpLat, lng: gpLng },
+                  poleCoordinates: { lat: poleLat, lng: poleLng },
+                  earthPitCoordinates: { lat: earthPitLat, lng: earthPitLng },
+                  images: images,
+                  hasImages: images.length > 0,
+                  itemType: 'gp'
+                });
+                console.log(`✓ Created GP Installation marker at ${gpLat}, ${gpLng}`);
+              }
+
+            } catch (error) {
+              console.error(`Error processing GP data item ${gpIndex} in block ${blockId}:`, error);
+            }
+          });
+          
+          // Don't process this as a regular point, skip to next
+          return;
+        }
+
+        // NEW: Check if this "point" is actually Block data
+        if (point.blk_data) {
+          console.log(`Found block data in block ${blockId}`);
+          
+          try {
+            const blockData = point.blk_data;
+            
+            // Parse BSNL coordinates
+            const bsnlCoordsParts = blockData.bsnlCordinates.split(',').map((c: string) => c.trim());
+            const bsnlLat = parseFloat(bsnlCoordsParts[0]);
+            const bsnlLng = parseFloat(bsnlCoordsParts[1]);
+
+            if (isValidCoordinate(bsnlLat, bsnlLng)) {
+              // Process block photos
+              const blockImages: SurveyImage[] = [];
+              
+              const photoFields = [
+                { field: 'bsnlCableEntryPhoto', label: 'BSNL Cable Entry Photo' },
+                { field: 'bsnlCableExitPhoto', label: 'BSNL Cable Exit Photo' },
+                { field: 'bsnlExistingRackPhoto', label: 'BSNL Existing Rack Photo' },
+                { field: 'bsnlLayoutPhoto', label: 'BSNL Layout Photo' },
+                { field: 'bsnlProposedRackPhoto', label: 'BSNL Proposed Rack Photo' },
+                { field: 'bsnlUPSPhoto', label: 'BSNL UPS Photo' }
+              ];
+
+              photoFields.forEach(({ field, label }) => {
+                const photoPath = (blockData as any)[field];
+                if (photoPath && photoPath !== 'null' && photoPath.trim() !== '') {
+                  const resolvedUrl = resolveMediaUrl(photoPath);
+                  if (isValidImageUrl(resolvedUrl)) {
+                    blockImages.push({
+                      url: resolvedUrl,
+                      type: 'general',
+                      label: label
+                    });
+                  }
+                }
+              });
+
+              categoryCounts['BSNL_BLOCK'] = (categoryCounts['BSNL_BLOCK'] || 0) + 1;
+              processedPlacemarks.push({
+                id: `bsnl-block-${blockData.block_id}`,
+                name: `BSNL Block Office - ${blockData.block_id}`,
+                category: 'BSNL_BLOCK',
+                type: 'point',
+                coordinates: { lat: bsnlLat, lng: bsnlLng },
+                surveyId: `block-${blockData.block_id}`,
+                eventType: 'BSNL_BLOCK',
+                blockId: blockData.block_id.toString(),
+                images: blockImages,
+                hasImages: blockImages.length > 0
+              });
+              console.log(`✓ Created BSNL Block marker at ${bsnlLat}, ${bsnlLng}`);
+            }
+          } catch (error) {
+            console.error(`Error processing block data in block ${blockId}:`, error);
+          }
+          
+          // Don't process this as a regular point, skip to next
+          return;
+        }
+
+        // Regular survey point processing (not gp_data or blk_data)
         const lat = parseFloat(point.latitude);
         const lng = parseFloat(point.longitude);
         
@@ -1410,7 +1603,6 @@ export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
       Object.entries(surveyGroups).forEach(([surveyId, routePoints]) => {
         if (routePoints.length > 1) {
           try {
-
             const firstPoint = points.find(p => p.survey_id === surveyId);
 
             categoryCounts['SURVEY_ROUTE'] = (categoryCounts['SURVEY_ROUTE'] || 0) + 1;
@@ -1443,12 +1635,16 @@ export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
     }
   });
 
-    const categories: PlacemarkCategory[] = physicalSurveyCategories
+  console.log('=== Category Processing Complete ===');
+  console.log('GP_LOCATION:', categoryCounts['GP_LOCATION'] || 0);
+  console.log('BSNL_BLOCK:', categoryCounts['BSNL_BLOCK'] || 0);
+
+  const categories: PlacemarkCategory[] = physicalSurveyCategories
     .map(name => ({
       id: `physical-${name.toLowerCase().replace(/\s+/g, '-')}`,
       name,
       count: categoryCounts[name] || 0,
-      visible: name === 'SURVEY_ROUTE', // Only SURVEY_ROUTE visible by default
+      visible: name === 'SURVEY_ROUTE' || name === 'GP_LOCATION' || name === 'BSNL_BLOCK',
       color: PLACEMARK_CATEGORIES[name]?.color || '#6B7280',
       icon: PLACEMARK_CATEGORIES[name]?.icon || '📍'
     }))

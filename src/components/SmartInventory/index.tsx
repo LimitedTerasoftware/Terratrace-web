@@ -50,6 +50,8 @@ import {
 } from './PhotoSurveyService';
 import PhotoSurveyPanel from './PhotoSurveyPanel';
 
+import { ProcessedGPData, ProcessedBlockData } from './PlaceMark';
+
 interface NotifierState {
   type: 'success' | 'error';
   message: string;
@@ -89,7 +91,8 @@ function SmartInventory() {
   // API DATA STATE (Left Sidebar)
   // ==============================================
   // Physical Survey Data
-  const [physicalSurveyData, setPhysicalSurveyData] = useState<ProcessedPhysicalSurvey[]>([]);
+  const [physicalSurveyData, setPhysicalSurveyData] = 
+  useState<(ProcessedPhysicalSurvey | ProcessedGPData | ProcessedBlockData)[]>([]);
   const [physicalSurveyCategories, setPhysicalSurveyCategories] = useState<PlacemarkCategory[]>([]);
   const [isLoadingPhysical, setIsLoadingPhysical] = useState(false);
   const [rawPhysicalSurveyData, setRawPhysicalSurveyData] = useState<any>(null);

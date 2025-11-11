@@ -17,6 +17,7 @@ import {
   AlertCircle,
   ClipboardCheck
 } from "lucide-react";
+import DataTable, { TableColumn } from 'react-data-table-component';
 
 // ────────────────────────────────────────────────────────────────────────────────
 // Types
@@ -166,6 +167,11 @@ export default function SurveyDashboard() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+  const [totalRows, setTotalRows] = useState(0);
+
   const BASEURL = import.meta.env.VITE_API_BASE || 'https://api.tricadtrack.com';
 
   // Fetch districts by state code
@@ -189,14 +195,14 @@ export default function SurveyDashboard() {
     fetchDistricts();
   }, []);
 
-  // Fetch data on mount and when dates change
+  // Fetch data on mount and when dates or pagination changes
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         
-        // Build URL with date parameters if dates are selected
-        let usersUrl = 'https://api.tricadtrack.com/get-users-survey?state_code=6';
+        // Build URL with date parameters and pagination
+        let usersUrl = `https://api.tricadtrack.com/get-users-survey?state_code=6&page=${currentPage}&limit=${perPage}`;
         let statsUrl = 'https://api.tricadtrack.com/get-survey-count?state_code=19';
         
         if (startDate && endDate) {
@@ -236,6 +242,43 @@ export default function SurveyDashboard() {
               kmDoneKm: parseFloat(user.total_kms) || 0,
             }));
           setSurveyors(transformedData);
+          
+          // Set total rows for pagination - prioritize API's total count
+          // Check multiple possible locations in API response for total count
+          let apiTotalCount = 0;
+          
+          if (typeof usersData.total === 'number') {
+            // If total is directly in response
+            apiTotalCount = usersData.total;
+          } else if (typeof usersData.totalCount === 'number') {
+            // Alternative: totalCount field
+            apiTotalCount = usersData.totalCount;
+          } else if (typeof usersData.count === 'number') {
+            // Alternative: count field
+            apiTotalCount = usersData.count;
+          } else if (usersData.pagination?.total_users) {
+            // Your API format: pagination.total_users
+            apiTotalCount = usersData.pagination.total_users;
+          } else if (usersData.pagination?.total) {
+            // Alternative: pagination.total
+            apiTotalCount = usersData.pagination.total;
+          } else if (usersData.pagination?.totalRecords) {
+            // Alternative: totalRecords in pagination
+            apiTotalCount = usersData.pagination.totalRecords;
+          } else if (usersData.meta?.total) {
+            // Alternative: total in meta object
+            apiTotalCount = usersData.meta.total;
+          }
+          
+          // Set the total rows
+          if (apiTotalCount > 0) {
+            setTotalRows(apiTotalCount);
+          } else {
+            // Fallback: estimate if API doesn't provide total
+            console.warn('API response does not contain total count. Using estimated value.');
+            const estimatedTotal = (currentPage - 1) * perPage + transformedData.length;
+            setTotalRows(transformedData.length === perPage ? estimatedTotal + 1 : estimatedTotal);
+          }
         }
         
         if (statsData.success && statsData.data) {
@@ -250,7 +293,7 @@ export default function SurveyDashboard() {
     };
     
     fetchData();
-  }, [startDate, endDate]);
+  }, [startDate, endDate, currentPage, perPage]);
 
   const contractors = useMemo(() => Array.from(new Set(surveyors.map((s) => s.company))), [surveyors]);
   const assignees = useMemo(() => surveyors.map((s) => s.name), [surveyors]);
@@ -284,7 +327,170 @@ export default function SurveyDashboard() {
     setAssignee("All");
     setStartDate("");
     setEndDate("");
+    setCurrentPage(1); // Reset to first page when filters are reset
   };
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  // Handle rows per page change
+  const handlePerRowsChange = (newPerPage: number, page: number) => {
+    setPerPage(newPerPage);
+    setCurrentPage(page);
+  };
+
+  // Custom styles for DataTable (matching MachineList)
+  const customTableStyles = {
+    headCells: {
+      style: {
+        fontSize: '11px',
+        fontWeight: '500',
+        textTransform: 'uppercase' as const,
+        letterSpacing: '0.5px',
+        color: '#9CA3AF',
+        backgroundColor: '#F9FAFB',
+        borderBottom: '1px solid #E5E7EB',
+        paddingLeft: '16px',
+        paddingRight: '16px',
+        paddingTop: '12px',
+        paddingBottom: '12px',
+      },
+    },
+    cells: {
+      style: {
+        paddingLeft: '16px',
+        paddingRight: '16px',
+        paddingTop: '12px',
+        paddingBottom: '12px',
+        fontSize: '14px',
+        color: '#111827',
+        borderBottom: '1px solid #F3F4F6',
+      },
+    },
+    rows: {
+      style: {
+        '&:hover': {
+          backgroundColor: '#F9FAFB',
+        },
+      },
+    },
+    pagination: {
+      style: {
+        borderTop: '1px solid #E5E7EB',
+        minHeight: '56px',
+        paddingTop: '8px',
+        paddingBottom: '8px',
+      },
+      pageButtonsStyle: {
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+        backgroundColor: 'transparent',
+        border: 'none',
+        borderRadius: '4px',
+        fill: '#4B5563',
+        height: '32px',
+        width: '32px',
+        padding: '4px',
+        margin: '0 2px',
+        '&:disabled': {
+          cursor: 'not-allowed',
+          fill: '#D1D5DB',
+          opacity: 0.5,
+        },
+        '&:hover:not(:disabled)': {
+          backgroundColor: '#F3F4F6',
+          fill: '#1F2937',
+        },
+        '&:focus': {
+          outline: '2px solid #3B82F6',
+          outlineOffset: '2px',
+        },
+      },
+    },
+  };
+
+  // DataTable columns definition
+  const tableColumns: TableColumn<Surveyor>[] = [
+    {
+      name: "Surveyor",
+      selector: (row) => row.name,
+      sortable: true,
+      cell: (row) => (
+        <div className="flex items-center">
+          <img className="h-10 w-10 rounded-full" src={row.avatar} alt={row.name} />
+          <div className="ml-4">
+            <div className="text-sm font-medium text-gray-900">{row.name}</div>
+            <div className="text-sm text-gray-500">{row.company}</div>
+          </div>
+        </div>
+      ),
+      minWidth: '250px',
+    },
+    {
+      name: "Version",
+      selector: (row) => row.version,
+      sortable: true,
+      cell: (row) => (
+        <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+          {row.version}
+        </span>
+      ),
+      width: '120px',
+    },
+    {
+      name: "Completed",
+      selector: (row) => row.completed,
+      sortable: true,
+      cell: (row) => <span className="text-sm text-green-600 font-medium">{row.completed}</span>,
+      width: '120px',
+    },
+    {
+      name: "Pending",
+      selector: (row) => row.pending,
+      sortable: true,
+      cell: (row) => <span className="text-sm text-orange-600 font-medium">{row.pending}</span>,
+      width: '120px',
+    },
+    {
+      name: "Rejected",
+      selector: (row) => row.rejected,
+      sortable: true,
+      cell: (row) => <span className="text-sm text-red-600 font-medium">{row.rejected}</span>,
+      width: '120px',
+    },
+    {
+      name: "Total Surveys",
+      selector: (row) => row.total,
+      sortable: true,
+      cell: (row) => <span className="text-sm text-gray-900">{row.total}</span>,
+      width: '140px',
+    },
+    {
+      name: "KM Done",
+      selector: (row) => row.kmDoneKm,
+      sortable: true,
+      cell: (row) => <span className="text-sm text-gray-900">{fmtKm(row.kmDoneKm)}</span>,
+      width: '120px',
+    },
+    {
+      name: "Actions",
+      cell: (row) => (
+        <div className="flex items-center gap-2">
+          <button className="text-blue-600 hover:text-blue-800">Reassign</button>
+          <button className="text-blue-600 hover:text-blue-800">Split</button>
+          <button className="text-gray-400 hover:text-gray-600" aria-label="More actions">
+            <MoreHorizontal className="w-4 h-4" />
+          </button>
+        </div>
+      ),
+      ignoreRowClick: true,
+      allowOverflow: true,
+      button: true,
+      width: '200px',
+    },
+  ];
 
   if (loading) {
     return (
@@ -509,60 +715,32 @@ export default function SurveyDashboard() {
             <div className="p-6">
               {activeTab === "Table" && (
                 <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Surveyor</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Version</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Completed</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pending</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rejected</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Surveys</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">KM Done</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {filtered.map((s) => (
-                        <tr key={s.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <img className="h-10 w-10 rounded-full" src={s.avatar} alt={s.name} />
-                              <div className="ml-4">
-                                <div className="text-sm font-medium text-gray-900">{s.name}</div>
-                                <div className="text-sm text-gray-500">{s.company}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                              {s.version}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-green-600 font-medium">{s.completed}</span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-orange-600 font-medium">{s.pending}</span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-red-600 font-medium">{s.rejected}</span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{s.total}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{fmtKm(s.kmDoneKm)}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <div className="flex items-center gap-2">
-                              <button className="text-blue-600 hover:text-blue-800">Reassign</button>
-                              <button className="text-blue-600 hover:text-blue-800">Split</button>
-                              <button className="text-gray-400 hover:text-gray-600" aria-label="More actions">
-                                <MoreHorizontal className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <DataTable
+                    columns={tableColumns}
+                    data={filtered}
+                    pagination
+                    paginationServer
+                    paginationTotalRows={totalRows}
+                    paginationDefaultPage={currentPage}
+                    onChangePage={handlePageChange}
+                    onChangeRowsPerPage={handlePerRowsChange}
+                    paginationPerPage={perPage}
+                    paginationRowsPerPageOptions={[10, 25, 50, 100]}
+                    highlightOnHover
+                    pointerOnHover
+                    striped={false}
+                    dense={false}
+                    responsive
+                    customStyles={customTableStyles}
+                    noHeader
+                    defaultSortFieldId={1}
+                    progressPending={loading}
+                    progressComponent={
+                      <div className="py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                      </div>
+                    }
+                  />
                 </div>
               )}
 

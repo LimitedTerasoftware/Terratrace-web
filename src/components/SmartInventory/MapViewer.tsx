@@ -2,17 +2,18 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
 import { ProcessedPlacemark, PlacemarkCategory, ProcessedPhysicalSurvey, ProcessedDesktopPlanning, ProcessedRectification } from '../../types/kmz';
 import { PLACEMARK_CATEGORIES } from './PlaceMark';
+import { ProcessedGPData, ProcessedBlockData } from './PlaceMark';
 
 // Video & Photo Survey types
 import { TrackPoint } from './VideoSurveyService';
 import { PhotoPoint } from './PhotoSurveyService';
 
 interface GoogleMapProps {
-  placemarks: (ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedDesktopPlanning | ProcessedRectification)[];
+  placemarks: (ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedDesktopPlanning | ProcessedRectification | ProcessedGPData | ProcessedBlockData)[];
   categories: PlacemarkCategory[];
   visibleCategories: Set<string>;
-  highlightedPlacemark?: ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedDesktopPlanning | ProcessedRectification;
-  onPlacemarkClick: (placemark: ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedDesktopPlanning | ProcessedRectification) => void;
+  highlightedPlacemark?: ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedDesktopPlanning | ProcessedRectification | ProcessedGPData | ProcessedBlockData;
+  onPlacemarkClick: (placemark: ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedDesktopPlanning | ProcessedRectification | ProcessedGPData | ProcessedBlockData) => void;
   className?: string;
 
   // Enhanced Video Survey integration
@@ -34,61 +35,127 @@ const GOOGLE_MAPS_API_KEY = 'AIzaSyCPHNQoyCkDJ3kOdYZAjZElbhXuJvx-Odg';
 // Helper function to create image gallery HTML (OUTSIDE component to avoid hook issues)
 function createImageGalleryHTML(images: any[]): string {
   if (!images || images.length === 0) return '';
-
+  
   const galleryId = `gallery-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
   const imageHTML = images.map((image, index) => `
-    <div class="survey-image-container" data-gallery="${galleryId}" style="margin: 8px 0;">
-      <div class="survey-image-label" style="font-size: 12px; color: #666; margin-bottom: 4px;">
+    <div class="survey-image-container" data-gallery="${galleryId}" style="flex: 0 0 auto; width: 200px; margin-right: 12px;">
+      <div style="
+        font-size: 11px;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 6px;
+        background: #F3F4F6;
+        padding: 6px 8px;
+        border-radius: 4px;
+        text-align: center;
+      ">
         ${image.label}
       </div>
-      <img 
-        src="${image.url}" 
-        alt="${image.label}"
-        style="
-          width: 100%; 
-          max-width: 300px; 
-          height: auto; 
-          max-height: 200px; 
-          object-fit: cover; 
-          border-radius: 4px; 
-          border: 1px solid #ddd;
-          cursor: pointer;
-        "
-        onclick="window.open('${image.url}', '_blank')"
-        onerror="
-          this.parentElement.style.display='none';
-          updateImageGalleryCount('${galleryId}');
-        "
-      />
+      <div style="position: relative; width: 200px; height: 150px; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.15); cursor: pointer;">
+        <img 
+          src="${image.url}" 
+          alt="${image.label}"
+          style="
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.2s;
+          "
+          onclick="window.open('${image.url}', '_blank')"
+          onmouseover="this.style.transform='scale(1.05)'"
+          onmouseout="this.style.transform='scale(1)'"
+          onerror="
+            this.parentElement.parentElement.style.display='none';
+            updateImageGalleryCount('${galleryId}');
+          "
+        />
+        <div style="
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+          padding: 8px;
+          color: white;
+          font-size: 10px;
+          text-align: center;
+        ">
+          Click to enlarge
+        </div>
+      </div>
     </div>
   `).join('');
-
+  
   return `
-    <div id="${galleryId}-section" class="survey-images-section" style="margin-top: 12px; border-top: 1px solid #eee; padding-top: 12px;">
-      <div id="${galleryId}-header" style="font-weight: 600; margin-bottom: 8px; color: #333;">
-        Survey Images
+    <div id="${galleryId}-section" class="survey-images-section" style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #E5E7EB;">
+      <div id="${galleryId}-header" style="
+        font-weight: 600;
+        font-size: 14px;
+        color: #1F2937;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      ">
+        <span style="font-size: 18px;">📸</span>
+        <span>Installation Photos (${images.length})</span>
       </div>
-      <div id="${galleryId}" class="survey-images-grid" style="max-height: 400px; overflow-y: auto;">
+      <div id="${galleryId}" class="survey-images-grid" style="
+        display: flex;
+        overflow-x: auto;
+        overflow-y: hidden;
+        gap: 0;
+        padding: 8px 0;
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+      ">
         ${imageHTML}
       </div>
+      <div style="
+        text-align: center;
+        font-size: 11px;
+        color: #6B7280;
+        margin-top: 8px;
+        font-style: italic;
+      ">
+        ← Scroll horizontally to view all photos →
+      </div>
     </div>
+    <style>
+      #${galleryId}::-webkit-scrollbar {
+        height: 8px;
+      }
+      #${galleryId}::-webkit-scrollbar-track {
+        background: #F3F4F6;
+        border-radius: 4px;
+      }
+      #${galleryId}::-webkit-scrollbar-thumb {
+        background: #9CA3AF;
+        border-radius: 4px;
+      }
+      #${galleryId}::-webkit-scrollbar-thumb:hover {
+        background: #6B7280;
+      }
+    </style>
     <script>
       if (typeof window.updateImageGalleryCount === 'undefined') {
         window.updateImageGalleryCount = function(galleryId) {
           const gallery = document.getElementById(galleryId);
-          const countElement = document.getElementById(galleryId + '-count');
           const sectionElement = document.getElementById(galleryId + '-section');
           
-          if (gallery && countElement && sectionElement) {
-            const visibleImages = gallery.querySelectorAll('.survey-image-container[data-gallery="' + galleryId + '"]:not([style*="display: none"])').length;
+          if (gallery && sectionElement) {
+            const visibleImages = gallery.querySelectorAll(
+              '.survey-image-container[data-gallery="' + galleryId + '"]:not([style*="display: none"])'
+            ).length;
             
             if (visibleImages === 0) {
-              // Hide entire section if no images are visible
               sectionElement.style.display = 'none';
             } else {
-              // Update count
-              countElement.textContent = visibleImages;
+              const header = document.getElementById(galleryId + '-header');
+              if (header) {
+                header.innerHTML = '<span style="font-size: 18px;">📸</span><span>Installation Photos (' + visibleImages + ')</span>';
+              }
             }
           }
         };
@@ -364,212 +431,295 @@ useEffect(() => {
     hasVisiblePlacemarks = true;
 
     if (placemark.type === 'point') {
-      const isPhysicalSurvey = placemark.id.startsWith('physical-');
-      const isDesktopPlanning = placemark.id.startsWith('desktop-');
-      const isRectification = placemark.id.startsWith('rectification-'); 
-      const isExternalFile = !placemark.id.startsWith('physical-') && !placemark.id.startsWith('desktop-') && !placemark.id.startsWith('rectification-');
+  const isGP = placemark.id.startsWith('gp-location-');
+  const isBlock = placemark.id.startsWith('bsnl-block-');
+  const isPhysicalSurvey = placemark.id.startsWith('physical-');
+  const isDesktopPlanning = placemark.id.startsWith('desktop-');
+  const isRectification = placemark.id.startsWith('rectification-'); 
+  const isExternalFile = !placemark.id.startsWith('physical-') && !placemark.id.startsWith('desktop-') && !placemark.id.startsWith('rectification-') && !isGP && !isBlock;
 
-      let markerIcon: google.maps.Symbol | google.maps.Icon | undefined;
+  let markerIcon: google.maps.Symbol | google.maps.Icon | undefined;
 
-       if (isPhysicalSurvey || isRectification) {
-        markerIcon = {
-          path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-          scale: 5,
-          fillColor: category.color,
-          fillOpacity: 0.9,
-          strokeColor: '#ffffff',
-          strokeWeight: 3,
-        } as google.maps.Symbol;
-      } else if (isDesktopPlanning) {
-  const desktopPlacemark = placemark as ProcessedDesktopPlanning;
-  const assetType = desktopPlacemark.assetType || desktopPlacemark.pointType || 'FPOI';
-
-  if (assetType === 'GP') {
+  // GP and Block use location pin markers
+  if (isGP) {
+    // GP Installation marker - DARK VIOLET location pin
     markerIcon = {
-      path: google.maps.SymbolPath.CIRCLE,
-      scale: 14,
+      path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z',
+      fillColor: category.color,  // #6B21A8 (DARK VIOLET)
+      fillOpacity: 0.9,
+      strokeColor: '#ffffff',
+      strokeWeight: 2,
+      scale: 1.5,
+      anchor: new google.maps.Point(12, 22),
+    } as google.maps.Symbol;
+  } else if (isBlock) {
+    // BSNL Block marker - BURNT ORANGE location pin
+    markerIcon = {
+      path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z',
+      fillColor: category.color,  // #C2410C (BURNT ORANGE)
+      fillOpacity: 0.9,
+      strokeColor: '#ffffff',
+      strokeWeight: 2,
+      scale: 1.5,
+      anchor: new google.maps.Point(12, 22),
+    } as google.maps.Symbol;
+  } else if (isPhysicalSurvey || isRectification) {
+    // Physical survey and rectification - arrows
+    markerIcon = {
+      path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+      scale: 5,
       fillColor: category.color,
       fillOpacity: 0.9,
-      strokeColor: '#000000',
+      strokeColor: '#ffffff',
       strokeWeight: 3,
     } as google.maps.Symbol;
-  } else if (assetType === 'BHQ' || assetType === 'Block Router') {
-    markerIcon = {
-      path: 'M-8,-8 L8,-8 L8,8 L-8,8 Z',
-      scale: 1,
-      fillColor: category.color,
-      fillOpacity: 0.9,
-      strokeColor: '#ffffff',
-      strokeWeight: 3,
-    } as google.maps.Symbol;
-  } else if (assetType === 'FPOI') {
-    markerIcon = {
-      path: 'M0,-12 L8,8 L-8,8 Z',
-      scale: 1,
-      fillColor: category.color,
-      fillOpacity: 0.9,
-      strokeColor: '#ffffff',
-      strokeWeight: 2,
-    } as google.maps.Symbol;
-  } 
-  // ADD JUNCTION TYPES HERE
-  else if (assetType === 'SJC') {
-    markerIcon = {
-      path: 'M-6,-6 L6,-6 L6,6 L-6,6 Z', // Diamond shape
-      scale: 1.2,
-      fillColor: category.color,
-      fillOpacity: 0.9,
-      strokeColor: '#ffffff',
-      strokeWeight: 2,
-      rotation: 45, // Rotate square to make diamond
-    } as google.maps.Symbol;
-  } else if (assetType === 'BJC') {
-    markerIcon = {
-      path: google.maps.SymbolPath.CIRCLE,
-      scale: 8,
-      fillColor: category.color,
-      fillOpacity: 0.9,
-      strokeColor: '#ffffff',
-      strokeWeight: 2,
-    } as google.maps.Symbol;
-  } else if (assetType === 'LC') {
-    markerIcon = {
-      path: 'M0,-8 L8,0 L0,8 L-8,0 Z', // Diamond
-      scale: 1,
-      fillColor: category.color,
-      fillOpacity: 0.9,
-      strokeColor: '#ffffff',
-      strokeWeight: 2,
-    } as google.maps.Symbol;
-  }
-  else {
-    markerIcon = {
-      path: 'M-6,-6 L6,-6 L6,6 L-6,6 Z M-4,-4 L4,-4 L4,4 L-4,4 Z',
-      scale: 1,
-      fillColor: category.color,
-      fillOpacity: 0.9,
-      strokeColor: '#ffffff',
-      strokeWeight: 2,
-    } as google.maps.Symbol;
-  }
-}
+  } else if (isDesktopPlanning) {
+    const desktopPlacemark = placemark as ProcessedDesktopPlanning;
+    const assetType = desktopPlacemark.assetType || desktopPlacemark.pointType || 'FPOI';
 
-      const marker = new google.maps.Marker({
-        position: placemark.coordinates as { lat: number; lng: number },
-        map: mapInstanceRef.current!,
-        title: placemark.name,
-        icon: markerIcon,
-      });
+    if (assetType === 'GP') {
+      markerIcon = {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 14,
+        fillColor: category.color,
+        fillOpacity: 0.9,
+        strokeColor: '#000000',
+        strokeWeight: 3,
+      } as google.maps.Symbol;
+    } else if (assetType === 'BHQ' || assetType === 'Block Router') {
+      markerIcon = {
+        path: 'M-8,-8 L8,-8 L8,8 L-8,8 Z',
+        scale: 1,
+        fillColor: category.color,
+        fillOpacity: 0.9,
+        strokeColor: '#ffffff',
+        strokeWeight: 3,
+      } as google.maps.Symbol;
+    } else if (assetType === 'FPOI') {
+      markerIcon = {
+        path: 'M0,-12 L8,8 L-8,8 Z',
+        scale: 1,
+        fillColor: category.color,
+        fillOpacity: 0.9,
+        strokeColor: '#ffffff',
+        strokeWeight: 2,
+      } as google.maps.Symbol;
+    } else if (assetType === 'SJC') {
+      markerIcon = {
+        path: 'M-6,-6 L6,-6 L6,6 L-6,6 Z',
+        scale: 1.2,
+        fillColor: category.color,
+        fillOpacity: 0.9,
+        strokeColor: '#ffffff',
+        strokeWeight: 2,
+        rotation: 45,
+      } as google.maps.Symbol;
+    } else if (assetType === 'BJC') {
+      markerIcon = {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 8,
+        fillColor: category.color,
+        fillOpacity: 0.9,
+        strokeColor: '#ffffff',
+        strokeWeight: 2,
+      } as google.maps.Symbol;
+    } else if (assetType === 'LC') {
+      markerIcon = {
+        path: 'M0,-8 L8,0 L0,8 L-8,0 Z',
+        scale: 1,
+        fillColor: category.color,
+        fillOpacity: 0.9,
+        strokeColor: '#ffffff',
+        strokeWeight: 2,
+      } as google.maps.Symbol;
+    } else {
+      markerIcon = {
+        path: 'M-6,-6 L6,-6 L6,6 L-6,6 Z M-4,-4 L4,-4 L4,4 L-4,4 Z',
+        scale: 1,
+        fillColor: category.color,
+        fillOpacity: 0.9,
+        strokeColor: '#ffffff',
+        strokeWeight: 2,
+      } as google.maps.Symbol;
+    }
+  }
+
+  const marker = new google.maps.Marker({
+    position: placemark.coordinates as { lat: number; lng: number },
+    map: mapInstanceRef.current!,
+    title: placemark.name,
+    icon: markerIcon,
+  });
 
       marker.addListener('click', () => {
-        onPlacemarkClick(placemark);
+  onPlacemarkClick(placemark);
 
-        if (infoWindowRef.current) {
-          const isPhysical = placemark.id.startsWith('physical-');
-          const isDesktop = placemark.id.startsWith('desktop-');
-          const isRectification = placemark.id.startsWith('rectification-');
-          const isExternal = !isPhysical && !isDesktop && !isRectification;
+  if (infoWindowRef.current) {
+    const isPhysical = placemark.id.startsWith('physical-');
+    const isDesktop = placemark.id.startsWith('desktop-');
+    const isRectification = placemark.id.startsWith('rectification-');
+    const isGP = placemark.id.startsWith('gp-location-') || placemark.id.startsWith('pole-location-') || placemark.id.startsWith('earthpit-location-');
+    const isBlock = placemark.id.startsWith('bsnl-block-');
+    const isExternal = !isPhysical && !isDesktop && !isRectification && !isGP && !isBlock;
     
-          
-          let infoContent = '';
+    let infoContent = '';
 
-          if (isPhysical) {
-            const physicalInfo = placemark as ProcessedPhysicalSurvey;
-            
-            const baseInfo = `
-              <div class="p-3" style="max-width: 400px;">
-                <h3 class="font-semibold text-gray-900 mb-1" style="font-weight: 600; margin-bottom: 4px;">
-                  ${placemark.name}
-                </h3>
-                <p class="text-sm text-gray-600">Category: ${placemark.category}</p>
-                <p class="text-sm text-gray-600">Type: Physical Survey (API)</p>
-                <p class="text-sm text-gray-600">Survey ID: ${physicalInfo.surveyId || 'N/A'}</p>
-                <p class="text-sm text-gray-600">Block ID: ${physicalInfo.blockId || 'N/A'}</p>
-                <p class="text-sm text-gray-600">Event Type: ${physicalInfo.eventType || physicalInfo.category}</p>
-                <p class="text-sm text-gray-600">Coordinates: ${typeof placemark.coordinates === 'object' && 'lat' in placemark.coordinates 
-                  ? `${placemark.coordinates.lat.toFixed(6)}, ${placemark.coordinates.lng.toFixed(6)}`
-                  : 'N/A'}</p>
-            `;
+    if (isGP) {
+  const gpInfo = placemark as ProcessedGPData;
+  
+  const baseInfo = `
+    <div class="p-3" style="max-width: 400px;">
+      <h3 class="font-semibold text-gray-900 mb-2" style="font-weight: 600; margin-bottom: 8px;">
+        ${placemark.name}
+      </h3>
+      <div class="text-sm text-gray-700 space-y-1" style="font-size: 14px;">
+        <div><strong>Category:</strong> GP Installation</div>
+        <div><strong>Type:</strong> Physical Survey - GP Data</div>
+        <div class="mt-3 pt-2 border-t border-gray-200">
+          <div class="font-semibold mb-2 text-base">📍 Installation Coordinates:</div>
+          <div class="ml-2 space-y-1.5">
+            <div class="flex items-start">
+              <span class="font-medium text-green-600 mr-2">🏘️ GP Location:</span>
+              <span>${gpInfo.gpCoordinates.lat.toFixed(6)}, ${gpInfo.gpCoordinates.lng.toFixed(6)}</span>
+            </div>
+            <div class="flex items-start">
+              <span class="font-medium text-blue-600 mr-2">📍 Pole Location:</span>
+              <span>${gpInfo.poleCoordinates.lat.toFixed(6)}, ${gpInfo.poleCoordinates.lng.toFixed(6)}</span>
+            </div>
+            <div class="flex items-start">
+              <span class="font-medium text-purple-600 mr-2">⚡ Earth Pit:</span>
+              <span>${gpInfo.earthPitCoordinates.lat.toFixed(6)}, ${gpInfo.earthPitCoordinates.lng.toFixed(6)}</span>
+            </div>
+          </div>
+        </div>
+        ${gpInfo.hasImages ? `
+          <div class="mt-3 pt-2 border-t border-gray-200">
+            <strong>📷 Installation Photos:</strong> ${gpInfo.images.length} images available
+          </div>
+        ` : ''}
+      </div>
+  `;
 
-            const imageGallery = (physicalInfo.hasImages && physicalInfo.images) 
-              ? createImageGalleryHTML(physicalInfo.images)
-              : '';
+  const imageGallery = (gpInfo.hasImages && gpInfo.images) 
+    ? createImageGalleryHTML(gpInfo.images)
+    : '';
 
-            infoContent = baseInfo + imageGallery + '</div>';
-            
-          } else if (isRectification) {
-            const rectInfo = placemark as ProcessedRectification;
-            
-            // Debug logging for images
-            console.log('Rectification Images:', {
-              hasImages: rectInfo.hasImages,
-              imageCount: rectInfo.images?.length || 0,
-              images: rectInfo.images
-            });
-            
-            const baseInfo = `
-              <div class="p-3" style="max-width: 400px;">
-                <h3 class="font-semibold text-gray-900 mb-2" style="font-weight: 600; margin-bottom: 8px;">
-                  ${placemark.name}
-                </h3>
-                <div class="text-sm text-gray-700 space-y-1" style="font-size: 14px;">
-                  <div><strong>Work Type:</strong> ${rectInfo.workToBeDone}</div>
-                  <div><strong>Category:</strong> ${placemark.category}</div>
-                  <div><strong>Type:</strong> Rectification Survey (API)</div>
-                  <div><strong>Block:</strong> ${rectInfo.blockName}</div>
-                  <div><strong>GP:</strong> ${rectInfo.gpName}</div>
-                  <div><strong>LGD Code:</strong> ${rectInfo.lgdCode}</div>
-                  ${rectInfo.accuracy ? `<div><strong>Accuracy:</strong> ${rectInfo.accuracy}m</div>` : ''}
-                  ${rectInfo.length ? `<div><strong>Length:</strong> ${rectInfo.length} km</div>` : ''}
-                  <div><strong>Coordinates:</strong> ${typeof placemark.coordinates === 'object' && 'lat' in placemark.coordinates 
-                    ? `${placemark.coordinates.lat.toFixed(6)}, ${placemark.coordinates.lng.toFixed(6)}`
-                    : 'N/A'}</div>
-                  ${rectInfo.createdTime ? `<div><strong>Created:</strong> ${new Date(rectInfo.createdTime).toLocaleDateString()}</div>` : ''}
-                </div>
-            `;
+  infoContent = baseInfo + imageGallery + '</div>';
+} else if (isBlock) {
+      const blockInfo = placemark as ProcessedBlockData;
+      
+      const baseInfo = `
+        <div class="p-3" style="max-width: 400px;">
+          <h3 class="font-semibold text-gray-900 mb-2" style="font-weight: 600; margin-bottom: 8px;">
+            ${placemark.name}
+          </h3>
+          <div class="text-sm text-gray-700 space-y-1" style="font-size: 14px;">
+            <div><strong>Category:</strong> ${placemark.category}</div>
+            <div><strong>Type:</strong> BSNL Block Office</div>
+            <div><strong>Block ID:</strong> ${blockInfo.blockId}</div>
+            <div><strong>Coordinates:</strong> ${typeof placemark.coordinates === 'object' && 'lat' in placemark.coordinates 
+              ? `${placemark.coordinates.lat.toFixed(6)}, ${placemark.coordinates.lng.toFixed(6)}`
+              : 'N/A'}</div>
+            ${blockInfo.hasImages ? `<div class="mt-2"><strong>Installation Photos:</strong> ${blockInfo.images.length} images available</div>` : ''}
+          </div>
+      `;
 
-            const imageGallery = (rectInfo.hasImages && rectInfo.images && rectInfo.images.length > 0) 
-              ? createImageGalleryHTML(rectInfo.images)
-              : '';
+      const imageGallery = (blockInfo.hasImages && blockInfo.images) 
+        ? createImageGalleryHTML(blockInfo.images)
+        : '';
 
-            infoContent = baseInfo + imageGallery + '</div>';
-            
-          } else if (isDesktop) {
-            const desktopInfo = placemark as ProcessedDesktopPlanning;
-            infoContent = `
-              <div class="p-3">
-                <h3 class="font-semibold text-gray-900 mb-1">${placemark.name}</h3>
-                <p class="text-sm text-gray-600">Category: ${placemark.category}</p>
-                <p class="text-sm text-gray-600">Type: Desktop Planning (API)</p>
-                <p class="text-sm text-gray-600">Asset Type: ${desktopInfo.assetType || 'N/A'}</p>
-                <p class="text-sm text-gray-600">Status: ${desktopInfo.status || 'N/A'}</p>
-                ${desktopInfo.ring ? `<p class="text-sm text-gray-600">Ring: ${desktopInfo.ring}</p>` : ''}
-                ${desktopInfo.lgdCode && desktopInfo.lgdCode !== 'NULL' ? `<p class="text-sm text-gray-600">LGD Code: ${desktopInfo.lgdCode}</p>` : ''}
-                ${desktopInfo.networkId ? `<p class="text-sm text-gray-600">Network ID: ${desktopInfo.networkId}</p>` : ''}
-              </div>
-            `;
-          } else if (isExternal) {
-            const externalInfo = placemark as ProcessedPlacemark;
-            const sourceType = placemark.category.startsWith('External Survey:') ? 'Survey File' : 
-                             placemark.category.startsWith('External Desktop:') ? 'Desktop File' : 'External File';
-            
-            infoContent = `
-              <div class="p-3">
-                <h3 class="font-semibold text-gray-900 mb-1">${placemark.name}</h3>
-                <p class="text-sm text-gray-600">Category: ${placemark.category.replace(/^External (Survey|Desktop): /, '')}</p>
-                <p class="text-sm text-gray-600">Type: ${sourceType}</p>
-                <p class="text-sm text-gray-600">Point Type: ${externalInfo.pointType || 'N/A'}</p>
-                <p class="text-sm text-gray-600">Coordinates: ${typeof placemark.coordinates === 'object' && 'lat' in placemark.coordinates 
-                  ? `${placemark.coordinates.lat.toFixed(6)}, ${placemark.coordinates.lng.toFixed(6)}`
-                  : 'N/A'}</p>
-              </div>
-            `;
-          }
+      infoContent = baseInfo + imageGallery + '</div>';
+      
+    } else if (isPhysical) {
+      const physicalInfo = placemark as ProcessedPhysicalSurvey;
+      
+      const baseInfo = `
+        <div class="p-3" style="max-width: 400px;">
+          <h3 class="font-semibold text-gray-900 mb-1" style="font-weight: 600; margin-bottom: 4px;">
+            ${placemark.name}
+          </h3>
+          <p class="text-sm text-gray-600">Category: ${placemark.category}</p>
+          <p class="text-sm text-gray-600">Type: Physical Survey (API)</p>
+          <p class="text-sm text-gray-600">Survey ID: ${physicalInfo.surveyId || 'N/A'}</p>
+          <p class="text-sm text-gray-600">Block ID: ${physicalInfo.blockId || 'N/A'}</p>
+          <p class="text-sm text-gray-600">Event Type: ${physicalInfo.eventType || physicalInfo.category}</p>
+          <p class="text-sm text-gray-600">Coordinates: ${typeof placemark.coordinates === 'object' && 'lat' in placemark.coordinates 
+            ? `${placemark.coordinates.lat.toFixed(6)}, ${placemark.coordinates.lng.toFixed(6)}`
+            : 'N/A'}</p>
+      `;
 
-          infoWindowRef.current.setContent(infoContent);
-          infoWindowRef.current.open(mapInstanceRef.current!, marker);
-        }
-      });
+      const imageGallery = (physicalInfo.hasImages && physicalInfo.images) 
+        ? createImageGalleryHTML(physicalInfo.images)
+        : '';
+
+      infoContent = baseInfo + imageGallery + '</div>';
+      
+    } else if (isRectification) {
+      const rectInfo = placemark as ProcessedRectification;
+      
+      const baseInfo = `
+        <div class="p-3" style="max-width: 400px;">
+          <h3 class="font-semibold text-gray-900 mb-2" style="font-weight: 600; margin-bottom: 8px;">
+            ${placemark.name}
+          </h3>
+          <div class="text-sm text-gray-700 space-y-1" style="font-size: 14px;">
+            <div><strong>Work Type:</strong> ${rectInfo.workToBeDone}</div>
+            <div><strong>Category:</strong> ${placemark.category}</div>
+            <div><strong>Type:</strong> Rectification Survey (API)</div>
+            <div><strong>Block:</strong> ${rectInfo.blockName}</div>
+            <div><strong>GP:</strong> ${rectInfo.gpName}</div>
+            <div><strong>LGD Code:</strong> ${rectInfo.lgdCode}</div>
+            ${rectInfo.accuracy ? `<div><strong>Accuracy:</strong> ${rectInfo.accuracy}m</div>` : ''}
+            ${rectInfo.length ? `<div><strong>Length:</strong> ${rectInfo.length} km</div>` : ''}
+            <div><strong>Coordinates:</strong> ${typeof placemark.coordinates === 'object' && 'lat' in placemark.coordinates 
+              ? `${placemark.coordinates.lat.toFixed(6)}, ${placemark.coordinates.lng.toFixed(6)}`
+              : 'N/A'}</div>
+            ${rectInfo.createdTime ? `<div><strong>Created:</strong> ${new Date(rectInfo.createdTime).toLocaleDateString()}</div>` : ''}
+          </div>
+      `;
+
+      const imageGallery = (rectInfo.hasImages && rectInfo.images && rectInfo.images.length > 0) 
+        ? createImageGalleryHTML(rectInfo.images)
+        : '';
+
+      infoContent = baseInfo + imageGallery + '</div>';
+      
+    } else if (isDesktop) {
+      const desktopInfo = placemark as ProcessedDesktopPlanning;
+      infoContent = `
+        <div class="p-3">
+          <h3 class="font-semibold text-gray-900 mb-1">${placemark.name}</h3>
+          <p class="text-sm text-gray-600">Category: ${placemark.category}</p>
+          <p class="text-sm text-gray-600">Type: Desktop Planning (API)</p>
+          <p class="text-sm text-gray-600">Asset Type: ${desktopInfo.assetType || 'N/A'}</p>
+          <p class="text-sm text-gray-600">Status: ${desktopInfo.status || 'N/A'}</p>
+          ${desktopInfo.ring ? `<p class="text-sm text-gray-600">Ring: ${desktopInfo.ring}</p>` : ''}
+          ${desktopInfo.lgdCode && desktopInfo.lgdCode !== 'NULL' ? `<p class="text-sm text-gray-600">LGD Code: ${desktopInfo.lgdCode}</p>` : ''}
+          ${desktopInfo.networkId ? `<p class="text-sm text-gray-600">Network ID: ${desktopInfo.networkId}</p>` : ''}
+        </div>
+      `;
+    } else if (isExternal) {
+      const externalInfo = placemark as ProcessedPlacemark;
+      const sourceType = placemark.category.startsWith('External Survey:') ? 'Survey File' : 
+                       placemark.category.startsWith('External Desktop:') ? 'Desktop File' : 'External File';
+      
+      infoContent = `
+        <div class="p-3">
+          <h3 class="font-semibold text-gray-900 mb-1">${placemark.name}</h3>
+          <p class="text-sm text-gray-600">Category: ${placemark.category.replace(/^External (Survey|Desktop): /, '')}</p>
+          <p class="text-sm text-gray-600">Type: ${sourceType}</p>
+          <p class="text-sm text-gray-600">Point Type: ${externalInfo.pointType || 'N/A'}</p>
+          <p class="text-sm text-gray-600">Coordinates: ${typeof placemark.coordinates === 'object' && 'lat' in placemark.coordinates 
+            ? `${placemark.coordinates.lat.toFixed(6)}, ${placemark.coordinates.lng.toFixed(6)}`
+            : 'N/A'}</p>
+        </div>
+      `;
+    }
+
+    infoWindowRef.current.setContent(infoContent);
+    infoWindowRef.current.open(mapInstanceRef.current!, marker);
+  }
+});
 
       // Keep both lists: the array and the id→marker map (for fast lookup by unique id)
       markersRef.current.push(marker);

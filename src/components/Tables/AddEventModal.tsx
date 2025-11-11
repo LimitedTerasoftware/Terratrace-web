@@ -60,6 +60,15 @@ interface FormData {
     endPhotoLat: string;
     endPhotoLong: string;
   };
+  videoDetails?: {
+    startLatitude: string;
+    startLongitude: string;
+    startTimeStamp: string;
+    endLatitude: string;
+    endLongitude: string;
+    endTimeStamp: string;
+    videoUrl: string;
+  };
 }
 
 const AddEventModal: React.FC<AddEventModalProps> = ({
@@ -103,6 +112,8 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string>('');
 
   // Event type options
   const eventTypes = [
@@ -113,6 +124,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
     'KILOMETERSTONE',
     'FIBERTURN',
     'ROADCROSSING',
+    'VIDEORECORD',
     'SURVEYSTART',
     'ENDSURVEY'
   ];
@@ -127,6 +139,8 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
       }));
       setSelectedFiles([]);
       setPreviewUrls([]);
+      setSelectedVideo(null);
+      setVideoPreviewUrl('');
     }
   }, [isOpen, surveyId]);
 
@@ -190,6 +204,25 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
     setPreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setSelectedVideo(file);
+
+    // Create preview URL for video
+    const videoUrl = URL.createObjectURL(file);
+    setVideoPreviewUrl(videoUrl);
+  };
+
+  const removeVideo = () => {
+    if (videoPreviewUrl) {
+      URL.revokeObjectURL(videoPreviewUrl);
+    }
+    setSelectedVideo(null);
+    setVideoPreviewUrl('');
+  };
+
   const uploadImages = async (files: File[]): Promise<string[]> => {
     const formData = new FormData();
     files.forEach(file => {
@@ -220,6 +253,32 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
     }
   };
 
+  const uploadVideo = async (file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append('videos[]', file); 
+
+  try {
+    const response = await axios.post('https://traceapi.tricadtrack.com/api/v1/upload-image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+
+    // ✅ Response format: { success: true, data: { videos: [...] } }
+    if (response.data && response.data.success && response.data.data && response.data.data.videos) {
+      const videoUrl = response.data.data.videos[0];  // ✅ Get first video from videos array
+      console.log('Video uploaded successfully:', videoUrl);
+      return videoUrl;
+    }
+    
+    throw new Error('Invalid response format from upload API');
+  } catch (error: any) {
+    console.error('Video upload error:', error);
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to upload video';
+    throw new Error(errorMessage);
+  }
+};
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -229,9 +288,25 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
       return;
     }
 
+    // Additional validation for VIDEORECORD
+    if (formData.eventType === 'VIDEORECORD' && !selectedVideo) {
+      alert('Please upload a video for VIDEORECORD event');
+      return;
+    }
+
     setLoading(true);
     try {
       let uploadedUrls: string[] = [];
+      let uploadedVideoUrl: string = '';
+
+      // Upload video if VIDEORECORD event
+      if (formData.eventType === 'VIDEORECORD' && selectedVideo) {
+        setUploadingImages(true);
+        console.log('Uploading video...');
+        uploadedVideoUrl = await uploadVideo(selectedVideo);
+        console.log('Uploaded video URL:', uploadedVideoUrl);
+        setUploadingImages(false);
+      }
 
       // Upload images if any
       if (selectedFiles.length > 0) {
@@ -322,6 +397,19 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
             endPhotoLong: formData.roadCrossing?.endPhotoLong || ''
           };
           console.log('ROADCROSSING - roadCrossing:', payload.roadCrossing);
+          break;
+
+        case 'VIDEORECORD':
+          payload.videoDetails = {
+            startLatitude: parseFloat(formData.videoDetails?.startLatitude || formData.latitude),
+            startLongitude: parseFloat(formData.videoDetails?.startLongitude || formData.longitude),
+            startTimeStamp: parseInt(formData.videoDetails?.startTimeStamp || Date.now().toString()),
+            endLatitude: parseFloat(formData.videoDetails?.endLatitude || formData.latitude),
+            endLongitude: parseFloat(formData.videoDetails?.endLongitude || formData.longitude),
+            endTimeStamp: parseInt(formData.videoDetails?.endTimeStamp || Date.now().toString()),
+            videoUrl: uploadedVideoUrl
+          };
+          console.log('VIDEORECORD - videoDetails:', payload.videoDetails);
           break;
 
         case 'SURVEYSTART':
@@ -504,6 +592,182 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
           </div>
         );
 
+      case 'VIDEORECORD':
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Start Latitude
+                </label>
+                <input
+                  type="text"
+                  name="videoDetails.startLatitude"
+                  value={formData.videoDetails?.startLatitude || ''}
+                  onChange={(e) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      videoDetails: {
+                        ...prev.videoDetails,
+                        startLatitude: e.target.value,
+                        startLongitude: prev.videoDetails?.startLongitude || '',
+                        startTimeStamp: prev.videoDetails?.startTimeStamp || '',
+                        endLatitude: prev.videoDetails?.endLatitude || '',
+                        endLongitude: prev.videoDetails?.endLongitude || '',
+                        endTimeStamp: prev.videoDetails?.endTimeStamp || '',
+                        videoUrl: prev.videoDetails?.videoUrl || ''
+                      }
+                    }));
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Start Latitude"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Start Longitude
+                </label>
+                <input
+                  type="text"
+                  name="videoDetails.startLongitude"
+                  value={formData.videoDetails?.startLongitude || ''}
+                  onChange={(e) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      videoDetails: {
+                        ...prev.videoDetails,
+                        startLatitude: prev.videoDetails?.startLatitude || '',
+                        startLongitude: e.target.value,
+                        startTimeStamp: prev.videoDetails?.startTimeStamp || '',
+                        endLatitude: prev.videoDetails?.endLatitude || '',
+                        endLongitude: prev.videoDetails?.endLongitude || '',
+                        endTimeStamp: prev.videoDetails?.endTimeStamp || '',
+                        videoUrl: prev.videoDetails?.videoUrl || ''
+                      }
+                    }));
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Start Longitude"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  End Latitude
+                </label>
+                <input
+                  type="text"
+                  name="videoDetails.endLatitude"
+                  value={formData.videoDetails?.endLatitude || ''}
+                  onChange={(e) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      videoDetails: {
+                        ...prev.videoDetails,
+                        startLatitude: prev.videoDetails?.startLatitude || '',
+                        startLongitude: prev.videoDetails?.startLongitude || '',
+                        startTimeStamp: prev.videoDetails?.startTimeStamp || '',
+                        endLatitude: e.target.value,
+                        endLongitude: prev.videoDetails?.endLongitude || '',
+                        endTimeStamp: prev.videoDetails?.endTimeStamp || '',
+                        videoUrl: prev.videoDetails?.videoUrl || ''
+                      }
+                    }));
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="End Latitude"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  End Longitude
+                </label>
+                <input
+                  type="text"
+                  name="videoDetails.endLongitude"
+                  value={formData.videoDetails?.endLongitude || ''}
+                  onChange={(e) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      videoDetails: {
+                        ...prev.videoDetails,
+                        startLatitude: prev.videoDetails?.startLatitude || '',
+                        startLongitude: prev.videoDetails?.startLongitude || '',
+                        startTimeStamp: prev.videoDetails?.startTimeStamp || '',
+                        endLatitude: prev.videoDetails?.endLatitude || '',
+                        endLongitude: e.target.value,
+                        endTimeStamp: prev.videoDetails?.endTimeStamp || '',
+                        videoUrl: prev.videoDetails?.videoUrl || ''
+                      }
+                    }));
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="End Longitude"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Start Timestamp
+                </label>
+                <input
+                  type="text"
+                  name="videoDetails.startTimeStamp"
+                  value={formData.videoDetails?.startTimeStamp || ''}
+                  onChange={(e) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      videoDetails: {
+                        ...prev.videoDetails,
+                        startLatitude: prev.videoDetails?.startLatitude || '',
+                        startLongitude: prev.videoDetails?.startLongitude || '',
+                        startTimeStamp: e.target.value,
+                        endLatitude: prev.videoDetails?.endLatitude || '',
+                        endLongitude: prev.videoDetails?.endLongitude || '',
+                        endTimeStamp: prev.videoDetails?.endTimeStamp || '',
+                        videoUrl: prev.videoDetails?.videoUrl || ''
+                      }
+                    }));
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Unix timestamp (ms)"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  End Timestamp
+                </label>
+                <input
+                  type="text"
+                  name="videoDetails.endTimeStamp"
+                  value={formData.videoDetails?.endTimeStamp || ''}
+                  onChange={(e) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      videoDetails: {
+                        ...prev.videoDetails,
+                        startLatitude: prev.videoDetails?.startLatitude || '',
+                        startLongitude: prev.videoDetails?.startLongitude || '',
+                        startTimeStamp: prev.videoDetails?.startTimeStamp || '',
+                        endLatitude: prev.videoDetails?.endLatitude || '',
+                        endLongitude: prev.videoDetails?.endLongitude || '',
+                        endTimeStamp: e.target.value,
+                        videoUrl: prev.videoDetails?.videoUrl || ''
+                      }
+                    }));
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Unix timestamp (ms)"
+                />
+              </div>
+            </div>
+          </div>
+        );
+
       default:
         return null;
     }
@@ -670,55 +934,107 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
           {/* Event-Specific Fields */}
           {renderEventSpecificFields()}
 
-          {/* Upload Images Section */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Upload Images
-            </label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 bg-gray-50">
-              <label className="flex flex-col items-center cursor-pointer">
-                <Upload className="w-12 h-12 text-gray-400 mb-2" />
-                <span className="text-sm text-gray-600 mb-2">
-                  Click to upload or drag and drop
-                </span>
-                <span className="text-xs text-gray-500">
-                  PNG, JPG up to 10MB
-                </span>
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                />
+          {/* Video Upload Section - Only for VIDEORECORD */}
+          {formData.eventType === 'VIDEORECORD' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Upload Video <span className="text-red-500">*</span>
               </label>
-
-              {/* Preview Selected Images */}
-              {previewUrls.length > 0 && (
-                <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {previewUrls.map((url, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={url}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full h-32 object-cover rounded-lg"
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 bg-gray-50">
+                {!selectedVideo ? (
+                  <label className="flex flex-col items-center cursor-pointer">
+                    <Upload className="w-12 h-12 text-gray-400 mb-2" />
+                    <span className="text-sm text-gray-600 mb-2">
+                      Click to upload video
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      Any video format supported
+                    </span>
+                    <input
+                      type="file"
+                      accept="video/*"
+                      onChange={handleVideoSelect}
+                      className="hidden"
+                    />
+                  </label>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="relative">
+                      <video
+                        src={videoPreviewUrl}
+                        controls
+                        className="w-full max-h-64 rounded-lg"
                       />
                       <button
                         type="button"
-                        onClick={() => removeFile(index)}
-                        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={removeVideo}
+                        className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors"
                       >
                         <Trash2 size={16} />
                       </button>
-                      <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
-                        Image {index + 1}
-                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                    <div className="text-sm text-gray-600">
+                      <p><strong>File:</strong> {selectedVideo.name}</p>
+                      <p><strong>Size:</strong> {(selectedVideo.size / (1024 * 1024)).toFixed(2)} MB</p>
+                      <p><strong>Type:</strong> {selectedVideo.type}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Upload Images Section - For other event types */}
+          {formData.eventType !== 'VIDEORECORD' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Upload Images
+              </label>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 bg-gray-50">
+                <label className="flex flex-col items-center cursor-pointer">
+                  <Upload className="w-12 h-12 text-gray-400 mb-2" />
+                  <span className="text-sm text-gray-600 mb-2">
+                    Click to upload or drag and drop
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    PNG, JPG up to 10MB
+                  </span>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                </label>
+
+                {/* Preview Selected Images */}
+                {previewUrls.length > 0 && (
+                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {previewUrls.map((url, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={url}
+                          alt={`Preview ${index + 1}`}
+                          className="w-full h-32 object-cover rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeFile(index)}
+                          className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                        <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                          Image {index + 1}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Route Details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -888,7 +1204,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
               {uploadingImages ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Uploading Images...
+                  Uploading...
                 </>
               ) : loading ? (
                 <>

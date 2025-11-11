@@ -34,9 +34,14 @@ function InstallationPage() {
     const [states, setStates] = useState<StateData[]>([]);
     const [districts, setDistricts] = useState<District[]>([]);
     const [blocks, setBlocks] = useState<Block[]>([]);
-    const [selectedState, setSelectedState] = useState<string | null>(null);
-    const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
-    const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
+    
+    // Store both ID (for hierarchy APIs) and CODE (for installation APIs)
+    const [selectedStateId, setSelectedStateId] = useState<string | null>(null);
+    const [selectedStateCode, setSelectedStateCode] = useState<string | null>(null);
+    const [selectedDistrictId, setSelectedDistrictId] = useState<string | null>(null);
+    const [selectedDistrictCode, setSelectedDistrictCode] = useState<string | null>(null);
+    const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+    const [selectedBlockCode, setSelectedBlockCode] = useState<string | null>(null);
     const [globalsearch, setGlobalSearch] = useState<string>('');
     const [loadingStates, setLoadingStates] = useState<boolean>(false);
     const [loadingDistricts, setLoadingDistricts] = useState<boolean>(false);
@@ -101,64 +106,81 @@ function InstallationPage() {
         }
     };
 
-    // New function to fetch installation data for stats
+    // New function to fetch installation data for stats with filters
     const fetchInstallationDataForStats = async () => {
-    try {
-        setLoadingStats(true);
-        
-        // Fetch both GP and Block installation data
-        const [gpResponse, blockResponse] = await Promise.all([
-            axios.get<{ status: boolean; data: any[] }>(
-                `${TraceBASEURL}/get-gp-installation`
-            ),
-            axios.get<{ status: boolean; data: any[] }>(
-                `${TraceBASEURL}/get-block-installation`
-            )
-        ]);
-        
-        const combinedData: InstallationData[] = [];
-        
-        // Process GP installations
-        if (gpResponse.data.status && gpResponse.data.data) {
-            const gpData = gpResponse.data.data.map((item: any) => ({
-                id: item.id?.toString() || '',
-                status: 'completed' as const, // All installations are completed
-                installation_date: item.created_at || '',
-                state_name: item.state_name || '',
-                district_name: item.district_name || '',
-                block_name: item.block_name || '',
-                type: 'GP' as const
-            }));
-            combinedData.push(...gpData);
+        try {
+            setLoadingStats(true);
+            
+            // Build query params for filtering - using CODES for installation APIs
+            const params = new URLSearchParams();
+            if (selectedStateCode) params.append('state_code', selectedStateCode);
+            if (selectedDistrictCode) params.append('district_code', selectedDistrictCode);
+            if (selectedBlockCode) params.append('block_code', selectedBlockCode);
+            if (fromdate) params.append('from_date', fromdate);
+            if (todate) params.append('to_date', todate);
+            
+            const queryString = params.toString();
+            const urlSuffix = queryString ? `?${queryString}` : '';
+            
+            // Fetch both GP and Block installation data with filters
+            const [gpResponse, blockResponse] = await Promise.all([
+                axios.get<{ status: boolean; data: any[] }>(
+                    `${TraceBASEURL}/get-gp-installation${urlSuffix}`
+                ),
+                axios.get<{ status: boolean; data: any[] }>(
+                    `${TraceBASEURL}/get-block-installation${urlSuffix}`
+                )
+            ]);
+            
+            const combinedData: InstallationData[] = [];
+            
+            // Process GP installations
+            if (gpResponse.data.status && gpResponse.data.data) {
+                const gpData = gpResponse.data.data.map((item: any) => ({
+                    id: item.id?.toString() || '',
+                    status: 'completed' as const, // All installations are completed
+                    installation_date: item.created_at || '',
+                    state_name: item.state_name || '',
+                    district_name: item.district_name || '',
+                    block_name: item.block_name || '',
+                    type: 'GP' as const
+                }));
+                combinedData.push(...gpData);
+            }
+            
+            // Process Block installations
+            if (blockResponse.data.status && blockResponse.data.data) {
+                const blockData = blockResponse.data.data.map((item: any) => ({
+                    id: item.id?.toString() || '',
+                    status: 'completed' as const, // All installations are completed
+                    installation_date: item.created_at || '',
+                    state_name: item.state_code || '', // Note: block uses state_code
+                    district_name: item.district_code || '', // Note: block uses district_code
+                    block_name: item.block_name || '',
+                    type: 'BLOCK' as const
+                }));
+                combinedData.push(...blockData);
+            }
+            
+            setInstallationData(combinedData);
+        } catch (error) {
+            console.error('Error fetching installation data for stats', error);
+            setInstallationData([]);
+        } finally {
+            setLoadingStats(false);
         }
-        
-        // Process Block installations
-        if (blockResponse.data.status && blockResponse.data.data) {
-            const blockData = blockResponse.data.data.map((item: any) => ({
-                id: item.id?.toString() || '',
-                status: 'completed' as const, // All installations are completed
-                installation_date: item.created_at || '',
-                state_name: item.state_code || '', // Note: block uses state_code
-                district_name: item.district_code || '', // Note: block uses district_code
-                block_name: item.block_name || '',
-                type: 'BLOCK' as const
-            }));
-            combinedData.push(...blockData);
-        }
-        
-        setInstallationData(combinedData);
-    } catch (error) {
-        console.error('Error fetching installation data for stats', error);
-        setInstallationData([]);
-    } finally {
-        setLoadingStats(false);
-    }
-};
+    };
 
     useEffect(() => {
         fetchStates();
-        fetchInstallationDataForStats(); // Fetch installation data for stats panel
     }, []);
+
+    // Fetch installation data when filters are ready or when filters change
+    useEffect(() => {
+        if (filtersReady) {
+            fetchInstallationDataForStats();
+        }
+    }, [selectedStateCode, selectedDistrictCode, selectedBlockCode, fromdate, todate, filtersReady]);
 
     const fetchDistricts = async (stateId: string) => {
         if (!stateId) {
@@ -182,10 +204,10 @@ function InstallationPage() {
 
     const fetchBlock = async () => {
         try {
-            if (!selectedDistrict) return;
+            if (!selectedDistrictId) return;
             setLoadingBlock(true);
 
-            const response = await fetch(`${BASEURL}/blocksdata?district_code=${selectedDistrict}`);
+            const response = await fetch(`${BASEURL}/blocksdata?district_code=${selectedDistrictId}`);
             if (!response.ok) throw new Error('Failed to fetch blocks');
             const data = await response.json();
             setBlocks(data || []);
@@ -198,29 +220,31 @@ function InstallationPage() {
     }
 
     useEffect(() => {
-        if (selectedState) {
-            fetchDistricts(selectedState);
+        if (selectedStateId) {
+            fetchDistricts(selectedStateId);
         } else {
             setDistricts([]);
         }
-    }, [selectedState, states]);
+    }, [selectedStateId, states]);
 
     useEffect(() => {
         fetchBlock();
-    }, [selectedDistrict]);
+    }, [selectedDistrictId]);
 
     useEffect(() => {
-        const state_id = searchParams.get('state_id') || null;
-        const district_id = searchParams.get('district_id') || null;
-        const block_id = searchParams.get('block_id') || null;
+        const state_code = searchParams.get('state_code') || null;
+        const district_code = searchParams.get('district_code') || null;
+        const block_code = searchParams.get('block_code') || null;
         const from_date = searchParams.get('from_date') || '';
         const to_date = searchParams.get('to_date') || "";
         const search = searchParams.get('search') || "";
         const tab = searchParams.get('tab') as 'GP_INSTALLATION' | 'BLOCK_INSTALLATION' || 'GP_INSTALLATION';
 
-        setSelectedState(state_id);
-        setSelectedDistrict(district_id);
-        setSelectedBlock(block_id);
+        // Set codes for installation APIs
+        setSelectedStateCode(state_code);
+        setSelectedDistrictCode(district_code);
+        setSelectedBlockCode(block_code);
+        
         setFromDate(from_date);
         setToDate(to_date);
         setGlobalSearch(search);
@@ -228,11 +252,21 @@ function InstallationPage() {
         setFiltersReady(true);
     }, []);
 
-    const handleFilterChange = (newState: string | null, newDistrict: string | null, newBlock: string | null, from_date: string | null, to_date: string | null, search: string | null) => {
+    // Resolve IDs from codes when states are loaded (for URL navigation)
+    useEffect(() => {
+        if (states.length > 0 && selectedStateCode && !selectedStateId) {
+            const state = states.find(s => s.state_code.toString() === selectedStateCode);
+            if (state) {
+                setSelectedStateId(state.state_id);
+            }
+        }
+    }, [states, selectedStateCode, selectedStateId]);
+
+    const handleFilterChange = (stateCode: string | null, districtCode: string | null, blockCode: string | null, from_date: string | null, to_date: string | null, search: string | null) => {
         const params: Record<string, string> = {};
-        if (newState) params.state_id = newState;
-        if (newDistrict) params.district_id = newDistrict;
-        if (newBlock) params.block_id = newBlock;
+        if (stateCode) params.state_code = stateCode;
+        if (districtCode) params.district_code = districtCode;
+        if (blockCode) params.block_code = blockCode;
         if (from_date) params.from_date = from_date;
         if (to_date) params.to_date = to_date;
         if (search) params.search = search;
@@ -243,9 +277,9 @@ function InstallationPage() {
     const handleTabChange = (tab: 'GP_INSTALLATION' | 'BLOCK_INSTALLATION') => {
         setActiveTab(tab);
         const params: Record<string, string> = {};
-        if (selectedState) params.state_id = selectedState;
-        if (selectedDistrict) params.district_id = selectedDistrict;
-        if (selectedBlock) params.block_id = selectedBlock;
+        if (selectedStateCode) params.state_code = selectedStateCode;
+        if (selectedDistrictCode) params.district_code = selectedDistrictCode;
+        if (selectedBlockCode) params.block_code = selectedBlockCode;
         if (fromdate) params.from_date = fromdate;
         if (todate) params.to_date = todate;
         if (globalsearch) params.search = globalsearch;
@@ -254,9 +288,12 @@ function InstallationPage() {
     };
 
     const clearFilters = () => {
-        setSelectedState(null);
-        setSelectedDistrict(null);
-        setSelectedBlock(null);
+        setSelectedStateId(null);
+        setSelectedStateCode(null);
+        setSelectedDistrictId(null);
+        setSelectedDistrictCode(null);
+        setSelectedBlockId(null);
+        setSelectedBlockCode(null);
         setGlobalSearch('');
         setFromDate('');
         setToDate('');
@@ -266,39 +303,88 @@ function InstallationPage() {
     };
 
     const handleStateChange = (value: string) => {
-        setSelectedState(value || null);
-        setSelectedDistrict(null);  // Reset district when state changes
-        setSelectedBlock(null);     // Reset block when state changes
-        setDistricts([]);          // Clear districts
-        setBlocks([]);             // Clear blocks
-        handleFilterChange(value || null, null, null, fromdate, todate, globalsearch);
+        if (!value) {
+            // Clear all when no state selected
+            setSelectedStateId(null);
+            setSelectedStateCode(null);
+            setSelectedDistrictId(null);
+            setSelectedDistrictCode(null);
+            setSelectedBlockId(null);
+            setSelectedBlockCode(null);
+            setDistricts([]);
+            setBlocks([]);
+            handleFilterChange(null, null, null, fromdate, todate, globalsearch);
+            return;
+        }
+        
+        // Find selected state to get both ID and code
+        const selectedState = states.find(s => s.state_code.toString() === value);
+        if (selectedState) {
+            setSelectedStateId(selectedState.state_id);
+            setSelectedStateCode(selectedState.state_code.toString());
+            setSelectedDistrictId(null);
+            setSelectedDistrictCode(null);
+            setSelectedBlockId(null);
+            setSelectedBlockCode(null);
+            setDistricts([]);
+            setBlocks([]);
+            handleFilterChange(selectedState.state_code.toString(), null, null, fromdate, todate, globalsearch);
+        }
     };
 
     const handleDistrictChange = (value: string) => {
-        setSelectedDistrict(value || null);
-        setSelectedBlock(null);     // Reset block when district changes
-        setBlocks([]);             // Clear blocks
-        handleFilterChange(selectedState, value || null, null, fromdate, todate, globalsearch);
+        if (!value) {
+            setSelectedDistrictId(null);
+            setSelectedDistrictCode(null);
+            setSelectedBlockId(null);
+            setSelectedBlockCode(null);
+            setBlocks([]);
+            handleFilterChange(selectedStateCode, null, null, fromdate, todate, globalsearch);
+            return;
+        }
+        
+        // Find selected district to get both ID and code
+        const selectedDistrict = districts.find(d => d.district_code.toString() === value);
+        if (selectedDistrict) {
+            setSelectedDistrictId(selectedDistrict.district_id);
+            setSelectedDistrictCode(selectedDistrict.district_code.toString());
+            setSelectedBlockId(null);
+            setSelectedBlockCode(null);
+            setBlocks([]);
+            handleFilterChange(selectedStateCode, selectedDistrict.district_code.toString(), null, fromdate, todate, globalsearch);
+        }
     };
 
     const handleBlockChange = (value: string) => {
-        setSelectedBlock(value || null);
-        handleFilterChange(selectedState, selectedDistrict, value || null, fromdate, todate, globalsearch);
+        if (!value) {
+            setSelectedBlockId(null);
+            setSelectedBlockCode(null);
+            handleFilterChange(selectedStateCode, selectedDistrictCode, null, fromdate, todate, globalsearch);
+            return;
+        }
+        
+        // Find selected block to get both ID and code
+        const selectedBlock = blocks.find(b => b.block_code.toString() === value);
+        if (selectedBlock) {
+            setSelectedBlockId(selectedBlock.block_id);
+            setSelectedBlockCode(selectedBlock.block_code.toString());
+            handleFilterChange(selectedStateCode, selectedDistrictCode, selectedBlock.block_code.toString(), fromdate, todate, globalsearch);
+        }
     };
 
     const handleFromDateChange = (value: string) => {
         setFromDate(value);
-        handleFilterChange(selectedState, selectedDistrict, selectedBlock, value, todate, globalsearch);
+        handleFilterChange(selectedStateCode, selectedDistrictCode, selectedBlockCode, value, todate, globalsearch);
     };
 
     const handleToDateChange = (value: string) => {
         setToDate(value);
-        handleFilterChange(selectedState, selectedDistrict, selectedBlock, fromdate, value, globalsearch);
+        handleFilterChange(selectedStateCode, selectedDistrictCode, selectedBlockCode, fromdate, value, globalsearch);
     };
 
     const handleSearchChange = (value: string) => {
         setGlobalSearch(value);
-        handleFilterChange(selectedState, selectedDistrict, selectedBlock, fromdate, todate, value);
+        handleFilterChange(selectedStateCode, selectedDistrictCode, selectedBlockCode, fromdate, todate, value);
     };
 
     return (
@@ -321,14 +407,14 @@ function InstallationPage() {
                         {/* State Filter */}
                         <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
                             <select
-                                value={selectedState || ''}
+                                value={selectedStateCode || ''}
                                 onChange={(e) => handleStateChange(e.target.value)}
                                 disabled={loadingStates}
                                 className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
                             >
                                 <option value="">All States</option>
                                 {states.map((state) => (
-                                    <option key={state.state_id} value={state.state_id}>
+                                    <option key={state.state_id} value={state.state_code}>
                                         {state.state_name}
                                     </option>
                                 ))}
@@ -350,14 +436,14 @@ function InstallationPage() {
                         {/* District Filter */}
                         <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
                             <select
-                                value={selectedDistrict || ''}
+                                value={selectedDistrictCode || ''}
                                 onChange={(e) => handleDistrictChange(e.target.value)}
-                                disabled={!selectedState || loadingDistricts}
+                                disabled={!selectedStateId || loadingDistricts}
                                 className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
                             >
                                 <option value="">All Districts</option>
                                 {districts.map((district) => (
-                                    <option key={district.district_id} value={district.district_id}>
+                                    <option key={district.district_id} value={district.district_code}>
                                         {district.district_name}
                                     </option>
                                 ))}
@@ -379,14 +465,14 @@ function InstallationPage() {
                         {/* Block Filter */}
                         <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
                             <select
-                                value={selectedBlock || ''}
+                                value={selectedBlockCode || ''}
                                 onChange={(e) => handleBlockChange(e.target.value)}
-                                disabled={!selectedDistrict || loadingBlock}
+                                disabled={!selectedDistrictId || loadingBlock}
                                 className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
                             >
                                 <option value="">All Blocks</option>
                                 {blocks.map((block) => (
-                                    <option key={block.block_id} value={block.block_id}>
+                                    <option key={block.block_id} value={block.block_code}>
                                         {block.block_name}
                                     </option>
                                 ))}
@@ -474,9 +560,9 @@ function InstallationPage() {
                 {/* Content Area */}
                 <MainInstallationReport 
                     Data={{
-                        selectedState,
-                        selectedDistrict,
-                        selectedBlock,
+                        selectedState: selectedStateCode,
+                        selectedDistrict: selectedDistrictCode,
+                        selectedBlock: selectedBlockCode,
                         fromdate,
                         todate,
                         globalsearch,

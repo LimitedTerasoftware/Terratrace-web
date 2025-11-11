@@ -36,6 +36,7 @@ interface GPInstallationData {
     state_name: string;
     district_name: string;
     block_name: string;
+    status: string;
 }
 
 interface GPInstallationReportProps {
@@ -52,8 +53,11 @@ interface GPInstallationReportProps {
   Onexcel: () => void;
 }
 
+
 const BASEURL = import.meta.env.VITE_TraceAPI_URL;
 const baseUrl = import.meta.env.VITE_Image_URL;
+
+type StatusType = 'ACCEPT' | 'PENDING' | 'REJECT';
 
 const GPInstallationReport: React.FC<GPInstallationReportProps> = ({ Data, Onexcel }) => {
   const navigate = useNavigate();
@@ -123,13 +127,37 @@ const GPInstallationReport: React.FC<GPInstallationReportProps> = ({ Data, Onexc
     setSelectedRows([]);
   };
 
-  const getStatusBadge = () => {
-    return (
-      <span className="px-3 py-1 rounded-full text-xs font-medium border bg-green-100 text-green-800 border-green-200 whitespace-nowrap">
-        Installed
-      </span>
-    );
+  const getStatusBadge = (status: string) => {
+  const statusConfig: Record<StatusType, { bg: string; text: string; border: string; label: string }> = {
+    'ACCEPT': { 
+      bg: 'bg-green-100', 
+      text: 'text-green-800', 
+      border: 'border-green-200', 
+      label: 'Accepted' 
+    },
+    'PENDING': { 
+      bg: 'bg-yellow-100', 
+      text: 'text-yellow-800', 
+      border: 'border-yellow-200', 
+      label: 'Pending' 
+    },
+    'REJECT': { 
+      bg: 'bg-red-100', 
+      text: 'text-red-800', 
+      border: 'border-red-200', 
+      label: 'Rejected' 
+    }
   };
+
+  const config = statusConfig[status as StatusType] || statusConfig['PENDING'];
+  
+  return (
+    <span className={`px-3 py-1 rounded-full text-xs font-medium border 
+                      ${config.bg} ${config.text} ${config.border} whitespace-nowrap`}>
+      {config.label}
+    </span>
+  );
+};
 
   const parsePhotosArray = (photosString: string): string[] => {
     try {
@@ -275,10 +303,10 @@ const GPInstallationReport: React.FC<GPInstallationReportProps> = ({ Data, Onexc
     },
     {
       name: 'Status',
-      selector: () => 'installed',
+      selector: (row) => row.status,
       sortable: true,
       maxWidth: "100px",
-      cell: () => getStatusBadge(),
+      cell: (row) => getStatusBadge(row.status),
     },
     {
       name: "Created",
@@ -315,7 +343,7 @@ const GPInstallationReport: React.FC<GPInstallationReportProps> = ({ Data, Onexc
           "GP Code", "GP Latitude", "GP Longitude",
           "Smart Rack Details", "FDMS Shelf Details", "IP MPLS Router",
           "SFP 10G", "SFP 1G", "Power System MPPT", "Solar 1KW",
-          "Equipment Photos", "Electricity Meter", "Earthpit Details",
+          "Equipment Photos", "Electricity Meter","Status", "Earthpit Details",
           "GP Contact", "Key Person", "Created At", "Updated At"
         ];
 
@@ -324,7 +352,7 @@ const GPInstallationReport: React.FC<GPInstallationReportProps> = ({ Data, Onexc
           row.gp_code || '', row.gp_latitude || '', row.gp_longitude || '',
           row.smart_rack || '', row.fdms_shelf || '', row.ip_mpls_router || '',
           row.sfp_10g || '', row.sfp_1g || '', row.power_system_with_mppt || '', row.mppt_solar_1kw || '',
-          row.equipment_photo || '', row.electricity_meter || '', row.earthpit || '',
+          row.equipment_photo || '', row.electricity_meter || '', row.status || 'PENDING', row.earthpit || '',
           row.gp_contact || '', row.key_person || '', row.created_at || '', row.updated_at || ''
         ]);
 

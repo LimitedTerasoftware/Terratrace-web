@@ -7,6 +7,7 @@ import UndergroundTables from "../../pages/UiElements/UndergroundTables";
 import Breadcrumb from '../../components/Breadcrumbs/Breadcrumb';
 import HotoTables from "../../pages/HotoTables";
 import { Header } from "../Breadcrumbs/Header";
+import { isIEUser } from '../../utils/accessControl';
 
 // Define tab types
 type TabType = "bsnl" | "gp" | "aerial" | "ground" | "hoto";
@@ -31,10 +32,23 @@ const SurveyTabs: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Get tab from URL or fallback to "bsnl"
+  // Filter tabs based on user access
+  const availableTabs = tabs.filter(tab => {
+    // Hide HOTO Survey for IE users
+    if (tab.id === "hoto" && isIEUser()) {
+      return false;
+    }
+    return true;
+  });
+
+  // Get tab from URL or fallback to first available tab
   const getTabFromURL = (): TabType => {
     const params = new URLSearchParams(location.search);
-    return (params.get("tab") as TabType) || "bsnl";
+    const urlTab = params.get("tab") as TabType;
+    
+    // Check if URL tab is available for this user
+    const isTabAvailable = availableTabs.some(tab => tab.id === urlTab);
+    return isTabAvailable ? urlTab : (availableTabs[0]?.id as TabType) || "bsnl";
   };
 
   const [activeTab, setActiveTab] = useState<TabType>(getTabFromURL);
@@ -77,7 +91,7 @@ const SurveyTabs: React.FC = () => {
       <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-4 mt-4">
         <div className="border-b border-gray-200">
           <nav className="flex space-x-8 px-6">
-            {tabs.map((tab) => (
+            {availableTabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => handleTabChange(tab.id)}

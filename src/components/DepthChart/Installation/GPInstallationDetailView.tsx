@@ -49,6 +49,7 @@ interface GPInstallationDetail {
   earthpit: string;
   gp_contact: string;
   key_person: string;
+  status?: string;
   created_at: string;
   updated_at: string;
   state_name: string;
@@ -110,6 +111,45 @@ const GPInstallationDetailView = () => {
   const handleEdit = async () => {
     navigate(`/installation/gp-edit/${id}`);
   };
+
+  const handleStatusUpdate = async (status: 'ACCEPT' | 'REJECT') => {
+    if (!window.confirm(`Are you sure you want to ${status.toLowerCase()} this installation?`)) return;
+    
+    try {
+      setActionLoading(status.toLowerCase());
+      
+      const response = await axios.post(`${BASEURL}/update-status`, {
+        type: "gp-installation",
+        id: id,
+        status: status
+      });
+
+      if (response.data.status) {
+        toast.success(`Installation ${status.toLowerCase()}ed successfully.`);
+        
+        // Update local state to reflect the new status
+        if (detail) {
+          setDetail({
+            ...detail,
+            status: status
+          });
+        }
+        
+        // Optionally refresh the data
+        await fetchDetails();
+      } else {
+        toast.error(response.data.message || `Failed to ${status.toLowerCase()} installation.`);
+      }
+    } catch (error: any) {
+      console.error(`Error ${status.toLowerCase()}ing installation:`, error);
+      toast.error(error.response?.data?.message || `Failed to ${status.toLowerCase()} installation.`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleAccept = () => handleStatusUpdate('ACCEPT');
+  const handleReject = () => handleStatusUpdate('REJECT');
 
   if (loading) {
     return <LoadingPage />;
@@ -280,13 +320,15 @@ const GPInstallationDetailView = () => {
     icon: Icon, 
     label, 
     variant = 'primary',
-    loading = false 
+    loading = false,
+    disabled = false
   }: {
     onClick: () => void;
     icon: any;
     label: string;
     variant?: 'primary' | 'success' | 'warning' | 'danger';
     loading?: boolean;
+    disabled?: boolean;
   }) => {
     const variants = {
       primary: 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white',
@@ -298,8 +340,8 @@ const GPInstallationDetailView = () => {
     return (
       <button
         onClick={onClick}
-        disabled={loading}
-        className={`${variants[variant]} px-6 py-3 rounded-lg font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none`}
+        disabled={loading || disabled}
+        className={`${variants[variant]} px-6 py-3 rounded-lg font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none`}
       >
         {loading ? (
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -439,6 +481,20 @@ const GPInstallationDetailView = () => {
             {/* Installation Details */}
             <InfoCard title="Installation Details" icon={Settings}>
               <div className="space-y-1">
+                {detail.status && (
+                  <div className="flex justify-between items-center py-2 border-b border-gray-50">
+                    <span className="text-sm text-gray-600 font-medium">Status</span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      detail.status === 'ACCEPT' 
+                        ? 'bg-green-100 text-green-800 border border-green-200' 
+                        : detail.status === 'REJECT'
+                        ? 'bg-red-100 text-red-800 border border-red-200'
+                        : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                    }`}>
+                      {detail.status === 'ACCEPT' ? 'Accepted' : detail.status === 'REJECT' ? 'Rejected' : 'Pending'}
+                    </span>
+                  </div>
+                )}
                 <DataRow label="Created At" value={new Date(detail.created_at).toLocaleString()} />
                 <DataRow label="Updated At" value={new Date(detail.updated_at).toLocaleString()} />
                 <DataRow label="User ID" value={detail.user_id.toString()} />
@@ -450,13 +506,51 @@ const GPInstallationDetailView = () => {
           {!viewOnly && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions</h3>
+              
+              {/* Current Status Display */}
+              {detail.status && (
+                <div className="mb-4 p-3 rounded-lg bg-gray-50 text-center">
+                  <span className="text-sm text-gray-600">Current Status: </span>
+                  <span className={`font-semibold ${
+                    detail.status === 'ACCEPT' ? 'text-green-600' : 
+                    detail.status === 'REJECT' ? 'text-red-600' : 
+                    'text-yellow-600'
+                  }`}>
+                    {detail.status === 'ACCEPT' ? 'Accepted' : detail.status === 'REJECT' ? 'Rejected' : 'Pending'}
+                  </span>
+                </div>
+              )}
+              
               <div className="flex flex-wrap gap-4 justify-center">
+                {/* Accept Button */}
+                <ActionButton
+                  onClick={handleAccept}
+                  icon={Check}
+                  label={detail.status === 'ACCEPT' ? 'Accepted' : 'Accept Installation'}
+                  variant="success"
+                  loading={actionLoading === 'accept'}
+                  disabled={detail.status === 'ACCEPT'}
+                />
+                
+                {/* Reject Button */}
+                <ActionButton
+                  onClick={handleReject}
+                  icon={X}
+                  label={detail.status === 'REJECT' ? 'Rejected' : 'Reject Installation'}
+                  variant="danger"
+                  loading={actionLoading === 'reject'}
+                  disabled={detail.status === 'REJECT'}
+                />
+                
+                {/* Edit Button */}
                 <ActionButton
                   onClick={handleEdit}
                   icon={Edit3}
                   label="Edit Installation"
                   variant="primary"
                 />
+                
+                {/* Delete Button */}
                 <ActionButton
                   onClick={handleDelete}
                   icon={Trash2}
