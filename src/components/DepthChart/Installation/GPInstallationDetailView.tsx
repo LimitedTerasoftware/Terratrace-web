@@ -38,17 +38,19 @@ interface GPInstallationDetail {
   gp_photos: string;
   smart_rack: string;
   fdms_shelf: string;
-  ip_mpls_router: string;
-  sfp_10g: string;
-  sfp_1g: string;
+  ip_mpls_router: any; // Can be string (object) or array
+  sfp_10g_40: any; // Changed from sfp_10g
+  sfp_1g_10: any;  // Changed from sfp_1g
+  sfp_10g_10: any; // Added - was missing
   power_system_with_mppt: string;
   power_system_with_out_mppt: string;
-  mppt_solar_1kw: string;
+  mppt_solar_1kw: any; // Can be string (object) or array
   equipment_photo: string;
   electricity_meter: string;
-  earthpit: string;
+  earthpit: any; // Can be string (object) or array
   gp_contact: string;
   key_person: string;
+  RFMS_FILTERS: any; // Added - was missing
   status?: string;
   created_at: string;
   updated_at: string;
@@ -243,77 +245,110 @@ const GPInstallationDetailView = () => {
     </div>
   );
 
-  const EquipmentDetails = ({ equipmentData, title }: { equipmentData: string; title: string }) => {
-    let data: any = null;
+  const EquipmentDetails = ({ equipmentData, title, excludeFields = [] }: { 
+  equipmentData: string | any; 
+  title: string;
+  excludeFields?: string[];
+}) => {
+  let data: any = null;
+  
+  if (typeof equipmentData === 'object') {
+    data = equipmentData;
+  } else if (typeof equipmentData === 'string') {
     try {
       data = JSON.parse(equipmentData);
     } catch {
       return null;
     }
+  }
 
-    if (!data) return null;
+  if (!data) return null;
+  if (Array.isArray(data) && data.length === 0) return null;
+  if (typeof data === 'object' && Object.keys(data).length === 0) return null;
+  if (typeof data === 'object' && data.available === false) return null;
 
-    const renderValue = (key: string, value: any) => {
-      // Check if the value looks like an image URL
-      if (typeof value === 'string' && (
-        value.includes('.jpg') || 
-        value.includes('.jpeg') || 
-        value.includes('.png') || 
-        value.includes('.gif') ||
-        value.startsWith('http') && (value.includes('photo') || value.includes('image'))
-      )) {
-        return (
-          <div className="mt-2">
-            <div className="relative group cursor-pointer" onClick={() => setZoomImage(value.startsWith('http') ? value : `${baseUrl}${value}`)}>
-              <div className="w-24 h-24 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
-                <img
-                  src={value.startsWith('http') ? value : `${baseUrl}${value}`}
-                  alt={`${key} image`}
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                />
-              </div>
+  const renderValue = (key: string, value: any) => {
+    if (typeof value === 'string' && (
+      value.includes('.jpg') || 
+      value.includes('.jpeg') || 
+      value.includes('.png') || 
+      value.includes('.gif') ||
+      value.startsWith('http') && (value.includes('photo') || value.includes('image'))
+    )) {
+      return (
+        <div className="mt-2">
+          <div className="relative group cursor-pointer" onClick={() => setZoomImage(value.startsWith('http') ? value : `${baseUrl}${value}`)}>
+            <div className="w-24 h-24 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+              <img
+                src={value.startsWith('http') ? value : `${baseUrl}${value}`}
+                alt={`${key} image`}
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+              />
             </div>
           </div>
-        );
-      }
-      return <span className="font-medium">{value || 'N/A'}</span>;
-    };
+        </div>
+      );
+    }
+    return <span className="font-medium">{value || 'N/A'}</span>;
+  };
 
-    return (
-      <div className="mb-4">
-        <h4 className="font-medium text-gray-700 mb-2">{title}</h4>
-        {Array.isArray(data) ? (
-          data.map((item: any, index: number) => (
-            <div key={index} className="bg-gray-50 p-3 rounded mb-2">
-              {typeof item === 'object' ? Object.entries(item).map(([key, value]) => (
-                <div key={key} className="flex justify-between items-start text-sm mb-2 last:mb-0">
-                  <span className="text-gray-600 capitalize font-medium">{key.replace(/_/g, ' ')}:</span>
-                  <div className="text-right">
-                    {renderValue(key, value)}
-                  </div>
-                </div>
-              )) : (
-                <div className="text-sm">
-                  <span className="font-medium">{item}</span>
-                </div>
-              )}
-            </div>
-          ))
-        ) : (
-          <div className="bg-gray-50 p-3 rounded">
-            {Object.entries(data).map(([key, value]) => (
+  const filterEntries = (obj: any) => {
+    return Object.entries(obj).filter(([key]) => !excludeFields.includes(key));
+  };
+
+  const orderEntries = (entries: [string, any][]) => {
+    const fieldOrder = ['front_photo', 'left_photo', 'make', 'manifold', 'right_photo', 'qr_photo'];
+    
+    return entries.sort((a, b) => {
+      const indexA = fieldOrder.indexOf(a[0]);
+      const indexB = fieldOrder.indexOf(b[0]);
+      
+      if (indexA !== -1 && indexB !== -1) {
+        return indexA - indexB;
+      }
+      if (indexA !== -1) return -1;
+      if (indexB !== -1) return 1;
+      return 0;
+    });
+  };
+
+  return (
+    <div className="mb-4">
+      <h4 className="font-medium text-gray-700 mb-2">{title}</h4>
+      {Array.isArray(data) ? (
+        data.map((item: any, index: number) => (
+          <div key={index} className="bg-gray-50 p-3 rounded mb-2">
+            {typeof item === 'object' ? orderEntries(filterEntries(item)).map(([key, value]) => (
               <div key={key} className="flex justify-between items-start text-sm mb-2 last:mb-0">
                 <span className="text-gray-600 capitalize font-medium">{key.replace(/_/g, ' ')}:</span>
                 <div className="text-right">
                   {renderValue(key, value)}
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="text-sm">
+                <span className="font-medium">{item}</span>
+              </div>
+            )}
           </div>
-        )}
-      </div>
-    );
-  };
+        ))
+      ) : (
+        <div className="bg-gray-50 p-3 rounded">
+          {orderEntries(filterEntries(data)).map(([key, value]) => (
+            <div key={key} className="flex justify-between items-start text-sm mb-2 last:mb-0">
+              <span className="text-gray-600 capitalize font-medium">{key.replace(/_/g, ' ')}:</span>
+              <div className="text-right">
+                {renderValue(key, value)}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+  
 
   const ActionButton = ({ 
     onClick, 
@@ -411,29 +446,39 @@ const GPInstallationDetailView = () => {
             <InfoCard title="Equipment Information" icon={Server}>
               <div className="space-y-4">
                 {detail.smart_rack && (
-                  <EquipmentDetails equipmentData={detail.smart_rack} title="Smart Rack" />
+                  <EquipmentDetails equipmentData={detail.smart_rack} title="Smart Rack" excludeFields={['type']} />
                 )}
                 {detail.fdms_shelf && (
-                  <EquipmentDetails equipmentData={detail.fdms_shelf} title="FDMS Shelf" />
+                  <EquipmentDetails equipmentData={detail.fdms_shelf} title="FDMS Shelf" excludeFields={['count']}/>
                 )}
                 {detail.ip_mpls_router && (
                   <EquipmentDetails equipmentData={detail.ip_mpls_router} title="IP MPLS Router" />
                 )}
+                <EquipmentDetails equipmentData={detail.RFMS_FILTERS} title="RFMS Filters" />
               </div>
 
               {detail.equipment_photo && (
-                <MultiImageDisplay photos={detail.equipment_photo} title="Equipment Photos" />
+                <MultiImageDisplay photos={detail.equipment_photo} title="Electrical wiring photo" />
               )}
             </InfoCard>
 
             {/* Network Components */}
             <InfoCard title="Network Components" icon={Cable}>
               <div className="space-y-4">
-                {detail.sfp_10g && (
-                  <EquipmentDetails equipmentData={detail.sfp_10g} title="SFP 10G" />
+                {detail.sfp_10g_40 && (
+                  <EquipmentDetails equipmentData={detail.sfp_10g_40} title="SFP 10G/40" />
                 )}
-                {detail.sfp_1g && (
-                  <EquipmentDetails equipmentData={detail.sfp_1g} title="SFP 1G" />
+                {detail.sfp_1g_10 && (
+                  <EquipmentDetails equipmentData={detail.sfp_1g_10} title="SFP 1G/10" />
+                )}
+                {detail.sfp_10g_10 && (
+                  <EquipmentDetails equipmentData={detail.sfp_10g_10} title="SFP 10G/10" />
+                )}
+                {!detail.sfp_10g_40 && !detail.sfp_1g_10 && !detail.sfp_10g_10 && (
+                  <div className="text-center py-8 text-gray-400">
+                    <Cable className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No network components data available</p>
+                  </div>
                 )}
               </div>
             </InfoCard>
@@ -455,6 +500,13 @@ const GPInstallationDetailView = () => {
                 )}
                 {detail.earthpit && (
                   <EquipmentDetails equipmentData={detail.earthpit} title="Earth Pit" />
+                )}
+                {!detail.power_system_with_mppt && !detail.power_system_with_out_mppt && 
+                 !detail.mppt_solar_1kw && !detail.electricity_meter && !detail.earthpit && (
+                  <div className="text-center py-8 text-gray-400">
+                    <Zap className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No power system data available</p>
+                  </div>
                 )}
               </div>
             </InfoCard>
@@ -495,6 +547,7 @@ const GPInstallationDetailView = () => {
                     </span>
                   </div>
                 )}
+                <DataRow label="Installation ID" value={detail.id.toString()} />
                 <DataRow label="Created At" value={new Date(detail.created_at).toLocaleString()} />
                 <DataRow label="Updated At" value={new Date(detail.updated_at).toLocaleString()} />
                 <DataRow label="User ID" value={detail.user_id.toString()} />

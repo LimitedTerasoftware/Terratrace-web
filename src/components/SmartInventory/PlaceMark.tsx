@@ -200,6 +200,21 @@ export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string 
   'Rectification: Joint Repair': { color: '#9333EA', icon: '🔗' },
   'Rectification: Other': { color: '#9333EA', icon: '🔧' },
 
+'Rectification: SURVEYSTART': { color: '#9333EA', icon: '🎯' },
+'Rectification: ENDSURVEY': { color: '#9333EA', icon: '🏁' },
+'Rectification: ROUTEFEASIBILITY': { color: '#9333EA', icon: '🛤️' },
+'Rectification: LIVELOCATION': { color: '#9333EA', icon: '📍' },
+'Rectification: AREA': { color: '#9333EA', icon: '📐' },
+'Rectification: SIDE': { color: '#9333EA', icon: '↔️' },
+'Rectification: VIDEORECORD': { color: '#9333EA', icon: '🎥' },
+'Rectification: ROUTEDETAILS': { color: '#9333EA', icon: '📋' },
+'Rectification: LANDMARK': { color: '#9333EA', icon: '🏛️' },
+'Rectification: FIBERTURN': { color: '#9333EA', icon: '🔄' },
+'Rectification: JOINTCHAMBER': { color: '#9333EA', icon: '🔗' },
+'Rectification: ROADCROSSING': { color: '#9333EA', icon: '🛣️' },
+'Rectification: KILOMETERSTONE': { color: '#9333EA', icon: '📍' },
+'Rectification: SURVEY_ROUTE': { color: '#8B4513', icon: '➡️' },
+
   // NEW: Survey Infrastructure Categories
   // Educational
   'School': { color: '#4F46E5', icon: '🏫' },
@@ -1644,7 +1659,7 @@ export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
       id: `physical-${name.toLowerCase().replace(/\s+/g, '-')}`,
       name,
       count: categoryCounts[name] || 0,
-      visible: name === 'SURVEY_ROUTE' || name === 'GP_LOCATION' || name === 'BSNL_BLOCK',
+      visible: name === 'SURVEY_ROUTE',
       color: PLACEMARK_CATEGORIES[name]?.color || '#6B7280',
       icon: PLACEMARK_CATEGORIES[name]?.icon || '📍'
     }))
@@ -2004,15 +2019,15 @@ export function processRectificationData(apiData: RectificationApiResponse | nul
 
   // Create categories array
   const categories: PlacemarkCategory[] = rectificationCategories
-    .map(name => ({
-      id: `rectification-${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
-      name,
-      count: categoryCounts[name] || 0,
-      visible: true,
-      color: PLACEMARK_CATEGORIES[name]?.color || '#6B7280',
-      icon: PLACEMARK_CATEGORIES[name]?.icon || '🔧',
-    }))
-    .filter(category => category.count > 0);
+  .map(name => ({
+    id: `rectification-${name.toLowerCase().replace(/\s+/g, '-')}`,
+    name,
+    count: categoryCounts[name] || 0,
+    visible: name === 'SURVEY_ROUTE',  // Only SURVEY_ROUTE visible by default
+    color: PLACEMARK_CATEGORIES[name]?.color || '#9333EA',
+    icon: PLACEMARK_CATEGORIES[name]?.icon || '🔧'
+  }))
+  .filter(c => c.count > 0);
 
   return { placemarks: processedPlacemarks, categories };
 }
@@ -2062,4 +2077,307 @@ function getRectificationCategory(workType: string): string {
 
   // Default
   return 'Rectification: Other';
+}
+
+// Process Rectification data that uses Physical Survey structure
+// Process Rectification data that uses Physical Survey structure
+export function processRectificationSurveyData(apiData: PhysicalSurveyApiResponse | null): {
+  placemarks: (ProcessedPhysicalSurvey | ProcessedGPData | ProcessedBlockData)[];
+  categories: PlacemarkCategory[];
+} {
+  if (!apiData || !apiData.data) {
+    return { placemarks: [], categories: [] };
+  }
+
+  const processedPlacemarks: (ProcessedPhysicalSurvey | ProcessedGPData | ProcessedBlockData)[] = [];
+  const categoryCounts: Record<string, number> = {};
+
+  // Include event types for rectification (excluding VIDEORECORD and LIVELOCATION markers)
+  const rectificationCategories = [
+    'SURVEYSTART', 'ENDSURVEY', 'HOLDSURVEY',
+    'LANDMARK', 'FIBERTURN', 'Bridge', 'Culvert', 'ROADCROSSING', 'Causeways',
+    'KILOMETERSTONE', 'FPOI', 'JOINTCHAMBER', 'ROUTEINDICATOR',
+    'ROUTEFEASIBILITY', 'ROUTEDETAILS', 'AREA', 'SIDE', 'DEPTH',
+    'PHOTO_SURVEY', 'VIDEO_SURVEY', 'Rectification: SURVEY_ROUTE',
+    'GP_LOCATION', 'BSNL_BLOCK', 'BLOWING', 'MANHOLES', 'STARTPIT', 'ENDPIT'
+  ];
+  
+  rectificationCategories.forEach(c => categoryCounts[c] = 0);
+
+  Object.entries(apiData.data).forEach(([blockId, points]) => {
+    const liveLocationPoints: any[] = [];
+
+    if (!Array.isArray(points)) return;
+
+    points.forEach((point: any, index: number) => {
+      try {
+        // Handle GP data if present
+        if (point.gp_data && Array.isArray(point.gp_data)) {
+          point.gp_data.forEach((gpItem: any, gpIndex: number) => {
+            try {
+              // Parse GP coordinates
+              const gpCoordsParts = gpItem.gpCoordinates.split(',').map((c: string) => c.trim());
+              const gpLat = parseFloat(gpCoordsParts[0]);
+              const gpLng = parseFloat(gpCoordsParts[1]);
+
+              // Parse Pole coordinates
+              const poleCoordsParts = gpItem.poleCoordinates.split(',').map((c: string) => c.trim());
+              const poleLat = parseFloat(poleCoordsParts[0]);
+              const poleLng = parseFloat(poleCoordsParts[1]);
+
+              // Parse Earth Pit coordinates
+              const earthPitCoordsParts = gpItem.earthPitCoordinates.split(',').map((c: string) => c.trim());
+              const earthPitLat = parseFloat(earthPitCoordsParts[0]);
+              const earthPitLng = parseFloat(earthPitCoordsParts[1]);
+
+              // Process photos array
+              const images: SurveyImage[] = [];
+              if (gpItem.photos && Array.isArray(gpItem.photos)) {
+                gpItem.photos.forEach((photoPath: string) => {
+                  if (!photoPath || photoPath === 'null' || photoPath === '[]' || photoPath.trim() === '') {
+                    return;
+                  }
+
+                  if (photoPath.startsWith('[') && photoPath.endsWith(']')) {
+                    try {
+                      const parsedArray = JSON.parse(photoPath);
+                      if (Array.isArray(parsedArray)) {
+                        parsedArray.forEach((innerPath: string, innerIdx: number) => {
+                          const resolvedUrl = resolveMediaUrl(innerPath);
+                          if (resolvedUrl) {
+                            images.push({
+                              url: resolvedUrl,
+                              type: 'general',
+                              label: `GP Installation Photo ${images.length + 1}`
+                            });
+                          }
+                        });
+                      }
+                    } catch (e) {
+                      const resolvedUrl = resolveMediaUrl(photoPath);
+                      if (resolvedUrl) {
+                        images.push({
+                          url: resolvedUrl,
+                          type: 'general',
+                          label: `GP Installation Photo ${images.length + 1}`
+                        });
+                      }
+                    }
+                  } else {
+                    const resolvedUrl = resolveMediaUrl(photoPath);
+                    if (resolvedUrl) {
+                      images.push({
+                        url: resolvedUrl,
+                        type: 'general',
+                        label: `GP Installation Photo ${images.length + 1}`
+                      });
+                    }
+                  }
+                });
+              }
+
+              if (isValidCoordinate(gpLat, gpLng)) {
+                categoryCounts['GP_LOCATION'] = (categoryCounts['GP_LOCATION'] || 0) + 1;
+                
+                processedPlacemarks.push({
+                  id: `gp-location-${blockId}-${gpIndex}`,
+                  name: `GP Installation - ${gpItem.gpName || blockId}`,
+                  category: 'GP_LOCATION',
+                  type: 'point',
+                  coordinates: { lat: gpLat, lng: gpLng },
+                  surveyId: `gp-${blockId}-${gpIndex}`,
+                  eventType: 'GP_LOCATION',
+                  blockId,
+                  gpCoordinates: { lat: gpLat, lng: gpLng },
+                  poleCoordinates: { lat: poleLat, lng: poleLng },
+                  earthPitCoordinates: { lat: earthPitLat, lng: earthPitLng },
+                  images,
+                  hasImages: images.length > 0,
+                  itemType: 'gp'
+                } as ProcessedGPData);
+              }
+            } catch (error) {
+              console.error(`Error processing GP data in block ${blockId}:`, error);
+            }
+          });
+          return;
+        }
+
+        // Handle Block data if present
+        if (point.blk_data && Array.isArray(point.blk_data)) {
+          point.blk_data.forEach((blockData: any) => {
+            try {
+              const bsnlLat = parseFloat(blockData.latitude);
+              const bsnlLng = parseFloat(blockData.longitude);
+
+              if (isValidCoordinate(bsnlLat, bsnlLng)) {
+                const blockImages: SurveyImage[] = [];
+                
+                const photoFields = [
+                  { field: 'block_photo', label: 'Block Office Photo' },
+                  { field: 'earthpit_photo', label: 'Earth Pit Photo' },
+                  { field: 'pole_photo', label: 'Pole Photo' },
+                  { field: 'additional_photo', label: 'Additional Photo' }
+                ];
+
+                photoFields.forEach(({ field, label }) => {
+                  const photoPath = (blockData as any)[field];
+                  if (photoPath && photoPath !== 'null' && photoPath.trim() !== '') {
+                    const resolvedUrl = resolveMediaUrl(photoPath);
+                    if (resolvedUrl) {
+                      blockImages.push({
+                        url: resolvedUrl,
+                        type: 'general',
+                        label: label
+                      });
+                    }
+                  }
+                });
+
+                categoryCounts['BSNL_BLOCK'] = (categoryCounts['BSNL_BLOCK'] || 0) + 1;
+                processedPlacemarks.push({
+                  id: `bsnl-block-${blockData.block_id}`,
+                  name: `BSNL Block Office - ${blockData.block_id}`,
+                  category: 'BSNL_BLOCK',
+                  type: 'point',
+                  coordinates: { lat: bsnlLat, lng: bsnlLng },
+                  surveyId: `block-${blockData.block_id}`,
+                  eventType: 'BSNL_BLOCK',
+                  blockId: blockData.block_id.toString(),
+                  images: blockImages,
+                  hasImages: blockImages.length > 0
+                } as ProcessedBlockData);
+              }
+            } catch (error) {
+              console.error(`Error processing block data in block ${blockId}:`, error);
+            }
+          });
+          return;
+        }
+
+        // Regular survey point processing
+        const lat = parseFloat(point.latitude);
+        const lng = parseFloat(point.longitude);
+        
+        if (!isValidCoordinate(lat, lng)) {
+          return;
+        }
+
+        const eventType = point.event_type || 'UNKNOWN';
+        
+        // Collect LIVELOCATION for route creation only (no markers)
+        if (eventType === 'LIVELOCATION') {
+          const timestamp = parseTimestamp(point.createdTime) || parseTimestamp(point.created_at);
+          if (isFinite(timestamp)) {
+            liveLocationPoints.push({
+              lat,
+              lng,
+              timestamp,
+              surveyId: point.survey_id
+            });
+          }
+          return; // Don't create marker for LIVELOCATION
+        }
+
+        // Skip VIDEORECORD markers (but still count for VIDEO_SURVEY)
+        if (eventType === 'VIDEORECORD') {
+          if (point.videoDetails) {
+            try {
+              const vd = JSON.parse(point.videoDetails);
+              if (vd && vd.videoUrl && vd.videoUrl.trim() !== '') {
+                categoryCounts['VIDEO_SURVEY'] = (categoryCounts['VIDEO_SURVEY'] || 0) + 1;
+              }
+            } catch (error) {
+              // Ignore parse errors
+            }
+          }
+          return; // Don't create marker for VIDEORECORD
+        }
+
+        // Create marker for other event types
+        categoryCounts[eventType] = (categoryCounts[eventType] || 0) + 1;
+
+        // Extract images
+        const images = extractSurveyImages(point);
+        
+        processedPlacemarks.push({
+          id: `rectification-${blockId}-${point.survey_id}-${index}`,
+          name: `${eventType} - Survey ${point.survey_id}`,
+          category: eventType,
+          type: 'point',
+          coordinates: { lat, lng },
+          surveyId: point.survey_id,
+          eventType: eventType,
+          blockId,
+          images, 
+          hasImages: images.length > 0,
+          startLgdName: point.start_lgd_name,
+          endLgdName: point.end_lgd_name,
+          stateName: point.state_name,
+          districtName: point.district_name,
+          blockName: point.block_name,
+          createdTime: point.createdTime || point.created_at,
+        });
+
+        // Count PHOTO_SURVEY for points with images
+        if (images.length > 0 && point.surveyUploaded && point.surveyUploaded !== 'false') {
+          categoryCounts['PHOTO_SURVEY'] = (categoryCounts['PHOTO_SURVEY'] || 0) + 1;
+        }
+
+      } catch (error) {
+        console.error(`Error processing rectification point ${blockId}-${index}:`, error);
+      }
+    });
+
+    // Process live location points into routes
+    if (liveLocationPoints.length > 1) {
+      liveLocationPoints.sort((a, b) => a.timestamp - b.timestamp);
+      
+      const surveyGroups = liveLocationPoints.reduce((groups, p) => {
+        if (!groups[p.surveyId]) groups[p.surveyId] = [];
+        groups[p.surveyId].push(p);
+        return groups;
+      }, {} as Record<string, any[]>);
+
+      Object.entries(surveyGroups).forEach(([surveyId, routePoints]) => {
+        if (routePoints.length > 1) {
+          const firstPoint = points.find((p: any) => p.survey_id === surveyId);
+
+          categoryCounts['Rectification: SURVEY_ROUTE'] = (categoryCounts['Rectification: SURVEY_ROUTE'] || 0) + 1;
+          processedPlacemarks.push({
+            id: `rectification-route-${blockId}-${surveyId}`,
+            name: `Survey Route - ${surveyId}`,
+            category: 'Rectification: SURVEY_ROUTE',
+            type: 'polyline',
+            coordinates: routePoints.map(p => ({ lat: p.lat, lng: p.lng })),
+            surveyId,
+            eventType: 'SURVEY_ROUTE',
+            blockId,
+            images: [], 
+            hasImages: false,
+            startLgdName: firstPoint?.start_lgd_name,
+            endLgdName: firstPoint?.end_lgd_name,
+            stateName: firstPoint?.state_name,
+            districtName: firstPoint?.district_name,
+            blockName: firstPoint?.block_name,
+            createdTime: firstPoint?.createdTime
+          });
+        }
+      });
+    }
+  });
+
+  // Create categories with rectification- prefix
+  const categories: PlacemarkCategory[] = rectificationCategories
+    .map(name => ({
+      id: `rectification-${name.toLowerCase().replace(/\s+/g, '-')}`,
+      name,
+      count: categoryCounts[name] || 0,
+      visible: ['Rectification: SURVEY_ROUTE'].includes(name),
+      color: PLACEMARK_CATEGORIES[name]?.color || '#9333EA',
+      icon: PLACEMARK_CATEGORIES[name]?.icon || '🔧'
+    }))
+    .filter(c => c.count > 0);
+
+  return { placemarks: processedPlacemarks, categories };
 }

@@ -16,7 +16,8 @@ import {
   resolveMediaUrl,           
   processSurveyInfrastructureData,
   detectSurveyFileType,
-  processRectificationData
+  processRectificationData,
+  processRectificationSurveyData
 } from './PlaceMark';
 import {
   KMZFile, FilterState, ApiPlacemark, ProcessedPlacemark, PlacemarkCategory,
@@ -645,67 +646,67 @@ function SmartInventory() {
   };
 
   const loadRectificationData = async (state: string[], division: string[], block: string[]) => {
-    try {
-      setIsLoadingRectification(true);
-      const params: any = {};
+  try {
+    setIsLoadingRectification(true);
+    setLoding(true);
 
-      if (state.length > 0) {
-        params.state_id = state.join(',');
-      }
-      if (division.length > 0) {
-        params.district_id = division.join(',');
-      }
-      if (block.length > 0) {
-        params.block_id = block.join(',');
-      }
+    const params: any = {};
 
-      const response = await axios.get(`${BASEURL}/get-rectification-survey`, { params });
-      const apiData: RectificationApiResponse = response.data;
-
-      if (response.status === 200 || response.status === 201) {
-        if (apiData.status && apiData.data && Object.keys(apiData.data).length > 0) {
-          // Process rectification data using the NEW rectification processor
-          const { placemarks, categories } = processRectificationData(apiData);
-
-          setRawRectificationData(apiData);
-          setRectificationData(placemarks);
-          setRectificationCategories(categories);
-
-          // Set default visibility for rectification categories
-          setVisibleCategories(prev => {
-            const newVisible = new Set(prev);
-            categories.forEach(cat => {
-              if (getDefaultVisibility(cat.name)) {
-                newVisible.add(cat.id);
-              }
-            });
-            return newVisible;
-          });
-
-          console.log('Rectification data loaded:', {
-            totalPlacemarks: placemarks.length,
-            categories: categories.map(c => `${c.name}: ${c.count}`),
-            blocks: Object.keys(apiData.data || {})
-          });
-
-          showNotification('success', `Loaded ${placemarks.length} rectification items from ${Object.keys(apiData.data).length} blocks`);
-        } else {
-          showNotification('info', 'No rectification data found for selected area');
-          setRectificationData([]);
-          setRectificationCategories([]);
-          setRawRectificationData(null);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load rectification data:', error);
-      showNotification('error', 'Failed to load rectification data');
-      setRectificationData([]);
-      setRectificationCategories([]);
-      setRawRectificationData(null);
-    } finally {
-      setIsLoadingRectification(false);
+    if (state.length > 0) {
+      params.state_id = state.join(',');
     }
-  };
+    if (division.length > 0) {
+      params.district_id = division.join(',');
+    }
+    if (block.length > 0) {
+      params.block_id = block.join(',');
+    }
+
+    const response = await axios.get(`${BASEURL}/get-rectification-survey`, { params });
+    
+    // The response now has PhysicalSurveyApiResponse structure
+    const apiData: PhysicalSurveyApiResponse = response.data;
+
+    if (response.status === 200 || response.status === 201) {
+      if (apiData.status && apiData.data && Object.keys(apiData.data).length > 0) {
+        
+        // Use the NEW rectification processor that handles physical survey structure
+        const { placemarks, categories } = processRectificationSurveyData(apiData);
+
+        setRawRectificationData(apiData);
+        setRectificationData(placemarks);
+        setRectificationCategories(categories);
+
+        // Set default visibility for rectification categories
+        setVisibleCategories(prev => {
+  const newVisible = new Set(prev);
+  categories.forEach(cat => {
+    if (cat.visible) {  // ADD THIS CHECK
+      newVisible.add(cat.id);
+    }
+  });
+  return newVisible;
+});
+
+        showNotification('success', `Loaded ${placemarks.length} rectification items from ${Object.keys(apiData.data).length} blocks`);
+      } else {
+        showNotification('info', 'No rectification data found for selected area');
+        setRectificationData([]);
+        setRectificationCategories([]);
+        setRawRectificationData(null);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load rectification data:', error);
+    showNotification('error', 'Failed to load rectification data');
+    setRectificationData([]);
+    setRectificationCategories([]);
+    setRawRectificationData(null);
+  } finally {
+    setIsLoadingRectification(false);
+    setLoding(false);
+  }
+};
 
   // ==============================================
   // ENHANCED LANDMARK DETECTION LOGIC
@@ -1148,10 +1149,13 @@ const handleRefresh = (item: {
   // ==============================================
 
   useEffect(() => {
-  // ✅ PATTERN MATCHING: Match any category ending with 'video_survey' or 'video-survey'
-  const isOn = Array.from(visibleCategories).some(id => 
-    id.includes('video_survey') || id.includes('video-survey')
+  // Check which specific video survey categories are enabled
+  const physicalVideoEnabled = visibleCategories.has('physical-video_survey');
+  const rectificationVideoEnabled = Array.from(visibleCategories).some(id => 
+    id.startsWith('rectification-') && (id.includes('video_survey') || id.includes('video-survey'))
   );
+  
+  const isOn = physicalVideoEnabled || rectificationVideoEnabled;
   
   setIsVideoSurveyMode(isOn);
   if (!isOn) {
@@ -1173,19 +1177,36 @@ useEffect(() => {
   }
   
   try {
-    // ✅ MERGE: Combine physical and rectification data
-    const combinedData = mergeRawSurveyData(rawPhysicalSurveyData, rawRectificationData);
+    // Check which specific sources are enabled
+    const physicalVideoEnabled = visibleCategories.has('physical-video_survey');
+    const rectificationVideoEnabled = Array.from(visibleCategories).some(id => 
+      id.startsWith('rectification-') && (id.includes('video_survey') || id.includes('video-survey'))
+    );
     
-    if (!combinedData) {
+    // Only include data from enabled sources
+    let dataToProcess = null;
+    
+    if (physicalVideoEnabled && rectificationVideoEnabled) {
+      // Both enabled - merge them
+      dataToProcess = mergeRawSurveyData(rawPhysicalSurveyData, rawRectificationData);
+    } else if (physicalVideoEnabled) {
+      // Only physical survey video enabled
+      dataToProcess = rawPhysicalSurveyData;
+    } else if (rectificationVideoEnabled) {
+      // Only rectification video enabled
+      dataToProcess = rawRectificationData;
+    }
+    
+    if (!dataToProcess) {
       setVideoSurveyData(VideoSurveyService.processPhysicalSurveyData(null));
       return;
     }
     
     // Use simplified processing (same as video playback page)
-    const processedVideoData = VideoSurveyService.processPhysicalSurveyData(combinedData);
+    const processedVideoData = VideoSurveyService.processPhysicalSurveyData(dataToProcess);
     
     // Validation (keep existing)
-    const validation = VideoSurveyService.validateVideoSurveyData(combinedData);
+    const validation = VideoSurveyService.validateVideoSurveyData(dataToProcess);
     
     if (validation.issues.length > 0) {
       console.warn('Video survey data validation issues:', validation.issues);
@@ -1209,12 +1230,12 @@ useEffect(() => {
     setCurrentVideoIndex(0);
     setCurrentTime(processedVideoData.videoClips[0].startTimeStamp);
     
-    // Build notification message
+    // Build notification message based on what's actually enabled
     const sources = [];
-    if (rawPhysicalSurveyData?.data && Object.keys(rawPhysicalSurveyData.data).length > 0) {
+    if (physicalVideoEnabled && rawPhysicalSurveyData?.data && Object.keys(rawPhysicalSurveyData.data).length > 0) {
       sources.push('Physical Survey');
     }
-    if (rawRectificationData?.data && Object.keys(rawRectificationData.data).length > 0) {
+    if (rectificationVideoEnabled && rawRectificationData?.data && Object.keys(rawRectificationData.data).length > 0) {
       sources.push('Rectification Survey');
     }
     
@@ -1229,7 +1250,7 @@ useEffect(() => {
     showNotification('error', 'Failed to process video survey data');
     setVideoSurveyData(VideoSurveyService.processPhysicalSurveyData(null));
   }
-}, [isVideoSurveyMode, rawPhysicalSurveyData, rawRectificationData]);
+}, [isVideoSurveyMode, rawPhysicalSurveyData, rawRectificationData, visibleCategories]);
 
   // Keep map marker in sync when currentTime changes using VideoSurveyService
   useEffect(() => {
@@ -1383,10 +1404,13 @@ useEffect(() => {
 
   // Watch for Photo Survey category toggle to enable/disable mode
   useEffect(() => {
-  // ✅ PATTERN MATCHING: Match any category ending with 'photo_survey' or 'photo-survey'
-  const isOn = Array.from(visibleCategories).some(id => 
-    id.includes('photo_survey') || id.includes('photo-survey')
+  // Check which specific photo survey categories are enabled
+  const physicalPhotoEnabled = visibleCategories.has('physical-photo_survey');
+  const rectificationPhotoEnabled = Array.from(visibleCategories).some(id => 
+    id.startsWith('rectification-') && (id.includes('photo_survey') || id.includes('photo-survey'))
   );
+  
+  const isOn = physicalPhotoEnabled || rectificationPhotoEnabled;
   
   setIsPhotoSurveyMode(isOn);
   if (!isOn) {
@@ -1404,19 +1428,36 @@ useEffect(() => {
   }
   
   try {
-    // ✅ MERGE: Combine physical and rectification data
-    const combinedData = mergeRawSurveyData(rawPhysicalSurveyData, rawRectificationData);
+    // Check which specific sources are enabled
+    const physicalPhotoEnabled = visibleCategories.has('physical-photo_survey');
+    const rectificationPhotoEnabled = Array.from(visibleCategories).some(id => 
+      id.startsWith('rectification-') && (id.includes('photo_survey') || id.includes('photo-survey'))
+    );
     
-    if (!combinedData) {
+    // Only include data from enabled sources
+    let dataToProcess = null;
+    
+    if (physicalPhotoEnabled && rectificationPhotoEnabled) {
+      // Both enabled - merge them
+      dataToProcess = mergeRawSurveyData(rawPhysicalSurveyData, rawRectificationData);
+    } else if (physicalPhotoEnabled) {
+      // Only physical survey photo enabled
+      dataToProcess = rawPhysicalSurveyData;
+    } else if (rectificationPhotoEnabled) {
+      // Only rectification photo enabled
+      dataToProcess = rawRectificationData;
+    }
+    
+    if (!dataToProcess) {
       setPhotoSurveyData(PhotoSurveyService.processPhysicalSurveyData(null));
       return;
     }
     
     // Use PhotoSurveyService to process the data
-    const processedPhotoData: PhotoSurveyData = PhotoSurveyService.processPhysicalSurveyData(combinedData);
+    const processedPhotoData: PhotoSurveyData = PhotoSurveyService.processPhysicalSurveyData(dataToProcess);
     
     // Validate the processed data
-    const validation: PhotoValidationResult = PhotoSurveyService.validatePhotoSurveyData(combinedData);
+    const validation: PhotoValidationResult = PhotoSurveyService.validatePhotoSurveyData(dataToProcess);
     
     if (validation.issues.length > 0) {
       console.warn('Photo survey data validation issues:', validation.issues);
@@ -1436,12 +1477,12 @@ useEffect(() => {
       return;
     }
     
-    // Build notification message
+    // Build notification message based on what's actually enabled
     const sources = [];
-    if (rawPhysicalSurveyData?.data && Object.keys(rawPhysicalSurveyData.data).length > 0) {
+    if (physicalPhotoEnabled && rawPhysicalSurveyData?.data && Object.keys(rawPhysicalSurveyData.data).length > 0) {
       sources.push('Physical Survey');
     }
-    if (rawRectificationData?.data && Object.keys(rawRectificationData.data).length > 0) {
+    if (rectificationPhotoEnabled && rawRectificationData?.data && Object.keys(rawRectificationData.data).length > 0) {
       sources.push('Rectification Survey');
     }
     
@@ -1457,7 +1498,7 @@ useEffect(() => {
     setPhotoSurveyData(PhotoSurveyService.processPhysicalSurveyData(null));
   }
   
-}, [isPhotoSurveyMode, rawPhysicalSurveyData, rawRectificationData]);
+}, [isPhotoSurveyMode, rawPhysicalSurveyData, rawRectificationData, visibleCategories]);
 
   // Photo point click handler
   const handlePhotoPointClick = useCallback((point: PhotoPoint) => {

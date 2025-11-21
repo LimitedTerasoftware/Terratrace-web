@@ -20,17 +20,19 @@ interface GPInstallationData {
     gp_photos: string;
     smart_rack: string;
     fdms_shelf: string;
-    ip_mpls_router: string;
-    sfp_10g: string;
-    sfp_1g: string;
+    ip_mpls_router: any; // Can be string or array
+    sfp_10g_40: any; // Updated field name
+    sfp_1g_10: any;  // Updated field name
+    sfp_10g_10: any; // Added field
     power_system_with_mppt: string;
     power_system_with_out_mppt: string;
-    mppt_solar_1kw: string;
+    mppt_solar_1kw: any; // Can be string or array
     equipment_photo: string;
     electricity_meter: string;
-    earthpit: string;
+    earthpit: any; // Can be string or array
     gp_contact: string;
     key_person: string;
+    RFMS_FILTERS: any; // Added field
     created_at: string;
     updated_at: string;
     state_name: string;
@@ -342,18 +344,32 @@ const GPInstallationReport: React.FC<GPInstallationReportProps> = ({ Data, Onexc
           "State Name", "District Name", "Block Name", "GP Name", 
           "GP Code", "GP Latitude", "GP Longitude",
           "Smart Rack Details", "FDMS Shelf Details", "IP MPLS Router",
-          "SFP 10G", "SFP 1G", "Power System MPPT", "Solar 1KW",
-          "Equipment Photos", "Electricity Meter","Status", "Earthpit Details",
-          "GP Contact", "Key Person", "Created At", "Updated At"
+          "SFP 10G/40", "SFP 1G/10", "SFP 10G/10", "Power System MPPT", 
+          "Power System without MPPT", "Solar 1KW", "Equipment Photos", 
+          "Electricity Meter", "Status", "Earthpit Details", "GP Contact", 
+          "Key Person", "RFMS Filters", "Created At", "Updated At"
         ];
 
         const dataRows = filteredData.map(row => [
           row.state_name || '', row.district_name || '', row.block_name || '', row.gp_name || '',
           row.gp_code || '', row.gp_latitude || '', row.gp_longitude || '',
-          row.smart_rack || '', row.fdms_shelf || '', row.ip_mpls_router || '',
-          row.sfp_10g || '', row.sfp_1g || '', row.power_system_with_mppt || '', row.mppt_solar_1kw || '',
-          row.equipment_photo || '', row.electricity_meter || '', row.status || 'PENDING', row.earthpit || '',
-          row.gp_contact || '', row.key_person || '', row.created_at || '', row.updated_at || ''
+          row.smart_rack || '', row.fdms_shelf || '', 
+          JSON.stringify(row.ip_mpls_router || {}),
+          JSON.stringify(row.sfp_10g_40 || {}), 
+          JSON.stringify(row.sfp_1g_10 || {}), 
+          JSON.stringify(row.sfp_10g_10 || {}),
+          row.power_system_with_mppt || '', 
+          row.power_system_with_out_mppt || '',
+          JSON.stringify(row.mppt_solar_1kw || {}),
+          row.equipment_photo || '', 
+          row.electricity_meter || '', 
+          row.status || 'PENDING', 
+          JSON.stringify(row.earthpit || {}),
+          row.gp_contact || '', 
+          row.key_person || '',
+          JSON.stringify(row.RFMS_FILTERS || {}),
+          row.created_at || '', 
+          row.updated_at || ''
         ]);
 
         const worksheet = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);

@@ -38,17 +38,21 @@ interface BlockInstallationDetail {
   smart_rack: any;
   fdms_shelf: any;
   ip_mpls_router: any;
-  sfp_10g: string[];
-  sfp_1g: string[];
-  sfp_100g: string[];
+  sfp_10g_40: any; // Changed from sfp_10g
+  sfp_1g_10: any;  // Changed from sfp_1g
+  sfp_10g_10: any; // Changed from sfp_100g
   rfms: any;
+  RFMS_FILTERS: any;
   equipment_photo: string[];
+  fiber_entry: any;
+  splicing_photo: any;
   block_contacts: any;
   status?: string;
   created_at: string;
   updated_at: string;
   state_name?: string;
   district_name?: string;
+  username: string;
 }
 
 const BASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -241,79 +245,105 @@ const BlockInstallationDetailView = () => {
     </div>
   );
 
-  const EquipmentDetails = ({ equipmentData, title }: { equipmentData: any; title: string }) => {
-    if (!equipmentData) return null;
+  const EquipmentDetails = ({ equipmentData, title, excludeFields = [] }: { 
+  equipmentData: any; 
+  title: string; 
+  excludeFields?: string[];
+}) => {
+  if (!equipmentData) return null;
 
-    let data: any = equipmentData;
-    if (typeof equipmentData === 'string') {
-      try {
-        data = JSON.parse(equipmentData);
-      } catch {
-        return null;
-      }
+  let data: any = equipmentData;
+  if (typeof equipmentData === 'string') {
+    try {
+      data = JSON.parse(equipmentData);
+    } catch {
+      return null;
     }
+  }
 
-    const renderValue = (key: string, value: any) => {
-      // Check if the value looks like an image URL
-      if (typeof value === 'string' && (
-        value.includes('.jpg') || 
-        value.includes('.jpeg') || 
-        value.includes('.png') || 
-        value.includes('.gif') ||
-        value.startsWith('http') && (value.includes('photo') || value.includes('image'))
-      )) {
-        return (
-          <div className="mt-2">
-            <div className="relative group cursor-pointer" onClick={() => setZoomImage(value.startsWith('http') ? value : `${baseUrl}${value}`)}>
-              <div className="w-24 h-24 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
-                <img
-                  src={value.startsWith('http') ? value : `${baseUrl}${value}`}
-                  alt={`${key} image`}
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                />
-              </div>
+  if (Array.isArray(data) && data.length === 0) return null;
+  if (typeof data === 'object' && Object.keys(data).length === 0) return null;
+
+  const renderValue = (key: string, value: any) => {
+    if (typeof value === 'string' && (
+      value.includes('.jpg') || 
+      value.includes('.jpeg') || 
+      value.includes('.png') || 
+      value.includes('.gif') ||
+      value.startsWith('http') && (value.includes('photo') || value.includes('image'))
+    )) {
+      return (
+        <div className="mt-2">
+          <div className="relative group cursor-pointer" onClick={() => setZoomImage(value.startsWith('http') ? value : `${baseUrl}${value}`)}>
+            <div className="w-24 h-24 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+              <img
+                src={value.startsWith('http') ? value : `${baseUrl}${value}`}
+                alt={`${key} image`}
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+              />
             </div>
           </div>
-        );
-      }
-      return <span className="font-medium">{value || 'N/A'}</span>;
-    };
+        </div>
+      );
+    }
+    return <span className="font-medium">{value || 'N/A'}</span>;
+  };
 
-    return (
-      <div className="mb-4">
-        <h4 className="font-medium text-gray-700 mb-2">{title}</h4>
-        {Array.isArray(data) ? (
-          data.map((item: any, index: number) => (
-            <div key={index} className="bg-gray-50 p-3 rounded mb-2">
-              {typeof item === 'object' ? Object.entries(item).map(([key, value]) => (
-                <div key={key} className="flex justify-between items-start text-sm mb-2 last:mb-0">
-                  <span className="text-gray-600 capitalize font-medium">{key.replace(/_/g, ' ')}:</span>
-                  <div className="text-right">
-                    {renderValue(key, value)}
-                  </div>
-                </div>
-              )) : (
-                <div className="text-sm">
-                  <span className="font-medium">{item}</span>
-                </div>
-              )}
-            </div>
-          ))
-        ) : (
-          <div className="bg-gray-50 p-3 rounded">
-            {Object.entries(data).map(([key, value]) => (
+  const filterEntries = (obj: any) => {
+    return Object.entries(obj).filter(([key]) => !excludeFields.includes(key));
+  };
+
+  const orderEntries = (entries: [string, any][]) => {
+    const fieldOrder = ['front_photo', 'left_photo', 'make', 'manifold', 'right_photo', 'qr_photo'];
+    
+    return entries.sort((a, b) => {
+      const indexA = fieldOrder.indexOf(a[0]);
+      const indexB = fieldOrder.indexOf(b[0]);
+      
+      if (indexA !== -1 && indexB !== -1) {
+        return indexA - indexB;
+      }
+      if (indexA !== -1) return -1;
+      if (indexB !== -1) return 1;
+      return 0;
+    });
+  };
+
+  return (
+    <div className="mb-4">
+      <h4 className="font-medium text-gray-700 mb-2">{title}</h4>
+      {Array.isArray(data) ? (
+        data.map((item: any, index: number) => (
+          <div key={index} className="bg-gray-50 p-3 rounded mb-2">
+            {typeof item === 'object' ? orderEntries(filterEntries(item)).map(([key, value]) => (
               <div key={key} className="flex justify-between items-start text-sm mb-2 last:mb-0">
                 <span className="text-gray-600 capitalize font-medium">{key.replace(/_/g, ' ')}:</span>
                 <div className="text-right">
                   {renderValue(key, value)}
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="text-sm">
+                <span className="font-medium">{item}</span>
+              </div>
+            )}
           </div>
-        )}
-      </div>
-    );
-  };
+        ))
+      ) : (
+        <div className="bg-gray-50 p-3 rounded">
+          {orderEntries(filterEntries(data)).map(([key, value]) => (
+            <div key={key} className="flex justify-between items-start text-sm mb-2 last:mb-0">
+              <span className="text-gray-600 capitalize font-medium">{key.replace(/_/g, ' ')}:</span>
+              <div className="text-right">
+                {renderValue(key, value)}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
   const ActionButton = ({ 
     onClick, 
@@ -412,10 +442,10 @@ const BlockInstallationDetailView = () => {
             <InfoCard title="Equipment Information" icon={Server}>
               <div className="space-y-4">
                 {detail.smart_rack && (
-                  <EquipmentDetails equipmentData={detail.smart_rack} title="Smart Rack" />
+                  <EquipmentDetails equipmentData={detail.smart_rack} title="Smart Rack" excludeFields={['type']} />
                 )}
                 {detail.fdms_shelf && (
-                  <EquipmentDetails equipmentData={detail.fdms_shelf} title="FDMS Shelf" />
+                  <EquipmentDetails equipmentData={detail.fdms_shelf} title="FDMS Shelf" excludeFields={['count']} />
                 )}
                 {detail.ip_mpls_router && (
                   <EquipmentDetails equipmentData={detail.ip_mpls_router} title="IP MPLS Router" />
@@ -423,6 +453,7 @@ const BlockInstallationDetailView = () => {
                 {detail.rfms && (
                   <EquipmentDetails equipmentData={detail.rfms} title="RFMS" />
                 )}
+                <EquipmentDetails equipmentData={detail.RFMS_FILTERS} title="RFMS Filters" />
               </div>
 
               {detail.equipment_photo && detail.equipment_photo.length > 0 && (
@@ -433,14 +464,38 @@ const BlockInstallationDetailView = () => {
             {/* Network Components */}
             <InfoCard title="Network Components" icon={Cable}>
               <div className="space-y-4">
-                {detail.sfp_10g && detail.sfp_10g.length > 0 && (
-                  <EquipmentDetails equipmentData={detail.sfp_10g} title="SFP 10G" />
+                {detail.sfp_10g_40 && (
+                  <EquipmentDetails equipmentData={detail.sfp_10g_40} title="SFP 10G/40" />
                 )}
-                {detail.sfp_1g && detail.sfp_1g.length > 0 && (
-                  <EquipmentDetails equipmentData={detail.sfp_1g} title="SFP 1G" />
+                {detail.sfp_1g_10 && (
+                  <EquipmentDetails equipmentData={detail.sfp_1g_10} title="SFP 1G/10" />
                 )}
-                {detail.sfp_100g && detail.sfp_100g.length > 0 && (
-                  <EquipmentDetails equipmentData={detail.sfp_100g} title="SFP 100G" />
+                {detail.sfp_10g_10 && (
+                  <EquipmentDetails equipmentData={detail.sfp_10g_10} title="SFP 10G/10" />
+                )}
+                {!detail.sfp_10g_40 && !detail.sfp_1g_10 && !detail.sfp_10g_10 && (
+                  <div className="text-center py-8 text-gray-400">
+                    <Cable className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No network components data available</p>
+                  </div>
+                )}
+              </div>
+            </InfoCard>
+
+            {/* Fiber & Splicing */}
+            <InfoCard title="Fiber & Splicing" icon={Cable}>
+              <div className="space-y-4">
+                {detail.fiber_entry && (
+                  <MultiImageDisplay photos={detail.fiber_entry} title="Fiber Entry" />
+                )}
+                {detail.splicing_photo && detail.splicing_photo.length > 0 && (
+                  <MultiImageDisplay photos={detail.splicing_photo} title="Splicing Photos" />
+                )}
+                {!detail.fiber_entry && (!detail.splicing_photo || detail.splicing_photo.length === 0) && (
+                  <div className="text-center py-8 text-gray-400">
+                    <Cable className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No fiber/splicing data available</p>
+                  </div>
                 )}
               </div>
             </InfoCard>
@@ -477,7 +532,7 @@ const BlockInstallationDetailView = () => {
                 <DataRow label="Installation ID" value={detail.id.toString()} />
                 <DataRow label="Created At" value={new Date(detail.created_at).toLocaleString()} />
                 <DataRow label="Updated At" value={new Date(detail.updated_at).toLocaleString()} />
-                <DataRow label="User ID" value={detail.user_id.toString()} />
+                <DataRow label="Username" value={detail.username} />
               </div>
             </InfoCard>
           </div>

@@ -593,25 +593,6 @@ export default function SurveyDashboard() {
               </div>
 
               <div className="flex items-center gap-3">
-                <div role="tablist" aria-label="View scope" className="flex bg-gray-100 rounded-md p-0.5">
-                  <button
-                    role="tab"
-                    aria-selected={scope === "Surveyors"}
-                    className={`px-4 py-1.5 text-sm rounded ${scope === "Surveyors" ? "text-blue-600 bg-white shadow-sm font-medium" : "text-gray-600 font-medium"}`}
-                    onClick={() => setScope("Surveyors")}
-                  >
-                    <Users className="w-4 h-4 inline mr-1" />
-                    Surveyors
-                  </button>
-                  <button
-                    role="tab"
-                    aria-selected={scope === "Teams"}
-                    className={`px-4 py-1.5 text-sm rounded ${scope === "Teams" ? "text-blue-600 bg-white shadow-sm font-medium" : "text-gray-600 font-medium"}`}
-                    onClick={() => setScope("Teams")}
-                  >
-                    Teams
-                  </button>
-                </div>
 
                 <div className="flex items-center gap-2">
                   <div className="relative">

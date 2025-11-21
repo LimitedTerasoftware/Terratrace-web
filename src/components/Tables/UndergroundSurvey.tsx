@@ -1036,7 +1036,7 @@ const handleEditSave = async () => {
         "Survey ID": data.survey_id,
         "Company ID": data.company_id,
         "User ID": data.user_id,
-        "Cable Type": data.cableType,
+        "Route Type": data.routeType || '',
         "Start GP Code": data.startGpCode,
         "Start GP Coordinates": data.startGpCoordinates,
         "Start GP Name": data.startGpName,

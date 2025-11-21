@@ -2,13 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { Activity, VideoDetails, } from '../../types/survey';
 import { useLocation } from 'react-router-dom';
 import DataTable, { TableColumn } from 'react-data-table-component';
-import { Folder, SheetIcon } from 'lucide-react';
+import { Folder, SheetIcon, Image as ImageIcon, Video } from 'lucide-react';
 import axios from 'axios';
 import { FaArrowLeft } from 'react-icons/fa';
 import IndexChart from './index';
 import MapComp from './MapComp';
 import moment from 'moment';
 import ImageModal from './ImageUploadModal';
+import MediaCarousel from './MediaCarousel';
 import * as XLSX from "xlsx";
 import { getDistanceFromLatLonInMeters } from '../../utils/calculations';
 
@@ -28,6 +29,12 @@ const parsePoleData = (poleDataString: string | null): { fitting_type?: string; 
   }
 };
 
+interface MediaItem {
+  type: 'image' | 'video';
+  url: string;
+  label: string;
+}
+
 function Eventreport() {
     const location = useLocation();
     let sgp = location.state?.sgp || '';
@@ -43,6 +50,11 @@ function Eventreport() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
     const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | null>(null);
+    
+    // New state for media carousel
+    const [isCarouselOpen, setIsCarouselOpen] = useState<boolean>(false);
+    const [carouselMedia, setCarouselMedia] = useState<MediaItem[]>([]);
+    const [carouselInitialIndex, setCarouselInitialIndex] = useState<number>(0);
     const EventData = [
         'STARTSURVEY',
         'DEPTH',
@@ -209,6 +221,82 @@ function Eventreport() {
         BLOWING:'blowingPhotos'
     };
 
+    // Function to extract all media from a row
+    const extractMediaFromRow = (row: Activity): MediaItem[] => {
+        const mediaItems: MediaItem[] = [];
+
+        // Get photo field for this event type
+        const photoField = eventPhotoFields[row.eventType];
+        const rawPhotoData = photoField ? row[photoField] : null;
+
+        // Process images
+        if (typeof rawPhotoData === "string" && rawPhotoData.trim() !== "") {
+            let urls: string[];
+            
+            // Check if it's an array-like string [url1,url2,url3]
+            if (rawPhotoData.startsWith('[') && rawPhotoData.endsWith(']')) {
+                const urlString = rawPhotoData.slice(1, -1);
+                urls = urlString.split(',').map(url => url.trim());
+            } else {
+                try {
+                    urls = JSON.parse(rawPhotoData);
+                    if (!Array.isArray(urls)) {
+                        urls = [rawPhotoData];
+                    }
+                } catch (e) {
+                    urls = [rawPhotoData];
+                }
+            }
+
+            urls.forEach((url, index) => {
+                if (url) {
+                    mediaItems.push({
+                        type: 'image',
+                        url: `${baseUrl}${url}`,
+                        label: `${row.eventType} Photo ${urls.length > 1 ? index + 1 : ''}`
+                    });
+                }
+            });
+        }
+
+        // Process video
+        if (typeof row.videoDetails === 'string') {
+            try {
+                const parsedVideoDetails: VideoDetails = JSON.parse(row.videoDetails);
+                const videoUrl = parsedVideoDetails?.videoUrl?.trim().replace(/^"|"$/g, "");
+                
+                if (videoUrl) {
+                    mediaItems.push({
+                        type: 'video',
+                        url: `${baseUrl}${videoUrl}`,
+                        label: 'Survey Video'
+                    });
+                }
+            } catch (e) {
+                console.error('Error parsing video details', e);
+            }
+        }
+
+        // Also check vehicle image
+        if (row.vehicle_image?.trim()) {
+            mediaItems.push({
+                type: 'image',
+                url: `${baseUrl}${row.vehicle_image}`,
+                label: 'Vehicle Image'
+            });
+        }
+
+        return mediaItems;
+    };
+
+    // Function to open carousel
+    const openCarousel = (row: Activity, initialIndex: number = 0) => {
+        const media = extractMediaFromRow(row);
+        setCarouselMedia(media);
+        setCarouselInitialIndex(initialIndex);
+        setIsCarouselOpen(true);
+    };
+
     const columns: TableColumn<Activity>[] = [
         {
             name: "Actions",
@@ -246,45 +334,47 @@ function Eventreport() {
             },
         },
         {
-            name: "Images",
+            name: "Media",
             cell: (row: Activity) => {
-                const photoField = eventPhotoFields[row.eventType];
-                const rawPhotoData = photoField ? row[photoField] : null;
-
-                if (typeof rawPhotoData === "string" && rawPhotoData.trim() !== "") {
-                    let urls: string[];
-                    try {
-                        urls = JSON.parse(rawPhotoData);
-                    } catch (e) {
-                        return (
-                            <span
-                                className="text-blue-600 space-y-1 underline cursor-pointer block"
-                                onClick={() => setZoomImage(`${baseUrl}${rawPhotoData}`)}
-                            >
-                                {`${row.eventType}_Img`}
-                            </span>
-                        )
-
-                    }
-
-                    return (
-                        <div className="text-blue-600 space-y-1">
-                            {urls.map((url: string, i: number) => (
-                                <span
-                                    key={i}
-                                    className="underline cursor-pointer block"
-                                    onClick={() => setZoomImage(`${baseUrl}${url}`)}
-                                >
-                                    {`${row.eventType}_Photo_${i + 1}`}
-                                </span>
-                            ))}
-                        </div>
-                    );
+                const mediaItems = extractMediaFromRow(row);
+                
+                if (mediaItems.length === 0) {
+                    return <span className="text-gray-400">-</span>;
                 }
 
-                return <span>-</span>;
+                const imageCount = mediaItems.filter(item => item.type === 'image').length;
+                const videoCount = mediaItems.filter(item => item.type === 'video').length;
+                const hasImages = imageCount > 0;
+                const hasVideos = videoCount > 0;
 
+                return (
+                    <button
+                        onClick={() => openCarousel(row)}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors cursor-pointer hover:bg-gray-100"
+                        title="Click to view media"
+                    >
+                        {hasImages && (
+                            <div className="flex items-center gap-1">
+                                <ImageIcon size={16} className="text-blue-600" />
+                                <span className="text-xs text-blue-600 font-medium">
+                                    {imageCount}
+                                </span>
+                            </div>
+                        )}
+                        {hasVideos && (
+                            <div className="flex items-center gap-1">
+                                <Video size={16} className="text-purple-600" />
+                                <span className="text-xs text-purple-600 font-medium">
+                                    {videoCount}
+                                </span>
+                            </div>
+                        )}
+                    </button>
+                );
             },
+            ignoreRowClick: true,
+            button: true,
+            width: '140px',
         },
         {
             name: "Video",
@@ -487,13 +577,31 @@ function Eventreport() {
 
     let imageLinks = "-";
     if (typeof rawPhotoData === "string" && rawPhotoData.trim() !== "") {
-      try {
-        const urls: string[] = JSON.parse(rawPhotoData);
-        if (Array.isArray(urls) && urls.length > 0) {
+      let urls: string[];
+      
+      // Check if it's an array-like string [url1,url2,url3]
+      if (rawPhotoData.startsWith('[') && rawPhotoData.endsWith(']')) {
+        // Remove brackets and split by comma
+        const urlString = rawPhotoData.slice(1, -1);
+        urls = urlString.split(',').map(url => url.trim());
+        
+        if (urls.length > 0) {
           imageLinks = urls.map((url, i) => `=HYPERLINK("${baseUrl}${url}", "${item.eventType}_Photo_${i + 1}")`).join(", ");
         }
-      } catch (e) {
-        imageLinks = `=HYPERLINK("${baseUrl}${rawPhotoData}", "${item.eventType}_Img")`;
+      } else {
+        // Try parsing as JSON first
+        try {
+          urls = JSON.parse(rawPhotoData);
+          if (Array.isArray(urls) && urls.length > 0) {
+            imageLinks = urls.map((url, i) => `=HYPERLINK("${baseUrl}${url}", "${item.eventType}_Photo_${i + 1}")`).join(", ");
+          } else {
+            // Single URL from JSON parse
+            imageLinks = `=HYPERLINK("${baseUrl}${rawPhotoData}", "${item.eventType}_Img")`;
+          }
+        } catch (e) {
+          // If JSON parse fails, treat as single URL
+          imageLinks = `=HYPERLINK("${baseUrl}${rawPhotoData}", "${item.eventType}_Img")`;
+        }
       }
     }
 
@@ -756,6 +864,14 @@ function Eventreport() {
                 </div>
                 </div>
             )}
+
+            {/* Media Carousel Modal */}
+            <MediaCarousel
+                isOpen={isCarouselOpen}
+                onClose={() => setIsCarouselOpen(false)}
+                mediaItems={carouselMedia}
+                initialIndex={carouselInitialIndex}
+            />
         </div>
     )
 }

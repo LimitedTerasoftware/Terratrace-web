@@ -20,11 +20,14 @@ interface BlockInstallationData {
     smart_rack: any;
     fdms_shelf: any;
     ip_mpls_router: any;
-    sfp_10g: string[];
-    sfp_1g: string[];
-    sfp_100g: string[];
+    sfp_10g_40: any; // Updated field name
+    sfp_1g_10: any;  // Updated field name
+    sfp_10g_10: any; // Updated field name
     rfms: any;
+    RFMS_FILTERS: any;
     equipment_photo: string[];
+    fiber_entry: any;
+    splicing_photo: any;
     block_contacts: any;
     status?: string;
     created_at: string;
@@ -350,8 +353,8 @@ const BlockInstallationReport: React.FC<BlockInstallationReportProps> = ({ Data,
           "State Name", "State Code", "District Name", "District Code", 
           "Block Code", "Block Name", "Block Latitude", "Block Longitude", 
           "Block Photos", "Smart Rack Details", "FDMS Shelf Details", 
-          "IP MPLS Router", "SFP 10G", "SFP 1G", "SFP 100G", "RFMS",
-          "Equipment Photos", "Block Contacts", "Status", "Created At", "Updated At"
+          "IP MPLS Router", "SFP 10G/40", "SFP 1G/10", "SFP 10G/10", "RFMS", "RFMS Filters",
+          "Equipment Photos", "Fiber Entry", "Splicing Photos", "Block Contacts", "Status", "Created At", "Updated At"
         ];
 
         const dataRows = filteredData.map(row => [
@@ -367,11 +370,14 @@ const BlockInstallationReport: React.FC<BlockInstallationReportProps> = ({ Data,
           JSON.stringify(row.smart_rack || {}), 
           JSON.stringify(row.fdms_shelf || {}), 
           JSON.stringify(row.ip_mpls_router || {}),
-          JSON.stringify(row.sfp_10g || []), 
-          JSON.stringify(row.sfp_1g || []), 
-          JSON.stringify(row.sfp_100g || []), 
+          JSON.stringify(row.sfp_10g_40 || []), 
+          JSON.stringify(row.sfp_1g_10 || []), 
+          JSON.stringify(row.sfp_10g_10 || []), 
           JSON.stringify(row.rfms || {}),
+          JSON.stringify(row.RFMS_FILTERS || {}),
           JSON.stringify(row.equipment_photo || []), 
+          JSON.stringify(row.fiber_entry || {}),
+          JSON.stringify(row.splicing_photo || []),
           JSON.stringify(row.block_contacts || {}),
           row.status || 'PENDING',
           row.created_at || '', 
