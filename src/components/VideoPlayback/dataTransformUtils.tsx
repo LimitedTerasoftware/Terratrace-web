@@ -1,16 +1,52 @@
 import { UnderGroundSurveyData, MapPosition } from './types';
 import { getEventTime } from './timeUtils';
 
+export const filterGPSNoise = (
+  trackPoints: MapPosition[],
+  startTimestamp: number
+): MapPosition[] => {
+  if (trackPoints.length === 0) return trackPoints;
+
+  return trackPoints.filter(point => point.timestamp >= startTimestamp);
+};
+
 export const extractVideoRecordData = (data: UnderGroundSurveyData[]): {
   videoData: UnderGroundSurveyData | null;
   trackPoints: MapPosition[];
 } => {
-  const videoData = data.find(item => item.event_type === 'VIDEORECORD' && item.surveyUploaded === 'true' && (item?.videoDetails?.videoUrl || item.videoUrl) &&
-      ((item?.videoDetails?.videoUrl?.trim().replace(/(^"|"$)/g, '') || item?.videoUrl?.trim().replace(/(^"|"$)/g, '')) !== "") 
- ) || null;
+    const videoRecords = data
+                          .filter(
+                            item =>
+                              item.event_type === 'VIDEORECORD' &&
+                              item.surveyUploaded === 'true' &&
+                              (item?.videoDetails?.videoUrl || item.videoUrl) &&
+                              ((item?.videoDetails?.videoUrl?.trim().replace(/(^"|"$)/g, '') ||
+                                item?.videoUrl?.trim().replace(/(^"|"$)/g, '')) !== '') &&
+                              item.videoDetails?.startTimeStamp > 0
+                          )
+                          .sort((a, b) => getEventTime(a) - getEventTime(b));
+
+  const videoData = videoRecords[0] || null;
+
+  if (!videoData) return { videoData: null, trackPoints: [] };
+
+  const firstVideoStart = videoData.videoDetails.startTimeStamp;
+  const firstVideoEnd = videoData.videoDetails.endTimeStamp;
+
+  const routeDetails = data.find(
+    item =>
+      item.event_type === 'ROUTEDETAILS' &&
+      getEventTime(item) >= firstVideoStart &&
+      getEventTime(item) <= firstVideoEnd
+  );
+  const liveLocation = data.find(item => item.event_type === 'LIVELOCATION');
+
+  const startEvent = routeDetails || liveLocation;
+  const startTimestamp = startEvent ? getEventTime(startEvent) : firstVideoStart;
+
 
   // Extract all location data points for the track
-  const trackPoints: MapPosition[] = data
+  let trackPoints: MapPosition[] = data
   
     .filter(item => {
       // Include all LIVELOCATION entries
@@ -55,6 +91,8 @@ export const extractVideoRecordData = (data: UnderGroundSurveyData[]): {
       return [];
     })
     .sort((a, b) => a.timestamp - b.timestamp);
+
+    trackPoints = filterGPSNoise(trackPoints, startTimestamp);
 
   return { videoData, trackPoints };
 };
