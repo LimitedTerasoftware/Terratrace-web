@@ -13,6 +13,7 @@ export const filterGPSNoise = (
 export const extractVideoRecordData = (data: UnderGroundSurveyData[]): {
   videoData: UnderGroundSurveyData | null;
   trackPoints: MapPosition[];
+  startTimestamp: number;
 } => {
     const videoRecords = data
                           .filter(
@@ -28,7 +29,7 @@ export const extractVideoRecordData = (data: UnderGroundSurveyData[]): {
 
   const videoData = videoRecords[0] || null;
 
-  if (!videoData) return { videoData: null, trackPoints: [] };
+  if (!videoData) return { videoData: null, trackPoints: [] ,startTimestamp: 0 };
 
   const firstVideoStart = videoData.videoDetails.startTimeStamp;
   const firstVideoEnd = videoData.videoDetails.endTimeStamp;
@@ -94,7 +95,7 @@ export const extractVideoRecordData = (data: UnderGroundSurveyData[]): {
 
     trackPoints = filterGPSNoise(trackPoints, startTimestamp);
 
-  return { videoData, trackPoints };
+  return { videoData, trackPoints,startTimestamp };
 };
 export const getPositionAtTime = (
   trackPoints: MapPosition[],
