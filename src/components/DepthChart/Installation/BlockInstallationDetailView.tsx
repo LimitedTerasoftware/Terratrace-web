@@ -264,30 +264,58 @@ const BlockInstallationDetailView = () => {
   if (Array.isArray(data) && data.length === 0) return null;
   if (typeof data === 'object' && Object.keys(data).length === 0) return null;
 
-  const renderValue = (key: string, value: any) => {
-    if (typeof value === 'string' && (
-      value.includes('.jpg') || 
-      value.includes('.jpeg') || 
-      value.includes('.png') || 
-      value.includes('.gif') ||
-      value.startsWith('http') && (value.includes('photo') || value.includes('image'))
-    )) {
-      return (
-        <div className="mt-2">
-          <div className="relative group cursor-pointer" onClick={() => setZoomImage(value.startsWith('http') ? value : `${baseUrl}${value}`)}>
-            <div className="w-24 h-24 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
-              <img
-                src={value.startsWith('http') ? value : `${baseUrl}${value}`}
-                alt={`${key} image`}
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-              />
+  const renderValue = (key: string, value: any): React.ReactNode => {
+  if (value === null || value === undefined || value === '') {
+    return <span className="text-gray-400">N/A</span>;
+  }
+  
+  // Handle nested objects - recursively display their properties
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    return (
+      <div className="space-y-1 ml-2">
+        {Object.entries(value).map(([nestedKey, nestedValue]: [string, any]) => (
+          <div key={nestedKey} className="flex justify-between items-start gap-2 text-xs">
+            <span className="text-gray-500 capitalize">{nestedKey.replace(/_/g, ' ')}:</span>
+            <div className="text-right">
+              {renderValue(nestedKey, nestedValue)}
             </div>
           </div>
+        ))}
+      </div>
+    );
+  }
+  
+  // Handle arrays
+  if (Array.isArray(value)) {
+    return <span className="font-medium">{value.join(', ') || 'N/A'}</span>;
+  }
+  
+  // Handle image paths
+  if (typeof value === 'string' && (
+    value.includes('.jpg') || 
+    value.includes('.jpeg') || 
+    value.includes('.png') || 
+    value.includes('.gif') ||
+    value.startsWith('http') && (value.includes('photo') || value.includes('image'))
+  )) {
+    return (
+      <div className="mt-2">
+        <div className="relative group cursor-pointer" onClick={() => setZoomImage(value.startsWith('http') ? value : `${baseUrl}${value}`)}>
+          <div className="w-24 h-24 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+            <img
+              src={value.startsWith('http') ? value : `${baseUrl}${value}`}
+              alt={`${key} image`}
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+          </div>
         </div>
-      );
-    }
-    return <span className="font-medium">{value || 'N/A'}</span>;
-  };
+      </div>
+    );
+  }
+  
+  // Handle primitive values (string, number, boolean)
+  return <span className="font-medium">{String(value) || 'N/A'}</span>;
+};
 
   const filterEntries = (obj: any) => {
     return Object.entries(obj).filter(([key]) => !excludeFields.includes(key));
@@ -311,37 +339,45 @@ const BlockInstallationDetailView = () => {
 
   return (
     <div className="mb-4">
-      <h4 className="font-medium text-gray-700 mb-2">{title}</h4>
-      {Array.isArray(data) ? (
-        data.map((item: any, index: number) => (
-          <div key={index} className="bg-gray-50 p-3 rounded mb-2">
-            {typeof item === 'object' ? orderEntries(filterEntries(item)).map(([key, value]) => (
-              <div key={key} className="flex justify-between items-start text-sm mb-2 last:mb-0">
-                <span className="text-gray-600 capitalize font-medium">{key.replace(/_/g, ' ')}:</span>
-                <div className="text-right">
-                  {renderValue(key, value)}
-                </div>
-              </div>
-            )) : (
-              <div className="text-sm">
-                <span className="font-medium">{item}</span>
-              </div>
-            )}
-          </div>
-        ))
-      ) : (
-        <div className="bg-gray-50 p-3 rounded">
-          {orderEntries(filterEntries(data)).map(([key, value]) => (
+  <h4 className="font-medium text-gray-700 mb-2">{title}</h4>
+  {Array.isArray(data) ? (
+    data.map((item: any, index: number) => {
+      // Create a modified item with updated count
+      const modifiedItem = { ...item };
+      if (modifiedItem.count) {
+        modifiedItem.count = `${index + 1}/${modifiedItem.count}`;
+      }
+      
+      return (
+        <div key={index} className="bg-gray-50 p-3 rounded mb-2">
+          {typeof modifiedItem === 'object' ? orderEntries(filterEntries(modifiedItem)).map(([key, value]) => (
             <div key={key} className="flex justify-between items-start text-sm mb-2 last:mb-0">
               <span className="text-gray-600 capitalize font-medium">{key.replace(/_/g, ' ')}:</span>
               <div className="text-right">
                 {renderValue(key, value)}
               </div>
             </div>
-          ))}
+          )) : (
+            <div className="text-sm">
+              <span className="font-medium">{modifiedItem}</span>
+            </div>
+          )}
         </div>
-      )}
+      );
+    })
+  ) : (
+    <div className="bg-gray-50 p-3 rounded">
+      {orderEntries(filterEntries(data)).map(([key, value]) => (
+        <div key={key} className="flex justify-between items-start text-sm mb-2 last:mb-0">
+          <span className="text-gray-600 capitalize font-medium">{key.replace(/_/g, ' ')}:</span>
+          <div className="text-right">
+            {renderValue(key, value)}
+          </div>
+        </div>
+      ))}
     </div>
+  )}
+</div>
   );
 };
 
