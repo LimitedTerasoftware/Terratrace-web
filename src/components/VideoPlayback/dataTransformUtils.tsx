@@ -34,15 +34,56 @@ export const extractVideoRecordData = (data: UnderGroundSurveyData[]): {
   const firstVideoStart = videoData.videoDetails.startTimeStamp;
   const firstVideoEnd = videoData.videoDetails.endTimeStamp;
 
+  let startEvent: UnderGroundSurveyData | undefined;
+
   const routeDetails = data.find(
     item =>
       item.event_type === 'ROUTEDETAILS' &&
       getEventTime(item) >= firstVideoStart &&
       getEventTime(item) <= firstVideoEnd
   );
-  const liveLocation = data.find(item => item.event_type === 'LIVELOCATION');
+  // if (routeDetails) {
+  //   startEvent = data.find(
+  //     item =>
+  //       item.event_type === 'LIVELOCATION' &&
+  //       getEventTime(item) > getEventTime(routeDetails)
+  //   );
+  // }
+  if (routeDetails) {
+    const routeTS = getEventTime(routeDetails);
 
-  const startEvent = routeDetails || liveLocation;
+    // All LIVELOCATION after ROUTEDETAILS
+    const livePointsAfterRoute = data
+      .filter(
+        item =>
+          item.event_type === 'LIVELOCATION' &&
+          getEventTime(item) > routeTS
+      )
+      .sort((a, b) => getEventTime(a) - getEventTime(b)); // ascending order
+
+    if (livePointsAfterRoute.length > 0) {
+      // Keep only the LAST point for each lat/lng cluster
+      const lastByCoords = new Map<string, UnderGroundSurveyData>();
+
+      for (const point of livePointsAfterRoute) {
+        const key = `${point.latitude}-${point.longitude}`;
+        lastByCoords.set(key, point); // overwrites → keeps the last one
+      }
+
+      // Convert map values back to list and sort by time
+      const uniqueKeepLast = Array.from(lastByCoords.values())
+        .sort((a, b) => getEventTime(a) - getEventTime(b));
+
+      // Select the last point as startEvent
+      startEvent = uniqueKeepLast[0];
+    }
+  }
+
+  if (!startEvent) {
+    startEvent = data.find(item => item.event_type === 'LIVELOCATION');
+  }
+
+
   const startTimestamp = startEvent ? getEventTime(startEvent) : firstVideoStart;
 
 

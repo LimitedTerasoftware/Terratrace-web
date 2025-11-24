@@ -173,29 +173,7 @@ const MapView: React.FC<MapViewProps> = ({
           )}
         </GoogleMap>
 
-      {/* Selection instructions */}
-      {/* {!selection.start && !selection.end && (
-        <div className="absolute bottom-4 left-4 right-4 bg-black/70 text-white p-3 rounded-lg text-sm">
-          Click on a point on the map to set the start of your video segment
-        </div>
-      )}
-      
-      {selection.start && !selection.end && (
-        <div className="absolute bottom-4 left-4 right-4 bg-black/70 text-white p-3 rounded-lg text-sm">
-          Now click another point to set the end of your video segment
-        </div>
-      )}
-        {selection.start && (
-        <div className="absolute bottom-4 left-4 right-4 bg-black/70 text-white p-3 rounded-lg text-sm">
-
-          <button
-            onClick={clearSelection}
-            className="text-xs text-red-500 hover:text-red-700"
-          >
-            Clear Selection
-          </button>
-           </div>
-        )} */}
+    
 
     </div>
   );
