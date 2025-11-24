@@ -82,11 +82,11 @@ function App({ data, SelectedEvent }: AppProps) {
       setVideoData(initialVideo);
       setSelectedVideo(initialVideo.id)
       setCurrentVideoIndex(initialIndex);
-      const { trackPoints } = extractVideoRecordData(data.filter(item => item.survey_id === videos[0].survey_id));
+      const { trackPoints ,startTimestamp} = extractVideoRecordData(data.filter(item => item.survey_id === videos[0].survey_id));
       setTrackPoints(trackPoints);
       const initialTime = SelectedEvent
         ? new Date(SelectedEvent.createdTime || SelectedEvent.created_at).getTime()
-        : initialVideo.videoDetails.startTimeStamp;
+        : startTimestamp ? startTimestamp : initialVideo.videoDetails.startTimeStamp;
       setCurrentTime(initialTime);
       // setCurrentTime(videos[0].videoDetails.startTimeStamp);
 
