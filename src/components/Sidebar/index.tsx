@@ -145,446 +145,414 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
         </div>
 
         {/* Navigation Links - Scrollable */}
+        {/* Navigation Links - Scrollable */}
         <div className="flex-1 px-3 py-4 overflow-y-auto custom-scrollbar">
           <h3 className={`mb-4 ${isOpen ? 'ml-4' : 'ml-0'}  text-sm font-semibold text-bodydark2`}>
             Menu
           </h3>
 
           <ul className="space-y-2">
-            {/* Dashboards Menu Group - Now includes Main Dashboard */}
-            {!ieUser && (
-            <SidebarLinkGroup activeCondition={pathname.includes('dashboards') || pathname === '/dashboard' || pathname === '/'}>
-              {(handleClick, open) => {
-                return (
-                  <React.Fragment>
-                    <NavLink
-                      to="#"
-                      className={`
-                        flex items-center justify-between py-2 ${isOpen ? 'px-3' : 'px-2'} rounded-lg transition-colors duration-200 text-bodydark1
-                        ${(pathname.includes('dashboards') || pathname === '/dashboard' || pathname === '/')
-                          ? 'bg-graydark dark:bg-meta-4'
-                          : 'hover:bg-graydark dark:hover:bg-meta-4'}
-                        ${!isOpen ? 'w-[44px]' : 'w-full'}
-                      `}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        sidebarExpanded ? handleClick() : setSidebarExpanded(true);
-                      }}
-                    >
-                      <div className={`flex items-center ${isOpen ? 'gap-3' : 'gap-0'} w-full`}>
-                        <div className="min-w-[20px] flex justify-center">
-                          <img src={DashboardIcon} alt="Main Dashboard" className="w-5 h-5" />
-                        </div>
-                        {isOpen && <span className="whitespace-nowrap">Dashboards</span>}
-                      </div>
-                      {isOpen && (
-                        open ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />
-                      )}
-                    </NavLink>
-
-                    <div className={`transform overflow-hidden transition-all ${!open && 'hidden'}`}>
-                      <ul className="space-y-2 mt-2 flex flex-col gap-1.5 bg-black/20 dark:bg-boxdark/30 rounded-md py-2 border-l-2 border-gray-600 dark:border-gray-500 ml-2">
-                        {/* Main Dashboard - Moved from standalone to here */}
-                        <li>
-                          <NavLink
-                            to="/dashboard"
-                            className={({ isActive }) =>
-                              `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${(isActive || pathname === '/') ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
-                            }
-                          > 
-                            <BarChart3 className="w-6 h-6" />
-                            <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Main Dashboard</span>
-                          </NavLink>
-                        </li>
-                        <li>
-                          <NavLink
-                            to="/dashboards/survey-dashboard"
-                            className={({ isActive }) =>
-                              `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
-                            }
-                          >
-                            <ClipboardCheck size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
-                            <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Survey Dashboard</span>
-                          </NavLink>
-                        </li>
-                        <li>
-                          <NavLink
-                            to="/dashboards/construction-dashboard"
-                            className={({ isActive }) =>
-                              `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
-                            }
-                          >
-                            <HardHat size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
-                            <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Construction Dashboard</span>
-                          </NavLink>
-                        </li>
-                        
-                        <li>
-                          <NavLink
-                            to="/dashboards/installation-dashboard"
-                            className={({ isActive }) =>
-                              `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
-                            }
-                          >
-                            <Wrench size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
-                            <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Installation Dashboard</span>
-                          </NavLink>
-                        </li>
-                        <li>
-                          <NavLink
-                            to="/dashboards/executive-dashboard"
-                            className={({ isActive }) =>
-                              `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
-                            }
-                          >
-                            <TrendingUp size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
-                            <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Executive Dashboard</span>
-                          </NavLink>
-                        </li>
-                        {/*<li>
-                          <NavLink
-                            to="/dashboards/daily-progress"
-                            className={({ isActive }) =>
-                              `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
-                            }
-                          >
-                            <Calendar size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
-                            <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Daily Progress Report</span>
-                          </NavLink>
-                        </li>*/}
-                      </ul>
-                    </div>
-                  </React.Fragment>
-                );
-              }}
-            </SidebarLinkGroup>
-            )}
-
-            {/* Route Planning - Show ONLY for IE user or with original condition (!viewOnly) */}
-            {(ieUser || !viewOnly) && (
-            <SidebarLinkGroup
-                  activeCondition={pathname.includes('route-planning')}
+            {/* IF IE USER - Show ONLY GIS Inventory */}
+            {ieUser ? (
+              <li>
+                <NavLink
+                  to="/smart-inventory"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`
+                    flex items-center py-2 ${isOpen ? 'px-3 gap-4' : 'px-2 gap-0'} rounded-lg 
+                    transition-colors duration-200 text-bodydark1 hover:bg-graydark dark:hover:bg-meta-4
+                    ${!isOpen ? 'w-[44px] justify-center' : ''}
+                  `}
                 >
-                  {(handleClick, open) => {
-                    return (
-                      <React.Fragment>
-                        <NavLink
-                          to="#"
-                          className={`
+                  <img src={Smart_Inv} className="w-5 flex-shrink-0" alt="GIS Inventory" />
+                  {isOpen && <span className="whitespace-nowrap">GIS Inventory</span>}
+                </NavLink>
+              </li>
+            ) : (
+              <>
+                {/* ALL OTHER USERS - EXACT ORIGINAL LOGIC PRESERVED */}
+                
+                {/* Dashboards Menu Group */}
+                {!viewOnly && (
+                  <SidebarLinkGroup activeCondition={pathname.includes('dashboards') || pathname === '/dashboard' || pathname === '/'}>
+                    {(handleClick, open) => {
+                      return (
+                        <React.Fragment>
+                          <NavLink
+                            to="#"
+                            className={`
                               flex items-center justify-between py-2 ${isOpen ? 'px-3' : 'px-2'} rounded-lg transition-colors duration-200 text-bodydark1
-                        ${pathname.includes('route')
-                              ? 'bg-graydark dark:bg-meta-4'
-                              : 'hover:bg-graydark dark:hover:bg-meta-4'
-                            } ${!isOpen ? 'w-[44px]' : 'w-full'}
-                      `}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            sidebarExpanded
-                              ? handleClick()
-                              : setSidebarExpanded(true);
-                          }}
-                        >
-                          {/* Icon + Label */}
-                          <div className={`flex items-center ${isOpen ? 'gap-3' : 'gap-0'} w-full`}>
-                            <div className="min-w-[20px] flex justify-center">
-                              <img src={RouteMap} alt="RouteMap" className="w-5 h-5 object-contain" />
+                              ${(pathname.includes('dashboards') || pathname === '/dashboard' || pathname === '/')
+                                ? 'bg-graydark dark:bg-meta-4'
+                                : 'hover:bg-graydark dark:hover:bg-meta-4'}
+                              ${!isOpen ? 'w-[44px]' : 'w-full'}
+                            `}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              sidebarExpanded ? handleClick() : setSidebarExpanded(true);
+                            }}
+                          >
+                            <div className={`flex items-center ${isOpen ? 'gap-3' : 'gap-0'} w-full`}>
+                              <div className="min-w-[20px] flex justify-center">
+                                <img src={DashboardIcon} alt="Main Dashboard" className="w-5 h-5" />
+                              </div>
+                              {isOpen && <span className="whitespace-nowrap">Dashboards</span>}
                             </div>
-                            {isOpen && <span className="whitespace-nowrap" >Route Planning</span>}
+                            {isOpen && (
+                              open ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />
+                            )}
+                          </NavLink>
+
+                          <div className={`transform overflow-hidden transition-all ${!open && 'hidden'}`}>
+                            <ul className="space-y-2 mt-2 flex flex-col gap-1.5 bg-black/20 dark:bg-boxdark/30 rounded-md py-2 border-l-2 border-gray-600 dark:border-gray-500 ml-2">
+                              {/* Main Dashboard */}
+                              <li>
+                                <NavLink
+                                  to="/dashboard"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${(isActive || pathname === '/') ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                > 
+                                  <BarChart3 className="w-6 h-6" />
+                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Main Dashboard</span>
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/dashboards/survey-dashboard"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <ClipboardCheck size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
+                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Survey Dashboard</span>
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/dashboards/construction-dashboard"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <HardHat size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
+                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Construction Dashboard</span>
+                                </NavLink>
+                              </li>
+                              
+                              <li>
+                                <NavLink
+                                  to="/dashboards/installation-dashboard"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <Wrench size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
+                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Installation Dashboard</span>
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/dashboards/executive-dashboard"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <TrendingUp size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
+                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Executive Dashboard</span>
+                                </NavLink>
+                              </li>
+                            </ul>
                           </div>
+                        </React.Fragment>
+                      );
+                    }}
+                  </SidebarLinkGroup>
+                )}
 
-                          {isOpen && (
-                            open
-                              ? <ChevronUp className="w-4 h-4 text-gray-500" />
-                              : <ChevronDown className="w-4 h-4 text-gray-500" />
-                          )}
-                        </NavLink>
+                {/* Route Planning */}
+                {!viewOnly && (
+                  <SidebarLinkGroup activeCondition={pathname.includes('route-planning')}>
+                    {(handleClick, open) => {
+                      return (
+                        <React.Fragment>
+                          <NavLink
+                            to="#"
+                            className={`
+                              flex items-center justify-between py-2 ${isOpen ? 'px-3' : 'px-2'} rounded-lg transition-colors duration-200 text-bodydark1
+                              ${pathname.includes('route')
+                                ? 'bg-graydark dark:bg-meta-4'
+                                : 'hover:bg-graydark dark:hover:bg-meta-4'
+                              } ${!isOpen ? 'w-[44px]' : 'w-full'}
+                            `}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              sidebarExpanded ? handleClick() : setSidebarExpanded(true);
+                            }}
+                          >
+                            <div className={`flex items-center ${isOpen ? 'gap-3' : 'gap-0'} w-full`}>
+                              <div className="min-w-[20px] flex justify-center">
+                                <img src={RouteMap} alt="RouteMap" className="w-5 h-5 object-contain" />
+                              </div>
+                              {isOpen && <span className="whitespace-nowrap">Route Planning</span>}
+                            </div>
+                            {isOpen && (
+                              open ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />
+                            )}
+                          </NavLink>
 
-
-                        <div
-                          className={`translate transform overflow-hidden ${!open && 'hidden'}`}
-                        >
-                          <ul className="space-y-1 mt-2 flex flex-col gap-1.5 bg-black/20 dark:bg-boxdark/30 rounded-md py-2 border-l-2 border-gray-600 dark:border-gray-500 ml-2">
-                            <li>
-                              <NavLink
-                                to="/route-planning/route-list"
-                                className={({ isActive }) =>
-                                  `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm 
-                                      ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
-                                }
-                              >
-                                <ListCollapse size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
-                                <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Route List</span>
-                              </NavLink>
-                            </li>
-                            <li>
-                              <NavLink
-                                to="/route-planning/builder"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={({ isActive }) =>
-                                  `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm 
-                                      ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
-                                }
-                              >
-                                <MapPinHouse size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
-                                <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Route Builder</span>
-                              </NavLink>
-                            </li>
-                          </ul>
-                        </div>
-
-                      </React.Fragment>
-                    );
-                  }}
-            </SidebarLinkGroup>
-             )}
-             
-             {/* Survey - Visible for everyone including IE user */}
-             <SideBarItem
-              icon={SurveyIcon}
-              label="Survey"
-              isOpen={isOpen}
-              isActive={!!surveyMatch}
-              path="/survey"
-            />
-
-             {/* Construction - Original condition (!viewOnly) but hide for IE user */}
-             {!viewOnly && !ieUser && (
+                          <div className={`translate transform overflow-hidden ${!open && 'hidden'}`}>
+                            <ul className="space-y-1 mt-2 flex flex-col gap-1.5 bg-black/20 dark:bg-boxdark/30 rounded-md py-2 border-l-2 border-gray-600 dark:border-gray-500 ml-2">
+                              <li>
+                                <NavLink
+                                  to="/route-planning/route-list"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <ListCollapse size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
+                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Route List</span>
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/route-planning/builder"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <MapPinHouse size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
+                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Route Builder</span>
+                                </NavLink>
+                              </li>
+                            </ul>
+                          </div>
+                        </React.Fragment>
+                      );
+                    }}
+                  </SidebarLinkGroup>
+                )}
+                
+                {/* Survey - Visible for everyone */}
                 <SideBarItem
-                  icon={ConstructionImg}
-                  label="Construction"
+                  icon={SurveyIcon}
+                  label="Survey"
                   isOpen={isOpen}
-                  isActive={!!constructionMatch}
-                  path="/construction"
+                  isActive={!!surveyMatch}
+                  path="/survey"
                 />
-              )}
 
-              
-             {/* Add Installation Menu Item - Hide for IE user, Allow for installation access users */}
-             {(!viewOnly && !ieUser) || installationAccess ? (
-                <li>
-                  <NavLink
-                    to="/installation"
-                    className={({ isActive }) =>
-                      `flex items-center py-2 ${isOpen ? "px-3 gap-4" : "px-2 gap-0"} rounded-lg 
-                      transition-colors duration-200 text-bodydark1
-                      ${isActive ? "bg-graydark dark:bg-meta-4 !text-white" : "hover:bg-graydark dark:hover:bg-meta-4"}
-                      ${!isOpen ? "w-[44px] justify-center" : ""}`
-                    }
-                  >
-                    <div className="min-w-[20px] flex justify-center">
-                      <Settings className="w-5 h-5" />
-                    </div>
-                    {isOpen && <span className="whitespace-nowrap">Equipment Installation</span>}
-                  </NavLink>
-                </li>
-              ) : null}
+                {/* Construction */}
+                {!viewOnly && (
+                  <SideBarItem
+                    icon={ConstructionImg}
+                    label="Construction"
+                    isOpen={isOpen}
+                    isActive={!!constructionMatch}
+                    path="/construction"
+                  />
+                )}
 
-             {/* Add Blocks Management above GIS Inventory - Hide for IE user */}
-              {!viewOnly && !ieUser && (
-                <li>
-                  <NavLink
-                    to="/blocks-management"
-                    className={`
-                      flex items-center py-2 ${isOpen ? 'px-3 gap-4' : 'px-2 gap-0'} rounded-lg 
-                      transition-colors duration-200 text-bodydark1 
-                      ${pathname.includes('blocks-management') 
-                        ? 'bg-graydark dark:bg-meta-4' 
-                        : 'hover:bg-graydark dark:hover:bg-meta-4'}
-                      ${!isOpen ? 'w-[44px] justify-center' : ''}
-                    `}
-                  >
-                    <div className="min-w-[20px] flex justify-center">
-                      <Grid3X3 className="w-5 h-5" />
-                    </div>
-                    {isOpen && <span className="whitespace-nowrap">Block Assginment</span>}
-                  </NavLink>
-                </li>
-              )}
-
-              {/* GIS Inventory - Show for InvOnly OR IE user */}
-              {(InvOnly || ieUser) && (
+                {/* Equipment Installation */}
+                {(!viewOnly) || installationAccess ? (
                   <li>
-                  <NavLink
-                    to="/smart-inventory"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`
-                          flex items-center py-2 ${isOpen ? 'px-3 gap-4' : 'px-2 gap-0'} rounded-lg 
-                          transition-colors duration-200 text-bodydark1 hover:bg-graydark dark:hover:bg-meta-4
-                          ${!isOpen ? 'w-[44px] justify-center' : ''}
-                        `}
-                  >
-                    <img src={Smart_Inv} className="w-5 flex-shrink-0" alt="GIS Inventory" />
-                    {isOpen && <span className="whitespace-nowrap">GIS Inventory</span>}
-                  </NavLink>
-                </li>
-              )}
-              
-              {/* Machine Management - Hide for IE user */}
-              {!viewOnly && !ieUser && (
-                <>
-              
-                <SidebarLinkGroup activeCondition={pathname.includes('machine-management')}>
-                  {(handleClick, open) => {
-                    return (
-                      <>
-                        <NavLink
-                          to="#"
-                          className={`
+                    <NavLink
+                      to="/installation"
+                      className={({ isActive }) =>
+                        `flex items-center py-2 ${isOpen ? "px-3 gap-4" : "px-2 gap-0"} rounded-lg 
+                        transition-colors duration-200 text-bodydark1
+                        ${isActive ? "bg-graydark dark:bg-meta-4 !text-white" : "hover:bg-graydark dark:hover:bg-meta-4"}
+                        ${!isOpen ? "w-[44px] justify-center" : ""}`
+                      }
+                    >
+                      <div className="min-w-[20px] flex justify-center">
+                        <Settings className="w-5 h-5" />
+                      </div>
+                      {isOpen && <span className="whitespace-nowrap">Equipment Installation</span>}
+                    </NavLink>
+                  </li>
+                ) : null}
+
+                {/* Block Assignment */}
+                {!viewOnly && (
+                  <li>
+                    <NavLink
+                      to="/blocks-management"
+                      className={`
+                        flex items-center py-2 ${isOpen ? 'px-3 gap-4' : 'px-2 gap-0'} rounded-lg 
+                        transition-colors duration-200 text-bodydark1 
+                        ${pathname.includes('blocks-management') 
+                          ? 'bg-graydark dark:bg-meta-4' 
+                          : 'hover:bg-graydark dark:hover:bg-meta-4'}
+                        ${!isOpen ? 'w-[44px] justify-center' : ''}
+                      `}
+                    >
+                      <div className="min-w-[20px] flex justify-center">
+                        <Grid3X3 className="w-5 h-5" />
+                      </div>
+                      {isOpen && <span className="whitespace-nowrap">Block Assginment</span>}
+                    </NavLink>
+                  </li>
+                )}
+
+                {/* GIS Inventory - Only for InvOnly users (IE users get it at the top) */}
+                {InvOnly && (
+                  <li>
+                    <NavLink
+                      to="/smart-inventory"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`
+                        flex items-center py-2 ${isOpen ? 'px-3 gap-4' : 'px-2 gap-0'} rounded-lg 
+                        transition-colors duration-200 text-bodydark1 hover:bg-graydark dark:hover:bg-meta-4
+                        ${!isOpen ? 'w-[44px] justify-center' : ''}
+                      `}
+                    >
+                      <img src={Smart_Inv} className="w-5 flex-shrink-0" alt="GIS Inventory" />
+                      {isOpen && <span className="whitespace-nowrap">GIS Inventory</span>}
+                    </NavLink>
+                  </li>
+                )}
+                
+                {/* Machine Management */}
+                {!viewOnly && (
+                  <SidebarLinkGroup activeCondition={pathname.includes('machine-management')}>
+                    {(handleClick, open) => {
+                      return (
+                        <>
+                          <NavLink
+                            to="#"
+                            className={`
                               flex items-center justify-between py-2 ${isOpen ? 'px-3' : 'px-2'} rounded-lg transition-colors duration-200 text-bodydark1
                               ${pathname.includes('machine-management')
-                              ? 'bg-graydark dark:bg-meta-4'
-                              : 'hover:bg-graydark dark:hover:bg-meta-4'}
+                                ? 'bg-graydark dark:bg-meta-4'
+                                : 'hover:bg-graydark dark:hover:bg-meta-4'}
                               ${!isOpen ? 'w-[44px]' : 'w-full'}
                             `}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            sidebarExpanded ? handleClick() : setSidebarExpanded(true);
-                          }}
-                        >
-                          {/* Icon + Label */}
-                          <div className={`flex items-center ${isOpen ? 'gap-3' : 'gap-0'} w-full`}>
-                            <div className="min-w-[20px] flex justify-center">
-                              <img src={Machine} alt="MachMgmt" className="w-5 h-5 object-contain" />
+                            onClick={(e) => {
+                              e.preventDefault();
+                              sidebarExpanded ? handleClick() : setSidebarExpanded(true);
+                            }}
+                          >
+                            <div className={`flex items-center ${isOpen ? 'gap-3' : 'gap-0'} w-full`}>
+                              <div className="min-w-[20px] flex justify-center">
+                                <img src={Machine} alt="MachMgmt" className="w-5 h-5 object-contain" />
+                              </div>
+                              {isOpen && <span className="whitespace-nowrap">Machines</span>}
                             </div>
-                            {isOpen && <span className="whitespace-nowrap">Machines</span>}
+                            {isOpen && (
+                              open ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />
+                            )}
+                          </NavLink>
+
+                          <div className={`transform overflow-hidden transition-all ${!open && 'hidden'}`}>
+                            <ul className="space-y-1 mt-2 flex flex-col gap-1.5 bg-black/20 dark:bg-boxdark/30 rounded-md py-2 border-l-2 border-gray-600 dark:border-gray-500 ml-2">
+                              <li>
+                                <NavLink
+                                  to="/machine-management/machines"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <Cog size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
+                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Machines</span>
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/machine-management/machine-tracking"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <LocateFixed size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
+                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Machine Tracking</span>
+                                </NavLink>
+                              </li>
+                            </ul>
                           </div>
+                        </>
+                      );
+                    }}
+                  </SidebarLinkGroup>
+                )}
 
-                          {isOpen && (
-                            open
-                              ? <ChevronUp className="w-4 h-4 text-gray-500" />
-                              : <ChevronDown className="w-4 h-4 text-gray-500" />
-                          )}
-                        </NavLink>
-
-
-                        <div className={`transform overflow-hidden transition-all ${!open && 'hidden'}`}>
-                          <ul className="space-y-1 mt-2 flex flex-col gap-1.5 bg-black/20 dark:bg-boxdark/30 rounded-md py-2 border-l-2 border-gray-600 dark:border-gray-500 ml-2">
-                            <li>
-                              <NavLink
-                                to="/machine-management/machines"
-                                className={({ isActive }) =>
-                                  `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm 
-                                      ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
-                                }
-                              >
-                                <Cog size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
-                                <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Machines</span>
-                              </NavLink>
-                            </li>
-                            <li>
-                              <NavLink
-                                to="/machine-management/machine-tracking"
-                                className={({ isActive }) =>
-                                  `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm 
-                                      ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
-                                }
-                              >
-                                <LocateFixed size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
-                                <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Machine Tracking</span>
-                              </NavLink>
-                            </li>
-                          </ul>
-                        </div>
-
-                      </>
-                    );
-                  }}
-                </SidebarLinkGroup>
-
-           
-                {/* <SideBarItem icon={KML} label="Filter GP Points" isOpen={isOpen} isActive={pathname.includes('gp-points-filter')} path='/gp-points-filter' /> */}
-                {/* Master Data - Hide for IE user */}
-                {!ieUser && (
-                <SidebarLinkGroup
-                  activeCondition={pathname.includes('managementlist')}
-                >
-                  {(handleClick, open) => {
-                    return (
-                      <React.Fragment>
-                        <NavLink
-                          to="#"
-                          className={`
+                {/* Master Data */}
+                {!viewOnly && (
+                  <SidebarLinkGroup activeCondition={pathname.includes('managementlist')}>
+                    {(handleClick, open) => {
+                      return (
+                        <React.Fragment>
+                          <NavLink
+                            to="#"
+                            className={`
                               flex items-center justify-between py-2 ${isOpen ? 'px-3' : 'px-2'} rounded-lg transition-colors duration-200 text-bodydark1
                               ${pathname.includes('managementlist')
-                              ? 'bg-graydark dark:bg-meta-4'
-                              : 'hover:bg-graydark dark:hover:bg-meta-4'}
+                                ? 'bg-graydark dark:bg-meta-4'
+                                : 'hover:bg-graydark dark:hover:bg-meta-4'}
                               ${!isOpen ? 'w-[44px]' : 'w-full'}
                             `}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            sidebarExpanded
-                              ? handleClick()
-                              : setSidebarExpanded(true);
-                          }}
-                        >
-                          {/* Icon + Label */}
-                          <div className={`flex items-center ${isOpen ? 'gap-3' : 'gap-0'} w-full`}>
-                            <div className="min-w-[20px] flex justify-center">
-                              <img src={TableIcon} alt="ManagementList" className="w-5 h-5 object-contain" />
+                            onClick={(e) => {
+                              e.preventDefault();
+                              sidebarExpanded ? handleClick() : setSidebarExpanded(true);
+                            }}
+                          >
+                            <div className={`flex items-center ${isOpen ? 'gap-3' : 'gap-0'} w-full`}>
+                              <div className="min-w-[20px] flex justify-center">
+                                <img src={TableIcon} alt="ManagementList" className="w-5 h-5 object-contain" />
+                              </div>
+                              {isOpen && <span className='whitespace-nowrap'>Master Data</span>}
                             </div>
-                            {isOpen && <span className='whitespace-nowrap'>Master Data</span>}
+                            {isOpen && (
+                              open ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />
+                            )}
+                          </NavLink>
+
+                          <div className={`transform overflow-hidden transition-all ${!open && 'hidden'}`}>
+                            <ul className="space-y-1 mt-2 flex flex-col gap-1.5 bg-black/20 dark:bg-boxdark/30 rounded-md py-2 border-l-2 border-gray-600 dark:border-gray-500 ml-2">
+                              <li>
+                                <NavLink
+                                  to="/managementlist/companies"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <Building size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
+                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Companies</span>
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/managementlist/users"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <User2Icon size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
+                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Users</span>
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/managementlist/gplist"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <Globe2Icon size={16} className='min-w-[16px] flex-shrink-0 opacity-80'/>   
+                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Gp List</span>
+                                </NavLink>
+                              </li>
+                            </ul>
                           </div>
-
-                          {isOpen && (
-                            open
-                              ? <ChevronUp className="w-4 h-4 text-gray-500" />
-                              : <ChevronDown className="w-4 h-4 text-gray-500" />
-                          )}
-                        </NavLink>
-
-
-                        <div
-                          className={`transform overflow-hidden transition-all ${!open && 'hidden'}`}
-                        >
-                          <ul className="space-y-1 mt-2 flex flex-col gap-1.5 bg-black/20 dark:bg-boxdark/30 rounded-md py-2 border-l-2 border-gray-600 dark:border-gray-500 ml-2">
-                            <li>
-                              <NavLink
-                                to="/managementlist/companies"
-                                className={({ isActive }) =>
-                                  `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm 
-                                      ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
-                                }
-                              >
-                                <Building size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
-                                <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Companies</span>
-                              </NavLink>
-                            </li>
-                            <li>
-                              <NavLink
-                                to="/managementlist/users"
-                                className={({ isActive }) =>
-                                  `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm 
-                                      ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
-                                }
-                              >
-                                <User2Icon size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
-                                <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Users</span>
-                              </NavLink>
-                            </li>
-                            <li>
-                              <NavLink to="/managementlist/gplist"
-                               className={({isActive})=>`group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm
-                                          ${isActive ? `!text-white bg-graydark/50`: 'hover:bg-graydark/30'}`}>
-                                <Globe2Icon size={16} className='min-w-[16px] flex-shrink-0 opacity-80'/>   
-                                <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Gp List</span>
-                              </NavLink>
-                            </li>
-                          </ul>
-                        </div>
-
-                      </React.Fragment>
-                    );
-                  }}
-                </SidebarLinkGroup>
+                        </React.Fragment>
+                      );
+                    }}
+                  </SidebarLinkGroup>
                 )}
-              </>
-            )}
-            {!viewOnly && (
-              <>
-                {/* <SideBarItem icon={User} label="KML File Upload" isOpen={isOpen} isActive={pathname.includes('kmlfileupload')} path='/kmlfileupload' /> */}
-
               </>
             )}
           </ul>

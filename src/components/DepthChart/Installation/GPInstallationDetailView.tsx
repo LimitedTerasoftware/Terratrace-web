@@ -421,7 +421,7 @@ const GPInstallationDetailView = () => {
 
         <div className="container mx-auto px-1">
           {/* Header */}
-          <Header activeTab="installation" BackBut={true} />
+          <Header activeTab="gpview" BackBut={true} />
           
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8 mb-8 mt-3">
