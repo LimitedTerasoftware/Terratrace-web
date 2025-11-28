@@ -36,11 +36,15 @@ export const extractVideoRecordData = (data: UnderGroundSurveyData[]): {
 
   let startEvent: UnderGroundSurveyData | undefined;
 
-  const routeDetails = data.find(
+  // const routeDetails = data.find(
+  //   item =>
+  //     item.event_type === 'ROUTEDETAILS' &&
+  //     getEventTime(item) >= firstVideoStart &&
+  //     getEventTime(item) <= firstVideoEnd
+  // );
+   const routeDetails = data.find(
     item =>
-      item.event_type === 'ROUTEDETAILS' &&
-      getEventTime(item) >= firstVideoStart &&
-      getEventTime(item) <= firstVideoEnd
+      item.event_type === 'ROUTEDETAILS' 
   );
   // if (routeDetails) {
   //   startEvent = data.find(
