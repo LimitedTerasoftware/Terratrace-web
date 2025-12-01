@@ -1065,6 +1065,43 @@ const handleEditSave = async () => {
 
   };
 
+const handleMediaFiles = async () => {
+
+  if (!tempSelectedBlock) {
+    alert("Please select a block first.");
+    return;
+  }
+
+  try {
+    setIsExporting(true);
+
+    const url = `${TraceBASEURL}/download-media/${tempSelectedBlock}`;
+
+    const response = await fetch(url, {
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to download media.");
+    }
+
+    const blob = await response.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = downloadUrl;
+    a.download = `media_${tempSelectedBlock}.zip`;
+    a.click();
+    window.URL.revokeObjectURL(downloadUrl);
+
+    setExportComplete(true);
+  } catch (err) {
+    console.error(err);
+    alert("Something went wrong while downloading.");
+  } finally {
+    setIsExporting(false);
+  }
+};
 
 
   const stateOptions = states.map((state) => ({
@@ -1342,8 +1379,9 @@ const handleEditSave = async () => {
                   >
                       <Globe2Icon className="h-4 w-4" />
                       KML
-                    </button><button
-                      onClick={() => handlePreview(1)}
+                    </button>
+                    <button
+                      onClick={() => handleMediaFiles()}
                       disabled={isExporting}
                       className="flex-none h-10 px-4 py-2 text-sm font-medium text-red-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     > {isExporting ? (
@@ -1357,7 +1395,8 @@ const handleEditSave = async () => {
                         Media Files
                       </>
                     )}
-                    </button></>
+                    </button>
+                    </>
                 )}
                 <button
                   onClick={() => handlePreview(0)}
