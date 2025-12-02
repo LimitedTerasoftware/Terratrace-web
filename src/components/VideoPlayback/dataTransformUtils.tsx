@@ -36,23 +36,12 @@ export const extractVideoRecordData = (data: UnderGroundSurveyData[]): {
 
   let startEvent: UnderGroundSurveyData | undefined;
 
-  // const routeDetails = data.find(
-  //   item =>
-  //     item.event_type === 'ROUTEDETAILS' &&
-  //     getEventTime(item) >= firstVideoStart &&
-  //     getEventTime(item) <= firstVideoEnd
-  // );
+ 
    const routeDetails = data.find(
     item =>
       item.event_type === 'ROUTEDETAILS' 
   );
-  // if (routeDetails) {
-  //   startEvent = data.find(
-  //     item =>
-  //       item.event_type === 'LIVELOCATION' &&
-  //       getEventTime(item) > getEventTime(routeDetails)
-  //   );
-  // }
+ 
   if (routeDetails) {
     const routeTS = getEventTime(routeDetails);
 
@@ -117,7 +106,8 @@ export const extractVideoRecordData = (data: UnderGroundSurveyData[]): {
         return [{
           lat: parseFloat(item.latitude),
           lng: parseFloat(item.longitude),
-          timestamp: getEventTime(item)
+          timestamp: getEventTime(item),
+          Type:item.accuracy,
         }];
       } else if (item.event_type === 'VIDEORECORD'  && item.surveyUploaded === 'true') {
         // Add both start and end points for video records
@@ -125,12 +115,14 @@ export const extractVideoRecordData = (data: UnderGroundSurveyData[]): {
           {
             lat: item.videoDetails.startLatitude,
             lng: item.videoDetails.startLongitude,
-            timestamp: item.videoDetails.startTimeStamp
+            timestamp: item.videoDetails.startTimeStamp,
+            Type:item.accuracy
           },
           {
             lat: item.videoDetails.endLatitude,
             lng: item.videoDetails.endLongitude,
-            timestamp: item.videoDetails.endTimeStamp
+            timestamp: item.videoDetails.endTimeStamp,
+            Type:item.accuracy
           }
         ];
       }
@@ -144,7 +136,8 @@ export const extractVideoRecordData = (data: UnderGroundSurveyData[]): {
 };
 export const getPositionAtTime = (
   trackPoints: MapPosition[],
-  timestamp: number
+  timestamp: number,
+  Type:string|null
 ): MapPosition | null => {
   if (!trackPoints.length) return null;
   
@@ -169,7 +162,9 @@ export const getPositionAtTime = (
       return {
         lat: current.lat + (next.lat - current.lat) * ratio,
         lng: current.lng + (next.lng - current.lng) * ratio,
-        timestamp
+        timestamp,
+        Type
+        
       };
     }
   }

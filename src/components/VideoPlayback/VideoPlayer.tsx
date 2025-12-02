@@ -19,6 +19,7 @@ interface VideoPlayerProps {
   isPlayingSegment?: boolean;
    shouldResumeAfterLandmark?: boolean;
   onResumeComplete?: () => void; // Add this line
+  Type:string|null
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -35,6 +36,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   hasNextVideo = false,
   hasPreviousVideo = false,
   isPlayingSegment = false,
+  Type
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -45,6 +47,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const seekBarRef = useRef<HTMLDivElement>(null);
   const [hasStartedPlaying, setHasStartedPlaying] = useState(false);
+  const [lastMatchedPoint, setLastMatchedPoint] = useState<any>(null);
 
   // Sync video with external currentTime
   useEffect(() => {
@@ -198,29 +201,38 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   };
 
   const areCoordsEqual = (a: number, b: number) => Math.abs(a - b) < 0.00001;
+ 
+useEffect(() => {
+ if (!currentPosition) return;
+ const matchedPoint = TrackPoints.find(
+    p => areCoordsEqual(p.lat, currentPosition.lat) && areCoordsEqual(p.lng, currentPosition.lng)
+  );
+  if (matchedPoint) setLastMatchedPoint(matchedPoint);
+}, [currentPosition, TrackPoints]);
+
 
   return (
     <div className={`rounded-lg bg-gray-900 shadow-lg ${className}`}>
       <div className="relative w-full h-full flex flex-col overflow-hidden">
         {/* Position overlay */}
         {currentPosition && (
-          <div className="absolute top-4 left-4 right-4 bg-black/70 text-white p-3 rounded-lg text-sm z-10 flex items-center justify-between">
+          <div className="absolute  left-4 right-4 bg-black/70 text-white p-3 rounded-lg text-sm z-10 flex items-center justify-between">
             <div className="flex items-center">
               <MapPin size={16} className="mr-2" />
-              {
-                (() => {
-                  const matchedPoint = TrackPoints.find(
-                    p => areCoordsEqual(p.lat, currentPosition.lat) && areCoordsEqual(p.lng, currentPosition.lng)
-                  );
-
-                  return matchedPoint && (
-                    <span>
-                      {matchedPoint.lat.toFixed(6)}°, {matchedPoint.lng.toFixed(6)}°
-                    </span>
-                  );
-                })()
-              }
+              <span>
+                    {lastMatchedPoint 
+                      ? `${lastMatchedPoint.lat.toFixed(6)}°, ${lastMatchedPoint.lng.toFixed(6)}°`
+                      : 'Loading...'}
+              </span>
             </div>
+            <div className="flex items-center">
+              <span>
+                    {Type == "RECTIFICATION" && lastMatchedPoint
+                      && ` Accuracy: ${lastMatchedPoint.Type}`
+                    }
+              </span>
+            </div>
+
             <div className="flex items-center ml-4">
               <Clock size={16} className="mr-2" />
               <span>{formatTimestamp(currentTime)}</span>

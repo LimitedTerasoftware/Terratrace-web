@@ -86,6 +86,7 @@ export interface MapPosition {
   lat: number;
   lng: number;
   timestamp: number;
+  Type:string|null;
 }
 
 export interface SegmentSelection {

@@ -9,10 +9,11 @@ import { useFullscreen } from '../hooks/useFullscreen';
 
 type AppProps = {
   data: UnderGroundSurveyData[];
-  SelectedEvent: UnderGroundSurveyData | null
+  SelectedEvent: UnderGroundSurveyData | null;
+  Type:string | null
 };
 
-function App({ data, SelectedEvent }: AppProps) {
+function App({ data, SelectedEvent ,Type}: AppProps) {
   const [datas, setData] = useState<UnderGroundSurveyData[]>([]);
   const [trackPoints, setTrackPoints] = useState<MapPosition[]>([]);
   const [videoData, setVideoData] = useState<UnderGroundSurveyData | null>(null);
@@ -96,7 +97,7 @@ function App({ data, SelectedEvent }: AppProps) {
   // Update current position when time changes
   useEffect(() => {
     if (trackPoints.length > 0) {
-      const position = getPositionAtTime(trackPoints, currentTime);
+      const position = getPositionAtTime(trackPoints, currentTime,Type);
       setCurrentPosition(position);
     }
   }, [currentTime, trackPoints]);
@@ -425,6 +426,7 @@ function App({ data, SelectedEvent }: AppProps) {
               hasNextVideo={currentVideoIndex < availableVideos.length - 1}
               hasPreviousVideo={currentVideoIndex > 0}
               isPlayingSegment={isPlayingSegment}
+              Type={Type}
 
             />
           </div>

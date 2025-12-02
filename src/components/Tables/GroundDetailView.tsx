@@ -1163,7 +1163,7 @@ const GroundDetailView: React.FC = () => {
         {activeTab === 'video' && (
           <div className="h-[600px] p-4">
             {/* Map goes here */}
-            <App data={data?.under_ground_survey_data || []} SelectedEvent={SelectedItem} />
+            <App data={data?.under_ground_survey_data || []} SelectedEvent={SelectedItem}  Type={data?.routeType || null}/>
           </div>
         )}
       </div>
