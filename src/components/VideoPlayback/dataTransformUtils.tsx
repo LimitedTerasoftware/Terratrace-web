@@ -113,8 +113,8 @@ export const extractVideoRecordData = (data: UnderGroundSurveyData[]): {
         // Add both start and end points for video records
         return [
           {
-            lat: item.videoDetails.startLatitude,
-            lng: item.videoDetails.startLongitude,
+            lat: Number(item.videoDetails.startLatitude),
+            lng: Number(item.videoDetails.startLongitude),
             timestamp: item.videoDetails.startTimeStamp,
             Type:item.accuracy
           },
