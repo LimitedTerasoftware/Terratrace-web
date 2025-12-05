@@ -1387,9 +1387,7 @@ export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
     points.forEach((point, index) => {
       try {
         // NEW: Check if this "point" is actually GP data
-        if (point.gp_data && Array.isArray(point.gp_data)) {
-          console.log(`Found GP data in block ${blockId} with ${point.gp_data.length} items`);
-          
+        if (point.gp_data && Array.isArray(point.gp_data)) {          
           point.gp_data.forEach((gpItem: any, gpIndex: number) => {
             try {
               // Parse GP coordinates
@@ -1469,7 +1467,6 @@ export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
                   hasImages: images.length > 0,
                   itemType: 'gp'
                 });
-                console.log(`✓ Created GP Installation marker at ${gpLat}, ${gpLng}`);
               }
 
             } catch (error) {
@@ -1483,7 +1480,6 @@ export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
 
         // NEW: Check if this "point" is actually Block data
         if (point.blk_data) {
-          console.log(`Found block data in block ${blockId}`);
           
           try {
             const blockData = point.blk_data;
@@ -1533,7 +1529,6 @@ export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
                 images: blockImages,
                 hasImages: blockImages.length > 0
               });
-              console.log(`✓ Created BSNL Block marker at ${bsnlLat}, ${bsnlLng}`);
             }
           } catch (error) {
             console.error(`Error processing block data in block ${blockId}:`, error);
@@ -1649,10 +1644,6 @@ export function processPhysicalSurveyData(apiData: PhysicalSurveyApiResponse): {
       });
     }
   });
-
-  console.log('=== Category Processing Complete ===');
-  console.log('GP_LOCATION:', categoryCounts['GP_LOCATION'] || 0);
-  console.log('BSNL_BLOCK:', categoryCounts['BSNL_BLOCK'] || 0);
 
   const categories: PlacemarkCategory[] = physicalSurveyCategories
     .map(name => ({
@@ -1971,9 +1962,7 @@ export function processRectificationData(apiData: RectificationApiResponse | nul
                 .split(',')
                 .map(path => path.trim())
                 .filter(path => path && path !== 'null');
-              
-              console.log(`Parsed images for rectification item ${item.id}:`, imageUrls);
-            }
+                        }
           }
         } catch (error) {
           console.warn(`Failed to parse images for rectification item ${item.id}:`, error);

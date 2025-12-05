@@ -93,9 +93,6 @@ const SignupForm: React.FC = () => {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Registration would happen here
-      console.log('Signup successful', formData);
-      
       // Redirect would happen here
     } catch (error) {
       console.error('Signup error:', error);

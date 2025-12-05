@@ -560,22 +560,6 @@ useEffect(() => {
 
       const kmlArray: KMLData[] = Array.isArray(parsed) ? parsed : [parsed];
       
-      console.log("=== PREVIEW KML DATA RECEIVED ===", {
-        rawData: parsed,
-        summary: {
-          totalFiles: kmlArray.length,
-          pointsPerFile: kmlArray.map((kml, idx) => ({
-            fileIndex: idx,
-            pointsCount: kml.data?.points?.length || 0,
-            connectionsCount: kml.data?.connections?.length || 0
-          })),
-          totalPoints: kmlArray.reduce((sum, kml) => sum + (kml.data?.points?.length || 0), 0),
-          totalConnections: kmlArray.reduce((sum, kml) => sum + (kml.data?.connections?.length || 0), 0),
-          networkInfo: kmlArray[0]?.data?.network || null
-        },
-        samplePoints: kmlArray[0]?.data?.points?.slice(0, 3) || [],
-        sampleConnections: kmlArray[0]?.data?.connections?.slice(0, 3) || []
-      });
 
       let allPoints: ProcessedPoint[] = [];
       let allConnections: ProcessedConnection[] = [];
@@ -746,9 +730,6 @@ useEffect(() => {
 
             return processedPoint;
           });
-
-          console.log(`✅ Processed ${points.length} points from file ${idx + 1}`);
-          console.log("Sample processed point:", points[0]);
           
           allPoints.push(...points);
         } else {
@@ -947,7 +928,6 @@ useEffect(() => {
             return processedConnection;
           });
 
-          console.log(`✅ Processed ${connections.length} connections from file ${idx + 1}`);
           allConnections.push(...connections);
         }
       });
@@ -956,29 +936,6 @@ useEffect(() => {
       // ✅ NO JUNCTION EXTRACTION NEEDED - ALREADY IN POINTS
       // ==========================================
       
-      console.log("=== ALL POINTS ALREADY INCLUDE JUNCTIONS ===", {
-        totalPoints: allPoints.length,
-        pointsByType: allPoints.reduce((acc, p) => {
-          const type = p.properties?.type || p.properties?.asset_type || 'Unknown';
-          acc[type] = (acc[type] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>),
-        pointsByName: {
-          BJC: allPoints.filter(p => /BJC/i.test(p.name)).length,
-          SJC: allPoints.filter(p => /SJC/i.test(p.name)).length,
-          LC: allPoints.filter(p => /LC|LUP/i.test(p.name)).length,
-          GP: allPoints.filter(p => /GP/i.test(p.name)).length,
-          BHQ: allPoints.filter(p => /BHQ/i.test(p.name)).length,
-          Other: allPoints.filter(p => 
-            !/BJC|SJC|LC|LUP|GP|BHQ/i.test(p.name)
-          ).length
-        },
-        samplePointNames: allPoints.slice(0, 20).map(p => ({
-          name: p.name,
-          type: p.properties?.type,
-          originalName: p.properties?._parsing_info?.original_point_name
-        }))
-      });
       
       // Calculate totals
       const existingConnections = allConnections.filter(conn => conn.existing === true);
@@ -987,25 +944,6 @@ useEffect(() => {
       const totalExistingLength = existingConnections.reduce((sum, conn) => sum + (conn.length || 0), 0);
       const totalProposedLength = proposedConnections.reduce((sum, conn) => sum + (conn.length || 0), 0);
       const totalLength = totalExistingLength + totalProposedLength;
-
-      console.log("=== FINAL PROCESSED DATA ===", {
-        points: {
-          total: allPoints.length,
-          samplePoint: allPoints[0],
-          coordinateCheck: allPoints.slice(0, 5).map(p => ({
-            name: p.name,
-            coords: p.coordinates,
-            valid: p.coordinates[0] !== 0 && p.coordinates[1] !== 0
-          }))
-        },
-        connections: {
-          total: allConnections.length,
-          existing: existingConnections.length,
-          proposed: proposedConnections.length,
-          totalExistingLength: totalExistingLength.toFixed(3),
-          totalProposedLength: totalProposedLength.toFixed(3)
-        }
-      });
 
       // Set the processed data
       setGPSApiResponse({ points: allPoints });
@@ -1026,17 +964,6 @@ useEffect(() => {
           proposedlength: totalProposedLength
         }));
       }
-
-      console.log("=== AFTER PROCESSING KML ===", {
-        allPointsCount: allPoints.length,
-        pointTypes: allPoints.reduce((acc, p) => {
-          const type = p.properties?.type || p.properties?.asset_type || 'Unknown';
-          acc[type] = (acc[type] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>),
-        pointsWithIds: allPoints.filter(p => p.properties?.id).length,
-        pointsWithoutIds: allPoints.filter(p => !p.properties?.id).length
-      });
 
       setExistingDistance(totalExistingLength);
       setProposedDistance(totalProposedLength);
@@ -1059,9 +986,7 @@ useEffect(() => {
 // ==========================================
 useEffect(() => {
   if (apiGPSResponse?.points?.length && map) {
-    console.log("=== RENDERING POINTS ON MAP ===");
-    console.log("Total points to render:", apiGPSResponse.points.length);
-    
+
     setPointProperties(apiGPSResponse?.points[0]);
     
     const connectionsByPoint = new Map<string, Connection[]>();
@@ -1089,17 +1014,6 @@ useEffect(() => {
              point.coordinates && 
              Array.isArray(point.coordinates) && 
              point.coordinates.length >= 2;
-    });
-
-    console.log(`Rendering ${validPoints.length} valid points`);
-    
-    console.log("=== POINT NAME MAPPING DEBUG ===", {
-      samplePoints: validPoints.slice(0, 10).map((p: any) => ({
-        originalName: p.name,
-        propertiesName: p.properties?.name,
-        finalName: p.properties?.name || p.name,
-        type: p.properties?.type
-      }))
     });
 
     const newLoopEntries: LoopEntry[] = validPoints.map((point: any) => {
@@ -1132,21 +1046,6 @@ useEffect(() => {
       };
     });
 
-    console.log("=== NEW LOOP ENTRIES DEBUG ===", {
-      totalEntries: newLoopEntries.length,
-      sampleNames: newLoopEntries.slice(0, 10).map(e => e.name),
-      junctionCounts: {
-        BJC: newLoopEntries.filter(e => /BJC/i.test(e.name)).length,
-        SJC: newLoopEntries.filter(e => /SJC/i.test(e.name)).length,
-        LC: newLoopEntries.filter(e => /LC|LUP/i.test(e.name)).length
-      },
-      genericNames: {
-        justBJC: newLoopEntries.filter(e => e.name === 'BJC').length,
-        justSJC: newLoopEntries.filter(e => e.name === 'SJC').length,
-        justLC: newLoopEntries.filter(e => e.name === 'LC').length
-      }
-    });
-
     setLocalData((prev: GlobalData) => ({
       ...prev,
       mainPointName: apiGPSResponse.points[0].properties?.blk_name || apiGPSResponse.points[0].properties?.name || '',
@@ -1176,9 +1075,6 @@ useEffect(() => {
   if (!map || !LocalData.loop || LocalData.loop.length === 0) {
     return;
   }
-
-  console.log("=== RENDERING POINT MARKERS ===");
-  console.log("Total points to render as markers:", LocalData.loop.length);
 
   // Clear existing markers
   markerInstanceMap.forEach((marker) => {
@@ -1282,36 +1178,6 @@ useEffect(() => {
 
   setMarkerInstanceMap(newMarkerMap);
 
-  console.log("=== MARKER RENDERING COMPLETE ===", {
-    totalPoints: LocalData.loop.length,
-    renderedMarkers: renderedCount,
-    skippedMarkers: skippedCount,
-    renderRate: `${((renderedCount / LocalData.loop.length) * 100).toFixed(1)}%`,
-    markerBreakdown: {
-      "Block Router": Array.from(newMarkerMap.values()).filter(m => 
-        m.getIcon()?.url?.includes("blue-dot")
-      ).length,
-      "BHQ": Array.from(newMarkerMap.values()).filter(m => 
-        m.getIcon()?.url?.includes("green-dot")
-      ).length,
-      "GP": Array.from(newMarkerMap.values()).filter(m => 
-        m.getIcon()?.url?.includes("yellow-dot")
-      ).length,
-      "BJC": Array.from(newMarkerMap.values()).filter(m => 
-        m.getIcon()?.url?.includes("purple-dot")
-      ).length,
-      "SJC": Array.from(newMarkerMap.values()).filter(m => 
-        m.getIcon()?.url?.includes("orange-dot")
-      ).length,
-      "LC": Array.from(newMarkerMap.values()).filter(m => 
-        m.getIcon()?.url?.includes("pink-dot")
-      ).length,
-      "FPOI/Other": Array.from(newMarkerMap.values()).filter(m => 
-        m.getIcon()?.url?.includes("red-dot")
-      ).length
-    }
-  });
-
   // Log details about skipped markers
   if (skippedCount > 0) {
     console.warn(`⚠️ Skipped ${skippedCount} markers due to invalid coordinates`);
@@ -1347,10 +1213,6 @@ useEffect(() => {
     return;
   }
 
-  console.log("=== FULL SYNC: REBUILDING ALL CONNECTIONS ===");
-  console.log("API Connections Count:", apiConctResponse.connections.length);
-  console.log("Deleted Count:", deletedPolylines.size);
-
   const completePolylineHistory: Record<string, any> = {};
   let processedCount = 0;
   let skippedCount = 0;
@@ -1379,7 +1241,6 @@ useEffect(() => {
                      deletedPolylines.has(uniqueKey);
     
     if (isDeleted) {
-      console.log(`[${idx + 1}/${apiConctResponse.connections.length}] SKIPPED (user deleted): ${uniqueKey}`);
       skippedCount++;
       return;
     }
@@ -1532,15 +1393,6 @@ useEffect(() => {
     console.warn(`Total duplicates: ${duplicateKeyWarnings.length}`);
   }
 
-  console.log("=== SYNC COMPLETE ===", {
-    totalApiConnections: apiConctResponse.connections.length,
-    processedConnections: processedCount,
-    skippedConnections: skippedCount,
-    finalPolylineHistoryCount: Object.keys(completePolylineHistory).length,
-    duplicatesFound: duplicateKeyWarnings.length,
-    shouldMatch: (processedCount === Object.keys(completePolylineHistory).length),
-    sampleKeys: Object.keys(completePolylineHistory).slice(0, 5)
-  });
 
   // ✅ REPLACE polylineHistory completely
   setLocalData(prev => ({
@@ -1559,9 +1411,6 @@ useEffect(() => {
     return;
   }
 
-  console.log("=== RENDERING POLYLINES ON MAP ===");
-  console.log("Polylines to render:", Object.keys(LocalData.polylineHistory).length);
-  console.log("New connections to render:", newConnections.length);
   
   // Clear existing polylines
   polylineInstanceMap.forEach((polyline) => {
@@ -1701,12 +1550,6 @@ useEffect(() => {
   setPolylineInstanceMap(newPolylineMap);
   setDistanceInfoWindows(newDistanceWindows);
   
-  // Update distance state variables
-  console.log("=== UPDATING DISTANCES ===", {
-    existingDistance: totalExisting.toFixed(3),
-    proposedDistance: totalProposed.toFixed(3),
-    totalDistance: (totalExisting + totalProposed).toFixed(3)
-  });
   
   setExistingDistance(totalExisting);
   setProposedDistance(totalProposed);
@@ -1722,13 +1565,6 @@ useEffect(() => {
   if (!bounds.isEmpty()) {
     map.fitBounds(bounds);
   }
-  
-  console.log("✅ Rendered polylines:", newPolylineMap.size);
-  console.log("✅ Distance Summary:", {
-    existing: `${totalExisting.toFixed(2)}km`,
-    proposed: `${totalProposed.toFixed(2)}km`,
-    total: `${(totalExisting + totalProposed).toFixed(2)}km`
-  });
   
 }, [LocalData.polylineHistory, map, previewKmlData, newConnections]);
 
@@ -2828,11 +2664,6 @@ useEffect(() => {
     const deletedLength = deletedEntry?.segmentData?.connection?.length || 0;
     const wasExisting = deletedEntry?.segmentData?.connection?.existing || false;
     
-    console.log(``, {
-      key,
-      length: deletedLength,
-      wasExisting
-    });
     
     const newExistingLength = wasExisting ? prev.existinglength - deletedLength : prev.existinglength;
     const newProposedLength = !wasExisting ? prev.proposedlength - deletedLength : prev.proposedlength;
@@ -2933,7 +2764,6 @@ useEffect(() => {
  const saveKML = async (localData: GlobalData) => {
   try {
     if (isSaving) {
-      console.log("Save already in progress, skipping...");
       return;
     }
     
@@ -2946,11 +2776,6 @@ useEffect(() => {
       ? JSON.parse(previewKmlData)?.data?.network?.id 
       : null;
 
-    console.log("=== STARTING SAVE OPERATION ===", {
-      mode: isPreviewMode ? 'UPDATE' : 'CREATE',
-      networkId: networkId,
-      userData: finalUserData
-    });
 
     // Get admin codes
     const adminCodes = {
@@ -3007,13 +2832,6 @@ useEffect(() => {
           user_created: true
         });
       }
-    });
-
-    console.log("=== CONNECTIONS DATA ===", {
-      existingConnections: existingConnectionsData.length,
-      newConnections: newConnections.length,
-      totalConnections: allConnectionsData.length,
-      userCreatedRoutes: allConnectionsData.filter(c => c.user_created).length
     });
 
     // Calculate accurate totals
@@ -3190,18 +3008,6 @@ useEffect(() => {
       }
     };
 
-    console.log("=== COMPLETE PAYLOAD SUMMARY ===", {
-      totalPoints: payload.globalData.loop.length,
-      totalConnections: payload.connections.length,
-      existingConnections: payload.metadata.connections_breakdown.existing,
-      proposedConnections: payload.metadata.connections_breakdown.proposed,
-      userCreatedConnections: payload.metadata.user_created_connections,
-      totalExistingLength: payload.metadata.connections_breakdown.existing_length,
-      totalProposedLength: payload.metadata.connections_breakdown.proposed_length,
-      networkId: networkId,
-      mode: payload.metadata.mode
-    });
-
     const payloadString = JSON.stringify(payload);
     const payloadSizeMB = new Blob([payloadString]).size / (1024 * 1024);
 
@@ -3224,8 +3030,6 @@ useEffect(() => {
       requestMethod = 'POST';
     }
     
-    console.log("\n🚀 Sending request to backend...\n");
-
     const response = await fetch(apiUrl, {
       method: requestMethod,
       headers: {

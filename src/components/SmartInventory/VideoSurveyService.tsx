@@ -619,8 +619,8 @@ export class VideoSurveyService {
               const videoDetails = JSON.parse(item.videoDetails);
               return [
                 {
-                  lat: videoDetails.startLatitude,
-                  lng: videoDetails.startLongitude,
+                  lat: parseFloat(videoDetails.startLatitude),
+                  lng: parseFloat(videoDetails.startLongitude),
                   timestamp: videoDetails.startTimeStamp,
                   surveyId: item.survey_id
                 },

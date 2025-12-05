@@ -356,9 +356,7 @@ async function fetchActualRoute(
 ): Promise<{ coordinates: google.maps.LatLngLiteral[]; distance: number } | null> {
   try {
     const url = `https://api.tricadtrack.com/show-route?lat1=${startLat}&lng1=${startLng}&lat2=${endLat}&lng2=${endLng}`;
-    
-    console.log('Fetching route from:', url);
-    
+        
     const response = await fetch(url);
     
     if (!response.ok) {
@@ -377,9 +375,7 @@ async function fetchActualRoute(
         lat: coord[0],
         lng: coord[1]
       }));
-      
-      console.log(`Route fetched: ${formattedCoords.length} points, ${data[0].distance} km`);
-      
+            
       return {
         coordinates: formattedCoords,
         distance: data[0].distance
@@ -904,9 +900,6 @@ useEffect(() => {
                 existingEndMarker.setPosition(actualEndCoord);
               }
               
-              console.log(`✓ Actual route rendered for: ${placemark.name} (${routeData.distance} km, ${routeData.coordinates.length} points)`);
-              console.log(`  Start moved: ${startCoord.lat},${startCoord.lng} → ${actualStartCoord.lat},${actualStartCoord.lng}`);
-              console.log(`  End moved: ${endCoord.lat},${endCoord.lng} → ${actualEndCoord.lat},${actualEndCoord.lng}`);
             } else {
               console.warn(`Using straight line for ${placemark.name} - route fetch failed or too short`);
             }

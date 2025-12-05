@@ -13,10 +13,8 @@ import {
   processApiData,
   processPhysicalSurveyData,
   processDesktopPlanningData,
-  resolveMediaUrl,           
   processSurveyInfrastructureData,
   detectSurveyFileType,
-  processRectificationData,
   processRectificationSurveyData
 } from './PlaceMark';
 import {
@@ -24,10 +22,9 @@ import {
   PhysicalSurveyApiResponse, ProcessedPhysicalSurvey, DesktopPlanningApiResponse, ProcessedDesktopPlanning,
   RectificationApiResponse, ProcessedRectification
 } from '../../types/kmz';
-import FileUploadModal from './Modalpopup';
+import FileUploadModal from './FileUploadModal';
 import { GeographicSelector } from './GeographicSelector';
 import SurveyVideoPanel from './SurveyVideoPanel';
-import { useSearchParams } from 'react-router-dom';
 import { LandmarkModal } from './LandmarkModal';
 import { canAccessFileOperations } from '../../utils/accessControl';
 

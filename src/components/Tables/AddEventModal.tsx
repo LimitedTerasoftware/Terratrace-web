@@ -241,7 +241,6 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
       // Response format: { success: true, message: "...", data: { images: [...] } }
       if (response.data && response.data.success && response.data.data && response.data.data.images) {
         const imageUrls = response.data.data.images;
-        console.log('Images uploaded successfully:', imageUrls);
         return imageUrls; // Returns array like ["uploads/images/1760356389_68ece82527985.png", ...]
       }
       
@@ -267,7 +266,6 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
     // ✅ Response format: { success: true, data: { videos: [...] } }
     if (response.data && response.data.success && response.data.data && response.data.data.videos) {
       const videoUrl = response.data.data.videos[0];  // ✅ Get first video from videos array
-      console.log('Video uploaded successfully:', videoUrl);
       return videoUrl;
     }
     
@@ -302,18 +300,14 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
       // Upload video if VIDEORECORD event
       if (formData.eventType === 'VIDEORECORD' && selectedVideo) {
         setUploadingImages(true);
-        console.log('Uploading video...');
         uploadedVideoUrl = await uploadVideo(selectedVideo);
-        console.log('Uploaded video URL:', uploadedVideoUrl);
         setUploadingImages(false);
       }
 
       // Upload images if any
       if (selectedFiles.length > 0) {
         setUploadingImages(true);
-        console.log(`Uploading ${selectedFiles.length} images...`);
         uploadedUrls = await uploadImages(selectedFiles);
-        console.log('Uploaded image URLs:', uploadedUrls);
         setUploadingImages(false);
       }
 
@@ -342,7 +336,6 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
           if (uploadedUrls.length > 0) {
             // Pass as array directly from API response
             payload.routeIndicatorUrl = uploadedUrls;
-            console.log('ROUTEINDICATOR - routeIndicatorUrl:', payload.routeIndicatorUrl);
           }
           payload.routeIndicatorType = formData.routeIndicatorType || 'BSNL';
           break;
@@ -351,7 +344,6 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
           if (uploadedUrls.length > 0) {
             // Pass as array directly from API response
             payload.landMarkUrls = uploadedUrls;
-            console.log('LANDMARK - landMarkUrls:', payload.landMarkUrls);
           }
           payload.landMarkType = formData.landMarkType || 'STATUE';
           payload.landMarkDescription = formData.landMarkDescription || '';
@@ -360,28 +352,24 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
         case 'FPOI':
           if (uploadedUrls.length > 0) {
             payload.fpoiUrl = uploadedUrls[0];
-            console.log('FPOI - fpoiUrl:', payload.fpoiUrl);
           }
           break;
 
         case 'JOINTCHAMBER':
           if (uploadedUrls.length > 0) {
             payload.jointChamberUrl = uploadedUrls[0];
-            console.log('JOINTCHAMBER - jointChamberUrl:', payload.jointChamberUrl);
           }
           break;
 
         case 'KILOMETERSTONE':
           if (uploadedUrls.length > 0) {
             payload.kmtStoneUrl = uploadedUrls[0];
-            console.log('KILOMETERSTONE - kmtStoneUrl:', payload.kmtStoneUrl);
           }
           break;
 
         case 'FIBERTURN':
           if (uploadedUrls.length > 0) {
             payload.fiberTurnUrl = uploadedUrls[0];
-            console.log('FIBERTURN - fiberTurnUrl:', payload.fiberTurnUrl);
           }
           break;
 
@@ -396,7 +384,6 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
             endPhotoLat: formData.roadCrossing?.endPhotoLat || '',
             endPhotoLong: formData.roadCrossing?.endPhotoLong || ''
           };
-          console.log('ROADCROSSING - roadCrossing:', payload.roadCrossing);
           break;
 
         case 'VIDEORECORD':
@@ -409,25 +396,20 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
             endTimeStamp: parseInt(formData.videoDetails?.endTimeStamp || Date.now().toString()),
             videoUrl: uploadedVideoUrl
           };
-          console.log('VIDEORECORD - videoDetails:', payload.videoDetails);
           break;
 
         case 'SURVEYSTART':
           if (uploadedUrls.length > 0) {
             payload.start_photos = uploadedUrls;
-            console.log('SURVEYSTART - start_photos:', payload.start_photos);
           }
           break;
 
         case 'ENDSURVEY':
           if (uploadedUrls.length > 0) {
             payload.end_photos = uploadedUrls;
-            console.log('ENDSURVEY - end_photos:', payload.end_photos);
           }
           break;
       }
-
-      console.log('Final payload being sent to API:', JSON.stringify(payload, null, 2));
 
       // Submit to API
       const response = await axios.post(API_URL, payload, {

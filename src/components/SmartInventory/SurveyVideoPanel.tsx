@@ -311,7 +311,6 @@ const EnhancedVideoPlayer: React.FC<{
 
     // Don't allow manual play/pause when landmark is showing
     if (showingLandmark) {
-      console.log('Play/pause blocked - landmark modal is open');
       return;
     }
 

@@ -577,9 +577,6 @@ const GroundDetailView: React.FC = () => {
       toast.error("Failed to accept record");
     }
 
-    // You can also check surveyStartResponse if needed
-    console.log("Survey start date response:", surveyStartResponse.data);
-
   } catch (error) {
     console.error("Error accepting record:", error);
     toast.error("Error accepting record");
