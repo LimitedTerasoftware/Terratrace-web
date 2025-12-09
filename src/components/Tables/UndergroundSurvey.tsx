@@ -1378,7 +1378,7 @@ const handleMediaFiles = async () => {
                       <Globe2Icon className="h-4 w-4" />
                       KML
                     </button>
-                    <button
+                    {/* <button
                       onClick={() => handleMediaFiles()}
                       disabled={isExporting}
                       className="flex-none h-10 px-4 py-2 text-sm font-medium text-red-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1393,7 +1393,7 @@ const handleMediaFiles = async () => {
                         Media Files
                       </>
                     )}
-                    </button>
+                    </button> */}
                     </>
                 )}
                 <button
