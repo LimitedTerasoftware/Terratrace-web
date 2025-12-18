@@ -11,8 +11,8 @@ import {
 import { useNavigate, Link, useLocation, useSearchParams } from "react-router-dom";
 import * as XLSX from "xlsx";
 import ResponsivePagination from "./ResponsivePagination";
-import { hasViewOnlyAccess } from "../../utils/accessControl";
-import { ChevronDown, Eye, RotateCcw, Search, TableCellsMerge, User } from "lucide-react";
+import { hasViewOnlyAccess, hasDownloadAccess } from "../../utils/accessControl";
+import { ChevronDown, Eye, Loader, RotateCcw, Search, SheetIcon, TableCellsMerge, User } from "lucide-react";
 
 interface AerialSurvey {
   id: string;
@@ -60,6 +60,7 @@ interface Block {
   block_name: string;
   district_code: string;
 }
+
 type StatusOption = {
   value: number;
   label: string;
@@ -69,6 +70,7 @@ const AerialSurvey: React.FC = () => {
   const BASEURL = import.meta.env.VITE_API_BASE;
   const location = useLocation();
   const viewOnly = hasViewOnlyAccess();
+  const DownloadOnly = hasDownloadAccess();
   const [data, setData] = useState<AerialSurvey[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +90,15 @@ const AerialSurvey: React.FC = () => {
   const [todate, setToDate] = useState<string>('');
   const [searchParams, setSearchParams] = useSearchParams();
   const [filtersReady, setFiltersReady] = useState(false);
+  const [selectedRowsMap, setSelectedRowsMap] = useState<Record<string, AerialSurvey>>({});
+  const [isExcelExporting, setisExcelExporting] = useState(false);
+  const [tempSelectedState, setTempSelectedState] = useState<string | null>(null);
+  const [tempSelectedDistrict, setTempSelectedDistrict] = useState<string | null>(null);
+  const [tempSelectedBlock, setTempSelectedBlock] = useState<string | null>(null);
+  const [tempSelectedStatus, setTempSelectedStatus] = useState<number | null>(null);
+  const [tempFromDate, setTempFromDate] = useState<string>('');
+  const [tempToDate, setTempToDate] = useState<string>('');
+  const [tempGlobalSearch, setTempGlobalSearch] = useState<string>('');
 
   const navigate = useNavigate();
 
@@ -186,7 +197,15 @@ const AerialSurvey: React.FC = () => {
     setSelectedStatus(status !== null ? Number(status) : null);
     setFromDate(from_date);
     setToDate(to_date);
-    setGlobalSearch(search)
+    setGlobalSearch(search);
+    setTempSelectedState(state_id);
+    setTempSelectedDistrict(district_id);
+    setTempSelectedBlock(block_id);
+    setTempSelectedStatus(status !== null ? Number(status) : null);
+    setTempFromDate(from_date);
+    setTempToDate(to_date);
+    setTempGlobalSearch(search);
+
     setPage(Number(pageParam));
     setFiltersReady(true);
   }, []);
@@ -223,7 +242,7 @@ const AerialSurvey: React.FC = () => {
   };
 
   const handleEdit = async (id: string) => {
-    await navigate(`/survey/Aerail-Edit/${id}`, {
+    await navigate(`/survey/aerial-edit/${id}`, {
       state: {
         selectedState,
         selectedDistrict,
@@ -242,6 +261,7 @@ const AerialSurvey: React.FC = () => {
       const response = await axios.post(`${BASEURL}/aerial-surveys/${id}/accept`);
       if (response.data.status === 1) {
         alert("Record accepted successfully!");
+        fetchData();
       }
     } catch (error) {
       console.error("Error accepting record:", error);
@@ -254,6 +274,7 @@ const AerialSurvey: React.FC = () => {
       const response = await axios.post(`${BASEURL}/aerial-surveys/${id}/reject`);
       if (response.data.status === 1) {
         alert("Record rejected successfully!");
+        fetchData();
       }
     } catch (error) {
       console.error("Error rejecting record:", error);
@@ -279,32 +300,122 @@ const AerialSurvey: React.FC = () => {
       .catch((err) => console.error(err));
   }, []);
 
-  // Fetch districts when state is selected
   useEffect(() => {
-    if (selectedState) {
-      axios.get(`${BASEURL}/districtsdata?state_code=${selectedState}`)
+    if (tempSelectedState) {
+      axios.get(`${BASEURL}/districtsdata?state_code=${tempSelectedState}`)
         .then((res) => setDistricts(res.data))
         .catch((err) => console.error(err));
     } else {
       setDistricts([]);
-      // setSelectedDistrict(null);
     }
-  }, [selectedState]);
+  }, [tempSelectedState]);
 
-  // Fetch blocks when district is selected
   useEffect(() => {
-    if (selectedDistrict) {
-      axios.get(`${BASEURL}/blocksdata?district_code=${selectedDistrict}`)
+    if (tempSelectedDistrict) {
+      axios.get(`${BASEURL}/blocksdata?district_code=${tempSelectedDistrict}`)
         .then((res) => setBlocks(res.data))
         .catch((err) => console.error(err));
     } else {
       setBlocks([]);
-      // setSelectedBlock(null);
     }
-  }, [selectedDistrict]);
+  }, [tempSelectedDistrict]);
+
+  const exportBlockExcel = async () => {
+    const selected = Object.values(selectedRowsMap);
+    if (selected.length === 0) {
+      alert("No rows selected");
+      return;
+    }
+
+    setisExcelExporting(true);
+    
+    try {
+      const rows = selected.map((data) => ({
+        "ID": data.id,
+        "State ID": data.state_id,
+        "State Name": data.state_name,
+        "District ID": data.district_id,
+        "District Name": data.district_name,
+        "Block ID": data.block_id,
+        "Block Name": data.block_name,
+        "Surveyor Name": data.fullname,
+        "Surveyor Contact Number": data.contact_no,
+        "Survey ID": data.survey_id,
+        "Company ID": data.company_id,
+        "User ID": data.user_id,
+        "Start GP Code": data.startGpCode,
+        "Start GP Coordinates": data.startGpCoordinates,
+        "Start GP Name": data.startGpName,
+        "End GP Code": data.endGpCode,
+        "End GP Coordinates": data.endGpCoordinates,
+        "End GP Name": data.endGpName,
+        "Is Active": data.is_active,
+        "Created At": data.created_at,
+        "Updated At": data.updated_at,
+        "Status": statusMap[data.is_active]
+      }));
+
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Aerial Survey (Selected)");
+      XLSX.writeFile(workbook, `Aerial_Survey_Selected_${selected[0]?.block_name || 'Export'}.xlsx`, { compression: true });
+
+    } catch (error) {
+      console.error("Export failed:", error);
+      alert("Failed to export data");
+    } finally {
+      setisExcelExporting(false);
+    }
+  };
 
   const columns = useMemo<ColumnDef<AerialSurvey>[]>(
     () => [
+      {
+        id: "select",
+        header: ({ table }) => {
+          const allSelected = table.getRowModel().rows.every(row => selectedRowsMap[row.original.id]);
+          const someSelected = table.getRowModel().rows.some(row => selectedRowsMap[row.original.id]);
+
+          return (
+            <input
+              type="checkbox"
+              checked={allSelected}
+              ref={el => {
+                if (el) el.indeterminate = !allSelected && someSelected;
+              }}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                const newMap = { ...selectedRowsMap };
+                table.getRowModel().rows.forEach(row => {
+                  if (checked) {
+                    newMap[row.original.id] = row.original;
+                  } else {
+                    delete newMap[row.original.id];
+                  }
+                });
+                setSelectedRowsMap(newMap);
+              }}
+            />
+          );
+        },
+        cell: ({ row }) => (
+          <input
+            type="checkbox"
+            checked={!!selectedRowsMap[row.original.id]}
+            onChange={(e) => {
+              const checked = e.target.checked;
+              setSelectedRowsMap(prev => {
+                const newMap = { ...prev };
+                if (checked) newMap[row.original.id] = row.original;
+                else delete newMap[row.original.id];
+                return newMap;
+              });
+            }}
+          />
+        ),
+        enableSorting: false,
+        enableColumnFilter: false,
+      },
       {
         header: "Actions",
         cell: ({ row }: { row: Row<AerialSurvey> }) => (
@@ -316,18 +427,16 @@ const AerialSurvey: React.FC = () => {
               <Eye className="w-4 h-4" />
             </button>
           </div>
-
         ),
       },
       { accessorKey: "state_name", header: "State Name" },
       { accessorKey: "district_name", header: "District Name" },
       { accessorKey: "block_name", header: "Block Name" },
-      { accessorKey: "startGpName", header: " Start GP Name" },
-      { accessorKey: "startGpCoordinates", header: "Start Gp Coordinates" },
+      { accessorKey: "startGpName", header: "Start GP Name" },
       { accessorKey: "endGpName", header: "End GP Name" },
-      { accessorKey: "endGpCoordinates", header: "End Gp Coordinates" },
       {
-        accessorKey: "fullname", header: "Surveyor Name",
+        accessorKey: "fullname", 
+        header: "Surveyor Name",
         cell: ({ row }) => (
           <div className="flex items-center">
             <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center mr-3">
@@ -360,7 +469,7 @@ const AerialSurvey: React.FC = () => {
         }
       }
     ],
-    []
+    [selectedRowsMap]
   );
 
   const table = useReactTable({
@@ -370,13 +479,15 @@ const AerialSurvey: React.FC = () => {
     getPaginationRowModel: getPaginationRowModel(),
     manualPagination: true,
     pageCount: totalPages,
+    getRowId: row => String(row.id)
   });
+
+  const selected = Object.values(selectedRowsMap);
 
   const exportExcel = async () => {
     try {
       const response = await axios.get<ApiResponse>(`${BASEURL}/aerial-surveys`, {
-        params:
-        {
+        params: {
           from_date: fromdate,
           to_date: todate,
           isExport: 1,
@@ -389,44 +500,33 @@ const AerialSurvey: React.FC = () => {
       });
       const allData: AerialSurvey[] = response.data.data;
       const rows = allData.map((data) => ({
-        id: data.id,
-        state_name: data.state_name,
-        state_id: data.state_id,
-        district_name: data.district_name,
-        district_id: data.district_id,
-        block_name: data.block_name,
-        block_id: data.block_id,
-        Surviour_Name: data.fullname,
-        Surviour_Contact_Number: data.contact_no,
-        survey_id: data.survey_id,
-        company_id: data.company_id,
-        user_id: data.user_id,
-        startGpCode: data.startGpCode,
-        startGpCoordinates: data.startGpCoordinates,
-        startGpName: data.startGpName,
-        endGpCode: data.endGpCode,
-        endGpCoordinates: data.endGpCoordinates,
-        endGpName: data.endGpName,
-        is_active: data.is_active,
-        created_at: data.created_at,
-        updated_at: data.updated_at,
-        Status: statusMap[data.is_active]
+        "ID": data.id,
+        "State ID": data.state_id,
+        "State Name": data.state_name,
+        "District ID": data.district_id,
+        "District Name": data.district_name,
+        "Block ID": data.block_id,
+        "Block Name": data.block_name,
+        "Surveyor Name": data.fullname,
+        "Surveyor Contact Number": data.contact_no,
+        "Survey ID": data.survey_id,
+        "Company ID": data.company_id,
+        "User ID": data.user_id,
+        "Start GP Code": data.startGpCode,
+        "Start GP Coordinates": data.startGpCoordinates,
+        "Start GP Name": data.startGpName,
+        "End GP Code": data.endGpCode,
+        "End GP Coordinates": data.endGpCoordinates,
+        "End GP Name": data.endGpName,
+        "Is Active": data.is_active,
+        "Created At": data.created_at,
+        "Updated At": data.updated_at,
+        "Status": statusMap[data.is_active]
       }));
 
-      // Create workbook and worksheet
       const workbook = XLSX.utils.book_new();
       const worksheet = XLSX.utils.json_to_sheet(rows);
-
       XLSX.utils.book_append_sheet(workbook, worksheet, "Aerial Survey");
-
-      // Customize header names
-      XLSX.utils.sheet_add_aoa(worksheet, [
-        ["ID", "State Name", "State ID", "District Name", "District ID", "Block Name", "Block ID", 'Surveyor Name', "Surveyor Contact Number", "Survey ID", "Company ID", "User ID",
-          "Start GP Code", "Start GP Coordinates", "Start GP Name",
-          "End GP Code", "End GP Coordinates", "End GP Name", "Is Active", "Created At", "Updated At", "Status"]
-      ], { origin: "A1" });
-
-      // Export file
       XLSX.writeFile(workbook, "AERIAL_SURVEY.xlsx", { compression: true });
     } catch (error) {
       console.error("Export failed:", error);
@@ -442,6 +542,28 @@ const AerialSurvey: React.FC = () => {
     (opt) => opt.value === selectedState
   ) || null;
 
+  const handleApplyFilters = () => {
+    setSelectedState(tempSelectedState);
+    setSelectedDistrict(tempSelectedDistrict);
+    setSelectedBlock(tempSelectedBlock);
+    setSelectedStatus(tempSelectedStatus);
+    setFromDate(tempFromDate);
+    setToDate(tempToDate);
+    setGlobalSearch(tempGlobalSearch);
+    setPage(1);
+
+    handleFilterChange(
+      tempSelectedState,
+      tempSelectedDistrict,
+      tempSelectedBlock,
+      tempSelectedStatus,
+      tempFromDate,
+      tempToDate,
+      tempGlobalSearch,
+      1
+    );
+  };
+
   const handleClearFilters = () => {
     setSelectedState(null);
     setSelectedDistrict(null);
@@ -450,7 +572,16 @@ const AerialSurvey: React.FC = () => {
     setGlobalSearch('');
     setFromDate('');
     setToDate('');
+    setTempSelectedState(null);
+    setTempSelectedDistrict(null);
+    setTempSelectedBlock(null);
+    setTempSelectedStatus(null);
+    setTempGlobalSearch('');
+    setTempFromDate('');
+    setTempToDate('');
+
     setPage(1);
+    setSelectedRowsMap({});
     const currentTab = searchParams.get('tab') || 'defaultTab';
     setSearchParams({
       tab: currentTab,
@@ -471,19 +602,26 @@ const AerialSurvey: React.FC = () => {
     params.page = newPage.toString();
     setSearchParams(params);
   };
+
   return (
     <div className="min-h-screen">
+      {isExcelExporting && (
+        <div className="absolute inset-0 bg-white bg-opacity-70 flex justify-center items-center z-50">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      )}
+
       {/* Search Bar and Filters Section */}
       <div className="mb-4 px-7">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-4">
           {/* State Filter */}
           <div className="relative">
             <select
-              value={selectedState || ''}
+              value={tempSelectedState || ''}
               onChange={(e) => {
-                handleFilterChange(e.target.value, selectedDistrict, selectedBlock, selectedStatus, fromdate, todate, globalsearch, 1)
-                setSelectedState(e.target.value || null);
-                setPage(1);
+                setTempSelectedState(e.target.value || null);
+                setTempSelectedDistrict(null);
+                setTempSelectedBlock(null);
               }}
               className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
@@ -495,19 +633,17 @@ const AerialSurvey: React.FC = () => {
               ))}
             </select>
             <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
-
           </div>
 
           {/* District Filter */}
           <div className="relative">
             <select
-              value={selectedDistrict || ''}
+              value={tempSelectedDistrict || ''}
               onChange={(e) => {
-                handleFilterChange(selectedState, e.target.value, selectedBlock, selectedStatus, fromdate, todate, globalsearch, 1)
-                setSelectedDistrict(e.target.value || null);
-                setPage(1);
+                setTempSelectedDistrict(e.target.value || null);
+                setTempSelectedBlock(null);
               }}
-              disabled={!selectedState}
+              disabled={!tempSelectedState}
               className="disabled:opacity-50 disabled:cursor-not-allowed w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">All Districts</option>
@@ -518,19 +654,16 @@ const AerialSurvey: React.FC = () => {
               ))}
             </select>
             <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
-
           </div>
 
           {/* Block Filter */}
           <div className="relative">
             <select
-              value={selectedBlock || ''}
+              value={tempSelectedBlock || ''}
               onChange={(e) => {
-                handleFilterChange(selectedState, selectedDistrict, e.target.value, selectedStatus, fromdate, todate, globalsearch, 1)
-                setSelectedBlock(e.target.value || null);
-                setPage(1);
+                setTempSelectedBlock(e.target.value || null);
               }}
-              disabled={!selectedDistrict}
+              disabled={!tempSelectedDistrict}
               className="disabled:opacity-50 disabled:cursor-not-allowed w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">All Blocks</option>
@@ -541,17 +674,14 @@ const AerialSurvey: React.FC = () => {
               ))}
             </select>
             <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
-
           </div>
 
           {/* Status Filter */}
           <div className="relative">
             <select
-              value={selectedStatus !== null ? selectedStatus : ''}
+              value={tempSelectedStatus !== null ? tempSelectedStatus : ''}
               onChange={(e) => {
-                handleFilterChange(selectedState, selectedDistrict, selectedBlock, Number(e.target.value), fromdate, todate, globalsearch, 1)
-                setSelectedStatus(e.target.value !== '' ? Number(e.target.value) : null);
-                setPage(1);
+                setTempSelectedStatus(e.target.value !== '' ? Number(e.target.value) : null);
               }}
               className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
@@ -563,73 +693,106 @@ const AerialSurvey: React.FC = () => {
               ))}
             </select>
             <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
-
           </div>
 
           {/* Date Filters */}
           <div className="relative">
             <input
               type="date"
-              value={fromdate}
+              value={tempFromDate}
               onChange={(e) => {
-                handleFilterChange(selectedState, selectedDistrict, selectedBlock, selectedStatus, e.target.value, todate, globalsearch, 1)
-                setFromDate(e.target.value);
-                setPage(1);
+                setTempFromDate(e.target.value);
               }}
-              className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="From Date"
+              className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="From Date"
             />
           </div>
 
           <div className="relative">
             <input
               type="date"
-              value={todate}
+              value={tempToDate}
               onChange={(e) => {
-                handleFilterChange(selectedState, selectedDistrict, selectedBlock, selectedStatus, fromdate, e.target.value, globalsearch, 1)
-                setToDate(e.target.value);
-                setPage(1);
+                setTempToDate(e.target.value);
               }}
               className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="To Date"
             />
           </div>
         </div>
+
         {/* Search Bar */}
         <div className="flex items-center space-x-4 mb-4">
           <div className="relative">
-
             <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-
             <input
               type="text"
               placeholder="Search..."
-              value={globalsearch}
+              value={tempGlobalSearch}
               onChange={(e) => {
-                handleFilterChange(selectedState, selectedDistrict, selectedBlock, selectedStatus, fromdate, todate, e.target.value, 1)
-                setGlobalSearch(e.target.value);
-                setPage(1);
+                setTempGlobalSearch(e.target.value);
               }}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
           </div>
+
+          <button
+            onClick={handleApplyFilters}
+            className="inline-flex items-center px-4 py-2 border border-blue-600 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <Search className="w-4 h-4 mr-2" />
+            <span>Apply Filters</span>
+          </button>
 
           {/* Clear Filters Button */}
           <button
             onClick={handleClearFilters}
-            className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"          >
-
+            className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
             <RotateCcw className="w-4 h-4 mr-2" />
             <span>Reset Filters</span>
           </button>
 
-          {/* Export Button */}
-          {!viewOnly &&
+          {DownloadOnly && (
             <button
               onClick={exportExcel}
-              className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-green-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500"  >
+              className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-green-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500"
+            >
               <TableCellsMerge className="w-4 h-4 mr-2" />
               Excel
-            </button>}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <span className="text-sm text-gray-600">
+              {selected.length} item(s) selected
+            </span>
+          </div>
+          <div className="flex space-x-2">
+            {DownloadOnly && (
+              <button
+                onClick={exportBlockExcel}
+                disabled={isExcelExporting}
+                className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isExcelExporting ? (
+                  <>
+                    <Loader className="h-4 w-4 animate-spin" />
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    <SheetIcon className="h-4 w-4 text-green-600" />
+                    Excel (Block-wise Data)
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -643,12 +806,16 @@ const AerialSurvey: React.FC = () => {
       {/* Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left text-gray-500">
+          <table className="w-full table-auto text-sm text-left text-gray-500">
             <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
-                    <th key={header.id} scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th
+                      key={header.id}
+                      scope="col"
+                      className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider break-words"
+                    >
                       {flexRender(header.column.columnDef.header, header.getContext())}
                     </th>
                   ))}
@@ -678,7 +845,10 @@ const AerialSurvey: React.FC = () => {
                 table.getRowModel().rows.map((row) => (
                   <tr key={row.id} className="hover:bg-gray-50">
                     {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <td
+                        key={cell.id}
+                        className="px-4 py-2 whitespace-normal break-words text-sm font-medium text-gray-900"
+                      >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
                     ))}
