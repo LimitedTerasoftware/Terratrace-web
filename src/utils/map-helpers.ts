@@ -82,7 +82,11 @@ export const getSurveyColor = (index: number): string => {
   return colors[index % colors.length];
 };
 
-export const createMarkerIcon = (type: 'start' | 'end' | 'pole' | 'crossing'): google.maps.Icon => {
+export const createMarkerIcon = (type: 'start' | 'end' | 'pole' | 'crossing', data?: { poleType?: number}): google.maps.Icon => {
+  let color = '#3b82f6';
+  if (type === 'pole') {
+    color = data?.poleType === 1 ?  '#10b981': '#f59e0b';
+  }
   const iconMap = {
     start: {
       url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
@@ -91,7 +95,7 @@ export const createMarkerIcon = (type: 'start' | 'end' | 'pole' | 'crossing'): g
           <circle fill="white" cx="16" cy="16" r="6"/>
         </svg>
       `),
-      scaledSize: new google.maps.Size(25, 25),
+      scaledSize: new google.maps.Size(30,30),
       anchor: new google.maps.Point(16, 40),
     },
     end: {
@@ -101,17 +105,18 @@ export const createMarkerIcon = (type: 'start' | 'end' | 'pole' | 'crossing'): g
           <circle fill="white" cx="16" cy="16" r="6"/>
         </svg>
       `),
-      scaledSize: new google.maps.Size(25, 25),
+      scaledSize: new google.maps.Size(30,30),
       anchor: new google.maps.Point(16, 40),
     },
+ 
     pole: {
       url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 32 40">
-          <path fill="#f59e0b" d="M16 0C7.2 0 0 7.2 0 16c0 8.8 16 24 16 24s16-15.2 16-24C32 7.2 24.8 0 16 0z"/>
+          <path fill="${color}" d="M16 0C7.2 0 0 7.2 0 16c0 8.8 16 24 16 24s16-15.2 16-24C32 7.2 24.8 0 16 0z"/>
           <path fill="white" d="M16 8l-4 4h2v8h-2l4 4 4-4h-2v-8h2z"/>
         </svg>
       `),
-      scaledSize: new google.maps.Size(25,25),
+      scaledSize: new google.maps.Size(30,30),
       anchor: new google.maps.Point(16, 40),
     },
     crossing: {
@@ -121,7 +126,7 @@ export const createMarkerIcon = (type: 'start' | 'end' | 'pole' | 'crossing'): g
           <path fill="white" d="M16 10l-6 6h4v8h4v-8h4z"/>
         </svg>
       `),
-      scaledSize: new google.maps.Size(25,25),
+      scaledSize: new google.maps.Size(30,30),
       anchor: new google.maps.Point(16, 40),
     },
   };

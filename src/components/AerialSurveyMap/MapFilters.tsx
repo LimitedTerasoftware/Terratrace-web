@@ -43,9 +43,12 @@ export default function MapFilters({ filters, onFilterChange, surveyCount }: Map
               onChange={() => handleToggle('showPoles')}
               className="w-4 h-4 text-orange-500 rounded focus:ring-2 focus:ring-orange-400"
             />
-            <span className="ml-2 text-sm text-gray-700">Poles</span>
+            <span className="ml-2 text-sm text-gray-700">Poles New & Existing</span>
           </label>
-          <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+           <div className="flex gap-1">
+            <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+          </div>
         </div>
 
         <div className="flex items-center justify-between">

@@ -33,6 +33,7 @@ export interface AerialRoadCrossing {
 
 export interface AerialPole {
   id: number;
+  survey_id:number;
   electricityLineType: string;
   lattitude: string;
   longitude: string;

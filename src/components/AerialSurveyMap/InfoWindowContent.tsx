@@ -54,8 +54,10 @@ const baseUrl_public = import.meta.env.VITE_Image_URL;
 
     return (
       <div className="p-3 max-w-xs">
-        <h3 className="text-sm font-bold text-gray-800 mb-2">⚡ Electric Pole</h3>
+        <h3 className="text-sm font-bold text-gray-800 mb-2">⚡{poleData.poleType === 1 ? "Existing" : "New"} Electric Pole </h3>
         <div className="space-y-1 text-xs">
+          <p><span className="font-semibold">ID:</span> {poleData.id || 'N/A'}</p>
+          <p><span className="font-semibold">Survey ID:</span> {poleData.survey_id || 'N/A'}</p>
           <p><span className="font-semibold">Type:</span> {poleData.typeOfPole || 'N/A'}</p>
           <p><span className="font-semibold">Height:</span> {poleData.poleHeight || 'N/A'}</p>
           <p><span className="font-semibold">Condition:</span> {poleData.poleCondition || 'N/A'}</p>

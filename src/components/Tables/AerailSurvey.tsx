@@ -353,11 +353,7 @@ const AerialSurvey: React.FC = () => {
     }else{
       setAerialData(Data);
     }
-     
-
-     
-
-    } catch (error) {
+  } catch (error) {
       console.error("Export failed:", error);
       alert("Failed to export data");
     } finally {
@@ -696,38 +692,36 @@ const exporExcel = async (BlockData: AerialSurveyDetails[]) => {
   return (
   <>
     {AerialData.length > 0 ?(
-       <div className="min-h-screen bg-gray-50">
-     <header className="bg-white shadow-sm border-b border-gray-200">
-  <div className="max-w-7xl mx-auto px-4 py-4">
-    <div className="flex items-center justify-between">
-      {/* Left side: Title */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-800">
-          Aerial Survey Map Viewer
-        </h1>
-        <p className="text-sm text-gray-600 mt-1">
-          Visualize survey data with interactive markers and filters
-        </p>
-      </div>
+        <div className="min-h-screen bg-gray-50">
+          <header className="bg-white shadow-sm border-b border-gray-200">
+            <div className="max-w-7xl mx-auto px-4 py-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-800">
+                    Aerial Survey Map Viewer
+                  </h1>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Visualize survey data with interactive markers and filters
+                  </p>
+                </div>
 
-      {/* Right side: Back button */}
-      <button
-        className="flex items-center gap-2 text-blue-500 hover:text-blue-700"
-        onClick={() => setAerialData([])}
-      >
-        <FaArrowLeft className="h-5 w-5" />
-        Back
-      </button>
-    </div>
-  </div>
-</header>
+                <button
+                  className="flex items-center gap-2 text-blue-500 hover:text-blue-700"
+                  onClick={() => setAerialData([])}
+                >
+                  <FaArrowLeft className="h-5 w-5" />
+                  Back
+                </button>
+              </div>
+            </div>
+          </header>
 
 
-      <main className="h-[calc(100vh-88px)]">
-       
-        <AerialSurveyMap surveys={AerialData} />
-      </main>
-    </div>
+            <main className="h-[calc(100vh-88px)]">
+            
+              <AerialSurveyMap surveys={AerialData} />
+            </main>
+         </div>
 
     ):(
     

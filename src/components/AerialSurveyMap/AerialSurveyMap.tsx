@@ -63,7 +63,8 @@ export default function AerialSurveyMap({ surveys }: AerialSurveyMapProps) {
             data: {
               name: survey.startGpName,
               coordinates: survey.startGpCoordinates,
-              photos: survey.startGpPhotos,
+              photos: survey.startGpPhotos
+             
             },
             surveyId: survey.id,
           });
@@ -93,6 +94,7 @@ export default function AerialSurveyMap({ surveys }: AerialSurveyMapProps) {
               type: 'pole',
               data: pole,
               surveyId: survey.id,
+
             });
           }
         });
@@ -118,90 +120,39 @@ export default function AerialSurveyMap({ surveys }: AerialSurveyMapProps) {
     return allMarkers;
   }, [surveys, filters]);
 
-//   const polylines = useMemo(() => {
-//   if (!filters.showPolylines) return [];
 
-//   return surveys.map((survey, index) => {
-//     const path: google.maps.LatLngLiteral[] = [];
+// const polylines = useMemo(() => {
+//   if (!filters.showPolylines || !filters.showPoles) return [];
 
-//     // Start GP
-//     const startCoords = parseCoordinates(survey.startGpCoordinates);
-//     if (startCoords && filters.showStartEndGP) path.push(startCoords);
+//   return surveys
+//     .map((survey, index) => {
+//       const path: google.maps.LatLngLiteral[] = [];
 
-//     //  Poles
-//     if (survey.aerial_poles?.length) {
-//       survey.aerial_poles.forEach(pole => {
-//         const poleCoords = parseCoordinates(
-//           `${pole.lattitude},${pole.longitude}`
-//         );
-//         if (poleCoords && filters.showPoles) path.push(poleCoords);
-//       });
-//     }
+//       if (survey.aerial_poles?.length) {
+//         survey.aerial_poles.forEach(pole => {
+//           const poleCoords = parseCoordinates(
+//             `${pole.lattitude},${pole.longitude}`
+//           );
+//           if (poleCoords) path.push(poleCoords);
+//         });
+//       }
 
-//     //   crossings (use midpoint)
-//     if (survey.aerial_road_crossings?.length) {
-//       survey.aerial_road_crossings.forEach(crossing => {
-//         const start = parseCoordinates(
-//           `${crossing.slattitude},${crossing.slongitude}`
-//         );
-//         const end = parseCoordinates(
-//           `${crossing.elattitude},${crossing.elongitude}`
-//         );
+//       // Need minimum 2 points
+//       if (path.length < 2) return null;
 
-//         if (start && end && filters.showCrossings ) {
-//           path.push(getMidpoint(start, end));
-//         }
-//       });
-//     }
-
-//     // 4 End GP
-//     const endCoords = parseCoordinates(survey.endGpCoordinates);
-//     if (endCoords && filters.showStartEndGP) path.push(endCoords);
-
-//     // Need at least 2 points to draw polyline
-//     if (path.length < 2) return null;
-
-//     return {
-//       path,
-//       color: getSurveyColor(index),
-//       surveyId: survey.id,
-//       surveyName: `${survey.startGpName} → ${survey.endGpName}`,
-//     };
-//   }).filter(Boolean);
-// }, [surveys, filters]);
-
-const polylines = useMemo(() => {
-  if (!filters.showPolylines || !filters.showPoles) return [];
-
-  return surveys
-    .map((survey, index) => {
-      const path: google.maps.LatLngLiteral[] = [];
-
-      if (survey.aerial_poles?.length) {
-        survey.aerial_poles.forEach(pole => {
-          const poleCoords = parseCoordinates(
-            `${pole.lattitude},${pole.longitude}`
-          );
-          if (poleCoords) path.push(poleCoords);
-        });
-      }
-
-      // Need minimum 2 points
-      if (path.length < 2) return null;
-
-      return {
-        path,
-        color: getSurveyColor(index),
-        surveyId: survey.id,
-        surveyName: `${survey.startGpName} → ${survey.endGpName}`,
-      };
-    })
-    .filter(Boolean);
-}, [
-  surveys,
-  filters.showPolylines,
-  filters.showPoles
-]);
+//       return {
+//         path,
+//         color: getSurveyColor(index),
+//         surveyId: survey.id,
+//         surveyName: `${survey.startGpName} → ${survey.endGpName}`,
+//       };
+//     })
+//     .filter(Boolean);
+// }, [
+//   surveys,
+//   filters.showPolylines,
+//   filters.showPoles
+// ]);
 
 
 
@@ -259,7 +210,6 @@ useEffect(() => {
       </div>
     );
   }
-
   return (
     <div className="relative w-full h-full">
       <div className="absolute top-4 left-4 z-10">
@@ -283,12 +233,11 @@ useEffect(() => {
         }}
       >
         {mapReady && markers.map((marker, index) => (
-
-       
           <Marker
             key={`${marker.type}-${marker.surveyId}-${index}`}
             position={marker.position}
-            icon={createMarkerIcon(marker.type)}
+            icon={createMarkerIcon(marker.type,marker.data)}
+            title={`${marker.type}-${marker.surveyId}`}
             onClick={() => setActiveInfoWindow({
               position: marker.position,
               type: marker.type,
@@ -297,7 +246,7 @@ useEffect(() => {
           />
         ))}
 
-      {mapReady && filters.showPolylines && polylines.map((polyline, index) => (
+      {/* {mapReady && filters.showPolylines && polylines.map((polyline, index) => (
 
 
           polyline && (
@@ -325,7 +274,7 @@ useEffect(() => {
               }}
             />
           )
-        ))}
+        ))} */}
 
         {activeInfoWindow && (
           <InfoWindow
