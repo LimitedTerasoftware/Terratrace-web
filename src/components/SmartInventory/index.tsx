@@ -15,12 +15,14 @@ import {
   processDesktopPlanningData,
   processSurveyInfrastructureData,
   detectSurveyFileType,
+  processJointsData,
   processRectificationSurveyData
 } from './PlaceMark';
 import {
   KMZFile, FilterState, ApiPlacemark, ProcessedPlacemark, PlacemarkCategory,
   PhysicalSurveyApiResponse, ProcessedPhysicalSurvey, DesktopPlanningApiResponse, ProcessedDesktopPlanning,
-  RectificationApiResponse, ProcessedRectification
+  RectificationApiResponse, ProcessedRectification,
+  JointsApiResponse
 } from '../../types/kmz';
 import FileUploadModal from './FileUploadModal';
 import { GeographicSelector } from './GeographicSelector';
@@ -105,7 +107,14 @@ function SmartInventory() {
   const [rectificationData, setRectificationData] = useState<ProcessedRectification[]>([]);
   const [rectificationCategories, setRectificationCategories] = useState<PlacemarkCategory[]>([]);
   const [isLoadingRectification, setIsLoadingRectification] = useState(false);
+
   const [rawRectificationData, setRawRectificationData] = useState<RectificationApiResponse | null>(null);
+ 
+  // Joints
+  const [JointsData, setJointsData] = useState<ProcessedDesktopPlanning[]>([]);
+  const [JointsDataCategories, setJointsDataCategories] = useState<PlacemarkCategory[]>([]);
+  const [isLoadingJoints, setisLoadingJoints] = useState(false);
+  const [rawJointsData, setRawJointsData] = useState<JointsApiResponse | null>(null);
 
   // ==============================================
   // MAP STATE
@@ -705,6 +714,67 @@ function SmartInventory() {
   }
 };
 
+  const loadJointsData = async (state: string[], division: string[], block: string[]) => {
+  try {
+    setisLoadingJoints(true);
+    setLoding(true);
+
+    const params: any = {};
+
+    if (state.length > 0) {
+      params.state_id = state.join(',');
+    }
+    if (division.length > 0) {
+      params.district_id = division.join(',');
+    }
+    if (block.length > 0) {
+      params.block_id = block.join(',');
+    }
+
+    const response = await axios.get(`${BASEURL}/fetch-joints-location`, { params });
+    
+    const apiData: JointsApiResponse = response.data;
+
+    if (response.status === 200 || response.status === 201) {
+      if (apiData.success && apiData.data && Object.keys(apiData.data).length > 0) {
+        
+        const { placemarks, categories } = processJointsData(apiData);
+
+        setRawJointsData(apiData);
+        setJointsData(placemarks);
+        setJointsDataCategories(categories);
+
+        // Set default visibility for joints categories
+        setVisibleCategories(prev => {
+          const newVisible = new Set(prev);
+          categories.forEach(cat => {
+            if (cat.visible) {  
+              newVisible.add(cat.id);
+            }
+          });
+          return newVisible;
+        });
+
+        showNotification('success', `Loaded ${placemarks.length} joints items from ${Object.keys(apiData.data).length} blocks`);
+      } else {
+        showNotification('info', 'No joints data found for selected area');
+        setJointsData([]);
+        setJointsDataCategories([]);
+        setRawJointsData(null);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load joints data:', error);
+    showNotification('error', 'Failed to load joints data');
+    setJointsData([]);
+    setJointsDataCategories([]);
+    setRawJointsData(null);
+  } finally {
+    setisLoadingJoints(false);
+    setLoding(false);
+  }
+};
+
   // ==============================================
   // ENHANCED LANDMARK DETECTION LOGIC
   // ==============================================
@@ -1003,7 +1073,7 @@ useEffect(() => {
   selectedDistricts: string[];
   selectedBlocks: string[];
   name: string;
-  dataType: 'physical' | 'desktop' | 'rectification'; // ADD rectification
+  dataType: 'physical' | 'desktop' | 'rectification' | 'joints';   // ADD rectification
   hierarchyContext?: {
     stateId?: string;
     districtId?: string;
@@ -1017,6 +1087,9 @@ useEffect(() => {
   } else if (item.dataType === 'rectification') {
     // ADD THIS
     loadRectificationData(item.selectedStates, item.selectedDistricts, item.selectedBlocks);
+  }else if(item.dataType === 'joints'){
+    loadJointsData(item.selectedStates, item.selectedDistricts, item.selectedBlocks);
+
   }
 };
 
@@ -1543,27 +1616,30 @@ const allPlacemarks = useMemo(() => {
   const apiPlacemarks = [
     ...physicalSurveyData, 
     ...desktopPlanningData,
-    ...rectificationData // ADD THIS
+    ...rectificationData, // ADD THIS
+    ...JointsData
   ];
   return [...externalFilePlacemarks, ...apiPlacemarks];
-}, [processedPlacemarks, physicalSurveyData, desktopPlanningData, rectificationData]); // ADD rectificationData
+}, [processedPlacemarks, physicalSurveyData, desktopPlanningData, rectificationData,JointsData]); // ADD rectificationData
 
 const allCategories = useMemo(() => {
   const externalFileCategories = placemarkCategories;
   const apiCategories = [
     ...physicalSurveyCategories, 
     ...desktopPlanningCategories,
-    ...rectificationCategories // ADD THIS
+    ...rectificationCategories, // ADD THIS
+    ...JointsDataCategories
   ];
   return [...externalFileCategories, ...apiCategories];
-}, [placemarkCategories, physicalSurveyCategories, desktopPlanningCategories, rectificationCategories]); // ADD rectificationCategories
+}, [placemarkCategories, physicalSurveyCategories, desktopPlanningCategories, rectificationCategories,JointsDataCategories]); // ADD rectificationCategories
 
 // Individual arrays for specific contexts
 const externalFilePlacemarks = processedPlacemarks;
 const apiPlacemarks = [
   ...physicalSurveyData, 
   ...desktopPlanningData,
-  ...rectificationData // ADD THIS
+  ...rectificationData, // ADD THIS
+  ...JointsData
 ];
 
   // ==============================================
@@ -1684,6 +1760,8 @@ const apiPlacemarks = [
           isLoadingPhysical={isLoadingPhysical}
           isLoadingDesktopPlanning={isLoadingDesktopPlanning}
           isLoadingRectification={isLoadingRectification}
+          isLoadingJoints={isLoadingJoints}
+
         />
 
         <PlacemarkList

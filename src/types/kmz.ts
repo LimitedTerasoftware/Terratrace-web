@@ -294,3 +294,82 @@ export interface PhysicalSurveyPoint {
     bsnlUPSPhoto: string;
   };
 }
+
+export interface JointsApiResponse {
+  success: boolean;
+  total_joints: number;
+  data: JointDetails[];
+}
+
+export interface JointDetails {
+  joint_code: string;
+  joint_name: string;
+  state_id: number;
+  state_name: string;
+  district_id: number;
+  district_name: string;
+  block_id: number;
+  block_name: string;
+  work_type: string;
+  joint_type: string;
+  date_time: string;
+  gps_lat: string;
+  gps_long: string;
+  address: string;
+  photo_path: string;
+  cables: Cable[];
+  tube_mapping: TubeMapping[];
+  fiber_splicing: FiberSplicing[];
+}
+
+export interface Cable {
+  cable_id: string;
+  cable_name: string;
+  from_node: string;
+  to_node: string;
+  fiber_count: string;
+  cable_type: string;
+}
+
+export interface TubeMapping {
+  from_cable: string;
+  from_cable_name: string;
+  from_tube: string;
+  from_tube_color: string;
+  to_cable: string;
+  to_cable_name: string;
+  to_tube: string;
+  to_tube_color: string;
+}
+
+export interface FiberSplicing {
+  from_cable: string;
+  from_cable_name: string;
+  to_cable: string;
+  to_cable_name: string;
+  from_tube: string;
+  to_tube: string;
+  from_core: number;
+  to_core: number;
+  status: string | null;
+}
+export interface ProcessedJoints {
+  id: string;
+  name: string;
+  category: string;
+  type: 'point';
+  coordinates: { lat: number; lng: number } | { lat: number; lng: number }[];
+  address?: string;
+  pointType?: string;
+  assetType?: string;
+  photo_path?: string;
+  joint_code?: string;
+  joint_type?: string;
+  work_type?: string;
+  state_name: string;
+  district_name: string;
+  block_name: string;
+  cables: Cable[];
+  tube_mapping: TubeMapping[];
+  fiber_splicing: FiberSplicing[];
+}

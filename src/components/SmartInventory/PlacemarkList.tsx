@@ -46,6 +46,10 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
   const rectificationCategories = categories.filter(cat => 
     cat.id.startsWith('rectification-') || cat.name.startsWith('Rectification:')
   );
+   const JointsCategories = categories.filter(cat => 
+    cat.id.startsWith('Joint-') || cat.name.startsWith('Joint:')
+  );
+  
   
   const externalSurveyCategories = categories.filter(cat => 
     cat.name.startsWith('External Survey:')
@@ -67,7 +71,9 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
     !cat.name.startsWith('External Desktop:') &&
     !cat.name.startsWith('External BSNL:') &&
     !cat.id.startsWith('rectification-') &&
-    !cat.name.startsWith('Rectification:') 
+    !cat.name.startsWith('Rectification:') &&
+    !cat.name.startsWith('Joint:')
+
   );
 
   const sections: LayerSection[] = [];
@@ -101,7 +107,16 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
       color: 'from-orange-50 to-amber-50'
     });
   }
-
+  
+  if (JointsCategories.length > 0) {
+    sections.push({
+      id: 'Joint',
+      title: 'API: Joint SURVEY',
+      icon: <Navigation className="h-4 w-4 text-red-600" />,
+      categories: JointsCategories,
+      color: 'from-red-50 to-amber-50'
+    });
+  }
   if (externalSurveyCategories.length > 0) {
     sections.push({
       id: 'external-survey',
@@ -198,6 +213,11 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
   // Match both with and without prefix
   return p.category === categoryName || 
          p.category === categoryName.replace('Rectification: ', '');
+}
+  else if (p.id.startsWith('Joint-') && categoryName.startsWith('Joint:')) {
+  // Match both with and without prefix
+  return p.category === categoryName || 
+         p.category === categoryName.replace('Joint: ', '');
 }
     // Handle External file data (including BSNL)
     else if (!p.id.startsWith('physical-') && !p.id.startsWith('desktop-')) {

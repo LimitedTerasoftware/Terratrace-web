@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
-import { ProcessedPlacemark, PlacemarkCategory, ProcessedPhysicalSurvey, ProcessedDesktopPlanning, ProcessedRectification } from '../../types/kmz';
+import { ProcessedPlacemark, PlacemarkCategory, ProcessedPhysicalSurvey, ProcessedDesktopPlanning, ProcessedRectification, ProcessedJoints } from '../../types/kmz';
 import { PLACEMARK_CATEGORIES } from './PlaceMark';
 import { ProcessedGPData, ProcessedBlockData } from './PlaceMark';
 
 // Video & Photo Survey types
 import { TrackPoint } from './VideoSurveyService';
 import { PhotoPoint } from './PhotoSurveyService';
+import JointInfoModal from './JointInfoModal';
+import { createRoot } from 'react-dom/client';
 
 interface GoogleMapProps {
   placemarks: (ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedDesktopPlanning | ProcessedRectification | ProcessedGPData | ProcessedBlockData)[];
@@ -31,6 +33,7 @@ interface GoogleMapProps {
 }
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyCPHNQoyCkDJ3kOdYZAjZElbhXuJvx-Odg';
+const baseUrl_public = import.meta.env.VITE_Image_URL;
 
 // Helper function to create image gallery HTML (OUTSIDE component to avoid hook issues)
 function createImageGalleryHTML(images: any[]): string {
@@ -190,6 +193,7 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
+  const [selectedJoint, setSelectedJoint] = useState<ProcessedJoints | null>(null);
 
   // NEW: fast lookup for highlight-by-id (fixes duplicate-name issues)
   const markersByIdRef = useRef<Map<string, google.maps.Marker>>(new Map());
@@ -403,9 +407,10 @@ useEffect(() => {
     // Determine placemark source from ID prefix
     const isPhysicalPlacemark = placemark.id.startsWith('physical-') || placemark.id.startsWith('gp-location-') || placemark.id.startsWith('bsnl-block-');
     const isRectificationPlacemark = placemark.id.startsWith('rectification-');
+    const isJointPlacemark = placemark.id.startsWith('Joint-');
+    
     const isDesktopPlacemark = placemark.id.startsWith('desktop-');
-    const isExternalPlacemark = !isPhysicalPlacemark && !isRectificationPlacemark && !isDesktopPlacemark;
-
+    const isExternalPlacemark = !isPhysicalPlacemark && !isRectificationPlacemark && !isDesktopPlacemark && !isJointPlacemark;
     // Enhanced category matching with source awareness
     const category = categories.find(cat => {
       // For Physical Survey placemarks - only match physical categories
@@ -417,7 +422,9 @@ useEffect(() => {
       if (isRectificationPlacemark) {
         return cat.id.startsWith('rectification-') && cat.name === placemark.category;
       }
-      
+       if (isJointPlacemark) {
+        return cat.id.startsWith('Joint-') && cat.name === placemark.category;
+      }
       // For Desktop Planning placemarks - only match desktop categories
       if (isDesktopPlacemark) {
   return cat.name === placemark.category;
@@ -441,6 +448,7 @@ useEffect(() => {
       const isPhysicalSurvey = placemark.id.startsWith('physical-');
       const isDesktopPlanning = placemark.id.startsWith('desktop-');
       const isRectification = placemark.id.startsWith('rectification-'); 
+      const isJoint = placemark.id.startsWith('Joint-'); 
       const isExternalFile = !placemark.id.startsWith('physical-') && !placemark.id.startsWith('desktop-') && !placemark.id.startsWith('rectification-') && !isGP && !isBlock;
 
       let markerIcon: google.maps.Symbol | google.maps.Icon | undefined;
@@ -547,6 +555,16 @@ useEffect(() => {
             strokeWeight: 2,
           } as google.maps.Symbol;
         }
+      }else if(isJoint){
+          markerIcon = {
+            path: 'M-6,-6 L6,-6 L6,6 L-6,6 Z',
+            scale: 1.2,
+            fillColor: category.color,
+            fillOpacity: 0.9,
+            strokeColor: '#ffffff',
+            strokeWeight: 2,
+            rotation: 45,
+          } as google.maps.Symbol;
       }
 
       const marker = new google.maps.Marker({
@@ -563,9 +581,11 @@ useEffect(() => {
           const isPhysical = placemark.id.startsWith('physical-');
           const isDesktop = placemark.id.startsWith('desktop-');
           const isRectification = placemark.id.startsWith('rectification-');
+          const isJoint = placemark.id.startsWith('Joint-'); 
+
           const isGP = placemark.id.startsWith('gp-location-') || placemark.id.startsWith('pole-location-') || placemark.id.startsWith('earthpit-location-');
           const isBlock = placemark.id.startsWith('bsnl-block-');
-          const isExternal = !isPhysical && !isDesktop && !isRectification && !isGP && !isBlock;
+          const isExternal = !isPhysical && !isDesktop && !isRectification && !isGP && !isBlock && !isJoint;
           
           let infoContent = '';
 
@@ -703,7 +723,13 @@ useEffect(() => {
                 ${desktopInfo.networkId ? `<p class="text-sm text-gray-600">Network ID: ${desktopInfo.networkId}</p>` : ''}
               </div>
             `;
-          } else if (isExternal) {
+          } 
+          else if (isJoint) {
+            const jointInfo = placemark as ProcessedJoints;
+            setSelectedJoint(jointInfo);
+          
+          }
+          else if (isExternal) {
             const externalInfo = placemark as ProcessedPlacemark;
             const sourceType = placemark.category.startsWith('External Survey:') ? 'Survey File' : 
                              placemark.category.startsWith('External Desktop:') ? 'Desktop File' : 'External File';
@@ -1409,6 +1435,9 @@ useEffect(() => {
   }
 }, [placemarks, categories, visibleCategories, mapLoaded, videoSurveyMode, photoSurveyMode]);
 
+
+
+
   // Enhanced video survey overlays
   useEffect(() => {
     if (!mapLoaded || !mapInstanceRef.current || !videoSurveyMode || !trackPoints.length) {
@@ -1684,6 +1713,16 @@ useEffect(() => {
             Enhanced video controls + photo viewing
           </div>
         </div>
+      )}
+      {selectedJoint && (
+        <JointInfoModal
+          joint={selectedJoint}
+          baseUrl={baseUrl_public}
+          onClose={() => {
+        infoWindowRef.current?.close();
+        setSelectedJoint(null);
+      }}
+        />
       )}
     </div>
   );

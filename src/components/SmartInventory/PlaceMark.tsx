@@ -8,6 +8,8 @@ import {
   RectificationApiResponse,
   RectificationItem,
   ProcessedRectification,
+  JointsApiResponse,
+  ProcessedJoints,
 } from '../../types/kmz';
 
 // Enhanced interfaces with image support
@@ -182,7 +184,7 @@ export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string 
   'Desktop: N Highway Cross': { color: '#EF4444', icon: '🛤️' },
   'Desktop: Incremental Cable': { color: '#7CF10F', icon: '▓▓▓▓' },
   'Desktop: Proposed Cable': { color: '#FF2400', icon: '▒▒▒▒' },
-
+   'Joint: SJC': { color: '#22D3EE', icon: '🔷' },
   // Tracking
   SURVEY_ROUTE: { color: '#FFFF99', icon: '➡️' },
 
@@ -2369,4 +2371,69 @@ export function processRectificationSurveyData(apiData: PhysicalSurveyApiRespons
     .filter(c => c.count > 0);
 
   return { placemarks: processedPlacemarks, categories };
+}
+
+export function processJointsData(apiData: JointsApiResponse | null): {
+  placemarks: (ProcessedJoints)[];
+  categories: PlacemarkCategory[];
+} {
+  if (!apiData || !apiData.data) {
+    return { placemarks: [], categories: [] };
+  }
+
+  const processedPlacemarks: (ProcessedJoints)[] = [];
+  const categoryCounts: Record<string, number> = {};
+
+  const JointCategories = [
+  'Joint: SJC',
+  ];
+
+  JointCategories.forEach(c => categoryCounts[c] = 0);
+  (apiData.data || []).forEach(joint => {
+    try {
+        const longitude = Number(joint.gps_long);
+        const latitude = Number(joint.gps_lat);
+        if (!isValidCoordinate(latitude, longitude)) {
+          console.warn(`Invalid coordinate values for Joint point ${joint.joint_name}:`, { latitude, longitude });
+          return;
+        }
+        const category = joint.joint_type === 'SJC' ? 'Joint: SJC' : joint.joint_type;
+        categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+
+        processedPlacemarks.push({
+          id: `Joint-point-${joint.joint_code}`,
+          name: joint.joint_name ,
+          category,
+          type: 'point',
+          coordinates: { lat: latitude, lng: longitude },
+          joint_type: joint.joint_type,
+          work_type: joint.work_type,
+          address:joint.address,
+          state_name:joint.state_name,
+          district_name:joint.district_name,
+          block_name:joint.block_name,
+          photo_path:joint.photo_path,
+          cables:joint.cables,
+          tube_mapping:joint.tube_mapping,
+          fiber_splicing:joint.fiber_splicing
+
+        });
+    } catch (error) {
+        console.error('Error processing joints:', joint, error);
+
+    }
+    })
+    const categories: PlacemarkCategory[] = JointCategories
+    .map(name => ({
+      id:"Joint-",
+      name,
+      count: categoryCounts[name] || 0,
+      visible: true,
+      color: PLACEMARK_CATEGORIES[name]?.color || '#6B7280',
+      icon: PLACEMARK_CATEGORIES[name]?.icon || '📍',
+    }))
+    .filter(category => category.count > 0);
+    return { placemarks: processedPlacemarks, categories };
+
+
 }

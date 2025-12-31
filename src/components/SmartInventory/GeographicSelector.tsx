@@ -45,7 +45,8 @@ interface PreviewDropdownProps {
   onClose: () => void;
   onPhysicalSurvey: () => void;
   onDesktopPlanning: () => void;
-  onRectification: () => void; // ADD THIS
+  onRectification: () => void; 
+  onJoints:()=>void;// ADD THIS
   position: { x: number; y: number };
 }
 
@@ -55,6 +56,7 @@ const PreviewDropdown: React.FC<PreviewDropdownProps> = ({
   onPhysicalSurvey,
   onDesktopPlanning,
   onRectification,
+  onJoints,
   position
 }) => {
   if (!isOpen) return null;
@@ -106,6 +108,16 @@ const PreviewDropdown: React.FC<PreviewDropdownProps> = ({
           <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
           Rectification
         </button>
+          <button
+          onClick={() => {
+            onJoints(); 
+            onClose();
+          }}
+          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+        >
+          <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+          Joints
+        </button>
       </div>
     </>
   );
@@ -120,7 +132,7 @@ interface GeographicSelectorProps {
     selectedDistricts: string[]; 
     selectedBlocks: string[]; 
     name: string;
-    dataType: 'physical' | 'desktop' | 'rectification';
+    dataType: 'physical' | 'desktop' | 'rectification'|'joints';
     // Add hierarchy context for specific selections
     hierarchyContext?: {
       stateId?: string;
@@ -134,7 +146,7 @@ interface GeographicSelectorProps {
     selectedDistricts: string[]; 
     selectedBlocks: string[]; 
     name: string;
-    dataType: 'physical' | 'desktop' | 'rectification';
+    dataType: 'physical' | 'desktop' | 'rectification'|'joints';
     hierarchyContext?: {
       stateId?: string;
       districtId?: string;
@@ -144,6 +156,7 @@ interface GeographicSelectorProps {
   isLoadingPhysical?: boolean;
   isLoadingDesktopPlanning?: boolean;
   isLoadingRectification?: boolean;
+  isLoadingJoints?:boolean;
 }
 
 export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
@@ -153,7 +166,8 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
   onRefresh,
   isLoadingPhysical,
   isLoadingDesktopPlanning,
-  isLoadingRectification
+  isLoadingRectification,
+  isLoadingJoints
 }) => {
   const [isDistrictExpanded, setIsDistrictExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -563,6 +577,23 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
     });
   };
 
+   const handleJoints = () => {
+    if (!dropdownState.currentItem) return;
+    
+    const selectedIds = getSelectedIds();
+    onPreview?.({
+      type: dropdownState.currentItem.type,
+      selectedStates: selectedIds.states,
+      selectedDistricts: selectedIds.districts,
+      selectedBlocks: selectedIds.blocks,
+      name: dropdownState.currentItem.name,
+      dataType: 'joints',
+      hierarchyContext: dropdownState.currentItem.hierarchyContext
+    });
+  };
+
+
+
   const handleRefresh = (type: 'state' | 'district' | 'block', id: string, name: string) => {
     const selectedIds = getSelectedIds();
     onRefresh?.({
@@ -596,6 +627,7 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
         onPhysicalSurvey={handlePhysicalSurvey}
         onDesktopPlanning={handleDesktopPlanning}
         onRectification={handleRectification}
+        onJoints={handleJoints}
         position={dropdownState.position}
       />
 
@@ -628,7 +660,7 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
   className={`
     border-2 border-dashed 
     w-10 h-10 rounded-full flex items-center justify-center transition-colors 
-    ${(isLoadingPhysical || isLoadingDesktopPlanning || isLoadingRectification) // ADD isLoadingRectification
+    ${(isLoadingPhysical || isLoadingDesktopPlanning || isLoadingRectification || isLoadingJoints) // ADD isLoadingRectification
       ? 'border-gray-300 bg-blue-100'
       : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
     }
@@ -637,7 +669,7 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
   `}
   title='Reload'
 >
-  {(isLoadingPhysical || isLoadingDesktopPlanning || isLoadingRectification) ? // ADD isLoadingRectification
+  {(isLoadingPhysical || isLoadingDesktopPlanning || isLoadingRectification || isLoadingJoints) ? // ADD isLoadingRectification
     <Loader className="h-4 w-4 animate-spin text-blue-400" /> :
     <RefreshCwIcon size={18} />
   }
