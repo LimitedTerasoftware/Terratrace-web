@@ -8,7 +8,7 @@ interface JointInfoModalProps {
 }
 
 export default function JointInfoModal({ joint, baseUrl = '', onClose }: JointInfoModalProps) {
-    console.log(baseUrl);
+    
   const getStatusColor = (status: string | null) => {
     if (!status) return 'bg-gray-100 text-gray-700';
      
@@ -19,6 +19,10 @@ export default function JointInfoModal({ joint, baseUrl = '', onClose }: JointIn
     if (statusLower.includes('cut')) return 'bg-red-100 text-red-700';
     return 'bg-gray-100 text-gray-700';
   };
+  const photos = joint.photo_path
+  ?.split(',')
+  .map(p => p.trim())
+  .filter(Boolean);
 
  
 
@@ -213,20 +217,26 @@ export default function JointInfoModal({ joint, baseUrl = '', onClose }: JointIn
           )}
 
           {/* Photos */}
-          {joint.photo_path && (
+          {photos && photos.length > 0 && (
             <section>
               <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 <ImageIcon size={20} className="text-gray-600" />
                 Site Photos
               </h3>
+
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                <div className="aspect-square rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-400 transition-colors cursor-pointer">
-                  <img
-                    src={`${baseUrl}${joint.photo_path}`}
-                    alt="Joint photo"
-                    className="w-full h-full object-cover hover:scale-105 transition-transform"
-                  />
-                </div>
+                {photos.map((photo, index) => (
+                  <div
+                    key={index}
+                    className="aspect-square rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-400 transition-colors cursor-pointer"
+                  >
+                    <img
+                      src={`${baseUrl}${photo}`}
+                      alt={`Joint photo ${index + 1}`}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform"
+                    />
+                  </div>
+                ))}
               </div>
             </section>
           )}

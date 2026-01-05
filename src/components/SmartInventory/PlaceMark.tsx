@@ -185,6 +185,7 @@ export const PLACEMARK_CATEGORIES: Record<string, { color: string; icon: string 
   'Desktop: Incremental Cable': { color: '#7CF10F', icon: '▓▓▓▓' },
   'Desktop: Proposed Cable': { color: '#FF2400', icon: '▒▒▒▒' },
    'Joint: SJC': { color: '#22D3EE', icon: '🔷' },
+   'Joint: BJC': { color: '#8B5CF6', icon: '🟣' },
   // Tracking
   SURVEY_ROUTE: { color: '#FFFF99', icon: '➡️' },
 
@@ -2383,9 +2384,15 @@ export function processJointsData(apiData: JointsApiResponse | null): {
 
   const processedPlacemarks: (ProcessedJoints)[] = [];
   const categoryCounts: Record<string, number> = {};
+  const JOINT_TYPE_TO_CATEGORY: Record<string, string> = {
+    SJC: 'Joint: SJC',
+    BJC: 'Joint: BJC',
+  };
+
 
   const JointCategories = [
   'Joint: SJC',
+  'Joint: BJC',
   ];
 
   JointCategories.forEach(c => categoryCounts[c] = 0);
@@ -2397,7 +2404,9 @@ export function processJointsData(apiData: JointsApiResponse | null): {
           console.warn(`Invalid coordinate values for Joint point ${joint.joint_name}:`, { latitude, longitude });
           return;
         }
-        const category = joint.joint_type === 'SJC' ? 'Joint: SJC' : joint.joint_type;
+        const category = JOINT_TYPE_TO_CATEGORY[joint.joint_type];
+        if (!category) return;
+
         categoryCounts[category] = (categoryCounts[category] || 0) + 1;
 
         processedPlacemarks.push({
@@ -2425,7 +2434,7 @@ export function processJointsData(apiData: JointsApiResponse | null): {
     })
     const categories: PlacemarkCategory[] = JointCategories
     .map(name => ({
-      id:"Joint-",
+      id: `Joint-${name.toLowerCase().replace(/\s+/g, '-')}`,
       name,
       count: categoryCounts[name] || 0,
       visible: true,
