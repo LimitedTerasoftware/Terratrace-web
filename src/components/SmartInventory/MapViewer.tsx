@@ -32,8 +32,10 @@ interface GoogleMapProps {
   onPhotoPointClick?: (p: PhotoPoint) => void;
 }
 
-const GOOGLE_MAPS_API_KEY = 'AIzaSyCPHNQoyCkDJ3kOdYZAjZElbhXuJvx-Odg';
+// const GOOGLE_MAPS_API_KEY = 'AIzaSyCPHNQoyCkDJ3kOdYZAjZElbhXuJvx-Odg';
 const baseUrl_public = import.meta.env.VITE_Image_URL;
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
 
 // Helper function to create image gallery HTML (OUTSIDE component to avoid hook issues)
 function createImageGalleryHTML(images: any[]): string {

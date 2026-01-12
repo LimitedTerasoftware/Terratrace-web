@@ -55,6 +55,7 @@ interface MediaItem {
 
 const BASEURL = import.meta.env.VITE_API_BASE;
 const baseUrl_public = import.meta.env.VITE_Image_URL;
+const TricadBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
 const AerialDetailView: React.FC = () => {
   const [data, setData] = useState<AerialSurvey | null>(null);
@@ -178,11 +179,10 @@ const AerialDetailView: React.FC = () => {
       toast.error("Error accepting record");
     }
   };
-
   const handleDelete = async () => {
     if (!window.confirm("Are you sure you want to delete this record?")) return;
     try {
-      await axios.delete(`${BASEURL}/aerial-surveys/${id}`);
+      await axios.delete(`${TricadBASEURL}/aerial-survey/${id}`);
       toast.success("Record deleted successfully.");
       window.history.back();
     } catch (error) {
