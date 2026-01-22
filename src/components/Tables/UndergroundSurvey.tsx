@@ -318,6 +318,7 @@ const handleEditSave = async () => {
       id: editingRow.id,                  
       endLocation: editingRow.endLocation,   
       startLocation: editingRow.startLocation, 
+      routeType:editingRow.routeType,
     
     };
 
@@ -1566,6 +1567,14 @@ const handleMediaFiles = async () => {
                     placeholder="Block Name"
                     readOnly
                   />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Route Type</label>
+                  <input
+                    type="text"
+                    value={editingRow.routeType}
+                    onChange={(e) => setEditingRow({ ...editingRow, routeType: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    placeholder="Route Type"
+                  />
                    <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Start GP Name</label>
                       { loadingGPD ? (
@@ -1611,15 +1620,7 @@ const handleMediaFiles = async () => {
                         </select>
                       )}
                     </div>
-                 
-                  {/* <input
-                    type="text"
-                    value={editingRow.startGpName}
-                    onChange={(e) => setEditingRow({ ...editingRow, startGpName: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    placeholder="Start GP Name"
-                    readOnly
-                  /> */}
+                
                   {/* <input
                     type="text"
                     value={editingRow.startGpCoordinates}

@@ -15,7 +15,10 @@ export interface AerialSurveyDetails {
   district_name:string;
   block_name:string;
   user_fullname:string;
-  user_contact_no:string
+  user_contact_no:string;
+  block_id:number;
+  gp_id:number;
+  end_gp_id:number
 
 }
 
@@ -29,6 +32,7 @@ export interface AerialRoadCrossing {
   startPhoto: string;
   endPhoto: string;
   length: string;
+  block_id?:number;
 }
 
 export interface AerialPole {
@@ -44,6 +48,7 @@ export interface AerialPole {
   polePosition: string;
   poleType: number;
   typeOfPole: string;
+    block_id?:number;
 }
 
 export interface MediaItem {
@@ -64,4 +69,11 @@ export interface MarkerData {
   type: 'start' | 'end' | 'pole' | 'crossing';
   data: any;
   surveyId: number;
+}
+export type EditType = 'aerial' | 'pole' | 'roadcrossing';
+
+export interface EditPayload {
+  type: EditType;
+  id: number;
+  [key: string]: string | number;
 }

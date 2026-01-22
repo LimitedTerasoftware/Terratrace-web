@@ -51,6 +51,7 @@ export default function AerialSurveyMap({ surveys }: AerialSurveyMapProps) {
       type: 'start' | 'end' | 'pole' | 'crossing';
       data: any;
       surveyId: number;
+      id:number;
     }> = [];
 
     surveys.forEach(survey => {
@@ -67,6 +68,7 @@ export default function AerialSurveyMap({ surveys }: AerialSurveyMapProps) {
              
             },
             surveyId: survey.id,
+            id:survey.id
           });
         }
 
@@ -81,6 +83,8 @@ export default function AerialSurveyMap({ surveys }: AerialSurveyMapProps) {
               photos: survey.endGpPhotos,
             },
             surveyId: survey.id,
+            id:survey.id
+            
           });
         }
       }
@@ -94,6 +98,7 @@ export default function AerialSurveyMap({ surveys }: AerialSurveyMapProps) {
               type: 'pole',
               data: pole,
               surveyId: survey.id,
+              id:pole.id
 
             });
           }
@@ -111,6 +116,8 @@ export default function AerialSurveyMap({ surveys }: AerialSurveyMapProps) {
               type: 'crossing',
               data: crossing,
               surveyId: survey.id,
+              id:crossing.id
+              
             });
           }
         });
@@ -237,7 +244,7 @@ useEffect(() => {
             key={`${marker.type}-${marker.surveyId}-${index}`}
             position={marker.position}
             icon={createMarkerIcon(marker.type,marker.data)}
-            title={`${marker.type}-${marker.surveyId}`}
+            title={`${marker.type}-${marker.surveyId}-${marker.id}`}
             onClick={() => setActiveInfoWindow({
               position: marker.position,
               type: marker.type,

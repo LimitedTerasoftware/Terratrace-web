@@ -69,6 +69,29 @@ type StatusOption = {
   label: string;
 };
 
+const getDistanceInMeters = (
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+) => {
+  const toRad = (value: number) => (value * Math.PI) / 180;
+
+  const R = 6371000; // Earth radius in meters
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c; // meters
+};
 
 const AerialSurvey: React.FC = () => {
   const BASEURL = import.meta.env.VITE_API_BASE;
@@ -392,7 +415,23 @@ const exporExcel = async (BlockData: AerialSurveyDetails[]) => {
 
     // Poles
     if (data.aerial_poles?.length) {
-      data.aerial_poles.forEach((pole) => {
+      data.aerial_poles.forEach((pole,index) => {
+      let distance = 0;
+
+    if (index > 0) {
+      const prev = data.aerial_poles[index - 1];
+
+      if (prev?.lattitude && prev?.longitude && pole?.lattitude && pole?.longitude) {
+        distance = getDistanceInMeters(
+          Number(prev.lattitude),
+          Number(prev.longitude),
+          Number(pole.lattitude),
+          Number(pole.longitude)
+        );
+      }
+    }
+
+    
         rows.push({
           ...baseRow,
           "Record Type": "Pole",
@@ -402,6 +441,7 @@ const exporExcel = async (BlockData: AerialSurveyDetails[]) => {
           "Pole Type": pole.typeOfPole,
           "Pole Height": pole.poleHeight,
           "Pole Condition": pole.poleCondition,
+          "Distance": index === 0 ? "-" : `${distance.toFixed(2)} m`,
           "Pole Availability At": pole.poleAvailabilityAt,
           "Pole Position": pole.polePosition,
           "Electricity Line Type": pole.electricityLineType,

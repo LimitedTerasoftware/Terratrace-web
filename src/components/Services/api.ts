@@ -3,6 +3,7 @@ import { MachineDataApiResponse } from '../../types/survey';
 import { ApiResponse} from '../../types/machine';
 import { useCallback, useEffect, useState } from 'react';
 import { Activity, ApiResponseMachine ,FilterState} from '../../types/survey';
+import { EditPayload } from '../../types/aerial-survey';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const BASEURL = import.meta.env.VITE_API_BASE;
@@ -229,4 +230,26 @@ export const getGpData = async(page:number=1,st_code:string,dt_code:string,blk_c
 
   }
 }
+
+
+export const updateAerialData = async (payload: EditPayload): Promise<any> => {
+  try {
+    const response = await fetch(`${TraceBASEURL}/aerial/update-by-type`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Update failed: ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error updating aerial data:', error);
+    throw error;
+  }
+};
   

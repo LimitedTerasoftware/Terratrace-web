@@ -6,8 +6,10 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { hasViewOnlyAccess } from "../../utils/accessControl";
 import DataTable from "react-data-table-component";
-import { Image as ImageIcon } from "lucide-react";
+import { Edit2, Image as ImageIcon } from "lucide-react";
 import MediaCarousel from "./MediaCarousel";
+import { EditType } from "../../types/aerial-survey";
+import { EditModal } from "../AerialSurveyMap/EditModal";
 
 interface AerialSurvey {
   id: number;
@@ -19,6 +21,9 @@ interface AerialSurvey {
   endGpPhotos: string;
   aerial_road_crossings: AerialRoadCrossing[];
   aerial_poles: AerialPole[];
+  block_id:number;
+  gp_id:number;
+  end_gp_id:number
 }
 
 interface AerialRoadCrossing {
@@ -52,6 +57,30 @@ interface MediaItem {
   url: string;
   label: string;
 }
+const getDistanceInMeters = (
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+) => {
+  const toRad = (value: number) => (value * Math.PI) / 180;
+
+  const R = 6371000; // Earth radius in meters
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c; // meters
+};
+
 
 const BASEURL = import.meta.env.VITE_API_BASE;
 const baseUrl_public = import.meta.env.VITE_Image_URL;
@@ -62,6 +91,9 @@ const AerialDetailView: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editData, setEditData] = useState<any>(null);
+  const [editType, setEditType] = useState<EditType>('aerial');
 
   // Media Carousel States
   const [isCarouselOpen, setIsCarouselOpen] = useState<boolean>(false);
@@ -239,6 +271,21 @@ const AerialDetailView: React.FC = () => {
 
   const surveyColumns = useMemo(() => [
     {
+  name: "Action",
+  cell: () => (
+    <button
+      onClick={() => handleEdit(data,'aerial')}
+      className="px-3 py-1.5 text-xs font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700"
+    >
+      Edit
+    </button>
+  ),
+  ignoreRowClick: true,
+  button: true,
+  width: "120px",
+},
+
+    {
       name: "Start GP Name",
       selector: () => data?.startGpName || "-",
       sortable: true,
@@ -334,6 +381,25 @@ const AerialDetailView: React.FC = () => {
 
   const crossingColumns = useMemo(() => [
     {
+      name: "Action",
+      cell: (row: AerialRoadCrossing) => (
+        <button
+          onClick={() => handleEdit(row,'roadcrossing')}
+          className="px-3 py-1.5 text-xs font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
+        >
+          Edit
+        </button>
+      ),
+      ignoreRowClick: true,
+      button: true,
+      width: "120px",
+    },
+
+    {name:"ID",
+      selector:(row:AerialRoadCrossing) => row.id,
+      sortable:true,
+    },
+    {
       name: "Crossing Type",
       selector: (row: AerialRoadCrossing) => row.typeOfCrossing || "-",
       sortable: true,
@@ -416,7 +482,52 @@ const AerialDetailView: React.FC = () => {
     },
   ], []);
 
+
+const aerialPolesWithDistance = useMemo(() => {
+  const poles = data?.aerial_poles || [];
+
+  return poles.map((pole, index) => {
+    if (index === 0) {
+      return { ...pole, distanceFromPrev: null };
+    }
+
+    const prev = poles[index - 1];
+
+    const distance = getDistanceInMeters(
+      Number(prev.lattitude),
+      Number(prev.longitude),
+      Number(pole.lattitude),
+      Number(pole.longitude)
+    );
+
+    return {
+      ...pole,
+      distanceFromPrev: distance,
+    };
+  });
+}, [data?.aerial_poles]);
+
+
   const poleColumns = useMemo(() => [
+    {
+      name: "Action",
+      cell: (row: AerialPole) => (
+        <button
+          onClick={() => handleEdit(row,'pole')}
+          className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+        >
+         Edit
+        </button>
+      ),
+      ignoreRowClick: true,
+      button: true,
+      width: "120px",
+    },
+
+    {name:"ID",
+      selector:(row:AerialPole) => row.id,
+      sortable:true,
+    },
     {
       name: "Pole Type",
       selector: (row: AerialPole) => row.poleType === 1 ? "Existing" : "New",
@@ -438,6 +549,20 @@ const AerialDetailView: React.FC = () => {
       name: "Pole Position",
       selector: (row: AerialPole) => row.polePosition || "-",
     },
+   {
+    name: "Distance From Previous Pole",
+    selector: (row: any) => {
+      if (row.distanceFromPrev == null) return "-";
+
+      // meters -> km format
+      if (row.distanceFromPrev >= 1000) {
+        return `${(row.distanceFromPrev / 1000).toFixed(2)} km`;
+      }
+
+      return `${row.distanceFromPrev.toFixed(2)} m`;
+    },
+    sortable: true,
+  },
     {
       name: "Pole Availability",
       selector: (row: AerialPole) => row.poleAvailabilityAt || "-",
@@ -480,6 +605,16 @@ const AerialDetailView: React.FC = () => {
     },
   ], []);
 
+
+   const handleEdit = (rowData: any, type: EditType) => {
+    setEditData(rowData);
+    setEditType(type);
+    setIsEditModalOpen(true);
+  };
+  const handleEditSuccess = () => {
+   setIsEditModalOpen(false);
+  };
+ 
   if (loading) return <div className="text-center py-10">Loading...</div>;
   if (error) return <div className="text-red-500 text-center py-10">{error}</div>;
   const viewOnly = hasViewOnlyAccess();
@@ -553,7 +688,7 @@ const AerialDetailView: React.FC = () => {
           <div className="overflow-x-auto">
             <DataTable
               columns={poleColumns}
-              data={data?.aerial_poles || []}
+             data={aerialPolesWithDistance}
               pagination
               highlightOnHover
               striped
@@ -566,14 +701,14 @@ const AerialDetailView: React.FC = () => {
 
         {!viewOnly && (
           <div className="mt-6 flex gap-4 justify-center">
-            <button
+            {/* <button
               className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded"
               onClick={() => {
                 toast.success("Coming Soon this page!");
               }}
             >
               Edit
-            </button>
+            </button> */}
 
             <button
               className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded"
@@ -609,6 +744,15 @@ const AerialDetailView: React.FC = () => {
         mediaItems={carouselMedia}
         initialIndex={carouselInitialIndex}
       />
+       {isEditModalOpen && editData && (
+              <EditModal
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                data={editData}
+                type={editType}
+                onSuccess={handleEditSuccess}
+              />
+            )}
     </>
   );
 };
