@@ -1,7 +1,7 @@
 import { Satellite, Map, Camera, Truck, ClipboardList, Building2, ArrowLeft, Edit3, Home } from "lucide-react"; 
 import { Link } from "react-router-dom";
 
-type TabType = "bsnl" | "gp" | "aerial" | "ground" | "hoto" | "bsnlaview" | "bsnledit" | "gpview";
+type TabType = "bsnl" | "gp" | "aerial" | "ground" | "hoto" | "bsnlaview" | "bsnledit" | "gpview" | "joints";
 
 const tabHeaderData: Record<
   string,
@@ -53,6 +53,12 @@ const tabHeaderData: Record<
     icon: ClipboardList,
     title: "Hoto Survey Tracker",
     subtitle: "Handover-Takeover survey details",
+    bgColor: "bg-red-600"
+  },
+    joints: {
+    icon: ClipboardList,
+    title: "Joints",
+    subtitle: "Joints Rectification details",
     bgColor: "bg-red-600"
   }
 };
