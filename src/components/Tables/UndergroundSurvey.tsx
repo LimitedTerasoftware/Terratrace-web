@@ -319,6 +319,7 @@ const handleEditSave = async () => {
       endLocation: editingRow.endLocation,   
       startLocation: editingRow.startLocation, 
       routeType:editingRow.routeType,
+      cableType:editingRow.cableType,
     
     };
 
@@ -1574,6 +1575,14 @@ const handleMediaFiles = async () => {
                     onChange={(e) => setEditingRow({ ...editingRow, routeType: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     placeholder="Route Type"
+                  />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Cabel Type</label>
+                  <input
+                    type="text"
+                    value={editingRow.cableType}
+                    onChange={(e) => setEditingRow({ ...editingRow, cableType: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    placeholder="Cabel Type"
                   />
                    <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Start GP Name</label>
