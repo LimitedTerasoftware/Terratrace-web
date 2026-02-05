@@ -8,7 +8,7 @@ import Breadcrumb from '../../components/Breadcrumbs/Breadcrumb';
 import HotoTables from "../../pages/HotoTables";
 import { Header } from "../Breadcrumbs/Header";
 import { isIEUser } from '../../utils/accessControl';
-import Joints from "../Joints/joints";
+import Joints from "../Joints/Joints";
 
 // Define tab types
 type TabType = "bsnl" | "gp" | "aerial" | "ground" | "hoto" | "joints";
