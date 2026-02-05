@@ -244,6 +244,9 @@ export interface Activity {
   pole_type: string | null;
   existing_pole: string | null;
   new_pole: string | null;
+  routeFeatureLatLong:string|null;
+  routeFeaturePhotos:string|null;
+  routeFeatureType:string|null;
  }
 
 export interface ApiResponseMachine {
