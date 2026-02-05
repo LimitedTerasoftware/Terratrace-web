@@ -70,7 +70,8 @@ function Eventreport() {
         'ENDPIT',
         'ENDSURVEY',
         'HOLDSURVEY',
-        "BLOWING"
+        "BLOWING",
+        "ROUTEFEATURE"
     ];
     const getData = async () => {
         try {
@@ -129,6 +130,7 @@ function Eventreport() {
             case "ROADCROSSING": return row.crossingLatlong;
             case 'HOLDSURVEY':return row.holdLatlong;
             case "BLOWING":return row.blowingLatLong;
+            case "ROUTEFEATURE":return row.routeFeatureLatLong;
             default: return null;
         }
     };
@@ -218,7 +220,8 @@ function Eventreport() {
         ENDSURVEY: 'endPointPhoto',
         ROADCROSSING: 'crossingPhotos',
         HOLDSURVEY:'holdPhotos',
-        BLOWING:'blowingPhotos'
+        BLOWING:'blowingPhotos',
+        ROUTEFEATURE:'routeFeaturePhotos'
     };
 
     // Function to extract all media from a row
@@ -428,6 +431,7 @@ function Eventreport() {
         { name: "Execution Modality", selector: row => row.executionModality || "-", sortable: true },
         { name: "Landmark Type", selector: row => row.landmark_type || "-", sortable: true },
         { name: "Landmark Desc", selector: row => row.landmark_description || "-", sortable: true },
+        { name: "RouteFeature Type", selector: row => row.routeFeatureType || "-", sortable: true },
         { name: "Route Belongs To", selector: row => row.routeBelongsTo || "-", sortable: true },
         { name: "Road Type", selector: row => row.roadType || "-", sortable: true },
         { name: "Soil Type", selector: row => row.soilType || "-", sortable: true },
@@ -578,7 +582,7 @@ function Eventreport() {
   const headers = [
     "State Name", "District Name", "Block Name", "Start GP Name",  "End GP Name","Machine Registration Number","Firm Name","Event Type","Latitude","Longitude",
     "Images","Videos","Route Belongs To", "Road Type","Cable Laid On", "Soil Type", "Crossing Type", "Crossing Length","Execution Modality", "Depth (Meters)",
-    "Distance","DGPS Accuracy","DGPS SIV","Road Width","Landmark Type","Landmark Description", "Road Feasibility", "Area Type",
+    "Distance","DGPS Accuracy","DGPS SIV","Road Width","Landmark Type","Landmark Description", "Route Feature Type","Road Feasibility", "Area Type",
     "Road Margin","Vehicle Image", "End Pit Doc", "Authorised Person","Contractor Details", "Vehicle Serial No","Created At", "Updated At",
   ];
 
@@ -650,7 +654,7 @@ function Eventreport() {
     MainData.state_name, MainData.district_name, MainData.block_name, item.start_lgd_name, item.end_lgd_name,item.machine_registration_number,
     item.firm_name,item.eventType,latitude,longitude,imageLinks,VideoUrl,item.routeBelongsTo, item.roadType,
     item.cableLaidOn, item.soilType, item.crossingType,item.crossingLength, item.executionModality,item.depthMeters,
-    item.distance,item.dgps_accuracy,item.dgps_siv,item.roadWidth, item.landmark_type,item.landmark_description,item.Roadfesibility, item.area_type,formatPoleForExcel(poleTypeData),      // Pole Type
+    item.distance,item.dgps_accuracy,item.dgps_siv,item.roadWidth, item.landmark_type,item.landmark_description,item.routeFeatureType,item.Roadfesibility, item.area_type,formatPoleForExcel(poleTypeData),      // Pole Type
     formatPoleForExcel(existingPoleData),  // Existing Pole
     formatPoleForExcel(newPoleData),
     item.road_margin,VehicalImg,downloadUrl,item.authorised_person,item.contractor_details, item.vehicleserialno,item.created_at, item.updated_at
