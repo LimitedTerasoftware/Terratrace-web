@@ -230,24 +230,9 @@ function Eventreport() {
         const rawPhotoData = photoField ? row[photoField] : null;
 
         // Process images
-        if (typeof rawPhotoData === "string" && rawPhotoData.trim() !== "") {
-            let urls: string[];
-            
-            // Check if it's an array-like string [url1,url2,url3]
-            if (rawPhotoData.startsWith('[') && rawPhotoData.endsWith(']')) {
-                const urlString = rawPhotoData.slice(1, -1);
-                urls = urlString.split(',').map(url => url.trim());
-            } else {
-                try {
-                    urls = JSON.parse(rawPhotoData);
-                    if (!Array.isArray(urls)) {
-                        urls = [rawPhotoData];
-                    }
-                } catch (e) {
-                    urls = [rawPhotoData];
-                }
-            }
-
+      if (typeof rawPhotoData === "string" && rawPhotoData.trim() !== "") {
+            const urls = parseMediaUrls(rawPhotoData);
+              
             urls.forEach((url, index) => {
                 if (url) {
                     mediaItems.push({
@@ -258,6 +243,7 @@ function Eventreport() {
                 }
             });
         }
+
 
         // Process video
         if (typeof row.videoDetails === 'string') {
@@ -288,12 +274,54 @@ function Eventreport() {
 
         return mediaItems;
     };
+    const parseMediaUrls = (raw: any): string[] => {
+        if (!raw || typeof raw !== "string") return [];
+
+        let value = raw.trim();
+
+        try {
+            // First parse (handles "[\"...\"]")
+            const firstParse = JSON.parse(value);
+
+            // If result is still a string, parse again
+            if (typeof firstParse === "string") {
+                const secondParse = JSON.parse(firstParse);
+                return Array.isArray(secondParse) ? secondParse : [secondParse];
+            }
+
+            // If it's already an array
+            if (Array.isArray(firstParse)) {
+                return firstParse;
+            }
+
+            return [value];
+        } catch {
+            // Fallback for plain string or comma-separated values
+            if (value.startsWith("[") && value.endsWith("]")) {
+                return value
+                    .slice(1, -1)
+                    .split(",")
+                    .map(v => v.replace(/^"|"$/g, "").trim());
+            }
+
+            return [value];
+        }
+    };
+
 
     // Function to open carousel
     const openCarousel = (row: Activity, initialIndex: number = 0) => {
         const media = extractMediaFromRow(row);
+          if (!media || media.length === 0) {
+            console.warn("No media found for row", row);
+            return; 
+        }
+          const safeIndex = Math.min(
+                Math.max(initialIndex, 0),
+                media.length - 1
+            );
         setCarouselMedia(media);
-        setCarouselInitialIndex(initialIndex);
+        setCarouselInitialIndex(safeIndex);
         setIsCarouselOpen(true);
     };
 
