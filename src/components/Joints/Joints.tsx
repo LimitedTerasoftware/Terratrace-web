@@ -2,8 +2,9 @@ import { ColumnDef, flexRender, getCoreRowModel, getPaginationRowModel, Row, use
 import axios from 'axios';
 import { ChevronDown, Eye, RotateCcw, Search, User } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import ResponsivePagination from '../Tables/ResponsivePagination';
+import { JointsApiResponse, JointsData, ProcessedJoints } from '../../types/survey';
 
 interface StateData {
   state_id: string;
@@ -26,9 +27,14 @@ type StatusOption = {
   value: number;
   label: string;
 };
+
 const Joints: React.FC = () => {
   const BASEURL = import.meta.env.VITE_API_BASE;
-  const [data, setData] = useState<[]>([]);
+  const TraceBaseUrl = import.meta.env.VITE_TraceAPI_URL;
+  const ImgBaseUrl = import.meta.env.VITE_Image_URL;
+  const navigate = useNavigate(); 
+  const [selectedJointId, setSelectedJointId] = useState<string | null>(null); 
+  const [data, setData] = useState<JointsData[]>([]);
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -46,6 +52,7 @@ const Joints: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
+  const [filtersReady, setFiltersReady] = useState(false);
 
    const statusMap: Record<number, string> = {
     1: "Accepted",
@@ -59,7 +66,64 @@ const Joints: React.FC = () => {
       label,
     })
   );
+ 
+  const fetchData = async () =>{
+    setLoading(true);
+    setError('');
+    try {
+      const response = await axios.get<JointsApiResponse>(`${TraceBaseUrl}/get-all-joints`,{
+        params:{
+          state_id:selectedState,
+          district_id:selectedDistrict,
+          block_id:selectedBlock,
+          page,
+          limit: 10,
+        },
+      });
+      if(response.data.success){
+       setData(response.data.data);
+      setTotalPages(response.data.pagination.total_pages);
 
+
+      }else{
+        setError(response.data.message || "Something went wrong")
+
+        setData([]);
+      }
+
+      
+    } catch (error:any) {
+      setError(error.response.data.message || "Something went wrong")
+       setData([]);
+    }finally{
+      setLoading(false);
+    }
+  };
+    useEffect(() => {
+    const state_id = searchParams.get('state_id') || null;
+    const district_id = searchParams.get('district_id') || null;
+    const block_id = searchParams.get('block_id') || null;
+    const pageParam = searchParams.get('page') || '1';
+    const status = searchParams.get('status') || null;
+    const from_date = searchParams.get('from_date') || '';
+    const to_date = searchParams.get('to_date') || "";
+    const search = searchParams.get('search') || "";
+  
+    setSelectedState(state_id);
+    setSelectedDistrict(district_id);
+    setSelectedBlock(block_id);
+    setSelectedStatus(status !== null ? Number(status) : null);
+    setFromDate(from_date);
+    setToDate(to_date);
+    setGlobalSearch(search);
+    setPage(Number(pageParam));
+    setFiltersReady(true);
+  }, []);
+
+ useEffect(()=>{
+  if(!filtersReady) return;
+  fetchData();
+}, [fromdate, todate, globalsearch, page,selectedState, selectedDistrict, selectedBlock, selectedStatus, filtersReady]);
 
   useEffect(() => {
     axios.get(`${BASEURL}/states`)
@@ -117,18 +181,22 @@ const Joints: React.FC = () => {
       page: '1',
     });
   };
-    const columns: ColumnDef<any>[] = useMemo(
+    const columns: ColumnDef<JointsData>[] = useMemo(
     () => [
       {
         header: "Actions",
-        cell: ({ row }: { row: Row<any> }) => (
+        cell: ({ row }: { row: Row<JointsData> }) => (
           <div className="flex items-center space-x-2">
             <button
-              // onClick={() => handleView(row.original.id)}
-              className="text-blue-600 hover:text-blue-900 p-1"
-              title="View">
-              <Eye className="w-4 h-4" />
-            </button>
+              onClick={() => {
+              const jointId = `${row.original.joint_code}`;
+              setSelectedJointId(jointId);
+              navigate(`/joint/${jointId}`);
+            }}
+            className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded transition-colors"
+            title="View">
+            <Eye className="w-4 h-4" />
+          </button>
           </div>
 
         ),
@@ -137,15 +205,43 @@ const Joints: React.FC = () => {
       { accessorKey: "district_name", header: "District Name" },
       { accessorKey: "block_name", header: "Block Name" },
       { accessorKey: "joint_name", header: "Joint Name" },
-      { accessorKey: "link_name", header: "Link Name" },
-      {accessorKey:"join_seq",header:"Joint Sequence"},
-      {accessorKey:"cabel_type",header:"Cabel Type"},
-      {accessorKey:"splice_type",header:"Splicing Type"},
-      {accessorKey:"ribbon_map",header:"Ribbon Mapping Summary"},
-      {accessorKey:"fiber_stat",header:"Fiber Status"},
-      {accessorKey:"splice_count",header:"Splice Count"},
+      { accessorKey: "joint_code", header: "Joint Code" },
+      {accessorKey:"joint_type",header:"Joint Type"},
+      {accessorKey:"work_type",header:"Work Type"},
+      {accessorKey:"gps_lat",header:"Gps Latitude"},
+      {accessorKey:"gps_long",header:"Gps Longitude"},
       {
-        accessorKey: "fullname",
+        header: "Photos",
+        cell: ({ row }) => {
+          const photo = row.original.photo_path;
+          const proof = row.original.proof_photo;
+
+          return (
+            <div className="flex gap-2">
+              {photo && (
+                <img
+                  src={`${ImgBaseUrl}${photo}`}
+                  alt="Photo"
+                  className="w-10 h-10 object-cover rounded cursor-pointer border"
+                  onClick={() => window.open(`${ImgBaseUrl}${photo}`, "_blank")}
+                />
+              )}
+
+              {proof && (
+                <img
+                  src={`${ImgBaseUrl}${proof}`}
+                  alt="Proof Photo"
+                  className="w-10 h-10 object-cover rounded cursor-pointer border"
+                  onClick={() => window.open(`${ImgBaseUrl}${proof}`, "_blank")}
+                />
+              )}
+            </div>
+          );
+        },
+      },
+
+      {
+        accessorKey: "user_name",
         header: "Surveyor Name",
         cell: ({ row }) => (
           <div className="flex items-center">
@@ -153,35 +249,20 @@ const Joints: React.FC = () => {
               <User className="w-4 h-4 text-gray-600" />
             </div>
             <div>
-              <div className="text-sm font-medium text-gray-900">{row.original.fullname}</div>
-              <div className="text-sm text-gray-500">{row.original.contact_no}</div>
+              <div className="text-sm font-medium text-gray-900">{row.original.user_name}</div>
             </div>
           </div>
 
         ),
       },
+      {accessorKey:"address",header:"Address"},
 
-      {
-        accessorKey: "is_active",
-        header: "Status",
-        cell: ({ row }: { row: any }) => {
-          const status = row.original.is_active as 0 | 1 | 2;
-          const statusConfig = {
-            0: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800' },
-            1: { label: 'Accepted', className: 'bg-green-100 text-green-800' },
-            2: { label: 'Rejected', className: 'bg-red-100 text-red-800' }
-          };
-          const config = statusConfig[status] || { label: 'Unknown', className: 'bg-gray-100 text-gray-800' };
+      {accessorKey:"date_time",header:"Date"},
 
-          return (
-            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${config.className}`}>
-              {config.label}
-            </span>
-          );
-        }
-      }
+
+    
     ],
-    []
+    [navigate]
   );
     const table = useReactTable({
       data,
@@ -190,6 +271,7 @@ const Joints: React.FC = () => {
       getPaginationRowModel: getPaginationRowModel(),
       manualPagination: true,
       pageCount: totalPages,
+
     });
   return (
     <div className='min-h-screen'>
@@ -343,14 +425,19 @@ const Joints: React.FC = () => {
             <span className="font-medium">Error loading data:</span> {error}
           </div>
         )}
-         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left text-gray-500">
+
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="overflow-x-auto"> {/* prevent horizontal scroll */}
+              <table className="w-full table-auto text-sm text-left text-gray-500">
                 <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
                   {table.getHeaderGroups().map((headerGroup) => (
                     <tr key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
-                        <th key={header.id} scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th
+                          key={header.id}
+                          scope="col"
+                          className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider break-words"
+                        >
                           {flexRender(header.column.columnDef.header, header.getContext())}
                         </th>
                       ))}
@@ -358,14 +445,30 @@ const Joints: React.FC = () => {
                   ))}
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-    
                   {loading ? (
                     <tr>
                       <td colSpan={columns.length} className="px-3 py-2">
                         <div className="flex items-center justify-center">
-                          <svg className="animate-spin h-5 w-5 mr-3 text-blue-500" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          <svg
+                            className="animate-spin h-5 w-5 mr-3 text-blue-500"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                              fill="none"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 
+                    5.291A7.962 7.962 0 014 12H0c0 
+                    3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
                           </svg>
                           Loading...
                         </div>
@@ -373,7 +476,10 @@ const Joints: React.FC = () => {
                     </tr>
                   ) : table.getRowModel().rows.length === 0 ? (
                     <tr>
-                      <td colSpan={columns.length} className="px-3 py-2 text-center text-gray-500">
+                      <td
+                        colSpan={columns.length}
+                        className="px-3 py-2 text-center text-gray-500"
+                      >
                         No data available
                       </td>
                     </tr>
@@ -381,7 +487,10 @@ const Joints: React.FC = () => {
                     table.getRowModel().rows.map((row) => (
                       <tr key={row.id} className="hover:bg-gray-50">
                         {row.getVisibleCells().map((cell) => (
-                          <td key={cell.id} className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          <td
+                            key={cell.id}
+                            className="px-4 py-2 whitespace-normal break-words text-sm font-medium text-gray-900"
+                          >
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                           </td>
                         ))}

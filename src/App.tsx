@@ -72,6 +72,7 @@ import ExecutiveDashboard from './components/Dashboards/ExecutiveDashboard';
 import DailyProgressReport from './components/Dashboards/DailyProgressReport';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Terms from './pages/Terms';
+import JointDetails from './components/Joints/JointsDetails';
 //import AuditLogs from './components/AuditLogs';
 
 function App() {
@@ -333,6 +334,18 @@ function App() {
             </>
            } 
            />
+           <Route path="/joint/:jointId" 
+            element={
+            <>
+               <DefaultLayout>
+              <PageTitle title="Joint Detail View" />
+              <JointDetails />
+              </DefaultLayout>
+            </>
+           } 
+          
+           />
+
 
            <Route 
            path="/survey/bsnl-detail-view/:id" 
