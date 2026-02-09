@@ -105,3 +105,13 @@ export const hasInstallationAccess = (): boolean => {
 export const canAccessHotoSurvey = (): boolean => {
   return !isIEUser();
 };
+/**
+ * Check if user can access Construction tab
+ * Returns true for wb@terasoftware.com and all non-InvOnly users
+ */
+export const canAccessConstruction = (): boolean => {
+  const user = getUser();
+  const email = user?.email?.toLowerCase();
+  // Allow wb user and admin, plus anyone who doesn't have InvOnly access
+  return email === VIEW_ONLY_EMAILS.toLowerCase() || !SmartInvView.includes(email ?? "");
+};

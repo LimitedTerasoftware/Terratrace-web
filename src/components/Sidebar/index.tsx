@@ -12,7 +12,7 @@ import SidebarLinkGroup from './SidebarLinkGroup';
 import User from '../../images/icon/user-icon.svg';
 import TableIcon from '../../images/icon/table-icon.svg';
 import Logo from '../../images/logo/logo.png';
-import { hasInvOnlyAccess, hasViewOnlyAccess, isIEUser, hasInstallationAccess, isNGUser} from "../../utils/accessControl";
+import { hasInvOnlyAccess, hasViewOnlyAccess, isIEUser, hasInstallationAccess, isNGUser, canAccessConstruction} from "../../utils/accessControl";
 import DropdownUser from './DropDownUser'; // Import the dropdownuser component
 import DarkModeSwitcher from './DarkModeSwitcher'; // Import the dark mode switcher
 import KML from '../../images/icon/kml-file.svg';
@@ -61,6 +61,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   const ieUser = isIEUser();
   const ngUser = isNGUser();
   const installationAccess = hasInstallationAccess();
+  const canAccessConstructionTab = canAccessConstruction();
   
 
   const storedSidebarExpanded = localStorage.getItem('sidebar-expanded');
@@ -356,7 +357,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                 />
 
                 {/* Construction */}
-                {!viewOnly && (
+                {canAccessConstructionTab && (
                   <SideBarItem
                     icon={ConstructionImg}
                     label="Construction"
@@ -590,7 +591,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
       </div>
 
       {/* Custom Scrollbar Styles */}
-      <style jsx>{`
+      <style>{`
         .custom-scrollbar {
           /* Firefox */
           scrollbar-width: thin;
