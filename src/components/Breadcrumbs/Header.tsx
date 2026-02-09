@@ -1,7 +1,7 @@
-import { Satellite, Map, Camera, Truck, ClipboardList, Building2, ArrowLeft, Edit3, Home } from "lucide-react"; 
+import { Satellite, Map, Camera, Truck, ClipboardList, Building2, ArrowLeft, Edit3, Home, ListTree } from "lucide-react"; 
 import { Link } from "react-router-dom";
 
-type TabType = "bsnl" | "gp" | "aerial" | "ground" | "hoto" | "bsnlaview" | "bsnledit" | "gpview";
+type TabType = "bsnl" | "gp" | "aerial" | "ground" | "hoto" | "bsnlaview" | "bsnledit" | "gpview" | "joints" | "jointview";
 
 const tabHeaderData: Record<
   string,
@@ -53,6 +53,18 @@ const tabHeaderData: Record<
     icon: ClipboardList,
     title: "Hoto Survey Tracker",
     subtitle: "Handover-Takeover survey details",
+    bgColor: "bg-red-600"
+  },
+    joints: {
+    icon: ClipboardList,
+    title: "Joints",
+    subtitle: "fiber optic joints management.",
+    bgColor: "bg-red-600"
+  },
+   jointview: {
+    icon: ListTree,
+    title: "Joint Details",
+    subtitle: "fiber optic joint details",
     bgColor: "bg-red-600"
   }
 };

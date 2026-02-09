@@ -244,6 +244,9 @@ export interface Activity {
   pole_type: string | null;
   existing_pole: string | null;
   new_pole: string | null;
+  routeFeatureLatLong:string|null;
+  routeFeaturePhotos:string|null;
+  routeFeatureType:string|null;
  }
 
 export interface ApiResponseMachine {
@@ -470,4 +473,91 @@ export interface InstallationResponse {
     totalRows: number;
     filters: Record<string, any>;
     data: GPInstallationData[];
+}
+
+export interface JointsApiResponse{
+  success:boolean;
+  total_joints?:number;
+  data:JointsData[];
+  message?:string;
+  pagination:Pagination;
+}
+export interface Pagination{
+  page: number,
+    limit: number,
+    total: number,
+    total_pages: number
+}
+export interface JointsData{
+   joint_code:string,
+     joint_name:string,
+     state_id: number,
+     state_name:string,
+     district_id: number,
+     district_name:string,
+     block_id: number,
+     block_name:string,
+     work_type:string,
+     joint_type:string,
+     date_time:string,
+     created_at:string,
+     gps_lat:string,
+     gps_long:string,
+     address:string,
+     photo_path:string,
+     proof_photo:string,
+     user_id: never,
+     user_name:string
+}
+export interface Cable {
+  cable_id: string;
+  cable_name: string;
+  from_node: string;
+  to_node: string;
+  fiber_count: string;
+  cable_type: string;
+}
+
+export interface TubeMapping {
+  from_cable: string;
+  from_cable_name: string;
+  from_tube: string;
+  from_tube_color: string;
+  to_cable: string;
+  to_cable_name: string;
+  to_tube: string;
+  to_tube_color: string;
+}
+
+export interface FiberSplicing {
+  from_cable: string;
+  from_cable_name: string;
+  to_cable: string;
+  to_cable_name: string;
+  from_tube: string;
+  to_tube: string;
+  from_core: number;
+  to_core: number;
+  status: string | null;
+}
+
+export interface ProcessedJoints {
+  id: string|undefined;
+  name: string;
+  category: string;
+  type: 'point';
+  coordinates: { lat: number; lng: number } | { lat: number; lng: number }[];
+  address?: string;
+  pointType?: string;
+  assetType?: string;
+  photo_path?: string;
+  joint_code?: string;
+  joint_type?: string;
+  work_type?: string;
+  state_name: string;
+  district_name: string;
+  block_name: string;
+  cables: Cable[];
+  tube_mapping: TubeMapping[];
+  fiber_splicing: FiberSplicing[];
 }

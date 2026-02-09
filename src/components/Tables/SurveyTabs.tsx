@@ -8,9 +8,10 @@ import Breadcrumb from '../../components/Breadcrumbs/Breadcrumb';
 import HotoTables from "../../pages/HotoTables";
 import { Header } from "../Breadcrumbs/Header";
 import { isIEUser } from '../../utils/accessControl';
+import Joints from "../Joints/Joints";
 
 // Define tab types
-type TabType = "bsnl" | "gp" | "aerial" | "ground" | "hoto";
+type TabType = "bsnl" | "gp" | "aerial" | "ground" | "hoto" | "joints";
 
 // Placeholder Components...
 const BsnlSurvey: React.FC = () => <div className="py-2"><BsnlTables /></div>;
@@ -18,6 +19,7 @@ const GpSurvey: React.FC = () => <div className="py-2"><GpTables /></div>;
 const AerialSurvey: React.FC = () => <div className="py-2"><AerailTables /></div>;
 const GroundSurvey: React.FC = () => <div className="py-2"><UndergroundTables /></div>;
 const HotoSurvey: React.FC = () => <div className="py-2"><HotoTables /></div>;
+const JointsTab:React.FC = () =><div className="py-2"><Joints/></div>
 
 // Tab Data
 const tabs: { id: TabType; label: string }[] = [
@@ -26,6 +28,7 @@ const tabs: { id: TabType; label: string }[] = [
   { id: "aerial", label: "Aerial Survey" },
   { id: "ground", label: "Ground Survey" },
   { id: "hoto", label: "Hoto Survey" },
+  { id: "joints",label:"Joints"}
 ];
 
 const SurveyTabs: React.FC = () => {
@@ -77,6 +80,8 @@ const SurveyTabs: React.FC = () => {
         return <GroundSurvey />;
       case "hoto":
         return <HotoSurvey />;
+      case "joints":
+        return <JointsTab/>;
       default:
         return <BsnlSurvey />;
     }
