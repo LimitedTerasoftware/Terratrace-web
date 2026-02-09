@@ -21,6 +21,9 @@ const RESTRICTED_FILE_OPS_EMAIL = "survey@terasoftware.com";
 // IE user with limited sidebar access (Survey, GIS Inventory, Route Planning only)
 const IE_USER_EMAIL = "ie@terasoftware.com";
 
+// NG user with extremely limited sidebar access (Survey ONLY)
+const NG_USER_EMAIL = "ng@terasoftware.com";
+
 // Users with installation page access
 const INSTALLATION_ACCESS_EMAILS = ["survey@terasoftware.com"];
 
@@ -73,6 +76,16 @@ export const isIEUser = (): boolean => {
   const user = getUser();
   const email = user?.email?.toLowerCase();
   return email === IE_USER_EMAIL.toLowerCase();
+};
+
+/**
+ * Check if user is NG user with extremely limited sidebar access
+ * Returns true if user can only see Survey tab
+ */
+export const isNGUser = (): boolean => {
+  const user = getUser();
+  const email = user?.email?.toLowerCase();
+  return email === NG_USER_EMAIL.toLowerCase();
 };
 
 /**

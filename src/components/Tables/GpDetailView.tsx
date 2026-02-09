@@ -5,7 +5,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import ImageSliderModal from "./ImageSliderModal";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import {hasViewOnlyAccess } from "../../utils/accessControl";
+import {hasViewOnlyAccess, isNGUser } from "../../utils/accessControl";
 import { 
   ArrowLeft, 
   MapPin, 
@@ -321,6 +321,7 @@ const GpDetailView = () => {
 
 
   const viewOnly = hasViewOnlyAccess();
+  const ngUser = isNGUser();
   
   if (!detail) {
     return (
@@ -564,7 +565,7 @@ const GpDetailView = () => {
           </div>
 
           {/* Action Buttons */}
-          {!viewOnly && (
+          {!viewOnly && !ngUser &&(
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions</h3>
               <div className="flex flex-wrap gap-4 justify-center">

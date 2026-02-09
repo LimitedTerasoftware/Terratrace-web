@@ -4,7 +4,7 @@ import { FaArrowLeft } from "react-icons/fa";
 import { useParams, useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { hasViewOnlyAccess } from "../../utils/accessControl";
+import { hasViewOnlyAccess, isNGUser } from "../../utils/accessControl";
 import DataTable from "react-data-table-component";
 import { Edit2, Image as ImageIcon } from "lucide-react";
 import MediaCarousel from "./MediaCarousel";
@@ -618,6 +618,7 @@ const aerialPolesWithDistance = useMemo(() => {
   if (loading) return <div className="text-center py-10">Loading...</div>;
   if (error) return <div className="text-red-500 text-center py-10">{error}</div>;
   const viewOnly = hasViewOnlyAccess();
+  const ngUser = isNGUser();
 
   return (
     <>
@@ -699,7 +700,7 @@ const aerialPolesWithDistance = useMemo(() => {
           </div>
         </div>
 
-        {!viewOnly && (
+        {!viewOnly && !ngUser && (
           <div className="mt-6 flex gap-4 justify-center">
             {/* <button
               className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded"

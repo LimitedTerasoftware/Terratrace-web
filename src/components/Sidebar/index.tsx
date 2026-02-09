@@ -1,4 +1,4 @@
-// index.tsx - Sidebar with Dashboard moved inside Dashboards dropdown
+// index.tsx - Sidebar with NG user support (Survey only)
 import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { SideBarItem } from './NavLink';
@@ -12,7 +12,7 @@ import SidebarLinkGroup from './SidebarLinkGroup';
 import User from '../../images/icon/user-icon.svg';
 import TableIcon from '../../images/icon/table-icon.svg';
 import Logo from '../../images/logo/logo.png';
-import { hasInvOnlyAccess, hasViewOnlyAccess, isIEUser, hasInstallationAccess} from "../../utils/accessControl";
+import { hasInvOnlyAccess, hasViewOnlyAccess, isIEUser, hasInstallationAccess, isNGUser} from "../../utils/accessControl";
 import DropdownUser from './DropDownUser'; // Import the dropdownuser component
 import DarkModeSwitcher from './DarkModeSwitcher'; // Import the dark mode switcher
 import KML from '../../images/icon/kml-file.svg';
@@ -59,6 +59,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   const viewOnly = hasViewOnlyAccess();
   const InvOnly = hasInvOnlyAccess();
   const ieUser = isIEUser();
+  const ngUser = isNGUser();
   const installationAccess = hasInstallationAccess();
   
 
@@ -152,8 +153,17 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
           </h3>
 
           <ul className="space-y-2">
-            {/* IF IE USER - Show ONLY GIS Inventory */}
-            {ieUser ? (
+            {/* IF NG USER - Show ONLY Survey */}
+            {ngUser ? (
+              <SideBarItem
+                icon={SurveyIcon}
+                label="Survey"
+                isOpen={isOpen}
+                isActive={!!surveyMatch}
+                path="/survey"
+              />
+            ) : ieUser ? (
+              /* IF IE USER - Show ONLY GIS Inventory */
               <li>
                 <NavLink
                   to="/smart-inventory"
