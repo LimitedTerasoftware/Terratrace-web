@@ -24,6 +24,9 @@ const IE_USER_EMAIL = "ie@terasoftware.com";
 // NG user with extremely limited sidebar access (Survey ONLY)
 const NG_USER_EMAIL = "ng@terasoftware.com";
 
+// Admin user with full access
+const ADMIN_EMAIL = "admin@terasoftware.com";
+
 // Users with installation page access
 const INSTALLATION_ACCESS_EMAILS = ["survey@terasoftware.com"];
 
@@ -89,6 +92,16 @@ export const isNGUser = (): boolean => {
 };
 
 /**
+ * Check if user is Admin user with full access
+ * Returns true if user has access to all features
+ */
+export const isAdminUser = (): boolean => {
+  const user = getUser();
+  const email = user?.email?.toLowerCase();
+  return email === ADMIN_EMAIL.toLowerCase();
+};
+
+/**
  * Check if user has installation page access
  * Returns true if user can access the installation section
  */
@@ -105,13 +118,18 @@ export const hasInstallationAccess = (): boolean => {
 export const canAccessHotoSurvey = (): boolean => {
   return !isIEUser();
 };
+
 /**
  * Check if user can access Construction tab
- * Returns true for wb@terasoftware.com and all non-InvOnly users
+ * Returns true for admin, wb@terasoftware.com and all non-InvOnly users
  */
 export const canAccessConstruction = (): boolean => {
   const user = getUser();
   const email = user?.email?.toLowerCase();
-  // Allow wb user and admin, plus anyone who doesn't have InvOnly access
+  
+  // Admin has full access
+  if (email === ADMIN_EMAIL.toLowerCase()) return true;
+  
+  // Allow wb user, plus anyone who doesn't have InvOnly access
   return email === VIEW_ONLY_EMAILS.toLowerCase() || !SmartInvView.includes(email ?? "");
 };

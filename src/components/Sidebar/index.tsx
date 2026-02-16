@@ -1,4 +1,3 @@
-// index.tsx - Sidebar with NG user support (Survey only)
 import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { SideBarItem } from './NavLink';
@@ -12,9 +11,9 @@ import SidebarLinkGroup from './SidebarLinkGroup';
 import User from '../../images/icon/user-icon.svg';
 import TableIcon from '../../images/icon/table-icon.svg';
 import Logo from '../../images/logo/logo.png';
-import { hasInvOnlyAccess, hasViewOnlyAccess, isIEUser, hasInstallationAccess, isNGUser, canAccessConstruction} from "../../utils/accessControl";
-import DropdownUser from './DropDownUser'; // Import the dropdownuser component
-import DarkModeSwitcher from './DarkModeSwitcher'; // Import the dark mode switcher
+import { hasInvOnlyAccess, hasViewOnlyAccess, isIEUser, hasInstallationAccess, isNGUser, canAccessConstruction, isAdminUser} from "../../utils/accessControl";
+import DropdownUser from './DropDownUser'; 
+import DarkModeSwitcher from './DarkModeSwitcher';
 import KML from '../../images/icon/kml-file.svg';
 import Smart_Inv from '../../images/icon/internet-world-svgrepo-com.svg';
 import Machine from '../../images/icon/mechine.svg';
@@ -27,23 +26,23 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronUp,
-  ListCollapse,        // Icon for Route List
-  MapPinHouse,        // Icon for Route Builder
-  ClipboardMinus,      // Icon for Reports
-  Logs,  // Icon for Audit Logs
+  ListCollapse,        
+  MapPinHouse,       
+  ClipboardMinus,      
+  Logs,  
   Cog,
   LocateFixed,
   Building,
   User2Icon,
   Globe2Icon,
-  Settings,              // Icon for Installation
+  Settings,              
   Grid3X3,
-  BarChart3,            // Icon for Dashboards group
-  ClipboardCheck,       // Icon for Survey Dashboard
-  HardHat,             // Icon for Construction Dashboard
-  Wrench,              // Icon for Installation Dashboard
-  TrendingUp,          // Icon for Executive Dashboard
-  Calendar             // Icon for Daily Progress Report
+  BarChart3,            
+  ClipboardCheck,       
+  HardHat,             
+  Wrench,              
+  TrendingUp,          
+  Calendar             
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -60,6 +59,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   const InvOnly = hasInvOnlyAccess();
   const ieUser = isIEUser();
   const ngUser = isNGUser();
+  const adminUser = isAdminUser();
   const installationAccess = hasInstallationAccess();
   const canAccessConstructionTab = canAccessConstruction();
   
@@ -74,7 +74,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   const installationMatch = matchPath({ path: "/installation/*" }, pathname);
 
 
-  // close on click outside
   useEffect(() => {
     const clickHandler = ({ target }: MouseEvent) => {
       if (!sidebar.current || !trigger.current) return;
@@ -90,7 +89,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
     return () => document.removeEventListener('click', clickHandler);
   });
 
-  // close if the esc key is pressed
   useEffect(() => {
     const keyHandler = ({ keyCode }: KeyboardEvent) => {
       if (!isOpen || keyCode !== 27) return;
@@ -131,7 +129,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
       </button>
 
       <div className="h-full flex flex-col">
-        {/* Logo - Fixed at top */}
         <div className={`flex items-center h-16 px-4 flex-shrink-0 ${isOpen ? 'justify-start' : 'justify-center'}`}>
           <div className="flex items-center">
             <NavLink
@@ -146,8 +143,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
           </div>
         </div>
 
-        {/* Navigation Links - Scrollable */}
-        {/* Navigation Links - Scrollable */}
         <div className="flex-1 px-3 py-4 overflow-y-auto custom-scrollbar">
           <h3 className={`mb-4 ${isOpen ? 'ml-4' : 'ml-0'}  text-sm font-semibold text-bodydark2`}>
             Menu
@@ -181,11 +176,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                 </NavLink>
               </li>
             ) : (
-              <>
-                {/* ALL OTHER USERS - EXACT ORIGINAL LOGIC PRESERVED */}
-                
+              <>                
                 {/* Dashboards Menu Group */}
-                {!viewOnly && (
+                {(!viewOnly || adminUser) && (
                   <SidebarLinkGroup activeCondition={pathname.includes('dashboards') || pathname === '/dashboard' || pathname === '/'}>
                     {(handleClick, open) => {
                       return (
@@ -283,7 +276,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                 )}
 
                 {/* Route Planning */}
-                {!viewOnly && (
+                {(!viewOnly || adminUser) && (
                   <SidebarLinkGroup activeCondition={pathname.includes('route-planning')}>
                     {(handleClick, open) => {
                       return (
@@ -368,7 +361,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                 )}
 
                 {/* Equipment Installation */}
-                {(!viewOnly) || installationAccess ? (
+                {(!viewOnly || installationAccess || adminUser) ? (
                   <li>
                     <NavLink
                       to="/installation"
@@ -388,7 +381,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                 ) : null}
 
                 {/* Block Assignment */}
-                {!viewOnly && (
+                {(!viewOnly || adminUser) && (
                   <li>
                     <NavLink
                       to="/blocks-management"
@@ -429,7 +422,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                 )}
                 
                 {/* Machine Management */}
-                {!viewOnly && (
+                {(!viewOnly || adminUser) && (
                   <SidebarLinkGroup activeCondition={pathname.includes('machine-management')}>
                     {(handleClick, open) => {
                       return (
@@ -492,7 +485,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                 )}
 
                 {/* Master Data */}
-                {!viewOnly && (
+                {(!viewOnly || adminUser) && (
                   <SidebarLinkGroup activeCondition={pathname.includes('managementlist')}>
                     {(handleClick, open) => {
                       return (
