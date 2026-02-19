@@ -12,6 +12,8 @@ import ImageModal from './ImageUploadModal';
 import MediaCarousel from './MediaCarousel';
 import * as XLSX from "xlsx";
 import { getDistanceFromLatLonInMeters } from '../../utils/calculations';
+import { hasViewOnlyAccess } from '../../utils/accessControl';
+import { ToastContainer, toast } from "react-toastify";
 
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -50,6 +52,7 @@ function Eventreport() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
     const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | null>(null);
+    const viewOnly = hasViewOnlyAccess();
     
     // New state for media carousel
     const [isCarouselOpen, setIsCarouselOpen] = useState<boolean>(false);
@@ -327,6 +330,35 @@ function Eventreport() {
         setCarouselInitialIndex(safeIndex);
         setIsCarouselOpen(true);
     };
+
+
+    const handleAccept = async() =>{
+        try {
+        const resp = await axios.post(`${BASEURL_Val}/underground-surveys/${MainData.id}/accept`);
+        if(resp.data.status === 1){
+             toast.success("Record Accepted successfully!");
+        } else {
+            toast.error("Failed to accept record");
+        }
+
+            
+        } catch (error) {
+            toast.error("Error accepting record");
+            
+        }
+    }
+    const handleReject = async() =>{
+        try {
+        const response = await axios.post(`${BASEURL_Val}/underground-surveys/${MainData.id}/reject`);
+        if (response.data.status === 1) {
+            toast.success("Record Rejected successfully.");
+        }
+        } catch (error) {
+        console.error("Error rejecting record:", error);
+        alert("Failed to reject record.");
+        }
+    }
+
 
     const columns: TableColumn<Activity>[] = [
         {
@@ -697,6 +729,7 @@ function Eventreport() {
                     <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
                 </div>
             )}
+             <ToastContainer />
             <div className="mb-4">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center py-6">
@@ -834,6 +867,26 @@ function Eventreport() {
                     />
                 </div>
 
+            )}
+            {!viewOnly && (
+            <div className="mt-6 flex gap-4 justify-center">
+
+                 <button
+                    className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded"
+                    onClick={() => {
+                        handleAccept();
+                    } }
+                >
+                    Accept
+                </button><button
+                    className="bg-yellow-500 hover:bg-red-600 text-white py-2 px-4 rounded"
+                    onClick={() => {
+                        handleReject();
+                    } }
+                >
+                        Reject
+                    </button>
+            </div> 
             )}
             {activeTab === 'chart' && (
                 <div className="h-[600px] p-4">

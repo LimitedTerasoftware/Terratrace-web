@@ -44,7 +44,8 @@ function ConstructionPage() {
     const [loadingStats, setLoadingStats] = useState<boolean>(false);
 
     const statusMap: Record<number, string> = {
-        1: "Completed",
+        1: "Accepted",
+        2: "Rejected",
         0: "Pending",
     };
 
@@ -231,7 +232,7 @@ function ConstructionPage() {
     };
 
     const handleStatusChange = (value: string) => {
-        const statusValue = value !== '' ? Number(value) : null;
+        const statusValue = Number(value) || null;
         setSelectedStatus(statusValue);
         handleFilterChange(selectedState, selectedDistrict, selectedBlock, statusValue, fromdate, todate, globalsearch);
     };

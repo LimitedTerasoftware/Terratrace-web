@@ -44,6 +44,8 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel }) => {
         if (Data.selectedBlock) params.block_id = Data.selectedBlock;
         if (Data.fromdate) params.from_date = Data.fromdate;
         if (Data.todate) params.to_date = Data.todate;
+        if(Data.selectedStatus !== null) params.status = Data.selectedStatus;
+        if(Data.globalsearch.trim()) params.search = Data.globalsearch.trim();
         
         const response = await axios.get<{ status: boolean; data: UGConstructionSurveyData[] }>(
           `${TraceBASEURL}/get-survey-data`,
@@ -67,7 +69,7 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel }) => {
     
     if (!Data.filtersReady) return;
     fetchSurveyData();
-  }, [Data.selectedState, Data.selectedDistrict, Data.selectedBlock, Data.fromdate, Data.todate, Data.filtersReady]);
+  }, [Data.selectedState, Data.selectedDistrict, Data.selectedBlock, Data.fromdate, Data.todate, Data.filtersReady,Data.selectedStatus, Data.globalsearch]);
 
   const handleView = async (sgp: number, egp: number, row: UGConstructionSurveyData) => {
     navigate('/construction-details', { state: { sgp, egp, row } });
@@ -238,13 +240,27 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel }) => {
         </span>
       ),
     },
-    {
-      name: 'Status',
-      selector: () => 'active',
-      sortable: true,
-      maxWidth: "100px",
-      cell: () => getStatusBadge(),
-    },
+     {
+        name: "Status",
+        selector: row => row.is_active,
+        sortable: true,
+        cell: (row ) => {
+          const status = row.is_active as 0 | 1 | 2;
+          const statusConfig = {
+            0: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800' },
+            1: { label: 'Accepted', className: 'bg-green-100 text-green-800' },
+            2: { label: 'Rejected', className: 'bg-red-100 text-red-800' }
+          };
+          const config = statusConfig[status] || { label: 'Unknown', className: 'bg-gray-100 text-gray-800' };
+
+          return (
+            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${config.className}`}>
+              {config.label}
+            </span>
+          );
+        }
+      },
+   
     {
       name: "Created",
       selector: row => row.created_at,
