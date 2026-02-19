@@ -281,7 +281,7 @@ const Joints: React.FC = () => {
     const exportExcel = async () => {
     try {
       setisExcelExporting(true)
-      const response = await axios.get<JointsApiResponse>(`${TraceBaseUrl}/get-all-joints`,{
+      const response = await axios.get<JointsApiResponse>(`${TraceBaseUrl}/joints/export`,{
         params:{
           state_id:selectedState,
           district_id:selectedDistrict,
