@@ -396,7 +396,7 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel }) => {
             <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6 border-b border-gray-200">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-xl font-semibold text-gray-900">Construction Survey Details</h3>
+                  <h3 className="text-xl font-semibold text-gray-900">Underground Construction  Details</h3>
                   <button
                     onClick={() => setSelectedSurvey(null)}
                     className="p-2 text-gray-400 hover:text-gray-600 transition-colors"

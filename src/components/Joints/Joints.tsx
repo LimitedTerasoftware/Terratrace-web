@@ -1,10 +1,12 @@
 import { ColumnDef, flexRender, getCoreRowModel, getPaginationRowModel, Row, useReactTable } from '@tanstack/react-table';
 import axios from 'axios';
-import { ChevronDown, Eye, RotateCcw, Search, User } from 'lucide-react';
+import { ChevronDown, Eye, RotateCcw, Search, TableCellsMerge, User } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import ResponsivePagination from '../Tables/ResponsivePagination';
 import { JointsApiResponse, JointsData, ProcessedJoints } from '../../types/survey';
+import { hasDownloadAccess } from '../../utils/accessControl';
+import * as XLSX from "xlsx";
 
 interface StateData {
   state_id: string;
@@ -32,6 +34,8 @@ const Joints: React.FC = () => {
   const BASEURL = import.meta.env.VITE_API_BASE;
   const TraceBaseUrl = import.meta.env.VITE_TraceAPI_URL;
   const ImgBaseUrl = import.meta.env.VITE_Image_URL;
+  const DownloadOnly = hasDownloadAccess();
+  
   const navigate = useNavigate(); 
   const [selectedJointId, setSelectedJointId] = useState<string | null>(null); 
   const [data, setData] = useState<JointsData[]>([]);
@@ -53,6 +57,7 @@ const Joints: React.FC = () => {
   const [page, setPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [filtersReady, setFiltersReady] = useState(false);
+  const [isExcelExporting, setisExcelExporting] = useState(false);
 
    const statusMap: Record<number, string> = {
     1: "Accepted",
@@ -273,8 +278,60 @@ const Joints: React.FC = () => {
       pageCount: totalPages,
 
     });
+    const exportExcel = async () => {
+    try {
+      setisExcelExporting(true)
+      const response = await axios.get<JointsApiResponse>(`${TraceBaseUrl}/get-all-joints`,{
+        params:{
+          state_id:selectedState,
+          district_id:selectedDistrict,
+          block_id:selectedBlock,
+       
+        },
+      });
+      const allData: JointsData[] = response.data.data;
+      const rows = allData.map((data) => ({
+        "State ID": data.state_id,
+        "State Name": data.state_name,
+        "District ID": data.district_id,
+        "District Name": data.district_name,
+        "Block ID": data.block_id,
+        "Block Name": data.block_name,
+        "Joint Name": data.joint_name,
+        "Joint Code": data.joint_code,
+        "Joint Type": data.joint_type,
+        "Work Type": data.work_type || '',
+        "Gps Latitude": data.gps_lat,
+        "Gps Longitude": data.gps_long,
+        "User Name": data.user_name,
+        "Address": data.address,
+        "Date": data.date_time,
+    
+      }));
+
+      // Create workbook and worksheet
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Joints Survey");
+
+      // Export file
+      XLSX.writeFile(workbook, "Joints_Survey.xlsx", { compression: true });
+    } catch (error) {
+      console.error("Export failed:", error);
+    } finally {
+      setisExcelExporting(false)
+    }
+
+  };
+
   return (
     <div className='min-h-screen'>
+         {(isExcelExporting) && (
+            <div className="absolute inset-0 bg-white bg-opacity-70 flex justify-center items-center z-50">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          )}
       <div className="mb-4 px-7">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-4">
           {/* State Filter */}
@@ -418,6 +475,15 @@ const Joints: React.FC = () => {
             <RotateCcw className="w-4 h-4 mr-2" />
             <span>Reset Filters</span>
           </button>
+          {DownloadOnly && (
+                      <button
+                        onClick={exportExcel}
+                        className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-green-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      >
+                        <TableCellsMerge className="w-4 h-4 mr-2" />
+                        Excel
+                      </button>
+          )}
 
         </div>
         {error && (
