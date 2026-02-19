@@ -321,7 +321,7 @@ export const DepthChart: React.FC<DepthChartProps> = ({
             />
 
             {/* Critical areas highlighting - areas above minimum depth line */}
-            {criticalAreas.map((point, index) => {
+            {/* {criticalAreas.map((point, index) => {
               const x = xScale(point.distance);
               const nextPoint = chartData[chartData.indexOf(point) + 1];
               const nextX = nextPoint ? xScale(nextPoint.distance) : x + 20;
@@ -337,7 +337,55 @@ export const DepthChart: React.FC<DepthChartProps> = ({
                   opacity="0.4"
                 />
               );
-            })}
+            })} */}
+            {criticalAreas.map((point, index) => {
+                const originalIndex = chartData.indexOf(point);
+                const x = xScale(point.distance);
+
+                const nextPoint =
+                  originalIndex < chartData.length - 1
+                    ? chartData[originalIndex + 1]
+                    : null;
+
+                const prevPoint =
+                  originalIndex > 0
+                    ? chartData[originalIndex - 1]
+                    : null;
+
+                const isNextCritical = nextPoint?.isBelowMinimum;
+                const isPrevCritical = prevPoint?.isBelowMinimum;
+
+                let rectX = x;
+                let rectWidth = 8; // default small width for single critical point
+
+                // If next point is also critical → extend to next point
+                if (isNextCritical) {
+                  const nextX = xScale(nextPoint.distance);
+                  rectWidth = nextX - x;
+                }
+                // else if previous is critical → skip to avoid duplicate drawing
+                else if (isPrevCritical) {
+                  return null;
+                }
+                // else single critical point → keep small width centered
+                else {
+                  rectX = x - rectWidth / 2;
+                }
+
+                return (
+                  <rect
+                    key={originalIndex}
+                    x={rectX}
+                    y={0}
+                    width={Math.max(4, rectWidth)}
+                    height={yScale(minDepth)}
+                    fill="url(#criticalGradient)"
+                    opacity="0.4"
+                  />
+                );
+              })}
+
+  
 
             {/* Connection line between selected points */}
             {selectedPoints.length === 2 && (

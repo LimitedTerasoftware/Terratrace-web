@@ -183,6 +183,9 @@ const GroundDetailView: React.FC = () => {
     }
   };
 
+
+
+
   const filteredData = [
     ...new Map(
       data?.under_ground_survey_data

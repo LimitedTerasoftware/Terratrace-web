@@ -77,12 +77,12 @@ function Eventreport() {
         try {
             setLoading(true);
             setError('');
-            const params: any = {};
-            if (sgp) params.start_lgd = sgp;
-            if (egp) params.end_lgd = egp;
-            if (selectedEvent) params.eventType = selectedEvent;
+            // const params: any = {};
+            // if (sgp) params.start_lgd = sgp;
+            // if (egp) params.end_lgd = egp;
+            // if (selectedEvent) params.eventType = selectedEvent;
 
-            const resp = await axios.get(`${TraceBASEURL}/get-depth-data`, { params });
+            const resp = await axios.get(`${TraceBASEURL}/construction-forms/${MainData.id}`);
             if (resp.status === 200 || resp.status === 201) {
                 const Data = resp.data;
                 const depthData = Data.data;
