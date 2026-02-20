@@ -5,7 +5,7 @@ export interface Machine {
   authorised_person:string;
   machine_make:string;
   capacity:string;
-  year_of_manufacture: number;
+  year_of_manufacture: number | null;
   no_of_rods:number;
   digitrack_make:string;
   digitrack_model:string;

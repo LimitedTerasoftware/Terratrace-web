@@ -13,6 +13,10 @@ interface ModalData {
   message: string;
   type: "success" | "error" | "info";
 }
+interface ApiErrorResponse {
+  error?: string;
+  status?: string;
+}
 
 function MachineManagement() {
   const location = useLocation();
@@ -48,8 +52,7 @@ function MachineManagement() {
           message: "Machine added successfully.",
           type: "success",
         });
-        setModalOpen(true);
-        setIsFormModalOpen(false);
+       
         getMachineOptions().then(data => {
           setMachines(data);
         });
@@ -59,16 +62,19 @@ function MachineManagement() {
           message: resp.data || "Unexpected response",
           type: "error",
         });
-        setModalOpen(true);
+      
       }
     } catch (error) {
       const err = error as AxiosError;
-      console.error("Error creating machine:", err.response?.data || err.message);
+      const errorData = err.response?.data as ApiErrorResponse;
       setModalData({
         title: "Error!",
-        message: err.message || "Unexpected response",
+        message: errorData?.error || err.message || "Unexpected response",
         type: "error",
       });
+    
+    }finally {
+      setIsFormModalOpen(false);
       setModalOpen(true);
     }
   };
@@ -82,32 +88,45 @@ function MachineManagement() {
           }
         });
         if (response.status === 200 || response.status === 201) {
-          setMachines(prev => prev.map(machine =>
-            machine.machine_id === editingMachine.machine_id
-              ? { ...machine, ...formData, updated_at: new Date() }
-              : machine
-          ));
+          // setMachines(prev => prev.map(machine =>
+          //   machine.machine_id === editingMachine.machine_id
+          //     ? { ...machine, ...formData, updated_at: new Date() }
+          //     : machine
+          // ));
+          getMachineOptions().then(data => {
+            setMachines(data);
+          });
           setModalData({
             title: "Success!",
             message: "Machine updated successfully.",
             type: "success",
           });
-          setModalOpen(true);
-          setIsFormModalOpen(false); // Close form after success
+        
         } else {
-          console.error("Unexpected response:", response.status, response.data);
           setModalData({
             title: "Error!",
-            message: response.data || "Unexpected response",
+            message: response.data.error || "Unexpected response",
             type: "error",
           });
-          setModalOpen(true);
+        
+        
         }
       } catch (error) {
         const err = error as AxiosError;
-        console.error("Error updating machine:", err.response?.data || err.message);
+        const errorData = err.response?.data as ApiErrorResponse;
+
+        setModalData({
+            title: "Error!",
+            message: errorData.error|| "Unexpected error occurred",
+            type: "error",
+          });
+        
+          
+      }finally {
+       setEditingMachine(undefined);
+       setIsFormModalOpen(false); 
+       setModalOpen(true);
       }
-      setEditingMachine(undefined);
     }
   };
 

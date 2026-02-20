@@ -94,7 +94,7 @@ const MachineForm: React.FC<MachineFormProps> = ({
         driver_batch_no: "",
         driver_valid_upto: new Date(),
         serial_number: "",
-        year_of_manufacture: new Date().getFullYear(),
+        year_of_manufacture: null,
         status: 'active',
         machine_id: '',
         supervisor_name: '',
@@ -108,13 +108,13 @@ const MachineForm: React.FC<MachineFormProps> = ({
   const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof MachineFormData, string>> = {};
 
-    if (!formData.serial_number.trim()) newErrors.serial_number = 'Serial number is required';
-    if (!formData.author_phone.trim()) newErrors.author_phone = 'Authorised person number is required';
-    if ((formData.author_phone).length < 10) newErrors.author_phone = 'Please enter a valid mobile number with 10 digits';
-    if (formData.supervisor_phone && (formData.supervisor_phone).length < 10) newErrors.supervisor_phone = 'Please enter a valid mobile number with 10 digits';
-    if (!formData.firm_name.trim()) newErrors.firm_name = 'Firm name is required';
-    if (!formData.authorised_person.trim()) newErrors.authorised_person = 'Authorised person is required';
-    if (!formData.registration_number.trim()) newErrors.registration_number = 'Registration number is required';
+    if (!formData.serial_number?.trim()) newErrors.serial_number = 'Serial number is required';
+    if (!formData.author_phone?.trim()) newErrors.author_phone = 'Authorised person number is required';
+    if ((formData.author_phone)?.length < 10) newErrors.author_phone = 'Please enter a valid mobile number with 10 digits';
+    if (formData.supervisor_phone && (formData.supervisor_phone)?.length < 10) newErrors.supervisor_phone = 'Please enter a valid mobile number with 10 digits';
+    if (!formData.firm_name?.trim()) newErrors.firm_name = 'Firm name is required';
+    if (!formData.authorised_person?.trim()) newErrors.authorised_person = 'Authorised person is required';
+    if (!formData.registration_number?.trim()) newErrors.registration_number = 'Registration number is required';
     if (formData.supervisor_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.supervisor_email)) {
       newErrors.supervisor_email = 'Please enter a valid email address';
     }
@@ -123,9 +123,9 @@ const MachineForm: React.FC<MachineFormProps> = ({
     const currentYear = new Date().getFullYear();
     const year = Number(formData.year_of_manufacture);
     
-    if (isNaN(year) || year < 1900 || year > currentYear + 1) {
-      newErrors.year_of_manufacture = 'Please enter a valid year';
-    }
+    // if (isNaN(year) || year < 1900 || year > currentYear + 1) {
+    //   newErrors.year_of_manufacture = 'Please enter a valid year';
+    // }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -320,7 +320,7 @@ const MachineForm: React.FC<MachineFormProps> = ({
             </label>
             <input
               type="number"
-              value={formData.year_of_manufacture}
+              value={formData.year_of_manufacture || ''}
               onChange={(e) => handleChange('year_of_manufacture', parseInt(e.target.value) || new Date().getFullYear())}
               className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.year_of_manufacture ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
               placeholder="Enter year of manufacture"
@@ -447,6 +447,20 @@ const MachineForm: React.FC<MachineFormProps> = ({
             </select>
           </div>
         </div>
+       
+       {Object.values(errors).filter(Boolean).length > 0 && (
+          <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-lg mt-4">
+            <p className="text-sm">Please enter valid values for all required fields:</p>
+            <ul className="mt-2 list-disc list-inside text-sm">
+              {Object.entries(errors)
+                .filter(([_, error]) => error) // important
+                .map(([field, error]) => (
+                  <li key={field}>{error}</li>
+                ))}
+            </ul>
+          </div>
+        )}
+       
 
         <div className="flex justify-end space-x-3 pt-6 border-t">
           <button
