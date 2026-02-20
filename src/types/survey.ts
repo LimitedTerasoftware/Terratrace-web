@@ -131,6 +131,7 @@ export interface FolderStructure {
 }
 
 export interface DepthDataPoint {
+  id: number;
   state_id: number;
   distrct_id: number;
   block_id: number;
@@ -151,6 +152,12 @@ export interface DepthDataPoint {
   start_lgd_name:string;
   end_lgd_name:string;
   machine_registration_number:string;
+  startPitLatlong: string | null;
+  startPitPhotos: string | null;
+  endPitLatlong: string | null;
+  endPitPhotos: string | null;
+  eventType: string;
+  endPitDoc: string | null;
 
 }
 

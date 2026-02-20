@@ -20,32 +20,59 @@ export const DepthChart: React.FC<DepthChartProps> = ({
   minDepth = 1.65 
 }) => {
   const [selectedPoints, setSelectedPoints] = useState<SelectedPoint[]>([]);
+
+    const getLatLng = (point: any): { lat: number; lng: number } | null => {
+      let coord: string | null | undefined = null;
+
+      switch (point.eventType) {
+        case 'DEPTH':
+          coord = point.depthLatlong;
+          break;
+        case 'STARTPIT':
+          coord = point.startPitLatlong;
+          break;
+        case 'ENDPIT':
+          coord = point.endPitLatlong;
+          break;
+        default:
+          coord = point.depthLatlong || point.startPitLatlong || point.endPitLatlong;
+      }
+
+      if (!coord) return null;
+
+      const [latStr, lngStr] = coord.split(',');
+      const lat = parseFloat(latStr);
+      const lng = parseFloat(lngStr);
+
+      if (isNaN(lat) || isNaN(lng)) return null;
+
+      return { lat, lng };
+    };
+
   const chartData = useMemo(() => {
     let cumulativeDistance = 0;
-  return depthData
+    return depthData
     .map((point, index) => {
       const depthValue = parseFloat(point.depthMeters);
+      const current = getLatLng(point);
+      const prev = index > 0 ? getLatLng(depthData[index - 1]) : null;
 
-    // Parse lat/lng
-    const [latStr, lngStr] = point.depthLatlong?.split(',') || [];
-    const lat = parseFloat(latStr);
-    const lng = parseFloat(lngStr);
+      if (current && prev) {
+        const segmentDistance = getDistanceFromLatLonInMeters(
+          prev.lat,
+          prev.lng,
+          current.lat,
+          current.lng
+        );
 
-    if (index > 0) {
-      const [prevLatStr, prevLngStr] = depthData[index - 1].depthLatlong?.split(',') || [];
-      const prevLat = parseFloat(prevLatStr);
-      const prevLng = parseFloat(prevLngStr);
-
-      if (!isNaN(lat) && !isNaN(lng) && !isNaN(prevLat) && !isNaN(prevLng)) {
-        const segmentDistance = getDistanceFromLatLonInMeters(prevLat, prevLng, lat, lng);
         cumulativeDistance += segmentDistance;
       }
-    }
       return {
         distance: Math.round(cumulativeDistance),
         depth: isNaN(depthValue) ? 0 : depthValue,
         isBelowMinimum: !isNaN(depthValue) && depthValue < minDepth,
-        originalData: point
+        originalData: point,
+        eventType: point.eventType
       };
     })
     .sort((a, b) => a.distance - b.distance);
@@ -122,17 +149,20 @@ export const DepthChart: React.FC<DepthChartProps> = ({
     return Math.abs(selectedPoints[1].depth - selectedPoints[0].depth);
   };
 
-  const getPointColor = (index: number, isBelowMinimum: boolean) => {
+  const getPointColor = (index: number, isBelowMinimum: boolean, eventType?: string) => {
+   
     const selectedIndex = selectedPoints.findIndex(p => p.index === index);
     if (selectedIndex !== -1) {
       return selectedIndex === 0 ? "#10B981" : "#8B5CF6"; // Green for first, Purple for second
     }
+    if (eventType === "STARTPIT" || eventType === "ENDPIT") return "#F59E0B"; // Yellow for start/end pit points
     return isBelowMinimum ? "#EF4444" : "#3B82F6";
   };
 
-  const getPointRadius = (index: number, isBelowMinimum: boolean) => {
+  const getPointRadius = (index: number, isBelowMinimum: boolean, eventType?: string) => {
     const isSelected = selectedPoints.some(p => p.index === index);
     if (isSelected) return 8;
+    if (eventType === "STARTPIT" || eventType === "ENDPIT") return 8;
     return isBelowMinimum ? 6 : 4;
   };
 
@@ -417,8 +447,8 @@ export const DepthChart: React.FC<DepthChartProps> = ({
                 <circle
                   cx={xScale(point.distance)}
                   cy={yScale(point.depth)}
-                  r={getPointRadius(index, point.isBelowMinimum)}
-                  fill={getPointColor(index, point.isBelowMinimum)}
+                  r={getPointRadius(index, point.isBelowMinimum,point.eventType)}
+                  fill={getPointColor(index, point.isBelowMinimum,point.eventType)}
                   stroke="white"
                   strokeWidth="2"
                   className="cursor-pointer hover:opacity-80 transition-all duration-200"
@@ -515,6 +545,10 @@ export const DepthChart: React.FC<DepthChartProps> = ({
         <div className="flex items-center space-x-2">
           <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
           <span className="text-sm text-gray-700">Point 2</span>
+        </div>
+        <div className="flex items-center space-x-2">
+          <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+          <span className="text-sm text-gray-700">Startpit/endpit Point</span>
         </div>
       </div>
 

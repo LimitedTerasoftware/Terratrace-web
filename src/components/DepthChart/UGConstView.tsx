@@ -868,7 +868,7 @@ function Eventreport() {
                 </div>
 
             )}
-            {!viewOnly && (
+            {!viewOnly && activeTab === 'details' && (
             <div className="mt-6 flex gap-4 justify-center">
 
                  <button
@@ -890,10 +890,7 @@ function Eventreport() {
             )}
             {activeTab === 'chart' && (
                 <div className="h-[600px] p-4">
-                    <IndexChart MainData={{
-                        start_lgd: filteredData[0]?.start_lgd || '',
-                        end_lgd: filteredData[0]?.end_lgd || ''
-                    }} />
+                    <IndexChart eventData={filteredData} />
 
                 </div>
             )}
