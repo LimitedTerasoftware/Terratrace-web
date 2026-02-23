@@ -82,30 +82,42 @@ const InfoWindow: React.FC<{
       };
   
 
-  const getEventPhotos = (event: Activity) => {
+const getEventPhotos = (event: Activity): string[] => {
+  const photos: string[] = [];
+
+  const addImages = (rawPhotoData: any) => {
+    if (typeof rawPhotoData === "string" && rawPhotoData.trim() !== "") {
+      try {
+        const parsed = JSON.parse(rawPhotoData);
+
+        if (Array.isArray(parsed)) {
+          parsed.forEach((p: string) => {
+            if (typeof p === "string" && p.trim() !== "") {
+              photos.push(p.trim());
+            }
+          });
+        } else if (typeof parsed === "string" && parsed.trim() !== "") {
+          photos.push(parsed.trim());
+        }
+      } catch {
+        // If not valid JSON, treat as raw string path
+        photos.push(rawPhotoData.trim());
+      }
+    }
+  };
+
+  // 🔹 Main event photos
   const photoField = eventPhotoFields[event.eventType];
   const rawPhotoData = photoField ? event[photoField] : null;
+  addImages(rawPhotoData);
 
-  if (typeof rawPhotoData === "string" && rawPhotoData.trim() !== "") {
-    try {
-      const parsed = JSON.parse(rawPhotoData);
-
-      // If it's a valid array, return it
-      if (Array.isArray(parsed)) {
-        return parsed.filter((p: string) => typeof p === 'string' && p.trim() !== '');
-      }
-
-      // If it's a string inside JSON (like just `"uploads/..."`), return as array
-      if (typeof parsed === 'string') {
-        return [parsed];
-      }
-    } catch {
-      // If it's not valid JSON (just a raw path), return it as a one-item array
-      return [rawPhotoData.trim()];
-    }
+  if (event.eventType === "JOINTCHAMBER" || event.eventType === "MANHOLES") {
+    const depthPhotoField = eventPhotoFields["DEPTH"];
+    const depthPhotos = event[depthPhotoField];
+    addImages(depthPhotos);
   }
 
-  return [];
+  return photos;
 };
   const photos = getEventPhotos(event);
   const eventConfig = EVENT_TYPES[event.eventType as keyof typeof EVENT_TYPES];

@@ -10,39 +10,19 @@ const BASEURL = import.meta.env.VITE_API_BASE;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
 function IndexChart({ eventData }: any) {
-  const DepthDetails = eventData.filter((event: any) => event.eventType === 'DEPTH' || event.eventType === 'STARTPIT' || event.eventType === 'ENDPIT');
+const DepthDetails = eventData.filter((event: any) =>
+                      event.eventType === 'DEPTH' ||
+                      event.eventType === 'STARTPIT' ||
+                      event.eventType === 'ENDPIT' ||
+                      (event.eventType === 'JOINTCHAMBER' && event.depthPhoto) ||
+                      (event.eventType === 'MANHOLES' && event.depthPhoto)
+                    );
+
   const [depthData,setdepthData]=useState<DepthDataPoint[]>(DepthDetails ||[]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   
-  // let depthData:DepthDataPoint[] = location.state?.depthData || MainData || []
-  // const handleDepthChart = async () => {
-  //       setLoading(true);
-  //       setError(null);
-  //       try {
-  //           const params: any = {};
-  //           if (MainData.start_lgd) params.start_lgd = MainData.start_lgd;
-  //           if (MainData.end_lgd) params.end_lgd = MainData.end_lgd;
-  //           params.eventType = 'DEPTH';
-  //           const resp = await axios.get(`${TraceBASEURL}/get-depth-data`, { params });
-  //           if (resp.status === 200 || resp.status === 201) {
-  //               const Data = resp.data;
-  //               const depthData = Data.data;
-  //               setdepthData(depthData);
-  //           } else {
-  //               setError('Error Occured')
-  //           }
-  //       } catch (err) {
-  //           setError(err instanceof Error ? err.message : 'An error occurred');
-
-  //       } finally {
-  //           setLoading(false);
-  //       }
-
-  //   }
-  //   useEffect(()=>{
-  //   handleDepthChart();
-  //   },[])
+ 
   const [minDepth, setMinDepth] = useState(1.65);
   const [activeTab, setActiveTab] = useState<'chart' | 'table'>('chart');
   const criticalCount = depthData.filter(point => 
