@@ -22,28 +22,41 @@ export const DepthDataTable: React.FC<DepthDataTableProps> = ({
             DEPTH: "depthPhoto",
             STARTPIT: 'startPitPhotos',
             ENDPIT: 'endPitPhotos',
+            JOINTCHAMBER: "jointChamberPhotos",
+            MANHOLES: "manholePhotos",
         };
     const extractMediaFromRow = (row: DepthDataPoint): MediaItem[] => {
                 const mediaItems: MediaItem[] = [];
+                  const addImages = (rawPhotoData: any, labelPrefix: string) => {
+                    if (typeof rawPhotoData === "string" && rawPhotoData.trim() !== "") {
+                        const urls = parseMediaUrls(rawPhotoData);
+
+                        urls.forEach((url, index) => {
+                            if (url) {
+                                mediaItems.push({
+                                    type: "image",
+                                    url: `${baseUrl}${url}`,
+                                    label: `${labelPrefix} ${urls.length > 1 ? index + 1 : ""}`.trim(),
+                                });
+                            }
+                        });
+                    }
+                };
         
                 // Get photo field for this event type
                 const photoField = eventPhotoFields[row.eventType];
                 const rawPhotoData = photoField ? row[photoField] : null;
-        
-                // Process images
-              if (typeof rawPhotoData === "string" && rawPhotoData.trim() !== "") {
-                    const urls = parseMediaUrls(rawPhotoData);
-                      
-                    urls.forEach((url, index) => {
-                        if (url) {
-                            mediaItems.push({
-                                type: 'image',
-                                url: `${baseUrl}${url}`,
-                                label: `${row.eventType} Photo ${urls.length > 1 ? index + 1 : ''}`
-                            });
-                        }
-                    });
+
+                addImages(rawPhotoData, `${row.eventType} Photo`);
+
+              if (row.eventType === "JOINTCHAMBER" || row.eventType === "MANHOLES") {
+                    const depthPhotoField = eventPhotoFields["DEPTH"]; // depthPhoto
+                    const depthPhotos = row[depthPhotoField];
+
+                    addImages(depthPhotos, "DEPTH Photo");
                 }
+            
+              
               return mediaItems;
             };
 
@@ -95,8 +108,14 @@ export const DepthDataTable: React.FC<DepthDataTableProps> = ({
         case 'ENDPIT':
           coord = point.endPitLatlong;
           break;
+        case 'JOINTCHAMBER':
+          coord = point.jointChamberLatLong;
+          break;
+        case 'MANHOLES':
+          coord = point.manholeLatLong;
+          break;
         default:
-          coord = point.depthLatlong || point.startPitLatlong || point.endPitLatlong;
+          coord = point.depthLatlong || point.startPitLatlong || point.endPitLatlong || point.jointChamberLatLong || point.manholeLatLong || null;
       }
 
       if (!coord) return null;
@@ -150,7 +169,9 @@ export const DepthDataTable: React.FC<DepthDataTableProps> = ({
               const isBelowMinimum = depth < minDepth;
               let latlong = point.eventType === "DEPTH" ? point.depthLatlong :
                          point.eventType === "STARTPIT" ? point.startPitLatlong :
-                         point.eventType === "ENDPIT" ? point.endPitLatlong : '';
+                         point.eventType === "ENDPIT" ? point.endPitLatlong : 
+                         point.eventType === "JOINTCHAMBER" ? point.jointChamberLatLong :
+                         point.eventType === "MANHOLES" ? point.manholeLatLong : 'N/A';
               const mediaItems = extractMediaFromRow(point);
               const current = getLatLng(point);
               const prev = index > 0 ? getLatLng(depthData[index - 1]) : null;

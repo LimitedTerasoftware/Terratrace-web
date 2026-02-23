@@ -231,26 +231,33 @@ function Eventreport() {
     const extractMediaFromRow = (row: Activity): MediaItem[] => {
         const mediaItems: MediaItem[] = [];
 
+        const addImages = (rawPhotoData: any, labelPrefix: string) => {
+            if (typeof rawPhotoData === "string" && rawPhotoData.trim() !== "") {
+                const urls = parseMediaUrls(rawPhotoData);
+
+                urls.forEach((url, index) => {
+                    if (url) {
+                        mediaItems.push({
+                            type: "image",
+                            url: `${baseUrl}${url}`,
+                            label: `${labelPrefix} ${urls.length > 1 ? index + 1 : ""}`.trim(),
+                        });
+                    }
+                });
+            }
+        };
+
         // Get photo field for this event type
         const photoField = eventPhotoFields[row.eventType];
         const rawPhotoData = photoField ? row[photoField] : null;
+        addImages(rawPhotoData, `${row.eventType} Photo`);
 
-        // Process images
-      if (typeof rawPhotoData === "string" && rawPhotoData.trim() !== "") {
-            const urls = parseMediaUrls(rawPhotoData);
-              
-            urls.forEach((url, index) => {
-                if (url) {
-                    mediaItems.push({
-                        type: 'image',
-                        url: `${baseUrl}${url}`,
-                        label: `${row.eventType} Photo ${urls.length > 1 ? index + 1 : ''}`
-                    });
-                }
-            });
-        }
+          if (row.eventType === "JOINTCHAMBER" || row.eventType === "MANHOLES") {
+                const depthPhotoField = eventPhotoFields["DEPTH"]; // depthPhoto
+                const depthPhotos = row[depthPhotoField];
 
-
+                addImages(depthPhotos, "DEPTH Photo");
+            }
         // Process video
         if (typeof row.videoDetails === 'string') {
             try {

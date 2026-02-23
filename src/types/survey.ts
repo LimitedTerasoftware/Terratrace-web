@@ -158,6 +158,10 @@ export interface DepthDataPoint {
   endPitPhotos: string | null;
   eventType: string;
   endPitDoc: string | null;
+  jointChamberLatLong: string | null;
+  jointChamberPhotos: string | null;
+  manholeLatLong: string | null;
+  manholePhotos: string | null;
 
 }
 

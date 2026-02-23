@@ -34,8 +34,13 @@ export const DepthChart: React.FC<DepthChartProps> = ({
         case 'ENDPIT':
           coord = point.endPitLatlong;
           break;
+        case 'JOINTCHAMBER':
+          coord = point.jointChamberLatLong;
+        case 'MANHOLES':
+          coord = point.manholeLatLong;
+          break;  
         default:
-          coord = point.depthLatlong || point.startPitLatlong || point.endPitLatlong;
+          coord = point.depthLatlong || point.startPitLatlong || point.endPitLatlong || point.jointChamberLatLong || point.manholeLatLong || null;
       }
 
       if (!coord) return null;
@@ -155,14 +160,14 @@ export const DepthChart: React.FC<DepthChartProps> = ({
     if (selectedIndex !== -1) {
       return selectedIndex === 0 ? "#10B981" : "#8B5CF6"; // Green for first, Purple for second
     }
-    if (eventType === "STARTPIT" || eventType === "ENDPIT") return "#F59E0B"; // Yellow for start/end pit points
+    if (eventType === "STARTPIT" || eventType === "ENDPIT" || eventType === "JOINTCHAMBER" || eventType === "MANHOLES") return "#F59E0B"; // Yellow for start/end pit points
     return isBelowMinimum ? "#EF4444" : "#3B82F6";
   };
 
   const getPointRadius = (index: number, isBelowMinimum: boolean, eventType?: string) => {
     const isSelected = selectedPoints.some(p => p.index === index);
     if (isSelected) return 8;
-    if (eventType === "STARTPIT" || eventType === "ENDPIT") return 8;
+    if (eventType === "STARTPIT" || eventType === "ENDPIT" || eventType === "JOINTCHAMBER" || eventType === "MANHOLES") return 8;
     return isBelowMinimum ? 6 : 4;
   };
 
