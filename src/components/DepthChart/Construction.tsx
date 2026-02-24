@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { StateData, District, Block } from '../../types/survey';
 import Report from './UGConst';
 import ConstructionStatsPanel from './ConstructionStatsPanel';
-import { SheetIcon, Construction } from 'lucide-react';
+import { SheetIcon, Construction, EyeIcon } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { UGConstructionSurveyData } from '../../types/survey';
 import axios from 'axios';
@@ -36,6 +36,7 @@ function ConstructionPage() {
     const [todate, setToDate] = useState<string>('');
     const [activeTab, setActiveTab] = useState<'UG'>('UG');
     const [excel, setExcel] = useState<boolean>(false);
+    const [preview,setPreview] = useState<boolean>(false);
     const [searchParams, setSearchParams] = useSearchParams();
     const [filtersReady, setFiltersReady] = useState(false);
     
@@ -252,6 +253,7 @@ function ConstructionPage() {
         handleFilterChange(selectedState, selectedDistrict, selectedBlock, selectedStatus, fromdate, todate, value);
     };
 
+
     return (
         <div className="min-h-screen bg-gray-50">
             <ConstructionHeader />
@@ -451,6 +453,13 @@ function ConstructionPage() {
                             <SheetIcon className="h-4 w-4 text-green-600"/>
                             Excel
                         </button>
+                         <button
+                            onClick={() => setPreview(true)}
+                            className="flex-none h-10 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap flex items-center gap-2"
+                        >
+                            <EyeIcon className="h-4 w-4 text-blue-600" />
+                            Preview
+                        </button>
                     </div>
                 </div>
 
@@ -466,9 +475,11 @@ function ConstructionPage() {
                             todate,
                             globalsearch,
                             excel,
-                            filtersReady
+                            filtersReady,
+                            preview,
                         }}
                         Onexcel={() => setExcel(false)}
+                        OnPreview={() => setPreview(false)}
                     />
                 )}
             </div>
