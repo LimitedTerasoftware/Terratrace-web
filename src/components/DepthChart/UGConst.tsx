@@ -18,13 +18,15 @@ interface ReportProps {
     globalsearch: string;
     excel: boolean;
     filtersReady: boolean;
+    preview:boolean;
   };
   Onexcel: () => void;
+  OnPreview: () => void;
 }
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
-const Report: React.FC<ReportProps> = ({ Data, Onexcel }) => {
+const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview }) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<UGConstructionSurveyData[]>([]);
@@ -71,8 +73,8 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel }) => {
     fetchSurveyData();
   }, [Data.selectedState, Data.selectedDistrict, Data.selectedBlock, Data.fromdate, Data.todate, Data.filtersReady,Data.selectedStatus, Data.globalsearch]);
 
-  const handleView = async (sgp: number, egp: number, row: UGConstructionSurveyData) => {
-    navigate('/construction-details', { state: { sgp, egp, row } });
+  const handleView = async (row: UGConstructionSurveyData | any,check:boolean) => {
+    navigate('/construction-details', { state: { row, multipreview: check } });
   };
 
   const filteredData = useMemo(() => {
@@ -280,7 +282,7 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel }) => {
             <Eye className="w-4 h-4" />
           </button>
           <button
-            onClick={() => handleView(row.startLocation, row.endLocation, row)}
+            onClick={() => handleView(row, false)}
             className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100 outline-none"
           >
             View
@@ -329,6 +331,19 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel }) => {
       exportExcel();
     }
   }, [Data.excel]);
+
+
+  useEffect(()=>{
+    if(Data.preview === true ){
+      if(selectedRows.length === 0){
+      alert('Please select at least one row to preview the data.');
+      return;
+      }
+      const rowIds=selectedRows.map(row => row.id);
+      handleView(rowIds, true)
+      OnPreview();
+    }
+  },[Data.preview])
 
   if (error) {
     return (
@@ -496,7 +511,7 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel }) => {
                 <button
                   onClick={() => {
                     setSelectedSurvey(null);
-                    handleView(selectedSurvey.startLocation, selectedSurvey.endLocation, selectedSurvey);
+                    handleView(selectedSurvey,false);
                   }}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                 >

@@ -106,7 +106,7 @@ const getEventPhotos = (event: Activity): string[] => {
     }
   };
 
-  // 🔹 Main event photos
+  // Main event photos
   const photoField = eventPhotoFields[event.eventType];
   const rawPhotoData = photoField ? event[photoField] : null;
   addImages(rawPhotoData);
@@ -129,6 +129,7 @@ const getEventPhotos = (event: Activity): string[] => {
           <div className="flex items-center gap-2">
             <span className="text-lg">{eventConfig?.icon}</span>
             <h3 className="font-semibold text-sm">{eventConfig?.label}</h3>
+            <span className="text-xs bg-white bg-opacity-20 px-2 py-0.5 rounded">{event.survey_id}</span>
           </div>
           <button
             onClick={onClose}
@@ -345,7 +346,7 @@ const MapComponent: React.FC<MapCompProps> = ({ data, eventData = [] }) => {
       const marker = new google.maps.Marker({
         position: { lat: point.lat, lng: point.lng },
         map: map,
-        title: `${eventConfig.label} - ${point.eventType}`,
+        title: `${eventConfig.label} - ${point.eventType} - ID: ${eventDetails?.survey_id || '-'}`,
         label: {
           text:  (index + 1).toString(),
           color: 'black',
@@ -388,44 +389,65 @@ const MapComponent: React.FC<MapCompProps> = ({ data, eventData = [] }) => {
   }, [map, data, visibleEventTypes, eventData]);
 
   // Create polylines
-  useEffect(() => {
-    if (!map || !data.length || !showPolylines) {
-      polylines.forEach(polyline => polyline.setMap(null));
-      setPolylines([]);
-      return;
-    }
-     const hasVisibleEvents = data.some(point => visibleEventTypes.has(point.eventType));
-
-    // Clear existing polylines
+useEffect(() => {
+  if (!map || !data.length || !showPolylines) {
     polylines.forEach(polyline => polyline.setMap(null));
+    setPolylines([]);
+    return;
+  }
 
-     if (!hasVisibleEvents) {
-      setPolylines([]);
-      return;
+  const hasVisibleEvents = data.some(point =>
+    visibleEventTypes.has(point.eventType)
+  );
+
+  // Clear existing polylines
+  polylines.forEach(polyline => polyline.setMap(null));
+
+  if (!hasVisibleEvents) {
+    setPolylines([]);
+    return;
+  }
+  // Group data by survey_id
+  const groupedBySurvey = data.reduce((acc: any, point: any) => {
+    if (!acc[point.survey_id]) {
+      acc[point.survey_id] = [];
     }
-    // Sort data by creation time or distance to create proper route
-    const sortedData = [...data].sort((a, b) => {
+    acc[point.survey_id].push(point);
+    return acc;
+  }, {});
+
+  const newPolylines: google.maps.Polyline[] = [];
+
+  // Loop each survey_id group
+  Object.keys(groupedBySurvey).forEach((surveyId) => {
+    const surveyPoints = groupedBySurvey[surveyId];
+
+    // Sort survey-wise
+    const sortedData = [...surveyPoints].sort((a, b) => {
       const eventA = eventData.find(e => e.id === a.id);
       const eventB = eventData.find(e => e.id === b.id);
-      
+
       if (eventA?.created_at && eventB?.created_at) {
-        return new Date(eventA.created_at).getTime() - new Date(eventB.created_at).getTime();
+        return (
+          new Date(eventA.created_at).getTime() -
+          new Date(eventB.created_at).getTime()
+        );
       }
       return 0;
     });
 
     const path = sortedData
-      // .filter(point => visibleEventTypes.has(point.eventType))
+      .filter(point => visibleEventTypes.has(point.eventType))
       .map(point => ({ lat: point.lat, lng: point.lng }));
 
-    if (path.length > 1 ) {
+    if (path.length > 1) {
       const polyline = new google.maps.Polyline({
-        path: path,
+        path,
         geodesic: true,
-        strokeColor: '#3B82F6',
+        strokeColor: '#3B82F6', 
         strokeOpacity: 0.8,
         strokeWeight: 3,
-        map: map,
+        map,
         icons: [
           {
             icon: {
@@ -442,9 +464,13 @@ const MapComponent: React.FC<MapCompProps> = ({ data, eventData = [] }) => {
         ],
       });
 
-      setPolylines([polyline]);
+      newPolylines.push(polyline);
     }
-  }, [map, data, visibleEventTypes, showPolylines, eventData]);
+  });
+
+  setPolylines(newPolylines);
+
+}, [map, data, visibleEventTypes, showPolylines, eventData]);
 
   // Toggle event type visibility
   const toggleEventType = (eventType: string) => {

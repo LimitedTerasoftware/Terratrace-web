@@ -258,6 +258,7 @@ export interface Activity {
   routeFeatureLatLong:string|null;
   routeFeaturePhotos:string|null;
   routeFeatureType:string|null;
+  cable_stack:string|null;
  }
 
 export interface ApiResponseMachine {
