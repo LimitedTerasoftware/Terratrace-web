@@ -6,15 +6,38 @@ import { Machine } from '../../types/machine';
 import { useNavigate } from 'react-router-dom';
 
 interface StatsPanelProps {
-  activities: Activity[];
+  activities: {[key: string]: {machine_id: number; registration_number: string; authorised_person: string; activities: Activity[]}};
   totalCount:number;
   isLoading: boolean;
 }
 
 const StatsPanel: React.FC<StatsPanelProps> = ({ activities,isLoading }) => {
-  const navigate= useNavigate();
-  const recentActivities = activities.filter(a =>
-  new Date(a.created_at) > new Date(Date.now() - 24 * 60 * 60 * 1000)
+const navigate= useNavigate();
+const last24Hours = Date.now() - 24 * 60 * 60 * 1000;
+
+const machinesArray = Object.values(activities);
+const allActivities = machinesArray.flatMap(machine =>
+  machine?.activities?.map(activity => ({
+    ...activity,
+    machine_id: machine.machine_id,
+    registration_number: machine.registration_number,
+  })) || []
+);
+
+const recentOnly = allActivities.filter(a =>
+  new Date(a.created_at).getTime() > last24Hours
+);
+const recentActivities = Object.values(
+  recentOnly.reduce((acc, curr) => {
+    if (
+      !acc[curr.machine_id] ||
+      new Date(curr.created_at) >
+        new Date(acc[curr.machine_id].created_at)
+    ) {
+      acc[curr.machine_id] = curr;
+    }
+    return acc;
+  }, {} as Record<number, typeof recentOnly[0]>)
 );
 
 const recentActivitiesCount = recentActivities.length;

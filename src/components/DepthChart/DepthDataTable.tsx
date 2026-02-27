@@ -141,6 +141,9 @@ export const DepthDataTable: React.FC<DepthDataTableProps> = ({
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Survey Id 
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Link Name
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -204,6 +207,9 @@ export const DepthDataTable: React.FC<DepthDataTableProps> = ({
                         {isBelowMinimum ? 'Critical' : 'Normal'}
                       </span>
                     </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {point.survey_id} - {point.eventType}({point.id})
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {point.start_lgd_name}_{point.end_lgd_name}

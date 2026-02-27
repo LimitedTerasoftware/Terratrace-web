@@ -15,7 +15,7 @@ class GoogleMapsLoader {
     return GoogleMapsLoader.instance;
   }
 
-  public async loadGoogleMaps(apiKey: string, libraries: string[] = ['places']): Promise<void> {
+  public async loadGoogleMaps(apiKey: string, libraries: string[] = ['places','geometry']): Promise<void> {
     // If already loaded, resolve immediately
     if (this.isLoaded) {
       return Promise.resolve();

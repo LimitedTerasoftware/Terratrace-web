@@ -162,6 +162,7 @@ export interface DepthDataPoint {
   jointChamberPhotos: string | null;
   manholeLatLong: string | null;
   manholePhotos: string | null;
+  survey_id: number | null;
 
 }
 
@@ -176,6 +177,8 @@ export interface ChartPoint {
   depth: number;
   isBelowMinimum: boolean;
   originalData: DepthDataPoint;
+  eventType: string;
+  survey_id: number | null;
 }
 export interface Activity {
   id: number;
@@ -263,12 +266,20 @@ export interface Activity {
 
 export interface ApiResponseMachine {
   status: boolean;
-  latestActivities: (Activity | { machine_id: number; message: string })[];
+  latestActivities: {
+    [machineId: string]: {
+      machine_id: number;
+      registration_number: string;
+      authorised_person: string;
+      activities: Activity[];
+    };
+  };
 }
 
 export interface MarkerData {
   position: google.maps.LatLngLiteral;
   activity: Activity;
+  
 }
 
 export interface StateData {
