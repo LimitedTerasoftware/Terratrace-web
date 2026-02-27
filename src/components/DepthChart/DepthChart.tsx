@@ -731,9 +731,9 @@ export const DepthChart: React.FC<DepthChartProps> = ({
                 <p className="text-sm text-gray-600">
                   Points: <span className="font-medium">{survey.points.length}</span>
                 </p>
-                <p className="text-sm text-gray-600">
+                {/* <p className="text-sm text-gray-600">
                   Range: <span className="font-medium">{survey.startDistance}m - {survey.endDistance}m</span>
-                </p>
+                </p> */}
               </div>
             </div>
           ))}

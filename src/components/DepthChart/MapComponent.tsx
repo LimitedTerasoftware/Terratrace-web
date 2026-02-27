@@ -63,11 +63,11 @@ useEffect(() => {
 
     // Create new markers
     const newMarkers = markers.map(markerData => {
-      const markerColor = getColorByRegistration(markerData.activity.machine_id);
+      const markerColor = getColorByRegistration(markerData.activity.registration_number);
       const marker = new google.maps.Marker({
         position: markerData.position,
         map: map,
-        title: `${markerData.activity.machine_id} - ${markerData.activity.eventType}`,
+        title: `${markerData.activity.registration_number} - ${markerData.activity.eventType}`,
         icon: {
          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
           <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="${markerColor}">

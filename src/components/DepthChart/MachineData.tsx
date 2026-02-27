@@ -7,6 +7,7 @@ import { Activity, VideoDetails } from "../../types/survey";
 import moment from "moment";
 import { getMachineOptions } from "../Services/api";
 import {getTodayDate } from "../../utils/dateUtils";
+import { getDistanceFromLatLonInMeters } from "../../utils/calculations";
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const BASEURL_Val = import.meta.env.VITE_API_BASE;
@@ -121,6 +122,27 @@ const MachineDataTable = () => {
         HOLDSURVEY:'holdPhotos',
         BLOWING:'blowingPhotos'
     };
+
+const addDistancesToData = (data: Activity[]) => {
+        return data.map((row, index) => {
+            if (index === 0) {
+                return { ...row, distance: "0.00" }; 
+            }
+    
+            const latLong1 = getLatLongForEvent(row);
+            const prevRow = data[index - 1];
+            const latLong2 = prevRow ? getLatLongForEvent(prevRow) : null;
+    
+            if (!latLong1 || !latLong2) return { ...row, distance: "-" };
+    
+            const [lat1, lon1] = latLong1.split(',').map(Number);
+            const [lat2, lon2] = latLong2.split(',').map(Number);
+    
+            const distance = getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2);
+            return { ...row, distance: distance.toFixed(2) };
+        });
+    };
+
  const columns: TableColumn<Activity>[] = [
   {
     name: "Machine Id",
@@ -271,17 +293,20 @@ const MachineDataTable = () => {
     setTableData([]);
 
   };
-  const filteredData = useMemo(() => {
-  if (!globalsearch.trim()) return tableData;
+ const filteredData = useMemo(() => {
+  const lowerSearch = globalsearch.trim().toLowerCase();
 
-  const lowerSearch = globalsearch.toLowerCase();
+  const filtered = lowerSearch
+    ? tableData.filter((row: Activity) =>
+        Object.values(row).some((value) =>
+          (typeof value === 'string' || typeof value === 'number') &&
+          value.toString().toLowerCase().includes(lowerSearch)
+        )
+      )
+    : tableData;
 
-  return tableData.filter((row: Activity) =>
-    Object.values(row).some((value) =>
-      (typeof value === 'string' || typeof value === 'number') &&
-      value.toString().toLowerCase().includes(lowerSearch)
-    )
-  );
+  return addDistancesToData(filtered);
+
 }, [globalsearch, tableData]);
 
   return (
