@@ -73,6 +73,7 @@ import DailyProgressReport from './components/Dashboards/DailyProgressReport';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Terms from './pages/Terms';
 import JointDetails from './components/Joints/JointsDetails';
+import MachineMapPage from './components/MachineManagement/MachineMap';
 //import AuditLogs from './components/AuditLogs';
 
 function App() {
@@ -754,6 +755,16 @@ function App() {
     </>
   } 
 />
+          <Route 
+            path="/machine-activity" 
+            element={
+              <>
+                  <PageTitle title="Machine Activity" />
+                  <MachineMapPage />
+              
+              </>
+            } 
+          />
           </Routes>
           
           
