@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Eye, EyeOff, Navigation, Filter, X, ZoomIn } from 'lucide-react';
 import GoogleMapsLoader from '../hooks/googleMapsLoader';
 import moment from 'moment';
@@ -9,6 +9,7 @@ interface MarkerData {
   lng: number;
   eventType: string;
   id: number;
+  survey_id: number;
 }
 interface MapCompProps {
   data: MarkerData[];
@@ -142,6 +143,12 @@ const getEventPhotos = (event: Activity): string[] => {
       
       <div className="p-4 max-h-80 overflow-y-auto">
         <div className="space-y-3">
+          {event.id && (
+            <div className="flex justify-between">
+              <span className="text-gray-600 text-sm">Event Id:</span>
+              <span className="font-medium text-sm">{event.id}</span>
+            </div>
+          )}
           {event.machine_registration_number && (
             <div className="flex justify-between">
               <span className="text-gray-600 text-sm">Machine Id:</span>
@@ -154,6 +161,12 @@ const getEventPhotos = (event: Activity): string[] => {
               <span className="font-medium text-sm">{event.firm_name}</span>
             </div>
           )}
+          {event.start_lgd_name && event.end_lgd_name && (
+            <div className="flex justify-between">
+              <span className="text-gray-600 text-sm">Link Name:</span>
+              <span className="font-medium text-sm">{event.start_lgd_name}_{event.end_lgd_name}</span>
+            </div>
+            )}
             <div className="flex justify-between">
               <span className="text-gray-600 text-sm">Coordinates:</span>
               <span className="font-medium text-sm">{getLatLongForEvent(event)}</span>
@@ -450,14 +463,14 @@ useEffect(() => {
         map,
         icons: [
           {
-            icon: {
-              path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-              scale: 4,
-              fillColor: '#3B82F6',
-              fillOpacity: 1,
-              strokeColor: '#ffffff',
-              strokeWeight: 1,
-            },
+            // icon: {
+            //   path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+            //   scale: 4,
+            //   fillColor: '#3B82F6',
+            //   fillOpacity: 1,
+            //   strokeColor: '#ffffff',
+            //   strokeWeight: 1,
+            // },
             offset: '0%',
             repeat: '10%',
           },
@@ -471,6 +484,47 @@ useEffect(() => {
   setPolylines(newPolylines);
 
 }, [map, data, visibleEventTypes, showPolylines, eventData]);
+
+
+// const surveyDistances = useMemo(() => {
+//   if (!data.length || !window.google) return {};
+//   const grouped: any = {};
+
+//   // Group by survey_id
+//   data.forEach(point => {
+//     if (!grouped[point.survey_id]) {
+//       grouped[point.survey_id] = [];
+//     }
+//     grouped[point.survey_id].push(point);
+//   });
+
+//   const result: any = {};
+
+//   Object.keys(grouped).forEach((surveyId) => {
+//     const points = grouped[surveyId]
+//       .map((p:any) => new google.maps.LatLng(p.lat, p.lng));
+
+//     let distance = 0;
+
+//     for (let i = 0; i < points.length - 1; i++) {
+//       distance += google.maps.geometry.spherical.computeDistanceBetween(
+//         points[i],
+//         points[i + 1]
+//       );
+//     }
+
+//     result[surveyId] = distance; // in meters
+//   });
+
+//   return result;
+// }, [data]);
+
+// const totalDistance = useMemo(() => {
+//   return Object.values(surveyDistances).reduce(
+//     (sum: number, dist: any) => sum + dist,
+//     0
+//   );
+// }, [surveyDistances]);
 
   // Toggle event type visibility
   const toggleEventType = (eventType: string) => {
@@ -515,6 +569,8 @@ useEffect(() => {
     return data.filter(point => point.eventType === eventType).length;
   };
 
+  
+
   return (
     <div className="relative w-full h-full">
       {/* Map Container */}
@@ -552,7 +608,7 @@ useEffect(() => {
                   onClick={toggleAllEventTypes}
                   className="text-xs text-blue-600 hover:text-blue-800"
                 >
-                  {visibleEventTypes.size === Object.keys(EVENT_TYPES).length ? 'Show All' : 'Hide All'}
+                  {visibleEventTypes.size === Object.keys(EVENT_TYPES).length ? 'Hide All' : 'Show All'}
                 </button>
               </div>
               
@@ -615,6 +671,23 @@ useEffect(() => {
               );
             })}
           </div>
+          {/* <hr className="my-2" />
+
+          <div className="text-xs space-y-1 max-h-32 overflow-y-auto">
+            <h4 className="font-medium text-gray-700">Survey Distances</h4>
+
+            {Object.entries(surveyDistances).map(([surveyId, distance]) => (
+              <div key={surveyId} className="flex justify-between">
+                <span>Survey {surveyId}</span>
+                <span>{(Number(distance)).toFixed(0)} mt</span>
+              </div>
+            ))}
+
+            <div className="border-t pt-1 flex justify-between font-medium text-gray-800">
+              <span>Total</span>
+              <span>{(totalDistance).toFixed(0)} mt</span>
+            </div>
+          </div> */}
         </div>
       </div>
 
@@ -671,7 +744,7 @@ const MapComp: React.FC<MapCompProps> = ({ data, eventData }) => {
 
     const loader = GoogleMapsLoader.getInstance();
     
-    loader.loadGoogleMaps(apiKey, ['places'])
+    loader.loadGoogleMaps(apiKey, ['places','geometry'])
       .then(() => {
         setIsMapReady(true);
         setIsLoading(false);

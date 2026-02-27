@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { MarkerData } from '../../types/survey';
+import { Activity, MarkerData } from '../../types/survey';
 
 interface MapComponentProps {
   markers: MarkerData[];
+  machineData:{[key: string]: {machine_id: number; registration_number: string; authorised_person: string; activities: Activity[]}};
   onMarkerClick: (activity: MarkerData['activity']) => void;
 }
 
-const MapComponent: React.FC<MapComponentProps> = ({ markers, onMarkerClick }) => {
+const MapComponent: React.FC<MapComponentProps> = ({ markers, machineData, onMarkerClick }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [googleMarkers, setGoogleMarkers] = useState<google.maps.Marker[]>([]);
@@ -62,11 +63,11 @@ useEffect(() => {
 
     // Create new markers
     const newMarkers = markers.map(markerData => {
-      const markerColor = getColorByRegistration(markerData.activity.registration_number);
+      const markerColor = getColorByRegistration(markerData.activity.machine_id);
       const marker = new google.maps.Marker({
         position: markerData.position,
         map: map,
-        title: `${markerData.activity.registration_number} - ${markerData.activity.eventType}`,
+        title: `${markerData.activity.machine_id} - ${markerData.activity.eventType}`,
         icon: {
          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
           <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="${markerColor}">
@@ -137,27 +138,33 @@ useEffect(() => {
       });
     }
   }, [map, markers, onMarkerClick]);
-
   return (
     <div className="relative w-full h-full">
       <div ref={mapRef} className="w-full h-full rounded-lg" />
       {/* Legend */}
-      {markers.length > 0 && (
-        <div className="absolute top-20 right-4 bg-white p-3 rounded-lg shadow-lg border border-gray-200 max-w-xs">
-          <h4 className="text-sm font-semibold text-gray-900 mb-2">Machine Id</h4>
-          <div className="space-y-1">
-            {Array.from(new Set(markers.map(m => m.activity.registration_number))).map(eventType => (
-              <div key={eventType} className="flex items-center gap-2">
-                <div 
-                  className="w-3 h-3 rounded-full" 
-                  style={{ backgroundColor: getColorByRegistration(eventType) }}
-                ></div>
-                <span className="text-xs text-gray-700">{eventType.replace('_', ' ')}</span>
-              </div>
-            ))}
-          </div>
+    {machineData && Object.keys(machineData).length > 0 && (
+      <div className="absolute top-20 right-4 bg-white p-3 rounded-lg shadow-lg border border-gray-200 max-w-xs">
+        <h4 className="text-sm font-semibold text-gray-900 mb-2">Machine Id</h4>
+
+        <div className="space-y-1">
+          {Array.from(
+            new Set(
+              Object.values(machineData).map(m => m.registration_number)
+            )
+          ).map(regNumber => (
+            <div key={regNumber} className="flex items-center gap-2">
+              <div
+                className="w-3 h-3 rounded-full"
+                style={{ backgroundColor: getColorByRegistration(regNumber) }}
+              ></div>
+              <span className="text-xs text-gray-700">
+                {regNumber.replace('_', ' ')}
+              </span>
+            </div>
+          ))}
         </div>
-      )}
+      </div>
+    )}
     </div>
   );
 };

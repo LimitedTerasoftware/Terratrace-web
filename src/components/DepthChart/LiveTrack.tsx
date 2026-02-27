@@ -49,7 +49,7 @@ function LiveTrack() {
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [isAutoRefresh, setIsAutoRefresh] = useState(true);
   const [Machine, setMachine] = useState('');
-  const { activities, totalCount, isLoading, error, refetch } = useActivities(selectedState, selectedDistrict, selectedBlock, Machine);
+  const { activities, totalCount, isLoading, error, refetch ,machineData} = useActivities(selectedState, selectedDistrict, selectedBlock, Machine);
   
   // Fetch all states
   const fetchStates = async () => {
@@ -347,55 +347,10 @@ function LiveTrack() {
         {/* Main Content */}
         <div className="p-6">
           <div className="space-y-6">
-            <StatsPanel activities={activities} totalCount={totalCount} isLoading={isLoading} />
+            <StatsPanel activities={machineData || {}} totalCount={totalCount} isLoading={isLoading} />
 
             <div>
 
-              {/* <div className="grid grid-cols-1 lg:grid-cols-4 gap-6"> */}
-              {/* Recent Activities */}
-              {/* <div className="lg:col-span-1">
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-        <div className="space-y-3 max-h-96 overflow-y-auto">
-          {activities.length === 0 && !isLoading ? (
-            <p className="text-gray-500 text-sm">No activities found.</p>
-          ) : (
-            activities.map(activity => {
-              const mapping = EVENT_TYPE_MAPPING[activity.eventType as keyof typeof EVENT_TYPE_MAPPING];
-              const hasLocation = mapping && activity[mapping.coordField as keyof Activity];
-              
-              return (
-                <div
-                  key={activity.id}
-                  className="bg-gray-50 p-4 rounded-lg border border-gray-100 hover:border-gray-300 cursor-pointer transition-colors"
-                  onClick={() => setSelectedActivity(activity)}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-900">{activity.link_name}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs px-2 py-1 bg-emerald-100 text-emerald-800 rounded">
-                        {activity.eventType}
-                      </span>
-                      {hasLocation && (
-                        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                          📍
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-600">
-                    Machine {activity.machine_id} • {new Date(activity.created_at).toLocaleString()}
-                  </p>
-                  {activity.depthMeters && (
-                    <p className="text-sm text-blue-600 mt-1">Depth: {activity.depthMeters}m</p>
-                  )}
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
-    </div> */}
 
               {/* Map */}
               <div className="lg:col-span-3">
@@ -403,6 +358,7 @@ function LiveTrack() {
                   <Wrapper apiKey={API_KEY} render={render}>
                     <MapComponent
                       markers={markers}
+                      machineData={machineData || {}}
                       onMarkerClick={handleMarkerClick} />
                   </Wrapper>
                 </div>

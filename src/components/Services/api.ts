@@ -100,6 +100,7 @@ export const useActivities = (
   const [error, setError] = useState<string | null>(null);
   const [totalCount,setTotalCount]=useState<number>(0);
   const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
+  const [machineData, setMachineData] = useState<{[key: string]: {machine_id: number; registration_number: string; authorised_person: string; activities: Activity[]}}>();
 
   const fetchActivities = useCallback(async () => {
     setIsLoading(true);
@@ -120,18 +121,26 @@ export const useActivities = (
       const data: ApiResponseMachine = await response.json();
       
       if (data.status && data.latestActivities) {
-       
-        const validActivities = data.latestActivities.filter(
-          (item): item is Activity => 'id' in item && typeof item.id === 'number'
-        );
-        setTotalCount(data.latestActivities.length)
-        setActivities(validActivities);
+          const allActivities: Activity[] = [];
+            Object.values(data.latestActivities).forEach(machineInfo => {
+              if (machineInfo.activities && machineInfo.activities.length > 0) {
+                allActivities.push(...machineInfo.activities);
+              }
+            });
+
+
+        setTotalCount(allActivities.length)
+        setActivities(allActivities);
+        setMachineData(data.latestActivities);
+
       } else {
         setActivities([]);
+        setMachineData({});
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setActivities([]);
+      setMachineData({});
     } finally {
       setIsLoading(false);
     }
@@ -153,6 +162,7 @@ export const useActivities = (
 
   return {
     activities,
+    machineData,
     totalCount,
     isLoading,
     error,

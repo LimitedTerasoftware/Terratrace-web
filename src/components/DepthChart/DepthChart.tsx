@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { DepthDataPoint, ChartPoint } from '../../types/survey';
 import { AlertTriangle, TrendingDown, Ruler, X } from 'lucide-react';
-import { getDistanceFromLatLonInMeters } from '../../utils/calculations';
 
 interface DepthChartProps {
   depthData: DepthDataPoint[];
@@ -15,78 +14,158 @@ interface SelectedPoint {
   data: DepthDataPoint;
 }
 
+interface SurveyGroup {
+  survey_id: number | null;
+  points: ChartPoint[];
+  startDistance: number;
+  endDistance: number;
+  totalDistance: number;
+  color: string;
+  link_name:string;
+}
+
 export const DepthChart: React.FC<DepthChartProps> = ({ 
   depthData, 
   minDepth = 1.65 
 }) => {
   const [selectedPoints, setSelectedPoints] = useState<SelectedPoint[]>([]);
 
-    const getLatLng = (point: any): { lat: number; lng: number } | null => {
-      let coord: string | null | undefined = null;
+  const getLatLng = (point: any): { lat: number; lng: number } | null => {
+    let coord: string | null | undefined = null;
 
-      switch (point.eventType) {
-        case 'DEPTH':
-          coord = point.depthLatlong;
-          break;
-        case 'STARTPIT':
-          coord = point.startPitLatlong;
-          break;
-        case 'ENDPIT':
-          coord = point.endPitLatlong;
-          break;
-        case 'JOINTCHAMBER':
-          coord = point.jointChamberLatLong;
-        case 'MANHOLES':
-          coord = point.manholeLatLong;
-          break;  
-        default:
-          coord = point.depthLatlong || point.startPitLatlong || point.endPitLatlong || point.jointChamberLatLong || point.manholeLatLong || null;
+    switch (point.eventType) {
+      case 'DEPTH':
+        coord = point.depthLatlong;
+        break;
+      case 'STARTPIT':
+        coord = point.startPitLatlong;
+        break;
+      case 'ENDPIT':
+        coord = point.endPitLatlong;
+        break;
+      case 'JOINTCHAMBER':
+        coord = point.jointChamberLatLong;
+        break;
+      case 'MANHOLES':
+        coord = point.manholeLatLong;
+        break;  
+      default:
+        coord = point.depthLatlong || point.startPitLatlong || point.endPitLatlong || point.jointChamberLatLong || point.manholeLatLong || null;
+    }
+
+    if (!coord) return null;
+
+    const [latStr, lngStr] = coord.split(',');
+    const lat = parseFloat(latStr);
+    const lng = parseFloat(lngStr);
+
+    if (isNaN(lat) || isNaN(lng)) return null;
+
+    return { lat, lng };
+  };
+
+  const getDistanceFromLatLonInMeters = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371000; // Radius of the earth in meters
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const d = R * c; // Distance in meters
+    return d;
+  };
+
+  const deg2rad = (deg: number): number => {
+    return deg * (Math.PI/180);
+  };
+
+  const surveyColors = [
+    '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', 
+    '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1'
+  ];
+
+  const { chartData, surveyGroups } = useMemo(() => {
+    // Group data by survey_id
+    const surveyMap = new Map<number| null, DepthDataPoint[]>();
+    
+    depthData.forEach(point => {
+      const surveyId = point.survey_id || null;
+      const link_name = `${point.start_lgd_name}_${point.end_lgd_name}`;
+      if (!surveyMap.has(surveyId)) {
+        surveyMap.set(surveyId, []);
       }
+      surveyMap.get(surveyId)!.push({...point, link_name}); 
+    });
 
-      if (!coord) return null;
+    let globalCumulativeDistance = 0;
+    const allChartData: ChartPoint[] = [];
+    const groups: SurveyGroup[] = [];
 
-      const [latStr, lngStr] = coord.split(',');
-      const lat = parseFloat(latStr);
-      const lng = parseFloat(lngStr);
+    Array.from(surveyMap.entries()).forEach(([surveyId, points], surveyIndex) => {
+      let surveyCumulativeDistance = 0;
+      const surveyStartDistance = globalCumulativeDistance;
+      const surveyColor = surveyColors[surveyIndex % surveyColors.length];
+      
+      const surveyChartData = points.map((point, index) => {
+        const depthValue = parseFloat(point.depthMeters);
+        const current = getLatLng(point);
+        const prev = index > 0 ? getLatLng(points[index - 1]) : null;
 
-      if (isNaN(lat) || isNaN(lng)) return null;
+        if (current && prev) {
+          const segmentDistance = getDistanceFromLatLonInMeters(
+            prev.lat,
+            prev.lng,
+            current.lat,
+            current.lng
+          );
+          surveyCumulativeDistance += segmentDistance;
+        }
 
-      return { lat, lng };
+        const chartPoint: ChartPoint = {
+          distance: Math.round(globalCumulativeDistance + surveyCumulativeDistance),
+          depth: isNaN(depthValue) ? 0 : depthValue,
+          isBelowMinimum: !isNaN(depthValue) && depthValue < minDepth,
+          originalData: point,
+          eventType: point.eventType,
+          survey_id: point.survey_id
+        };
+
+        return chartPoint;
+      });
+
+      // Sort survey data by distance
+      surveyChartData.sort((a, b) => a.distance - b.distance);
+      
+      const surveyEndDistance = surveyChartData.length > 0 
+        ? surveyChartData[surveyChartData.length - 1].distance 
+        : surveyStartDistance;
+
+      groups.push({
+        link_name: points[0].link_name,
+        survey_id: surveyId,
+        points: surveyChartData,
+        startDistance: surveyStartDistance,
+        endDistance: surveyEndDistance,
+        totalDistance: surveyCumulativeDistance,
+        color: surveyColor
+      });
+
+      allChartData.push(...surveyChartData);
+      globalCumulativeDistance = surveyEndDistance + 50; // Add gap between surveys
+    });
+
+    return {
+      chartData: allChartData.sort((a, b) => a.distance - b.distance),
+      surveyGroups: groups
     };
-
-  const chartData = useMemo(() => {
-    let cumulativeDistance = 0;
-    return depthData
-    .map((point, index) => {
-      const depthValue = parseFloat(point.depthMeters);
-      const current = getLatLng(point);
-      const prev = index > 0 ? getLatLng(depthData[index - 1]) : null;
-
-      if (current && prev) {
-        const segmentDistance = getDistanceFromLatLonInMeters(
-          prev.lat,
-          prev.lng,
-          current.lat,
-          current.lng
-        );
-
-        cumulativeDistance += segmentDistance;
-      }
-      return {
-        distance: Math.round(cumulativeDistance),
-        depth: isNaN(depthValue) ? 0 : depthValue,
-        isBelowMinimum: !isNaN(depthValue) && depthValue < minDepth,
-        originalData: point,
-        eventType: point.eventType
-      };
-    })
-    .sort((a, b) => a.distance - b.distance);
-}, [depthData, minDepth]);
+  }, [depthData, minDepth]);
 
   const chartDimensions = {
-    width: 800,
-    height: 400,
-    margin: { top: 60, right: 30, bottom: 20, left: 60 }
+    width: Math.max(1000, chartData.length * 40), 
+    height: 600,
+    margin: { top: 100, right: 30, bottom: 60, left: 60 }
   };
 
   const { width, height, margin } = chartDimensions;
@@ -94,26 +173,17 @@ export const DepthChart: React.FC<DepthChartProps> = ({
   const innerHeight = height - margin.top - margin.bottom;
 
   const maxDistance = Math.max(...chartData.map(d => d.distance), 100);
+  const totalDistance = surveyGroups.reduce(
+    (sum, survey) => sum + survey.totalDistance,
+    0
+  );
   const validDepths = chartData
-  .map(d => d.depth)
-  .filter((depth): depth is number => depth !== null);
+    .map(d => d.depth)
+    .filter((depth): depth is number => depth !== null);
   const maxDepth = validDepths.length > 0 ? Math.max(...validDepths, minDepth + 0.5) : minDepth + 0.5;
 
-  // const maxDepth = Math.max(...chartData.map(d => d.depth), minDepth + 0.5);
-
   const xScale = (distance: number) => (distance / maxDistance) * innerWidth;
-  // Reversed Y scale: 0 depth at top, max depth at bottom
   const yScale = (depth: number) => (depth / maxDepth) * innerHeight;
-
-  const pathData = chartData.reduce((path, point, index) => {
-    const x = xScale(point.distance);
-    const y = yScale(point.depth);
-    return index === 0 ? `M ${x} ${y}` : `${path} L ${x} ${y}`;
-  }, '');
-
-  const criticalAreas = chartData.filter(point => point.isBelowMinimum);
-  const belowMinimumCount = criticalAreas.length;
-  const totalPoints = chartData.length;
 
   const handlePointClick = (point: ChartPoint, index: number) => {
     const selectedPoint: SelectedPoint = {
@@ -124,18 +194,15 @@ export const DepthChart: React.FC<DepthChartProps> = ({
     };
 
     setSelectedPoints(prev => {
-      // If this point is already selected, remove it
       const existingIndex = prev.findIndex(p => p.index === index);
       if (existingIndex !== -1) {
         return prev.filter((_, i) => i !== existingIndex);
       }
 
-      // If we already have 2 points, replace the first one
       if (prev.length >= 2) {
         return [prev[1], selectedPoint];
       }
 
-      // Add the new point
       return [...prev, selectedPoint];
     });
   };
@@ -154,13 +221,21 @@ export const DepthChart: React.FC<DepthChartProps> = ({
     return Math.abs(selectedPoints[1].depth - selectedPoints[0].depth);
   };
 
-  const getPointColor = (index: number, isBelowMinimum: boolean, eventType?: string) => {
-   
+  const getPointColor = (index: number, isBelowMinimum: boolean, eventType?: string, surveyId?: number | null) => {
     const selectedIndex = selectedPoints.findIndex(p => p.index === index);
     if (selectedIndex !== -1) {
-      return selectedIndex === 0 ? "#10B981" : "#8B5CF6"; // Green for first, Purple for second
+      return selectedIndex === 0 ? "#10B981" : "#8B5CF6";
     }
-    if (eventType === "STARTPIT" || eventType === "ENDPIT" || eventType === "JOINTCHAMBER" || eventType === "MANHOLES") return "#F59E0B"; // Yellow for start/end pit points
+    if (eventType === "STARTPIT") return "#F59E0B";
+    if (eventType === "ENDPIT") return "#008000";
+    if (eventType === "JOINTCHAMBER" || eventType === "MANHOLES") return "#CD7F32";
+    
+    // Use survey-specific color for regular depth points
+    const surveyGroup = surveyGroups.find(g => g.survey_id === surveyId);
+    if (surveyGroup && !isBelowMinimum) {
+      return surveyGroup.color;
+    }
+    
     return isBelowMinimum ? "#EF4444" : "#3B82F6";
   };
 
@@ -171,11 +246,15 @@ export const DepthChart: React.FC<DepthChartProps> = ({
     return isBelowMinimum ? 6 : 4;
   };
 
+  const criticalAreas = chartData.filter(point => point.isBelowMinimum);
+  const belowMinimumCount = criticalAreas.length;
+  const totalPoints = chartData.length;
+
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Depth Analysis Chart</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Multi-Survey Depth Analysis Chart</h2>
           <p className="text-gray-600 mt-1">
             Minimum Required Depth: {minDepth}m (Surface to Bottom View)
           </p>
@@ -200,6 +279,8 @@ export const DepthChart: React.FC<DepthChartProps> = ({
           )}
         </div>
       </div>
+
+    
 
       {/* Distance Measurement Panel */}
       {selectedPoints.length > 0 && (
@@ -255,7 +336,7 @@ export const DepthChart: React.FC<DepthChartProps> = ({
         </div>
       )}
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto max-w-full max-h-[600px]">
         <svg 
           width={width} 
           height={height}
@@ -270,9 +351,64 @@ export const DepthChart: React.FC<DepthChartProps> = ({
               <stop offset="0%" stopColor="#EF4444" stopOpacity="0.1" />
               <stop offset="100%" stopColor="#EF4444" stopOpacity="0.8" />
             </linearGradient>
+            {surveyGroups.map((survey, index) => (
+              <linearGradient key={survey.survey_id} id={`surveyGradient${index}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor={survey.color} stopOpacity="0.1" />
+                <stop offset="100%" stopColor={survey.color} stopOpacity="0.3" />
+              </linearGradient>
+            ))}
           </defs>
 
           <g transform={`translate(${margin.left}, ${margin.top})`}>
+            {/* Survey separation lines and labels */}
+            {surveyGroups.map((survey, index) => (
+              <g key={survey.survey_id}>
+                {/* Survey background area */}
+                <rect
+                  x={xScale(survey.startDistance)}
+                  y={0}
+                  width={xScale(survey.endDistance) - xScale(survey.startDistance)}
+                  height={innerHeight}
+                  fill={`url(#surveyGradient${index})`}
+                  opacity="0.2"
+                />
+                
+                {/* Survey start line */}
+                <line
+                  x1={xScale(survey.startDistance)}
+                  y1={0}
+                  x2={xScale(survey.startDistance)}
+                  y2={innerHeight}
+                  stroke={survey.color}
+                  strokeWidth="2"
+                  strokeDasharray="3,3"
+                  opacity="0.6"
+                />
+                
+                {/* Survey label at top */}
+                <text
+                  x={xScale(survey.startDistance) + (xScale(survey.endDistance) - xScale(survey.startDistance)) / 2}
+                  y={-60}
+                  textAnchor="middle"
+                  className="text-sm font-bold"
+                  fill={survey.color}
+                >
+                  Survey {survey.survey_id}
+                </text>
+                
+                {/* Survey distance label */}
+                <text
+                  x={xScale(survey.startDistance) + (xScale(survey.endDistance) - xScale(survey.startDistance)) / 2}
+                  y={-40}
+                  textAnchor="middle"
+                  className="text-xs"
+                  fill={survey.color}
+                >
+                  {survey.totalDistance.toFixed(0)}m
+                </text>
+              </g>
+            ))}
+
             {/* Grid lines - horizontal */}
             {[0, 0.25, 0.5, 0.75, 1].map(ratio => (
               <g key={ratio}>
@@ -348,79 +484,41 @@ export const DepthChart: React.FC<DepthChartProps> = ({
               Min Depth ({minDepth}m)
             </text>
 
-            {/* Area fill under curve */}
-            <path
-              d={`M 0 0 ${pathData} L ${xScale(maxDistance)} 0 Z`}
-              fill="url(#depthGradient)"
-              opacity="0.3"
-            />
-
-            {/* Critical areas highlighting - areas above minimum depth line */}
-            {/* {criticalAreas.map((point, index) => {
+            {/* Critical areas highlighting */}
+            {criticalAreas.map((point, index) => {
+              const originalIndex = chartData.indexOf(point);
               const x = xScale(point.distance);
-              const nextPoint = chartData[chartData.indexOf(point) + 1];
-              const nextX = nextPoint ? xScale(nextPoint.distance) : x + 20;
-              
+
+              const nextPoint = originalIndex < chartData.length - 1 ? chartData[originalIndex + 1] : null;
+              const prevPoint = originalIndex > 0 ? chartData[originalIndex - 1] : null;
+
+              const isNextCritical = nextPoint?.isBelowMinimum;
+              const isPrevCritical = prevPoint?.isBelowMinimum;
+
+              let rectX = x;
+              let rectWidth = 8;
+
+              if (isNextCritical) {
+                const nextX = xScale(nextPoint.distance);
+                rectWidth = nextX - x;
+              } else if (isPrevCritical) {
+                return null;
+              } else {
+                rectX = x - rectWidth / 2;
+              }
+
               return (
                 <rect
-                  key={index}
-                  x={x - 5}
+                  key={originalIndex}
+                  x={rectX}
                   y={0}
-                  width={Math.max(10, nextX - x)}
+                  width={Math.max(4, rectWidth)}
                   height={yScale(minDepth)}
                   fill="url(#criticalGradient)"
                   opacity="0.4"
                 />
               );
-            })} */}
-            {criticalAreas.map((point, index) => {
-                const originalIndex = chartData.indexOf(point);
-                const x = xScale(point.distance);
-
-                const nextPoint =
-                  originalIndex < chartData.length - 1
-                    ? chartData[originalIndex + 1]
-                    : null;
-
-                const prevPoint =
-                  originalIndex > 0
-                    ? chartData[originalIndex - 1]
-                    : null;
-
-                const isNextCritical = nextPoint?.isBelowMinimum;
-                const isPrevCritical = prevPoint?.isBelowMinimum;
-
-                let rectX = x;
-                let rectWidth = 8; // default small width for single critical point
-
-                // If next point is also critical → extend to next point
-                if (isNextCritical) {
-                  const nextX = xScale(nextPoint.distance);
-                  rectWidth = nextX - x;
-                }
-                // else if previous is critical → skip to avoid duplicate drawing
-                else if (isPrevCritical) {
-                  return null;
-                }
-                // else single critical point → keep small width centered
-                else {
-                  rectX = x - rectWidth / 2;
-                }
-
-                return (
-                  <rect
-                    key={originalIndex}
-                    x={rectX}
-                    y={0}
-                    width={Math.max(4, rectWidth)}
-                    height={yScale(minDepth)}
-                    fill="url(#criticalGradient)"
-                    opacity="0.4"
-                  />
-                );
-              })}
-
-  
+            })}
 
             {/* Connection line between selected points */}
             {selectedPoints.length === 2 && (
@@ -436,15 +534,27 @@ export const DepthChart: React.FC<DepthChartProps> = ({
               />
             )}
 
-            {/* Main depth line */}
-            <path
-              d={pathData}
-              fill="none"
-              stroke="#3B82F6"
-              strokeWidth="3"
-              strokeLinejoin="round"
-              strokeLinecap="round"
-            />
+            {/* Survey-specific depth lines */}
+            {surveyGroups.map((survey, index) => {
+              const pathData = survey.points.reduce((path, point, pointIndex) => {
+                const x = xScale(point.distance);
+                const y = yScale(point.depth);
+                return pointIndex === 0 ? `M ${x} ${y}` : `${path} L ${x} ${y}`;
+              }, '');
+
+              return (
+                <path
+                  key={survey.survey_id}
+                  d={pathData}
+                  fill="none"
+                  stroke={survey.color}
+                  strokeWidth="3"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  opacity="0.8"
+                />
+              );
+            })}
 
             {/* Data points */}
             {chartData.map((point, index) => (
@@ -452,16 +562,18 @@ export const DepthChart: React.FC<DepthChartProps> = ({
                 <circle
                   cx={xScale(point.distance)}
                   cy={yScale(point.depth)}
-                  r={getPointRadius(index, point.isBelowMinimum,point.eventType)}
-                  fill={getPointColor(index, point.isBelowMinimum,point.eventType)}
+                  r={getPointRadius(index, point.isBelowMinimum, point.eventType)}
+                  fill={getPointColor(index, point.isBelowMinimum, point.eventType, point.survey_id)}
                   stroke="white"
                   strokeWidth="2"
                   className="cursor-pointer hover:opacity-80 transition-all duration-200"
                   onClick={() => handlePointClick(point, index)}
                 >
                   <title>
+                    Survey: {point.survey_id}
                     Distance: {point.distance}m
                     Depth: {point.depth}m
+                    Type: {point.eventType}
                     {point.isBelowMinimum ? ' (Below Minimum!)' : ''}
                     Click to select for distance measurement
                   </title>
@@ -476,7 +588,6 @@ export const DepthChart: React.FC<DepthChartProps> = ({
                     ⚠
                   </text>
                 )}
-                {/* Selection indicators */}
                 {selectedPoints.some(p => p.index === index) && (
                   <text
                     x={xScale(point.distance)}
@@ -490,7 +601,7 @@ export const DepthChart: React.FC<DepthChartProps> = ({
               </g>
             ))}
 
-            {/* Distance labels at the top */}
+            {/* Total distance labels at the top */}
             {[0, 0.2, 0.4, 0.6, 0.8, 1].map(ratio => (
               <text
                 key={ratio}
@@ -506,11 +617,11 @@ export const DepthChart: React.FC<DepthChartProps> = ({
             {/* Axis labels */}
             <text
               x={innerWidth / 2}
-              y={-45}
+              y={-80}
               textAnchor="middle"
               className="text-sm font-medium fill-gray-700"
             >
-              Distance (meters)
+              Total Distance (meters)
             </text>
             <text
               x={-50}
@@ -525,45 +636,60 @@ export const DepthChart: React.FC<DepthChartProps> = ({
         </svg>
       </div>
 
-      {/* Legend */}
-      <div className="flex items-center justify-center space-x-6 mt-4 p-4 bg-gray-50 rounded-lg">
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-0.5 bg-gray-800"></div>
-          <span className="text-sm text-gray-700">Surface Level</span>
+      {/* Enhanced Legend */}
+      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+        <div className="flex flex-wrap items-center justify-center gap-6 mb-4">
+          <div className="flex items-center space-x-2">
+            <div className="w-4 h-0.5 bg-gray-800"></div>
+            <span className="text-sm text-gray-700">Surface Level</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-4 h-0.5 bg-red-500 border-dashed"></div>
+            <span className="text-sm text-gray-700">Minimum Depth ({minDepth}m)</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-4 h-4 bg-red-500 opacity-40"></div>
+            <span className="text-sm text-gray-700">Critical Areas</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+            <span className="text-sm text-gray-700">Point 1</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+            <span className="text-sm text-gray-700">Point 2</span>
+          </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-0.5 bg-blue-500"></div>
-          <span className="text-sm text-gray-700">Depth Measurement</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-0.5 bg-red-500 border-dashed"></div>
-          <span className="text-sm text-gray-700">Minimum Depth ({minDepth}m)</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 bg-red-500 opacity-40"></div>
-          <span className="text-sm text-gray-700">Critical Areas</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-          <span className="text-sm text-gray-700">Point 1</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-          <span className="text-sm text-gray-700">Point 2</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-          <span className="text-sm text-gray-700">Startpit/endpit Point</span>
+        
+        <div className="flex flex-wrap items-center justify-center gap-4">
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+            <span className="text-sm text-gray-700">Start Pit</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-green-600 rounded-full"></div>
+            <span className="text-sm text-gray-700">End Pit</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-orange-600 rounded-full"></div>
+            <span className="text-sm text-gray-700">Joint Chamber/Manholes</span>
+          </div>
         </div>
       </div>
 
       {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-6">
         <div className="bg-blue-50 p-4 rounded-lg">
           <div className="text-2xl font-bold text-blue-600">
+            {surveyGroups.length}
+          </div>
+          <div className="text-sm text-blue-700">Total Surveys</div>
+        </div>
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <div className="text-2xl font-bold text-gray-600">
             {totalPoints}
           </div>
-          <div className="text-sm text-blue-700">Total Measurements</div>
+          <div className="text-sm text-gray-700">Total Measurements</div>
         </div>
         <div className="bg-green-50 p-4 rounded-lg">
           <div className="text-2xl font-bold text-green-600">
@@ -582,6 +708,40 @@ export const DepthChart: React.FC<DepthChartProps> = ({
             {totalPoints > 0 ? Math.round((belowMinimumCount / totalPoints) * 100) : 0}%
           </div>
           <div className="text-sm text-yellow-700">Critical Rate</div>
+        </div>
+      </div>
+        {/* Survey Information Panel */}
+      <div className="bg-gray-50 rounded-lg p-4 mb-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-3">Survey Overview</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {surveyGroups.map((survey, index) => (
+            <div key={survey.survey_id} className="bg-white rounded-lg p-3 border-l-4" style={{ borderLeftColor: survey.color }}>
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium text-gray-900">Survey {survey.survey_id}</h4>
+                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: survey.color }}></div>
+              </div>
+              <div className="mt-2 space-y-1">
+                <></>
+                <p className="text-sm text-gray-600">
+                  Link Name: <span className="font-medium">{survey.link_name}</span>
+                </p>
+                <p className="text-sm text-gray-600">
+                  Distance: <span className="font-medium">{survey.totalDistance.toFixed(0)}m</span>
+                </p>
+                <p className="text-sm text-gray-600">
+                  Points: <span className="font-medium">{survey.points.length}</span>
+                </p>
+                <p className="text-sm text-gray-600">
+                  Range: <span className="font-medium">{survey.startDistance}m - {survey.endDistance}m</span>
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+          <p className="text-sm text-blue-800">
+            <span className="font-medium">Total Distance:</span> {totalDistance.toFixed(0)}m across {surveyGroups.length} surveys
+          </p>
         </div>
       </div>
     </div>
