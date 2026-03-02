@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { Activity, VideoDetails, } from '../../types/survey';
 import { useLocation } from 'react-router-dom';
 import DataTable, { TableColumn } from 'react-data-table-component';
-import { Folder, SheetIcon, Image as ImageIcon, Video } from 'lucide-react';
+import { Folder, SheetIcon, Image as ImageIcon, Video, Image, Edit2Icon } from 'lucide-react';
 import axios from 'axios';
 import { FaArrowLeft } from 'react-icons/fa';
 import IndexChart from './index';
@@ -14,6 +14,7 @@ import * as XLSX from "xlsx";
 import { getDistanceFromLatLonInMeters } from '../../utils/calculations';
 import { hasViewOnlyAccess } from '../../utils/accessControl';
 import { ToastContainer, toast } from "react-toastify";
+import { EditModal } from './EditModal';
 
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -51,6 +52,7 @@ function Eventreport() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
     const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | null>(null);
+    const [editModalOpen, setEditModalOpen] = useState(false);
     const viewOnly = hasViewOnlyAccess();
     
     // New state for media carousel
@@ -120,6 +122,11 @@ function Eventreport() {
     const closeModal = () => {
         setIsModalOpen(false);
         setSelectedActivity(null);
+    };
+    const onOpenEdit = (activity: Activity) => {
+        setSelectedActivity(activity);
+        setEditModalOpen(true);
+
     };
     const getLatLongForEvent = (row: Activity) => {
         switch (row.eventType) {
@@ -377,12 +384,17 @@ function Eventreport() {
         {
             name: "Actions",
             cell: (row: Activity) => (
-                <button
+                <><button
                     onClick={() => openModal(row)}
                     className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 outline-none dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-800 transition-colors"
                 >
-                    Edit Image
-                </button>
+                    <Image className="w-3 h-3 mr-1" />
+                </button><button
+                    onClick={() => onOpenEdit(row)}
+                    className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 outline-none dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-800 transition-colors"
+                >
+                        <Edit2Icon className="w-3 h-3 mr-1" />
+                    </button></>
             ),
             ignoreRowClick: true,
             allowOverflow: true,
@@ -923,6 +935,16 @@ function Eventreport() {
                 activity={selectedActivity}
                 baseUrl={baseUrl}
                 onUpdate={() => getData()}
+            />
+            <EditModal
+                activity={selectedActivity}
+                isOpen={editModalOpen}
+                onClose={() => setEditModalOpen(false)}
+                onUpdate={() => {
+                    setEditModalOpen(false);
+                    getData();
+                }}
+                baseUrl={TraceBASEURL}
             />
 
             {zoomImage && (
