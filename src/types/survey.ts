@@ -262,6 +262,7 @@ export interface Activity {
   routeFeaturePhotos:string|null;
   routeFeatureType:string|null;
   cable_stack:string|null;
+  offset:string|null;
  }
 
 export interface ApiResponseMachine {

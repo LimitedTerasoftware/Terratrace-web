@@ -12,7 +12,7 @@ import ImageModal from './ImageUploadModal';
 import MediaCarousel from './MediaCarousel';
 import * as XLSX from "xlsx";
 import { getDistanceFromLatLonInMeters } from '../../utils/calculations';
-import { hasViewOnlyAccess } from '../../utils/accessControl';
+import { hasViewOnlyAccess, isAdminUser } from '../../utils/accessControl';
 import { ToastContainer, toast } from "react-toastify";
 import { EditModal } from './EditModal';
 
@@ -54,7 +54,7 @@ function Eventreport() {
     const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | null>(null);
     const [editModalOpen, setEditModalOpen] = useState(false);
     const viewOnly = hasViewOnlyAccess();
-    
+    const AdminAcess = isAdminUser();
     // New state for media carousel
     const [isCarouselOpen, setIsCarouselOpen] = useState<boolean>(false);
     const [carouselMedia, setCarouselMedia] = useState<MediaItem[]>([]);
@@ -381,25 +381,34 @@ function Eventreport() {
 
 
     const columns: TableColumn<Activity>[] = [
-        {
+        ...(AdminAcess
+        ? [
+            {
             name: "Actions",
             cell: (row: Activity) => (
-                <><button
+                <>
+                <button
                     onClick={() => openModal(row)}
                     className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 outline-none dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-800 transition-colors"
                 >
                     <Image className="w-3 h-3 mr-1" />
-                </button><button
+                </button>
+
+                <button
                     onClick={() => onOpenEdit(row)}
                     className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 outline-none dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-800 transition-colors"
                 >
-                        <Edit2Icon className="w-3 h-3 mr-1" />
-                    </button></>
+                    <Edit2Icon className="w-3 h-3 mr-1" />
+                </button>
+                </>
             ),
             ignoreRowClick: true,
             allowOverflow: true,
             button: true,
-        },
+            },
+        ]
+        : []),
+
         {name:"Event Id", selector: row => row.id || "-", sortable: true},
         {name:"Survey ID", selector: row => row.survey_id || "-", sortable: true},
         { name: "Machine ID", selector: row => row.machine_registration_number || "-", sortable: true },
@@ -576,7 +585,7 @@ function Eventreport() {
         { name: "Crossing Length", selector: row => row.crossingLength || "-", sortable: true },
         { name: "Road Width", selector: row => row.roadWidth || "-", sortable: true },
         { name: "Center To Margin", selector: row => row.road_margin || "-", sortable: true },
-        { name: "Offset", selector: row => '', sortable: true },
+        { name: "Offset", selector: row => row.offset || "-", sortable: true },
         { name: "Route Feasible", selector: row => row.Roadfesibility || "-", sortable: true },
         { name: "Depth Meters", selector: row => row.depthMeters || "-", sortable: true },
         { name: "Distance Meters", selector: row => row.distance  || "-", sortable: true },
@@ -643,7 +652,7 @@ function Eventreport() {
     "Survey Id","State Name", "District Name", "Block Name", "Start GP Name",  "End GP Name","Machine Registration Number","Firm Name","Event Type","Latitude","Longitude",
     "Images","Videos","Cable Stack","Route Belongs To", "Road Type","Cable Laid On", "Soil Type", "Crossing Type", "Crossing Length","Execution Modality", "Depth (Meters)",
     "Distance","DGPS Accuracy","DGPS SIV","Road Width","Landmark Type","Landmark Description", "Route Feature Type","Road Feasibility", "Area Type",
-    "Road Margin","Vehicle Image", "End Pit Doc", "Authorised Person","Contractor Details", "Vehicle Serial No","Created At", "Updated At",
+    "Road Margin","Offset","Vehicle Image", "End Pit Doc", "Authorised Person","Contractor Details", "Vehicle Serial No","Created At", "Updated At",
   ];
 
   // Map Data in the Same Order as Headers
@@ -717,7 +726,7 @@ function Eventreport() {
     item.distance,item.dgps_accuracy,item.dgps_siv,item.roadWidth, item.landmark_type,item.landmark_description,item.routeFeatureType,item.Roadfesibility, item.area_type,formatPoleForExcel(poleTypeData),      // Pole Type
     formatPoleForExcel(existingPoleData),  // Existing Pole
     formatPoleForExcel(newPoleData),
-    item.road_margin,VehicalImg,downloadUrl,item.authorised_person,item.contractor_details, item.vehicleserialno,item.created_at, item.updated_at
+    item.road_margin,item.offset,VehicalImg,downloadUrl,item.authorised_person,item.contractor_details, item.vehicleserialno,item.created_at, item.updated_at
   ];});
 
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);

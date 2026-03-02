@@ -246,6 +246,7 @@ const addDistancesToData = (data: Activity[]) => {
   { name: "Crossing Type", selector: row => row.crossingType ?? '-', sortable: true },
   { name: "Crossing Length", selector: row => row.crossingLength ?? '-', sortable: true },
   { name: "Execution Modality", selector: row => row.executionModality ?? '-', sortable: true },
+  {name:"Offset", selector: row => row.offset ?? '-', sortable: true},
   { name: "Distance (m)", selector: row => row.distance ?? '-', sortable: true },
   { name: "Depth (m)", selector: row => row.depthMeters ?? '-', sortable: true },
   { name: "Landmark Type", selector: row => row.landmark_type ?? '-', sortable: true },

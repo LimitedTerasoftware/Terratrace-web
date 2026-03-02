@@ -111,6 +111,7 @@ export function EditModal({ activity, isOpen, onClose, onUpdate, baseUrl }: Edit
     { key: 'road_margin', label: 'Road Margin', type: 'text' },
     { key: 'Roadfesibility', label: 'Road Feasibility', type: 'text' },
     { key: 'depthMeters', label: 'Depth (Meters)', type: 'text' },
+    {key:'offset', label:'Offset', type:'text'},
     { key: 'dgps_accuracy', label: 'DGPS Accuracy', type: 'text' },
     { key: 'dgps_siv', label: 'DGPS SIV', type: 'number' },
     { key: 'cable_stack', label: 'Cable Stack', type: 'text' },

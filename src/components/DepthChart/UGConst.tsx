@@ -145,6 +145,11 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview }) => {
 
   const columns: TableColumn<UGConstructionSurveyData>[] = [
     {
+      name: "Survey ID",
+      selector: row => row.id,
+      sortable: true,
+    },
+    {
       name: "State",
       selector: row => row.state_name,
       sortable: true,
