@@ -249,28 +249,34 @@ const getEventPhotos = (event: Activity): string[] => {
               )}
             </div>
           )}
-          {typeof event.videoDetails === "string" && (() => {
-                  const parsedVideoDetails = event?.videoDetails ? JSON.parse(event?.videoDetails) : null;
+         {typeof event.videoDetails === "string" && (() => {
+          try {
+            const parsedVideoDetails = JSON.parse(event.videoDetails);
 
-                  const mainVideoUrl = parsedVideoDetails.videoUrl?.trim().replace(/(^"|"$)/g, '');
+            const mainVideoUrl = parsedVideoDetails?.videoUrl
+              ? parsedVideoDetails.videoUrl.trim().replace(/(^"|"$)/g, '')
+              : null;
 
-                  if (mainVideoUrl) {
-                    return (
-                      <iframe
-                        width="100%"
-                        height="180"
-                        src={`${baseUrl}${mainVideoUrl}`}
-                        frameBorder="0"
-                        allow="autoplay; encrypted-media"
-                        allowFullScreen
-                        title={`Video-${event.eventType}`}
-                      />
-                     
-                    );
-                  } else {
-                    return <p>No video available.</p>;
-                  }
-            })()}
+            if (mainVideoUrl) {
+              return (
+                <iframe
+                  width="100%"
+                  height="180"
+                  src={`${baseUrl}${mainVideoUrl}`}
+                  frameBorder="0"
+                  allow="autoplay; encrypted-media"
+                  allowFullScreen
+                  title={`Video-${event.eventType}`}
+                />
+              );
+            }
+
+            return <p>No video available.</p>;
+
+          } catch (error) {
+            return <p>No video available.</p>;
+          }
+        })()}
         </div>
       </div>
     </div>

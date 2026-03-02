@@ -251,7 +251,7 @@ export interface Activity {
   holdLatlong:string;
   firm_name:string;
   dgps_accuracy:string; 
-  dgps_siv:number;
+  dgps_siv:number|0;
   blowingPhotos:string;
   blowingLatLong:string;
   videoDetails:VideoDetails | null;
