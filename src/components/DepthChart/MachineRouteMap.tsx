@@ -515,6 +515,10 @@ const MachineRouteMap: React.FC<MachineRouteMapProps> = ({ machineId }) => {
   const averageDepth = depthActivities.length > 0 
     ? depthActivities.reduce((sum, a) => sum + parseFloat(a.depthMeters || '0'), 0) / depthActivities.length 
     : 0;
+  const totalDepthDistance = depthActivities.length > 1
+       ? depthActivities.reduce((sum, a) => sum + parseFloat(a.distance || '0'), 0)
+    : 0;
+
 
   const uniqueEventTypes = Array.from(new Set(activities.map(a => a.eventType)));
 
@@ -538,19 +542,10 @@ const MachineRouteMap: React.FC<MachineRouteMapProps> = ({ machineId }) => {
             </div>
             {/* <p className="text-lg font-bold text-gray-900">{totalDistance.toFixed(2)} km</p> */}
              <p className="text-lg font-bold text-gray-900">
-              {depthEventsDistance ? `${depthEventsDistance.toFixed(2)} km` : 0}
+              {totalDepthDistance ? `${totalDepthDistance.toFixed(2)} km` : 0}
             </p>
           </div>
-          
-          {/* <div className="bg-white p-3 rounded-lg border border-gray-200">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-purple-600" />
-              <span className="text-sm font-medium text-gray-600">Depth Events Distance</span>
-            </div>
-            <p className="text-lg font-bold text-gray-900">
-              {depthEventsDistance ? `${depthEventsDistance.toFixed(2)} km` : 'N/A'}
-            </p>
-          </div> */}
+       
            <div className="bg-white p-3 rounded-lg border border-gray-200">
            <div className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-purple-600" />

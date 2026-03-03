@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, ChevronLeft, ChevronRight, Image as ImageIcon, Video } from 'lucide-react';
 
 interface MediaItem {
@@ -21,8 +21,20 @@ const MediaCarousel: React.FC<MediaCarouselProps> = ({
   initialIndex = 0
 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  useEffect(() => {
+  if (isOpen) {
+    const safeIndex =
+      initialIndex >= 0 && initialIndex < mediaItems.length
+        ? initialIndex
+        : 0;
+
+    setCurrentIndex(safeIndex);
+  }
+}, [isOpen, initialIndex, mediaItems]);
 
   if (!isOpen || mediaItems.length === 0) return null;
+
+
 
   const currentItem = mediaItems[currentIndex];
 
@@ -61,23 +73,27 @@ const MediaCarousel: React.FC<MediaCarouselProps> = ({
 
         {/* Media Container */}
         <div className="bg-black rounded-lg overflow-hidden">
-          <div className="relative" style={{ minHeight: '350px', maxHeight: '60vh' }}>
-            {currentItem.type === 'image' ? (
-              <img
-                src={currentItem.url}
-                alt={currentItem.label}
-                className="w-full h-full object-contain"
-                style={{ maxHeight: '60vh' }}
-              />
-            ) : (
-              <video
-                src={currentItem.url}
-                controls
-                className="w-full h-full object-contain"
-                style={{ maxHeight: '60vh' }}
-              />
-            )}
-          </div>
+         <div className="relative" style={{ minHeight: '350px', maxHeight: '60vh' }}>
+          {currentItem?.type === 'image' ? (
+            <img
+              src={currentItem?.url}
+              alt={currentItem?.label}
+              className="w-full h-full object-contain"
+              style={{ maxHeight: '60vh' }}
+            />
+          ) : currentItem ? (
+            <video
+              src={currentItem?.url}
+              controls
+              className="w-full h-full object-contain"
+              style={{ maxHeight: '60vh' }}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              No media available
+            </div>
+          )}
+        </div>
 
           {/* Navigation Arrows */}
           {mediaItems.length > 1 && (
@@ -101,12 +117,15 @@ const MediaCarousel: React.FC<MediaCarouselProps> = ({
           <div className="bg-gray-900 text-white p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                {currentItem.type === 'image' ? (
+                {currentItem?.type === 'image' ? (
                   <ImageIcon size={20} className="text-blue-400" />
-                ) : (
+                ) : currentItem ? (
                   <Video size={20} className="text-purple-400" />
-                )}
-                <span className="text-sm font-medium">{currentItem.label}</span>
+                ) : null}
+
+                <span className="text-sm font-medium">
+                  {currentItem?.label || ''}
+                </span>
               </div>
               <div className="text-sm text-gray-400">
                 {currentIndex + 1} / {mediaItems.length}

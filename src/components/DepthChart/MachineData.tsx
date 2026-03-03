@@ -123,25 +123,7 @@ const MachineDataTable = () => {
         BLOWING:'blowingPhotos'
     };
 
-const addDistancesToData = (data: Activity[]) => {
-        return data.map((row, index) => {
-            if (index === 0) {
-                return { ...row, distance: "0.00" }; 
-            }
-    
-            const latLong1 = getLatLongForEvent(row);
-            const prevRow = data[index - 1];
-            const latLong2 = prevRow ? getLatLongForEvent(prevRow) : null;
-    
-            if (!latLong1 || !latLong2) return { ...row, distance: "-" };
-    
-            const [lat1, lon1] = latLong1.split(',').map(Number);
-            const [lat2, lon2] = latLong2.split(',').map(Number);
-    
-            const distance = getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2);
-            return { ...row, distance: distance.toFixed(2) };
-        });
-    };
+
 
  const columns: TableColumn<Activity>[] = [
   {
@@ -306,7 +288,7 @@ const addDistancesToData = (data: Activity[]) => {
       )
     : tableData;
 
-  return addDistancesToData(filtered);
+  return (filtered);
 
 }, [globalsearch, tableData]);
 

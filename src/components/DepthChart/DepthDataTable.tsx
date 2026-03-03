@@ -178,16 +178,17 @@ export const DepthDataTable: React.FC<DepthDataTableProps> = ({
               const mediaItems = extractMediaFromRow(point);
               const current = getLatLng(point);
               const prev = index > 0 ? getLatLng(depthData[index - 1]) : null;
-                if (current && prev) {
-                    const segmentDistance = getDistanceFromLatLonInMeters(
-                      prev.lat,
-                      prev.lng,
-                      current.lat,
-                      current.lng
-                    );
+                // if (current && prev) {
+                //     const segmentDistance = getDistanceFromLatLonInMeters(
+                //       prev.lat,
+                //       prev.lng,
+                //       current.lat,
+                //       current.lng
+                //     );
             
-                    cumulativeDistance += segmentDistance;
-                 }
+                //     cumulativeDistance += segmentDistance;
+                //  }
+                 cumulativeDistance += parseFloat(point.distance) || 0;
              
               return (
                 <tr 

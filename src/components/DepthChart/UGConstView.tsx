@@ -181,7 +181,7 @@ function Eventreport() {
           )
         : depthData;
 
-    return addDistancesToData(dataToFilter);
+    return dataToFilter;
 }, [globalsearch, depthData]);
    
 
@@ -272,22 +272,27 @@ function Eventreport() {
                 addImages(depthPhotos, "DEPTH Photo");
             }
         // Process video
-        if (typeof row.videoDetails === 'string') {
+         {typeof row.videoDetails === 'string' && (() =>{
             try {
                 const parsedVideoDetails: VideoDetails = JSON.parse(row.videoDetails);
-                const videoUrl = parsedVideoDetails?.videoUrl?.trim().replace(/^"|"$/g, "");
-                
-                if (videoUrl) {
+                const mainVideoUrl = parsedVideoDetails?.videoUrl
+                    ? parsedVideoDetails.videoUrl.trim().replace(/(^"|"$)/g, '')
+                    : null;
+                if (mainVideoUrl) {
                     mediaItems.push({
                         type: 'video',
-                        url: `${baseUrl}${videoUrl}`,
+                        url: `${baseUrl}${mainVideoUrl}`,
                         label: 'Survey Video'
-                    });
+                });
                 }
-            } catch (e) {
-                console.error('Error parsing video details', e);
+
+                
+            } catch (error) {
+                console.error('Error parsing video details', error);
+
             }
-        }
+
+        })()}
 
         // Also check vehicle image
         if (row.vehicle_image?.trim()) {
@@ -336,21 +341,28 @@ function Eventreport() {
 
 
     // Function to open carousel
-    const openCarousel = (row: Activity, initialIndex: number = 0) => {
+ 
+        const openCarousel = (row: Activity, initialIndex: number = 0) => {
         const media = extractMediaFromRow(row);
-          if (!media || media.length === 0) {
+
+        if (!media || media.length === 0) {
             console.warn("No media found for row", row);
-            return; 
+            return;
         }
-          const safeIndex = Math.min(
-                Math.max(initialIndex, 0),
-                media.length - 1
-            );
+
+        const safeIndex = Math.min(
+            Math.max(initialIndex ?? 0, 0),
+            media.length - 1
+        );
+
         setCarouselMedia(media);
         setCarouselInitialIndex(safeIndex);
-        setIsCarouselOpen(true);
-    };
 
+        // open after state is ready
+        setTimeout(() => {
+            setIsCarouselOpen(true);
+        }, 0);
+        };
 
     const handleAccept = async() =>{
         try {
@@ -649,7 +661,7 @@ function Eventreport() {
      const workbook = XLSX.utils.book_new();
 
   const headers = [
-    "Survey Id","State Name", "District Name", "Block Name", "Start GP Name",  "End GP Name","Machine Registration Number","Firm Name","Event Type","Latitude","Longitude",
+    "ID","Survey Id","State Name", "District Name", "Block Name", "Start GP Name",  "End GP Name","Machine Registration Number","Firm Name","Event Type","Latitude","Longitude",
     "Images","Videos","Cable Stack","Route Belongs To", "Road Type","Cable Laid On", "Soil Type", "Crossing Type", "Crossing Length","Execution Modality", "Depth (Meters)",
     "Distance","DGPS Accuracy","DGPS SIV","Road Width","Landmark Type","Landmark Description", "Route Feature Type","Road Feasibility", "Area Type",
     "Road Margin","Offset","Vehicle Image", "End Pit Doc", "Authorised Person","Contractor Details", "Vehicle Serial No","Created At", "Updated At",
@@ -720,7 +732,7 @@ function Eventreport() {
   };
 
    return [
-    item.survey_id,MainData.state_name, MainData.district_name, MainData.block_name, item.start_lgd_name, item.end_lgd_name,item.machine_registration_number,
+     item.id, item.survey_id,item.state_name, item.district_name, item.block_name, item.start_lgd_name, item.end_lgd_name,item.machine_registration_number,
     item.firm_name,item.eventType,latitude,longitude,imageLinks,VideoUrl,item.cable_stack,item.routeBelongsTo, item.roadType,
     item.cableLaidOn, item.soilType, item.crossingType,item.crossingLength, item.executionModality,item.depthMeters,
     item.distance,item.dgps_accuracy,item.dgps_siv,item.roadWidth, item.landmark_type,item.landmark_description,item.routeFeatureType,item.Roadfesibility, item.area_type,formatPoleForExcel(poleTypeData),      // Pole Type

@@ -113,15 +113,17 @@ export const DepthChart: React.FC<DepthChartProps> = ({
         const current = getLatLng(point);
         const prev = index > 0 ? getLatLng(points[index - 1]) : null;
 
-        if (current && prev) {
-          const segmentDistance = getDistanceFromLatLonInMeters(
-            prev.lat,
-            prev.lng,
-            current.lat,
-            current.lng
-          );
-          surveyCumulativeDistance += segmentDistance;
-        }
+        // if (current && prev) {
+        //   const segmentDistance = getDistanceFromLatLonInMeters(
+        //     prev.lat,
+        //     prev.lng,
+        //     current.lat,
+        //     current.lng
+        //   );
+        //   surveyCumulativeDistance += segmentDistance;
+        // }
+         surveyCumulativeDistance+= point.distance ? parseFloat(point.distance) : 0;
+
 
         const chartPoint: ChartPoint = {
           distance: Math.round(globalCumulativeDistance + surveyCumulativeDistance),

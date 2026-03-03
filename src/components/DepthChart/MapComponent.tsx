@@ -54,7 +54,6 @@ useEffect(() => {
 
     setMap(newMap);
   }, []);
-
   useEffect(() => {
     if (!map) return;
 

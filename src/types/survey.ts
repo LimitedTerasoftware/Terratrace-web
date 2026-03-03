@@ -185,6 +185,9 @@ export interface Activity {
   state_id: string | null;
   distrct_id: string | null;
   block_id: string | null;
+  state_name: string | null;
+  district_name: string | null;
+  block_name: string | null;
   gp_id: string | null;
   link_name: string;
   startPointPhoto: string | null;
@@ -325,6 +328,7 @@ export interface UGConstructionSurveyData {
   user_name:string;
   user_mobile:string;
   construction_type: string | null;
+  total_distance: string | null;
 
 }
 

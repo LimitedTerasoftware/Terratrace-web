@@ -219,6 +219,11 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview }) => {
       ),
     },
     {
+      name: "Distance (m)",
+      selector: row => row.total_distance || "-",
+      sortable: true,
+    },
+    {
       name: "Surveyor",
       selector: row => row.user_name,
       sortable: true,
