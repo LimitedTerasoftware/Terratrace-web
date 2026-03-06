@@ -75,6 +75,7 @@ import Terms from './pages/Terms';
 import JointDetails from './components/Joints/JointsDetails';
 import MachineMapPage from './components/MachineManagement/MachineMap';
 import MachineReports from './components/MachineManagement/Reports';
+import MachineDetails from './components/MachineManagement/Reports/MachineItem';
 //import AuditLogs from './components/AuditLogs';
 
 function App() {
@@ -665,6 +666,12 @@ function App() {
                 <DefaultLayout>
                   <PageTitle title="Reports" />
                   <MachineReports />
+                </DefaultLayout>
+            </>}/>
+             <Route path='machine-management/machine-details/:id' element={<>
+                <DefaultLayout>
+                  <PageTitle title="Reports" />
+                  <MachineDetails/>
                 </DefaultLayout>
             </>}/>
               <Route path='/live-track' element={<>

@@ -1,175 +1,196 @@
-import { useState, useEffect } from 'react';
-import SummaryCards from './SummaryCards';
-import Filters from './Filters';
-import MachineItem from './MachineItem';
-import Pagination from './Pagination';
-import { MachineDataReport } from '../../../types/machine';
-import { getBlockData, getDistrictData, getStateData, machineApi } from '../../Services/api';
-import { Block, District, StateData } from '../../../types/survey';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Factory, Activity, TrendingUp, Eye, CogIcon, Search } from 'lucide-react';
+import { MachineDataReport, MachineDetailsResponse } from '../../../types/machine';
+import StatusCard from './SummaryCards';
+import { machineApi } from '../../Services/api';
+import DataTable, { TableColumn } from 'react-data-table-component';
 
-export default function MachineReports() {
-  const [machines, setMachines] = useState<MachineDataReport[]>([]);
+export default function Dashboard() {
+  const navigate = useNavigate();
+  const [data, setData] = useState<MachineDetailsResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [totalMachines, setTotalMachines] = useState(0);
-  const [activeMachines, setActiveMachines] = useState(0);
-  const [inactiveMachines, setInactiveMachines] = useState(0);
-  const [states, setStates] = useState<StateData[]>([]);
-  const [districts, setDistricts] = useState<District[]>([]);
-  const [blocks, setBlocks] = useState<Block[]>([]);
-
-  const [selectedState, setSelectedState] = useState('');
-  const [selectedDistrict, setSelectedDistrict] = useState('');
-  const [selectedBlock, setSelectedBlock] = useState('');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
-  
-  useEffect(() => {
-      getStateData().then(data => {
-        setStates(data);
-      })
-    }, [])
-  
-    useEffect(() => {
-      if (selectedState) {
-        getDistrictData(selectedState).then(data => {
-          setDistricts(data);
-        })
-      } else {
-        setDistricts([])
-      }
-    }, [selectedState])
-  
-    useEffect(() => {
-      if (selectedDistrict) {
-        getBlockData(selectedDistrict).then(data => {
-          setBlocks(data);
-        })
-      } else {
-        setBlocks([])
-      }
-    }, [selectedDistrict])
-  
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMachineDetails();
   }, []);
 
   const fetchMachineDetails = async () => {
-    setLoading(true);
     try {
+      setLoading(true);
       const response = await machineApi.getMachineDetails();
-      setMachines(response.machines);
-      setTotalMachines(response.summary.total_machines);
-      setActiveMachines(parseInt(response.summary.active_machines));
-      setInactiveMachines(parseInt(response.summary.inactive_machines));
-    } catch (error) {
-      console.error('Failed to fetch machine details:', error);
+      setData(response);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleReset = () => {
-    setSelectedState('');
-    setSelectedDistrict('');
-    setSelectedBlock('');
-    setFromDate('');
-    setToDate('');
-    setSearchQuery('');
-    setCurrentPage(1);
-  };
+  const columns: TableColumn<MachineDataReport>[] = [
+    {
+      name: "Machine ID",
+      selector: row => row.machine_id,
+      sortable: true,
+      width: "120px"
+    },
+    {
+      name: "Firm Name",
+      selector: row => row.firm_name,
+      sortable: true,
+      wrap: true,
+      grow: 2
+    },
+    {
+      name: "Registration Number",
+      selector: row => row.registration_number,
+      sortable: true
+    },
+    {
+      name: "Authorised Person",
+      selector: row => row.authorised_person,
+      sortable: true,
+      wrap: true
+    },
+    {
+      name: "Action",
+      cell: row => (
+        <button
+          onClick={() =>
+            navigate(`/machine-management/machine-details/${row.machine_id}`)
+          }
+          className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <Eye className="w-4 h-4" />
+          View
+        </button>
+      ),
+      center: true,
+      width: "120px"
+    }
+  ];
 
-  const totalPages = Math.ceil(machines.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentMachines = machines.slice(startIndex, endIndex);
 
-  const startEntry = machines.length > 0 ? startIndex + 1 : 0;
-  const endEntry = Math.min(endIndex, machines.length);
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
+          <p className="text-red-800 font-medium">Error: {error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-white shadow-sm border-b border-gray-200 px-7 py-2">
-        <h1 className="text-2xl font-semibold text-gray-900">Vendor MIS Monitoring System</h1>
-        <p className="text-sm text-gray-600 mt-1">Real-time monitoring and analytics dashboard</p>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-8 py-8">
-        <SummaryCards
-          totalMachines={totalMachines}
-          activeMachines={activeMachines}
-          inactiveMachines={inactiveMachines}
-        />
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">Registered Firms</h2>
-              <p className="text-sm text-gray-600 mt-1">
-                Click on any firm to view and filter detailed link information
-              </p>
+      <header className="bg-white shadow-sm border-b border-gray-200 px-7 py-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-blue-400">
+              <CogIcon className="h-6 w-6 text-white" />
             </div>
-            <span className="text-sm text-blue-600 font-medium">
-              Total {machines.length} firms
-            </span>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Vendor MIS Monitoring System</h1>
+              <p className="text-sm text-gray-600">Real-time monitoring and analytics dashboard</p>
+            </div>
           </div>
 
-          <Filters
-            states={states}
-            districts={districts}
-            blocks={blocks}
-            selectedState={selectedState}
-            selectedDistrict={selectedDistrict}
-            selectedBlock={selectedBlock}
-            fromDate={fromDate}
-            toDate={toDate}
-            searchQuery={searchQuery}
-            onStateChange={setSelectedState}
-            onDistrictChange={setSelectedDistrict}
-            onBlockChange={setSelectedBlock}
-            onFromDateChange={setFromDate}
-            onToDateChange={setToDate}
-            onSearchChange={setSearchQuery}
-            onReset={handleReset}
-          />
+          <div className="flex items-center gap-4">
 
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
-          ) : currentMachines.length > 0 ? (
-            <>
-              {currentMachines.map((machine) => (
-                <MachineItem
-                  key={machine.machine_id}
-                  machine={machine}
-                  searchQuery={searchQuery}
-                  selectedState={selectedState}
-                  selectedDistrict={selectedDistrict}
-                  selectedBlock={selectedBlock}
-                  fromDate={fromDate}
-                  toDate={toDate}
-                />
-              ))}
 
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
-                startEntry={startEntry}
-                endEntry={endEntry}
-                totalEntries={machines.length}
-              />
-            </>
-          ) : (
-            <div className="text-center py-12 text-gray-500">No machines found</div>
-          )}
+            {/* Breadcrumb Navigation */}
+            <nav>
+              <ol className="flex items-center gap-2">
+                <li>
+                  <Link className="font-medium" to="/dashboard">
+                    Dashboard /
+                  </Link>
+                </li>
+                <li className="font-medium text-primary">Machine Management</li>
+              </ol>
+            </nav>
+          </div>
         </div>
+      </header>
+
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-2 px-1 py-6">
+        <StatusCard
+          title="Total Machines"
+          value={data?.summary.total_machines || 0}
+          icon={Factory}
+          iconColor="text-blue-600"
+          bgColor="bg-blue-50"
+        />
+        <StatusCard
+          title="Active Machines"
+          value={data?.summary.active_machines || 0}
+          icon={Activity}
+          iconColor="text-green-600"
+          bgColor="bg-green-50"
+        />
+        <StatusCard
+          title="Inactive Machines"
+          value={data?.summary.inactive_machines || 0}
+          icon={TrendingUp}
+          iconColor="text-orange-600"
+          bgColor="bg-orange-50"
+        />
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h2 className="text-xl font-semibold text-gray-900">
+            Registered Firms
+          </h2>
+        </div>
+        {data?.machines.length === 0 && !loading ? (
+          <div className="p-12 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+              <Search className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No data found</h3>
+
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <div className="p-4">
+              <DataTable
+                columns={columns}
+                data={data?.machines || []}
+                pagination
+                paginationPerPage={10}
+                paginationRowsPerPageOptions={[10, 25, 50, 100]}
+                highlightOnHover
+                pointerOnHover
+                responsive
+                striped
+                noHeader
+                progressPending={loading}
+                progressComponent={
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  </div>
+                }
+              />
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
+
   );
 }

@@ -190,7 +190,7 @@ export interface MachineApiResponse {
   data: MachineDataListItem[];
 }
 
-export interface MachineDataReport{
+export interface MachineDataReport {
   machine_id: number;
   firm_name: string;
   registration_number: string;
@@ -225,7 +225,15 @@ export interface MachineLinkStats {
   avg_distance_per_day: string;
 }
 
+export interface MachineSummary {
+  total_links: number;
+  total_distance_meters: string;
+  total_days: number;
+  avg_distance_per_day: string;
+}
+
 export interface MachineLinkStatsResponse {
   status: boolean;
+  summary: MachineSummary;
   data: MachineLinkStats[];
 }

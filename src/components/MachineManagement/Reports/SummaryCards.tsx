@@ -1,51 +1,28 @@
-import { Server, Activity, ServerOff } from 'lucide-react';
-
-interface SummaryCardsProps {
-  totalMachines: number;
-  activeMachines: number;
-  inactiveMachines: number;
+import { LucideIcon } from "lucide-react";
+interface StatusCardProps {
+  title: string;
+  value: string | number;
+  icon: LucideIcon;
+  iconColor: string;
+  bgColor: string;
 }
 
-export default function SummaryCards({
-  totalMachines,
-  activeMachines,
-  inactiveMachines,
-}: SummaryCardsProps) {
+export default function StatusCard({
+  title,
+  value,
+  icon: Icon,
+  iconColor,
+  bgColor,
+}: StatusCardProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-      <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm text-gray-600 mb-1">Total Machines</p>
-            <p className="text-3xl font-semibold text-gray-900">{totalMachines}</p>
-          </div>
-          <div className="bg-blue-50 p-3 rounded-lg">
-            <Server className="w-6 h-6 text-blue-600" />
-          </div>
+    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow duration-200">
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
+          <p className="text-3xl font-bold text-gray-900">{value}</p>
         </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm text-gray-600 mb-1">Active Machines</p>
-            <p className="text-3xl font-semibold text-green-600">{activeMachines}</p>
-          </div>
-          <div className="bg-green-50 p-3 rounded-lg">
-            <Activity className="w-6 h-6 text-green-600" />
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm text-gray-600 mb-1">Inactive Machines</p>
-            <p className="text-3xl font-semibold text-red-600">{inactiveMachines}</p>
-          </div>
-          <div className="bg-red-50 p-3 rounded-lg">
-            <ServerOff className="w-6 h-6 text-red-600" />
-          </div>
+        <div className={`${bgColor} p-3 rounded-lg`}>
+          <Icon className={`w-6 h-6 ${iconColor}`} />
         </div>
       </div>
     </div>
