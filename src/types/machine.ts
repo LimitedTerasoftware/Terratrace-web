@@ -189,3 +189,43 @@ export interface MachineApiResponse {
   status: boolean;
   data: MachineDataListItem[];
 }
+
+export interface MachineDataReport{
+  machine_id: number;
+  firm_name: string;
+  registration_number: string;
+  authorised_person: string;
+}
+
+export interface MachineDetailsResponse {
+  status: boolean;
+  summary: {
+    total_machines: number;
+    active_machines: string;
+    inactive_machines: string;
+  };
+  machines: MachineDataReport[];
+}
+
+export interface MachineLinkStats {
+  machine_id: number;
+  registration_number: string;
+  serial_number: string;
+  machine_make: string;
+  machine_model: string | null;
+  firm_name: string;
+  authorised_person: string;
+  state: string;
+  district: string;
+  block: string;
+  link_name: string;
+  total_links: number;
+  total_distance_meters: string;
+  total_days: number;
+  avg_distance_per_day: string;
+}
+
+export interface MachineLinkStatsResponse {
+  status: boolean;
+  data: MachineLinkStats[];
+}

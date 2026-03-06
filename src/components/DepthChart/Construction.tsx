@@ -233,7 +233,7 @@ function ConstructionPage() {
     };
 
     const handleStatusChange = (value: string) => {
-        const statusValue = Number(value) || null;
+        const statusValue = value === "null" ? null : Number(value);
         setSelectedStatus(statusValue);
         handleFilterChange(selectedState, selectedDistrict, selectedBlock, statusValue, fromdate, todate, globalsearch);
     };
@@ -382,7 +382,7 @@ function ConstructionPage() {
                                 onChange={(e) => handleStatusChange(e.target.value)}
                                 className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                             >
-                                <option value="">All Status</option>
+                                <option value="null">All Status</option>
                                 {statusOptions.map((option) => (
                                     <option key={option.value} value={option.value}>
                                         {option.label}

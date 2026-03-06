@@ -476,6 +476,17 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                   <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Machine Tracking</span>
                                 </NavLink>
                               </li>
+                                <li>
+                                <NavLink
+                                  to="/machine-management/machine-reports"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <LocateFixed size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
+                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Machine Reports</span>
+                                </NavLink>
+                              </li>
                             </ul>
                           </div>
                         </>

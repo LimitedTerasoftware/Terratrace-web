@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { MachineDataApiResponse } from '../../types/survey';
-import { ApiResponse} from '../../types/machine';
+import { ApiResponse, MachineDetailsResponse, MachineLinkStatsResponse} from '../../types/machine';
 import { useCallback, useEffect, useState } from 'react';
 import { Activity, ApiResponseMachine ,FilterState} from '../../types/survey';
 import { EditPayload } from '../../types/aerial-survey';
@@ -262,4 +262,38 @@ export const updateAerialData = async (payload: EditPayload): Promise<any> => {
     throw error;
   }
 };
+
+
+export const machineApi = {
+  getMachineDetails: async (): Promise<MachineDetailsResponse> => {
+    const response = await fetch(`${TraceBASEURL}/api/getMachineDetails`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch machine details');
+    }
+    return response.json();
+  },
+
+  getMachineLinkStats: async (machineId: number,
+  stateId?: string,
+  districtId?: string,
+  blockId?: string,
+  fromDate?: string,
+  toDate?: string): Promise<MachineLinkStatsResponse> => {
+    const params = new URLSearchParams({
+    machine_id: machineId.toString(),
+    state_id: stateId?.toString() || '',
+    district_id: districtId?.toString() || '',
+    block_id: blockId?.toString() || '',
+    from_date: fromDate || '',
+    to_date: toDate || ''
+  });
+
+    const response = await fetch(`${TraceBASEURL}/api/machine-link-stats?${params}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch machine link stats');
+    }
+    return response.json();
+  },
+};
+
   

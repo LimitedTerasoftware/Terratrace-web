@@ -74,6 +74,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import Terms from './pages/Terms';
 import JointDetails from './components/Joints/JointsDetails';
 import MachineMapPage from './components/MachineManagement/MachineMap';
+import MachineReports from './components/MachineManagement/Reports';
 //import AuditLogs from './components/AuditLogs';
 
 function App() {
@@ -658,6 +659,12 @@ function App() {
                 <DefaultLayout>
                   <PageTitle title="Charts & Reports" />
                   <MainIndex />
+                </DefaultLayout>
+            </>}/>
+            <Route path='machine-management/machine-reports' element={<>
+                <DefaultLayout>
+                  <PageTitle title="Reports" />
+                  <MachineReports />
                 </DefaultLayout>
             </>}/>
               <Route path='/live-track' element={<>
