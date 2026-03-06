@@ -32,7 +32,7 @@ export default function MachineItem({
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   useEffect(() => {
-    if (isExpanded && linkStats.length > 0) {
+    if (isExpanded && linkStats.length >= 0) {
       fetchLinkStats();
     }
   }, [selectedState, selectedDistrict, selectedBlock, fromDate, toDate]);
@@ -77,19 +77,7 @@ export default function MachineItem({
   const getFilteredAndSortedData = () => {
     let filtered = [...linkStats];
 
-    if (selectedState) {
-      filtered = filtered.filter((item) => item.state === selectedState);
-    }
-
-    if (selectedDistrict) {
-      filtered = filtered.filter((item) => item.district === selectedDistrict);
-    }
-
-    if (selectedBlock) {
-      filtered = filtered.filter((item) => item.block === selectedBlock);
-    }
-
-    if (searchQuery) {
+   if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (item) =>
