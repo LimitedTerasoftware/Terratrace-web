@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { Activity, VideoDetails, } from '../../types/survey';
 import { useLocation } from 'react-router-dom';
 import DataTable, { TableColumn } from 'react-data-table-component';
-import { Folder, SheetIcon, Image as ImageIcon, Video, Image, Edit2Icon } from 'lucide-react';
+import { Folder, SheetIcon, Image as ImageIcon, Video, Image, Edit2Icon, PlusCircleIcon } from 'lucide-react';
 import axios from 'axios';
 import { FaArrowLeft } from 'react-icons/fa';
 import IndexChart from './index';
@@ -15,6 +15,7 @@ import { getDistanceFromLatLonInMeters } from '../../utils/calculations';
 import { hasViewOnlyAccess, isAdminUser } from '../../utils/accessControl';
 import { ToastContainer, toast } from "react-toastify";
 import { EditModal } from './EditModal';
+import { AddEventModal } from './AddEventModal';
 
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -53,6 +54,8 @@ function Eventreport() {
     const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
     const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | null>(null);
     const [editModalOpen, setEditModalOpen] = useState(false);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
     const viewOnly = hasViewOnlyAccess();
     const AdminAcess = isAdminUser();
     // New state for media carousel
@@ -295,7 +298,8 @@ function Eventreport() {
         })()}
 
         // Also check vehicle image
-        if (row.vehicle_image?.trim()) {
+        const img = row.vehicle_image?.trim();
+        if (img && img !== 'null') {
             mediaItems.push({
                 type: 'image',
                 url: `${baseUrl}${row.vehicle_image}`,
@@ -393,34 +397,6 @@ function Eventreport() {
 
 
     const columns: TableColumn<Activity>[] = [
-        ...(AdminAcess
-        ? [
-            {
-            name: "Actions",
-            cell: (row: Activity) => (
-                <>
-                <button
-                    onClick={() => openModal(row)}
-                    className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 outline-none dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-800 transition-colors"
-                >
-                    <Image className="w-3 h-3 mr-1" />
-                </button>
-
-                <button
-                    onClick={() => onOpenEdit(row)}
-                    className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 outline-none dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-800 transition-colors"
-                >
-                    <Edit2Icon className="w-3 h-3 mr-1" />
-                </button>
-                </>
-            ),
-            ignoreRowClick: true,
-            allowOverflow: true,
-            button: true,
-            },
-        ]
-        : []),
-
         {name:"Event Id", selector: row => row.id || "-", sortable: true},
         {name:"Survey ID", selector: row => row.survey_id || "-", sortable: true},
         { name: "Machine ID", selector: row => row.machine_registration_number || "-", sortable: true },
@@ -443,70 +419,6 @@ function Eventreport() {
                 const latlong = getLatLongForEvent(row);
                 return latlong ? latlong.split(",")[1] : "-";
             },
-        },
-        {
-            name: "Media",
-            cell: (row: Activity) => {
-                const mediaItems = extractMediaFromRow(row);
-                
-                if (mediaItems.length === 0) {
-                    return <span className="text-gray-400">-</span>;
-                }
-
-                const imageCount = mediaItems.filter(item => item.type === 'image').length;
-                const videoCount = mediaItems.filter(item => item.type === 'video').length;
-                const hasImages = imageCount > 0;
-                const hasVideos = videoCount > 0;
-
-                return (
-                    <button
-                        onClick={() => openCarousel(row)}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors cursor-pointer hover:bg-gray-100"
-                        title="Click to view media"
-                    >
-                        {hasImages && (
-                            <div className="flex items-center gap-1">
-                                <ImageIcon size={16} className="text-blue-600" />
-                                <span className="text-xs text-blue-600 font-medium">
-                                    {imageCount}
-                                </span>
-                            </div>
-                        )}
-                        {hasVideos && (
-                            <div className="flex items-center gap-1">
-                                <Video size={16} className="text-purple-600" />
-                                <span className="text-xs text-purple-600 font-medium">
-                                    {videoCount}
-                                </span>
-                            </div>
-                        )}
-                    </button>
-                );
-            },
-            ignoreRowClick: true,
-            button: true,
-            width: '140px',
-        },
-        {
-            name: "Video",
-            cell: (row: Activity) => {
-                let parsedVideoDetails: VideoDetails;
-
-                if (typeof row.videoDetails === 'string') {
-
-                  parsedVideoDetails = row?.videoDetails ? JSON.parse(row?.videoDetails) : null;
-                
-                const videoUrl =parsedVideoDetails?.videoUrl?.trim().replace(/^"|"$/g, "");
-                return videoUrl ? (
-                    <button className="text-blue-600 underline" onClick={() => setSelectedVideoUrl(videoUrl)}>
-                    Play Video
-                    </button>
-                ) : (
-                    "-"
-                );
-                }
-                 return "-";
-            }
         },
         {name:"Cable Stack", selector: row => row.cable_stack || "-", sortable: true},
         { name: "Execution Modality", selector: row => row.executionModality || "-", sortable: true },
@@ -603,12 +515,76 @@ function Eventreport() {
         { name: "Distance Meters", selector: row => row.distance  || "-", sortable: true },
         { name: "DGPS Accuracy", selector: row => row.dgps_accuracy  || "-", sortable: true },
         { name: "DGPS SIV", selector: row => row.dgps_siv  || "-", sortable: true },
+          {
+            name: "Media",
+            cell: (row: Activity) => {
+                const mediaItems = extractMediaFromRow(row);
+                
+                if (mediaItems.length === 0) {
+                    return <span className="text-gray-400">-</span>;
+                }
+
+                const imageCount = mediaItems.filter(item => item.type === 'image').length;
+                const videoCount = mediaItems.filter(item => item.type === 'video').length;
+                const hasImages = imageCount > 0;
+                const hasVideos = videoCount > 0;
+
+                return (
+                    <button
+                        onClick={() => openCarousel(row)}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors cursor-pointer hover:bg-gray-100"
+                        title="Click to view media"
+                    >
+                        {hasImages && (
+                            <div className="flex items-center gap-1">
+                                <ImageIcon size={16} className="text-blue-600" />
+                                <span className="text-xs text-blue-600 font-medium">
+                                    {imageCount}
+                                </span>
+                            </div>
+                        )}
+                        {hasVideos && (
+                            <div className="flex items-center gap-1">
+                                <Video size={16} className="text-purple-600" />
+                                <span className="text-xs text-purple-600 font-medium">
+                                    {videoCount}
+                                </span>
+                            </div>
+                        )}
+                    </button>
+                );
+            },
+            ignoreRowClick: true,
+            button: true,
+            width: '140px',
+        },
+        {
+            name: "Video",
+            cell: (row: Activity) => {
+                let parsedVideoDetails: VideoDetails;
+
+                if (typeof row.videoDetails === 'string') {
+
+                  parsedVideoDetails = row?.videoDetails ? JSON.parse(row?.videoDetails) : null;
+                
+                const videoUrl =parsedVideoDetails?.videoUrl?.trim().replace(/^"|"$/g, "");
+                return videoUrl ? (
+                    <button className="text-blue-600 underline" onClick={() => setSelectedVideoUrl(videoUrl)}>
+                    Play Video
+                    </button>
+                ) : (
+                    "-"
+                );
+                }
+                 return "-";
+            }
+        },
         {
             name: "Vehicle Image",
             cell: (row: Activity) => {
                 const imageUrl = row.vehicle_image?.trim();
-
-                if (imageUrl) {
+                
+                if (imageUrl && imageUrl !== "null") {
                     return (
                         <span
                             className="text-blue-600 underline cursor-pointer block"
@@ -647,7 +623,34 @@ function Eventreport() {
         {
             name: "Created At",
             selector: row => moment(row.created_at).format("DD/MM/YYYY, hh:mm A"), sortable: true,
-        }
+        },
+         ...(AdminAcess
+        ? [
+            {
+            name: "Actions",
+            cell: (row: Activity) => (
+                <>
+                <button
+                    onClick={() => openModal(row)}
+                    className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 outline-none dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-800 transition-colors"
+                >
+                    <Image className="w-3 h-3 mr-1" />
+                </button>
+
+                <button
+                    onClick={() => onOpenEdit(row)}
+                    className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 outline-none dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-800 transition-colors"
+                >
+                    <Edit2Icon className="w-3 h-3 mr-1" />
+                </button>
+                </>
+            ),
+            ignoreRowClick: true,
+            allowOverflow: true,
+            button: true,
+            },
+        ]
+        : []),
 
     ];
 
@@ -673,7 +676,8 @@ function Eventreport() {
     const latlong = getLatLongForEvent(item);
     const [latitude, longitude] = latlong ? latlong.split(",") : ["-", "-"];
     let VehicalImg = '-'
-    if(item.vehicle_image?.trim()){
+    const img = item.vehicle_image?.trim();
+    if(img && img !== 'null'){
      VehicalImg = `=HYPERLINK("${baseUrl}${VehicalImg}", "Vehical_Img")`;
     }  
     let Video;
@@ -896,6 +900,15 @@ function Eventreport() {
                             <SheetIcon className="h-4 w-4 text-green-600"/>
                             Excel
                         </button>
+                         {multipreview  === false && (
+                        <button
+                             onClick={()=>setIsAddModalOpen(true)}
+                            className="flex-none h-10 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-blue-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
+                        >
+                            <PlusCircleIcon className="h-4 w-4 text-blue-600"/>
+                            Add New Event
+                        </button>
+                         )}
 
                     </div>
                 </div>
@@ -967,6 +980,17 @@ function Eventreport() {
                 }}
                 baseUrl={TraceBASEURL}
             />
+               
+                <AddEventModal
+                    isOpen={isAddModalOpen}
+                    Data = {multipreview ? null : MainData}
+                    onClose={()=>setIsAddModalOpen(false)}
+                    onSuccess={()=>{
+                        getData();
+                    }}
+                    baseUrl={TraceBASEURL}
+                />
+                
 
             {zoomImage && (
                 <div
