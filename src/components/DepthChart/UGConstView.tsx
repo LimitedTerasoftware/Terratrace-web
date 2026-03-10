@@ -399,8 +399,8 @@ function Eventreport() {
     const columns: TableColumn<Activity>[] = [
         {name:"Event Id", selector: row => row.id || "-", sortable: true},
         {name:"Survey ID", selector: row => row.survey_id || "-", sortable: true},
-        { name: "Machine ID", selector: row => row.machine_registration_number || "-", sortable: true },
-        { name: "Firm Name", selector: row => row.firm_name || "-", sortable: true },
+        { name: "Machine ID", selector: row => row.machine_registration_number || "-", sortable: true,wrap:true },
+        { name: "Firm Name", selector: row => row.firm_name || "-", sortable: true,wrap:true},
         {
             name: "Event Type",
             selector: row => row.eventType,

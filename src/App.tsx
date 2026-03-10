@@ -73,9 +73,9 @@ import DailyProgressReport from './components/Dashboards/DailyProgressReport';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Terms from './pages/Terms';
 import JointDetails from './components/Joints/JointsDetails';
-import MachineMapPage from './components/MachineManagement/MachineMap';
 import MachineReports from './components/MachineManagement/Reports';
 import MachineDetails from './components/MachineManagement/Reports/MachineItem';
+import MachineSurveyDashboard from './components/MachineManagement/MachineSummary';
 //import AuditLogs from './components/AuditLogs';
 
 function App() {
@@ -774,7 +774,7 @@ function App() {
             element={
               <>
                   <PageTitle title="Machine Activity" />
-                  <MachineMapPage />
+                  <MachineSurveyDashboard />
               
               </>
             } 

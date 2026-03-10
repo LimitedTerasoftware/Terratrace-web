@@ -17,6 +17,7 @@ const DepthDetails = eventData.filter((event: any) =>
                       (event.eventType === 'JOINTCHAMBER' && event.depthPhoto) ||
                       (event.eventType === 'MANHOLES' && event.depthPhoto)
                     );
+                    console.log(eventData);
 
   const [depthData,setdepthData]=useState<DepthDataPoint[]>(DepthDetails ||[]);
   const [loading, setLoading] = useState<boolean>(false);

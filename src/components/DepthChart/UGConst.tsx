@@ -153,9 +153,9 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview }) => {
       name: "State",
       selector: row => row.state_name,
       sortable: true,
-      maxWidth: "140px",
+      wrap:true,
       cell: (row) => (
-        <span title={row.state_name} className="truncate">
+        <span title={row.state_name}>
           {row.state_name}
         </span>
       ),
@@ -165,8 +165,9 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview }) => {
       selector: row => row.district_name,
       sortable: true,
       maxWidth: "150px",
+      wrap:true,
       cell: (row) => (
-        <span title={row.district_name} className="truncate">
+        <span title={row.district_name}>
           {row.district_name}
         </span>
       ),
@@ -176,8 +177,9 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview }) => {
       selector: row => row.block_name,
       sortable: true,
       maxWidth: "130px",
+      wrap:true,
       cell: (row) => (
-        <span title={row.block_name} className="truncate">
+        <span title={row.block_name} >
           {row.block_name}
         </span>
       ),
@@ -201,8 +203,9 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview }) => {
       selector: row => row.start_lgd_name,
       sortable: true,
       maxWidth: "160px",
+      wrap:true,
       cell: (row) => (
-        <span title={row.start_lgd_name} className="truncate">
+        <span title={row.start_lgd_name}>
           {row.start_lgd_name}
         </span>
       ),
@@ -212,8 +215,9 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview }) => {
       selector: row => row.end_lgd_name,
       sortable: true,
       maxWidth: "160px",
+      wrap:true,
       cell: (row) => (
-        <span title={row.end_lgd_name} className="truncate">
+        <span title={row.end_lgd_name}>
           {row.end_lgd_name}
         </span>
       ),

@@ -106,8 +106,8 @@ export interface MachineDataListItem {
   crossingLatlong: string | null;
   crossingPhotos: string | null;
   executionModality: string;
-  depthLatlong: string | null;
-  depthPhoto: string | null;
+  depthLatlong: string | "";
+  depthPhoto: string | "";
   depthMeters: string;
   fpoiLatLong: string | null;
   fpoiPhotos: string | null;
@@ -187,7 +187,10 @@ export interface MachineDataListItem {
 
 export interface MachineApiResponse {
   status: boolean;
-  data: MachineDataListItem[];
+  data:{
+    [key:string]:  MachineDataListItem[];
+  };
+ 
 }
 
 export interface MachineDataReport {

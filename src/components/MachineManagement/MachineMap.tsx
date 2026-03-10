@@ -1,11 +1,5 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Wrapper, Status } from '@googlemaps/react-wrapper';
-import { RefreshCw, Satellite } from 'lucide-react';
-import { MachineApiResponse, MachineDataListItem } from '../../types/machine';
-
-const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
-const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-const baseUrl = import.meta.env.VITE_Image_URL;
+import React, { useEffect, useRef, useState } from 'react';
+import { MachineDataListItem } from '../../types/machine';
 
 const EVENT_TYPE_MAPPING = {
   'DEPTH': { coordField: 'depthLatlong', photoField: 'depthPhoto' },
@@ -25,13 +19,39 @@ const EVENT_TYPE_MAPPING = {
   'BLOWING': { coordField: 'blowingLatLong', photoField: 'blowingPhotos' },
 };
 
-const MapComponent: React.FC<{
+interface MachineMapComponentProps {
   activities: MachineDataListItem[];
-  getColorByRegistration: (registration: string | null | undefined) => string;
-}> = ({ activities, getColorByRegistration }) => {
+  getColorByRegistration: (event: string | null | undefined) => string;
+  minDepth?: number;
+}
+
+const baseUrl = import.meta.env.VITE_Image_URL || '';
+
+export const MachineMapComponent: React.FC<MachineMapComponentProps> = ({ 
+  activities, 
+  getColorByRegistration,
+  minDepth = 1.65 
+}) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
+  const EVENT_TYPES = {
+    STARTSURVEY: { color: '#10B981', icon: '🎯', label: 'Survey Start' },
+    DEPTH: { color: '#3B82F6', icon: '📏', label: 'Depth' },
+    ROADCROSSING: { color: '#F59E0B', icon: '🛣️', label: 'Road Crossing' },
+    FPOI: { color: '#EF4444', icon: '📍', label: 'FPOI' },
+    JOINTCHAMBER: { color: '#8B5CF6', icon: '🔧', label: 'Joint Chamber' },
+    MANHOLES: { color: '#06B6D4', icon: '🕳️', label: 'Manholes' },
+    ROUTEINDICATOR: { color: '#84CC16', icon: '🧭', label: 'Route Indicator' },
+    LANDMARK: { color: '#F97316', icon: '🏛️', label: 'Landmark' },
+    FIBERTURN: { color: '#EC4899', icon: '🔄', label: 'Fiber Turn' },
+    KILOMETERSTONE: { color: '#6B7280', icon: '📏', label: 'Kilometer Stone' },
+    STARTPIT: { color: '#14B8A6', icon: '🕳️', label: 'Start Pit' },
+    ENDPIT: { color: '#DC2626', icon: '🏁', label: 'End Pit' },
+    ENDSURVEY: { color: '#10B981', icon: '🎯', label: 'End Survey' },
+    HOLDSURVEY: { color: '#a93226', icon: '⏸️', label: 'Hold Survey'},
+    BLOWING: { color: '#663300', icon:'💨',label: 'Blowing Survey' },
+  };
 
   const parsePhotos = (photoString: string | null): string[] => {
     if (!photoString) return [];
@@ -42,13 +62,18 @@ const MapComponent: React.FC<{
     }
   };
 
+  const getDepthValue = (depthStr: string): number => {
+    const cleanDepth = depthStr.replace('m', '').trim();
+    return parseFloat(cleanDepth) || 0;
+  };
+
   useEffect(() => {
     if (!mapRef.current || map) return;
 
     const newMap = new google.maps.Map(mapRef.current, {
       center: { lat: 17.3882, lng: 78.4892 },
       zoom: 10,
-      mapTypeId: google.maps.MapTypeId.ROADMAP,
+      mapTypeId: google.maps.MapTypeId.SATELLITE,
       streetViewControl: false,
       fullscreenControl: true,
       mapTypeControl: true,
@@ -80,38 +105,38 @@ const MapComponent: React.FC<{
       const coordField = mapping.coordField as keyof MachineDataListItem;
       const photoField = mapping.photoField as keyof MachineDataListItem;
       const coordinates = activity[coordField] as string;
-
+      const isLastEvent = index === activities.length - 1;
+      
       if (!coordinates) return;
 
       const [lat, lng] = coordinates.split(',').map(Number);
       const position = { lat, lng };
       path.push(position);
 
-      const markerColor = getColorByRegistration(activity.machine_registration_number);
+      const markerColor = getColorByRegistration(activity.eventType);
+      
       const photos = parsePhotos(activity[photoField] as string | null);
-
+      
+      // Check if depth is below minimum for critical marking
+      const depthValue = activity.depthMeters ? getDepthValue(activity.depthMeters) : 0;
+      const isCritical = activity.eventType === 'DEPTH' && depthValue > 0 && depthValue < minDepth;
+      
       const marker = new google.maps.Marker({
-        position,
-        map,
-        title: `${activity.eventType} - ${activity.machine_registration_number || 'N/A'}`,
-        label: {
-          text: (index + 1).toString(),
-          color: 'white',
-          fontSize: '12px',
-          fontWeight: 'bold'
-        },
-        icon: {
-          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="${markerColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-              <circle cx="12" cy="10" r="3" fill="${markerColor}"></circle>
-            </svg>
-          `)}`,
-          scaledSize: new google.maps.Size(36, 36),
-          anchor: new google.maps.Point(18, 36)
-        }
-      });
-
+      position,
+      map,
+      title: `${activity.eventType}`,
+      icon: {
+        url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`
+          <svg width="30" height="40" xmlns="http://www.w3.org/2000/svg">
+            <text x="15" y="12" text-anchor="middle" font-size="11" fill="black" font-weight="bold">
+              ${activity.depthMeters || ""}
+            </text>
+            <circle cx="15" cy="28" r="6" fill="${markerColor}" stroke="white" stroke-width="2"/>
+          </svg>
+        `),
+        anchor: new google.maps.Point(15, 28)
+      }
+    });
       const photoGallery = photos.length > 0 ? `
         <div style="margin-top: 8px;">
           <h4 style="margin: 0 0 4px 0; color: #374151; font-size: 12px; font-weight: 600;">Photos:</h4>
@@ -127,11 +152,20 @@ const MapComponent: React.FC<{
         </div>
       ` : '';
 
+      const criticalWarning = isCritical ? `
+        <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 4px; padding: 8px; margin: 8px 0;">
+          <p style="margin: 0; color: #dc2626; font-size: 12px; font-weight: 600;">
+            ⚠️ CRITICAL: Depth below minimum (${minDepth}m)
+          </p>
+        </div>
+      ` : '';
+
       const infoContent = `
         <div style="padding: 12px; min-width: 300px; max-width: 400px;">
           <h3 style="margin: 0 0 8px 0; color: #1f2937; font-size: 16px; font-weight: 600;">
-            ${activity.eventType} 
+            ${activity.eventType} ${isLastEvent ? '(Live Point)' : ''}
           </h3>
+          ${criticalWarning}
           <div style="margin-bottom: 8px;">
             <p style="margin: 0 0 4px 0; color: #4b5563; font-size: 13px;">
               <strong>Machine:</strong> ${activity.machine_registration_number}
@@ -140,19 +174,22 @@ const MapComponent: React.FC<{
               <strong>Firm:</strong> ${activity.firm_name}
             </p>
             <p style="margin: 0 0 4px 0; color: #4b5563; font-size: 13px;">
-              <strong>User:</strong> ${activity.user_name} (${activity.user_mobile})
+              <strong>User:</strong> ${activity.user_name}
             </p>
             <p style="margin: 0 0 4px 0; color: #4b5563; font-size: 13px;">
               <strong>Location:</strong> ${activity.state_name}, ${activity.district_name}
             </p>
-            ${activity.link_name ? `
+            <p style="margin: 0 0 4px 0; color: #4b5563; font-size: 13px;">
+              <strong>Survey ID:</strong> ${activity.survey_id}
+            </p>
+            ${activity.start_lgd_name ? `
               <p style="margin: 0 0 4px 0; color: #4b5563; font-size: 13px;">
-                <strong>Link:</strong> ${activity.link_name}
+                <strong>Link:</strong> ${activity.start_lgd_name} - ${activity.end_lgd_name}
               </p>
             ` : ''}
             ${activity.depthMeters ? `
-              <p style="margin: 0 0 4px 0; color: #2563eb; font-size: 13px; font-weight: 600;">
-                <strong>Depth:</strong> ${activity.depthMeters}m
+              <p style="margin: 0 0 4px 0; color: ${isCritical ? '#dc2626' : '#2563eb'}; font-size: 13px; font-weight: 600;">
+                <strong>Depth:</strong> ${activity.depthMeters}
               </p>
             ` : ''}
             ${activity.crossingLength ? `
@@ -191,6 +228,47 @@ const MapComponent: React.FC<{
 
     setMarkers(newMarkers);
 
+    const surveyGroups: Record<number, MachineDataListItem[]> = {};
+
+    activities.forEach((activity) => {
+      if (!surveyGroups[activity.survey_id]) {
+        surveyGroups[activity.survey_id] = [];
+      }
+      surveyGroups[activity.survey_id].push(activity);
+    });
+    
+    Object.values(surveyGroups).forEach((surveyActivities) => {
+
+    const surveyPath: google.maps.LatLngLiteral[] = [];
+
+    surveyActivities.forEach((activity) => {
+      const mapping = EVENT_TYPE_MAPPING[
+        activity.eventType as keyof typeof EVENT_TYPE_MAPPING
+      ];
+      if (!mapping) return;
+
+      const coordField = mapping.coordField as keyof MachineDataListItem;
+      const coordinates = activity[coordField] as string;
+
+      if (!coordinates) return;
+
+      const [lat, lng] = coordinates.split(",").map(Number);
+      surveyPath.push({ lat, lng });
+    });
+
+    if (surveyPath.length > 1) {
+      const polyline = new google.maps.Polyline({
+        path: surveyPath,
+        geodesic: true,
+        strokeColor: "#2563eb",
+        strokeOpacity: 1,
+        strokeWeight: 4,
+      });
+
+      polyline.setMap(map);
+    }
+  });
+
     if (path.length > 0) {
       const bounds = new google.maps.LatLngBounds();
       path.forEach(point => bounds.extend(point));
@@ -203,199 +281,7 @@ const MapComponent: React.FC<{
         google.maps.event.removeListener(listener);
       });
     }
-  }, [map, activities, getColorByRegistration]);
+  }, [map, activities, getColorByRegistration, minDepth]);
 
   return <div ref={mapRef} className="w-full h-full rounded-lg" />;
 };
-
-const MachineMapPage: React.FC = () => {
-  const [activities, setActivities] = useState<MachineDataListItem[]>([]);
-  const [machineId, setMachineId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const colorPalette = [
-    '#2563eb', '#dc2626', '#059669', '#7c3aed', '#ea580c',
-    '#0891b2', '#be185d', '#4338ca', '#65a30d', '#f59e0b',
-    '#10b981', '#8b5cf6', '#ec4899', '#14b8a6', '#6b7280',
-  ];
-
-  const getColorByRegistration = useCallback((() => {
-    const colorMap: Record<string, string> = {};
-    let colorIndex = 0;
-
-    return (registration_number: string | null | undefined) => {
-      if (!registration_number) return '#9ca3af';
-
-      if (!colorMap[registration_number]) {
-        colorMap[registration_number] = colorPalette[colorIndex % colorPalette.length];
-        colorIndex++;
-      }
-      return colorMap[registration_number];
-    };
-  })(), []);
-
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const id = urlParams.get('machineId');
-    setMachineId(id);
-  }, []);
-
-  const fetchMachineData = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`${TraceBASEURL}/get-depth-record`);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data: MachineApiResponse = await response.json();
-
-      if (data.status && data.data) {
-        const validActivities = data.data.filter((activity:MachineDataListItem) => {
-          if (machineId && Number(activity.machine_id) !== Number(machineId)) {
-            return false;
-          }
-
-          const mapping = EVENT_TYPE_MAPPING[
-            activity.eventType as keyof typeof EVENT_TYPE_MAPPING
-          ];
-          if (!mapping) return false;
-
-          const coordField = mapping.coordField as keyof MachineDataListItem;
-          const coordinates = activity[coordField] as string | null;
-
-          return coordinates && coordinates.trim() !== '';
-        });
-
-        validActivities.sort((a:any, b:any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-
-        setActivities(validActivities);
-      } else {
-        setActivities([]);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      setActivities([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [machineId]);
-
-  useEffect(() => {
-    fetchMachineData();
-  }, [fetchMachineData]);
-
-  const render = (status: Status) => {
-    if (status === Status.LOADING) {
-      return (
-        <div className="w-full h-full flex items-center justify-center bg-gray-50 rounded-lg">
-          <div className="text-gray-600 text-center">
-            <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4" />
-            <p>Loading Google Maps...</p>
-          </div>
-        </div>
-      );
-    }
-
-    if (status === Status.FAILURE) {
-      return (
-        <div className="w-full h-full flex items-center justify-center bg-gray-50 rounded-lg">
-          <div className="text-red-600 text-center">
-            <p>Error loading Google Maps. Please check your API key.</p>
-          </div>
-        </div>
-      );
-    }
-
-    return <MapComponent activities={activities} getColorByRegistration={getColorByRegistration} />;
-  };
-
-  const machineInfo = activities.length > 0 ? activities[0] : null;
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-600 rounded-lg">
-              <Satellite className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">
-                Machine {machineId} - Route Map
-              </h1>
-              {machineInfo && (
-                <p className="text-sm text-gray-600">
-                  {machineInfo.machine_registration_number} - {machineInfo.firm_name}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <button
-            onClick={fetchMachineData}
-            disabled={isLoading}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors duration-200 font-medium flex items-center gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            {isLoading ? 'Loading...' : 'Refresh'}
-          </button>
-        </div>
-      </header>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mx-6 mt-4">
-          <p className="text-red-700 text-sm">{error}</p>
-        </div>
-      )}
-
-      <div className="px-6 pb-6 pt-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-[600px] relative">
-          <Wrapper apiKey={apiKey} render={render} />
-
-          {activities.length > 0 && (
-            <div className="absolute top-4 right-4 bg-white p-3 rounded-lg shadow-lg border border-gray-200 max-w-xs max-h-64 overflow-y-auto z-10">
-              <h4 className="text-sm font-semibold text-gray-900 mb-2">Machines</h4>
-              <div className="space-y-1">
-                {Array.from(
-                  new Map(
-                    activities.map(a => [a.machine_registration_number, a])
-                  ).values()
-                ).map(machine => (
-                  <div key={machine.machine_id} className="flex items-center gap-2">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{
-                        backgroundColor: getColorByRegistration(
-                          machine.machine_registration_number
-                        ),
-                      }}
-                    ></div>
-                    <span className="text-xs text-gray-700">
-                      {machine.machine_registration_number}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {isLoading && (
-            <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg z-20">
-              <div className="text-gray-600 text-center">
-                <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4" />
-                <p>Loading machine route data...</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default MachineMapPage;
