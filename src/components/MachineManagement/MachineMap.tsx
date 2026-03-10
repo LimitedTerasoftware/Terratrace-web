@@ -35,24 +35,6 @@ export const MachineMapComponent: React.FC<MachineMapComponentProps> = ({
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
-  const EVENT_TYPES = {
-    STARTSURVEY: { color: '#10B981', icon: '🎯', label: 'Survey Start' },
-    DEPTH: { color: '#3B82F6', icon: '📏', label: 'Depth' },
-    ROADCROSSING: { color: '#F59E0B', icon: '🛣️', label: 'Road Crossing' },
-    FPOI: { color: '#EF4444', icon: '📍', label: 'FPOI' },
-    JOINTCHAMBER: { color: '#8B5CF6', icon: '🔧', label: 'Joint Chamber' },
-    MANHOLES: { color: '#06B6D4', icon: '🕳️', label: 'Manholes' },
-    ROUTEINDICATOR: { color: '#84CC16', icon: '🧭', label: 'Route Indicator' },
-    LANDMARK: { color: '#F97316', icon: '🏛️', label: 'Landmark' },
-    FIBERTURN: { color: '#EC4899', icon: '🔄', label: 'Fiber Turn' },
-    KILOMETERSTONE: { color: '#6B7280', icon: '📏', label: 'Kilometer Stone' },
-    STARTPIT: { color: '#14B8A6', icon: '🕳️', label: 'Start Pit' },
-    ENDPIT: { color: '#DC2626', icon: '🏁', label: 'End Pit' },
-    ENDSURVEY: { color: '#10B981', icon: '🎯', label: 'End Survey' },
-    HOLDSURVEY: { color: '#a93226', icon: '⏸️', label: 'Hold Survey'},
-    BLOWING: { color: '#663300', icon:'💨',label: 'Blowing Survey' },
-  };
-
   const parsePhotos = (photoString: string | null): string[] => {
     if (!photoString) return [];
     try {
@@ -120,13 +102,32 @@ export const MachineMapComponent: React.FC<MachineMapComponentProps> = ({
       // Check if depth is below minimum for critical marking
       const depthValue = activity.depthMeters ? getDepthValue(activity.depthMeters) : 0;
       const isCritical = activity.eventType === 'DEPTH' && depthValue > 0 && depthValue < minDepth;
-      
-      const marker = new google.maps.Marker({
-      position,
-      map,
-      title: `${activity.eventType}`,
-      icon: {
-        url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`
+      let iconConfig: google.maps.Icon | google.maps.Symbol = {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 8,
+        fillColor: markerColor,
+        fillOpacity: 1,
+        strokeColor: "#ffffff",
+        strokeWeight: 2,
+      };
+      // Start pit
+      if (activity.eventType === "STARTPIT") {
+        iconConfig = {
+          url: "https://maps.google.com/mapfiles/ms/icons/yellow-dot.png",
+          scaledSize: new google.maps.Size(30, 30),
+        };
+      }
+
+      // End pit
+      if (activity.eventType === "ENDPIT") {
+        iconConfig = {
+          url: "https://maps.google.com/mapfiles/ms/icons/red-dot.png",
+          scaledSize: new google.maps.Size(30, 30),
+        };
+      }
+      if (activity.eventType === "DEPTH") {
+        iconConfig = {
+          url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`
           <svg width="30" height="40" xmlns="http://www.w3.org/2000/svg">
             <text x="15" y="12" text-anchor="middle" font-size="11" fill="black" font-weight="bold">
               ${activity.depthMeters || ""}
@@ -135,7 +136,26 @@ export const MachineMapComponent: React.FC<MachineMapComponentProps> = ({
           </svg>
         `),
         anchor: new google.maps.Point(15, 28)
+        };
       }
+
+      if (isLastEvent) {
+         iconConfig = {
+          url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`
+          <svg width="30" height="40" xmlns="http://www.w3.org/2000/svg">
+           
+            <circle cx="15" cy="28" r="6" fill="#008000" stroke="white" stroke-width="2"/>
+          </svg>
+        `),
+        anchor: new google.maps.Point(15, 28)
+        };
+      }
+      
+      const marker = new google.maps.Marker({
+      position,
+      map,
+      title: `${activity.eventType}`,
+      icon: iconConfig
     });
       const photoGallery = photos.length > 0 ? `
         <div style="margin-top: 8px;">

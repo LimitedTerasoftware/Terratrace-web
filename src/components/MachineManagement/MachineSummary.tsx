@@ -17,7 +17,7 @@ const MachineSurveyDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'map' | 'chart' | 'table'>('map');
   const [minDepth, setMinDepth] = useState(1.65);
-
+  
   const colorPalette = [
     '#2563eb', '#dc2626', '#059669', '#7c3aed', '#ea580c',
     '#0891b2', '#be185d', '#4338ca', '#65a30d', '#f59e0b',
@@ -51,7 +51,7 @@ const MachineSurveyDashboard: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch(`${TraceBASEURL}/get-depth-record`);
+      const response = await fetch(`${TraceBASEURL}/get-latest-activity`);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -124,7 +124,10 @@ const MachineSurveyDashboard: React.FC = () => {
   const criticalDepthCount = depthData.filter(point => 
     parseFloat(point.depthMeters) < minDepth
   ).length;
-
+const totalDistance = activities.reduce((sum, survey) => {
+  const distance = parseFloat(survey.distance || "0");
+  return sum + (isNaN(distance) ? 0 : distance);
+}, 0);
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="container mx-auto px-4 py-2">
@@ -140,9 +143,11 @@ const MachineSurveyDashboard: React.FC = () => {
                   HDD
                 </h1>
                 {machineInfo && (
-                  <p className="text-gray-600 mt-1">
+                  <><p className="text-gray-600 mt-1">
                     {machineInfo.machine_registration_number} - {machineInfo.firm_name}
-                  </p>
+                   
+                  </p><p className="text-gray-600 mt-1">
+                    Cumulative Distance Today: {totalDistance.toFixed(2)} m </p></>
                 )}
               </div>
             </div>
@@ -220,7 +225,7 @@ const MachineSurveyDashboard: React.FC = () => {
             {activeTab === 'map' && (
               <div className="h-[600px] relative">
                 <Wrapper apiKey={apiKey} render={render} />
-                
+{/*                 
                 {activities.length > 0 && (
                   <div className="absolute top-4 right-4 bg-white p-3 rounded-lg shadow-lg border border-gray-200 max-w-xs max-h-64 overflow-y-auto z-10">
                     <h4 className="text-sm font-semibold text-gray-900 mb-2">Events</h4>
@@ -247,7 +252,63 @@ const MachineSurveyDashboard: React.FC = () => {
                     </div>
                  
                   </div>
-                )}
+                )} */}
+                <div className="absolute top-4 right-4 bg-white p-4 rounded-lg shadow-lg border border-gray-200 z-10 w-64">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                    Map Indicators
+                  </h4>
+
+                  <table className="w-full text-xs text-gray-700">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-1">Marker</th>
+                        <th className="text-left py-1">Meaning</th>
+                      </tr>
+                    </thead>
+
+                    <tbody className="space-y-2">
+
+                      <tr className="border-b">
+                        <td className="py-2 flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                          Green dot
+                        </td>
+                        <td>Current machine location</td>
+                      </tr>
+                       <tr className="border-b">
+                        <td className="py-2 flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                          Blue dot
+                        </td>
+                        <td>Depth</td>
+                      </tr>
+
+                      <tr className="border-b">
+                        <td className="py-2 flex items-center gap-2">
+                          <div className="w-5 h-1 bg-blue-500"></div>
+                          Blue line
+                        </td>
+                        <td>Completed route</td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                          Red flag
+                        </td>
+                        <td>End pit</td>
+                      </tr>
+
+                      <tr>
+                        <td className="py-2 flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
+                          Yellow flag
+                        </td>
+                        <td>Start pit</td>
+                      </tr>
+
+                    </tbody>
+                  </table>
+                </div>
 
                 {isLoading && (
                   <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg z-20">
