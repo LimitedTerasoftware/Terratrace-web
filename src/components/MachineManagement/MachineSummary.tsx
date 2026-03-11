@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Wrapper, Status } from '@googlemaps/react-wrapper';
-import { RefreshCw, Satellite, BarChart3, Database, MapPin, Activity } from 'lucide-react';
+import { RefreshCw, Satellite, BarChart3, Database, MapPin, Activity, MapPinCheck, DiscIcon, MapPinIcon } from 'lucide-react';
 import { MachineApiResponse, MachineDataListItem } from '../../types/machine';
 import { MachineMapComponent } from './MachineMap';
 import { DepthChart } from '../DepthChart/DepthChart';
@@ -132,49 +132,62 @@ const totalDistance = activities.reduce((sum, survey) => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="container mx-auto px-4 py-2">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-lg p-2 mb-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <Satellite className="w-8 h-8 text-blue-600" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">
-                  HDD
-                </h1>
-                {machineInfo && (
-                  <><p className="text-gray-600 mt-1">
-                    {machineInfo.machine_registration_number} - {machineInfo.firm_name}
-                   
-                  </p><p className="text-gray-600 mt-1">
-                    Cumulative Distance Today: {totalDistance.toFixed(2)} m </p></>
-                )}
-              </div>
+       <div className="bg-white rounded-lg shadow-lg p-3 mb-2">
+
+        {/* HEADER ROW */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="p-3 bg-blue-100 rounded-lg">
+              <Satellite className="w-8 h-8 text-blue-600" />
             </div>
-            
-            <div className="flex items-center space-x-4">
-              {livePoint && (
-                <div className="bg-green-100 border border-green-300 rounded-lg p-4">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-green-700 font-medium">Live Point Active</span>
-                  </div>
-                  <p className="text-sm text-green-600 mt-1">
-                    Last update: {new Date(livePoint.created_at).toLocaleTimeString()}
-                  </p>
-                </div>
+
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">HDD</h1>
+
+              {machineInfo && (
+                <p className="text-gray-600 mt-1">
+                  {machineInfo.machine_registration_number} - {machineInfo.firm_name}
+                </p>
               )}
-            <button
-                onClick={fetchMachineData}
-                disabled={isLoading}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-              >
-                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                <span>{isLoading ? 'Loading...' : 'Refresh'}</span>
-              </button>
             </div>
           </div>
+
+          <div className="flex items-center space-x-4">
+            {livePoint && (
+              <div className="bg-green-100 border border-green-300 rounded-lg p-4">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-green-700 font-medium">Live Point Active</span>
+                </div>
+                <p className="text-sm text-green-600 mt-1">
+                  Last update: {new Date(livePoint.created_at).toLocaleTimeString()}
+                </p>
+              </div>
+            )}
+
+            <button
+              onClick={fetchMachineData}
+              disabled={isLoading}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <span>{isLoading ? 'Loading...' : 'Refresh'}</span>
+            </button>
+          </div>
         </div>
+
+        {/* DISTANCE ROW */}
+        {machineInfo && (
+          <div className="flex items-center text-gray-700">
+            <MapPinIcon className="text-green-600 w-5 h-5 mr-2" />
+            <span>
+              Cumulative Distance Today:
+              <span className="font-bold ml-1">{totalDistance.toFixed(2)} m</span>
+            </span>
+          </div>
+        )}
+
+      </div>
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8">
             <p className="text-red-700 text-sm">{error}</p>
