@@ -263,7 +263,7 @@ export interface MachineLinkStats {
 
 export interface MachineSummary {
   total_links: number;
-  total_distance_meters: string;
+  total_distance_meters: string | "";
   total_days: number;
   avg_distance_per_day: string;
 }

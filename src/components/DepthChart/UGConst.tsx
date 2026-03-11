@@ -6,6 +6,7 @@ import { UGConstructionSurveyData } from '../../types/survey';
 import moment from 'moment';
 import * as XLSX from "xlsx";
 import DataTable, { TableColumn } from 'react-data-table-component';
+import { AddConstModal } from './AddConstModal';
 
 interface ReportProps {
   Data: {
@@ -19,14 +20,17 @@ interface ReportProps {
     excel: boolean;
     filtersReady: boolean;
     preview:boolean;
+    isAddModalOpen:boolean;
+
   };
   Onexcel: () => void;
   OnPreview: () => void;
+  OnModal:()=>void;
 }
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
-const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview }) => {
+const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview,OnModal }) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<UGConstructionSurveyData[]>([]);
@@ -71,7 +75,7 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview }) => {
     
     if (!Data.filtersReady) return;
     fetchSurveyData();
-  }, [Data.selectedState, Data.selectedDistrict, Data.selectedBlock, Data.fromdate, Data.todate, Data.filtersReady,Data.selectedStatus, Data.globalsearch]);
+  }, [Data.selectedState, Data.selectedDistrict, Data.selectedBlock, Data.fromdate, Data.todate, Data.filtersReady,Data.selectedStatus, Data.globalsearch,Data.isAddModalOpen]);
 
   const handleView = async (row: UGConstructionSurveyData | any,check:boolean) => {
     navigate('/construction-details', { state: { row, multipreview: check } });
@@ -542,6 +546,14 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview }) => {
           </div>
         )}
       </div>
+      <AddConstModal
+          isOpen={Data.isAddModalOpen}
+          onClose={()=>OnModal()}
+          onSuccess={()=>{
+              OnModal();
+          }}
+          baseUrl={TraceBASEURL}
+       />
     </div>
   );
 };

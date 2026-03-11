@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Wrapper, Status } from '@googlemaps/react-wrapper';
-import { RefreshCw, Satellite, BarChart3, Database, MapPin, Activity, MapPinCheck, DiscIcon, MapPinIcon } from 'lucide-react';
-import { MachineApiResponse, MachineDataListItem } from '../../types/machine';
+import { RefreshCw, Satellite, BarChart3, Database, MapPin, Activity, MapPinCheck, DiscIcon, MapPinIcon, MapIcon } from 'lucide-react';
+import { MachineApiResponse, MachineDataListItem, MachineLinkStatsResponse } from '../../types/machine';
 import { MachineMapComponent } from './MachineMap';
 import { DepthChart } from '../DepthChart/DepthChart';
 import { DepthDataTable } from '../DepthChart/DepthDataTable';
 import { convertMachineDataToDepthData } from '../../utils/DataConverter';
+import { machineApi } from '../Services/api';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -17,6 +18,7 @@ const MachineSurveyDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'map' | 'chart' | 'table'>('map');
   const [minDepth, setMinDepth] = useState(1.65);
+  const [data, setData] = useState<MachineLinkStatsResponse | null>(null);
   
   const colorPalette = [
     '#2563eb', '#dc2626', '#059669', '#7c3aed', '#ea580c',
@@ -45,6 +47,28 @@ const MachineSurveyDashboard: React.FC = () => {
     const id = urlParams.get('machineId');
     setMachineId(id);
   }, []);
+
+  useEffect(() => {
+  const fetchData = async () => {
+    try {
+      const response = await machineApi.getMachineLinkStats(
+        parseInt(machineId!)
+      );
+
+      setData(response);
+      setError(null);
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+    }
+  };
+
+  if (machineId) {
+    fetchData();
+  }
+
+}, [machineId]);
+  
 
   const fetchMachineData = useCallback(async () => {
     setIsLoading(true);
@@ -178,13 +202,24 @@ const totalDistance = activities.reduce((sum, survey) => {
 
         {/* DISTANCE ROW */}
         {machineInfo && (
-          <div className="flex items-center text-gray-700">
-            <MapPinIcon className="text-green-600 w-5 h-5 mr-2" />
-            <span>
-              Cumulative Distance Today:
-              <span className="font-bold ml-1">{totalDistance.toFixed(2)} m</span>
-            </span>
-          </div>
+          <><div className="flex items-center text-gray-700">
+              <MapPinIcon className="text-green-600 w-5 h-5 mr-2" />
+              <span>
+                Distance Today:
+                <span className="font-bold ml-1">{totalDistance.toFixed(2)} m</span>
+              </span>
+            </div><div className="flex items-center text-gray-700">
+                <MapIcon className="text-blue-600 w-5 h-5 mr-2" />
+                <span>
+                  Total Distance:
+                  <span className="font-bold ml-1">
+                    {data?.summary?.total_distance_meters
+                      ? (Number(data.summary.total_distance_meters) / 1000).toFixed(2)
+                      : "0.00"}{" "}
+                    km
+                  </span>
+                </span>
+              </div></>
         )}
 
       </div>

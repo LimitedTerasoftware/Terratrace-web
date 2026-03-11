@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { StateData, District, Block } from '../../types/survey';
 import Report from './UGConst';
 import ConstructionStatsPanel from './ConstructionStatsPanel';
-import { SheetIcon, Construction, EyeIcon } from 'lucide-react';
+import { SheetIcon, Construction, EyeIcon, PlusCircleIcon } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { UGConstructionSurveyData } from '../../types/survey';
 import axios from 'axios';
@@ -39,6 +39,7 @@ function ConstructionPage() {
     const [preview,setPreview] = useState<boolean>(false);
     const [searchParams, setSearchParams] = useSearchParams();
     const [filtersReady, setFiltersReady] = useState(false);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     
     // New state for stats panel
     const [surveyData, setSurveyData] = useState<UGConstructionSurveyData[]>([]);
@@ -460,6 +461,13 @@ function ConstructionPage() {
                             <EyeIcon className="h-4 w-4 text-blue-600" />
                             Preview
                         </button>
+                        {/* <button
+                             onClick={()=>setIsAddModalOpen(true)}
+                            className="flex-none h-10 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-blue-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
+                        >
+                            <PlusCircleIcon className="h-4 w-4 text-blue-600"/>
+                            Add New Event
+                        </button> */}
                     </div>
                 </div>
 
@@ -477,9 +485,12 @@ function ConstructionPage() {
                             excel,
                             filtersReady,
                             preview,
+                            isAddModalOpen
+
                         }}
                         Onexcel={() => setExcel(false)}
                         OnPreview={() => setPreview(false)}
+                        OnModal = {()=>setIsAddModalOpen(false)}
                     />
                 )}
             </div>

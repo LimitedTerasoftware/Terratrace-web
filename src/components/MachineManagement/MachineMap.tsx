@@ -131,6 +131,8 @@ export const MachineMapComponent: React.FC<MachineMapComponentProps> = ({
         iconConfig = {
           url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`
           <svg width="30" height="40" xmlns="http://www.w3.org/2000/svg">
+              <rect x="5" y="0" width="30" height="16" rx="4" ry="4" fill="white" stroke="#0047AB" stroke-width="1"/>
+
             <text x="15" y="12" text-anchor="middle" font-size="11" fill="black" font-weight="bold">
               ${activity.depthMeters || ""}
             </text>
