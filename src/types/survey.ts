@@ -266,6 +266,7 @@ export interface Activity {
   routeFeatureType:string|null;
   cable_stack:string|null;
   offset:string|null;
+ 
  }
 
 export interface ApiResponseMachine {

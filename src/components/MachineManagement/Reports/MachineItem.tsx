@@ -336,9 +336,9 @@ export default function MachineDetails() {
           <div className="flex items-center gap-4">
             <button
               className="flex items-center gap-2 text-blue-500 hover:text-blue-700 mb-6"
-             onClick={() =>
-                  navigate(`/machine-management/machine-reports`)
-                }
+              onClick={() =>
+                navigate(`/machine-management/machine-reports`)
+              }
             >
               <FaArrowLeft className="h-5 w-5" />
               Back

@@ -194,9 +194,9 @@ export interface MachineApiResponse {
 }
 
 export interface MachineDataReport {
-  machine_id: number;
+  firm_id: number;
   firm_name: string;
-  registration_number: string;
+  authorised_mobile: string;
   authorised_person: string;
 }
 
@@ -207,7 +207,40 @@ export interface MachineDetailsResponse {
     active_machines: string;
     inactive_machines: string;
   };
-  machines: MachineDataReport[];
+  firms: MachineDataReport[];
+}
+export interface MachineList{
+    machine_id: number;
+    serial_number: string;
+    registration_number: number;
+    machine_model: string |null;
+    status:string ;
+    created_at: string;
+    updated_at:string;
+    machine_make: string;
+    capacity: string;
+    no_of_rods: number;
+    digitrack_make: string;
+    digitrack_model:string;
+    truck_make: string;
+    truck_model: number;
+    registration_valid_upto:string;
+    driver_batch_no:string| null;
+    driver_valid_upto: string;
+    supervisor_name: string;
+    supervisor_email: string;
+    supervisor_phone: number;
+    firm_id: number;
+    firm_name: string;
+    authorised_person: string;
+    author_phone: number;
+    authorised_mobile: number;
+
+}
+export interface MachineListApiResponse{
+  status:boolean;
+  machines:MachineList[];
+    
 }
 
 export interface MachineLinkStats {

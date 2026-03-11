@@ -621,6 +621,25 @@ function Eventreport() {
             sortable: true,
         },
         {
+        name: "Status",
+        selector: row => row.status,
+        sortable: true,
+        cell: (row ) => {
+          const status = row.status as 0 | 1 ;
+          const statusConfig = {
+            0: { label: 'Active', className: 'bg-green-100 text-green-800' },
+            1: { label: 'Inactive', className: 'bg-red-100 text-red-800' },
+          };
+          const config = statusConfig[status] || { label: 'Unknown', className: 'bg-gray-100 text-gray-800' };
+
+          return (
+            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${config.className}`}>
+              {config.label}
+            </span>
+          );
+        }
+      },
+        {
             name: "Created At",
             selector: row => moment(row.created_at).format("DD/MM/YYYY, hh:mm A"), sortable: true,
         },

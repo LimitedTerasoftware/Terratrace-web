@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { MachineDataApiResponse } from '../../types/survey';
-import { ApiResponse, MachineDetailsResponse, MachineLinkStatsResponse} from '../../types/machine';
+import { ApiResponse, MachineDetailsResponse, MachineLinkStatsResponse, MachineListApiResponse} from '../../types/machine';
 import { useCallback, useEffect, useState } from 'react';
 import { Activity, ApiResponseMachine ,FilterState} from '../../types/survey';
 import { EditPayload } from '../../types/aerial-survey';
@@ -294,6 +294,17 @@ export const machineApi = {
     }
     return response.json();
   },
+
+  getMachineList: async (firmId:number):Promise<MachineListApiResponse> =>{
+   const params = new URLSearchParams({
+      firm_id:firmId.toString()
+    });
+    const response = await fetch(`${TraceBASEURL}/get-all-machines?${params}`);
+     if (!response.ok) {
+      throw new Error('Failed to fetch machines');
+    }
+    return response.json();
+  }
 };
 
   
