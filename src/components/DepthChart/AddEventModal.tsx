@@ -30,8 +30,8 @@ const EVENT_TYPES = [
 //   'KILOMETERSTONE',
 //   'FIBERTURN',
 //   'ROUTEINDICATOR',
-//   'STARTPIT',
-//   'ENDPIT',
+  'STARTPIT',
+  'ENDPIT',
 //   'STARTSURVEY',
 //   'ENDSURVEY',
 //   'ROADCROSSING',
@@ -51,6 +51,13 @@ const getEventSpecificFields = (eventType: string) => {
     { key: 'road_margin', label: 'Road Margin', type: 'text', required: false },
     { key: 'routeBelongsTo', label: 'Route Belongs To', type: 'text', required: false },
     { key: 'soilType', label: 'Soil Type', type: 'text', required: false },
+    { key: 'Roadfesibility', label: 'Roadfesibility', type: 'text', required: false },
+    { key: 'area_type', label: 'Area Type', type: 'text', required: false },
+    { key: 'cableLaidOn', label: 'Cable Laid On', type: 'text', required: false },
+    { key: 'dgps_accuracy', label: 'DGPS Accuracy', type: 'text', required: false },
+    { key: 'dgps_siv', label: 'DGPS SIV', type: 'text', required: false },
+    { key: 'executionModality', label: 'Execution Modality', type: 'text', required: false },
+
   ];
 
   const eventSpecificFieldsMap: { [key: string]: Array<{ key: string; label: string; type: string; required: boolean }> } = {
@@ -92,10 +99,19 @@ const getEventSpecificFields = (eventType: string) => {
     STARTPIT: [
       { key: 'startPitLatlong', label: 'Start Pit Latitude/Longitude', type: 'text', required: true },
       { key: 'startPitPhotos', label: 'Start Pit Photos (JSON array)', type: 'textarea', required: false },
+      { key: 'depthLatlong', label: 'Depth Latitude/Longitude', type: 'text', required: true },
+      { key: 'depthMeters', label: 'Depth (Meters)', type: 'text', required: true },
+      { key: 'depthPhoto', label: 'Depth Photos (JSON array)', type: 'textarea', required: false },
+
     ],
     ENDPIT: [
       { key: 'endPitLatlong', label: 'End Pit Latitude/Longitude', type: 'text', required: true },
       { key: 'endPitPhotos', label: 'End Pit Photos (JSON array)', type: 'textarea', required: false },
+      { key: 'depthLatlong', label: 'Depth Latitude/Longitude', type: 'text', required: true },
+      { key: 'depthMeters', label: 'Depth (Meters)', type: 'text', required: true },
+      { key: 'depthPhoto', label: 'Depth Photos (JSON array)', type: 'textarea', required: false },
+
+
     ],
     STARTSURVEY: [
       { key: 'startPointCoordinates', label: 'Start Point Coordinates', type: 'text', required: true },

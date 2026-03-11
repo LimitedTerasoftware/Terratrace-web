@@ -331,6 +331,8 @@ export interface UGConstructionSurveyData {
   construction_type: string | null;
   total_distance: string | null;
 
+
+
 }
 
 // MachineWork Chart

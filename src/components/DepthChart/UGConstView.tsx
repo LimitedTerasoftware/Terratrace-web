@@ -268,7 +268,7 @@ function Eventreport() {
         const rawPhotoData = photoField ? row[photoField] : null;
         addImages(rawPhotoData, `${row.eventType} Photo`);
 
-          if (row.eventType === "JOINTCHAMBER" || row.eventType === "MANHOLES") {
+          if (row.eventType === "JOINTCHAMBER" || row.eventType === "MANHOLES" || row.eventType === "STARTPIT" || row.eventType === "ENDPIT") {
                 const depthPhotoField = eventPhotoFields["DEPTH"]; // depthPhoto
                 const depthPhotos = row[depthPhotoField];
 

@@ -224,7 +224,7 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview }) => {
     },
     {
       name: "Distance (m)",
-      selector: row => row.total_distance || "-",
+      selector: row => row.total_distance || "0.00",
       sortable: true,
     },
     {
