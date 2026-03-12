@@ -59,6 +59,7 @@ const getEventSpecificFields = () => {
         { key: 'endLocation', label: 'End Gp', type: 'text', required: true },
         { key: 'firm', label: 'Firm Name', type: 'text', required: true },
         { key: 'vehicleserialno', label: 'Vehical', type: 'text', required: true },
+        { key: 'construction_type', label: 'Construction Type', type: 'text', required: true },
 
         { key: 'eventType', label: 'Event Type', type: 'text', required: true },
         { key: 'dgps_accuracy', label: 'DGPS Accuracy', type: 'text', required: false },
@@ -520,6 +521,17 @@ export function AddConstModal({ isOpen, onClose, onSuccess, baseUrl }: AddEventM
                                             </option>
                                         ))}
                                     </select>
+                                ) : key === "construction_type" ? (
+                                    <select
+                                         value={(formData[key] as string) || ""}
+                                        onChange={(e) => handleChange(key, e.target.value)}
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                    >
+                                        <option value="">Select Construction Type</option>
+                                        <option value="Hdd">HDD</option>
+                                        <option value="OpenTrench">OpenTrench</option>
+                                   </select>
+                                    
                                 ) : (
                                     <input
                                         type={type}
