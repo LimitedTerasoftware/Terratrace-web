@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Machine, MachineFormData } from '../../types/machine';
 import { Edit3, X } from 'lucide-react';
+import { getFirms } from '../Services/api';
+import { Firm } from '../../types/firm';
 
 interface MachineFormProps {
   machine?: Machine;
@@ -20,6 +22,7 @@ const MachineForm: React.FC<MachineFormProps> = ({
   onExpandChange,
 }) => {
   const [formData, setFormData] = useState<MachineFormData>({
+    firm_id: 0,
     firm_name: "",
     authorised_person: "",
     machine_make: "",
@@ -30,9 +33,9 @@ const MachineForm: React.FC<MachineFormProps> = ({
     truck_make: "",
     truck_model: "",
     registration_number: "",
-    registration_valid_upto: new Date(),
+    registration_valid_upto: new Date().toISOString().split("T")[0],
     driver_batch_no: "",
-    driver_valid_upto: new Date(),
+    driver_valid_upto: new Date().toISOString().split("T")[0],
     serial_number: "",
     year_of_manufacture: new Date().getFullYear(),
     status: 'active',
@@ -42,9 +45,13 @@ const MachineForm: React.FC<MachineFormProps> = ({
     supervisor_phone: '',
     author_phone: ""
   });
-
+  const [firms, setFirms] = useState<Firm[]>([]);
   const [errors, setErrors] = useState<Partial<Record<keyof MachineFormData, string>>>({});
-
+  useEffect(() => {
+    getFirms().then((data) => {
+      setFirms(data);
+    });
+  }, []);
   // Use onExpandChange when needed
   const handleExpandToggle = () => {
     if (onExpandChange) {
@@ -55,6 +62,7 @@ const MachineForm: React.FC<MachineFormProps> = ({
   useEffect(() => {
     if (machine) {
       setFormData({
+        firm_id: machine.firm_id,
         firm_name: machine.firm_name,
         authorised_person: machine.authorised_person,
         machine_make: machine.machine_make,
@@ -80,6 +88,7 @@ const MachineForm: React.FC<MachineFormProps> = ({
     } else {
       // Reset form when not editing and no machine provided
       setFormData({
+        firm_id: 0,
         firm_name: "",
         authorised_person: "",
         machine_make: "",
@@ -90,9 +99,9 @@ const MachineForm: React.FC<MachineFormProps> = ({
         truck_make: "",
         truck_model: "",
         registration_number: "",
-        registration_valid_upto: new Date(),
+        registration_valid_upto: new Date().toISOString().split("T")[0],
         driver_batch_no: "",
-        driver_valid_upto: new Date(),
+        driver_valid_upto: new Date().toISOString().split("T")[0],
         serial_number: "",
         year_of_manufacture: null,
         status: 'active',
@@ -122,11 +131,11 @@ const MachineForm: React.FC<MachineFormProps> = ({
     // Fixed: Ensure year_of_manufacture is a number and validate properly
     const currentYear = new Date().getFullYear();
     const year = Number(formData.year_of_manufacture);
-    
+
     // if (isNaN(year) || year < 1900 || year > currentYear + 1) {
     //   newErrors.year_of_manufacture = 'Please enter a valid year';
     // }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -183,21 +192,43 @@ const MachineForm: React.FC<MachineFormProps> = ({
               <p className="mt-1 text-sm text-red-600">{errors.serial_number}</p>
             )}
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Firm Name
             </label>
-            <input
-              type="text"
-              value={formData.firm_name}
-              onChange={(e) => handleChange('firm_name', e.target.value)}
+            <select
+              value={formData.firm_id || ""}
+              onChange={(e) => {
+                const selectedId = Number(e.target.value);
+
+                const selectedFirm = firms.find(f => f.id === selectedId);
+
+                if (selectedFirm) {
+                  setFormData((prev) => ({
+                    ...prev,
+                    firm_id: selectedFirm.id,
+                    firm_name: selectedFirm.firm_name,
+                    authorised_person: selectedFirm.authorised_person,
+                    author_phone: selectedFirm.authorised_mobile
+                  }));
+                }
+              }}
               className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.firm_name ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
-              placeholder="Enter firm name" />
-            {errors.firm_name && (
+
+            >
+              <option value="">Select Firm</option>
+              {firms.map((firm) => (
+                <option key={firm.id} value={firm.id}>
+                  {firm.firm_name}
+                </option>
+              ))}
+            </select>
+           
+              {errors.firm_name && (
               <p className="mt-1 text-sm text-red-600">{errors.firm_name}</p>
             )}
           </div>
+        
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -221,9 +252,8 @@ const MachineForm: React.FC<MachineFormProps> = ({
             <input
               type="date"
               value={
-                formData.registration_valid_upto
-                  ? new Date(formData.registration_valid_upto).toISOString().split('T')[0]
-                  : ''
+                formData.registration_valid_upto || ""
+                
               }
               onChange={(e) => handleChange('registration_valid_upto', e.target.value)}
               className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all border-gray-300`}
@@ -235,10 +265,11 @@ const MachineForm: React.FC<MachineFormProps> = ({
               Authorised Person
             </label>
             <input
+                readOnly
               type="text"
               value={formData.authorised_person}
-              onChange={(e) => handleChange('authorised_person', e.target.value)}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.authorised_person ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-gray-100 cursor-not-allowed ${errors.authorised_person ? 'border-red-300 bg-red-50' : 'border-gray-300'}
+                `}
               placeholder="Enter authorised person name" />
             {errors.authorised_person && (
               <p className="mt-1 text-sm text-red-600">{errors.authorised_person}</p>
@@ -250,10 +281,10 @@ const MachineForm: React.FC<MachineFormProps> = ({
               Authorised Person Mobile Number
             </label>
             <input
+              readOnly
               type="text"
               value={formData.author_phone}
-              onChange={(e) => handleChange('author_phone', e.target.value)}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.author_phone ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-gray-100 cursor-not-allowed ${errors.author_phone ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
               placeholder="Enter authorised person mobile number" />
             {errors.author_phone && (
               <p className="mt-1 text-sm text-red-600">{errors.author_phone}</p>
@@ -422,10 +453,7 @@ const MachineForm: React.FC<MachineFormProps> = ({
             <input
               type="date"
               value={
-                formData.driver_valid_upto
-                  ? new Date(formData.driver_valid_upto).toISOString().split('T')[0]
-                  : ''
-              }
+                formData.driver_valid_upto || "" }
               onChange={(e) => handleChange('driver_valid_upto', e.target.value)}
               className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all border-gray-300`}
               placeholder="Enter driver valid date" />
@@ -447,8 +475,8 @@ const MachineForm: React.FC<MachineFormProps> = ({
             </select>
           </div>
         </div>
-       
-       {Object.values(errors).filter(Boolean).length > 0 && (
+
+        {Object.values(errors).filter(Boolean).length > 0 && (
           <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-lg mt-4">
             <p className="text-sm">Please enter valid values for all required fields:</p>
             <ul className="mt-2 list-disc list-inside text-sm">
@@ -460,7 +488,7 @@ const MachineForm: React.FC<MachineFormProps> = ({
             </ul>
           </div>
         )}
-       
+
 
         <div className="flex justify-end space-x-3 pt-6 border-t">
           <button
@@ -473,17 +501,17 @@ const MachineForm: React.FC<MachineFormProps> = ({
           <button
             type="submit"
             className={`px-8 py-3 rounded-lg text-white font-medium transition-all ${isEditing
-                ? 'bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl'
-                : 'bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl'}`}
+              ? 'bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl'
+              : 'bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl'}`}
           >
             {isEditing ? 'Update Machine' : 'Add Machine'}
           </button>
         </div>
       </form>
-      
+
       {/* Optional: Add expand/collapse functionality if needed */}
       {onExpandChange && (
-        <button 
+        <button
           onClick={handleExpandToggle}
           className="mt-4 text-blue-600 hover:text-blue-800 text-sm"
         >

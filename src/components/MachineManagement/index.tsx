@@ -5,7 +5,7 @@ import MachineList from './MachineList';
 import { Settings, BarChart3, Truck, Plus, Cog } from 'lucide-react';
 import axios, { AxiosError } from 'axios';
 import Modal from '../hooks/ModalPopup';
-import { getMachineOptions } from '../Services/api';
+import {getMachineOptions } from '../Services/api';
 import { useLocation, Link } from 'react-router-dom';
 
 interface ModalData {
@@ -37,6 +37,8 @@ function MachineManagement() {
       setMachines(data);
     });
   }, []);
+
+
 
   const handleAddMachine = async (formData: MachineFormData) => {
     try {
@@ -329,6 +331,7 @@ function MachineManagement() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
               <MachineForm
+               
                 machine={editingMachine}
                 onSubmit={editingMachine ? handleEditMachine : handleAddMachine}
                 onCancel={handleCancelEdit}

@@ -2,6 +2,7 @@ export interface Machine {
   machine_id:string;
   id: string;
   firm_name:string;
+  firm_id:number;
   authorised_person:string;
   machine_make:string;
   capacity:string;
@@ -12,9 +13,9 @@ export interface Machine {
   truck_make:string;
   truck_model:string;
   registration_number: string;
-  registration_valid_upto:Date;
+  registration_valid_upto:string;
   driver_batch_no:string;
-  driver_valid_upto:Date;
+  driver_valid_upto:string;
   serial_number: string;
   supervisor_name :string ,
   supervisor_email :string,
