@@ -461,13 +461,13 @@ function ConstructionPage() {
                             <EyeIcon className="h-4 w-4 text-blue-600" />
                             Preview
                         </button>
-                        {/* <button
+                        <button
                              onClick={()=>setIsAddModalOpen(true)}
                             className="flex-none h-10 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-blue-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
                         >
                             <PlusCircleIcon className="h-4 w-4 text-blue-600"/>
                             Add New Event
-                        </button> */}
+                        </button>
                     </div>
                 </div>
 

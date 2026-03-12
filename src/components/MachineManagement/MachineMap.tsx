@@ -144,17 +144,24 @@ export const MachineMapComponent: React.FC<MachineMapComponentProps> = ({
       }
 
       if (isLastEvent) {
-         iconConfig = {
-          url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`
-          <svg width="30" height="40" xmlns="http://www.w3.org/2000/svg">
-           
-            <circle cx="15" cy="28" r="6" fill="#008000" stroke="white" stroke-width="2"/>
-          </svg>
-        `),
-        anchor: new google.maps.Point(15, 28)
+        iconConfig = {
+          url:
+            "data:image/svg+xml;charset=UTF-8," +
+            encodeURIComponent(`
+              <svg width="40" height="40" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <!-- background circle -->
+                <circle cx="12" cy="12" r="11" fill="#22c55e" stroke="white" stroke-width="2"/>
+
+                <!-- excavator icon -->
+                <path fill="#facc15" d="M2 14h3l2-3h6l2 3h3v2h-1a2 2 0 11-4 0H7a2 2 0 11-4 0H2z"/>
+                <circle cx="6" cy="16" r="1.5" fill="#374151"/>
+                <circle cx="14" cy="16" r="1.5" fill="#374151"/>
+              </svg>
+            `),
+          scaledSize: new google.maps.Size(25, 25),
+          anchor: new google.maps.Point(20, 20),
         };
       }
-      
       const marker = new google.maps.Marker({
       position,
       map,
@@ -193,15 +200,15 @@ export const MachineMapComponent: React.FC<MachineMapComponentProps> = ({
         const deviationSign = deviation >= 0 ? '+' : '';
         
         return `
-          <div style="background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; padding: 16px; border-radius: 12px; margin-bottom: 16px;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-              <h3 style="margin: 0; font-size: 18px; font-weight: 700; letter-spacing: 1px;">DEPTH</h3>
+          <div style="background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; padding: 10px; border-radius: 12px; margin-bottom: 2px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+              <h5 style="margin: 0; font-size: 18px; font-weight: 700; letter-spacing: 1px;">DEPTH</h5>
               ${isCritical ? '<div style="background: #ef4444; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600;">⚠ CRITICAL</div>' : ''}
             </div>
             <div style="display: flex; align-items: center; justify-content: space-between;">
-              <div style="font-size: 36px; font-weight: 800; line-height: 1;">${activity.depthMeters}</div>
+              <div style="font-size: 20px; font-weight: 800; line-height: 1;">${activity.depthMeters}</div>
               <div style="text-align: right;">
-                <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                <div style="display: flex; align-items: center; margin-bottom: 2px;">
                   <span style="color: #fbbf24; margin-right: 6px;">⚠</span>
                   <span style="font-size: 14px;">Required: ${minDepth} m</span>
                 </div>
@@ -210,7 +217,7 @@ export const MachineMapComponent: React.FC<MachineMapComponentProps> = ({
                 </div>
               </div>
             </div>
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.2);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 5px; padding-top: 5px; border-top: 1px solid rgba(255,255,255,0.2);">
               <span style="font-size: 14px; opacity: 0.9;">Survey ID: ${activity.survey_id}</span>
               <span style="font-size: 14px; opacity: 0.9;">Link: ${activity.start_lgd_name}-${activity.end_lgd_name}</span>
             </div>
@@ -235,34 +242,34 @@ export const MachineMapComponent: React.FC<MachineMapComponentProps> = ({
           ${criticalWarning}
           
           <!-- Machine and Contractor Info -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
-            <div style="background: #f8fafc; padding: 12px; border-radius: 8px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 10px;">
+            <div style="background: #f8fafc; padding: 12px; border-radius: 5px;">
               <div style="display: flex; align-items: center; margin-bottom: 8px;">
                 <span style="color: #4f46e5; margin-right: 8px; font-size: 16px;">🔧</span>
-                <span style="color: #64748b; font-size: 14px; font-weight: 600;">Machine</span>
+                <span style="color: #64748b; font-size: 12px; font-weight: 600;">Machine</span>
               </div>
-              <div style="color: #1e293b; font-size: 16px; font-weight: 700;">${activity.machine_registration_number}</div>
+              <div style="color: #1e293b; font-size: 14px; font-weight: 700;">${activity.machine_registration_number}</div>
             </div>
             <div style="background: #f8fafc; padding: 12px; border-radius: 8px;">
               <div style="display: flex; align-items: center; margin-bottom: 8px;">
                 <span style="color: #059669; margin-right: 8px; font-size: 16px;">🏢</span>
-                <span style="color: #64748b; font-size: 14px; font-weight: 600;">Contractor</span>
+                <span style="color: #64748b; font-size: 12px; font-weight: 600;">Contractor</span>
               </div>
-              <div style="color: #1e293b; font-size: 16px; font-weight: 700;">${activity.firm_name}</div>
+              <div style="color: #1e293b; font-size: 14px; font-weight: 700;">${activity.firm_name}</div>
             </div>
           </div>
 
           <!-- Location Info -->
-          <div style="background: #fef7f0; padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+          <div style="background: #fef7f0; padding: 12px; border-radius: 8px; margin-bottom: 8px;">
             <div style="display: flex; align-items: center; margin-bottom: 8px;">
               <span style="color: #ea580c; margin-right: 8px; font-size: 16px;">📍</span>
-              <span style="color: #1e293b; font-size: 16px; font-weight: 600;">${activity.state_name}, ${activity.district_name}</span>
+              <span style="color: #1e293b; font-size: 12px; font-weight: 600;">${activity.state_name}, ${activity.district_name}</span>
             </div>
             <div style="color: #64748b; font-size: 14px;">${activity.block_name}</div>
           </div>
 
           <!-- Additional Details -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
             ${activity.dgps_accuracy ? `
               <div style="display: flex; align-items: center;">
                 <span style="color: #10b981; margin-right: 8px; font-size: 14px;">🛰️</span>

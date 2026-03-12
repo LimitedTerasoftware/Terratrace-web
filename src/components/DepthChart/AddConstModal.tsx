@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { X, Save, Loader2, AlertCircle, Upload, Trash2 } from 'lucide-react';
 import { Block, District, ImageUploadResponse, StateData } from '../../types/survey';
 import axios from 'axios';
-import { getBlockData, getDistrictData, getStateData } from '../Services/api';
+import { getBlockData, getDistrictData, getStateData, machineApi } from '../Services/api';
+import { MachineDetailsResponse } from '../../types/machine';
 
 interface FormErrors {
     [key: string]: string;
@@ -28,6 +29,23 @@ interface UsersData {
     company_id: string;
     machine_id: string;
 }
+interface GpData{
+    id: number,
+    name: string,
+    lattitude: string,
+    longitude: string,
+    type: string,
+    blk_code: number,
+    blk_name: string,
+    dt_code: number,
+    dt_name: string,
+    st_code: number,
+    st_name: string,
+    lgd_code: number,
+    remark: string|null,
+    created_at: string,
+    updated_at: string
+}
 
 
 const getEventSpecificFields = () => {
@@ -39,15 +57,17 @@ const getEventSpecificFields = () => {
 
         { key: 'startLocation', label: 'Start Gp', type: 'text', required: true },
         { key: 'endLocation', label: 'End Gp', type: 'text', required: true },
+        { key: 'firm', label: 'Firm Name', type: 'text', required: true },
+        { key: 'vehicleserialno', label: 'Vehical', type: 'text', required: true },
+
         { key: 'eventType', label: 'Event Type', type: 'text', required: true },
         { key: 'dgps_accuracy', label: 'DGPS Accuracy', type: 'text', required: false },
         { key: 'dgps_siv', label: 'DGPS SIV', type: 'text', required: false },
 
-        { key: 'vehicleserialno', label: 'Vehical', type: 'text', required: true },
         { key: 'vehicle_image', label: 'Vehical Photo (JSON array)', type: 'text', required: false },
 
         { key: 'startPointCoordinates', label: 'Start Point Coordinates', type: 'text', required: true },
-        { key: 'startPointPhoto', label: 'Start Point Photo (JSON array)', type: 'textarea', required: false },
+        { key: 'startPointPhoto', label: 'Start Point Photo (JSON array)', type: 'text', required: false },
     ];
 
 
@@ -58,7 +78,7 @@ const BASEURL = import.meta.env.VITE_API_BASE;
 
 export function AddConstModal({ isOpen, onClose, onSuccess, baseUrl }: AddEventModalProps) {
 
-    const [eventType, setEventType] = useState('');
+    const [eventType, setEventType] = useState('STARTSURVEY');
     const [formData, setFormData] = useState<{ [key: string]: string | number }>({});
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -73,6 +93,10 @@ export function AddConstModal({ isOpen, onClose, onSuccess, baseUrl }: AddEventM
     const [selectedState, setSelectedState] = useState<string | null>(null);
     const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
     const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
+    const [Gp, setGp] = useState<GpData[]>([]);
+    const [Vehical, setVehical] = useState<any[]>([]);
+    const [firmname,setFirmName]=useState<MachineDetailsResponse | null>(null);
+    const [Selectfirmname,seSelecttFirmName]=useState<string | ''>('');
 
     const fetchusers = async () => {
         try {
@@ -82,8 +106,40 @@ export function AddConstModal({ isOpen, onClose, onSuccess, baseUrl }: AddEventM
             setError(err.message || "Failed to fetch data");
         }
     };
+   const fetchGps = async (selectedBlock:string) => {
+    if (!selectedBlock) return;
+    try {
+        const response = await axios.get(`${BASEURL}/gpdata`, {
+            params: { block_code: selectedBlock }
+        });
+        setGp(response.data);
+    } catch (err:any) {
+        setError(err.message || "Failed to fetch data");
+    }
+};
+
+    const getFirm= async () => {
+        try {
+           const response = await machineApi.getMachineDetails();
+          
+            setFirmName(response);
+        } catch (err: any) {
+            setError(err.message || "Failed to fetch data");
+        }
+    };
+    const getMachines = async (Selectfirmname:string) => {
+        try {
+            const response = await axios.get(`${baseUrl}/get-machines`,{
+                 params: { firm_name: Selectfirmname }
+            });
+            setVehical(response.data.data);
+        } catch (err: any) {
+            setError(err.message || "Failed to fetch data");
+        }
+    };
 
     useEffect(() => {
+         if (!isOpen) return;
         try {
 
             getStateData().then(data => {
@@ -94,7 +150,7 @@ export function AddConstModal({ isOpen, onClose, onSuccess, baseUrl }: AddEventM
 
         }
 
-    }, [])
+    }, [isOpen])
 
     useEffect(() => {
         if (selectedState) {
@@ -116,15 +172,31 @@ export function AddConstModal({ isOpen, onClose, onSuccess, baseUrl }: AddEventM
             setBlocks([])
         }
     }, [selectedDistrict])
+     useEffect(() => {
+        if (selectedBlock) {
+           
+            fetchGps(selectedBlock);
+        } 
+    }, [selectedBlock])
+         useEffect(() => {
+        if (Selectfirmname) {
+           
+            getMachines(Selectfirmname);
+        } 
+    }, [Selectfirmname])
 
     useEffect(() => {
+        if (!isOpen) return;
         fetchusers();
-
+      
+        getFirm();
         setFormData((prev) => ({
             ...prev,
             eventType: "STARTSURVEY",
+            
         }));
-    }, []);
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
     const fields = getEventSpecificFields() || [];
@@ -251,6 +323,7 @@ export function AddConstModal({ isOpen, onClose, onSuccess, baseUrl }: AddEventM
         try {
             const payload: { [key: string]: any } = {
                 eventType,
+                gp_id:0,
                 ...formData,
             };
 
@@ -323,7 +396,7 @@ export function AddConstModal({ isOpen, onClose, onSuccess, baseUrl }: AddEventM
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {fields.filter(({ key }) => !key.includes('image') && !key.includes('Photo')).map(({ key, label, type, required }) => (
-                            <div key={key} className={type === 'textarea' ? 'md:col-span-2' : ''}>
+                            <div key={key}>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                     {label}
                                     {required && <span className="text-red-500">*</span>}
@@ -392,20 +465,61 @@ export function AddConstModal({ isOpen, onClose, onSuccess, baseUrl }: AddEventM
                                             </option>
                                         ))}
                                     </select>
-
-                                ) : type === "textarea" ? (
-
-                                    <textarea
-                                        value={(formData[key] as string) || ''}
+                                   ) : key === "startLocation" ? (
+                                    <select
+                                       value={(formData[key] as string) || ""}
                                         onChange={(e) => handleChange(key, e.target.value)}
-                                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors ${errors[key]
-                                            ? 'border-red-500 dark:border-red-500'
-                                            : 'border-gray-300 dark:border-gray-600'
-                                            }`}
-                                        rows={4}
-                                        disabled={isLoading}
-                                        placeholder={key.includes('image') || key.includes('Photo') ? '["image1.jpg", "image2.jpg"]' : ''}
-                                    />
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                    >
+                                        <option value="">Select Start Gp</option>
+                                        {Gp.map((code) => (
+                                            <option key={code.id} value={code.id}>
+                                                {code.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : key === "endLocation" ? (
+                                    <select
+                                       value={(formData[key] as string) || ""}
+                                        onChange={(e) => handleChange(key, e.target.value)}
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                    >
+                                        <option value="">Select End Gp</option>
+                                        {Gp.map((code) => (
+                                            <option key={code.id} value={code.id}>
+                                                {code.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : key === "firm" ? (
+                                    <select
+                                        value={Selectfirmname || ""}
+                                        onChange={(e) => {
+                                            seSelecttFirmName(e.target.value);
+                                            handleChange("firm", e.target.value);
+                                        }}
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                    >
+                                        <option value="">Select Firm</option>
+                                        {firmname?.firms.map((code) => (
+                                            <option key={code.firm_name} value={code.firm_name}>
+                                                {code.firm_name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : key === "vehicleserialno" ? (
+                                    <select
+                                         value={(formData[key] as string) || ""}
+                                        onChange={(e) => handleChange(key, e.target.value)}
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                    >
+                                        <option value="">Select Vehicle Serial No</option>
+                                        {Vehical.map((code) => (
+                                            <option key={code.registration_number} value={code.registration_number}>
+                                                {code.registration_number}
+                                            </option>
+                                        ))}
+                                    </select>
                                 ) : (
                                     <input
                                         type={type}
@@ -418,20 +532,20 @@ export function AddConstModal({ isOpen, onClose, onSuccess, baseUrl }: AddEventM
                                             )
                                         }
                                         className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors 
-                        ${key === "eventType"
-                                                ? "bg-gray-100 cursor-not-allowed"
-                                                : ""}
-                        ${errors[key]
-                                                ? 'border-red-500 dark:border-red-500'
-                                                : 'border-gray-300 dark:border-gray-600'
-                                            } `}
-                                        disabled={isLoading}
-                                        placeholder={
-                                            key.includes('Latlong') || key.includes('Coordinates')
-                                                ? '17.4303925, 78.4062873'
-                                                : ''
-                                        }
-                                    />
+                                        ${key === "eventType"
+                                                                ? "bg-gray-100 cursor-not-allowed"
+                                                                : ""}
+                                        ${errors[key]
+                                                                ? 'border-red-500 dark:border-red-500'
+                                                                : 'border-gray-300 dark:border-gray-600'
+                                                            } `}
+                                                        disabled={isLoading}
+                                                        placeholder={
+                                                            key.includes('Latlong') || key.includes('Coordinates')
+                                                                ? '17.4303925, 78.4062873'
+                                                                : ''
+                                                        }
+                                                    />
                                 )}
                                 {errors[key] && (
                                     <div className="mt-1 flex items-center gap-1">
