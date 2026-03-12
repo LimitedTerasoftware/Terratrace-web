@@ -205,7 +205,7 @@ const totalDistance = activities.reduce((sum, survey) => {
           <><div className="flex items-center text-gray-700">
               <MapPinIcon className="text-green-600 w-5 h-5 mr-2" />
               <span>
-                Distance Today:
+               Today Distance:
                 <span className="font-bold ml-1">{totalDistance.toFixed(2)} m</span>
               </span>
             </div><div className="flex items-center text-gray-700">
