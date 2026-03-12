@@ -331,16 +331,26 @@ export function AddConstModal({ isOpen, onClose, onSuccess, baseUrl }: AddEventM
             const imageFieldsWithFiles = Object.entries(imageFields).filter(
                 ([_, state]) => state.files.length > 0
             );
-
             for (const [fieldKey, state] of imageFieldsWithFiles) {
                 try {
                     const uploadedPaths = await uploadImages(state.files);
-                    payload[fieldKey] = JSON.stringify(uploadedPaths);
-                } catch (uploadError) {
-                    throw new Error(`Failed to upload images for ${fieldKey}: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`);
-                }
-            }
 
+                    if (fieldKey === "vehicle_image") {
+                    payload[fieldKey] = uploadedPaths[0] || "";
+                    } else {
+                    payload[fieldKey] = JSON.stringify(uploadedPaths);
+                    }
+
+                } catch (uploadError) {
+                    throw new Error(
+                    `Failed to upload images for ${fieldKey}: ${
+                        uploadError instanceof Error ? uploadError.message : "Unknown error"
+                    }`
+                    );
+                }
+                }
+
+          
             const response = await fetch(`${baseUrl}/survey/create`, {
                 method: 'POST',
                 headers: {

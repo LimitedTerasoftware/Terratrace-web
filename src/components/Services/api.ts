@@ -1,37 +1,55 @@
 import axios from 'axios';
+import { Firm } from '../../types/firm';
 import { MachineDataApiResponse } from '../../types/survey';
-import { ApiResponse, MachineDetailsResponse, MachineLinkStatsResponse, MachineListApiResponse} from '../../types/machine';
+import {
+  ApiResponse,
+  MachineDetailsResponse,
+  MachineLinkStatsResponse,
+  MachineListApiResponse,
+} from '../../types/machine';
 import { useCallback, useEffect, useState } from 'react';
-import { Activity, ApiResponseMachine ,FilterState} from '../../types/survey';
+import { Activity, ApiResponseMachine, FilterState } from '../../types/survey';
 import { EditPayload } from '../../types/aerial-survey';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const BASEURL = import.meta.env.VITE_API_BASE;
 
+export const getFirms = async (): Promise<Firm[]> => {
+  try {
+    const resp = await axios.get(`${TraceBASEURL}/get-all-firms`);
+    if (resp.status === 200 || resp.status === 201) {
+      return resp.data.data;
+    } else {
+      throw new Error(`HTTP error! status: ${resp.status}`);
+    }
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
 
 export const fetchMachineData = async (
   machineId: string,
   fromDate?: string,
-  toDate?: string
+  toDate?: string,
 ): Promise<MachineDataApiResponse> => {
-
   try {
     let url = `${TraceBASEURL}/get-daily-distances?machine_id=${machineId}`;
-    
+
     if (fromDate) {
       url += `&from_date=${fromDate}`;
     }
-    
+
     if (toDate) {
       url += `&to_date=${toDate}`;
     }
 
     const response = await fetch(url);
-    
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    
+
     const data: MachineDataApiResponse = await response.json();
     return data;
   } catch (error) {
@@ -40,19 +58,18 @@ export const fetchMachineData = async (
   }
 };
 
-export const getMachineOptions = async() => {
-    try {
+export const getMachineOptions = async () => {
+  try {
     const resp = await axios.get(`${TraceBASEURL}/get-all-machines`);
-    if(resp.status === 200 || resp.status === 201){
-        return resp.data.machines;
-    }else{
-       throw new Error(`HTTP error! status: ${resp.status}`);
+    if (resp.status === 200 || resp.status === 201) {
+      return resp.data.machines;
+    } else {
+      throw new Error(`HTTP error! status: ${resp.status}`);
     }
-    
-    } catch (error) {
-        console.log(error)
-        throw error;
-    }
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
 };
 
 export const getMachinePerformance = () => {
@@ -63,24 +80,28 @@ export const getMachinePerformance = () => {
   const fetchData = useCallback(async (filters: FilterState) => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const url = `${TraceBASEURL}/machine-monthly-amount?machine_id=${filters.machineId}&month=${filters.month}&year=${filters.year}`;
       const response = await fetch(url);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const result: ApiResponse = await response.json();
-      
+
       if (!result.status) {
         throw new Error('API returned error status');
       }
-      
+
       setData(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred while fetching data');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'An error occurred while fetching data',
+      );
       console.error('API Error:', err);
     } finally {
       setLoading(false);
@@ -90,49 +111,57 @@ export const getMachinePerformance = () => {
   return { data, loading, error, fetchData };
 };
 
-export const useActivities = ( 
+export const useActivities = (
   selectedState: string | null,
   selectedDistrict: string | null,
   selectedBlock: string | null,
-  Machine:string|null) => {
+  Machine: string | null,
+) => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [totalCount,setTotalCount]=useState<number>(0);
+  const [totalCount, setTotalCount] = useState<number>(0);
   const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
-  const [machineData, setMachineData] = useState<{[key: string]: {machine_id: number; registration_number: string; authorised_person: string; activities: Activity[]}}>();
+  const [machineData, setMachineData] = useState<{
+    [key: string]: {
+      machine_id: number;
+      registration_number: string;
+      authorised_person: string;
+      activities: Activity[];
+    };
+  }>();
 
   const fetchActivities = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-       const params = new URLSearchParams();
+      const params = new URLSearchParams();
 
       if (selectedState) params.append('state_id', selectedState);
       if (selectedDistrict) params.append('district_id', selectedDistrict);
       if (selectedBlock) params.append('block_id', selectedBlock);
       if (Machine) params.append('machine_id', Machine);
 
-      const response = await fetch(`${TraceBASEURL}/machine/latest-activity?${params.toString()}`);
+      const response = await fetch(
+        `${TraceBASEURL}/machine/latest-activity?${params.toString()}`,
+      );
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data: ApiResponseMachine = await response.json();
-      
+
       if (data.status && data.latestActivities) {
-          const allActivities: Activity[] = [];
-            Object.values(data.latestActivities).forEach(machineInfo => {
-              if (machineInfo.activities && machineInfo.activities.length > 0) {
-                allActivities.push(...machineInfo.activities);
-              }
-            });
+        const allActivities: Activity[] = [];
+        Object.values(data.latestActivities).forEach((machineInfo) => {
+          if (machineInfo.activities && machineInfo.activities.length > 0) {
+            allActivities.push(...machineInfo.activities);
+          }
+        });
 
-
-        setTotalCount(allActivities.length)
+        setTotalCount(allActivities.length);
         setActivities(allActivities);
         setMachineData(data.latestActivities);
-
       } else {
         setActivities([]);
         setMachineData({});
@@ -144,10 +173,9 @@ export const useActivities = (
     } finally {
       setIsLoading(false);
     }
-  }, [selectedState, selectedDistrict, selectedBlock,Machine]);
+  }, [selectedState, selectedDistrict, selectedBlock, Machine]);
 
   useEffect(() => {
-    
     fetchActivities();
   }, [fetchActivities]);
 
@@ -166,60 +194,59 @@ export const useActivities = (
     totalCount,
     isLoading,
     error,
-    refetch: fetchActivities
+    refetch: fetchActivities,
   };
 };
 
-export const getStateData = async() => {
+export const getStateData = async () => {
   try {
     const resp = await axios.get(`${BASEURL}/states`);
-    if(resp.status === 200 || resp.status === 201){
+    if (resp.status === 200 || resp.status === 201) {
       return resp.data.data;
-    }else{
+    } else {
       throw new Error(`HTTP error! status: ${resp.status}`);
     }
-    
   } catch (error) {
     throw error;
   }
+};
 
-}
-
-export const getDistrictData = async(selectedState:string | null)=>{
-  try{
-    const resp = await axios.get(`${BASEURL}/districtsdata?state_code=${selectedState}`);
-    if(resp.status === 200 || resp.status === 201){
-      return resp.data
-    }else{
-        throw new Error(`HTTP error! status: ${resp.status}`);
-
+export const getDistrictData = async (selectedState: string | null) => {
+  try {
+    const resp = await axios.get(
+      `${BASEURL}/districtsdata?state_code=${selectedState}`,
+    );
+    if (resp.status === 200 || resp.status === 201) {
+      return resp.data;
+    } else {
+      throw new Error(`HTTP error! status: ${resp.status}`);
     }
-    
   } catch (error) {
-        throw error;
-
+    throw error;
   }
+};
 
-}
-
-export const getBlockData = async(selectedDistrict:string | null)=>{
-  try{
-    const resp = await axios.get(`${BASEURL}/blocksdata?district_code=${selectedDistrict}`);
-    if(resp.status === 200 || resp.status === 201){
-      return resp.data
-    }else{
-        throw new Error(`HTTP error! status: ${resp.status}`);
-
+export const getBlockData = async (selectedDistrict: string | null) => {
+  try {
+    const resp = await axios.get(
+      `${BASEURL}/blocksdata?district_code=${selectedDistrict}`,
+    );
+    if (resp.status === 200 || resp.status === 201) {
+      return resp.data;
+    } else {
+      throw new Error(`HTTP error! status: ${resp.status}`);
     }
-    
   } catch (error) {
-        throw error;
-
+    throw error;
   }
+};
 
-}
-
-export const getGpData = async(page:number=1,st_code:string,dt_code:string,blk_code:string)=>{
+export const getGpData = async (
+  page: number = 1,
+  st_code: string,
+  dt_code: string,
+  blk_code: string,
+) => {
   try {
     const params: any = {};
     if (page) params.page = page;
@@ -227,20 +254,16 @@ export const getGpData = async(page:number=1,st_code:string,dt_code:string,blk_c
     if (dt_code) params.dt_code = dt_code;
     if (blk_code) params.blk_code = blk_code;
 
-    const resp = await axios.get(`${TraceBASEURL}/gpslist`,{params});
-     if(resp.status === 200 || resp.status === 201){
-      return resp.data
-    }else{
-        throw new Error(`HTTP error! status: ${resp.status}`);
-
+    const resp = await axios.get(`${TraceBASEURL}/gpslist`, { params });
+    if (resp.status === 200 || resp.status === 201) {
+      return resp.data;
+    } else {
+      throw new Error(`HTTP error! status: ${resp.status}`);
     }
-    
   } catch (error) {
-      throw error;
-
+    throw error;
   }
-}
-
+};
 
 export const updateAerialData = async (payload: EditPayload): Promise<any> => {
   try {
@@ -263,7 +286,6 @@ export const updateAerialData = async (payload: EditPayload): Promise<any> => {
   }
 };
 
-
 export const machineApi = {
   getMachineDetails: async (): Promise<MachineDetailsResponse> => {
     const response = await fetch(`${TraceBASEURL}/api/getMachineDetails`);
@@ -273,38 +295,40 @@ export const machineApi = {
     return response.json();
   },
 
-  getMachineLinkStats: async (machineId: number,
-  stateId?: string,
-  districtId?: string,
-  blockId?: string,
-  fromDate?: string,
-  toDate?: string): Promise<MachineLinkStatsResponse> => {
+  getMachineLinkStats: async (
+    machineId: number,
+    stateId?: string,
+    districtId?: string,
+    blockId?: string,
+    fromDate?: string,
+    toDate?: string,
+  ): Promise<MachineLinkStatsResponse> => {
     const params = new URLSearchParams({
-    machine_id: machineId.toString(),
-    state_id: stateId?.toString() || '',
-    district_id: districtId?.toString() || '',
-    block_id: blockId?.toString() || '',
-    from_date: fromDate || '',
-    to_date: toDate || ''
-  });
+      machine_id: machineId.toString(),
+      state_id: stateId?.toString() || '',
+      district_id: districtId?.toString() || '',
+      block_id: blockId?.toString() || '',
+      from_date: fromDate || '',
+      to_date: toDate || '',
+    });
 
-    const response = await fetch(`${TraceBASEURL}/api/machine-link-stats?${params}`);
+    const response = await fetch(
+      `${TraceBASEURL}/api/machine-link-stats?${params}`,
+    );
     if (!response.ok) {
       throw new Error('Failed to fetch machine link stats');
     }
     return response.json();
   },
 
-  getMachineList: async (firmId:number):Promise<MachineListApiResponse> =>{
-   const params = new URLSearchParams({
-      firm_id:firmId.toString()
+  getMachineList: async (firmId: number): Promise<MachineListApiResponse> => {
+    const params = new URLSearchParams({
+      firm_id: firmId.toString(),
     });
     const response = await fetch(`${TraceBASEURL}/get-all-machines?${params}`);
-     if (!response.ok) {
+    if (!response.ok) {
       throw new Error('Failed to fetch machines');
     }
     return response.json();
-  }
+  },
 };
-
-  

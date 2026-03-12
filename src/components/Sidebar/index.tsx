@@ -42,7 +42,8 @@ import {
   HardHat,             
   Wrench,              
   TrendingUp,          
-  Calendar             
+  Calendar,             
+  Building2
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -454,6 +455,24 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
 
                           <div className={`transform overflow-hidden transition-all ${!open && 'hidden'}`}>
                             <ul className="space-y-1 mt-2 flex flex-col gap-1.5 bg-black/20 dark:bg-boxdark/30 rounded-md py-2 border-l-2 border-gray-600 dark:border-gray-500 ml-2">
+                               <li>
+                                <NavLink
+                                  to="/machine-management/firm"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <Building2
+                                    size={16}
+                                    className="min-w-[16px] flex-shrink-0 opacity-80"
+                                  />
+                                  <span
+                                    className={`${isOpen ? 'block' : 'hidden'} truncate`}
+                                  >
+                                    Firms
+                                  </span>
+                                </NavLink>
+                              </li>
                               <li>
                                 <NavLink
                                   to="/machine-management/machines"
