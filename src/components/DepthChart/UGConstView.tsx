@@ -97,6 +97,7 @@ function Eventreport() {
     'HOLDSURVEY',
     'BLOWING',
     'ROUTEFEATURE',
+    'DUCT',
   ];
   const getData = async () => {
     try {
@@ -223,42 +224,42 @@ function Eventreport() {
     return dataToFilter;
   }, [globalsearch, depthData]);
 
-  const markers = filteredData
-    .map((row: Activity) => {
-      const latLongStr = getLatLongForEvent(row);
-      if (typeof latLongStr === 'string' && latLongStr.includes(',')) {
-        const [latStr, lngStr] = latLongStr.split(',');
-        const lat = parseFloat(latStr.trim());
-        const lng = parseFloat(lngStr.trim());
+  const FilteredMainData = filteredData.filter((data) => data.status == 0);
 
-        if (
-          !isNaN(lat) &&
-          !isNaN(lng) &&
-          Math.abs(lat) <= 90 &&
-          Math.abs(lng) <= 180
-        ) {
-          return {
-            lat,
-            lng,
-            eventType: row.eventType,
-            id: row.id,
-            survey_id: row.survey_id,
-          };
-        }
+  const markers = FilteredMainData.map((row: Activity) => {
+    const latLongStr = getLatLongForEvent(row);
+    if (typeof latLongStr === 'string' && latLongStr.includes(',')) {
+      const [latStr, lngStr] = latLongStr.split(',');
+      const lat = parseFloat(latStr.trim());
+      const lng = parseFloat(lngStr.trim());
+
+      if (
+        !isNaN(lat) &&
+        !isNaN(lng) &&
+        Math.abs(lat) <= 90 &&
+        Math.abs(lng) <= 180
+      ) {
+        return {
+          lat,
+          lng,
+          eventType: row.eventType,
+          id: row.id,
+          survey_id: row.survey_id,
+        };
       }
-      return null;
-    })
-    .filter(
-      (
-        m,
-      ): m is {
-        lat: number;
-        lng: number;
-        eventType: string;
-        id: number;
-        survey_id: number;
-      } => m !== null,
-    );
+    }
+    return null;
+  }).filter(
+    (
+      m,
+    ): m is {
+      lat: number;
+      lng: number;
+      eventType: string;
+      id: number;
+      survey_id: number;
+    } => m !== null,
+  );
 
   const eventPhotoFields: Record<string, keyof Activity> = {
     FPOI: 'fpoiPhotos',
@@ -349,6 +350,50 @@ function Eventreport() {
         label: 'Vehicle Image',
       });
     }
+
+    // Add start duct images
+    const parseDuctData = (data: any): any[] => {
+      if (!data) return [];
+      if (Array.isArray(data)) return data;
+      if (typeof data === 'string') {
+        try {
+          return JSON.parse(data);
+        } catch {
+          return [];
+        }
+      }
+      return [];
+    };
+    const startDuctData = parseDuctData(row.start_duct);
+    startDuctData.forEach((duct, idx) => {
+      if (duct.images && Array.isArray(duct.images)) {
+        duct.images.forEach((imgUrl: string) => {
+          if (imgUrl) {
+            mediaItems.push({
+              type: 'image',
+              url: `${baseUrl}${imgUrl}`,
+              label: `Start Duct ${idx + 1} Image`,
+            });
+          }
+        });
+      }
+    });
+
+    // Add end duct images
+    const endDuctData = parseDuctData(row.end_duct);
+    endDuctData.forEach((duct, idx) => {
+      if (duct.images && Array.isArray(duct.images)) {
+        duct.images.forEach((imgUrl: string) => {
+          if (imgUrl) {
+            mediaItems.push({
+              type: 'image',
+              url: `${baseUrl}${imgUrl}`,
+              label: `End Duct ${idx + 1} Image`,
+            });
+          }
+        });
+      }
+    });
 
     return mediaItems;
   };
@@ -499,47 +544,53 @@ function Eventreport() {
     },
     {
       name: 'Cable Stack',
-      selector: (row) => row.cable_stack !== "null" && row.cable_stack  || '-',
+      selector: (row) => (row.cable_stack !== 'null' && row.cable_stack) || '-',
       sortable: true,
     },
     {
       name: 'Execution Modality',
-      selector: (row) => row.executionModality !== 'null' && row.executionModality|| '-',
+      selector: (row) =>
+        (row.executionModality !== 'null' && row.executionModality) || '-',
       sortable: true,
     },
     {
       name: 'Landmark Type',
-      selector: (row) => row.landmark_type !== 'null' && row.landmark_type|| '-',
+      selector: (row) =>
+        (row.landmark_type !== 'null' && row.landmark_type) || '-',
       sortable: true,
     },
     {
       name: 'Landmark Desc',
-      selector: (row) => row.landmark_description !== 'null' && row.landmark_description|| '-',
+      selector: (row) =>
+        (row.landmark_description !== 'null' && row.landmark_description) ||
+        '-',
       sortable: true,
     },
     {
       name: 'RouteFeature Type',
-      selector: (row) => row.routeFeatureType !== 'null' && row.routeFeatureType || '-',
+      selector: (row) =>
+        (row.routeFeatureType !== 'null' && row.routeFeatureType) || '-',
       sortable: true,
     },
     {
       name: 'Route Belongs To',
-      selector: (row) => row.routeBelongsTo !== 'null' && row.routeBelongsTo || '-',
+      selector: (row) =>
+        (row.routeBelongsTo !== 'null' && row.routeBelongsTo) || '-',
       sortable: true,
     },
     {
       name: 'Road Type',
-      selector: (row) => row.roadType !== 'null' && row.roadType || '-',
+      selector: (row) => (row.roadType !== 'null' && row.roadType) || '-',
       sortable: true,
     },
     {
       name: 'Soil Type',
-      selector: (row) => row.soilType !== 'null' && row.soilType || '-',
+      selector: (row) => (row.soilType !== 'null' && row.soilType) || '-',
       sortable: true,
     },
     {
       name: 'Area Type',
-      selector: (row) => row.area_type !== 'null' && row.area_type || '-',
+      selector: (row) => (row.area_type !== 'null' && row.area_type) || '-',
       sortable: true,
     },
     {
@@ -549,7 +600,7 @@ function Eventreport() {
         return poleData?.pole_material || '-';
       },
       sortable: true,
-     
+
       cell: (row) => {
         const poleData = parsePoleData(row.pole_type);
         if (!poleData) return <span>-</span>;
@@ -621,33 +672,36 @@ function Eventreport() {
     },
     {
       name: 'Side Type',
-      selector: (row) => row.cableLaidOn !== 'null' && row.cableLaidOn || '-',
+      selector: (row) => (row.cableLaidOn !== 'null' && row.cableLaidOn) || '-',
       sortable: true,
     },
     {
       name: 'Crossing Type',
-      selector: (row) => row.crossingType !== 'null' && row.crossingType|| '-',
+      selector: (row) =>
+        (row.crossingType !== 'null' && row.crossingType) || '-',
       sortable: true,
     },
     {
       name: 'Crossing Length',
-      selector: (row) => row.crossingLength !== 'null' && row.crossingLength  || '-',
+      selector: (row) =>
+        (row.crossingLength !== 'null' && row.crossingLength) || '-',
       sortable: true,
     },
     {
       name: 'Road Width',
-      selector: (row) => row.roadWidth !== "null" && row.roadWidth || '-',
+      selector: (row) => (row.roadWidth !== 'null' && row.roadWidth) || '-',
       sortable: true,
     },
     {
       name: 'Center To Margin',
-      selector: (row) => row.road_margin !== 'null' && row.road_margin || '-',
+      selector: (row) => (row.road_margin !== 'null' && row.road_margin) || '-',
       sortable: true,
     },
     { name: 'Offset', selector: (row) => row.offset || '-', sortable: true },
     {
       name: 'Route Feasible',
-      selector: (row) => row.Roadfesibility !== 'null' && row.Roadfesibility|| '-',
+      selector: (row) =>
+        (row.Roadfesibility !== 'null' && row.Roadfesibility) || '-',
       sortable: true,
     },
     {
@@ -786,6 +840,90 @@ function Eventreport() {
       sortable: true,
     },
     {
+      name: 'Start Duct',
+      cell: (row) => {
+        const parseDuctData = (data: any): any[] => {
+          if (!data) return [];
+          if (Array.isArray(data)) return data;
+          if (typeof data === 'string') {
+            try {
+              return JSON.parse(data);
+            } catch {
+              return [];
+            }
+          }
+          return [];
+        };
+        const startDuctData = parseDuctData(row.start_duct);
+        if (!startDuctData || startDuctData.length === 0)
+          return <span className="text-gray-400">-</span>;
+        return (
+          <div className="text-xs">
+            {startDuctData.map((duct, idx) => (
+              <div key={idx} className="mb-1">
+                <span className="font-medium">
+                  Coil: {duct.coil_number || '-'}
+                </span>
+                <span className="ml-2 text-gray-500">
+                  | Meter: {duct.meter || '-'}
+                </span>
+                {duct.images &&
+                  Array.isArray(duct.images) &&
+                  duct.images.length > 0 && (
+                    <span className="ml-2 text-blue-600">
+                      ({duct.images.length} img)
+                    </span>
+                  )}
+              </div>
+            ))}
+          </div>
+        );
+      },
+      sortable: true,
+    },
+    {
+      name: 'End Duct',
+      cell: (row) => {
+        const parseDuctData = (data: any): any[] => {
+          if (!data) return [];
+          if (Array.isArray(data)) return data;
+          if (typeof data === 'string') {
+            try {
+              return JSON.parse(data);
+            } catch {
+              return [];
+            }
+          }
+          return [];
+        };
+        const endDuctData = parseDuctData(row.end_duct);
+        if (!endDuctData || endDuctData.length === 0)
+          return <span className="text-gray-400">-</span>;
+        return (
+          <div className="text-xs">
+            {endDuctData.map((duct, idx) => (
+              <div key={idx} className="mb-1">
+                <span className="font-medium">
+                  Coil: {duct.coil_number || '-'}
+                </span>
+                <span className="ml-2 text-gray-500">
+                  | Meter: {duct.meter || '-'}
+                </span>
+                {duct.images &&
+                  Array.isArray(duct.images) &&
+                  duct.images.length > 0 && (
+                    <span className="ml-2 text-blue-600">
+                      ({duct.images.length} img)
+                    </span>
+                  )}
+              </div>
+            ))}
+          </div>
+        );
+      },
+      sortable: true,
+    },
+    {
       name: 'Status',
       selector: (row) => row.status,
       sortable: true,
@@ -834,36 +972,35 @@ function Eventreport() {
                   <Edit2Icon className="w-3 h-3 mr-1" />
                 </button>
 
-               <button
-                    onClick={() => handleStatusToggle(row)}
-                    disabled={statusLoading === row.id}
-                    className={`px-3 py-1 text-xs font-medium rounded-md outline-none transition-colors flex items-center gap-1 whitespace-nowrap ${
-                        row.status === 0
-                        ? 'text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 dark:bg-red-900 dark:text-red-300 dark:border-red-700 dark:hover:bg-red-800'
-                        : 'text-green-600 bg-green-50 border border-green-200 hover:bg-green-100 dark:bg-green-900 dark:text-green-300 dark:border-green-700 dark:hover:bg-green-800'
-                    }`}
-                    >
-                    {statusLoading === row.id ? (
-                        <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
-                    ) : row.status === 0 ? (
-                        <>
-                        <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                        Active
-                        </>
-                    ) : (
-                        <>
-                        <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                        Inactive
-                        </>
-                    )}
-                    </button>
+                <button
+                  onClick={() => handleStatusToggle(row)}
+                  disabled={statusLoading === row.id}
+                  className={`px-3 py-1 text-xs font-medium rounded-md outline-none transition-colors flex items-center gap-1 whitespace-nowrap ${
+                    row.status === 0
+                      ? 'text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 dark:bg-red-900 dark:text-red-300 dark:border-red-700 dark:hover:bg-red-800'
+                      : 'text-green-600 bg-green-50 border border-green-200 hover:bg-green-100 dark:bg-green-900 dark:text-green-300 dark:border-green-700 dark:hover:bg-green-800'
+                  }`}
+                >
+                  {statusLoading === row.id ? (
+                    <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+                  ) : row.status === 0 ? (
+                    <>
+                      <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                      Active
+                    </>
+                  ) : (
+                    <>
+                      <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                      Inactive
+                    </>
+                  )}
+                </button>
               </>
             ),
-            width: '220px', 
+            width: '220px',
             ignoreRowClick: true,
             allowOverflow: true,
             button: true,
-        
           },
         ]
       : []),
@@ -1076,7 +1213,6 @@ function Eventreport() {
         whiteSpace: 'nowrap',
       },
     },
-    
   };
   return (
     <div className="min-h-screen">
@@ -1279,12 +1415,12 @@ function Eventreport() {
       )}
       {activeTab === 'chart' && (
         <div className="h-[600px] p-4">
-          <IndexChart eventData={filteredData} />
+          <IndexChart eventData={FilteredMainData} />
         </div>
       )}
       {activeTab === 'map' && (
         <div className="h-[600px] p-4">
-          <MapComp data={markers} eventData={filteredData} />
+          <MapComp data={markers} eventData={FilteredMainData} />
         </div>
       )}
 

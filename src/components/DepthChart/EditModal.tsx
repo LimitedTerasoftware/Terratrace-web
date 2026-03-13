@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { X, Save, Loader2 } from 'lucide-react';
-import { Activity } from '../../types/survey';
+import { X, Save, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Activity, StartDuct, EndDuct } from '../../types/survey';
 
 interface EditModalProps {
   activity: Activity | null;
@@ -10,19 +10,82 @@ interface EditModalProps {
   baseUrl: string;
 }
 
-export function EditModal({ activity, isOpen, onClose, onUpdate, baseUrl }: EditModalProps) {
+interface DuctEntry {
+  coil_number: string;
+  meter: string;
+  images: string[];
+}
+
+export function EditModal({
+  activity,
+  isOpen,
+  onClose,
+  onUpdate,
+  baseUrl,
+}: EditModalProps) {
   const [formData, setFormData] = useState<Partial<Activity>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [startDuctData, setStartDuctData] = useState<DuctEntry[]>([]);
+  const [endDuctData, setEndDuctData] = useState<DuctEntry[]>([]);
+
+  const parseDuctData = (data: any): DuctEntry[] => {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    if (typeof data === 'string') {
+      try {
+        return JSON.parse(data);
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  };
 
   useEffect(() => {
     if (activity) {
       setFormData(activity);
       setError(null);
       setSuccess(false);
+      if (activity.eventType === 'DUCT') {
+        setStartDuctData(parseDuctData(activity.start_duct));
+        setEndDuctData(parseDuctData(activity.end_duct));
+      }
     }
   }, [activity]);
+
+  const handleDuctChange = (
+    type: 'start' | 'end',
+    index: number,
+    field: keyof DuctEntry,
+    value: string,
+  ) => {
+    const data = type === 'start' ? [...startDuctData] : [...endDuctData];
+    data[index] = { ...data[index], [field]: value };
+    if (type === 'start') {
+      setStartDuctData(data);
+    } else {
+      setEndDuctData(data);
+    }
+  };
+
+  const addDuctEntry = (type: 'start' | 'end') => {
+    const newEntry: DuctEntry = { coil_number: '', meter: '', images: [] };
+    if (type === 'start') {
+      setStartDuctData([...startDuctData, newEntry]);
+    } else {
+      setEndDuctData([...endDuctData, newEntry]);
+    }
+  };
+
+  const removeDuctEntry = (type: 'start' | 'end', index: number) => {
+    if (type === 'start') {
+      setStartDuctData(startDuctData.filter((_, i) => i !== index));
+    } else {
+      setEndDuctData(endDuctData.filter((_, i) => i !== index));
+    }
+  };
 
   if (!isOpen || !activity) return null;
 
@@ -37,12 +100,19 @@ export function EditModal({ activity, isOpen, onClose, onUpdate, baseUrl }: Edit
     setSuccess(false);
 
     try {
+      let submitData = { ...formData };
+
+      if (activity.eventType === 'DUCT') {
+        submitData.start_duct = JSON.stringify(startDuctData);
+        submitData.end_duct = JSON.stringify(endDuctData);
+      }
+
       const response = await fetch(`${baseUrl}/update-event/${activity.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submitData),
       });
 
       if (!response.ok) {
@@ -55,7 +125,9 @@ export function EditModal({ activity, isOpen, onClose, onUpdate, baseUrl }: Edit
         onClose();
       }, 1000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update activity');
+      setError(
+        err instanceof Error ? err.message : 'Failed to update activity',
+      );
     } finally {
       setIsLoading(false);
     }
@@ -67,23 +139,41 @@ export function EditModal({ activity, isOpen, onClose, onUpdate, baseUrl }: Edit
       case 'DEPTH':
         return { key: 'depthLatlong', label: 'Depth Latitude/Longitude' };
       case 'JOINTCHAMBER':
-        return { key: 'jointChamberLatLong', label: 'Joint Chamber Latitude/Longitude' };
+        return {
+          key: 'jointChamberLatLong',
+          label: 'Joint Chamber Latitude/Longitude',
+        };
       case 'MANHOLES':
         return { key: 'manholeLatLong', label: 'Manhole Latitude/Longitude' };
       case 'LANDMARK':
         return { key: 'landmarkLatLong', label: 'Landmark Latitude/Longitude' };
       case 'KILOMETERSTONE':
-        return { key: 'kilometerstoneLatLong', label: 'Kilometerstone Latitude/Longitude' };
+        return {
+          key: 'kilometerstoneLatLong',
+          label: 'Kilometerstone Latitude/Longitude',
+        };
       case 'FIBERTURN':
-        return { key: 'fiberTurnLatLong', label: 'Fiber Turn Latitude/Longitude' };
+        return {
+          key: 'fiberTurnLatLong',
+          label: 'Fiber Turn Latitude/Longitude',
+        };
       case 'ROUTEINDICATOR':
-        return { key: 'routeIndicatorLatLong', label: 'Route Indicator Latitude/Longitude' };
+        return {
+          key: 'routeIndicatorLatLong',
+          label: 'Route Indicator Latitude/Longitude',
+        };
       case 'STARTPIT':
-        return { key: 'startPitLatlong', label: 'Start Pit Latitude/Longitude' };
+        return {
+          key: 'startPitLatlong',
+          label: 'Start Pit Latitude/Longitude',
+        };
       case 'ENDPIT':
         return { key: 'endPitLatlong', label: 'End Pit Latitude/Longitude' };
       case 'STARTSURVEY':
-        return { key: 'startPointCoordinates', label: 'Start Point Coordinates' };
+        return {
+          key: 'startPointCoordinates',
+          label: 'Start Point Coordinates',
+        };
       case 'ENDSURVEY':
         return { key: 'endPointCoordinates', label: 'End Point Coordinates' };
       case 'ROADCROSSING':
@@ -93,7 +183,11 @@ export function EditModal({ activity, isOpen, onClose, onUpdate, baseUrl }: Edit
       case 'BLOWING':
         return { key: 'blowingLatLong', label: 'Blowing Latitude/Longitude' };
       case 'ROUTEFEATURE':
-        return { key: 'routeFeatureLatLong', label: 'Route Feature Latitude/Longitude' };
+        return {
+          key: 'routeFeatureLatLong',
+          label: 'Route Feature Latitude/Longitude',
+        };
+
       default:
         return null;
     }
@@ -111,8 +205,8 @@ export function EditModal({ activity, isOpen, onClose, onUpdate, baseUrl }: Edit
     { key: 'road_margin', label: 'Road Margin', type: 'text' },
     { key: 'Roadfesibility', label: 'Road Feasibility', type: 'text' },
     { key: 'depthMeters', label: 'Depth (Meters)', type: 'text' },
-    {key:'distance', label:'Distance (Meters)', type:'text'},
-    {key:'offset', label:'Offset', type:'text'},
+    { key: 'distance', label: 'Distance (Meters)', type: 'text' },
+    { key: 'offset', label: 'Offset', type: 'text' },
     { key: 'dgps_accuracy', label: 'DGPS Accuracy', type: 'text' },
     { key: 'dgps_siv', label: 'DGPS SIV', type: 'number' },
     { key: 'cable_stack', label: 'Cable Stack', type: 'text' },
@@ -123,12 +217,18 @@ export function EditModal({ activity, isOpen, onClose, onUpdate, baseUrl }: Edit
     { key: 'existing_pole', label: 'Existing Pole', type: 'text' },
     { key: 'new_pole', label: 'New Pole', type: 'text' },
     { key: 'landmark_type', label: 'Landmark Type', type: 'text' },
-    { key: 'landmark_description', label: 'Landmark Description', type: 'textarea' },
-    
-];
+    {
+      key: 'landmark_description',
+      label: 'Landmark Description',
+      type: 'textarea',
+    },
+  ];
   const latLongField = getLatLongFieldForEvent();
   const editableFields = latLongField
-    ? [{ key: latLongField.key, label: latLongField.label, type: 'text' },...baseFields]
+    ? [
+        { key: latLongField.key, label: latLongField.label, type: 'text' },
+        ...baseFields,
+      ]
     : baseFields;
 
   return (
@@ -150,15 +250,19 @@ export function EditModal({ activity, isOpen, onClose, onUpdate, baseUrl }: Edit
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {editableFields.map(({ key, label, type }) => (
-                     
-              <div key={key} className={type === 'textarea' ? 'md:col-span-2' : ''}>
+              <div
+                key={key}
+                className={type === 'textarea' ? 'md:col-span-2' : ''}
+              >
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   {label}
                 </label>
                 {type === 'textarea' ? (
                   <textarea
                     value={(formData[key as keyof Activity] as string) || ''}
-                    onChange={(e) => handleChange(key as keyof Activity, e.target.value)}
+                    onChange={(e) =>
+                      handleChange(key as keyof Activity, e.target.value)
+                    }
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
                     rows={3}
                     disabled={isLoading}
@@ -166,11 +270,15 @@ export function EditModal({ activity, isOpen, onClose, onUpdate, baseUrl }: Edit
                 ) : (
                   <input
                     type={type}
-                    value={(formData[key as keyof Activity] as string | number) || ''}
+                    value={
+                      (formData[key as keyof Activity] as string | number) || ''
+                    }
                     onChange={(e) =>
                       handleChange(
                         key as keyof Activity,
-                        type === 'number' ? Number(e.target.value) || 0 : e.target.value
+                        type === 'number'
+                          ? Number(e.target.value) || 0
+                          : e.target.value,
                       )
                     }
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
@@ -181,6 +289,146 @@ export function EditModal({ activity, isOpen, onClose, onUpdate, baseUrl }: Edit
             ))}
           </div>
 
+          {activity.eventType === 'DUCT' && (
+            <div className="mt-6 border-t pt-6">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                Duct Details
+              </h3>
+
+              {/* Start Duct Section */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-md font-medium text-gray-700 dark:text-gray-300">
+                    Start Duct
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => addDuctEntry('start')}
+                    className="flex items-center gap-1 px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded"
+                  >
+                    <Plus size={16} /> Add Entry
+                  </button>
+                </div>
+                {startDuctData.map((duct, index) => (
+                  <div key={index} className="flex gap-3 mb-3 items-start">
+                    <div className="flex-1">
+                      <label className="block text-xs text-gray-500 mb-1">
+                        Coil Number
+                      </label>
+                      <input
+                        type="text"
+                        value={duct.coil_number}
+                        onChange={(e) =>
+                          handleDuctChange(
+                            'start',
+                            index,
+                            'coil_number',
+                            e.target.value,
+                          )
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs text-gray-500 mb-1">
+                        Meter
+                      </label>
+                      <input
+                        type="text"
+                        value={duct.meter}
+                        onChange={(e) =>
+                          handleDuctChange(
+                            'start',
+                            index,
+                            'meter',
+                            e.target.value,
+                          )
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeDuctEntry('start', index)}
+                      className="mt-6 p-2 text-red-500 hover:bg-red-50 rounded"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                ))}
+                {startDuctData.length === 0 && (
+                  <p className="text-sm text-gray-500">No start duct entries</p>
+                )}
+              </div>
+
+              {/* End Duct Section */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-md font-medium text-gray-700 dark:text-gray-300">
+                    End Duct
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => addDuctEntry('end')}
+                    className="flex items-center gap-1 px-3 py-1 text-sm text-green-600 hover:bg-green-50 rounded"
+                  >
+                    <Plus size={16} /> Add Entry
+                  </button>
+                </div>
+                {endDuctData.map((duct, index) => (
+                  <div key={index} className="flex gap-3 mb-3 items-start">
+                    <div className="flex-1">
+                      <label className="block text-xs text-gray-500 mb-1">
+                        Coil Number
+                      </label>
+                      <input
+                        type="text"
+                        value={duct.coil_number}
+                        onChange={(e) =>
+                          handleDuctChange(
+                            'end',
+                            index,
+                            'coil_number',
+                            e.target.value,
+                          )
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs text-gray-500 mb-1">
+                        Meter
+                      </label>
+                      <input
+                        type="text"
+                        value={duct.meter}
+                        onChange={(e) =>
+                          handleDuctChange(
+                            'end',
+                            index,
+                            'meter',
+                            e.target.value,
+                          )
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeDuctEntry('end', index)}
+                      className="mt-6 p-2 text-red-500 hover:bg-red-50 rounded"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                ))}
+                {endDuctData.length === 0 && (
+                  <p className="text-sm text-gray-500">No end duct entries</p>
+                )}
+              </div>
+            </div>
+          )}
+
           {error && (
             <div className="mt-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
               <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
@@ -189,7 +437,9 @@ export function EditModal({ activity, isOpen, onClose, onUpdate, baseUrl }: Edit
 
           {success && (
             <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-              <p className="text-sm text-green-600 dark:text-green-400">Activity updated successfully!</p>
+              <p className="text-sm text-green-600 dark:text-green-400">
+                Activity updated successfully!
+              </p>
             </div>
           )}
         </form>

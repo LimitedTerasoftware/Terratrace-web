@@ -331,4 +331,17 @@ export const machineApi = {
     }
     return response.json();
   },
+
+  getFirmDistanceStats: async (firmId: number) => {
+    const params = new URLSearchParams({
+      firm_id: firmId.toString(),
+    });
+    const response = await fetch(
+      `${TraceBASEURL}/api/getFirmDistanceStats?${params}`,
+    );
+    if (!response.ok) {
+      throw new Error('Failed to fetch firm distance stats');
+    }
+    return response.json();
+  },
 };

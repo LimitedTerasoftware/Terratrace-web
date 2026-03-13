@@ -1,10 +1,32 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Factory, Activity, TrendingUp, Eye, CogIcon, Search, X } from 'lucide-react';
-import { MachineDataReport, MachineDetailsResponse, MachineList } from '../../../types/machine';
+import {
+  Factory,
+  Activity,
+  TrendingUp,
+  Eye,
+  CogIcon,
+  Search,
+  X,
+} from 'lucide-react';
+import {
+  MachineDataReport,
+  MachineDetailsResponse,
+  MachineList,
+} from '../../../types/machine';
 import StatusCard from './SummaryCards';
 import { machineApi } from '../../Services/api';
 import DataTable, { TableColumn } from 'react-data-table-component';
+
+interface FirmStats {
+  firm_id: number;
+  firm_name: string;
+  total_machines: number;
+  total_links: number;
+  total_distance_meters: string;
+  total_days: number;
+  avg_distance_per_day: string;
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -13,9 +35,37 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [show, setShow] = useState<boolean>(false);
   const [machineData, setMachineData] = useState<MachineList[] | []>([]);
+  const [firmStats, setFirmStats] = useState<Record<number, FirmStats>>({});
+  const [statsLoading, setStatsLoading] = useState<Record<number, boolean>>({});
+
   useEffect(() => {
     fetchMachineDetails();
   }, []);
+
+  useEffect(() => {
+    if (data?.firms) {
+      data.firms.forEach((firm) => {
+        fetchFirmStats(firm.firm_id);
+      });
+    }
+  }, [data]);
+
+  const fetchFirmStats = async (firmId: number) => {
+    try {
+      setStatsLoading((prev) => ({ ...prev, [firmId]: true }));
+      const response = await machineApi.getFirmDistanceStats(firmId);
+      if (response.status && response.data && response.data.length > 0) {
+        setFirmStats((prev) => ({
+          ...prev,
+          [firmId]: response.data[0],
+        }));
+      }
+    } catch (err) {
+      console.error(`Error fetching stats for firm ${firmId}:`, err);
+    } finally {
+      setStatsLoading((prev) => ({ ...prev, [firmId]: false }));
+    }
+  };
 
   const fetchMachineDetails = async () => {
     try {
@@ -37,36 +87,81 @@ export default function Dashboard() {
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
-
     }
-
-  }
+  };
 
   const columns: TableColumn<MachineDataReport>[] = [
-
     {
-      name: "Firm Name",
-      selector: row => row.firm_name,
+      name: 'Firm Name',
+      selector: (row) => row.firm_name,
       sortable: true,
       wrap: true,
-      grow: 2
+      grow: 2,
     },
     {
-      name: "Authorised Mobile Number",
-      selector: row => row.authorised_mobile,
-      sortable: true
-    },
-    {
-      name: "Authorised Person",
-      selector: row => row.authorised_person,
+      name: 'Authorised Mobile Number',
+      selector: (row) => row.authorised_mobile,
       sortable: true,
-      wrap: true
     },
     {
-      name: "Action",
-      cell: row => (
+      name: 'Authorised Person',
+      selector: (row) => row.authorised_person,
+      sortable: true,
+      wrap: true,
+    },
+    {
+      name: 'Total Machines',
+      cell: (row) => {
+        if (statsLoading[row.firm_id]) {
+          return <span className="text-gray-400">Loading...</span>;
+        }
+        const stats = firmStats[row.firm_id];
+        return stats ? stats.total_machines : '-';
+      },
+      sortable: true,
+      width: '130px',
+    },
+    {
+      name: 'Total Links',
+      cell: (row) => {
+        const stats = firmStats[row.firm_id];
+        return stats ? stats.total_links : '-';
+      },
+      sortable: true,
+      width: '110px',
+    },
+    {
+      name: 'Total Distance (m)',
+      cell: (row) => {
+        const stats = firmStats[row.firm_id];
+        return stats ? parseFloat(stats.total_distance_meters).toFixed(2) : '-';
+      },
+      sortable: true,
+      width: '150px',
+    },
+    {
+      name: 'Total Days',
+      cell: (row) => {
+        const stats = firmStats[row.firm_id];
+        return stats ? stats.total_days : '-';
+      },
+      sortable: true,
+      width: '100px',
+    },
+    {
+      name: 'Avg Distance/Day (m)',
+      cell: (row) => {
+        const stats = firmStats[row.firm_id];
+        return stats ? parseFloat(stats.avg_distance_per_day).toFixed(2) : '-';
+      },
+      sortable: true,
+      width: '160px',
+    },
+    {
+      name: 'Action',
+      cell: (row) => (
         <button
-        onClick={() => fetchMachineList(row.firm_id)}
+          onClick={() => fetchMachineList(row.firm_id)}
           className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
         >
           <Eye className="w-4 h-4" />
@@ -74,10 +169,9 @@ export default function Dashboard() {
         </button>
       ),
       center: true,
-      width: "120px"
-    }
+      width: '120px',
+    },
   ];
-
 
   if (loading) {
     return (
@@ -108,14 +202,16 @@ export default function Dashboard() {
               <CogIcon className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">Vendor MIS Monitoring System</h1>
-              <p className="text-sm text-gray-600">Real-time monitoring and analytics dashboard</p>
+              <h1 className="text-xl font-bold text-gray-900">
+                Vendor MIS Monitoring System
+              </h1>
+              <p className="text-sm text-gray-600">
+                Real-time monitoring and analytics dashboard
+              </p>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
-
-
             {/* Breadcrumb Navigation */}
             <nav>
               <ol className="flex items-center gap-2">
@@ -130,7 +226,6 @@ export default function Dashboard() {
           </div>
         </div>
       </header>
-
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-2 px-1 py-6">
         <StatusCard
@@ -167,8 +262,9 @@ export default function Dashboard() {
             <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
               <Search className="w-8 h-8 text-gray-400" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No data found</h3>
-
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              No data found
+            </h3>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -195,13 +291,14 @@ export default function Dashboard() {
           </div>
         )}
 
-
         {show && machineData.length > 0 && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6 border-b border-gray-200">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-xl font-semibold text-gray-900">Machine Details</h3>
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    Machine Details
+                  </h3>
                   <button
                     onClick={() => setShow(false)}
                     className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
@@ -210,15 +307,12 @@ export default function Dashboard() {
                   </button>
                 </div>
                 <div className="p-6 space-y-6">
-
                   {machineData.map((machine) => (
                     <div
                       key={machine.machine_id}
                       className="border border-gray-200 rounded-lg p-4"
                     >
-
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
                         <div>
                           <p className="text-sm text-gray-500">Machine ID</p>
                           <p className="font-semibold">{machine.machine_id}</p>
@@ -226,17 +320,23 @@ export default function Dashboard() {
 
                         <div>
                           <p className="text-sm text-gray-500">Registration</p>
-                          <p className="font-semibold">{machine.registration_number}</p>
+                          <p className="font-semibold">
+                            {machine.registration_number}
+                          </p>
                         </div>
 
                         <div>
                           <p className="text-sm text-gray-500">Machine Make</p>
-                          <p className="font-semibold">{machine.machine_make}</p>
+                          <p className="font-semibold">
+                            {machine.machine_make}
+                          </p>
                         </div>
 
                         <div>
                           <p className="text-sm text-gray-500">Serial Number</p>
-                          <p className="font-semibold">{machine.serial_number}</p>
+                          <p className="font-semibold">
+                            {machine.serial_number}
+                          </p>
                         </div>
 
                         <div>
@@ -251,34 +351,36 @@ export default function Dashboard() {
 
                         <div>
                           <p className="text-sm text-gray-500">Supervisor</p>
-                          <p className="font-semibold">{machine.supervisor_name}</p>
+                          <p className="font-semibold">
+                            {machine.supervisor_name}
+                          </p>
                         </div>
 
                         <div>
                           <p className="text-sm text-gray-500">Phone</p>
-                          <p className="font-semibold">{machine.supervisor_phone}</p>
+                          <p className="font-semibold">
+                            {machine.supervisor_phone}
+                          </p>
                         </div>
                         <button
-                          onClick={() => navigate(`/machine-management/machine-details/${machine.machine_id}`)}
-                          
+                          onClick={() =>
+                            navigate(
+                              `/machine-management/machine-details/${machine.machine_id}`,
+                            )
+                          }
                           className="mt-3 px-3 py-1 text-xs bg-green-600 text-white rounded"
                         >
                           Track Machine
                         </button>
-
                       </div>
-
                     </div>
                   ))}
-
                 </div>
               </div>
-
             </div>
           </div>
         )}
       </div>
     </div>
-
   );
 }

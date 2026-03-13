@@ -180,6 +180,17 @@ export interface ChartPoint {
   eventType: string;
   survey_id: number | null;
 }
+
+export interface StartDuct{
+  coil_number:string;
+  images:string;
+  meter:string
+}
+export interface EndDuct{
+  coil_number:string;
+  images:string;
+  meter:string
+}
 export interface Activity {
   id: number;
   state_id: string | null;
@@ -266,6 +277,9 @@ export interface Activity {
   routeFeatureType:string|null;
   cable_stack:string|null;
   offset:string|null;
+  start_duct:string;
+  end_duct:string;
+
  
  }
 
