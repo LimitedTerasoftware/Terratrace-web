@@ -20,12 +20,9 @@ const FirmForm: React.FC<FirmFormProps> = ({
     authorised_person: '',
     authorised_mobile: '',
   });
-
   const [errors, setErrors] = useState<
     Partial<Record<keyof FirmFormData, string>>
   >({});
-
-
 
   useEffect(() => {
     if (firm) {
@@ -77,10 +74,6 @@ const FirmForm: React.FC<FirmFormProps> = ({
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
   };
-
-  if ( !isEditing) {
-    return null;
-  }
 
   return (
     <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
@@ -156,8 +149,6 @@ const FirmForm: React.FC<FirmFormProps> = ({
               </p>
             )}
           </div>
-
-        
         </div>
 
         {Object.values(errors).filter(Boolean).length > 0 && (
@@ -195,8 +186,6 @@ const FirmForm: React.FC<FirmFormProps> = ({
           </button>
         </div>
       </form>
-
-     
     </div>
   );
 };
