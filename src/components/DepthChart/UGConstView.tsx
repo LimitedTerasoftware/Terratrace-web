@@ -355,7 +355,7 @@ function Eventreport() {
     const parseDuctData = (data: any): any[] => {
       if (!data) return [];
       if (Array.isArray(data)) return data;
-      if (typeof data === 'string') {
+      if (typeof data === 'string' && data !== "null") {
         try {
           return JSON.parse(data);
         } catch {
