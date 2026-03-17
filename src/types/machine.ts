@@ -1,26 +1,26 @@
 export interface Machine {
-  machine_id:string;
+  machine_id: string;
   id: string;
-  firm_name:string;
-  firm_id:number;
-  authorised_person:string;
-  machine_make:string;
-  capacity:string;
+  firm_name: string;
+  firm_id: number;
+  authorised_person: string;
+  machine_make: string;
+  capacity: string;
   year_of_manufacture: number | null;
-  no_of_rods:number;
-  digitrack_make:string;
-  digitrack_model:string;
-  truck_make:string;
-  truck_model:string;
+  no_of_rods: number;
+  digitrack_make: string;
+  digitrack_model: string;
+  truck_make: string;
+  truck_model: string;
   registration_number: string;
-  registration_valid_upto:string;
-  driver_batch_no:string;
-  driver_valid_upto:string;
+  registration_valid_upto: string;
+  driver_batch_no: string;
+  driver_valid_upto: string;
   serial_number: string;
-  supervisor_name :string ,
-  supervisor_email :string,
-  supervisor_phone :string,
-  author_phone :string,
+  supervisor_name: string;
+  supervisor_email: string;
+  supervisor_phone: string;
+  author_phone: string;
   status: 'active' | 'inactive' | 'maintenance' | 'retired';
   created_at: Date;
   updated_at: Date;
@@ -60,14 +60,13 @@ export interface DepthEvent {
   alert: boolean;
 }
 
-export interface DepthPenalties{
+export interface DepthPenalties {
   totalDepthEvents: number;
   penalty500: number;
   penalty1100: number;
   alerts: number;
   totalDepthPenalty: number;
   details: DepthEvent[];
-
 }
 
 export interface ApiResponse {
@@ -84,14 +83,12 @@ export interface ApiResponse {
   };
 }
 
-
 export interface PerformanceMetrics {
   status: 'excellent' | 'good' | 'warning' | 'penalty';
   message: string;
   color: string;
   bgColor: string;
 }
-
 
 export interface MachineDataListItem {
   id: number;
@@ -107,8 +104,8 @@ export interface MachineDataListItem {
   crossingLatlong: string | null;
   crossingPhotos: string | null;
   executionModality: string;
-  depthLatlong: string | "";
-  depthPhoto: string | "";
+  depthLatlong: string | '';
+  depthPhoto: string | '';
   depthMeters: string;
   fpoiLatLong: string | null;
   fpoiPhotos: string | null;
@@ -188,10 +185,9 @@ export interface MachineDataListItem {
 
 export interface MachineApiResponse {
   status: boolean;
-  data:{
-    [key:string]:  MachineDataListItem[];
+  data: {
+    [key: string]: MachineDataListItem[];
   };
- 
 }
 
 export interface MachineDataReport {
@@ -199,49 +195,55 @@ export interface MachineDataReport {
   firm_name: string;
   authorised_mobile: string;
   authorised_person: string;
+  total_machines: number;
+  total_links: number;
+  total_distance_meters: string;
+  total_days: number;
+  avg_distance_per_day: string;
 }
 
 export interface MachineDetailsResponse {
   status: boolean;
   summary: {
+    total_distance: string;
+    avg_distance_per_day: string;
+    total_days: number;
+    total_firms: number;
     total_machines: number;
-    active_machines: string;
-    inactive_machines: string;
+    total_links: number;
   };
-  firms: MachineDataReport[];
+  data: MachineDataReport[];
 }
-export interface MachineList{
-    machine_id: number;
-    serial_number: string;
-    registration_number: number;
-    machine_model: string |null;
-    status:string ;
-    created_at: string;
-    updated_at:string;
-    machine_make: string;
-    capacity: string;
-    no_of_rods: number;
-    digitrack_make: string;
-    digitrack_model:string;
-    truck_make: string;
-    truck_model: number;
-    registration_valid_upto:string;
-    driver_batch_no:string| null;
-    driver_valid_upto: string;
-    supervisor_name: string;
-    supervisor_email: string;
-    supervisor_phone: number;
-    firm_id: number;
-    firm_name: string;
-    authorised_person: string;
-    author_phone: number;
-    authorised_mobile: number;
-
+export interface MachineList {
+  machine_id: number;
+  serial_number: string;
+  registration_number: number;
+  machine_model: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  machine_make: string;
+  capacity: string;
+  no_of_rods: number;
+  digitrack_make: string;
+  digitrack_model: string;
+  truck_make: string;
+  truck_model: number;
+  registration_valid_upto: string;
+  driver_batch_no: string | null;
+  driver_valid_upto: string;
+  supervisor_name: string;
+  supervisor_email: string;
+  supervisor_phone: number;
+  firm_id: number;
+  firm_name: string;
+  authorised_person: string;
+  author_phone: number;
+  authorised_mobile: number;
 }
-export interface MachineListApiResponse{
-  status:boolean;
-  machines:MachineList[];
-    
+export interface MachineListApiResponse {
+  status: boolean;
+  machines: MachineList[];
 }
 
 export interface MachineLinkStats {
@@ -264,7 +266,7 @@ export interface MachineLinkStats {
 
 export interface MachineSummary {
   total_links: number;
-  total_distance_meters: string | "";
+  total_distance_meters: string | '';
   total_days: number;
   avg_distance_per_day: string;
 }

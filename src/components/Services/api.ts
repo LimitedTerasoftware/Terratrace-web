@@ -346,16 +346,42 @@ export const machineApi = {
     return response.json();
   },
 
-  getFirmDistanceStats: async (firmId: number) => {
-    const params = new URLSearchParams({
-      firm_id: firmId.toString(),
-    });
-    const response = await fetch(
-      `${TraceBASEURL}/api/getFirmDistanceStats?${params}`,
-    );
+ getFirmDistanceStats: async (
+    stateId?: string,
+    districtId?: string,
+    blockId?: string,
+    fromDate?: string,
+    toDate?: string,
+    search?: string,
+  ): Promise<MachineDetailsResponse> => {
+    const params = new URLSearchParams();
+    if (stateId) {
+      params.append('state_id', stateId);
+    }
+    if (districtId) {
+      params.append('district_id', districtId);
+    }
+    if (blockId) {
+      params.append('block_id', blockId);
+    }
+    if (fromDate) {
+      params.append('from_date', fromDate);
+    }
+    if (toDate) {
+      params.append('to_date', toDate);
+    }
+    if (search) {
+      params.append('search', search);
+    }
+    const queryString = params.toString();
+    const url = queryString
+      ? `${TraceBASEURL}/api/getFirmDistanceStats?${queryString}`
+      : `${TraceBASEURL}/api/getFirmDistanceStats`;
+    const response = await fetch(url);
     if (!response.ok) {
       throw new Error('Failed to fetch firm distance stats');
     }
     return response.json();
   },
+
 };

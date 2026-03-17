@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Factory,
   Activity,
@@ -8,6 +8,8 @@ import {
   CogIcon,
   Search,
   X,
+  Ruler,
+  Calendar,
 } from 'lucide-react';
 import {
   MachineDataReport,
@@ -15,84 +17,221 @@ import {
   MachineList,
 } from '../../../types/machine';
 import StatusCard from './SummaryCards';
-import { getStateData, machineApi } from '../../Services/api';
+import {
+  getStateData,
+  getDistrictData,
+  getBlockData,
+  machineApi,
+} from '../../Services/api';
 import DataTable, { TableColumn } from 'react-data-table-component';
+import { Block, District } from '../../../types/survey';
 
 interface StateData {
   state_id: number;
   state_name: string;
 }
 
-interface FirmStats {
-  firm_id: number;
-  firm_name: string;
-  total_machines: number;
-  total_links: number;
-  total_distance_meters: string;
-  total_days: number;
-  avg_distance_per_day: string;
-}
-
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [data, setData] = useState<MachineDetailsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [show, setShow] = useState<boolean>(false);
   const [machineData, setMachineData] = useState<MachineList[] | []>([]);
-  const [firmStats, setFirmStats] = useState<Record<number, FirmStats>>({});
-  const [statsLoading, setStatsLoading] = useState<Record<number, boolean>>({});
   const [states, setStates] = useState<StateData[]>([]);
+  const [districts, setDistricts] = useState<District[]>([]);
+  const [blocks, setBlocks] = useState<Block[]>([]);
   const [selectedState, setSelectedState] = useState<string>('');
+  const [selectedDistrict, setSelectedDistrict] = useState<string>('');
+  const [selectedBlock, setSelectedBlock] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [fromdate, setFromDate] = useState<string>('');
+  const [todate, setToDate] = useState<string>('');
+  const [loadingDistricts, setLoadingDistricts] = useState<boolean>(false);
+  const [loadingBlock, setLoadingBlock] = useState<boolean>(false);
 
   useEffect(() => {
     fetchStates();
   }, []);
 
   useEffect(() => {
-    fetchMachineDetails(selectedState);
+    fetchMachineDetails(
+      selectedState,
+      selectedDistrict,
+      selectedBlock,
+      fromdate,
+      todate,
+      searchQuery,
+    );
+  }, [
+    selectedState,
+    selectedDistrict,
+    selectedBlock,
+    fromdate,
+    todate,
+    searchQuery,
+  ]);
+
+  useEffect(() => {
+    if (selectedState) {
+      setLoadingDistricts(true);
+      getDistrictData(selectedState)
+        .then((data) => {
+          setDistricts(data);
+        })
+        .finally(() => setLoadingDistricts(false));
+    } else {
+      setDistricts([]);
+    }
   }, [selectedState]);
 
   useEffect(() => {
-    if (data?.firms) {
-      data.firms.forEach((firm) => {
-        fetchFirmStats(firm.firm_id);
-      });
+    if (selectedDistrict) {
+      setLoadingBlock(true);
+      getBlockData(selectedDistrict)
+        .then((data) => {
+          setBlocks(data);
+        })
+        .finally(() => setLoadingBlock(false));
+    } else {
+      setBlocks([]);
     }
-  }, [data]);
+  }, [selectedDistrict]);
+
+  useEffect(() => {
+    const state_id = searchParams.get('state_id') || '';
+    const district_id = searchParams.get('district_id') || '';
+    const block_id = searchParams.get('block_id') || '';
+    const from_date = searchParams.get('from_date') || '';
+    const to_date = searchParams.get('to_date') || '';
+    const search = searchParams.get('search') || '';
+
+    setSelectedState(state_id);
+    setSelectedDistrict(district_id);
+    setSelectedBlock(block_id);
+    setFromDate(from_date);
+    setToDate(to_date);
+    setSearchQuery(search);
+  }, []);
+
+  const handleFilterChange = (
+    newState: string,
+    newDistrict: string,
+    newBlock: string,
+    from_date: string,
+    to_date: string,
+    search: string,
+  ) => {
+    const params: Record<string, string> = {};
+    if (newState) params.state_id = newState;
+    if (newDistrict) params.district_id = newDistrict;
+    if (newBlock) params.block_id = newBlock;
+    if (from_date) params.from_date = from_date;
+    if (to_date) params.to_date = to_date;
+    if (search) params.search = search;
+    setSearchParams(params);
+  };
+
+  const clearFilters = () => {
+    setSelectedState('');
+    setSelectedDistrict('');
+    setSelectedBlock('');
+    setSearchQuery('');
+    setFromDate('');
+    setToDate('');
+    setSearchParams({});
+  };
+
+  const handleStateChange = (value: string) => {
+    setSelectedState(value);
+    setSelectedDistrict('');
+    setSelectedBlock('');
+    handleFilterChange(value, '', '', fromdate, todate, searchQuery);
+  };
+
+  const handleDistrictChange = (value: string) => {
+    setSelectedDistrict(value);
+    setSelectedBlock('');
+    handleFilterChange(selectedState, value, '', fromdate, todate, searchQuery);
+  };
+
+  const handleBlockChange = (value: string) => {
+    setSelectedBlock(value);
+    handleFilterChange(
+      selectedState,
+      selectedDistrict,
+      value,
+      fromdate,
+      todate,
+      searchQuery,
+    );
+  };
+
+  const handleFromDateChange = (value: string) => {
+    setFromDate(value);
+    handleFilterChange(
+      selectedState,
+      selectedDistrict,
+      selectedBlock,
+      value,
+      todate,
+      searchQuery,
+    );
+  };
+
+  const handleToDateChange = (value: string) => {
+    setToDate(value);
+    handleFilterChange(
+      selectedState,
+      selectedDistrict,
+      selectedBlock,
+      fromdate,
+      value,
+      searchQuery,
+    );
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    handleFilterChange(
+      selectedState,
+      selectedDistrict,
+      selectedBlock,
+      fromdate,
+      todate,
+      value,
+    );
+  };
 
   const fetchStates = async () => {
     try {
-    getStateData().then(data => {
-            setStates(data);
-          })     
+      getStateData().then((data) => {
+        setStates(data);
+      });
     } catch (error) {
       console.error('Error fetching states:', error);
     }
   };
 
-  const fetchFirmStats = async (firmId: number) => {
+  const fetchMachineDetails = async (
+    stateId?: string,
+    districtId?: string,
+    blockId?: string,
+    fromDate?: string,
+    toDate?: string,
+    search?: string,
+  ) => {
     try {
-      setStatsLoading((prev) => ({ ...prev, [firmId]: true }));
-      const response = await machineApi.getFirmDistanceStats(firmId);
-      if (response.status && response.data && response.data.length > 0) {
-        setFirmStats((prev) => ({
-          ...prev,
-          [firmId]: response.data[0],
-        }));
-      }
-    } catch (err) {
-      console.error(`Error fetching stats for firm ${firmId}:`, err);
-    } finally {
-      setStatsLoading((prev) => ({ ...prev, [firmId]: false }));
-    }
-  };
-
-  const fetchMachineDetails = async (stateId?: string) => {
-    try {
-      setLoading(true);
-      const response = await machineApi.getMachineDetails(stateId);
+      // setLoading(true);
+      const response = await machineApi.getFirmDistanceStats(
+        stateId,
+        districtId,
+        blockId,
+        fromDate,
+        toDate,
+        search,
+      );
       setData(response);
       setError(null);
     } catch (err) {
@@ -113,45 +252,30 @@ export default function Dashboard() {
   };
 
   const filteredFirms = useMemo(() => {
-    if (!data?.firms) return [];
-    if (!searchQuery) return data.firms;
-    const query = searchQuery.toLowerCase();
-    return data.firms.filter(
-      (firm) =>
-        firm.firm_name.toLowerCase().includes(query) ||
-        firm.authorised_person.toLowerCase().includes(query) ||
-        firm.authorised_mobile.toString().includes(query),
-    );
-  }, [data?.firms, searchQuery]);
+    if (!data?.data) return [];
+    return data.data;
+  }, [data?.data]);
 
   const totals = useMemo(() => {
-    let totalDistance = 0;
-    let totalDays = 0;
-    let totalMachines = 0;
-    let totalLinks = 0;
-
-    filteredFirms.forEach((firm) => {
-      const stats = firmStats[firm.firm_id];
-      if (stats) {
-        totalDistance += parseFloat(stats.total_distance_meters) || 0;
-        totalDays += stats.total_days || 0;
-        totalMachines += stats.total_machines || 0;
-        totalLinks += stats.total_links || 0;
-      }
-    });
-
-    const avgDistance = totalDays > 0 ? totalDistance / totalDays : 0;
-
+    if (!data?.summary) {
+      return {
+        totalDistance: '0',
+        totalDays: 0,
+        totalMachines: 0,
+        totalLinks: 0,
+        avgDistance: '0',
+      };
+    }
     return {
-      totalDistance: totalDistance.toFixed(2),
-      totalDays,
-      totalMachines,
-      totalLinks,
-      avgDistance: avgDistance.toFixed(2),
+      totalDistance: data.summary.total_distance || '0',
+      totalDays: data.summary.total_days || 0,
+      totalMachines: data.summary.total_machines || 0,
+      totalLinks: data.summary.total_links || 0,
+      avgDistance: data.summary.avg_distance_per_day || '0',
     };
-  }, [filteredFirms, firmStats]);
+  }, [data?.summary]);
 
-  const columns: TableColumn<MachineDataReport>[] = [
+  const columns: TableColumn<any>[] = [
     {
       name: 'Firm Name',
       selector: (row) => row.firm_name,
@@ -172,49 +296,37 @@ export default function Dashboard() {
     },
     {
       name: 'Total Machines',
-      cell: (row) => {
-        if (statsLoading[row.firm_id]) {
-          return <span className="text-gray-400">Loading...</span>;
-        }
-        const stats = firmStats[row.firm_id];
-        return stats ? stats.total_machines : '-';
-      },
+      selector: (row) => row.total_machines,
       sortable: true,
       width: '130px',
     },
     {
       name: 'Total Links',
-      cell: (row) => {
-        const stats = firmStats[row.firm_id];
-        return stats ? stats.total_links : '-';
-      },
+      selector: (row) => row.total_links,
       sortable: true,
       width: '110px',
     },
     {
       name: 'Total Distance (m)',
-      cell: (row) => {
-        const stats = firmStats[row.firm_id];
-        return stats ? parseFloat(stats.total_distance_meters).toFixed(2) : '-';
-      },
+      cell: (row) =>
+        row.total_distance_meters
+          ? parseFloat(row.total_distance_meters).toFixed(2)
+          : '-',
       sortable: true,
       width: '150px',
     },
     {
       name: 'Total Days',
-      cell: (row) => {
-        const stats = firmStats[row.firm_id];
-        return stats ? stats.total_days : '-';
-      },
+      selector: (row) => row.total_days,
       sortable: true,
       width: '100px',
     },
     {
       name: 'Avg Distance/Day (m)',
-      cell: (row) => {
-        const stats = firmStats[row.firm_id];
-        return stats ? parseFloat(stats.avg_distance_per_day).toFixed(2) : '-';
-      },
+      cell: (row) =>
+        row.avg_distance_per_day
+          ? parseFloat(row.avg_distance_per_day).toFixed(2)
+          : '-',
       sortable: true,
       width: '160px',
     },
@@ -297,15 +409,15 @@ export default function Dashboard() {
           bgColor="bg-blue-50"
         />
         <StatusCard
-          title="Active Machines"
-          value={parseInt(data?.summary.active_machines || '0')}
+          title="Total Firms"
+          value={data?.summary?.total_firms || 0}
           icon={Activity}
           iconColor="text-green-600"
           bgColor="bg-green-50"
         />
         <StatusCard
-          title="Inactive Machines"
-          value={parseInt(data?.summary.inactive_machines || '0')}
+          title="Total Links"
+          value={totals.totalLinks}
           icon={TrendingUp}
           iconColor="text-orange-600"
           bgColor="bg-orange-50"
@@ -313,7 +425,7 @@ export default function Dashboard() {
         <StatusCard
           title="Total Distance"
           value={totals.totalDistance}
-          icon={TrendingUp}
+          icon={Ruler}
           iconColor="text-purple-600"
           bgColor="bg-purple-50"
         />
@@ -327,7 +439,7 @@ export default function Dashboard() {
         <StatusCard
           title="Total Days"
           value={totals.totalDays}
-          icon={TrendingUp}
+          icon={Calendar}
           iconColor="text-teal-600"
           bgColor="bg-teal-50"
         />
@@ -338,12 +450,12 @@ export default function Dashboard() {
           <h2 className="text-xl font-semibold text-gray-900">
             Registered Firms
           </h2>
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="relative">
               <select
                 value={selectedState}
-                onChange={(e) => setSelectedState(e.target.value)}
-                className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-w-[180px]"
+                onChange={(e) => handleStateChange(e.target.value)}
+                className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-w-[140px]"
               >
                 <option value="">All States</option>
                 {states.map((state) => (
@@ -369,23 +481,155 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="relative">
+              <select
+                value={selectedDistrict}
+                onChange={(e) => handleDistrictChange(e.target.value)}
+                disabled={!selectedState || loadingDistricts}
+                className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-w-[140px] disabled:opacity-50"
+              >
+                <option value="">All Districts</option>
+                {districts.map((district) => (
+                  <option
+                    key={district.district_id}
+                    value={district.district_id}
+                  >
+                    {district.district_name}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                {loadingDistricts ? (
+                  <svg
+                    className="animate-spin h-4 w-4 text-gray-400"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                ) : (
+                  <svg
+                    className="w-4 h-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                )}
+              </div>
+            </div>
+            <div className="relative">
+              <select
+                value={selectedBlock}
+                onChange={(e) => handleBlockChange(e.target.value)}
+                disabled={!selectedDistrict || loadingBlock}
+                className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-w-[140px] disabled:opacity-50"
+              >
+                <option value="">All Blocks</option>
+                {blocks.map((block) => (
+                  <option key={block.block_id} value={block.block_id}>
+                    {block.block_name}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                {loadingBlock ? (
+                  <svg
+                    className="animate-spin h-4 w-4 text-gray-400"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                ) : (
+                  <svg
+                    className="w-4 h-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                )}
+              </div>
+            </div>
+            <div className="relative">
+              <input
+                type="date"
+                value={fromdate}
+                onChange={(e) => handleFromDateChange(e.target.value)}
+                className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                placeholder="From Date"
+              />
+            </div>
+            <div className="relative">
+              <input
+                type="date"
+                value={todate}
+                onChange={(e) => handleToDateChange(e.target.value)}
+                className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                placeholder="To Date"
+              />
+            </div>
+            <div className="relative">
               <input
                 type="text"
                 placeholder="Search firms..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full sm:w-[250px]"
               />
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               {searchQuery && (
                 <button
-                  onClick={() => setSearchQuery('')}
+                  onClick={() => handleSearchChange('')}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   <X className="w-4 h-4" />
                 </button>
               )}
             </div>
+            <button
+              onClick={clearFilters}
+              className="flex-none h-10 px-4 py-2 text-sm font-medium text-red-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap flex items-center gap-2"
+            >
+              <span className="text-red-500 font-medium text-sm">✕</span>
+              <span>Clear</span>
+            </button>
           </div>
         </div>
         {filteredFirms.length === 0 && !loading ? (
