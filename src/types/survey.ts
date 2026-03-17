@@ -294,10 +294,157 @@ export interface ApiResponseMachine {
     };
   };
 }
+export interface LiveMachines {
+  id: number;
+  offset: number;
+  link_name: string;
+
+  startPointPhoto: string | null;
+  startPointCoordinates: string | null;
+
+  routeBelongsTo: string;
+  roadType: string;
+  cableLaidOn: string;
+  soilType: string;
+
+  crossingType: string | null;
+  crossingLength: string | null;
+  crossingLatlong: string | null;
+  crossingPhotos: string | null;
+
+  executionModality: string;
+
+  depthLatlong: string;
+  depthPhoto: string; // JSON string (array of image paths)
+  depthMeters: string;
+
+  fpoiLatLong: string | null;
+  fpoiPhotos: string | null;
+
+  jointChamberLatLong: string | null;
+  jointChamberPhotos: string | null;
+
+  manholeLatLong: string | null;
+  manholePhotos: string | null;
+
+  routeIndicatorLatLong: string | null;
+  routeIndicatorPhotos: string | null;
+
+  landmarkLatLong: string | null;
+  landmarkPhotos: string | null;
+
+  fiberTurnLatLong: string | null;
+  fiberTurnPhotos: string | null;
+
+  kilometerstoneLatLong: string | null;
+  kilometerstonePhotos: string | null;
+
+  status: number;
+
+  created_at: string;
+  updated_at: string;
+
+  start_lgd: string;
+  end_lgd: string;
+
+  machine_id: string;
+  contractor_details: string | null;
+  vehicleserialno: string | null;
+
+  distance: string;
+
+  startPitLatlong: string | null;
+  startPitPhotos: string | null;
+
+  endPitLatlong: string | null;
+  endPitPhotos: string | null;
+
+  roadWidthLatlong: string | null;
+  roadWidth: string | null;
+  roadWidthPhotos: string | null;
+
+  eventType: string;
+  survey_id: number;
+
+  vehicle_image: string | null;
+  endPitDoc: string | null;
+
+  road_margin: string;
+
+  endPointPhoto: string | null;
+  endPointCoordinates: string | null;
+
+  landmark_type: string | null;
+  landmark_description: string | null;
+
+  Roadfesibility: string; // "true" string (not boolean)
+  area_type: string;
+
+  pole_type: string | null;
+  existing_pole: string | null;
+  new_pole: string | null;
+
+  holdLatlong: string | null;
+  holdPhotos: string | null;
+
+  dgps_accuracy: string;
+  dgps_siv: number;
+
+  videoDetails: any | null;
+
+  blowingLatLong: string | null;
+  blowingPhotos: string | null;
+
+  routeFeatureType: string | null;
+  routeFeaturePhotos: string | null;
+  routeFeatureLatLong: string | null;
+
+  centerLatLong: string;
+
+  cable_stack: string | null;
+  start_duct: string | null;
+  end_duct: string | null;
+
+  machine_registration_number: string;
+  firm_name: string;
+
+  surveyType: string | null;
+  construction_type: string | null;
+  routeType: string | null;
+  cableType: string | null;
+
+  state_id: number | null;
+  district_id: number | null;
+  block_id: number | null;
+  gp_id: number | null;
+
+  state_name: string | null;
+  district_name: string | null;
+  block_name: string | null;
+
+  start_lgd_name: string | null;
+  end_lgd_name: string | null;
+
+  user_name: string | null;
+  user_mobile: string | null;
+
+  url: string;
+}
+
+export interface APIResponseLiveMachine{
+    status: boolean;
+    data:LiveMachines[];
+
+}
 
 export interface MarkerData {
   position: google.maps.LatLngLiteral;
   activity: Activity;
+  
+}
+export interface LiveMarkerData {
+  position: google.maps.LatLngLiteral;
+  activity: LiveMachines;
   
 }
 

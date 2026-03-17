@@ -1,6 +1,10 @@
 import axios from 'axios';
 import { Firm } from '../../types/firm';
-import { MachineDataApiResponse } from '../../types/survey';
+import {
+  APIResponseLiveMachine,
+  LiveMachines,
+  MachineDataApiResponse,
+} from '../../types/survey';
 import {
   ApiResponse,
   MachineDetailsResponse,
@@ -117,7 +121,7 @@ export const useActivities = (
   selectedBlock: string | null,
   Machine: string | null,
 ) => {
-  const [activities, setActivities] = useState<Activity[]>([]);
+  const [activities, setActivities] = useState<LiveMachines[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState<number>(0);
@@ -143,25 +147,25 @@ export const useActivities = (
       if (Machine) params.append('machine_id', Machine);
 
       const response = await fetch(
-        `${TraceBASEURL}/machine/latest-activity?${params.toString()}`,
+        `${TraceBASEURL}/get-depth-record?${params.toString()}`,
       );
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data: ApiResponseMachine = await response.json();
+      const data: APIResponseLiveMachine = await response.json();
 
-      if (data.status && data.latestActivities) {
-        const allActivities: Activity[] = [];
-        Object.values(data.latestActivities).forEach((machineInfo) => {
-          if (machineInfo.activities && machineInfo.activities.length > 0) {
-            allActivities.push(...machineInfo.activities);
-          }
-        });
+      if (data.status && data.data) {
+        // const allActivities: Activity[] = [];
+        // Object.values(data.latestActivities).forEach((machineInfo) => {
+        //   if (machineInfo.activities && machineInfo.activities.length > 0) {
+        //     allActivities.push(...machineInfo.activities);
+        //   }
+        // });
 
-        setTotalCount(allActivities.length);
-        setActivities(allActivities);
-        setMachineData(data.latestActivities);
+        setTotalCount(data.data.length);
+        setActivities(data.data);
+        // setMachineData(data.latestActivities);
       } else {
         setActivities([]);
         setMachineData({});
@@ -287,8 +291,18 @@ export const updateAerialData = async (payload: EditPayload): Promise<any> => {
 };
 
 export const machineApi = {
-  getMachineDetails: async (): Promise<MachineDetailsResponse> => {
-    const response = await fetch(`${TraceBASEURL}/api/getMachineDetails`);
+  getMachineDetails: async (
+    stateId?: string,
+  ): Promise<MachineDetailsResponse> => {
+    const params = new URLSearchParams();
+    if (stateId) {
+      params.append('state_id', stateId);
+    }
+    const queryString = params.toString();
+    const url = queryString
+      ? `${TraceBASEURL}/api/getMachineDetails?${queryString}`
+      : `${TraceBASEURL}/api/getMachineDetails`;
+    const response = await fetch(url);
     if (!response.ok) {
       throw new Error('Failed to fetch machine details');
     }

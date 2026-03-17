@@ -1,16 +1,27 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Activity, MarkerData } from '../../types/survey';
+import { Activity, LiveMarkerData, MarkerData } from '../../types/survey';
 
 interface MapComponentProps {
-  markers: MarkerData[];
+  markers: LiveMarkerData[];
   machineData:{[key: string]: {machine_id: number; registration_number: string; authorised_person: string; activities: Activity[]}};
-  onMarkerClick: (activity: MarkerData['activity']) => void;
+  onMarkerClick: (activity: LiveMarkerData['activity']) => void;
 }
 
 const MapComponent: React.FC<MapComponentProps> = ({ markers, machineData, onMarkerClick }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [googleMarkers, setGoogleMarkers] = useState<google.maps.Marker[]>([]);
+  
+  const isActive = (dateString: string) => {
+  const today = new Date();
+  const created = new Date(dateString);
+
+  return (
+    created.getDate() === today.getDate() &&
+    created.getMonth() === today.getMonth() &&
+    created.getFullYear() === today.getFullYear()
+  );
+};
   const colorPalette = [
     '#2563eb', '#dc2626', '#059669', '#7c3aed', '#ea580c',
     '#0891b2', '#be185d', '#4338ca', '#65a30d', '#f59e0b',
@@ -62,11 +73,13 @@ useEffect(() => {
 
     // Create new markers
     const newMarkers = markers.map(markerData => {
-      const markerColor = getColorByRegistration(markerData.activity.registration_number);
-      const marker = new google.maps.Marker({
+    const markerColor = isActive(markerData.activity.created_at)
+      ? '#16a34a' // green
+      : '#dc2626'; // red
+        const marker = new google.maps.Marker({
         position: markerData.position,
         map: map,
-        title: `${markerData.activity.registration_number} - ${markerData.activity.eventType}`,
+        title: `${markerData.activity.machine_registration_number} - ${markerData.activity.eventType}`,
         icon: {
          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
           <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="${markerColor}">
@@ -140,6 +153,24 @@ useEffect(() => {
   return (
     <div className="relative w-full h-full">
       <div ref={mapRef} className="w-full h-full rounded-lg" />
+            <div className="absolute top-20 right-4 bg-white p-3 rounded-lg shadow-lg border border-gray-200 max-w-xs">
+
+              {/* Status Legend */}
+          <div className="mb-3">
+            <h4 className="text-sm font-semibold text-gray-900 mb-2">Status</h4>
+            
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-3 h-3 rounded-full bg-green-600"></div>
+              <span className="text-xs text-gray-700">Active (Today)</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-red-600"></div>
+              <span className="text-xs text-gray-700">Inactive</span>
+            </div>
+          </div>
+    </div>
+
       {/* Legend */}
     {machineData && Object.keys(machineData).length > 0 && (
       <div className="absolute top-20 right-4 bg-white p-3 rounded-lg shadow-lg border border-gray-200 max-w-xs">

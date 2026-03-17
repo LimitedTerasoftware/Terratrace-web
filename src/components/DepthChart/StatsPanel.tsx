@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Activity as Activity2, MapPin, Clock} from 'lucide-react';
-import { Activity } from '../../types/survey';
+import { Activity, LiveMachines } from '../../types/survey';
 import { getMachineOptions } from '../Services/api';
 import { Machine } from '../../types/machine';
 import { useNavigate } from 'react-router-dom';
 
 interface StatsPanelProps {
-  activities: {[key: string]: {machine_id: number; registration_number: string; authorised_person: string; activities: Activity[]}};
+  activities:LiveMachines[];
   totalCount:number;
   isLoading: boolean;
 }
@@ -15,34 +15,76 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ activities,isLoading }) => {
 const navigate= useNavigate();
 const last24Hours = Date.now() - 24 * 60 * 60 * 1000;
 
-const machinesArray = Object.values(activities);
-const allActivities = machinesArray.flatMap(machine =>
-  machine?.activities?.map(activity => ({
-    ...activity,
-    machine_id: machine.machine_id,
-    registration_number: machine.registration_number,
-  })) || []
-);
+const getLiveMachineStats = () => {
+  let active = 0;
+  let inactive = 0;
 
-const recentOnly = allActivities.filter(a =>
-  new Date(a.created_at).getTime() > last24Hours
-);
-const recentActivities = Object.values(
-  recentOnly.reduce((acc, curr) => {
-    if (
-      !acc[curr.machine_id] ||
-      new Date(curr.created_at) >
-        new Date(acc[curr.machine_id].created_at)
-    ) {
-      acc[curr.machine_id] = curr;
+  const activeRegIds: string[] = [];
+  const inactiveRegIds: string[] = [];
+  const allRegIds: string[] = [];
+
+  const today = new Date();
+
+  activities.forEach((item) => {
+    const created = new Date(item.created_at);
+
+    const isToday =
+      created.getDate() === today.getDate() &&
+      created.getMonth() === today.getMonth() &&
+      created.getFullYear() === today.getFullYear();
+
+    // collect all
+    allRegIds.push(item.machine_registration_number);
+
+    if (isToday) {
+      active++;
+      activeRegIds.push(item.machine_registration_number);
+    } else {
+      inactive++;
+      inactiveRegIds.push(item.machine_registration_number);
     }
-    return acc;
-  }, {} as Record<number, typeof recentOnly[0]>)
-);
+  });
 
-const recentActivitiesCount = recentActivities.length;
+  return {
+    active,
+    inactive,
+    activeRegIds,
+    inactiveRegIds,
+    allRegIds,
+  };
+};
 
-const recentRegNumbers = recentActivities.map(a => a.registration_number);
+// const liveStats = getLiveMachineStats();
+
+const liveStatusCounts = getLiveMachineStats();
+
+// const allActivities = machinesArray.flatMap(machine =>
+//   machine?.activities?.map(activity => ({
+//     ...activity,
+//     machine_id: machine.machine_id,
+//     registration_number: machine.registration_number,
+//   })) || []
+// );
+
+// const recentOnly = allActivities.filter(a =>
+//   new Date(a.created_at).getTime() > last24Hours
+// );
+// const recentActivities = Object.values(
+//   recentOnly.reduce((acc, curr) => {
+//     if (
+//       !acc[curr.machine_id] ||
+//       new Date(curr.created_at) >
+//         new Date(acc[curr.machine_id].created_at)
+//     ) {
+//       acc[curr.machine_id] = curr;
+//     }
+//     return acc;
+//   }, {} as Record<number, typeof recentOnly[0]>)
+// );
+
+// const recentActivitiesCount = recentActivities.length;
+
+// const recentRegNumbers = recentActivities.map(a => a.registration_number);
 
   const [machines, setMachines] = useState<Machine[]>([]);
 
@@ -69,35 +111,36 @@ const recentRegNumbers = recentActivities.map(a => a.registration_number);
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
       id:0,
-      regids:[]
+     regids: liveStatusCounts.allRegIds,
     },
     {
       icon: MapPin,
       label: 'Total Active Machines',
-      value: statusCounts.active || 0,
+      value: liveStatusCounts.active || 0,
       color: 'text-emerald-600',
       bgColor: 'bg-emerald-50',
       id:1,
-      regids:[]
+      regids: liveStatusCounts.activeRegIds, // ✅ active
+
     },
     {
       icon: MapPin,
       label: 'Total Inactive Machines',
-      value: statusCounts.inactive || 0,
+      value: liveStatusCounts.inactive || 0,
       color: 'text-red-600',
       bgColor: 'bg-red-50',
       id:2,
-      regids:[]
+      regids: liveStatusCounts.inactiveRegIds, // ✅ inactive
     },
-    {
-      icon: Clock,
-      label: 'Last 24h',
-      value: recentActivitiesCount,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
-      id:3,
-      regids:recentRegNumbers
-    }
+    // {
+    //   icon: Clock,
+    //   label: 'Last 24h',
+    //   value: recentActivitiesCount,
+    //   color: 'text-orange-600',
+    //   bgColor: 'bg-orange-50',
+    //   id:3,
+    //   regids:recentRegNumbers
+    // }
   ];
 
   if (isLoading) {
@@ -121,11 +164,13 @@ const recentRegNumbers = recentActivities.map(a => a.registration_number);
     }});
   }
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {stats.map((stat, index) => {
         const Icon = stat.icon;
         return (
-          <div key={index} onClick={()=>handleredire(stat.id,stat.regids)} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer">
+          <div key={index} 
+           onClick={()=>handleredire(stat.id,stat.regids)} 
+          className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-default">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">{stat.label}</p>

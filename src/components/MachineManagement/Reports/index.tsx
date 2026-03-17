@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Factory,
@@ -15,8 +15,13 @@ import {
   MachineList,
 } from '../../../types/machine';
 import StatusCard from './SummaryCards';
-import { machineApi } from '../../Services/api';
+import { getStateData, machineApi } from '../../Services/api';
 import DataTable, { TableColumn } from 'react-data-table-component';
+
+interface StateData {
+  state_id: number;
+  state_name: string;
+}
 
 interface FirmStats {
   firm_id: number;
@@ -37,10 +42,17 @@ export default function Dashboard() {
   const [machineData, setMachineData] = useState<MachineList[] | []>([]);
   const [firmStats, setFirmStats] = useState<Record<number, FirmStats>>({});
   const [statsLoading, setStatsLoading] = useState<Record<number, boolean>>({});
+  const [states, setStates] = useState<StateData[]>([]);
+  const [selectedState, setSelectedState] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   useEffect(() => {
-    fetchMachineDetails();
+    fetchStates();
   }, []);
+
+  useEffect(() => {
+    fetchMachineDetails(selectedState);
+  }, [selectedState]);
 
   useEffect(() => {
     if (data?.firms) {
@@ -49,6 +61,16 @@ export default function Dashboard() {
       });
     }
   }, [data]);
+
+  const fetchStates = async () => {
+    try {
+    getStateData().then(data => {
+            setStates(data);
+          })     
+    } catch (error) {
+      console.error('Error fetching states:', error);
+    }
+  };
 
   const fetchFirmStats = async (firmId: number) => {
     try {
@@ -67,10 +89,10 @@ export default function Dashboard() {
     }
   };
 
-  const fetchMachineDetails = async () => {
+  const fetchMachineDetails = async (stateId?: string) => {
     try {
       setLoading(true);
-      const response = await machineApi.getMachineDetails();
+      const response = await machineApi.getMachineDetails(stateId);
       setData(response);
       setError(null);
     } catch (err) {
@@ -89,6 +111,45 @@ export default function Dashboard() {
       setError(err instanceof Error ? err.message : 'An error occurred');
     }
   };
+
+  const filteredFirms = useMemo(() => {
+    if (!data?.firms) return [];
+    if (!searchQuery) return data.firms;
+    const query = searchQuery.toLowerCase();
+    return data.firms.filter(
+      (firm) =>
+        firm.firm_name.toLowerCase().includes(query) ||
+        firm.authorised_person.toLowerCase().includes(query) ||
+        firm.authorised_mobile.toString().includes(query),
+    );
+  }, [data?.firms, searchQuery]);
+
+  const totals = useMemo(() => {
+    let totalDistance = 0;
+    let totalDays = 0;
+    let totalMachines = 0;
+    let totalLinks = 0;
+
+    filteredFirms.forEach((firm) => {
+      const stats = firmStats[firm.firm_id];
+      if (stats) {
+        totalDistance += parseFloat(stats.total_distance_meters) || 0;
+        totalDays += stats.total_days || 0;
+        totalMachines += stats.total_machines || 0;
+        totalLinks += stats.total_links || 0;
+      }
+    });
+
+    const avgDistance = totalDays > 0 ? totalDistance / totalDays : 0;
+
+    return {
+      totalDistance: totalDistance.toFixed(2),
+      totalDays,
+      totalMachines,
+      totalLinks,
+      avgDistance: avgDistance.toFixed(2),
+    };
+  }, [filteredFirms, firmStats]);
 
   const columns: TableColumn<MachineDataReport>[] = [
     {
@@ -227,37 +288,107 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-2 px-1 py-6">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-6 mb-2 px-1 py-6">
         <StatusCard
           title="Total Machines"
-          value={data?.summary.total_machines || 0}
+          value={totals.totalMachines}
           icon={Factory}
           iconColor="text-blue-600"
           bgColor="bg-blue-50"
         />
         <StatusCard
           title="Active Machines"
-          value={data?.summary.active_machines || 0}
+          value={parseInt(data?.summary.active_machines || '0')}
           icon={Activity}
           iconColor="text-green-600"
           bgColor="bg-green-50"
         />
         <StatusCard
           title="Inactive Machines"
-          value={data?.summary.inactive_machines || 0}
+          value={parseInt(data?.summary.inactive_machines || '0')}
           icon={TrendingUp}
           iconColor="text-orange-600"
           bgColor="bg-orange-50"
         />
+        <StatusCard
+          title="Total Distance"
+          value={totals.totalDistance}
+          icon={TrendingUp}
+          iconColor="text-purple-600"
+          bgColor="bg-purple-50"
+        />
+        <StatusCard
+          title="Avg Distance"
+          value={totals.avgDistance}
+          icon={TrendingUp}
+          iconColor="text-indigo-600"
+          bgColor="bg-indigo-50"
+        />
+        <StatusCard
+          title="Total Days"
+          value={totals.totalDays}
+          icon={TrendingUp}
+          iconColor="text-teal-600"
+          bgColor="bg-teal-50"
+        />
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-        <div className="px-6 py-4 border-b border-gray-100">
+        <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h2 className="text-xl font-semibold text-gray-900">
             Registered Firms
           </h2>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative">
+              <select
+                value={selectedState}
+                onChange={(e) => setSelectedState(e.target.value)}
+                className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-w-[180px]"
+              >
+                <option value="">All States</option>
+                {states.map((state) => (
+                  <option key={state.state_id} value={state.state_id}>
+                    {state.state_name}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                <svg
+                  className="w-4 h-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </div>
+            </div>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search firms..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full sm:w-[250px]"
+              />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
         </div>
-        {data?.firms.length === 0 && !loading ? (
+        {filteredFirms.length === 0 && !loading ? (
           <div className="p-12 text-center">
             <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
               <Search className="w-8 h-8 text-gray-400" />
@@ -271,7 +402,7 @@ export default function Dashboard() {
             <div className="p-4">
               <DataTable
                 columns={columns}
-                data={data?.firms || []}
+                data={filteredFirms}
                 pagination
                 paginationPerPage={10}
                 paginationRowsPerPageOptions={[10, 25, 50, 100]}

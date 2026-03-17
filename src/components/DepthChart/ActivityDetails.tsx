@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { X, MapPin, Calendar, Camera, Info, Ruler, ArrowRight, Route, ChartBar, ChartArea } from 'lucide-react';
-import { Activity } from '../../types/survey';
+import { Activity, LiveMachines } from '../../types/survey';
 import MachineRouteMap from './MachineRouteMap';
 import Dashboard from './MachineWorkChart/Dashboard';
 import moment from 'moment';
 
 interface ActivityDetailsProps {
-  activity: Activity | null;
+  activity: LiveMachines | null;
   onClose: () => void;
 }
 
@@ -67,8 +67,8 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activity, onClose}) =
   let coordinates = null;
 
   if (mapping) {
-    const photoField = mapping.photoField as keyof Activity;
-    const coordField = mapping.coordField as keyof Activity;
+    const photoField = mapping.photoField as keyof LiveMachines;
+    const coordField = mapping.coordField as keyof LiveMachines;
 
     photos = parsePhotos(activity[photoField] as string | null);
     coordinates = getCoordinates(activity[coordField] as string | null);
@@ -80,7 +80,7 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activity, onClose}) =
           <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
               <Route className="h-5 w-5 text-blue-600" />
-              Machine {activity.registration_number} - Complete Route
+              Machine {activity.machine_registration_number} - Complete Route
             </h2>
             <div className="flex items-center gap-2">
               <button
@@ -112,7 +112,7 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activity, onClose}) =
           <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
               <ChartArea className="h-5 w-5 text-blue-600" />
-              Machine {activity.registration_number}
+              Machine {activity.machine_registration_number}
             </h2>
             <div className="flex items-center gap-2">
               <button
@@ -187,11 +187,11 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activity, onClose}) =
             </div>
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
               <h3 className="text-sm font-medium text-gray-600 mb-2">Machine ID</h3>
-              <p className="text-gray-900">{activity.registration_number}</p>
+              <p className="text-gray-900">{activity.machine_registration_number}</p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
               <h3 className="text-sm font-medium text-gray-600 mb-2">Contractor Details</h3>
-              <p className="text-gray-900">{activity.authorised_person}</p>
+              <p className="text-gray-900">{activity.user_name}</p>
             </div>
           </div>
 

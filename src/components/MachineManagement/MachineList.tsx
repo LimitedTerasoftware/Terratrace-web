@@ -13,7 +13,7 @@ interface MachineListProps {
 
 const MachineList: React.FC<MachineListProps> = ({ machines, onEdit, onDelete, Id, regids }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<Machine['status'] | 'all'>(Id === 1 ? 'active' : Id === 2 ? 'inactive' : 'all');
+  const [statusFilter, setStatusFilter] = useState<Machine['status'] | 'all'>('all');
   const [selectedMachine, setSelectedMachine] = useState<Machine | null>(null);
 
   const filteredMachines = machines.filter(machine => {

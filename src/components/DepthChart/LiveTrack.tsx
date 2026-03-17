@@ -5,7 +5,7 @@ import MapComponent from './MapComponent';
 import ActivityDetails from './ActivityDetails';
 import StatsPanel from './StatsPanel';
 import {useActivities} from '../Services/api';
-import { Activity, Block, District, MarkerData, StateData } from '../../types/survey';
+import { Activity, Block, District, LiveMachines, LiveMarkerData, MarkerData, StateData } from '../../types/survey';
 import axios from 'axios';
 import { Machine } from '../../types/machine';
 import { getMachineOptions } from '../Services/api';
@@ -46,7 +46,7 @@ function LiveTrack() {
   const [loadingStates, setLoadingStates] = useState<boolean>(false);
   const [loadingDistricts, setLoadingDistricts] = useState<boolean>(false);
   const [machinesData, setMachinesData] = useState<Machine[]>([]);
-  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+  const [selectedActivity, setSelectedActivity] = useState<LiveMachines | null>(null);
   const [isAutoRefresh, setIsAutoRefresh] = useState(true);
   const [Machine, setMachine] = useState('');
   const { activities, totalCount, isLoading, error, refetch ,machineData} = useActivities(selectedState, selectedDistrict, selectedBlock, Machine);
@@ -123,21 +123,21 @@ function LiveTrack() {
     fetchBlock();
   }, [selectedDistrict]);
 
-  const markers: MarkerData[] = useMemo(() => {
+  const markers: LiveMarkerData[] = useMemo(() => {
     return activities
       .filter(activity => {
         // Get the coordinate field based on event type
         const mapping = EVENT_TYPE_MAPPING[activity.eventType as keyof typeof EVENT_TYPE_MAPPING];
         if (!mapping) return false;
 
-        const coordField = mapping.coordField as keyof Activity;
+        const coordField = mapping.coordField as keyof LiveMachines;
         const coordinates = activity[coordField] as string | null;
 
         return coordinates && coordinates.trim() !== '';
       })
       .map(activity => {
         const mapping = EVENT_TYPE_MAPPING[activity.eventType as keyof typeof EVENT_TYPE_MAPPING];
-        const coordField = mapping.coordField as keyof Activity;
+        const coordField = mapping.coordField as keyof LiveMachines;
         const coordinates = activity[coordField] as string;
 
         const [lat, lng] = coordinates.split(',').map(Number);
@@ -148,7 +148,7 @@ function LiveTrack() {
       });
   }, [activities]);
 
-  const handleMarkerClick = (activity: Activity) => {
+  const handleMarkerClick = (activity: LiveMachines) => {
     setSelectedActivity(activity);
   };
 
@@ -347,7 +347,7 @@ function LiveTrack() {
         {/* Main Content */}
         <div className="p-6">
           <div className="space-y-6">
-            <StatsPanel activities={machineData || {}} totalCount={totalCount} isLoading={isLoading} />
+            <StatsPanel activities={activities || {}} totalCount={totalCount} isLoading={isLoading} />
 
             <div>
 
