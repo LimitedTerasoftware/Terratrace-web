@@ -4,20 +4,15 @@ import { SideBarItem } from './NavLink';
 import Tricad from '../../images/logo/Tricad.png';
 import TricadLogo from '../../images/logo/favicon.png';
 import RouteMap from '../../images/icon/route-map.svg';
-import CompanyIcon from '../../images/icon/enterprise-svgrepo-com.svg';
 import SurveyIcon from '../../images/icon/clipboard-with-a-list-svgrepo-com.svg';
 import DashboardIcon from '../../images/icon/dashboard-svgrepo-com.svg'
 import SidebarLinkGroup from './SidebarLinkGroup';
-import User from '../../images/icon/user-icon.svg';
 import TableIcon from '../../images/icon/table-icon.svg';
-import Logo from '../../images/logo/logo.png';
 import { hasInvOnlyAccess, hasViewOnlyAccess, isIEUser, hasInstallationAccess, isNGUser, canAccessConstruction, isAdminUser} from "../../utils/accessControl";
 import DropdownUser from './DropDownUser'; 
 import DarkModeSwitcher from './DarkModeSwitcher';
-import KML from '../../images/icon/kml-file.svg';
 import Smart_Inv from '../../images/icon/internet-world-svgrepo-com.svg';
 import Machine from '../../images/icon/mechine.svg';
-import Other from '../../images/logo/dashboard-4-svgrepo-com.svg';
 import ConstructionImg from '../../images/icon/construction-worker.svg'
 import { matchPath } from 'react-router-dom';
 
@@ -28,8 +23,6 @@ import {
   ChevronUp,
   ListCollapse,        
   MapPinHouse,       
-  ClipboardMinus,      
-  Logs,  
   Cog,
   LocateFixed,
   Building,

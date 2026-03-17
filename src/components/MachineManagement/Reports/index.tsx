@@ -62,16 +62,8 @@ export default function Dashboard() {
       selectedBlock,
       fromdate,
       todate,
-      searchQuery,
     );
-  }, [
-    selectedState,
-    selectedDistrict,
-    selectedBlock,
-    fromdate,
-    todate,
-    searchQuery,
-  ]);
+  }, [selectedState, selectedDistrict, selectedBlock, fromdate, todate]);
 
   useEffect(() => {
     if (selectedState) {
@@ -220,7 +212,6 @@ export default function Dashboard() {
     blockId?: string,
     fromDate?: string,
     toDate?: string,
-    search?: string,
   ) => {
     try {
       // setLoading(true);
@@ -230,7 +221,6 @@ export default function Dashboard() {
         blockId,
         fromDate,
         toDate,
-        search,
       );
       setData(response);
       setError(null);
@@ -253,8 +243,16 @@ export default function Dashboard() {
 
   const filteredFirms = useMemo(() => {
     if (!data?.data) return [];
-    return data.data;
-  }, [data?.data]);
+    if (!searchQuery) return data.data;
+
+    const query = searchQuery.toLowerCase();
+    return data.data.filter(
+      (firm) =>
+        firm.firm_name?.toLowerCase().includes(query) ||
+        firm.authorised_mobile?.includes(query) ||
+        firm.authorised_person?.toLowerCase().includes(query),
+    );
+  }, [data?.data, searchQuery]);
 
   const totals = useMemo(() => {
     if (!data?.summary) {
