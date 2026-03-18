@@ -1,26 +1,25 @@
 export interface StartGp {
-  name: string,
-  blk_name: string,
-  dt_name: string,
-  st_name: string,
-  lgd_code:string,
-  lattitude:string,
-  longitude:string
-
+  name: string;
+  blk_name: string;
+  dt_name: string;
+  st_name: string;
+  lgd_code: string;
+  lattitude: string;
+  longitude: string;
 }
 
 export interface EndGp {
-   name: string,
-   lgd_code:string,
-   lattitude:string,
-   longitude:string
+  name: string;
+  lgd_code: string;
+  lattitude: string;
+  longitude: string;
 }
 
 export interface PatrollerDetails {
-companyName: string;
-email: string;
-mobile: string;
-name: string;
+  companyName: string;
+  email: string;
+  mobile: string;
+  name: string;
 }
 
 export interface RoadCrossing {
@@ -61,7 +60,6 @@ export interface VideoDetails {
   endLatitude?: number;
   endLongitude?: number;
   endTimeStamp?: number;
-
 }
 
 export interface UnderGroundSurveyData {
@@ -96,14 +94,13 @@ export interface UnderGroundSurveyData {
   landMarkUrls: string;
   fiberTurnUrl: string;
   landMarkType: string;
-  blk_name?:string,
-  dt_name?:string,
-  st_name?:string,
-  startGp?:string,
-  endGp?:string,
-  landMarkDescription:string;
-  routeIndicatorType:string;
-
+  blk_name?: string;
+  dt_name?: string;
+  st_name?: string;
+  startGp?: string;
+  endGp?: string;
+  landMarkDescription: string;
+  routeIndicatorType: string;
 }
 
 export interface GroundSurvey {
@@ -123,7 +120,7 @@ export interface MediaFile {
   filename: string;
   eventType: string;
   type: 'image' | 'video';
-  videoDetails?:any
+  videoDetails?: any;
 }
 
 export interface FolderStructure {
@@ -147,11 +144,11 @@ export interface DepthDataPoint {
   distance: string;
   depthMeters: string;
   created_at: string;
-  depthLatlong:string;
-  depthPhoto:string;
-  start_lgd_name:string;
-  end_lgd_name:string;
-  machine_registration_number:string;
+  depthLatlong: string;
+  depthPhoto: string;
+  start_lgd_name: string;
+  end_lgd_name: string;
+  machine_registration_number: string;
   startPitLatlong: string | null;
   startPitPhotos: string | null;
   endPitLatlong: string | null;
@@ -163,7 +160,6 @@ export interface DepthDataPoint {
   manholeLatLong: string | null;
   manholePhotos: string | null;
   survey_id: number | null;
-
 }
 
 export interface ApiResponse {
@@ -181,15 +177,15 @@ export interface ChartPoint {
   survey_id: number | null;
 }
 
-export interface StartDuct{
-  coil_number:string;
-  images:string;
-  meter:string
+export interface StartDuct {
+  coil_number: string;
+  images: string;
+  meter: string;
 }
-export interface EndDuct{
-  coil_number:string;
-  images:string;
-  meter:string
+export interface EndDuct {
+  coil_number: string;
+  images: string;
+  meter: string;
 }
 export interface Activity {
   id: number;
@@ -249,39 +245,37 @@ export interface Activity {
   survey_id: number;
   vehicle_image: string | null;
   endPitDoc: string | null;
-  start_lgd_name:string;
-  end_lgd_name:string;
-  registration_number:string;
-  authorised_person:string;
-  endPointCoordinates:string;
-  endPointPhoto:string;
-  landmark_type:string;
-  landmark_description:string;
-  machine_registration_number:string;
-  Roadfesibility:string;
-  area_type:string;
-  road_margin:string;
-  holdPhotos:string;
-  holdLatlong:string;
-  firm_name:string;
-  dgps_accuracy:string; 
-  dgps_siv:number|0;
-  blowingPhotos:string;
-  blowingLatLong:string;
-  videoDetails:VideoDetails | null;
+  start_lgd_name: string;
+  end_lgd_name: string;
+  registration_number: string;
+  authorised_person: string;
+  endPointCoordinates: string;
+  endPointPhoto: string;
+  landmark_type: string;
+  landmark_description: string;
+  machine_registration_number: string;
+  Roadfesibility: string;
+  area_type: string;
+  road_margin: string;
+  holdPhotos: string;
+  holdLatlong: string;
+  firm_name: string;
+  dgps_accuracy: string;
+  dgps_siv: number | 0;
+  blowingPhotos: string;
+  blowingLatLong: string;
+  videoDetails: VideoDetails | null;
   pole_type: string | null;
   existing_pole: string | null;
   new_pole: string | null;
-  routeFeatureLatLong:string|null;
-  routeFeaturePhotos:string|null;
-  routeFeatureType:string|null;
-  cable_stack:string|null;
-  offset:string|null;
-  start_duct:string;
-  end_duct:string;
-
- 
- }
+  routeFeatureLatLong: string | null;
+  routeFeaturePhotos: string | null;
+  routeFeatureType: string | null;
+  cable_stack: string | null;
+  offset: string | null;
+  start_duct: string;
+  end_duct: string;
+}
 
 export interface ApiResponseMachine {
   status: boolean;
@@ -431,21 +425,18 @@ export interface LiveMachines {
   url: string;
 }
 
-export interface APIResponseLiveMachine{
-    status: boolean;
-    data:LiveMachines[];
-
+export interface APIResponseLiveMachine {
+  status: boolean;
+  data: LiveMachines[];
 }
 
 export interface MarkerData {
   position: google.maps.LatLngLiteral;
   activity: Activity;
-  
 }
 export interface LiveMarkerData {
   position: google.maps.LatLngLiteral;
   activity: LiveMachines;
-  
 }
 
 export interface StateData {
@@ -458,14 +449,14 @@ export interface District {
   district_id: string;
   district_name: string;
   state_code: string;
-  district_code:string
+  district_code: string;
 }
 
 export interface Block {
   block_id: string;
   block_name: string;
   district_code: string;
-  block_code:string
+  block_code: string;
 }
 
 export interface UGConstructionSurveyData {
@@ -473,11 +464,11 @@ export interface UGConstructionSurveyData {
   user_id: number;
   company_id: number | null;
   state_id: number;
-  state_name:string;
+  state_name: string;
   district_id: number;
-  district_name:string;
+  district_name: string;
   block_id: number;
-  block_name:string;
+  block_name: string;
   gp_id: number;
   startLocation: number;
   endLocation: number;
@@ -485,15 +476,12 @@ export interface UGConstructionSurveyData {
   created_at: string;
   updated_at: string;
   surveyType: string;
-  start_lgd_name:string;
-  end_lgd_name:string;
-  user_name:string;
-  user_mobile:string;
+  start_lgd_name: string;
+  end_lgd_name: string;
+  user_name: string;
+  user_mobile: string;
   construction_type: string | null;
   total_distance: string | null;
-
-
-
 }
 
 // MachineWork Chart
@@ -515,7 +503,7 @@ export interface ChartDataPoint {
 
 export interface FilterState {
   machineId: string;
-  machineName:string;
+  machineName: string;
   fromDate?: string;
   toDate?: string;
   month?: number;
@@ -523,7 +511,7 @@ export interface FilterState {
 }
 export interface ImageUploadResponse {
   success: boolean;
-  data:{images?: string[];}
+  data: { images?: string[] };
   message?: string;
 }
 
@@ -532,174 +520,174 @@ export interface UpdatePhotosRequest {
   [key: string]: any;
 }
 
-export interface GPList{
-  name:string,
-  lattitude: string,
-  longitude: string,
-  type:string ,
-  blk_code: string,
-  blk_name: string,
-  dt_code: string,
-  dt_name: string,
-  st_code: string,
-  st_name: string,
-  lgd_code: string,
-  remark: string,
-  id:number,
-  created_at:string,
-  updated_at:string
+export interface GPList {
+  name: string;
+  lattitude: string;
+  longitude: string;
+  type: string;
+  blk_code: string;
+  blk_name: string;
+  dt_code: string;
+  dt_name: string;
+  st_code: string;
+  st_name: string;
+  lgd_code: string;
+  remark: string;
+  id: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export type GPListFormData = Omit<GPList, 'id' | 'created_at' | 'updated_at'>;
 
 export type GPMainData = {
-  status: boolean,
-  currentPage: number,
-    totalPages: number,
-    totalRows: number,
-    filters: {
-        st_code: string,
-        dt_code: string,
-        blk_code: string
-    },
-    data:GPList[]
-}
+  status: boolean;
+  currentPage: number;
+  totalPages: number;
+  totalRows: number;
+  filters: {
+    st_code: string;
+    dt_code: string;
+    blk_code: string;
+  };
+  data: GPList[];
+};
 
 export interface GPInstallationData {
-    id: number;
-    user_id: number;
-    state_code: string;
-    district_code: string;
-    block_code: string;
-    gp_code: string;
-    gp_name: string;
-    gp_latitude: string;
-    gp_longitude: string;
-    gp_photos: string; // JSON string array
-    smart_rack: string; // JSON string
-    fdms_shelf: string; // JSON string array
-    ip_mpls_router: string; // JSON string
-    sfp_10g: string; // JSON string array
-    sfp_1g: string; // JSON string array
-    power_system_with_mppt: string; // JSON string
-    power_system_with_out_mppt: string; // JSON string
-    mppt_solar_1kw: string; // JSON string
-    equipment_photo: string; // JSON string array
-    electricity_meter: string; // JSON string
-    earthpit: string; // JSON string
-    gp_contact: string; // JSON string
-    key_person: string; // JSON string
-    created_at: string;
-    updated_at: string;
-    state_name: string;
-    district_name: string;
-    block_name: string;
+  id: number;
+  user_id: number;
+  state_code: string;
+  district_code: string;
+  block_code: string;
+  gp_code: string;
+  gp_name: string;
+  gp_latitude: string;
+  gp_longitude: string;
+  gp_photos: string; // JSON string array
+  smart_rack: string; // JSON string
+  fdms_shelf: string; // JSON string array
+  ip_mpls_router: string; // JSON string
+  sfp_10g: string; // JSON string array
+  sfp_1g: string; // JSON string array
+  power_system_with_mppt: string; // JSON string
+  power_system_with_out_mppt: string; // JSON string
+  mppt_solar_1kw: string; // JSON string
+  equipment_photo: string; // JSON string array
+  electricity_meter: string; // JSON string
+  earthpit: string; // JSON string
+  gp_contact: string; // JSON string
+  key_person: string; // JSON string
+  created_at: string;
+  updated_at: string;
+  state_name: string;
+  district_name: string;
+  block_name: string;
 }
 
 export interface SmartRackData {
-    make: string;
-    photo: string;
-    serial_no: string;
-    type: string;
+  make: string;
+  photo: string;
+  serial_no: string;
+  type: string;
 }
 
 export interface FDMSShelfData {
-    count: number;
-    make: string;
-    photo: string;
-    serial_no: string;
+  count: number;
+  make: string;
+  photo: string;
+  serial_no: string;
 }
 
 export interface IPMPLSRouterData {
-    make: string;
-    photo: string;
-    serial_no: string;
-    type: string;
+  make: string;
+  photo: string;
+  serial_no: string;
+  type: string;
 }
 
 export interface SFPData {
-    count: string;
-    make: string;
-    photo: string;
-    serial_no: string;
+  count: string;
+  make: string;
+  photo: string;
+  serial_no: string;
 }
 
 export interface PowerSystemData {
-    available: boolean;
-    make?: string;
-    photo?: string;
-    serial_no?: string;
+  available: boolean;
+  make?: string;
+  photo?: string;
+  serial_no?: string;
 }
 
 export interface MPPTSolarData {
-    make: string;
-    photo: string;
-    serial_no: string;
+  make: string;
+  photo: string;
+  serial_no: string;
 }
 
 export interface ElectricityMeterData {
-    photo: string;
-    serial_no: string;
+  photo: string;
+  serial_no: string;
 }
 
 export interface EarthpitData {
-    capacity: string;
-    latitude: string;
-    longitude: string;
-    photo: string;
+  capacity: string;
+  latitude: string;
+  longitude: string;
+  photo: string;
 }
 
 export interface GPContactData {
-    email: string;
-    name: string;
-    phone: string;
+  email: string;
+  name: string;
+  phone: string;
 }
 
 export interface KeyPersonData {
-    name: string;
-    phone: string;
+  name: string;
+  phone: string;
 }
 
 export interface InstallationResponse {
-    status: boolean;
-    totalRows: number;
-    filters: Record<string, any>;
-    data: GPInstallationData[];
+  status: boolean;
+  totalRows: number;
+  filters: Record<string, any>;
+  data: GPInstallationData[];
 }
 
-export interface JointsApiResponse{
-  success:boolean;
-  total_joints?:number;
-  data:JointsData[];
-  message?:string;
-  pagination:Pagination;
+export interface JointsApiResponse {
+  success: boolean;
+  total_joints?: number;
+  data: JointsData[];
+  message?: string;
+  pagination: Pagination;
 }
-export interface Pagination{
-  page: number,
-    limit: number,
-    total: number,
-    total_pages: number
+export interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  total_pages: number;
 }
-export interface JointsData{
-   joint_code:string,
-     joint_name:string,
-     state_id: number,
-     state_name:string,
-     district_id: number,
-     district_name:string,
-     block_id: number,
-     block_name:string,
-     work_type:string,
-     joint_type:string,
-     date_time:string,
-     created_at:string,
-     gps_lat:string,
-     gps_long:string,
-     address:string,
-     photo_path:string,
-     proof_photo:string,
-     user_id: never,
-     user_name:string
+export interface JointsData {
+  joint_code: string;
+  joint_name: string;
+  state_id: number;
+  state_name: string;
+  district_id: number;
+  district_name: string;
+  block_id: number;
+  block_name: string;
+  work_type: string;
+  joint_type: string;
+  date_time: string;
+  created_at: string;
+  gps_lat: string;
+  gps_long: string;
+  address: string;
+  photo_path: string;
+  proof_photo: string;
+  user_id: never;
+  user_name: string;
 }
 export interface Cable {
   cable_id: string;
@@ -734,7 +722,7 @@ export interface FiberSplicing {
 }
 
 export interface ProcessedJoints {
-  id: string|undefined;
+  id: string | undefined;
   name: string;
   category: string;
   type: 'point';
@@ -752,4 +740,76 @@ export interface ProcessedJoints {
   cables: Cable[];
   tube_mapping: TubeMapping[];
   fiber_splicing: FiberSplicing[];
+}
+
+export interface KMLConnection {
+  id: number;
+  network_id: number;
+  start_point_id: number | null;
+  end_point_id: number | null;
+  start: string;
+  end: string;
+  length: string;
+  original_name: string;
+  coordinates: string;
+  type: string;
+  color: string;
+  created_at: string;
+  start_latlong: string;
+  end_latlong: string;
+  user_id: string;
+  user_name: string;
+  status: string;
+  properties: string;
+}
+
+export interface KMLData {
+  id: number;
+  name: string;
+  total_length: string;
+  main_point_name: string;
+  created_at: string;
+  existing_length: string;
+  proposed_length: string;
+  status: string;
+  st_code: string;
+  st_name: string;
+  blk_code: string;
+  blk_name: string;
+  dt_code: string;
+  dt_name: string;
+  user_id: number;
+  user_name: string;
+  connections: KMLConnection[];
+}
+
+export interface MachineBlockKMLResponse {
+  status: boolean;
+  count: number;
+  data: {
+    machine_id: string;
+    state_id: number;
+    district_id: number;
+    block_id: number;
+    kml_data: KMLData[];
+  }[];
+}
+
+export interface SurveyCoordinates {
+  survey_id: number;
+  machine_id: string;
+  coordinates: [number, number][];
+}
+
+export interface BlockSurvey {
+  state_id: number;
+  district_id: number;
+  block_id: number;
+  surveys: SurveyCoordinates[];
+}
+
+export interface ConstructionPathResponse {
+  status: boolean;
+  total_blocks: number;
+  data: BlockSurvey[];
 }

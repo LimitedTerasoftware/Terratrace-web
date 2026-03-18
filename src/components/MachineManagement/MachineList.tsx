@@ -28,9 +28,9 @@ const MachineList: React.FC<MachineListProps> = ({ machines, onEdit, onDelete, I
       (machine.truck_make || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (machine.truck_model || "").toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || machine.status === statusFilter;
-    const matchesRecent = !regids || regids.length === 0
-      ? false
-      : regids.includes(machine.registration_number);
+    const matchesRecent = !regids
+      ? true
+      :  regids.length === 0 ? false : regids.includes(machine.registration_number);
     return matchesSearch && matchesStatus && matchesRecent;
   });
 

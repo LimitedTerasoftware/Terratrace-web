@@ -318,11 +318,9 @@ export default function Dashboard() {
       minWidth: '120px',
     },
     {
-      name: 'Total Distance (km)',
+      name: 'Total Distance (m)',
       cell: (row) =>
-        row.total_distance_meters
-          ? (parseFloat(row.total_distance_meters) / 1000).toFixed(2)
-          : '-',
+        row.total_distance_meters,
       sortable: true,
       minWidth: '170px',
     },
@@ -333,11 +331,9 @@ export default function Dashboard() {
       minWidth: '120px',
     },
     {
-      name: 'Avg Distance/Day (km)',
+      name: 'Avg Distance/Day (m)',
       cell: (row) =>
-        row.avg_distance_per_day
-          ? (parseFloat(row.avg_distance_per_day) / 1000).toFixed(2)
-          : '-',
+      row.avg_distance_per_day,
       sortable: true,
       minWidth: '180px',
     },

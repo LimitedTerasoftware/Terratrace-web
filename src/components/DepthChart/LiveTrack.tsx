@@ -4,8 +4,19 @@ import { Satellite, RefreshCw } from 'lucide-react';
 import MapComponent from './MapComponent';
 import ActivityDetails from './ActivityDetails';
 import StatsPanel from './StatsPanel';
-import {useActivities} from '../Services/api';
-import { Activity, Block, District, LiveMachines, LiveMarkerData, MarkerData, StateData } from '../../types/survey';
+import { useActivities, machineApi } from '../Services/api';
+import {
+  Activity,
+  Block,
+  District,
+  LiveMachines,
+  LiveMarkerData,
+  MarkerData,
+  StateData,
+  MachineBlockKMLResponse,
+  ConstructionPathResponse,
+  KMLConnection,
+} from '../../types/survey';
 import axios from 'axios';
 import { Machine } from '../../types/machine';
 import { getMachineOptions } from '../Services/api';
@@ -19,21 +30,33 @@ interface StatesResponse {
 }
 // Event type mapping for coordinates and photos
 const EVENT_TYPE_MAPPING = {
-  'DEPTH': { coordField: 'depthLatlong', photoField: 'depthPhoto' },
-  'ROADCROSSING': { coordField: 'crossingLatlong', photoField: 'crossingPhotos' },
-  'FPOI': { coordField: 'fpoiLatLong', photoField: 'fpoiPhotos' },
-  'JOINTCHAMBER': { coordField: 'jointChamberLatLong', photoField: 'jointChamberPhotos' },
-  'MANHOLES': { coordField: 'manholeLatLong', photoField: 'manholePhotos' },
-  'ROUTEINDICATOR': { coordField: 'routeIndicatorLatLong', photoField: 'routeIndicatorPhotos' },
-  'LANDMARK': { coordField: 'landmarkLatLong', photoField: 'landmarkPhotos' },
-  'FIBERTURN': { coordField: 'fiberTurnLatLong', photoField: 'fiberTurnPhotos' },
-  'KILOMETERSTONE': { coordField: 'kilometerstoneLatLong', photoField: 'kilometerstonePhotos' },
-  'STARTPIT': { coordField: 'startPitLatlong', photoField: 'startPitPhotos' },
-  'ENDPIT': { coordField: 'endPitLatlong', photoField: 'endPitPhotos' },
-  'STARTSURVEY': { coordField: 'startPointCoordinates', photoField: 'startPointPhoto' },
-  'ENDSURVEY': { coordField: 'endPointCoordinates', photoField: 'endPointPhoto' },
-  'HOLDSURVEY': { coordField: 'holdLatlong', photoField: 'holdPhotos' },
-  'BLOWING': { coordField: 'blowingLatLong', photoField: 'blowingPhotos' },
+  DEPTH: { coordField: 'depthLatlong', photoField: 'depthPhoto' },
+  ROADCROSSING: { coordField: 'crossingLatlong', photoField: 'crossingPhotos' },
+  FPOI: { coordField: 'fpoiLatLong', photoField: 'fpoiPhotos' },
+  JOINTCHAMBER: {
+    coordField: 'jointChamberLatLong',
+    photoField: 'jointChamberPhotos',
+  },
+  MANHOLES: { coordField: 'manholeLatLong', photoField: 'manholePhotos' },
+  ROUTEINDICATOR: {
+    coordField: 'routeIndicatorLatLong',
+    photoField: 'routeIndicatorPhotos',
+  },
+  LANDMARK: { coordField: 'landmarkLatLong', photoField: 'landmarkPhotos' },
+  FIBERTURN: { coordField: 'fiberTurnLatLong', photoField: 'fiberTurnPhotos' },
+  KILOMETERSTONE: {
+    coordField: 'kilometerstoneLatLong',
+    photoField: 'kilometerstonePhotos',
+  },
+  STARTPIT: { coordField: 'startPitLatlong', photoField: 'startPitPhotos' },
+  ENDPIT: { coordField: 'endPitLatlong', photoField: 'endPitPhotos' },
+  STARTSURVEY: {
+    coordField: 'startPointCoordinates',
+    photoField: 'startPointPhoto',
+  },
+  ENDSURVEY: { coordField: 'endPointCoordinates', photoField: 'endPointPhoto' },
+  HOLDSURVEY: { coordField: 'holdLatlong', photoField: 'holdPhotos' },
+  BLOWING: { coordField: 'blowingLatLong', photoField: 'blowingPhotos' },
 };
 
 function LiveTrack() {
@@ -46,11 +69,49 @@ function LiveTrack() {
   const [loadingStates, setLoadingStates] = useState<boolean>(false);
   const [loadingDistricts, setLoadingDistricts] = useState<boolean>(false);
   const [machinesData, setMachinesData] = useState<Machine[]>([]);
-  const [selectedActivity, setSelectedActivity] = useState<LiveMachines | null>(null);
+  const [selectedActivity, setSelectedActivity] = useState<LiveMachines | null>(
+    null,
+  );
   const [isAutoRefresh, setIsAutoRefresh] = useState(true);
   const [Machine, setMachine] = useState('');
-  const { activities, totalCount, isLoading, error, refetch ,machineData} = useActivities(selectedState, selectedDistrict, selectedBlock, Machine);
-  
+  const { activities, totalCount, isLoading, error, refetch, machineData } =
+    useActivities(selectedState, selectedDistrict, selectedBlock, Machine);
+
+  const [kmlData, setKmlData] = useState<MachineBlockKMLResponse | null>(null);
+  const [constructionPathData, setConstructionPathData] =
+    useState<ConstructionPathResponse | null>(null);
+  const [loadingKML, setLoadingKML] = useState(false);
+
+  const fetchKMLData = async () => {
+    try {
+      setLoadingKML(true);
+      const [kmlResponse, pathResponse] = await Promise.all([
+        machineApi.getMachineBlockKML(
+          selectedBlock || undefined,
+          Machine || undefined,
+          selectedState || undefined,
+          selectedDistrict || undefined,
+        ),
+        machineApi.getConstructionPath(
+          selectedBlock || undefined,
+          Machine || undefined,
+          selectedState || undefined,
+          selectedDistrict || undefined,
+        ),
+      ]);
+      setKmlData(kmlResponse);
+      setConstructionPathData(pathResponse);
+    } catch (err) {
+      console.error('Error fetching KML data:', err);
+    } finally {
+      setLoadingKML(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchKMLData();
+  }, [selectedState, selectedDistrict, selectedBlock, Machine]);
+
   // Fetch all states
   const fetchStates = async () => {
     try {
@@ -67,7 +128,7 @@ function LiveTrack() {
   };
   useEffect(() => {
     fetchStates();
-    getMachineOptions().then(data => {
+    getMachineOptions().then((data) => {
       setMachinesData(data);
     });
   }, []);
@@ -83,7 +144,9 @@ function LiveTrack() {
       setLoadingDistricts(true);
       // Find the state_code for the selected state_id
 
-      const response = await fetch(`${BASEURL}/districtsdata?state_code=${stateId}`);
+      const response = await fetch(
+        `${BASEURL}/districtsdata?state_code=${stateId}`,
+      );
       if (!response.ok) throw new Error('Failed to fetch districts');
       const data = await response.json();
       setDistricts(data || []);
@@ -99,8 +162,9 @@ function LiveTrack() {
     try {
       if (selectedDistrict === '') return;
 
-
-      const response = await fetch(`${BASEURL}/blocksdata?district_code=${selectedDistrict}`);
+      const response = await fetch(
+        `${BASEURL}/blocksdata?district_code=${selectedDistrict}`,
+      );
       if (!response.ok) throw new Error('Failed to fetch blocks');
       const data = await response.json();
       setBlocks(data || []);
@@ -108,7 +172,7 @@ function LiveTrack() {
       console.error('Error fetching blocks:', error);
       setBlocks([]);
     }
-  }
+  };
 
   useEffect(() => {
     if (selectedState) {
@@ -125,9 +189,12 @@ function LiveTrack() {
 
   const markers: LiveMarkerData[] = useMemo(() => {
     return activities
-      .filter(activity => {
+      .filter((activity) => {
         // Get the coordinate field based on event type
-        const mapping = EVENT_TYPE_MAPPING[activity.eventType as keyof typeof EVENT_TYPE_MAPPING];
+        const mapping =
+          EVENT_TYPE_MAPPING[
+            activity.eventType as keyof typeof EVENT_TYPE_MAPPING
+          ];
         if (!mapping) return false;
 
         const coordField = mapping.coordField as keyof LiveMachines;
@@ -135,15 +202,18 @@ function LiveTrack() {
 
         return coordinates && coordinates.trim() !== '';
       })
-      .map(activity => {
-        const mapping = EVENT_TYPE_MAPPING[activity.eventType as keyof typeof EVENT_TYPE_MAPPING];
+      .map((activity) => {
+        const mapping =
+          EVENT_TYPE_MAPPING[
+            activity.eventType as keyof typeof EVENT_TYPE_MAPPING
+          ];
         const coordField = mapping.coordField as keyof LiveMachines;
         const coordinates = activity[coordField] as string;
 
         const [lat, lng] = coordinates.split(',').map(Number);
         return {
           position: { lat, lng },
-          activity
+          activity,
         };
       });
   }, [activities]);
@@ -180,124 +250,194 @@ function LiveTrack() {
     setSelectedState(null);
     setSelectedDistrict(null);
     setSelectedBlock(null);
-
   };
   return (
-    <><div className="mb-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-          <select
-            value={Machine !== '' ? Machine : ''}
-            onChange={(e) => {
-              setMachine(e.target.value !== '' ? (e.target.value) : '');
-
-            }}
-            className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-          >
-            <option value="">All Machines</option>
-            {machinesData.map((machine) => (
-              <option key={machine.machine_id} value={machine.machine_id}>
-                {machine.registration_number}
-              </option>
-            ))}
-
-          </select>
-          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
-        </div>
-        {/* State Filter */}
-        <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-          <select
-            value={selectedState || ''}
-            onChange={(e) => setSelectedState(e.target.value || '')}
-            disabled={loadingStates}
-            className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
-          >
-            <option value="">All States</option>
-            {states.map((state) => (
-              <option key={state.state_id} value={state.state_id}>
-                {state.state_name}
-              </option>
-            ))}
-          </select>
-          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-            {loadingStates ? (
-              <svg className="animate-spin h-4 w-4 text-gray-400" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    <>
+      <div className="mb-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+            <select
+              value={Machine !== '' ? Machine : ''}
+              onChange={(e) => {
+                setMachine(e.target.value !== '' ? e.target.value : '');
+              }}
+              className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            >
+              <option value="">All Machines</option>
+              {machinesData.map((machine) => (
+                <option key={machine.machine_id} value={machine.machine_id}>
+                  {machine.registration_number}
+                </option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+              <svg
+                className="w-4 h-4 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M19 9l-7 7-7-7"
+                />
               </svg>
-            ) : (
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            )}
+            </div>
           </div>
-        </div>
+          {/* State Filter */}
+          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+            <select
+              value={selectedState || ''}
+              onChange={(e) => setSelectedState(e.target.value || '')}
+              disabled={loadingStates}
+              className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
+            >
+              <option value="">All States</option>
+              {states.map((state) => (
+                <option key={state.state_id} value={state.state_id}>
+                  {state.state_name}
+                </option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+              {loadingStates ? (
+                <svg
+                  className="animate-spin h-4 w-4 text-gray-400"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    fill="none"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+              ) : (
+                <svg
+                  className="w-4 h-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              )}
+            </div>
+          </div>
 
-        {/* District Filter */}
-        <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-          <select
-            value={selectedDistrict || ''}
-            onChange={(e) => setSelectedDistrict(e.target.value || '')}
-            disabled={!selectedState}
-            className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
-          >
-            <option value="">All Districts</option>
-            {districts.map((district) => (
-              <option key={district.district_id} value={district.district_id}>
-                {district.district_name}
-              </option>
-            ))}
-          </select>
-          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-            {loadingDistricts ? (
-              <svg className="animate-spin h-4 w-4 text-gray-400" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            ) : (
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            )}
+          {/* District Filter */}
+          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+            <select
+              value={selectedDistrict || ''}
+              onChange={(e) => setSelectedDistrict(e.target.value || '')}
+              disabled={!selectedState}
+              className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
+            >
+              <option value="">All Districts</option>
+              {districts.map((district) => (
+                <option key={district.district_id} value={district.district_id}>
+                  {district.district_name}
+                </option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+              {loadingDistricts ? (
+                <svg
+                  className="animate-spin h-4 w-4 text-gray-400"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    fill="none"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+              ) : (
+                <svg
+                  className="w-4 h-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Block Filter */}
-        <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-          <select
-            value={selectedBlock || ''}
-            onChange={(e) => setSelectedBlock(e.target.value)}
-            disabled={!selectedDistrict}
-            className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
-          >
-            <option value="">All Blocks</option>
-            {blocks.map((block) => (
-              <option key={block.block_id} value={block.block_id}>
-                {block.block_name}
-              </option>
-            ))}
-          </select>
-          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-            </svg>
+          {/* Block Filter */}
+          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+            <select
+              value={selectedBlock || ''}
+              onChange={(e) => setSelectedBlock(e.target.value)}
+              disabled={!selectedDistrict}
+              className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
+            >
+              <option value="">All Blocks</option>
+              {blocks.map((block) => (
+                <option key={block.block_id} value={block.block_id}>
+                  {block.block_name}
+                </option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+              <svg
+                className="w-4 h-4 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </div>
           </div>
+          {/* Clear Filters */}
+          <button
+            onClick={clearFilters}
+            className="flex-none h-10 px-4 py-2 text-sm font-medium text-red-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-red-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
+          >
+            <span className="text-red-500 dark:text-red-400 font-medium text-sm">
+              ✕
+            </span>
+            <span>Clear Filters</span>
+          </button>
         </div>
-        {/* Clear Filters */}
-        <button
-          onClick={clearFilters}
-          className="flex-none h-10 px-4 py-2 text-sm font-medium text-red-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-red-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
-        >
-          <span className="text-red-500 dark:text-red-400 font-medium text-sm">✕</span>
-          <span>Clear Filters</span>
-        </button>
       </div>
-    </div><div className="min-h-screen bg-gray-50">
-
+      <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">
@@ -306,14 +446,20 @@ function LiveTrack() {
                 <Satellite className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Live Machine Tracker</h1>
-                <p className="text-sm text-gray-600">Fiber Optic Construction Monitoring</p>
+                <h1 className="text-xl font-bold text-gray-900">
+                  Live Machine Tracker
+                </h1>
+                <p className="text-sm text-gray-600">
+                  Fiber Optic Construction Monitoring
+                </p>
               </div>
             </div>
 
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <div className={`w-3 h-3 rounded-full ${isAutoRefresh ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+                <div
+                  className={`w-3 h-3 rounded-full ${isAutoRefresh ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}
+                ></div>
                 <span className="text-sm text-gray-600">
                   {isAutoRefresh ? 'Live Updates' : 'Manual Mode'}
                 </span>
@@ -331,7 +477,9 @@ function LiveTrack() {
                 disabled={isLoading}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors duration-200 font-medium flex items-center gap-2"
               >
-                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
+                />
                 {isLoading ? 'Loading...' : 'Refresh'}
               </button>
             </div>
@@ -347,11 +495,13 @@ function LiveTrack() {
         {/* Main Content */}
         <div className="p-6">
           <div className="space-y-6">
-            <StatsPanel activities={activities || {}} totalCount={totalCount} isLoading={isLoading} />
+            <StatsPanel
+              activities={activities || {}}
+              totalCount={totalCount}
+              isLoading={isLoading}
+            />
 
             <div>
-
-
               {/* Map */}
               <div className="lg:col-span-3">
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-96 lg:h-[600px]">
@@ -359,7 +509,10 @@ function LiveTrack() {
                     <MapComponent
                       markers={markers}
                       machineData={machineData || {}}
-                      onMarkerClick={handleMarkerClick} />
+                      onMarkerClick={handleMarkerClick}
+                      kmlData={kmlData}
+                      constructionPathData={constructionPathData}
+                    />
                   </Wrapper>
                 </div>
               </div>
@@ -370,10 +523,10 @@ function LiveTrack() {
         {/* Activity Details Modal */}
         <ActivityDetails
           activity={selectedActivity}
-          onClose={() =>setSelectedActivity(null)}
-          
-           />
-      </div></>
+          onClose={() => setSelectedActivity(null)}
+        />
+      </div>
+    </>
   );
 }
 

@@ -1,5 +1,16 @@
 import React, { useState } from 'react';
-import { X, MapPin, Calendar, Camera, Info, Ruler, ArrowRight, Route, ChartBar, ChartArea } from 'lucide-react';
+import {
+  X,
+  MapPin,
+  Calendar,
+  Camera,
+  Info,
+  Ruler,
+  ArrowRight,
+  Route,
+  ChartBar,
+  ChartArea,
+} from 'lucide-react';
 import { Activity, LiveMachines } from '../../types/survey';
 import MachineRouteMap from './MachineRouteMap';
 import Dashboard from './MachineWorkChart/Dashboard';
@@ -12,46 +23,63 @@ interface ActivityDetailsProps {
 
 // Event type mapping for coordinates and photos
 const EVENT_TYPE_MAPPING = {
-  'DEPTH': { coordField: 'depthLatlong', photoField: 'depthPhoto' },
-  'ROADCROSSING': { coordField: 'crossingLatlong', photoField: 'crossingPhotos' },
-  'FPOI': { coordField: 'fpoiLatLong', photoField: 'fpoiPhotos' },
-  'JOINTCHAMBER': { coordField: 'jointChamberLatLong', photoField: 'jointChamberPhotos' },
-  'MANHOLES': { coordField: 'manholeLatLong', photoField: 'manholePhotos' },
-  'ROUTEINDICATOR': { coordField: 'routeIndicatorLatLong', photoField: 'routeIndicatorPhotos' },
-  'LANDMARK': { coordField: 'landmarkLatLong', photoField: 'landmarkPhotos' },
-  'FIBERTURN': { coordField: 'fiberTurnLatLong', photoField: 'fiberTurnPhotos' },
-  'KILOMETERSTONE': { coordField: 'kilometerstoneLatLong', photoField: 'kilometerstonePhotos' },
-  'STARTPIT': { coordField: 'startPitLatlong', photoField: 'startPitPhotos' },
-  'ENDPIT': { coordField: 'endPitLatlong', photoField: 'endPitPhotos' },
-  'STARTSURVEY': { coordField: 'startPointCoordinates', photoField: 'startPointPhoto' },
-  'ENDSURVEY': { coordField: 'endPointCoordinates', photoField: 'endPointPhoto' },
-  'HOLDSURVEY': { coordField: 'holdLatlong', photoField: 'holdPhotos' },
-  'BLOWING': { coordField: 'blowingLatLong', photoField: 'blowingPhotos' },
+  DEPTH: { coordField: 'depthLatlong', photoField: 'depthPhoto' },
+  ROADCROSSING: { coordField: 'crossingLatlong', photoField: 'crossingPhotos' },
+  FPOI: { coordField: 'fpoiLatLong', photoField: 'fpoiPhotos' },
+  JOINTCHAMBER: {
+    coordField: 'jointChamberLatLong',
+    photoField: 'jointChamberPhotos',
+  },
+  MANHOLES: { coordField: 'manholeLatLong', photoField: 'manholePhotos' },
+  ROUTEINDICATOR: {
+    coordField: 'routeIndicatorLatLong',
+    photoField: 'routeIndicatorPhotos',
+  },
+  LANDMARK: { coordField: 'landmarkLatLong', photoField: 'landmarkPhotos' },
+  FIBERTURN: { coordField: 'fiberTurnLatLong', photoField: 'fiberTurnPhotos' },
+  KILOMETERSTONE: {
+    coordField: 'kilometerstoneLatLong',
+    photoField: 'kilometerstonePhotos',
+  },
+  STARTPIT: { coordField: 'startPitLatlong', photoField: 'startPitPhotos' },
+  ENDPIT: { coordField: 'endPitLatlong', photoField: 'endPitPhotos' },
+  STARTSURVEY: {
+    coordField: 'startPointCoordinates',
+    photoField: 'startPointPhoto',
+  },
+  ENDSURVEY: { coordField: 'endPointCoordinates', photoField: 'endPointPhoto' },
+  HOLDSURVEY: { coordField: 'holdLatlong', photoField: 'holdPhotos' },
+  BLOWING: { coordField: 'blowingLatLong', photoField: 'blowingPhotos' },
 };
 const baseUrl = import.meta.env.VITE_Image_URL;
 
-const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activity, onClose}) => {
+const ActivityDetails: React.FC<ActivityDetailsProps> = ({
+  activity,
+  onClose,
+}) => {
   const [showRouteMap, setShowRouteMap] = useState(false);
   const [showWorkChart, setShowWorkChart] = useState(false);
 
   if (!activity) return null;
-   const parsePhotos = (photoString: string | null): string[] => {
-  if (typeof photoString === "string" && photoString.trim() !== "") {
-    try {
-      const parsed = JSON.parse(photoString);
-      if (Array.isArray(parsed)) {
-        return parsed.filter((p: string) => typeof p === 'string' && p.trim() !== '');
-      }
+  const parsePhotos = (photoString: string | null): string[] => {
+    if (typeof photoString === 'string' && photoString.trim() !== '') {
+      try {
+        const parsed = JSON.parse(photoString);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(
+            (p: string) => typeof p === 'string' && p.trim() !== '',
+          );
+        }
 
-      if (typeof parsed === 'string') {
-        return [parsed];
+        if (typeof parsed === 'string') {
+          return [parsed];
+        }
+      } catch {
+        return [photoString.trim()];
       }
-    } catch {
-      return [photoString.trim()];
     }
-  }
 
-  return [];
+    return [];
   };
 
   const getCoordinates = (coordString: string | null) => {
@@ -60,9 +88,9 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activity, onClose}) =
     return { lat: parseFloat(lat), lng: parseFloat(lng) };
   };
 
-
   // Get the appropriate fields based on event type
-  const mapping = EVENT_TYPE_MAPPING[activity.eventType as keyof typeof EVENT_TYPE_MAPPING];
+  const mapping =
+    EVENT_TYPE_MAPPING[activity.eventType as keyof typeof EVENT_TYPE_MAPPING];
   let photos: string[] = [];
   let coordinates = null;
 
@@ -73,7 +101,7 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activity, onClose}) =
     photos = parsePhotos(activity[photoField] as string | null);
     coordinates = getCoordinates(activity[coordField] as string | null);
   }
- if (showRouteMap) {
+  if (showRouteMap) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-end p-4 z-50">
         <div className="bg-white rounded-lg shadow-xl w-full h-full max-w-[1250px] max-h-[95vh] overflow-hidden">
@@ -105,9 +133,9 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activity, onClose}) =
     );
   }
 
-  if(showWorkChart){
-    return(
-       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-end p-4 z-50">
+  if (showWorkChart) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-end p-4 z-50">
         <div className="bg-white rounded-lg shadow-xl w-full h-full max-w-[1250px] max-h-[95vh] overflow-hidden">
           <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
@@ -130,11 +158,11 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activity, onClose}) =
             </div>
           </div>
           <div className="h-full overflow-y-auto">
-            <Dashboard MachineId={activity.machine_id} View={false}/>
+            <Dashboard MachineId={activity.machine_id} View={false} />
           </div>
         </div>
       </div>
-    )
+    );
   }
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -163,8 +191,8 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activity, onClose}) =
               View Complete Route
               <ArrowRight className="h-4 w-4" />
             </button>
-             <button
-              onClick={()=>setShowWorkChart(true)}
+            <button
+              onClick={() => setShowWorkChart(true)}
               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition-colors font-medium flex items-center justify-center gap-2"
             >
               <ChartBar className="h-4 w-4" />
@@ -176,21 +204,33 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activity, onClose}) =
           {/* Basic Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <h3 className="text-sm font-medium text-gray-600 mb-2">Link Name</h3>
-              <p className="text-gray-900 font-semibold">{activity.start_lgd_name}-{activity.end_lgd_name}</p>
+              <h3 className="text-sm font-medium text-gray-600 mb-2">
+                Link Name
+              </h3>
+              <p className="text-gray-900 font-semibold">
+                {activity.start_lgd_name}-{activity.end_lgd_name}
+              </p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <h3 className="text-sm font-medium text-gray-600 mb-2">Event Type</h3>
+              <h3 className="text-sm font-medium text-gray-600 mb-2">
+                Event Type
+              </h3>
               <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
                 {activity.eventType}
               </span>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <h3 className="text-sm font-medium text-gray-600 mb-2">Machine ID</h3>
-              <p className="text-gray-900">{activity.machine_registration_number}</p>
+              <h3 className="text-sm font-medium text-gray-600 mb-2">
+                Machine ID
+              </h3>
+              <p className="text-gray-900">
+                {activity.machine_registration_number}
+              </p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <h3 className="text-sm font-medium text-gray-600 mb-2">Contractor Details</h3>
+              <h3 className="text-sm font-medium text-gray-600 mb-2">
+                Contractor Details
+              </h3>
               <p className="text-gray-900">{activity.user_name}</p>
             </div>
           </div>
@@ -203,7 +243,8 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activity, onClose}) =
                 {activity.eventType} Location Coordinates
               </h3>
               <p className="text-gray-900">
-                Latitude: {coordinates.lat.toFixed(6)}, Longitude: {coordinates.lng.toFixed(6)}
+                Latitude: {coordinates.lat.toFixed(6)}, Longitude:{' '}
+                {coordinates.lng.toFixed(6)}
               </p>
             </div>
           )}
@@ -215,20 +256,28 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activity, onClose}) =
                 <Ruler className="h-4 w-4" />
                 Depth Measurement
               </h3>
-              <p className="text-gray-900 text-lg font-semibold">{activity.depthMeters} meters</p>
+              <p className="text-gray-900 text-lg font-semibold">
+                {activity.depthMeters} meters
+              </p>
             </div>
           )}
 
           {activity.eventType === 'ROADCROSSING' && activity.crossingLength && (
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <h3 className="text-sm font-medium text-gray-600 mb-2">Crossing Length</h3>
-              <p className="text-gray-900 text-lg font-semibold">{activity.crossingLength}</p>
+              <h3 className="text-sm font-medium text-gray-600 mb-2">
+                Crossing Length
+              </h3>
+              <p className="text-gray-900 text-lg font-semibold">
+                {activity.crossingLength}
+              </p>
             </div>
           )}
 
           {activity.eventType === 'ROADCROSSING' && activity.crossingType && (
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <h3 className="text-sm font-medium text-gray-600 mb-2">Crossing Type</h3>
+              <h3 className="text-sm font-medium text-gray-600 mb-2">
+                Crossing Type
+              </h3>
               <p className="text-gray-900">{activity.crossingType}</p>
             </div>
           )}
@@ -237,13 +286,17 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activity, onClose}) =
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {activity.soilType && (
               <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <h3 className="text-sm font-medium text-gray-600 mb-2">Soil Type</h3>
+                <h3 className="text-sm font-medium text-gray-600 mb-2">
+                  Soil Type
+                </h3>
                 <p className="text-gray-900">{activity.soilType}</p>
               </div>
             )}
             {activity.roadType && (
               <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <h3 className="text-sm font-medium text-gray-600 mb-2">Road Type</h3>
+                <h3 className="text-sm font-medium text-gray-600 mb-2">
+                  Road Type
+                </h3>
                 <p className="text-gray-900">{activity.roadType}</p>
               </div>
             )}
@@ -258,13 +311,17 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activity, onClose}) =
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {photos.map((photo, index) => (
-                  <div key={index} className="aspect-square bg-gray-200 rounded-lg overflow-hidden">
+                  <div
+                    key={index}
+                    className="aspect-square bg-gray-200 rounded-lg overflow-hidden"
+                  >
                     <img
                       src={`${baseUrl}${photo}`}
                       alt={`${activity.eventType} photo ${index + 1}`}
                       className="w-full h-full object-cover hover:scale-105 transition-transform duration-200 cursor-pointer"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMiAxNkM5Ljc5IDE2IDggMTQuMjEgOCAxMlM5Ljc5IDggMTIgOFMxNiA5Ljc5IDE2IDEyUzE0LjIxIDE2IDEyIDE2WiIgZmlsbD0iIzlDQTNBRiIvPgo8L3N2Zz4K';
+                        (e.target as HTMLImageElement).src =
+                          'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMiAxNkM5Ljc5IDE2IDggMTQuMjEgOCAxMlM5Ljc5IDggMTIgOFMxNiA5Ljc5IDE2IDEyUzE0LjIxIDE2IDEyIDE2WiIgZmlsbD0iIzlDQTNBRiIvPgo8L3N2Zz4K';
                       }}
                     />
                   </div>
@@ -273,27 +330,31 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activity, onClose}) =
             </div>
           )}
 
-          {typeof activity.videoDetails === "string" && (() => {
-                  const parsedVideoDetails = activity?.videoDetails ? JSON.parse(activity?.videoDetails) : null;
+          {typeof activity.videoDetails === 'string' &&
+            (() => {
+              const parsedVideoDetails = activity?.videoDetails
+                ? JSON.parse(activity?.videoDetails)
+                : null;
 
-                  const mainVideoUrl = parsedVideoDetails.videoUrl?.trim().replace(/(^"|"$)/g, '');
-
-                  if (mainVideoUrl) {
-                    return (
-                      <iframe
-                        width="100%"
-                        height="180"
-                        src={`${baseUrl}${mainVideoUrl}`}
-                        frameBorder="0"
-                        allow="autoplay; encrypted-media"
-                        allowFullScreen
-                        title={`Video-${activity.eventType}`}
-                      />
-                     
-                    );
-                  } else {
-                    return <p>No video available.</p>;
-                  }
+              if (parsedVideoDetails?.videoUrl) {
+                const mainVideoUrl = parsedVideoDetails.videoUrl
+                  ?.trim()
+                  .replace(/(^"|"$)/g, '');
+                if (mainVideoUrl) {
+                  return (
+                    <iframe
+                      width="100%"
+                      height="180"
+                      src={`${baseUrl}${mainVideoUrl}`}
+                      frameBorder="0"
+                      allow="autoplay; encrypted-media"
+                      allowFullScreen
+                      title={`Video-${activity.eventType}`}
+                    />
+                  );
+                }
+              }
+              return null;
             })()}
           {/* Timestamps */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -302,14 +363,19 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activity, onClose}) =
                 <Calendar className="h-4 w-4" />
                 Created At
               </h3>
-              <p className="text-gray-900"> {moment(activity.created_at).format("DD/MM/YYYY, hh:mm A")}</p>
+              <p className="text-gray-900">
+                {' '}
+                {moment(activity.created_at).format('DD/MM/YYYY, hh:mm A')}
+              </p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
               <h3 className="text-sm font-medium text-gray-600 mb-2 flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
                 Updated At
               </h3>
-              <p className="text-gray-900">{moment(activity.updated_at).format("DD/MM/YYYY, hh:mm A")}</p>
+              <p className="text-gray-900">
+                {moment(activity.updated_at).format('DD/MM/YYYY, hh:mm A')}
+              </p>
             </div>
           </div>
         </div>

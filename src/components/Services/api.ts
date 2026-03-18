@@ -346,7 +346,7 @@ export const machineApi = {
     return response.json();
   },
 
- getFirmDistanceStats: async (
+  getFirmDistanceStats: async (
     stateId?: string,
     districtId?: string,
     blockId?: string,
@@ -384,4 +384,47 @@ export const machineApi = {
     return response.json();
   },
 
+  getMachineBlockKML: async (
+    blockId?: string,
+    machineId?: string,
+    stateId?: string,
+    districtId?: string,
+  ) => {
+    const params = new URLSearchParams();
+    if (blockId) params.append('block_id', blockId);
+    if (machineId) params.append('machine_id', machineId);
+    if (stateId) params.append('state_id', stateId);
+    if (districtId) params.append('district_id', districtId);
+    const queryString = params.toString();
+    const url = queryString
+      ? `${TraceBASEURL}/api/getMachineBlockKML?${queryString}`
+      : `${TraceBASEURL}/api/getMachineBlockKML`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('Failed to fetch machine block KML');
+    }
+    return response.json();
+  },
+
+  getConstructionPath: async (
+    blockId?: string,
+    machineId?: string,
+    stateId?: string,
+    districtId?: string,
+  ) => {
+    const params = new URLSearchParams();
+    if (blockId) params.append('block_id', blockId);
+    if (machineId) params.append('machine_id', machineId);
+    if (stateId) params.append('state_id', stateId);
+    if (districtId) params.append('district_id', districtId);
+    const queryString = params.toString();
+    const url = queryString
+      ? `${TraceBASEURL}/api/getConstructionPath?${queryString}`
+      : `${TraceBASEURL}/api/getConstructionPath`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('Failed to fetch construction path');
+    }
+    return response.json();
+  },
 };
