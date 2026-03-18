@@ -10,6 +10,8 @@ import {
   X,
   Ruler,
   Calendar,
+  CircleCheck,
+  CircleX,
 } from 'lucide-react';
 import {
   MachineDataReport,
@@ -262,14 +264,22 @@ export default function Dashboard() {
         totalMachines: 0,
         totalLinks: 0,
         avgDistance: '0',
+        activeMachines: 0,
+        inactiveMachines: 0,
       };
     }
     return {
-      totalDistance: data.summary.total_distance || '0',
+      totalDistance: data.summary.total_distance
+        ? (parseFloat(data.summary.total_distance) / 1000).toFixed(2)
+        : '0',
       totalDays: data.summary.total_days || 0,
       totalMachines: data.summary.total_machines || 0,
       totalLinks: data.summary.total_links || 0,
-      avgDistance: data.summary.avg_distance_per_day || '0',
+      avgDistance: data.summary.avg_distance_per_day
+        ? (parseFloat(data.summary.avg_distance_per_day) / 1000).toFixed(2)
+        : '0',
+      activeMachines: data.summary.active_machines_today || 0,
+      inactiveMachines: data.summary.inactive_machines_today || 0,
     };
   }, [data?.summary]);
 
@@ -280,53 +290,56 @@ export default function Dashboard() {
       sortable: true,
       wrap: true,
       grow: 2,
+      minWidth: '200px',
     },
     {
       name: 'Authorised Mobile Number',
       selector: (row) => row.authorised_mobile,
       sortable: true,
+      minWidth: '180px',
     },
     {
       name: 'Authorised Person',
       selector: (row) => row.authorised_person,
       sortable: true,
       wrap: true,
+      minWidth: '160px',
     },
     {
       name: 'Total Machines',
       selector: (row) => row.total_machines,
       sortable: true,
-      width: '130px',
+      minWidth: '140px',
     },
     {
       name: 'Total Links',
       selector: (row) => row.total_links,
       sortable: true,
-      width: '110px',
+      minWidth: '120px',
     },
     {
-      name: 'Total Distance (m)',
+      name: 'Total Distance (km)',
       cell: (row) =>
         row.total_distance_meters
-          ? parseFloat(row.total_distance_meters).toFixed(2)
+          ? (parseFloat(row.total_distance_meters) / 1000).toFixed(2)
           : '-',
       sortable: true,
-      width: '150px',
+      minWidth: '170px',
     },
     {
       name: 'Total Days',
       selector: (row) => row.total_days,
       sortable: true,
-      width: '100px',
+      minWidth: '120px',
     },
     {
-      name: 'Avg Distance/Day (m)',
+      name: 'Avg Distance/Day (km)',
       cell: (row) =>
         row.avg_distance_per_day
-          ? parseFloat(row.avg_distance_per_day).toFixed(2)
+          ? (parseFloat(row.avg_distance_per_day) / 1000).toFixed(2)
           : '-',
       sortable: true,
-      width: '160px',
+      minWidth: '180px',
     },
     {
       name: 'Action',
@@ -340,7 +353,7 @@ export default function Dashboard() {
         </button>
       ),
       center: true,
-      width: '120px',
+      minWidth: '120px',
     },
   ];
 
@@ -366,26 +379,25 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b border-gray-200 px-7 py-2">
-        <div className="flex items-center justify-between">
+      <header className="bg-white shadow-sm border-b border-gray-200 px-4 md:px-7 py-2">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-0">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-blue-400">
               <CogIcon className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">
+              <h1 className="text-lg md:text-xl font-bold text-gray-900">
                 Vendor MIS Monitoring System
               </h1>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 hidden md:block">
                 Real-time monitoring and analytics dashboard
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Breadcrumb Navigation */}
             <nav>
-              <ol className="flex items-center gap-2">
+              <ol className="flex items-center gap-2 text-sm">
                 <li>
                   <Link className="font-medium" to="/dashboard">
                     Dashboard /
@@ -398,13 +410,27 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-6 gap-6 mb-2 px-1 py-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 md:gap-6 mb-2 px-2 md:px-1 py-4 md:py-6 overflow-x-auto">
         <StatusCard
           title="Total Machines"
           value={totals.totalMachines}
           icon={Factory}
           iconColor="text-blue-600"
           bgColor="bg-blue-50"
+        />
+        <StatusCard
+          title="Active Machines"
+          value={totals.activeMachines}
+          icon={CircleCheck}
+          iconColor="text-green-600"
+          bgColor="bg-green-50"
+        />
+        <StatusCard
+          title="Inactive Machines"
+          value={totals.inactiveMachines}
+          icon={CircleX}
+          iconColor="text-red-600"
+          bgColor="bg-red-50"
         />
         <StatusCard
           title="Total Firms"
@@ -421,14 +447,14 @@ export default function Dashboard() {
           bgColor="bg-orange-50"
         />
         <StatusCard
-          title="Total Distance"
+          title="Total Distance (km)"
           value={totals.totalDistance}
           icon={Ruler}
           iconColor="text-purple-600"
           bgColor="bg-purple-50"
         />
         <StatusCard
-          title="Avg Distance"
+          title="Avg Distance/ Day (km)"
           value={totals.avgDistance}
           icon={TrendingUp}
           iconColor="text-indigo-600"
@@ -444,16 +470,13 @@ export default function Dashboard() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-        <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h2 className="text-xl font-semibold text-gray-900">
-            Registered Firms
-          </h2>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative">
+        <div className="px-4 py-3 border-b border-gray-100">
+          <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1">
+            <div className="relative flex-shrink-0">
               <select
                 value={selectedState}
                 onChange={(e) => handleStateChange(e.target.value)}
-                className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-w-[140px]"
+                className="appearance-none pl-3 pr-7 py-1.5 md:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-w-[100px] md:min-w-[120px] text-xs md:text-sm"
               >
                 <option value="">All States</option>
                 {states.map((state) => (
@@ -478,12 +501,12 @@ export default function Dashboard() {
                 </svg>
               </div>
             </div>
-            <div className="relative">
+            <div className="relative flex-shrink-0">
               <select
                 value={selectedDistrict}
                 onChange={(e) => handleDistrictChange(e.target.value)}
                 disabled={!selectedState || loadingDistricts}
-                className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-w-[140px] disabled:opacity-50"
+                className="appearance-none pl-3 pr-7 py-1.5 md:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-w-[100px] md:min-w-[120px] disabled:opacity-50 text-xs md:text-sm"
               >
                 <option value="">All Districts</option>
                 {districts.map((district) => (
@@ -533,12 +556,12 @@ export default function Dashboard() {
                 )}
               </div>
             </div>
-            <div className="relative">
+            <div className="relative flex-shrink-0">
               <select
                 value={selectedBlock}
                 onChange={(e) => handleBlockChange(e.target.value)}
                 disabled={!selectedDistrict || loadingBlock}
-                className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-w-[140px] disabled:opacity-50"
+                className="appearance-none pl-3 pr-7 py-1.5 md:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-w-[100px] md:min-w-[120px] disabled:opacity-50 text-xs md:text-sm"
               >
                 <option value="">All Blocks</option>
                 {blocks.map((block) => (
@@ -585,48 +608,48 @@ export default function Dashboard() {
                 )}
               </div>
             </div>
-            <div className="relative">
+            <div className="relative flex-shrink-0">
               <input
                 type="date"
                 value={fromdate}
                 onChange={(e) => handleFromDateChange(e.target.value)}
-                className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                placeholder="From Date"
+                className="px-2 py-1.5 md:py-2 text-xs md:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white w-[100px] md:w-[130px]"
+                placeholder="From"
               />
             </div>
-            <div className="relative">
+            <div className="relative flex-shrink-0">
               <input
                 type="date"
                 value={todate}
                 onChange={(e) => handleToDateChange(e.target.value)}
-                className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                placeholder="To Date"
+                className="px-2 py-1.5 md:py-2 text-xs md:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white w-[100px] md:w-[130px]"
+                placeholder="To"
               />
             </div>
-            <div className="relative">
+            <div className="relative flex-shrink-0">
               <input
                 type="text"
-                placeholder="Search firms..."
+                placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full sm:w-[250px]"
+                className="pl-7 pr-7 py-1.5 md:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-[120px] md:w-[160px] text-xs md:text-sm"
               />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               {searchQuery && (
                 <button
                   onClick={() => handleSearchChange('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
             <button
               onClick={clearFilters}
-              className="flex-none h-10 px-4 py-2 text-sm font-medium text-red-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap flex items-center gap-2"
+              className="flex-none px-2 py-1.5 md:py-2 text-xs md:text-sm font-medium text-red-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 outline-none whitespace-nowrap flex items-center gap-1"
             >
-              <span className="text-red-500 font-medium text-sm">✕</span>
-              <span>Clear</span>
+              <X className="w-3 h-3 md:w-3.5 md:h-3.5" />
+              Clear
             </button>
           </div>
         </div>

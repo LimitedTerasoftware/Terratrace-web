@@ -211,6 +211,8 @@ export interface MachineDetailsResponse {
     total_firms: number;
     total_machines: number;
     total_links: number;
+    active_machines_today?: number;
+    inactive_machines_today?: number;
   };
   data: MachineDataReport[];
 }
