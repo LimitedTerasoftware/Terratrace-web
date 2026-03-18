@@ -1,117 +1,68 @@
 import React, { useEffect, useState } from 'react';
-import { Activity as Activity2, MapPin, Clock} from 'lucide-react';
-import { Activity, LiveMachines } from '../../types/survey';
-import { getMachineOptions } from '../Services/api';
-import { Machine } from '../../types/machine';
+import { Activity as Activity2, MapPin, Clock } from 'lucide-react';
+import { LiveMachines } from '../../types/survey';
 import { useNavigate } from 'react-router-dom';
 
 interface StatsPanelProps {
-  activities:LiveMachines[];
-  totalCount:number;
+  activities: LiveMachines[];
+  totalCount: number;
   isLoading: boolean;
 }
 
-const StatsPanel: React.FC<StatsPanelProps> = ({ activities,isLoading }) => {
-const navigate= useNavigate();
-const last24Hours = Date.now() - 24 * 60 * 60 * 1000;
+const StatsPanel: React.FC<StatsPanelProps> = ({ activities, isLoading }) => {
+  const navigate = useNavigate();
 
-const getLiveMachineStats = () => {
-  let active = 0;
-  let inactive = 0;
+  const getLiveMachineStats = () => {
+    let active = 0;
+    let inactive = 0;
 
-  const activeRegIds: string[] = [];
-  const inactiveRegIds: string[] = [];
-  const allRegIds: string[] = [];
+    const activeRegIds: string[] = [];
+    const inactiveRegIds: string[] = [];
+    const allRegIds: string[] = [];
 
-  const today = new Date();
+    const today = new Date();
 
-  activities.forEach((item) => {
-    const created = new Date(item.created_at);
+    activities.forEach((item) => {
+      const created = new Date(item.created_at);
 
-    const isToday =
-      created.getDate() === today.getDate() &&
-      created.getMonth() === today.getMonth() &&
-      created.getFullYear() === today.getFullYear();
+      const isToday =
+        created.getDate() === today.getDate() &&
+        created.getMonth() === today.getMonth() &&
+        created.getFullYear() === today.getFullYear();
 
-    // collect all
-    allRegIds.push(item.machine_registration_number);
+      // collect all
+      allRegIds.push(item.machine_registration_number);
 
-    if (isToday) {
-      active++;
-      activeRegIds.push(item.machine_registration_number);
-    } else {
-      inactive++;
-      inactiveRegIds.push(item.machine_registration_number);
-    }
-  });
+      if (isToday) {
+        active++;
+        activeRegIds.push(item.machine_registration_number);
+      } else {
+        inactive++;
+        inactiveRegIds.push(item.machine_registration_number);
+      }
+    });
 
-  return {
-    active,
-    inactive,
-    activeRegIds,
-    inactiveRegIds,
-    allRegIds,
-  };
-};
-
-// const liveStats = getLiveMachineStats();
-
-const liveStatusCounts = getLiveMachineStats();
-
-// const allActivities = machinesArray.flatMap(machine =>
-//   machine?.activities?.map(activity => ({
-//     ...activity,
-//     machine_id: machine.machine_id,
-//     registration_number: machine.registration_number,
-//   })) || []
-// );
-
-// const recentOnly = allActivities.filter(a =>
-//   new Date(a.created_at).getTime() > last24Hours
-// );
-// const recentActivities = Object.values(
-//   recentOnly.reduce((acc, curr) => {
-//     if (
-//       !acc[curr.machine_id] ||
-//       new Date(curr.created_at) >
-//         new Date(acc[curr.machine_id].created_at)
-//     ) {
-//       acc[curr.machine_id] = curr;
-//     }
-//     return acc;
-//   }, {} as Record<number, typeof recentOnly[0]>)
-// );
-
-// const recentActivitiesCount = recentActivities.length;
-
-// const recentRegNumbers = recentActivities.map(a => a.registration_number);
-
-  const [machines, setMachines] = useState<Machine[]>([]);
-
-  useEffect(()=>{
-      getMachineOptions().then(data => {
-            setMachines(data);
-        });
-    },[])
-
-  const getStatusCounts = () => {
-    return machines.reduce((acc, machine) => {
-      acc[machine.status] = (acc[machine.status] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    return {
+      active,
+      inactive,
+      activeRegIds,
+      inactiveRegIds,
+      allRegIds,
+    };
   };
 
-  const statusCounts = getStatusCounts();
+
+  const liveStatusCounts = getLiveMachineStats();
 
   const stats = [
     {
       icon: Activity2,
       label: 'Total Machines',
-      value: machines.length,
+      value: activities.length || 0,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
-      id:0,
-     regids: liveStatusCounts.allRegIds,
+      id: 0,
+      regids: liveStatusCounts.allRegIds,
     },
     {
       icon: MapPin,
@@ -119,8 +70,8 @@ const liveStatusCounts = getLiveMachineStats();
       value: liveStatusCounts.active || 0,
       color: 'text-emerald-600',
       bgColor: 'bg-emerald-50',
-      id:1,
-      regids: liveStatusCounts.activeRegIds, // ✅ active
+      id: 1,
+      regids: liveStatusCounts.activeRegIds,
 
     },
     {
@@ -129,18 +80,10 @@ const liveStatusCounts = getLiveMachineStats();
       value: liveStatusCounts.inactive || 0,
       color: 'text-red-600',
       bgColor: 'bg-red-50',
-      id:2,
-      regids: liveStatusCounts.inactiveRegIds, // ✅ inactive
+      id: 2,
+      regids: liveStatusCounts.inactiveRegIds,
     },
-    // {
-    //   icon: Clock,
-    //   label: 'Last 24h',
-    //   value: recentActivitiesCount,
-    //   color: 'text-orange-600',
-    //   bgColor: 'bg-orange-50',
-    //   id:3,
-    //   regids:recentRegNumbers
-    // }
+
   ];
 
   if (isLoading) {
@@ -155,22 +98,23 @@ const liveStatusCounts = getLiveMachineStats();
       </div>
     );
   }
-  
-  const handleredire = (id:number,regids:string[])=>{
-    navigate('/machine-management/machines',{
-      state:{
-      Id:id,
-      regids:regids
-    }});
+
+  const handleredire = (id: number, regids: string[]) => {
+    navigate('/machine-management/machines', {
+      state: {
+        Id: id,
+        regids: regids
+      }
+    });
   }
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {stats.map((stat, index) => {
         const Icon = stat.icon;
         return (
-          <div key={index} 
-           onClick={()=>handleredire(stat.id,stat.regids)} 
-          className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-default">
+          <div key={index}
+            onClick={() => handleredire(stat.id, stat.regids)}
+            className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-default">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">{stat.label}</p>

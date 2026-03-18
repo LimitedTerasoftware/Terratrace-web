@@ -29,7 +29,7 @@ const MachineList: React.FC<MachineListProps> = ({ machines, onEdit, onDelete, I
       (machine.truck_model || "").toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || machine.status === statusFilter;
     const matchesRecent = !regids || regids.length === 0
-      ? true
+      ? false
       : regids.includes(machine.registration_number);
     return matchesSearch && matchesStatus && matchesRecent;
   });
