@@ -5,6 +5,7 @@ import {
   MachineBlockKMLResponse,
   ConstructionPathResponse,
 } from '../../types/survey';
+import { useNavigate } from 'react-router-dom';
 
 interface MapComponentProps {
   markers: LiveMarkerData[];
@@ -35,6 +36,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
   const [constructionPolylines, setConstructionPolylines] = useState<
     google.maps.Polyline[]
   >([]);
+  const navigate = useNavigate();
 
   const isActive = (dateString: string) => {
     const today = new Date();
@@ -306,9 +308,23 @@ const MapComponent: React.FC<MapComponentProps> = ({
                 <p style="margin: 0; color: #4b5563; font-size: 12px;">
                   <strong>Machine ID:</strong> ${survey.machine_id}
                 </p>
+                <div style="display: flex; gap: 8px;">
+                  <button  id="viewDetailsBtn"style="flex:1;padding:4px 8px;background:#2563eb;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;">Construction Details</button>
+                  <button 
+                  onclick="window.location.href='/machine-management/machine-details/${survey.machine_id}?state_id=${block.state_id}&district_id=${block.district_id}&block_id=${block.block_id}'" 
+                  style="flex:1;padding:4px 8px;background:#059669;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;">Machine Details</button>
+                </div>
+
               </div>
             `,
           });
+          google.maps.event.addListenerOnce(infoWindow, 'domready', () => {
+          document.getElementById('viewDetailsBtn')?.addEventListener('click', () => {
+            navigate('/construction-details', {
+              state: { row: survey.survey_id, multipreview: true },
+            });
+          });
+        });
 
           polyline.addListener('click', (event: google.maps.MapMouseEvent) => {
             if (event.latLng) {

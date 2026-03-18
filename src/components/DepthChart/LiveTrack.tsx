@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Wrapper } from '@googlemaps/react-wrapper';
 import { Satellite, RefreshCw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import MapComponent from './MapComponent';
 import ActivityDetails from './ActivityDetails';
 import StatsPanel from './StatsPanel';
@@ -81,6 +82,7 @@ function LiveTrack() {
   const [constructionPathData, setConstructionPathData] =
     useState<ConstructionPathResponse | null>(null);
   const [loadingKML, setLoadingKML] = useState(false);
+  const navigate = useNavigate();
 
   const fetchKMLData = async () => {
     try {
