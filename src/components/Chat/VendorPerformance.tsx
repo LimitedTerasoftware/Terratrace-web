@@ -60,7 +60,7 @@ const options: ApexOptions = {
   },
   yaxis: {
     title: {
-      text: 'Total Distance (m)',
+      text: 'Total Distance (km)',
       style: {
         fontSize: '12px',
         color: '#6B7280',
@@ -72,7 +72,7 @@ const options: ApexOptions = {
   },
   tooltip: {
     y: {
-      formatter: (val: number) => `${val.toLocaleString()} m`,
+      formatter: (val: number) => `${val.toLocaleString()} km`,
     },
   },
 };
@@ -82,7 +82,7 @@ export default function VendorPerformance({ data }: VendorPerformanceProps) {
 
   const categories = vendorData.map((v) => v.firm_name);
   const seriesData = vendorData.map(
-    (v) => parseFloat(v.total_distance_meters) || 0,
+    (v) => Number((parseFloat(v.total_distance_meters)/1000).toFixed(2)) || 0,
   );
 
   const series = [

@@ -50,7 +50,8 @@ export default function KPICards({ Data }: KPICardsProps) {
         <div className="flex items-start justify-between">
           <div>
             <p className="text-xs font-medium text-gray-600 uppercase">
-              KM Completed Today
+              {/* KM Completed Today */}
+              Avg Distance/day
             </p>
             <p className="text-3xl font-bold text-gray-900 mt-2">
               {(parseFloat(Data.summary.avg_distance_per_day)/1000).toFixed(2)}{' '}
