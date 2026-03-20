@@ -77,6 +77,7 @@ import JointDetails from './components/Joints/JointsDetails';
 import MachineReports from './components/MachineManagement/Reports';
 import MachineDetails from './components/MachineManagement/Reports/MachineItem';
 import MachineSurveyDashboard from './components/MachineManagement/MachineSummary';
+import NewConstructionDashboard from './components/Dashboards/NewConstructionDashboard';
 //import AuditLogs from './components/AuditLogs';
 
 function App() {
@@ -173,11 +174,13 @@ function App() {
               <>
                 <DefaultLayout>
                   <PageTitle title="Survey Dashboard" />
-                  <ConstructionDashboard />
+                  {/* <ConstructionDashboard /> */}
+                  <NewConstructionDashboard/>
                 </DefaultLayout>
               </>
             }
           />
+          
           <Route
             path="/dashboards/Executive-dashboard"
             element={
