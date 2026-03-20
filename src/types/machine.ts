@@ -196,6 +196,8 @@ export interface MachineDataReport {
   authorised_mobile: string;
   authorised_person: string;
   total_machines: number;
+  active_machines_today:number;
+  inactive_machines_today:number;
   total_links: number;
   total_distance_meters: string;
   total_days: number;

@@ -1,30 +1,120 @@
-export default function VendorPerformance() {
-  const vendors = [
-    { name: 'V1', value: 65 },
-    { name: 'V2', value: 55 },
-    { name: 'V3', value: 85 },
-    { name: 'V4', value: 75 },
-    { name: 'V5', value: 80 },
+import { ApexOptions } from 'apexcharts';
+import ReactApexChart from 'react-apexcharts';
+import { MachineDetailsResponse } from '../../types/machine';
+
+interface VendorPerformanceProps {
+  data?: MachineDetailsResponse | null;
+}
+
+const options: ApexOptions = {
+  chart: {
+    fontFamily: 'Satoshi, sans-serif',
+    type: 'bar',
+    height: 300,
+    toolbar: {
+      show: false,
+    },
+  },
+  colors: ['#3C50E0'],
+  plotOptions: {
+    bar: {
+      horizontal: false,
+      columnWidth: '50%',
+      borderRadius: 4,
+    },
+  },
+  dataLabels: {
+    enabled: false,
+  },
+  stroke: {
+    show: true,
+    width: 2,
+    colors: ['transparent'],
+  },
+  grid: {
+    xaxis: {
+      lines: {
+        show: false,
+      },
+    },
+    yaxis: {
+      lines: {
+        show: true,
+      },
+    },
+  },
+  xaxis: {
+    type: 'category',
+    axisBorder: {
+      show: false,
+    },
+    axisTicks: {
+      show: false,
+    },
+    labels: {
+      rotate: -45,
+      style: {
+        fontSize: '11px',
+      },
+    },
+  },
+  yaxis: {
+    title: {
+      text: 'Total Distance (m)',
+      style: {
+        fontSize: '12px',
+        color: '#6B7280',
+      },
+    },
+  },
+  fill: {
+    opacity: 1,
+  },
+  tooltip: {
+    y: {
+      formatter: (val: number) => `${val.toLocaleString()} m`,
+    },
+  },
+};
+
+export default function VendorPerformance({ data }: VendorPerformanceProps) {
+  const vendorData = data?.data || [];
+
+  const categories = vendorData.map((v) => v.firm_name);
+  const seriesData = vendorData.map(
+    (v) => parseFloat(v.total_distance_meters) || 0,
+  );
+
+  const series = [
+    {
+      name: 'Total Distance',
+      data: seriesData,
+    },
   ];
-
-  const maxValue = Math.max(...vendors.map((v) => v.value));
-
+   const chartOptions: ApexOptions = {
+    ...options,
+    xaxis: {
+      ...options.xaxis,
+      categories: categories, 
+    },
+  };
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-6">Vendor Performance</h3>
-      <div className="flex items-end justify-between h-48 space-x-3">
-        {vendors.map((vendor, index) => (
-          <div key={vendor.name} className="flex-1 flex flex-col items-center justify-end">
-            <div
-              className={`w-full rounded-t-lg transition-all duration-500 ${
-                index === 2 ? 'bg-blue-600' : 'bg-blue-300'
-              }`}
-              style={{ height: `${(vendor.value / maxValue) * 100}%` }}
-            ></div>
-            <span className="text-xs font-medium text-gray-600 mt-2">{vendor.name}</span>
-          </div>
-        ))}
-      </div>
+    <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <h3 className="text-lg font-semibold text-gray-900 mb-1">
+        Vendor Performance
+      </h3>
+      {vendorData.length > 0 ? (
+        <ReactApexChart
+          options={chartOptions}
+          series={series}
+          type="bar"
+          height={300}
+        />
+      ) : (
+        <div className="h-[300px] flex items-center justify-center text-gray-500">
+          No vendor data available
+        </div>
+      )}
     </div>
   );
 }

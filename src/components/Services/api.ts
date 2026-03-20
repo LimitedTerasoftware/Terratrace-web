@@ -353,6 +353,7 @@ export const machineApi = {
     fromDate?: string,
     toDate?: string,
     search?: string,
+    firmId?: string,
   ): Promise<MachineDetailsResponse> => {
     const params = new URLSearchParams();
     if (stateId) {
@@ -372,6 +373,9 @@ export const machineApi = {
     }
     if (search) {
       params.append('search', search);
+    }
+    if (firmId) {
+      params.append('firm_id', firmId);
     }
     const queryString = params.toString();
     const url = queryString

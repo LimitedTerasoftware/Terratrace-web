@@ -1,7 +1,7 @@
 export default function ProgressTrendChart() {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <div className="flex items-center justify-between mb-2">
         <h3 className="text-lg font-semibold text-gray-900">KM Progress Trend</h3>
         <div className="flex items-center space-x-4 text-sm">
           <div className="flex items-center">
