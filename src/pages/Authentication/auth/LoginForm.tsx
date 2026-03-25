@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
 import Input from '../ui/Input';
@@ -19,6 +19,14 @@ const LoginForm: React.FC = () => {
   const [password, setPassword] = useState<string>("");
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading,setLoading] = useState(false)
+  
+  const handleClearData = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userData');
+  };
+  useEffect(()=>{
+    handleClearData();
+  },[])
 
   const navigate = useNavigate();
     // Validation for email and password

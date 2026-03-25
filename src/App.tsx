@@ -3,6 +3,7 @@ import { Route, Routes, useLocation } from 'react-router-dom';
 
 import Loader from './common/Loader';
 import PageTitle from './components/PageTitle';
+import useIdleTimeout from './hooks/useIdleTimeout';
 import SignIn from './pages/Authentication/SignIn';
 import SignUp from './pages/Authentication/SignUp';
 import Calendar from './pages/Calendar';
@@ -73,16 +74,19 @@ import ExecutiveDashboard from './components/Dashboards/ExecutiveDashboard';
 import DailyProgressReport from './components/Dashboards/DailyProgressReport';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Terms from './pages/Terms';
+import NotFound from './pages/NotFound';
 import JointDetails from './components/Joints/JointsDetails';
 import MachineReports from './components/MachineManagement/Reports';
 import MachineDetails from './components/MachineManagement/Reports/MachineItem';
 import MachineSurveyDashboard from './components/MachineManagement/MachineSummary';
 import NewConstructionDashboard from './components/Dashboards/NewConstructionDashboard';
+import ProtectedRoute, { PublicRoute } from './components/ProtectedRoute';
 //import AuditLogs from './components/AuditLogs';
 
 function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const { pathname } = useLocation();
+  useIdleTimeout();
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -101,767 +105,798 @@ function App() {
     <>
       <ScrollToTop />
       {isAuthRoute ? (
-        <Routes>
-          <Route
-            path="/auth/signin"
-            element={
-              <>
-                <PageTitle title="Signin | Tricad" />
-                {/* <SignIn /> */}
-                <Login />
-              </>
-            }
-          />
-          <Route
-            path="/auth/signup"
-            element={
-              <>
-                <PageTitle title="Signup | Tricad" />
-                {/* <SignUp /> */}
-                <Signup />
-              </>
-            }
-          />
-        </Routes>
+        <PublicRoute>
+          <Routes>
+            <Route
+              path="/auth/signin"
+              element={
+                <>
+                  <PageTitle title="Signin | Tricad" />
+                  {/* <SignIn /> */}
+                  <Login />
+                </>
+              }
+            />
+            <Route
+              path="/auth/signup"
+              element={
+                <>
+                  <PageTitle title="Signup | Tricad" />
+                  {/* <SignUp /> */}
+                  <Signup />
+                </>
+              }
+            />
+          </Routes>
+        </PublicRoute>
       ) : (
-        <Routes>
-          <Route
-            index
-            element={
-              <>
-                <PageTitle title="Tricad Sign In" />
-                {/* <SignIn /> */}
-                <Login />
-              </>
-            }
-          />
-          <Route
-            path="/calendar"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Tricad" />
-                  <Calendar />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/dashboard"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Tricad Dashboard" />
-                  <ECommerce />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/dashboards/survey-dashboard"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Survey Dashboard" />
-                  <SurveyDashboard />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/dashboards/construction-dashboard"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Survey Dashboard" />
-                  {/* <ConstructionDashboard /> */}
-                  <NewConstructionDashboard/>
-                </DefaultLayout>
-              </>
-            }
-          />
-          
-          <Route
-            path="/dashboards/Executive-dashboard"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Survey Dashboard" />
-                  <ExecutiveDashboard />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/dashboards/daily-progress"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Survey Dashboard" />
-                  <DailyProgressReport />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/dashboards/installation-dashboard"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Survey Dashboard" />
-                  <InstallationDashboard />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Profile" />
-                  <Profile />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/forms/form-elements"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Form Elements" />
-                  <FormElements />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/forms/form-layout"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Form Layout" />
-                  <FormLayout />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/tables"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Tables" />
-                  <Tables />
-                </DefaultLayout>
-              </>
-            }
-          />
+        <>
+          <ProtectedRoute>
+            <Routes>
+              <Route
+                index
+                element={
+                  <>
+                    <PageTitle title="Tricad Sign In" />
+                    {/* <SignIn /> */}
+                    <Login />
+                  </>
+                }
+              />
+              <Route
+                path="/calendar"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Tricad" />
+                      <Calendar />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/dashboard"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Tricad Dashboard" />
+                      <ECommerce />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/dashboards/survey-dashboard"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Survey Dashboard" />
+                      <SurveyDashboard />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/dashboards/construction-dashboard"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Survey Dashboard" />
+                      {/* <ConstructionDashboard /> */}
+                      <NewConstructionDashboard />
+                    </DefaultLayout>
+                  </>
+                }
+              />
 
-          <Route
-            path="/survey"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Survey" />
-                  <SurveyTabs />
-                </DefaultLayout>
-              </>
-            }
-          />
+              <Route
+                path="/dashboards/Executive-dashboard"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Survey Dashboard" />
+                      <ExecutiveDashboard />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/dashboards/daily-progress"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Survey Dashboard" />
+                      <DailyProgressReport />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/dashboards/installation-dashboard"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Survey Dashboard" />
+                      <InstallationDashboard />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Profile" />
+                      <Profile />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/forms/form-elements"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Form Elements" />
+                      <FormElements />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/forms/form-layout"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Form Layout" />
+                      <FormLayout />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/tables"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Tables" />
+                      <Tables />
+                    </DefaultLayout>
+                  </>
+                }
+              />
 
-          <Route
-            path="/survey/gplist"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Gp Survey List" />
-                  <GpTables />
-                </DefaultLayout>
-              </>
-            }
-          />
+              <Route
+                path="/survey"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Survey" />
+                      <SurveyTabs />
+                    </DefaultLayout>
+                  </>
+                }
+              />
 
-          <Route
-            path="/survey/gp-detail-view/:id"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Gp Detail View" />
-                  <GpDetailView />
-                </DefaultLayout>
-              </>
-            }
-          />
+              <Route
+                path="/survey/gplist"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Gp Survey List" />
+                      <GpTables />
+                    </DefaultLayout>
+                  </>
+                }
+              />
 
-          <Route
-            path="/survey/bsnllist"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Block Survey List" />
-                  <BsnlTables />
-                </DefaultLayout>
-              </>
-            }
-          />
+              <Route
+                path="/survey/gp-detail-view/:id"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Gp Detail View" />
+                      <GpDetailView />
+                    </DefaultLayout>
+                  </>
+                }
+              />
 
-          <Route
-            path="/survey/aeriallist"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Aerial Survey List" />
-                  <AerailTables />
-                </DefaultLayout>
-              </>
-            }
-          />
+              <Route
+                path="/survey/bsnllist"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Block Survey List" />
+                      <BsnlTables />
+                    </DefaultLayout>
+                  </>
+                }
+              />
 
-          <Route
-            path="/survey/aerial-detail-view/:id"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Aerial Detail View" />
-                  <AerialDetailView />
-                </DefaultLayout>
-              </>
-            }
-          />
+              <Route
+                path="/survey/aeriallist"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Aerial Survey List" />
+                      <AerailTables />
+                    </DefaultLayout>
+                  </>
+                }
+              />
 
-          <Route
-            path="/survey/underground-detail-view/:id"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="UnderGround Detail View" />
-                  <GroundDetailView />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/joint/:jointId"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Joint Detail View" />
-                  <JointDetails />
-                </DefaultLayout>
-              </>
-            }
-          />
+              <Route
+                path="/survey/aerial-detail-view/:id"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Aerial Detail View" />
+                      <AerialDetailView />
+                    </DefaultLayout>
+                  </>
+                }
+              />
 
-          <Route
-            path="/survey/bsnl-detail-view/:id"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Block Survey Detail View" />
-                  <BsnlExchangeDetailView />
-                </DefaultLayout>
-              </>
-            }
-          />
+              <Route
+                path="/survey/underground-detail-view/:id"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="UnderGround Detail View" />
+                      <GroundDetailView />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/joint/:jointId"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Joint Detail View" />
+                      <JointDetails />
+                    </DefaultLayout>
+                  </>
+                }
+              />
 
-          <Route
-            path="/survey/hoto-detail-view/:id"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="HOTO Survey Detail View" />
-                  <HotoDetailView />
-                </DefaultLayout>
-              </>
-            }
-          />
+              <Route
+                path="/survey/bsnl-detail-view/:id"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Block Survey Detail View" />
+                      <BsnlExchangeDetailView />
+                    </DefaultLayout>
+                  </>
+                }
+              />
 
-          <Route
-            path="/survey/hoto-edit/:id"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="HOTO Edit Form" />
-                  <HotoEdit />
-                </DefaultLayout>
-              </>
-            }
-          />
-          {/* Updated Route Planning Route - changed path to be consistent with other route planning paths */}
-          <Route
-            path="/route-planning/builder"
-            element={
-              <>
-                <PageTitle title="Route Planning" />
-                <RoutePlanning />
-              </>
-            }
-          />
+              <Route
+                path="/survey/hoto-detail-view/:id"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="HOTO Survey Detail View" />
+                      <HotoDetailView />
+                    </DefaultLayout>
+                  </>
+                }
+              />
 
-          {/* Route Planning Routes */}
-          <Route
-            path="/route-planning/route-list"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Route List" />
-                  <RouteList />
-                </DefaultLayout>
-              </>
-            }
-          />
+              <Route
+                path="/survey/hoto-edit/:id"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="HOTO Edit Form" />
+                      <HotoEdit />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              {/* Updated Route Planning Route - changed path to be consistent with other route planning paths */}
+              <Route
+                path="/route-planning/builder"
+                element={
+                  <>
+                    <PageTitle title="Route Planning" />
+                    <RoutePlanning />
+                  </>
+                }
+              />
 
-          {/* New GP List Route*/}
-          <Route
-            path="/route-planning/route-list/gplist/:id"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Route GP List" />
-                  <RouteGPList />
-                </DefaultLayout>
-              </>
-            }
-          />
+              {/* Route Planning Routes */}
+              <Route
+                path="/route-planning/route-list"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Route List" />
+                      <RouteList />
+                    </DefaultLayout>
+                  </>
+                }
+              />
 
-          {/*<Route
-              path="/route-planning/reports"
-              element={
-                <>
-                  <DefaultLayout>
-                    <PageTitle title="Route Reports" />
-                    <RouteReports />
-                  </DefaultLayout>
-                </>
-              }
-            />
-            
-            <Route
-              path="/route-planning/audit-logs"
-              element={
-                <>
-                  <DefaultLayout>
-                    <PageTitle title="Route Audit Logs" />
-                    <AuditLogs />
-                  </DefaultLayout>
-                </>
-              }
-            />*/}
+              {/* New GP List Route*/}
+              <Route
+                path="/route-planning/route-list/gplist/:id"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Route GP List" />
+                      <RouteGPList />
+                    </DefaultLayout>
+                  </>
+                }
+              />
 
-          <Route
-            path="/settings"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Settings" />
-                  <Settings />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/chart"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Basic Chart" />
-                  <Chart />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/ui/alerts"
-            element={
-              <>
-                <PageTitle title="Alerts" />
-                <Alerts />
-              </>
-            }
-          />
-          <Route
-            path="/ui/buttons"
-            element={
-              <>
-                <PageTitle title="Buttons" />
-                <Buttons />
-              </>
-            }
-          />
-          <Route
-            path="/master/states"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="States" />
-                  <States />
-                </DefaultLayout>
-              </>
-            }
-          />
-          {/*<Route
-              path="/master/district"
-              element={
-                <>
-                   <DefaultLayout>
-                  <PageTitle title="Districts" />
-                  <Districts />
-                  </DefaultLayout>
-                </>
-              }
-            />
-            <Route
-              path="/master/blocks"
-              element={
-                <>
-                   <DefaultLayout>
-                  <PageTitle title="Blocks" />
-                  <Blocks />
-                  </DefaultLayout>
-                </>
-              }
-            />*/}
-          <Route
-            path="/master/gpslist"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="GpList" />
-                  <Gpslist />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/managementlist/users"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Users" />
-                  <Users />
-                </DefaultLayout>
-              </>
-            }
-          />
+              {/*<Route
+      path="/route-planning/reports"
+      element={
+        <>
+          <DefaultLayout>
+            <PageTitle title="Route Reports" />
+            <RouteReports />
+          </DefaultLayout>
+        </>
+      }
+    />
+    
+    <Route
+      path="/route-planning/audit-logs"
+      element={
+        <>
+          <DefaultLayout>
+            <PageTitle title="Route Audit Logs" />
+            <AuditLogs />
+          </DefaultLayout>
+        </>
+      }
+    />*/}
 
-          <Route
-            path="/managementlist/companies"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Companies" />
-                  <CompaniesTable />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/managementlist/gplist"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="GPList" />
-                  <GPListData />
-                </DefaultLayout>
-              </>
-            }
-          />
+              <Route
+                path="/settings"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Settings" />
+                      <Settings />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/chart"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Basic Chart" />
+                      <Chart />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/ui/alerts"
+                element={
+                  <>
+                    <PageTitle title="Alerts" />
+                    <Alerts />
+                  </>
+                }
+              />
+              <Route
+                path="/ui/buttons"
+                element={
+                  <>
+                    <PageTitle title="Buttons" />
+                    <Buttons />
+                  </>
+                }
+              />
+              <Route
+                path="/master/states"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="States" />
+                      <States />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              {/*<Route
+      path="/master/district"
+      element={
+        <>
+           <DefaultLayout>
+          <PageTitle title="Districts" />
+          <Districts />
+          </DefaultLayout>
+        </>
+      }
+    />
+    <Route
+      path="/master/blocks"
+      element={
+        <>
+           <DefaultLayout>
+          <PageTitle title="Blocks" />
+          <Blocks />
+          </DefaultLayout>
+        </>
+      }
+    />*/}
+              <Route
+                path="/master/gpslist"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="GpList" />
+                      <Gpslist />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/managementlist/users"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Users" />
+                      <Users />
+                    </DefaultLayout>
+                  </>
+                }
+              />
 
-          <Route
-            path="/survey/bsnl-edit/:id"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Bsnl Edit Form" />
-                  <BsnlEdit />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/survey/gp-edit/:id"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="GP Edit Form" />
-                  <GpEdit />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/survey/Aerail-edit/:id"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Aerail Edit Form" />
-                  <AerialEdit />
-                </DefaultLayout>
-              </>
-            }
-          />
+              <Route
+                path="/managementlist/companies"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Companies" />
+                      <CompaniesTable />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/managementlist/gplist"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="GPList" />
+                      <GPListData />
+                    </DefaultLayout>
+                  </>
+                }
+              />
 
-          <Route
-            path="/kmlfileupload"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Kml File Upload" />
-                  <FileUpload />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/gp-points-filter"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Filter GP Points" />
-                  <KMLUpload />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/smart-inventory"
-            element={
-              <>
-                <SmartInventory />
-              </>
-            }
-          />
-          <Route
-            path="/depth-chart"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="depth chart" />
-                  <IndexChart />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/blocks-management"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Blocks Management" />
-                  <BlocksManagement />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/blocks-management/gplist/:id"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="BlockGPList" />
-                  <BlockGPList />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/machine-data"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Machine-Data" />
-                  <MachineDataTable />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/machine-management/machines"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="machine-management" />
-                  <MachineManagement />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="machine-management/machine-tracking"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Charts & Reports" />
-                  <MainIndex />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="machine-management/machine-reports"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Reports" />
-                  <MachineReports />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="machine-management/machine-details/:id"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Reports" />
-                  <MachineDetails />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/machine-management/firm"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Firm Management" />
-                  <FirmManagement />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/live-track"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="live-track" />
-                  <LiveTrack />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/construction-details"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="construction-details" />
-                  <Eventreport />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/construction"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="construction" />
-                  <Construction />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/construction"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="construction" />
-                  <Construction />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/installation"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Installation Data" />
-                  <InstallationPage />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/installation/gp-detail/:id"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="GP Installation Details" />
-                  <GPInstallationDetailView />
-                </DefaultLayout>
-              </>
-            }
-          />
+              <Route
+                path="/survey/bsnl-edit/:id"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Bsnl Edit Form" />
+                      <BsnlEdit />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/survey/gp-edit/:id"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="GP Edit Form" />
+                      <GpEdit />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/survey/Aerail-edit/:id"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Aerail Edit Form" />
+                      <AerialEdit />
+                    </DefaultLayout>
+                  </>
+                }
+              />
 
-          <Route
-            path="/installation/block-detail/:id"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Block Installation Details" />
-                  <BlockInstallationDetailView />
-                </DefaultLayout>
-              </>
-            }
-          />
-          <Route
-            path="/installation/gp-edit/:id"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Edit GP Installation" />
-                  <GPInstallationEdit />
-                </DefaultLayout>
-              </>
-            }
-          />
+              <Route
+                path="/kmlfileupload"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Kml File Upload" />
+                      <FileUpload />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/gp-points-filter"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Filter GP Points" />
+                      <KMLUpload />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/smart-inventory"
+                element={
+                  <>
+                    <SmartInventory />
+                  </>
+                }
+              />
+              <Route
+                path="/depth-chart"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="depth chart" />
+                      <IndexChart />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/blocks-management"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Blocks Management" />
+                      <BlocksManagement />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/blocks-management/gplist/:id"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="BlockGPList" />
+                      <BlockGPList />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/machine-data"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Machine-Data" />
+                      <MachineDataTable />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/machine-management/machines"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="machine-management" />
+                      <MachineManagement />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="machine-management/machine-tracking"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Charts & Reports" />
+                      <MainIndex />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="machine-management/machine-reports"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Reports" />
+                      <MachineReports />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="machine-management/machine-details/:id"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Reports" />
+                      <MachineDetails />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/machine-management/firm"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Firm Management" />
+                      <FirmManagement />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/live-track"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="live-track" />
+                      <LiveTrack />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/construction-details"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="construction-details" />
+                      <Eventreport />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/construction"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="construction" />
+                      <Construction />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/construction"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="construction" />
+                      <Construction />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/installation"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Installation Data" />
+                      <InstallationPage />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/installation/gp-detail/:id"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="GP Installation Details" />
+                      <GPInstallationDetailView />
+                    </DefaultLayout>
+                  </>
+                }
+              />
 
-          <Route
-            path="/installation/block-edit/:id"
-            element={
-              <>
-                <DefaultLayout>
-                  <PageTitle title="Edit Block Installation" />
-                  <BlockInstallationEdit />
-                </DefaultLayout>
-              </>
-            }
-          />
+              <Route
+                path="/installation/block-detail/:id"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Block Installation Details" />
+                      <BlockInstallationDetailView />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/installation/gp-edit/:id"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Edit GP Installation" />
+                      <GPInstallationEdit />
+                    </DefaultLayout>
+                  </>
+                }
+              />
 
-          <Route
-            path="/privacy"
-            element={
-              <>
-                <PageTitle title="PrivacyPolicy" />
-                <PrivacyPolicy />
-              </>
-            }
-          />
-          <Route
-            path="/terms"
-            element={
-              <>
-                <PageTitle title="Terms" />
-                <Terms />
-              </>
-            }
-          />
-          <Route
-            path="/machine-activity"
-            element={
-              <>
-                <PageTitle title="Machine Activity" />
-                <MachineSurveyDashboard />
-              </>
-            }
-          />
-        </Routes>
+              <Route
+                path="/installation/block-edit/:id"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Edit Block Installation" />
+                      <BlockInstallationEdit />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+
+              <Route
+                path="/privacy"
+                element={
+                  <>
+                    <PageTitle title="PrivacyPolicy" />
+                    <PrivacyPolicy />
+                  </>
+                }
+              />
+              <Route
+                path="/terms"
+                element={
+                  <>
+                    <PageTitle title="Terms" />
+                    <Terms />
+                  </>
+                }
+              />
+              <Route
+                path="/machine-activity"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Machine Activity" />
+                      <MachineSurveyDashboard />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="*"
+                element={
+                  <>
+                      <PageTitle title="404 - Not Found" />
+                      <NotFound />
+                    
+                  </>
+                }
+              />
+            </Routes>
+          </ProtectedRoute>
+          <Routes>
+           <Route
+                path="/machine-activity"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Machine Activity" />
+                      <MachineSurveyDashboard />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+          </Routes>
+        </>
       )}
     </>
   );

@@ -5,10 +5,12 @@ import UserOne from '../../images/user/user-01.png';
 
 const DropdownUser = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+  const userData = JSON.parse(localStorage.getItem('userData') || '{}');
   const handleLogout = () => {
-    localStorage.clear(); // Clear all stored data
-    window.location.href = "/"; // Redirect to the login page
+    localStorage.removeItem('token');
+    localStorage.removeItem('userData');
+    window.history.replaceState(null, '', '/auth/signin');
+    window.location.href = '/auth/signin';
   };
 
   return (
@@ -20,7 +22,7 @@ const DropdownUser = () => {
       >
         <span className="hidden text-right lg:block">
           <span className="block text-sm font-medium text-black dark:text-white">
-           {userData.name || "Guest"}
+            {userData.name || 'Guest'}
           </span>
           <span className="block text-xs">Admin</span>
         </span>
@@ -124,7 +126,10 @@ const DropdownUser = () => {
               </Link>
             </li>
           </ul>
-          <button onClick={handleLogout} className="flex items-center gap-3.5 px-6 py-4 text-sm font-medium duration-300 ease-in-out hover:text-primary lg:text-base">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3.5 px-6 py-4 text-sm font-medium duration-300 ease-in-out hover:text-primary lg:text-base"
+          >
             <svg
               className="fill-current"
               width="22"
