@@ -285,7 +285,7 @@ function Eventreport() {
     const mediaItems: MediaItem[] = [];
 
     const addImages = (rawPhotoData: any, labelPrefix: string) => {
-      if (typeof rawPhotoData === 'string' && rawPhotoData.trim() !== '') {
+      if (typeof rawPhotoData === 'string' && rawPhotoData.trim() !== '' && rawPhotoData !== 'null') {
         const urls = parseMediaUrls(rawPhotoData);
 
         urls.forEach((url, index) => {

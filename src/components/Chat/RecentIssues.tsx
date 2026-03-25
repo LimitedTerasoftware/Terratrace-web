@@ -1,122 +1,249 @@
-import { ChevronRight, AlertTriangle, Satellite, Camera } from 'lucide-react';
+import { ChevronRight, AlertTriangle } from 'lucide-react';
+import DataTable, { TableColumn } from 'react-data-table-component';
+import { useNavigate } from 'react-router-dom';
 
-export default function RecentIssues() {
-  const issues = [
+interface IssueData {
+  issue_type: string;
+  category: string;
+  severity: string;
+  survey_id: number;
+  point_id: number;
+  depth: string;
+  location: string;
+  vendor: string;
+  machine: string;
+  timestamp: string;
+  status: string;
+}
+
+interface RecentIssuesProps {
+  data?: IssueData[];
+  isLoading?: boolean;
+}
+
+export default function RecentIssues({ data, isLoading }: RecentIssuesProps) {
+  const navigate = useNavigate();
+
+  const columns: TableColumn<IssueData>[] = [
     {
-      id: 'SRV-8823',
-      date: '2023-10-24',
-      type: 'Depth Variance',
-      surveyId: 'SRV-8823',
-      location: 'WB-Section-4',
-      severity: 'High',
-      status: 'Open',
-      icon: AlertTriangle,
-      iconColor: 'text-red-600',
+      name: 'Type',
+      selector: (row) => getTypeLabel(row.issue_type, row.category),
+      cell: (row) => (
+        <div className="flex items-center space-x-2">
+          <div
+            className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+              row.severity === 'HIGH'
+                ? 'bg-red-100'
+                : row.severity === 'MEDIUM'
+                  ? 'bg-blue-100'
+                  : 'bg-green-100'
+            }`}
+          >
+            <AlertTriangle
+              className={`w-3 h-3 ${
+                row.severity === 'HIGH'
+                  ? 'text-red-600'
+                  : row.severity === 'MEDIUM'
+                    ? 'text-blue-600'
+                    : 'text-green-600'
+              }`}
+            />
+          </div>
+          <span className="text-sm font-medium text-gray-900">
+            {getTypeLabel(row.issue_type, row.category)}
+          </span>
+        </div>
+      ),
     },
     {
-      id: 'SRV-8822',
-      date: '2023-10-24',
-      type: 'GPS Signal Lost',
-      surveyId: 'SRV-8819',
-      location: 'MH-West-Zone',
-      severity: 'Medium',
-      status: 'Investigating',
-      icon: Satellite,
-      iconColor: 'text-orange-600',
+      name: 'Category',
+      selector: (row) => row.category,
+      cell: (row) => (
+        <span className="text-sm text-blue-600 font-medium hover:underline">
+          {row.category}
+        </span>
+      ),
     },
     {
-      id: 'SRV-8821',
-      date: '2023-10-23',
-      type: 'Low Light Photo',
-      surveyId: 'SRV-8815',
-      location: 'KA-Industrial',
-      severity: 'Low',
-      status: 'Resolved',
-      icon: Camera,
-      iconColor: 'text-blue-600',
+      name: 'Depth',
+      selector: (row) => row.depth,
+      cell: (row) => (
+        <span className="text-sm text-gray-900">{row.depth} m</span>
+      ),
+    },
+    {
+      name: 'Location',
+      selector: (row) => row.location,
+      cell: (row) => (
+        <span
+          className="text-sm text-gray-600 max-w-[120px] truncate block"
+          title={row.location}
+        >
+          {row.location}
+        </span>
+      ),
+    },
+    {
+      name: 'Vendor',
+      selector: (row) => row.vendor,
+      cell: (row) => (
+        <span
+          className="text-sm text-gray-600 max-w-[150px] truncate block"
+          title={row.vendor}
+        >
+          {row.vendor}
+        </span>
+      ),
+    },
+    {
+      name: 'Machine',
+      selector: (row) => row.machine,
+      cell: (row) => (
+        <span
+          className="text-sm text-gray-600 max-w-[120px] truncate block"
+          title={row.machine}
+        >
+          {row.machine}
+        </span>
+      ),
+    },
+    {
+      name: 'Survey ID',
+      selector: (row) => row.survey_id,
+      cell: (row) => (
+        <span className="text-sm text-blue-600 font-medium hover:underline">
+          {row.survey_id}
+        </span>
+      ),
+    },
+    {
+      name: 'Point ID',
+      selector: (row) => row.point_id,
+      cell: (row) => (
+        <span className="text-sm text-gray-600">{row.point_id}</span>
+      ),
+    },
+    {
+      name: 'Timestamp',
+      selector: (row) => row.timestamp,
+      cell: (row) => (
+        <span className="text-sm text-gray-600">
+          {formatDate(row.timestamp)}
+        </span>
+      ),
+    },
+    {
+      name: 'Severity',
+      selector: (row) => row.severity,
+      cell: (row) => (
+        <div className="flex items-center">
+          <div
+            className={`w-2 h-2 rounded-full mr-2 ${getSeverityDotColor(row.severity)}`}
+          />
+          <span className="text-sm text-gray-900">{row.severity}</span>
+        </div>
+      ),
+    },
+    {
+      name: 'Status',
+      selector: (row) => row.status,
+      cell: (row) => (
+        <span
+          className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusClass(row.status)}`}
+        >
+          {row.status}
+        </span>
+      ),
     },
   ];
 
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'HIGH':
+        return 'bg-red-100 text-red-800';
+      case 'MEDIUM':
+        return 'bg-orange-100 text-orange-800';
+      default:
+        return 'bg-blue-100 text-blue-800';
+    }
+  };
+
+  const getSeverityDotColor = (severity: string) => {
+    switch (severity) {
+      case 'HIGH':
+        return 'bg-red-600';
+      case 'MEDIUM':
+        return 'bg-blue-600';
+      default:
+        return 'bg-green-600';
+    }
+  };
+
+  const getStatusClass = (status: string) => {
+    switch (status) {
+      case 'OPEN':
+        return 'bg-red-100 text-red-800';
+      case 'IN_PROGRESS':
+        return 'bg-blue-100 text-blue-800';
+      case 'RESOLVED':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getTypeLabel = (issueType: string, category: string) => {
+    if (issueType === 'DEPTH') {
+      return 'Depth Variance';
+    }
+    return category.replace(/_/g, ' ');
+  };
+
+  const formatDate = (timestamp: string) => {
+    return new Date(timestamp).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const handleRowClicked = (row: IssueData) => {
+    navigate('/construction-details', {
+      state: { row: row.survey_id, multipreview: true },
+    });
+  };
+
   return (
     <div className="bg-white rounded-lg border border-gray-200">
-      <div className="flex items-center justify-between p-6 border-b border-gray-200">
+      <div className="flex items-center justify-between p-4 border-b border-gray-200">
         <h3 className="text-lg font-semibold text-gray-900">Recent Issues</h3>
         <button className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center">
           View All
           <ChevronRight className="w-4 h-4 ml-1" />
         </button>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                Type
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                Survey ID
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                Location
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                Severity
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                Status
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {issues.map((issue) => (
-              <tr key={issue.id} className="hover:bg-gray-50 cursor-pointer">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-8 h-8 rounded-lg bg-opacity-10 flex items-center justify-center ${
-                      issue.severity === 'High' ? 'bg-red-100' : issue.severity === 'Medium' ? 'bg-orange-100' : 'bg-blue-100'
-                    }`}>
-                      <issue.icon className={`w-4 h-4 ${issue.iconColor}`} />
-                    </div>
-                    <span className="text-sm font-medium text-gray-900">{issue.type}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-blue-600 font-medium hover:underline">{issue.surveyId}</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-600">{issue.location}</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div
-                      className={`w-2 h-2 rounded-full mr-2 ${
-                        issue.severity === 'High'
-                          ? 'bg-red-600'
-                          : issue.severity === 'Medium'
-                          ? 'bg-orange-600'
-                          : 'bg-blue-600'
-                      }`}
-                    ></div>
-                    <span className="text-sm text-gray-900">{issue.severity}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                      issue.status === 'Open'
-                        ? 'bg-red-100 text-red-800'
-                        : issue.status === 'Investigating'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-green-100 text-green-800'
-                    }`}
-                  >
-                    {issue.status}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="p-4 max-h-150 overflow-auto">
+        <DataTable
+          columns={columns}
+          data={data || []}
+          pagination
+          paginationPerPage={10}
+          paginationRowsPerPageOptions={[10, 25, 50, 100]}
+          highlightOnHover
+          pointerOnHover
+          onRowClicked={handleRowClicked}
+          progressPending={isLoading}
+          progressComponent={
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          }
+          noDataComponent={
+            <div className="p-6 text-center text-gray-500">No issues found</div>
+          }
+        />
       </div>
     </div>
   );

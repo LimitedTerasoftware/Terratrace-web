@@ -137,6 +137,8 @@ export default function Filters({
           value={selectedPeriod}
           onChange={(e) => onPeriodChange(e.target.value)}
         >
+          <option value="today">Today</option>
+          <option value="yesterday">Yesterday</option>
           <option value="7">Last 7 Days</option>
           <option value="15">Last 15 Days</option>
           <option value="30">Last 30 Days</option>
@@ -163,10 +165,10 @@ export default function Filters({
           Reset
         </button>
 
-        <button className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 flex items-center space-x-2">
+        {/* <button className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 flex items-center space-x-2">
           <Download className="w-4 h-4" />
           <span>Export</span>
-        </button>
+        </button> */}
       </div>
     </div>
   );

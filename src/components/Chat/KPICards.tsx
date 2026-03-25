@@ -8,11 +8,29 @@ import {
 } from 'lucide-react';
 import { MachineDetailsResponse } from '../../types/machine';
 
-interface KPICardsProps {
-  Data?: MachineDetailsResponse | null;
+interface IssuesSummary {
+  total: number;
+  critical: number;
+  warning: number;
+  missing: number;
+  depth_compliance: string;
 }
 
-export default function KPICards({ Data }: KPICardsProps) {
+interface KPICardsProps {
+  Data?: MachineDetailsResponse | null;
+  issuesSummary?: IssuesSummary | null;
+  todaySurveyCount?: number;
+  todayKm?: number;
+  yesterdayKm?: number;
+}
+
+export default function KPICards({
+  Data,
+  issuesSummary,
+  todaySurveyCount,
+  todayKm,
+  yesterdayKm,
+}: KPICardsProps) {
   if (!Data) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 px-6 py-6">
@@ -35,10 +53,10 @@ export default function KPICards({ Data }: KPICardsProps) {
               {(parseFloat(Data.summary.total_distance) / 1000).toFixed(2)}{' '}
               <span className="text-lg font-normal text-gray-600">km</span>
             </p>
-            <p className="text-xs text-green-600 mt-1 flex items-center">
+            {/* <p className="text-xs text-green-600 mt-1 flex items-center">
               <TrendingUp className="w-3 h-3 mr-1" />
               +12 km this week
-            </p>
+            </p> */}
           </div>
           <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
             <TrendingUp className="w-5 h-5 text-blue-600" />
@@ -50,17 +68,29 @@ export default function KPICards({ Data }: KPICardsProps) {
         <div className="flex items-start justify-between">
           <div>
             <p className="text-xs font-medium text-gray-600 uppercase">
-              {/* KM Completed Today */}
-              Avg Distance/day
+              KM Completed Today
             </p>
             <p className="text-3xl font-bold text-gray-900 mt-2">
-              {(parseFloat(Data.summary.avg_distance_per_day)/1000).toFixed(2)}{' '}
+              {((Data?.summary?.todays_distance ?? 0) / 1000).toFixed(2)}{' '}
               <span className="text-lg font-normal text-gray-600">km</span>
             </p>
-            <p className="text-xs text-green-600 mt-1 flex items-center">
-              <TrendingUp className="w-3 h-3 mr-1" />
-              +8% vs yesterday
-            </p>
+          
+            {yesterdayKm !== undefined && yesterdayKm > 0 && (
+              <p
+                className={`text-xs font-medium mt-1 ${
+                  (todayKm ?? 0) >= (yesterdayKm ?? 0)
+                    ? 'text-green-600'
+                    : 'text-red-600'
+                }`}
+              >
+                {(todayKm ?? 0) >= (yesterdayKm ?? 0) ? '+' : ''}
+                {(
+                  (((todayKm ?? 0) - (yesterdayKm ?? 0)) / (yesterdayKm ?? 1)) *
+                  100
+                ).toFixed(1)}
+                % vs yesterday
+              </p>
+            )}
           </div>
           <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
             <CheckCircle className="w-5 h-5 text-blue-600" />
@@ -77,7 +107,9 @@ export default function KPICards({ Data }: KPICardsProps) {
             <p className="text-3xl font-bold text-gray-900 mt-2">
               {Data.summary.total_links}
             </p>
-            <p className="text-xs text-blue-600 mt-1">18 new today</p>
+            <p className="text-xs text-blue-600 mt-1">
+              {todaySurveyCount || 0} new today
+            </p>
           </div>
           <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
             <FileText className="w-5 h-5 text-blue-600" />
@@ -110,11 +142,53 @@ export default function KPICards({ Data }: KPICardsProps) {
             <p className="text-xs font-medium text-gray-600 uppercase">
               Depth Compliance
             </p>
-            <p className="text-3xl font-bold text-gray-900 mt-2">92%</p>
-            <p className="text-xs text-green-600 mt-1">Target 90% (Green)</p>
+            <p
+              className={`text-3xl font-bold mt-2 ${
+                parseFloat(
+                  issuesSummary?.depth_compliance?.replace('%', '') || '0',
+                ) >= 90
+                  ? 'text-green-600'
+                  : 'text-red-600'
+              }`}
+            >
+              {issuesSummary?.depth_compliance || '0%'}
+            </p>
+            <p
+              className={`text-xs mt-1 ${
+                parseFloat(
+                  issuesSummary?.depth_compliance?.replace('%', '') || '0',
+                ) >= 90
+                  ? 'text-green-600'
+                  : 'text-red-600'
+              }`}
+            >
+              Target 90% (
+              {parseFloat(
+                issuesSummary?.depth_compliance?.replace('%', '') || '0',
+              ) >= 90
+                ? 'Achieved'
+                : 'Not Achieved'}
+              )
+            </p>
           </div>
-          <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-            <BarChart3 className="w-5 h-5 text-blue-600" />
+          <div
+            className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              parseFloat(
+                issuesSummary?.depth_compliance?.replace('%', '') || '0',
+              ) >= 90
+                ? 'bg-green-50'
+                : 'bg-red-50'
+            }`}
+          >
+            <BarChart3
+              className={`w-5 h-5 ${
+                parseFloat(
+                  issuesSummary?.depth_compliance?.replace('%', '') || '0',
+                ) >= 90
+                  ? 'text-green-600'
+                  : 'text-red-600'
+              }`}
+            />
           </div>
         </div>
       </div>
@@ -125,9 +199,12 @@ export default function KPICards({ Data }: KPICardsProps) {
             <p className="text-xs font-medium text-gray-600 uppercase">
               Issues Count
             </p>
-            <p className="text-3xl font-bold text-red-600 mt-2">18</p>
+            <p className="text-3xl font-bold text-red-600 mt-2">
+              {issuesSummary?.total || 0}
+            </p>
             <p className="text-xs text-gray-600 mt-1">
-              10 depths, 5 GPS, 3 photos
+              {issuesSummary?.critical || 0} critical,{' '}
+              {issuesSummary?.warning || 0} warning
             </p>
           </div>
           <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center">

@@ -431,4 +431,81 @@ export const machineApi = {
     }
     return response.json();
   },
+
+  getKmTrend: async (
+    stateId?: string,
+    districtId?: string,
+    blockId?: string,
+    fromDate?: string,
+    toDate?: string,
+    firmId?: string,
+  ): Promise<{
+    status: boolean;
+    data: Array<{ date: string; daily_km: string; cumulative_km: string }>;
+  }> => {
+    const params = new URLSearchParams();
+    if (stateId) params.append('state_id', stateId);
+    if (districtId) params.append('district_id', districtId);
+    if (blockId) params.append('block_id', blockId);
+    if (fromDate) params.append('from_date', fromDate);
+    if (toDate) params.append('to_date', toDate);
+    if (firmId) params.append('firm_id', firmId);
+    const queryString = params.toString();
+    const url = queryString
+      ? `${TraceBASEURL}/api/km-trend?${queryString}`
+      : `${TraceBASEURL}/api/km-trend`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('Failed to fetch km trend');
+    }
+    return response.json();
+  },
+
+  getIssues: async (
+    stateId?: string,
+    districtId?: string,
+    blockId?: string,
+    fromDate?: string,
+    toDate?: string,
+    firmId?: string,
+  ): Promise<{
+    status: boolean;
+    summary: {
+      total: number;
+      critical: number;
+      warning: number;
+      missing: number;
+      depth_compliance: string;
+    };
+    data: Array<{
+      issue_type: string;
+      category: string;
+      severity: string;
+      survey_id: number;
+      point_id: number;
+      depth: string;
+      location: string;
+      vendor: string;
+      machine: string;
+      timestamp: string;
+      status: string;
+    }>;
+  }> => {
+    const params = new URLSearchParams();
+    if (stateId) params.append('state_id', stateId);
+    if (districtId) params.append('district_id', districtId);
+    if (blockId) params.append('block_id', blockId);
+    if (fromDate) params.append('from_date', fromDate);
+    if (toDate) params.append('to_date', toDate);
+    if (firmId) params.append('firm_id', firmId);
+    const queryString = params.toString();
+    const url = queryString
+      ? `${TraceBASEURL}/api/get-issues?${queryString}`
+      : `${TraceBASEURL}/api/get-issues`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('Failed to fetch issues');
+    }
+    return response.json();
+  },
 };
