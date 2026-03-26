@@ -10,9 +10,16 @@ import RecentIssues from '../Chat/RecentIssues';
 import { MachineDetailsResponse } from '../../types/machine';
 import { machineApi } from '../Services/api';
 import axios from 'axios';
-import { UGConstructionSurveyData } from '../../types/survey';
+import {
+  UGConstructionSurveyData,
+  ConstructionPathResponse,
+  BlockSurvey,
+  SurveyCoordinates,
+} from '../../types/survey';
+import { Wrapper } from '@googlemaps/react-wrapper';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 interface KmTrendData {
   date: string;
@@ -62,6 +69,8 @@ export default function NewConstructionDashboard() {
   const [todaySurveyCount, setTodaySurveyCount] = useState<number>(0);
   const [todayKm, setTodayKm] = useState<number>(0);
   const [yesterdayKm, setYesterdayKm] = useState<number>(0);
+  const [constructionPathData, setConstructionPathData] =
+    useState<unknown>(null);
 
   const getDateRange = (period: string) => {
     if (period === 'all') {
@@ -161,6 +170,28 @@ export default function NewConstructionDashboard() {
         }>(`${TraceBASEURL}/get-survey-data`, { params });
         if (response.data.status) {
           setTodaySurveyCount(response.data.data.length);
+          const surveyIds = response.data.data.map((s) => s.id);
+
+          const pathResponse = await machineApi.getConstructionPath();
+
+
+          if (pathResponse?.data) {
+          
+            const filteredData: ConstructionPathResponse = {
+              ...pathResponse,
+              data: pathResponse.data
+                .map((block: BlockSurvey) => ({
+                  ...block,
+                  surveys: block.surveys.filter((s: SurveyCoordinates) =>
+                    surveyIds.includes(s.survey_id),
+                  ),
+                }))
+                .filter((block: BlockSurvey) => block.surveys.length > 0),
+            };
+            setConstructionPathData(filteredData);
+          } else {
+            setConstructionPathData(pathResponse);
+          }
         }
       } catch (error) {
         console.error('Error fetching today survey count', error);
@@ -300,7 +331,25 @@ export default function NewConstructionDashboard() {
 
           <div className="lg:col-span-2 h-full">
             <div className="h-full min-h-[500px]">
-              <MapView />
+              <Wrapper
+                apiKey={GOOGLE_MAPS_API_KEY}
+                render={(status) => {
+                  if (status) {
+                    return (
+                      <div className="flex items-center justify-center h-full bg-gray-100">
+                        <p className="text-gray-500">Failed to load map</p>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="flex items-center justify-center h-full bg-gray-100">
+                      <p className="text-gray-500">Loading map...</p>
+                    </div>
+                  );
+                }}
+              >
+                <MapView constructionPathData={constructionPathData} />
+              </Wrapper>
             </div>
           </div>
         </div>
