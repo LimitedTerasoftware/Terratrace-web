@@ -80,6 +80,7 @@ import MachineReports from './components/MachineManagement/Reports';
 import MachineDetails from './components/MachineManagement/Reports/MachineItem';
 import MachineSurveyDashboard from './components/MachineManagement/MachineSummary';
 import NewConstructionDashboard from './components/Dashboards/NewConstructionDashboard';
+import ConstructionIssues from './components/DepthChart/ConstructionIssues';
 import ProtectedRoute, { PublicRoute } from './components/ProtectedRoute';
 //import AuditLogs from './components/AuditLogs';
 
@@ -97,7 +98,9 @@ function App() {
   }, []);
 
   const isAuthRoute =
-    pathname === '/auth/signin' || pathname === '/auth/signup' || pathname ==='/machine-activity' ;
+    pathname === '/auth/signin' ||
+    pathname === '/auth/signup' ||
+    pathname === '/machine-activity';
 
   return loading ? (
     <Loader />
@@ -783,12 +786,12 @@ function App() {
                 }
               />
               <Route
-                path="/construction"
+                path="/construction-issues"
                 element={
                   <>
                     <DefaultLayout>
-                      <PageTitle title="construction" />
-                      <Construction />
+                      <PageTitle title="Construction Issues" />
+                      <ConstructionIssues />
                     </DefaultLayout>
                   </>
                 }

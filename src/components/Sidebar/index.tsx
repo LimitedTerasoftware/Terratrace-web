@@ -49,6 +49,7 @@ import {
   SquareActivityIcon,
   ChartGanttIcon,
   ClipboardIcon,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -212,8 +213,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                               flex items-center justify-between py-2 ${isOpen ? 'px-3' : 'px-2'} rounded-lg transition-colors duration-200 text-bodydark1
                               ${
                                 // pathname.includes('dashboards') ||
-                                pathname === '/dashboard' ||
-                                pathname === '/'
+                                pathname === '/dashboard' || pathname === '/'
                                   ? 'bg-graydark dark:bg-meta-4'
                                   : 'hover:bg-graydark dark:hover:bg-meta-4'
                               }
@@ -271,7 +271,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                 </NavLink>
                               </li>
 
-                        
                               {/* <li>
                                 <NavLink
                                   to="/dashboards/executive-dashboard"
@@ -609,6 +608,24 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                     className={`${isOpen ? 'block' : 'hidden'} truncate`}
                                   >
                                     Machine Tracking
+                                  </span>
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/construction-issues"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <AlertTriangle
+                                    size={16}
+                                    className="min-w-[16px] flex-shrink-0 opacity-80"
+                                  />
+                                  <span
+                                    className={`${isOpen ? 'block' : 'hidden'} truncate`}
+                                  >
+                                    Issues
                                   </span>
                                 </NavLink>
                               </li>

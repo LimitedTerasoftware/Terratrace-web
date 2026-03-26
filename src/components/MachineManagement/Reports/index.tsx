@@ -395,7 +395,7 @@ export default function Dashboard() {
             <nav>
               <ol className="flex items-center gap-2 text-sm">
                 <li>
-                  <Link className="font-medium" to="/dashboard">
+                  <Link className="font-medium" to="/dashboards/construction-dashboard">
                     Dashboard /
                   </Link>
                 </li>

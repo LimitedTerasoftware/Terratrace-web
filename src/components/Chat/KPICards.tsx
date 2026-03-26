@@ -6,6 +6,7 @@ import {
   BarChart3,
   AlertCircle,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { MachineDetailsResponse } from '../../types/machine';
 
 interface IssuesSummary {
@@ -31,6 +32,7 @@ export default function KPICards({
   todayKm,
   yesterdayKm,
 }: KPICardsProps) {
+  const navigate = useNavigate();
   if (!Data) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 px-6 py-6">
@@ -74,7 +76,7 @@ export default function KPICards({
               {((Data?.summary?.todays_distance ?? 0) / 1000).toFixed(2)}{' '}
               <span className="text-lg font-normal text-gray-600">km</span>
             </p>
-          
+
             {yesterdayKm !== undefined && yesterdayKm > 0 && (
               <p
                 className={`text-xs font-medium mt-1 ${
@@ -193,7 +195,10 @@ export default function KPICards({
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <div
+        className="bg-white rounded-lg border border-gray-200 p-4 cursor-pointer hover:shadow-md transition-shadow"
+        onClick={() => navigate('/construction-issues')}
+      >
         <div className="flex items-start justify-between">
           <div>
             <p className="text-xs font-medium text-gray-600 uppercase">

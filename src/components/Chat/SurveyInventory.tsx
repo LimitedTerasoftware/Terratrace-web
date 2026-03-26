@@ -209,7 +209,7 @@ export default function SurveyInventory({
           <ChevronRight className="w-4 h-4 ml-1" />
         </button>
       </div>
-      <div className="p-4 max-h-150 overflow-auto">
+      <div className="p-4">
         <DataTable
           columns={columns}
           data={surveys}

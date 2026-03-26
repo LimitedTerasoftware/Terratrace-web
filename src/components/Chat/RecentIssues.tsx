@@ -1,4 +1,4 @@
-import { ChevronRight, AlertTriangle } from 'lucide-react';
+import { ChevronRight, AlertTriangle, Eye } from 'lucide-react';
 import DataTable, { TableColumn } from 'react-data-table-component';
 import { useNavigate } from 'react-router-dom';
 
@@ -19,9 +19,14 @@ interface IssueData {
 interface RecentIssuesProps {
   data?: IssueData[];
   isLoading?: boolean;
+  onView?: (issue: IssueData) => void;
 }
 
-export default function RecentIssues({ data, isLoading }: RecentIssuesProps) {
+export default function RecentIssues({
+  data,
+  isLoading,
+  onView,
+}: RecentIssuesProps) {
   const navigate = useNavigate();
 
   const columns: TableColumn<IssueData>[] = [
@@ -61,6 +66,29 @@ export default function RecentIssues({ data, isLoading }: RecentIssuesProps) {
       cell: (row) => (
         <span className="text-sm text-blue-600 font-medium hover:underline">
           {row.category}
+        </span>
+      ),
+    },
+       {
+      name: 'Severity',
+      selector: (row) => row.severity,
+      cell: (row) => (
+        <div className="flex items-center">
+          <div
+            className={`w-2 h-2 rounded-full mr-2 ${getSeverityDotColor(row.severity)}`}
+          />
+          <span className="text-sm text-gray-900">{row.severity}</span>
+        </div>
+      ),
+    },
+    {
+      name: 'Status',
+      selector: (row) => row.status,
+      cell: (row) => (
+        <span
+          className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusClass(row.status)}`}
+        >
+          {row.status}
         </span>
       ),
     },
@@ -132,28 +160,26 @@ export default function RecentIssues({ data, isLoading }: RecentIssuesProps) {
         </span>
       ),
     },
+ 
     {
-      name: 'Severity',
-      selector: (row) => row.severity,
+      name: 'Actions',
       cell: (row) => (
-        <div className="flex items-center">
-          <div
-            className={`w-2 h-2 rounded-full mr-2 ${getSeverityDotColor(row.severity)}`}
-          />
-          <span className="text-sm text-gray-900">{row.severity}</span>
-        </div>
-      ),
-    },
-    {
-      name: 'Status',
-      selector: (row) => row.status,
-      cell: (row) => (
-        <span
-          className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusClass(row.status)}`}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onView) {
+              onView(row);
+            } else {
+              handleRowClicked(row);
+            }
+          }}
+          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+          title="View Details"
         >
-          {row.status}
-        </span>
+          <Eye className="w-4 h-4" />
+        </button>
       ),
+      ignoreRowClick: true,
     },
   ];
 
@@ -219,12 +245,12 @@ export default function RecentIssues({ data, isLoading }: RecentIssuesProps) {
     <div className="bg-white rounded-lg border border-gray-200">
       <div className="flex items-center justify-between p-4 border-b border-gray-200">
         <h3 className="text-lg font-semibold text-gray-900">Recent Issues</h3>
-        <button className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center">
+        <button   onClick={() => navigate('/construction-issues')} className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center">
           View All
           <ChevronRight className="w-4 h-4 ml-1" />
         </button>
       </div>
-      <div className="p-4 max-h-150 overflow-auto">
+      <div className="p-4">
         <DataTable
           columns={columns}
           data={data || []}
