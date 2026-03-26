@@ -511,7 +511,7 @@ export default function SurveyDashboard() {
           <div className="flex justify-between items-center p-5 border-b border-gray-200">
             <div className="flex items-center gap-2">
               <ClipboardCheck className="w-5 h-5 text-blue-600" />
-              <h1 className="text-lg font-bold text-gray-900">Survey Dashboard</h1>
+              <h1 className="text-lg font-bold text-gray-900">UG Survey Dashboard</h1>
               <div className="flex items-center gap-2 text-xs text-gray-500">
                 <div className="text-sm text-gray-500"><span>Performance Tracking</span></div>
               </div>

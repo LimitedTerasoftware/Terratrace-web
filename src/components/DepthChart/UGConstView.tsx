@@ -1231,7 +1231,7 @@ function Eventreport() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
-                  Underground Survey view
+                  Underground construction view
                 </h1>
                 <p className="text-gray-600">UGconstruction details</p>
               </div>

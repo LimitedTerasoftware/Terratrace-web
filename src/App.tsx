@@ -97,7 +97,7 @@ function App() {
   }, []);
 
   const isAuthRoute =
-    pathname === '/auth/signin' || pathname === '/auth/signup';
+    pathname === '/auth/signin' || pathname === '/auth/signup' || pathname ==='/machine-activity' ;
 
   return loading ? (
     <Loader />
@@ -124,6 +124,15 @@ function App() {
                   <PageTitle title="Signup | Tricad" />
                   {/* <SignUp /> */}
                   <Signup />
+                </>
+              }
+            />
+            <Route
+              path="/machine-activity"
+              element={
+                <>
+                  <PageTitle title="Machine Activity" />
+                  <MachineSurveyDashboard />
                 </>
               }
             />
@@ -170,7 +179,7 @@ function App() {
                 element={
                   <>
                     <DefaultLayout>
-                      <PageTitle title="Survey Dashboard" />
+                      <PageTitle title="UG Survey Dashboard" />
                       <SurveyDashboard />
                     </DefaultLayout>
                   </>
@@ -861,41 +870,16 @@ function App() {
                 }
               />
               <Route
-                path="/machine-activity"
-                element={
-                  <>
-                    <DefaultLayout>
-                      <PageTitle title="Machine Activity" />
-                      <MachineSurveyDashboard />
-                    </DefaultLayout>
-                  </>
-                }
-              />
-              <Route
                 path="*"
                 element={
                   <>
-                      <PageTitle title="404 - Not Found" />
-                      <NotFound />
-                    
+                    <PageTitle title="404 - Not Found" />
+                    <NotFound />
                   </>
                 }
               />
             </Routes>
           </ProtectedRoute>
-          <Routes>
-           <Route
-                path="/machine-activity"
-                element={
-                  <>
-                    <DefaultLayout>
-                      <PageTitle title="Machine Activity" />
-                      <MachineSurveyDashboard />
-                    </DefaultLayout>
-                  </>
-                }
-              />
-          </Routes>
         </>
       )}
     </>

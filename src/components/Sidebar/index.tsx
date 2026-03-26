@@ -5,15 +5,23 @@ import Tricad from '../../images/logo/Tricad.png';
 import TricadLogo from '../../images/logo/favicon.png';
 import RouteMap from '../../images/icon/route-map.svg';
 import SurveyIcon from '../../images/icon/clipboard-with-a-list-svgrepo-com.svg';
-import DashboardIcon from '../../images/icon/dashboard-svgrepo-com.svg'
+import DashboardIcon from '../../images/icon/dashboard-svgrepo-com.svg';
 import SidebarLinkGroup from './SidebarLinkGroup';
 import TableIcon from '../../images/icon/table-icon.svg';
-import { hasInvOnlyAccess, hasViewOnlyAccess, isIEUser, hasInstallationAccess, isNGUser, canAccessConstruction, isAdminUser} from "../../utils/accessControl";
-import DropdownUser from './DropDownUser'; 
+import {
+  hasInvOnlyAccess,
+  hasViewOnlyAccess,
+  isIEUser,
+  hasInstallationAccess,
+  isNGUser,
+  canAccessConstruction,
+  isAdminUser,
+} from '../../utils/accessControl';
+import DropdownUser from './DropDownUser';
 import DarkModeSwitcher from './DarkModeSwitcher';
 import Smart_Inv from '../../images/icon/internet-world-svgrepo-com.svg';
 import Machine from '../../images/icon/mechine.svg';
-import ConstructionImg from '../../images/icon/construction-worker.svg'
+import ConstructionImg from '../../images/icon/construction-worker.svg';
 import { matchPath } from 'react-router-dom';
 
 import {
@@ -21,22 +29,26 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronUp,
-  ListCollapse,        
-  MapPinHouse,       
+  ListCollapse,
+  MapPinHouse,
   Cog,
   LocateFixed,
   Building,
   User2Icon,
   Globe2Icon,
-  Settings,              
+  Settings,
   Grid3X3,
-  BarChart3,            
-  ClipboardCheck,       
-  HardHat,             
-  Wrench,              
-  TrendingUp,          
-  Calendar,             
-  Building2
+  BarChart3,
+  ClipboardCheck,
+  HardHat,
+  Wrench,
+  TrendingUp,
+  Calendar,
+  Building2,
+  ClipboardXIcon,
+  SquareActivityIcon,
+  ChartGanttIcon,
+  ClipboardIcon,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -56,17 +68,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   const adminUser = isAdminUser();
   const installationAccess = hasInstallationAccess();
   const canAccessConstructionTab = canAccessConstruction();
-  
 
   const storedSidebarExpanded = localStorage.getItem('sidebar-expanded');
   const [sidebarExpanded, setSidebarExpanded] = useState(
-    storedSidebarExpanded === null ? false : storedSidebarExpanded === 'true'
+    storedSidebarExpanded === null ? false : storedSidebarExpanded === 'true',
   );
-  
-  const surveyMatch = matchPath({ path: "/survey/*" }, pathname);
-  const constructionMatch = matchPath({ path: "/construction/*" }, pathname);
-  const installationMatch = matchPath({ path: "/installation/*" }, pathname);
 
+  const surveyMatch = matchPath({ path: '/survey/*' }, pathname);
+  const constructionMatch = matchPath({ path: '/construction/*' }, pathname);
+  const installationMatch = matchPath({ path: '/installation/*' }, pathname);
 
   useEffect(() => {
     const clickHandler = ({ target }: MouseEvent) => {
@@ -101,7 +111,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
     }
   }, [sidebarExpanded]);
 
-
   return (
     <aside
       className={`fixed left-0 top-0 z-9999 flex h-screen transition-all transform  bg-black duration-300 ease-linear dark:bg-boxdark 
@@ -112,7 +121,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
           
         `}
     >
-
       {/* Toggle Button */}
 
       <button
@@ -123,14 +131,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
       </button>
 
       <div className="h-full flex flex-col">
-        <div className={`flex items-center h-16 px-4 flex-shrink-0 ${isOpen ? 'justify-start' : 'justify-center'}`}>
+        <div
+          className={`flex items-center h-16 px-4 flex-shrink-0 ${isOpen ? 'justify-start' : 'justify-center'}`}
+        >
           <div className="flex items-center">
-            <NavLink
-              to="/dashboard"
-            >
-
-              {!isOpen && (<img src={TricadLogo} alt="Logo" className="w-[30px] ml-[-1px]" />)}
-              <span className={`ml-2 text-xl font-semibold ${isOpen ? 'block' : 'hidden'}`}>
+            <NavLink to="/dashboard">
+              {!isOpen && (
+                <img
+                  src={TricadLogo}
+                  alt="Logo"
+                  className="w-[30px] ml-[-1px]"
+                />
+              )}
+              <span
+                className={`ml-2 text-xl font-semibold ${isOpen ? 'block' : 'hidden'}`}
+              >
                 <img src={Tricad} alt="Logo" className="w-[180px]" />
               </span>
             </NavLink>
@@ -138,7 +153,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
         </div>
 
         <div className="flex-1 px-3 py-4 overflow-y-auto custom-scrollbar">
-          <h3 className={`mb-4 ${isOpen ? 'ml-4' : 'ml-0'}  text-sm font-semibold text-bodydark2`}>
+          <h3
+            className={`mb-4 ${isOpen ? 'ml-4' : 'ml-0'}  text-sm font-semibold text-bodydark2`}
+          >
             Menu
           </h3>
 
@@ -165,15 +182,27 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                     ${!isOpen ? 'w-[44px] justify-center' : ''}
                   `}
                 >
-                  <img src={Smart_Inv} className="w-5 flex-shrink-0" alt="GIS Inventory" />
-                  {isOpen && <span className="whitespace-nowrap">GIS Inventory</span>}
+                  <img
+                    src={Smart_Inv}
+                    className="w-5 flex-shrink-0"
+                    alt="GIS Inventory"
+                  />
+                  {isOpen && (
+                    <span className="whitespace-nowrap">GIS Inventory</span>
+                  )}
                 </NavLink>
               </li>
             ) : (
-              <>                
+              <>
                 {/* Dashboards Menu Group */}
                 {(!viewOnly || adminUser) && (
-                  <SidebarLinkGroup activeCondition={pathname.includes('dashboards') || pathname === '/dashboard' || pathname === '/'}>
+                  <SidebarLinkGroup
+                    activeCondition={
+                      pathname.includes('dashboards') ||
+                      pathname === '/dashboard' ||
+                      pathname === '/'
+                    }
+                  >
                     {(handleClick, open) => {
                       return (
                         <React.Fragment>
@@ -181,86 +210,86 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                             to="#"
                             className={`
                               flex items-center justify-between py-2 ${isOpen ? 'px-3' : 'px-2'} rounded-lg transition-colors duration-200 text-bodydark1
-                              ${(pathname.includes('dashboards') || pathname === '/dashboard' || pathname === '/')
-                                ? 'bg-graydark dark:bg-meta-4'
-                                : 'hover:bg-graydark dark:hover:bg-meta-4'}
+                              ${
+                                // pathname.includes('dashboards') ||
+                                pathname === '/dashboard' ||
+                                pathname === '/'
+                                  ? 'bg-graydark dark:bg-meta-4'
+                                  : 'hover:bg-graydark dark:hover:bg-meta-4'
+                              }
                               ${!isOpen ? 'w-[44px]' : 'w-full'}
                             `}
                             onClick={(e) => {
                               e.preventDefault();
-                              sidebarExpanded ? handleClick() : setSidebarExpanded(true);
+                              sidebarExpanded
+                                ? handleClick()
+                                : setSidebarExpanded(true);
                             }}
                           >
-                            <div className={`flex items-center ${isOpen ? 'gap-3' : 'gap-0'} w-full`}>
+                            <div
+                              className={`flex items-center ${isOpen ? 'gap-3' : 'gap-0'} w-full`}
+                            >
                               <div className="min-w-[20px] flex justify-center">
-                                <img src={DashboardIcon} alt="Main Dashboard" className="w-5 h-5" />
+                                <img
+                                  src={DashboardIcon}
+                                  alt="Main Dashboard"
+                                  className="w-5 h-5"
+                                />
                               </div>
-                              {isOpen && <span className="whitespace-nowrap">Dashboards</span>}
+                              {isOpen && (
+                                <span className="whitespace-nowrap">
+                                  Dashboards
+                                </span>
+                              )}
                             </div>
-                            {isOpen && (
-                              open ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />
-                            )}
+                            {isOpen &&
+                              (open ? (
+                                <ChevronUp className="w-4 h-4 text-gray-500" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-gray-500" />
+                              ))}
                           </NavLink>
 
-                          <div className={`transform overflow-hidden transition-all ${!open && 'hidden'}`}>
+                          <div
+                            className={`transform overflow-hidden transition-all ${!open && 'hidden'}`}
+                          >
                             <ul className="space-y-2 mt-2 flex flex-col gap-1.5 bg-black/20 dark:bg-boxdark/30 rounded-md py-2 border-l-2 border-gray-600 dark:border-gray-500 ml-2">
                               {/* Main Dashboard */}
                               <li>
                                 <NavLink
                                   to="/dashboard"
                                   className={({ isActive }) =>
-                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${(isActive || pathname === '/') ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive || pathname === '/' ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
                                   }
-                                > 
+                                >
                                   <BarChart3 className="w-6 h-6" />
-                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Main Dashboard</span>
+                                  <span
+                                    className={`${isOpen ? 'block' : 'hidden'} truncate`}
+                                  >
+                                    Main Dashboard
+                                  </span>
                                 </NavLink>
                               </li>
-                              <li>
-                                <NavLink
-                                  to="/dashboards/survey-dashboard"
-                                  className={({ isActive }) =>
-                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
-                                  }
-                                >
-                                  <ClipboardCheck size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
-                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Survey Dashboard</span>
-                                </NavLink>
-                              </li>
-                              <li>
-                                <NavLink
-                                  to="/dashboards/construction-dashboard"
-                                  className={({ isActive }) =>
-                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
-                                  }
-                                >
-                                  <HardHat size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
-                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Construction Dashboard</span>
-                                </NavLink>
-                              </li>
-                              
-                              <li>
-                                <NavLink
-                                  to="/dashboards/installation-dashboard"
-                                  className={({ isActive }) =>
-                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
-                                  }
-                                >
-                                  <Wrench size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
-                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Installation Dashboard</span>
-                                </NavLink>
-                              </li>
-                              <li>
+
+                        
+                              {/* <li>
                                 <NavLink
                                   to="/dashboards/executive-dashboard"
                                   className={({ isActive }) =>
                                     `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
                                   }
                                 >
-                                  <TrendingUp size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
-                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Executive Dashboard</span>
+                                  <TrendingUp
+                                    size={16}
+                                    className="min-w-[16px] flex-shrink-0 opacity-80"
+                                  />
+                                  <span
+                                    className={`${isOpen ? 'block' : 'hidden'} truncate`}
+                                  >
+                                    Executive Dashboard
+                                  </span>
                                 </NavLink>
-                              </li>
+                              </li> */}
                             </ul>
                           </div>
                         </React.Fragment>
@@ -271,7 +300,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
 
                 {/* Route Planning */}
                 {(!viewOnly || adminUser) && (
-                  <SidebarLinkGroup activeCondition={pathname.includes('route-planning')}>
+                  <SidebarLinkGroup
+                    activeCondition={pathname.includes('route-planning')}
+                  >
                     {(handleClick, open) => {
                       return (
                         <React.Fragment>
@@ -279,28 +310,46 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                             to="#"
                             className={`
                               flex items-center justify-between py-2 ${isOpen ? 'px-3' : 'px-2'} rounded-lg transition-colors duration-200 text-bodydark1
-                              ${pathname.includes('route')
-                                ? 'bg-graydark dark:bg-meta-4'
-                                : 'hover:bg-graydark dark:hover:bg-meta-4'
+                              ${
+                                pathname.includes('route')
+                                  ? 'bg-graydark dark:bg-meta-4'
+                                  : 'hover:bg-graydark dark:hover:bg-meta-4'
                               } ${!isOpen ? 'w-[44px]' : 'w-full'}
                             `}
                             onClick={(e) => {
                               e.preventDefault();
-                              sidebarExpanded ? handleClick() : setSidebarExpanded(true);
+                              sidebarExpanded
+                                ? handleClick()
+                                : setSidebarExpanded(true);
                             }}
                           >
-                            <div className={`flex items-center ${isOpen ? 'gap-3' : 'gap-0'} w-full`}>
+                            <div
+                              className={`flex items-center ${isOpen ? 'gap-3' : 'gap-0'} w-full`}
+                            >
                               <div className="min-w-[20px] flex justify-center">
-                                <img src={RouteMap} alt="RouteMap" className="w-5 h-5 object-contain" />
+                                <img
+                                  src={RouteMap}
+                                  alt="RouteMap"
+                                  className="w-5 h-5 object-contain"
+                                />
                               </div>
-                              {isOpen && <span className="whitespace-nowrap">Route Planning</span>}
+                              {isOpen && (
+                                <span className="whitespace-nowrap">
+                                  Route Planning
+                                </span>
+                              )}
                             </div>
-                            {isOpen && (
-                              open ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />
-                            )}
+                            {isOpen &&
+                              (open ? (
+                                <ChevronUp className="w-4 h-4 text-gray-500" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-gray-500" />
+                              ))}
                           </NavLink>
 
-                          <div className={`translate transform overflow-hidden ${!open && 'hidden'}`}>
+                          <div
+                            className={`translate transform overflow-hidden ${!open && 'hidden'}`}
+                          >
                             <ul className="space-y-1 mt-2 flex flex-col gap-1.5 bg-black/20 dark:bg-boxdark/30 rounded-md py-2 border-l-2 border-gray-600 dark:border-gray-500 ml-2">
                               <li>
                                 <NavLink
@@ -309,8 +358,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                     `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
                                   }
                                 >
-                                  <ListCollapse size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
-                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Route List</span>
+                                  <ListCollapse
+                                    size={16}
+                                    className="min-w-[16px] flex-shrink-0 opacity-80"
+                                  />
+                                  <span
+                                    className={`${isOpen ? 'block' : 'hidden'} truncate`}
+                                  >
+                                    Route List
+                                  </span>
                                 </NavLink>
                               </li>
                               <li>
@@ -322,8 +378,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                     `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
                                   }
                                 >
-                                  <MapPinHouse size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
-                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Route Builder</span>
+                                  <MapPinHouse
+                                    size={16}
+                                    className="min-w-[16px] flex-shrink-0 opacity-80"
+                                  />
+                                  <span
+                                    className={`${isOpen ? 'block' : 'hidden'} truncate`}
+                                  >
+                                    Route Builder
+                                  </span>
                                 </NavLink>
                               </li>
                             </ul>
@@ -333,46 +396,341 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                     }}
                   </SidebarLinkGroup>
                 )}
-                
-                {/* Survey - Visible for everyone */}
-                <SideBarItem
-                  icon={SurveyIcon}
-                  label="Survey"
-                  isOpen={isOpen}
-                  isActive={!!surveyMatch}
-                  path="/survey"
-                />
+
+                {/* Survey */}
+                {(!viewOnly || adminUser) && (
+                  <SidebarLinkGroup
+                    activeCondition={pathname.includes('survey')}
+                  >
+                    {(handleClick, open) => {
+                      return (
+                        <React.Fragment>
+                          <NavLink
+                            to="#"
+                            className={`
+                              flex items-center justify-between py-2 ${isOpen ? 'px-3' : 'px-2'} rounded-lg transition-colors duration-200 text-bodydark1
+                              ${
+                                pathname.includes('survey')
+                                  ? 'bg-graydark dark:bg-meta-4'
+                                  : 'hover:bg-graydark dark:hover:bg-meta-4'
+                              }
+                              ${!isOpen ? 'w-[44px]' : 'w-full'}
+                            `}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              sidebarExpanded
+                                ? handleClick()
+                                : setSidebarExpanded(true);
+                            }}
+                          >
+                            <div
+                              className={`flex items-center ${isOpen ? 'gap-3' : 'gap-0'} w-full`}
+                            >
+                              <div className="min-w-[20px] flex justify-center">
+                                <img
+                                  src={SurveyIcon}
+                                  alt="Survey"
+                                  className="w-5 h-5 object-contain"
+                                />
+                              </div>
+                              {isOpen && (
+                                <span className="whitespace-nowrap">
+                                  Survey
+                                </span>
+                              )}
+                            </div>
+                            {isOpen &&
+                              (open ? (
+                                <ChevronUp className="w-4 h-4 text-gray-500" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-gray-500" />
+                              ))}
+                          </NavLink>
+
+                          <div
+                            className={`transform overflow-hidden transition-all ${!open && 'hidden'}`}
+                          >
+                            <ul className="space-y-1 mt-2 flex flex-col gap-1.5 bg-black/20 dark:bg-boxdark/30 rounded-md py-2 border-l-2 border-gray-600 dark:border-gray-500 ml-2">
+                              <li>
+                                <NavLink
+                                  to="/dashboards/survey-dashboard"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <ClipboardCheck
+                                    size={16}
+                                    className="min-w-[16px] flex-shrink-0 opacity-80"
+                                  />
+                                  <span
+                                    className={`${isOpen ? 'block' : 'hidden'} truncate`}
+                                  >
+                                    Survey Dashboard
+                                  </span>
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/survey"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  {/* <img
+                                  src={SurveyIcon}
+                                  size={16}
+                                  className="min-w-[16px] flex-shrink-0 opacity-80"
+                                /> */}
+                                  <ClipboardIcon
+                                    size={16}
+                                    className="min-w-[16px] flex-shrink-0 opacity-80"
+                                  />
+                                  <span
+                                    className={`${isOpen ? 'block' : 'hidden'} truncate`}
+                                  >
+                                    Survey
+                                  </span>
+                                </NavLink>
+                              </li>
+                            </ul>
+                          </div>
+                        </React.Fragment>
+                      );
+                    }}
+                  </SidebarLinkGroup>
+                )}
 
                 {/* Construction */}
                 {canAccessConstructionTab && (
-                  <SideBarItem
-                    icon={ConstructionImg}
-                    label="Construction"
-                    isOpen={isOpen}
-                    isActive={!!constructionMatch}
-                    path="/construction"
-                  />
+                  <SidebarLinkGroup
+                    activeCondition={
+                      pathname.includes('construction') ||
+                      pathname.includes('machine-management')
+                    }
+                  >
+                    {(handleClick, open) => {
+                      return (
+                        <React.Fragment>
+                          <NavLink
+                            to="#"
+                            className={`
+                              flex items-center justify-between py-2 ${isOpen ? 'px-3' : 'px-2'} rounded-lg transition-colors duration-200 text-bodydark1
+                              ${
+                                pathname.includes('construction') ||
+                                pathname.includes('machine-management')
+                                  ? 'bg-graydark dark:bg-meta-4'
+                                  : 'hover:bg-graydark dark:hover:bg-meta-4'
+                              }
+                              ${!isOpen ? 'w-[44px]' : 'w-full'}
+                            `}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              sidebarExpanded
+                                ? handleClick()
+                                : setSidebarExpanded(true);
+                            }}
+                          >
+                            <div
+                              className={`flex items-center ${isOpen ? 'gap-3' : 'gap-0'} w-full`}
+                            >
+                              <div className="min-w-[20px] flex justify-center">
+                                <img
+                                  src={ConstructionImg}
+                                  alt="Construction"
+                                  className="w-5 h-5 object-contain"
+                                />
+                              </div>
+                              {isOpen && (
+                                <span className="whitespace-nowrap">
+                                  Construction
+                                </span>
+                              )}
+                            </div>
+                            {isOpen &&
+                              (open ? (
+                                <ChevronUp className="w-4 h-4 text-gray-500" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-gray-500" />
+                              ))}
+                          </NavLink>
+
+                          <div
+                            className={`transform overflow-hidden transition-all ${!open && 'hidden'}`}
+                          >
+                            <ul className="space-y-1 mt-2 flex flex-col gap-1.5 bg-black/20 dark:bg-boxdark/30 rounded-md py-2 border-l-2 border-gray-600 dark:border-gray-500 ml-2">
+                              <li>
+                                <NavLink
+                                  to="/dashboards/construction-dashboard"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <HardHat
+                                    size={16}
+                                    className="min-w-[16px] flex-shrink-0 opacity-80"
+                                  />
+                                  <span
+                                    className={`${isOpen ? 'block' : 'hidden'} truncate`}
+                                  >
+                                    Construction Dashboard
+                                  </span>
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/construction"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <Building2
+                                    size={16}
+                                    className="min-w-[16px] flex-shrink-0 opacity-80"
+                                  />
+                                  <span
+                                    className={`${isOpen ? 'block' : 'hidden'} truncate`}
+                                  >
+                                    Construction
+                                  </span>
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/machine-management/machine-tracking"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <LocateFixed
+                                    size={16}
+                                    className="min-w-[16px] flex-shrink-0 opacity-80"
+                                  />
+                                  <span
+                                    className={`${isOpen ? 'block' : 'hidden'} truncate`}
+                                  >
+                                    Machine Tracking
+                                  </span>
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/machine-management/machine-reports"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <BarChart3
+                                    size={16}
+                                    className="min-w-[16px] flex-shrink-0 opacity-80"
+                                  />
+                                  <span
+                                    className={`${isOpen ? 'block' : 'hidden'} truncate`}
+                                  >
+                                    Vendor MIS Reports
+                                  </span>
+                                </NavLink>
+                              </li>
+                            </ul>
+                          </div>
+                        </React.Fragment>
+                      );
+                    }}
+                  </SidebarLinkGroup>
                 )}
 
-                {/* Equipment Installation */}
-                {(!viewOnly || installationAccess || adminUser) ? (
-                  <li>
-                    <NavLink
-                      to="/installation"
-                      className={({ isActive }) =>
-                        `flex items-center py-2 ${isOpen ? "px-3 gap-4" : "px-2 gap-0"} rounded-lg 
-                        transition-colors duration-200 text-bodydark1
-                        ${isActive ? "bg-graydark dark:bg-meta-4 !text-white" : "hover:bg-graydark dark:hover:bg-meta-4"}
-                        ${!isOpen ? "w-[44px] justify-center" : ""}`
-                      }
-                    >
-                      <div className="min-w-[20px] flex justify-center">
-                        <Settings className="w-5 h-5" />
-                      </div>
-                      {isOpen && <span className="whitespace-nowrap">Equipment Installation</span>}
-                    </NavLink>
-                  </li>
-                ) : null}
+                {/* Installation */}
+                {(!viewOnly || installationAccess || adminUser) && (
+                  <SidebarLinkGroup
+                    activeCondition={pathname.includes('installation')}
+                  >
+                    {(handleClick, open) => {
+                      return (
+                        <React.Fragment>
+                          <NavLink
+                            to="#"
+                            className={`
+                              flex items-center justify-between py-2 ${isOpen ? 'px-3' : 'px-2'} rounded-lg transition-colors duration-200 text-bodydark1
+                              ${
+                                pathname.includes('installation')
+                                  ? 'bg-graydark dark:bg-meta-4'
+                                  : 'hover:bg-graydark dark:hover:bg-meta-4'
+                              }
+                              ${!isOpen ? 'w-[44px]' : 'w-full'}
+                            `}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              sidebarExpanded
+                                ? handleClick()
+                                : setSidebarExpanded(true);
+                            }}
+                          >
+                            <div
+                              className={`flex items-center ${isOpen ? 'gap-3' : 'gap-0'} w-full`}
+                            >
+                              <div className="min-w-[20px] flex justify-center">
+                                <Settings className="w-5 h-5" />
+                              </div>
+                              {isOpen && (
+                                <span className="whitespace-nowrap">
+                                  Installation
+                                </span>
+                              )}
+                            </div>
+                            {isOpen &&
+                              (open ? (
+                                <ChevronUp className="w-4 h-4 text-gray-500" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-gray-500" />
+                              ))}
+                          </NavLink>
+
+                          <div
+                            className={`transform overflow-hidden transition-all ${!open && 'hidden'}`}
+                          >
+                            <ul className="space-y-1 mt-2 flex flex-col gap-1.5 bg-black/20 dark:bg-boxdark/30 rounded-md py-2 border-l-2 border-gray-600 dark:border-gray-500 ml-2">
+                              <li>
+                                <NavLink
+                                  to="/dashboards/installation-dashboard"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <Wrench
+                                    size={16}
+                                    className="min-w-[16px] flex-shrink-0 opacity-80"
+                                  />
+                                  <span
+                                    className={`${isOpen ? 'block' : 'hidden'} truncate`}
+                                  >
+                                    Installation Dashboard
+                                  </span>
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/installation"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <Settings
+                                    size={16}
+                                    className="min-w-[16px] flex-shrink-0 opacity-80"
+                                  />
+                                  <span
+                                    className={`${isOpen ? 'block' : 'hidden'} truncate`}
+                                  >
+                                    Equipment Installation
+                                  </span>
+                                </NavLink>
+                              </li>
+                            </ul>
+                          </div>
+                        </React.Fragment>
+                      );
+                    }}
+                  </SidebarLinkGroup>
+                )}
 
                 {/* Block Assignment */}
                 {(!viewOnly || adminUser) && (
@@ -382,16 +740,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                       className={`
                         flex items-center py-2 ${isOpen ? 'px-3 gap-4' : 'px-2 gap-0'} rounded-lg 
                         transition-colors duration-200 text-bodydark1 
-                        ${pathname.includes('blocks-management') 
-                          ? 'bg-graydark dark:bg-meta-4' 
-                          : 'hover:bg-graydark dark:hover:bg-meta-4'}
+                        ${
+                          pathname.includes('blocks-management')
+                            ? 'bg-graydark dark:bg-meta-4'
+                            : 'hover:bg-graydark dark:hover:bg-meta-4'
+                        }
                         ${!isOpen ? 'w-[44px] justify-center' : ''}
                       `}
                     >
                       <div className="min-w-[20px] flex justify-center">
                         <Grid3X3 className="w-5 h-5" />
                       </div>
-                      {isOpen && <span className="whitespace-nowrap">Block Assginment</span>}
+                      {isOpen && (
+                        <span className="whitespace-nowrap">
+                          Block Assginment
+                        </span>
+                      )}
                     </NavLink>
                   </li>
                 )}
@@ -409,79 +773,23 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                         ${!isOpen ? 'w-[44px] justify-center' : ''}
                       `}
                     >
-                      <img src={Smart_Inv} className="w-5 flex-shrink-0" alt="GIS Inventory" />
-                      {isOpen && <span className="whitespace-nowrap">GIS Inventory</span>}
+                      <img
+                        src={Smart_Inv}
+                        className="w-5 flex-shrink-0"
+                        alt="GIS Inventory"
+                      />
+                      {isOpen && (
+                        <span className="whitespace-nowrap">GIS Inventory</span>
+                      )}
                     </NavLink>
                   </li>
-                )}
-                
-                {/* Machine Management */}
-                {(!viewOnly || adminUser) && (
-                  <SidebarLinkGroup activeCondition={pathname.includes('machine-management')}>
-                    {(handleClick, open) => {
-                      return (
-                        <>
-                          <NavLink
-                            to="#"
-                            className={`
-                              flex items-center justify-between py-2 ${isOpen ? 'px-3' : 'px-2'} rounded-lg transition-colors duration-200 text-bodydark1
-                              ${pathname.includes('machine-management')
-                                ? 'bg-graydark dark:bg-meta-4'
-                                : 'hover:bg-graydark dark:hover:bg-meta-4'}
-                              ${!isOpen ? 'w-[44px]' : 'w-full'}
-                            `}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              sidebarExpanded ? handleClick() : setSidebarExpanded(true);
-                            }}
-                          >
-                            <div className={`flex items-center ${isOpen ? 'gap-3' : 'gap-0'} w-full`}>
-                              <div className="min-w-[20px] flex justify-center">
-                                <img src={Machine} alt="MachMgmt" className="w-5 h-5 object-contain" />
-                              </div>
-                              {isOpen && <span className="whitespace-nowrap">Machines</span>}
-                            </div>
-                            {isOpen && (
-                              open ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />
-                            )}
-                          </NavLink>
-
-                          <div className={`transform overflow-hidden transition-all ${!open && 'hidden'}`}>
-                            <ul className="space-y-1 mt-2 flex flex-col gap-1.5 bg-black/20 dark:bg-boxdark/30 rounded-md py-2 border-l-2 border-gray-600 dark:border-gray-500 ml-2">
-                            
-                              <li>
-                                <NavLink
-                                  to="/machine-management/machine-tracking"
-                                  className={({ isActive }) =>
-                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
-                                  }
-                                >
-                                  <LocateFixed size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
-                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Machine Tracking</span>
-                                </NavLink>
-                              </li>
-                                <li>
-                                <NavLink
-                                  to="/machine-management/machine-reports"
-                                  className={({ isActive }) =>
-                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
-                                  }
-                                >
-                                  <LocateFixed size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
-                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Vendor MIS Reports</span>
-                                </NavLink>
-                              </li>
-                            </ul>
-                          </div>
-                        </>
-                      );
-                    }}
-                  </SidebarLinkGroup>
                 )}
 
                 {/* Master Data */}
                 {(!viewOnly || adminUser) && (
-                  <SidebarLinkGroup activeCondition={pathname.includes('managementlist')}>
+                  <SidebarLinkGroup
+                    activeCondition={pathname.includes('managementlist')}
+                  >
                     {(handleClick, open) => {
                       return (
                         <React.Fragment>
@@ -489,28 +797,47 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                             to="#"
                             className={`
                               flex items-center justify-between py-2 ${isOpen ? 'px-3' : 'px-2'} rounded-lg transition-colors duration-200 text-bodydark1
-                              ${pathname.includes('managementlist')
-                                ? 'bg-graydark dark:bg-meta-4'
-                                : 'hover:bg-graydark dark:hover:bg-meta-4'}
+                              ${
+                                pathname.includes('managementlist')
+                                  ? 'bg-graydark dark:bg-meta-4'
+                                  : 'hover:bg-graydark dark:hover:bg-meta-4'
+                              }
                               ${!isOpen ? 'w-[44px]' : 'w-full'}
                             `}
                             onClick={(e) => {
                               e.preventDefault();
-                              sidebarExpanded ? handleClick() : setSidebarExpanded(true);
+                              sidebarExpanded
+                                ? handleClick()
+                                : setSidebarExpanded(true);
                             }}
                           >
-                            <div className={`flex items-center ${isOpen ? 'gap-3' : 'gap-0'} w-full`}>
+                            <div
+                              className={`flex items-center ${isOpen ? 'gap-3' : 'gap-0'} w-full`}
+                            >
                               <div className="min-w-[20px] flex justify-center">
-                                <img src={TableIcon} alt="ManagementList" className="w-5 h-5 object-contain" />
+                                <img
+                                  src={TableIcon}
+                                  alt="ManagementList"
+                                  className="w-5 h-5 object-contain"
+                                />
                               </div>
-                              {isOpen && <span className='whitespace-nowrap'>Master Data</span>}
+                              {isOpen && (
+                                <span className="whitespace-nowrap">
+                                  Master Data
+                                </span>
+                              )}
                             </div>
-                            {isOpen && (
-                              open ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />
-                            )}
+                            {isOpen &&
+                              (open ? (
+                                <ChevronUp className="w-4 h-4 text-gray-500" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-gray-500" />
+                              ))}
                           </NavLink>
 
-                          <div className={`transform overflow-hidden transition-all ${!open && 'hidden'}`}>
+                          <div
+                            className={`transform overflow-hidden transition-all ${!open && 'hidden'}`}
+                          >
                             <ul className="space-y-1 mt-2 flex flex-col gap-1.5 bg-black/20 dark:bg-boxdark/30 rounded-md py-2 border-l-2 border-gray-600 dark:border-gray-500 ml-2">
                               <li>
                                 <NavLink
@@ -519,8 +846,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                     `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
                                   }
                                 >
-                                  <Building size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
-                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Companies</span>
+                                  <Building
+                                    size={16}
+                                    className="min-w-[16px] flex-shrink-0 opacity-80"
+                                  />
+                                  <span
+                                    className={`${isOpen ? 'block' : 'hidden'} truncate`}
+                                  >
+                                    Companies
+                                  </span>
                                 </NavLink>
                               </li>
                               <li>
@@ -530,8 +864,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                     `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
                                   }
                                 >
-                                  <User2Icon size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
-                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Users</span>
+                                  <User2Icon
+                                    size={16}
+                                    className="min-w-[16px] flex-shrink-0 opacity-80"
+                                  />
+                                  <span
+                                    className={`${isOpen ? 'block' : 'hidden'} truncate`}
+                                  >
+                                    Users
+                                  </span>
                                 </NavLink>
                               </li>
                               <li>
@@ -541,11 +882,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                     `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
                                   }
                                 >
-                                  <Globe2Icon size={16} className='min-w-[16px] flex-shrink-0 opacity-80'/>   
-                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Gp List</span>
+                                  <Globe2Icon
+                                    size={16}
+                                    className="min-w-[16px] flex-shrink-0 opacity-80"
+                                  />
+                                  <span
+                                    className={`${isOpen ? 'block' : 'hidden'} truncate`}
+                                  >
+                                    Gp List
+                                  </span>
                                 </NavLink>
                               </li>
-                                 <li>
+                              <li>
                                 <NavLink
                                   to="/machine-management/firm"
                                   className={({ isActive }) =>
@@ -570,8 +918,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                     `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
                                   }
                                 >
-                                  <Cog size={16} className="min-w-[16px] flex-shrink-0 opacity-80" />
-                                  <span className={`${isOpen ? 'block' : 'hidden'} truncate`}>Machines</span>
+                                  <Cog
+                                    size={16}
+                                    className="min-w-[16px] flex-shrink-0 opacity-80"
+                                  />
+                                  <span
+                                    className={`${isOpen ? 'block' : 'hidden'} truncate`}
+                                  >
+                                    Machines
+                                  </span>
                                 </NavLink>
                               </li>
                             </ul>
@@ -604,7 +959,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
             )}
           </div>
         </div>
-
       </div>
 
       {/* Custom Scrollbar Styles */}
