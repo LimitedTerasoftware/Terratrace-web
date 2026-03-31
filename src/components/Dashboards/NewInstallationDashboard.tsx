@@ -1,10 +1,90 @@
+import { useState, useEffect } from 'react';
 import { RefreshCw, Download } from 'lucide-react';
 import { InstallationSections } from './InstallationSections';
 import { DistrictPerformance } from '../Chat/DistrictPerformance';
 import { CriticalSites } from '../Chat/CriticalSites';
 import { ActivityFeed } from '../Chat/ActivityFeed';
+import { getStateData, getDistrictData, getBlockData } from '../Services/api';
+import { Block, District, StateData } from '../../types/survey';
 
 function NewInstallationDashboard() {
+    const [selectedState, setSelectedState] = useState<string>('');
+    const [selectedDistrict, setSelectedDistrict] = useState<string>('');
+    const [selectedBlock, setSelectedBlock] = useState<string>('');
+    const [selectedPeriod, setSelectedPeriod] = useState<string>('30');
+
+    const [states, setStates] = useState<StateData[]>([]);
+    const [districts, setDistricts] = useState<District[]>([]);
+    const [blocks, setBlocks] = useState<Block[]>([]);
+    const [loadingStates, setLoadingStates] = useState(false);
+    const [loadingDistricts, setLoadingDistricts] = useState(false);
+    const [loadingBlocks, setLoadingBlocks] = useState(false);
+
+    useEffect(() => {
+        fetchStates();
+    }, []);
+
+    useEffect(() => {
+        if (selectedState) {
+            fetchDistricts(selectedState);
+        } else {
+            setDistricts([]);
+            setSelectedDistrict('');
+        }
+    }, [selectedState]);
+
+    useEffect(() => {
+        if (selectedDistrict) {
+            fetchBlocks(selectedDistrict);
+        } else {
+            setBlocks([]);
+            setSelectedBlock('');
+        }
+    }, [selectedDistrict]);
+
+    const fetchStates = async () => {
+        setLoadingStates(true);
+        try {
+            const data = await getStateData();
+            setStates(data || []);
+        } catch (error) {
+            console.error('Error fetching states:', error);
+        } finally {
+            setLoadingStates(false);
+        }
+    };
+
+    const fetchDistricts = async (stateCode: string) => {
+        setLoadingDistricts(true);
+        try {
+            const data = await getDistrictData(stateCode);
+            setDistricts(data || []);
+        } catch (error) {
+            console.error('Error fetching districts:', error);
+        } finally {
+            setLoadingDistricts(false);
+        }
+    };
+
+    const fetchBlocks = async (districtId: string) => {
+        setLoadingBlocks(true);
+        try {
+            const data = await getBlockData(districtId);
+            setBlocks(data || []);
+        } catch (error) {
+            console.error('Error fetching blocks:', error);
+        } finally {
+            setLoadingBlocks(false);
+        }
+    };
+
+    const handleReset = () => {
+        setSelectedState('');
+        setSelectedDistrict('');
+        setSelectedBlock('');
+        setSelectedPeriod('30');
+    };
+
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="flex h-screen">
@@ -19,22 +99,16 @@ function NewInstallationDashboard() {
                                 </div>
 
                                 <div className="flex items-center gap-4">
-                                    <div className="flex items-center gap-8 px-6 py-3">
+                                    <div className="flex items-center gap-8 px-6 py-3 border-r-2 border-gray-200">
                                         <button className="pb-2 text-sm font-semibold text-blue-600 border-b-2 border-blue-600">GP Tracker</button>
                                         <button className="text-sm font-semibold text-gray-600 hover:text-gray-900">Block Tracker</button>
                                     </div>
-                                    {/* <div className="flex items-center gap-2 text-xs text-gray-500">
+                                    <div className="flex items-center gap-2 text-xs text-gray-500">
                                         <span>Last Sync: Oct 24, 14:35</span>
                                     </div>
                                     <button className="p-2 hover:bg-gray-100 rounded-lg transition">
                                         <RefreshCw size={20} className="text-gray-600" />
                                     </button>
-                                    <button className="p-2 hover:bg-gray-100 rounded-lg transition">
-                                        <Download size={20} className="text-gray-600" />
-                                    </button>
-                                    <button className="bg-blue-900 text-white px-4 py-2 rounded-lg font-semibold text-sm hover:bg-blue-800 transition">
-                                        REFRESH
-                                    </button> */}
                                 </div>
                             </div>
                         </div>
@@ -42,20 +116,79 @@ function NewInstallationDashboard() {
                     <div className="flex items-center gap-4 flex-wrap px-3 py-3 bg-white border-b border-gray-200">
                         <div className="flex items-center gap-2">
                             <span className="text-sm font-semibold text-gray-700">FILTERS:</span>
-                            <button className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm font-medium hover:bg-gray-200">All States</button>
-                            <button className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm font-medium hover:bg-gray-200">District</button>
-                            <button className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm font-medium hover:bg-gray-200">Block</button>
-                        </div>
+                            <select
+                                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                value={selectedState}
+                                onChange={(e) => setSelectedState(e.target.value)}
+                                disabled={loadingStates}
+                            >
+                                <option value="">All States</option>
+                                {states.map((state) => (
+                                    <option key={state.state_id} value={state.state_id}>
+                                        {state.state_name}
+                                    </option>
+                                ))}
+                            </select>
 
-                        <div className="flex items-center gap-2">
-                            <input
+                            <select
+                                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                value={selectedDistrict}
+                                onChange={(e) => setSelectedDistrict(e.target.value)}
+                                disabled={loadingDistricts || !selectedState}
+                            >
+                                <option value="">All Districts</option>
+                                {districts.map((district) => (
+                                    <option key={district.district_id} value={district.district_id}>
+                                        {district.district_name}
+                                    </option>
+                                ))}
+                            </select>
+
+                            <select
+                                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                value={selectedBlock}
+                                onChange={(e) => setSelectedBlock(e.target.value)}
+                                disabled={loadingBlocks || !selectedDistrict}
+                            >
+                                <option value="">All Blocks</option>
+                                {blocks.map((block) => (
+                                    <option key={block.block_id} value={block.block_id}>
+                                        {block.block_name}
+                                    </option>
+                                ))}
+                            </select>
+
+                            <select
+                                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                value={selectedPeriod}
+                                onChange={(e) => setSelectedPeriod(e.target.value)}
+                            >
+                                <option value="today">Today</option>
+                                <option value="yesterday">Yesterday</option>
+                                <option value="7">Last 7 Days</option>
+                                <option value="15">Last 15 Days</option>
+                                <option value="30">Last 30 Days</option>
+                                <option value="all">All Time</option>
+                            </select>
+
+                          
+                             <input
                                 type="text"
                                 placeholder="Search GP..."
-                                className="px-3 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
 
-                        <div className="flex items-center gap-2 ml-auto">
+                        <div className="flex items-center gap-2">
+                             <button
+                                className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:text-gray-900 border border-gray-300 rounded"
+                                onClick={handleReset}
+                            >
+                                Reset
+                            </button>
+                        </div>
+
+                        {/* <div className="flex items-center gap-2 ml-auto">
                             <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm font-medium hover:bg-blue-200">GP Only</button>
                             <button className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm font-medium hover:bg-gray-200">Status: All</button>
                             <input
@@ -65,7 +198,7 @@ function NewInstallationDashboard() {
                             />
                             <button className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm font-medium hover:bg-gray-200">Checklist: Any</button>
                             <button className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm font-medium hover:bg-gray-200">Evidence: Any</button>
-                        </div>
+                        </div> */}
                     </div>
                     <div className="flex-1 overflow-auto">
                         <div className="p-6 max-w-full">
