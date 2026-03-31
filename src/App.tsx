@@ -82,6 +82,7 @@ import MachineSurveyDashboard from './components/MachineManagement/MachineSummar
 import NewConstructionDashboard from './components/Dashboards/NewConstructionDashboard';
 import ConstructionIssues from './components/DepthChart/ConstructionIssues';
 import ProtectedRoute, { PublicRoute } from './components/ProtectedRoute';
+import NewInstallationDashboard from './components/Dashboards/NewInstallationDashboard';
 //import AuditLogs from './components/AuditLogs';
 
 function App() {
@@ -229,7 +230,8 @@ function App() {
                   <>
                     <DefaultLayout>
                       <PageTitle title="Survey Dashboard" />
-                      <InstallationDashboard />
+                      {/* <InstallationDashboard /> */}
+                      <NewInstallationDashboard />
                     </DefaultLayout>
                   </>
                 }
