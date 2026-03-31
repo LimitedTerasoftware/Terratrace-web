@@ -5,9 +5,10 @@ import { Edit, Eye, Filter, Search, X, Plus, Users as UsersIcon, UserCheck, User
 import DataTable, { TableColumn } from 'react-data-table-component';
 import Modal from '../hooks/ModalPopup';
 import { Machine } from "../../types/machine";
+import { getMachineOptions } from "../Services/api";
 
 interface UsersData {
-  user_id: string | number
+  user_id: string;
   uname: string;
   email: string;
   version: string;
@@ -90,10 +91,8 @@ const Users = () => {
 
   const GetData = async () => {
     try {
-      const resp = await axios.get(`${TraceBASEURL}/get-all-machines`);
-      if (resp.status === 200 || resp.status === 201) {
-        setMachines(resp.data.machines);
-      }
+      const resp = await getMachineOptions();
+     setMachines(resp);
     } catch (error) {
       console.log(error);
     }

@@ -24,6 +24,7 @@ import {
   getDistrictData,
   getBlockData,
   machineApi,
+  getMachineOptions,
 } from '../../Services/api';
 import DataTable, { TableColumn } from 'react-data-table-component';
 import { Block, District } from '../../../types/survey';
@@ -232,10 +233,10 @@ export default function Dashboard() {
       setLoading(false);
     }
   };
-  const fetchMachineList = async (id: number) => {
+  const fetchMachineList = async (id: string) => {
     try {
-      const resp = await machineApi.getMachineList(id);
-      setMachineData(resp.machines);
+      const resp = await getMachineOptions(id);
+      setMachineData(resp);
       setShow(true);
       setError(null);
     } catch (err) {

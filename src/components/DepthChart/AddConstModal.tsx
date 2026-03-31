@@ -10,10 +10,13 @@ import axios from 'axios';
 import {
   getBlockData,
   getDistrictData,
+  getFirms,
+  getMachineOptions,
   getStateData,
   machineApi,
 } from '../Services/api';
-import { MachineDetailsResponse } from '../../types/machine';
+import { Machine, MachineDetailsResponse } from '../../types/machine';
+import { Firm } from '../../types/firm';
 
 interface FormErrors {
   [key: string]: string;
@@ -103,6 +106,12 @@ const getEventSpecificFields = () => {
       type: 'text',
       required: false,
     },
+     {
+      key: 'created_at',
+      label: 'Created At',
+      type: 'datetime-local',
+      required: false,
+    },
   ];
 
   return [...baseFields];
@@ -135,8 +144,8 @@ export function AddConstModal({
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
   const [Gp, setGp] = useState<GpData[]>([]);
-  const [Vehical, setVehical] = useState<any[]>([]);
-  const [firmname, setFirmName] = useState<MachineDetailsResponse | null>(null);
+  const [Vehical, setVehical] = useState<Machine[]>([]);
+  const [firmname, setFirmName] = useState<Firm[] | []>([]);
   const [Selectfirmname, seSelecttFirmName] = useState<string | ''>('');
 
   const fetchusers = async () => {
@@ -161,7 +170,7 @@ export function AddConstModal({
 
   const getFirm = async () => {
     try {
-      const response = await machineApi.getFirmDistanceStats();
+      const response = await getFirms();
 
       setFirmName(response);
     } catch (err: any) {
@@ -170,10 +179,8 @@ export function AddConstModal({
   };
   const getMachines = async (Selectfirmname: string) => {
     try {
-      const response = await axios.get(`${baseUrl}/get-machines`, {
-        params: { firm_name: Selectfirmname },
-      });
-      setVehical(response.data.data);
+      const response = await getMachineOptions(Selectfirmname);
+      setVehical(response);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch data');
     }
@@ -544,8 +551,8 @@ export function AddConstModal({
                       className="w-full px-3 py-2 border rounded-lg"
                     >
                       <option value="">Select Firm</option>
-                      {firmname?.data.map((code) => (
-                        <option key={code.firm_name} value={code.firm_name}>
+                      {firmname.map((code) => (
+                        <option key={code.id} value={code.id}>
                           {code.firm_name}
                         </option>
                       ))}

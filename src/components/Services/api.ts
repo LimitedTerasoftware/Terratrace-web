@@ -62,9 +62,11 @@ export const fetchMachineData = async (
   }
 };
 
-export const getMachineOptions = async () => {
+export const getMachineOptions = async (firm_id?: string) => {
   try {
-    const resp = await axios.get(`${TraceBASEURL}/get-all-machines`);
+    const resp = await axios.get(`${TraceBASEURL}/get-all-machines`,{
+       params: { firm_id: firm_id },
+    });
     if (resp.status === 200 || resp.status === 201) {
       return resp.data.machines;
     } else {
@@ -335,16 +337,7 @@ export const machineApi = {
     return response.json();
   },
 
-  getMachineList: async (firmId: number): Promise<MachineListApiResponse> => {
-    const params = new URLSearchParams({
-      firm_id: firmId.toString(),
-    });
-    const response = await fetch(`${TraceBASEURL}/get-all-machines?${params}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch machines');
-    }
-    return response.json();
-  },
+
 
   getFirmDistanceStats: async (
     stateId?: string,

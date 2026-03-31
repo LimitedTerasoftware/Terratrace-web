@@ -3,6 +3,7 @@ import { X, Save, Loader2, AlertCircle, Upload, Trash2 } from 'lucide-react';
 import { ImageUploadResponse, UGConstructionSurveyData } from '../../types/survey';
 import axios from 'axios';
 import { Machine } from '../../types/machine';
+import { getMachineOptions } from '../Services/api';
 
 interface FormErrors {
   [key: string]: string;
@@ -159,10 +160,8 @@ export function AddEventModal({ isOpen,Data,onClose, onSuccess, baseUrl }: AddEv
   const [machines, setMachines] = useState<Machine[]>([]);
     const GetMachineData = async () => {
     try {
-      const resp = await axios.get(`${baseUrl}/get-all-machines`);
-      if (resp.status === 200 || resp.status === 201) {
-        setMachines(resp.data.machines);
-      }
+      const resp = await getMachineOptions();
+      setMachines(resp);
     } catch (error) {
       console.log(error);
     }
