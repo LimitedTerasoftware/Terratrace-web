@@ -13,9 +13,9 @@ import {
   getFirms,
   getMachineOptions,
   getStateData,
-  machineApi,
+
 } from '../Services/api';
-import { Machine, MachineDetailsResponse } from '../../types/machine';
+import { Machine } from '../../types/machine';
 import { Firm } from '../../types/firm';
 
 interface FormErrors {

@@ -33,6 +33,9 @@ const MapComponent: React.FC<MapComponentProps> = ({
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [googleMarkers, setGoogleMarkers] = useState<google.maps.Marker[]>([]);
   const [polylines, setPolylines] = useState<google.maps.Polyline[]>([]);
+  const [kmlPointMarkers, setKmlPointMarkers] = useState<google.maps.Marker[]>(
+    [],
+  );
   const [constructionPolylines, setConstructionPolylines] = useState<
     google.maps.Polyline[]
   >([]);
@@ -119,7 +122,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
         map: map,
         title: `${markerData.activity.machine_registration_number} - ${markerData.activity.eventType}`,
         // icon: {
-          
+
         //   url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
         //   <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="${markerColor}">
         //     <path d="M12 2C7.03 2 3 6.03 3 11c0 5.25 6.57 10.74 8.55 12.27a1.5 1.5 0 0 0 1.9 0C14.43 21.74 21 16.25 21 11c0-4.97-4.03-9-9-9z"/>
@@ -228,7 +231,8 @@ const MapComponent: React.FC<MapComponentProps> = ({
                   lng: coord[1],
                 })),
                 geodesic: true,
-                strokeColor:connection.type === 'existing' ? '#00FF41' : '#FF1744',
+                strokeColor:
+                  connection.type === 'existing' ? '#00FF41' : '#FF1744',
                 strokeOpacity: 0.9,
                 strokeWeight: 5,
               });
@@ -276,6 +280,99 @@ const MapComponent: React.FC<MapComponentProps> = ({
     });
 
     setPolylines(newPolylines);
+  }, [map, kmlData]);
+
+  // Render KML points as markers
+  useEffect(() => {
+    if (!map) return;
+
+    kmlPointMarkers.forEach((marker) => marker.setMap(null));
+
+    if (!kmlData?.data) {
+      setKmlPointMarkers([]);
+      return;
+    }
+
+    const newMarkers: google.maps.Marker[] = [];
+
+    kmlData.data.forEach((blockData) => {
+      blockData.kml_data.forEach((kml) => {
+        kml.points.forEach((point) => {
+          try {
+            const coordinates = JSON.parse(point.coordinates) as [
+              number,
+              number,
+            ];
+            if (coordinates.length === 2) {
+              const marker = new google.maps.Marker({
+                position: { lat: coordinates[1], lng: coordinates[0] },
+                map: map,
+                title: point.name,
+                icon: {
+                  path: google.maps.SymbolPath.CIRCLE,
+                  scale: 8,
+                  fillColor: '#9333ea',
+                  fillOpacity: 1,
+                  strokeColor: '#ffffff',
+                  strokeWeight: 2,
+                },
+              });
+
+              const infoWindow = new google.maps.InfoWindow({
+                content: (() => {
+                  let parsedProps: Record<string, string> = {};
+                  try {
+                    parsedProps = JSON.parse(point.properties);
+                  } catch {}
+
+                  return `
+                    <div style="padding: 8px; min-width: 220px; max-width: 300px;">
+                      <h3 style="margin: 0 0 8px 0; color: #1f2937; font-size: 14px; font-weight: 600;">
+                        ${point.name}
+                      </h3>
+                      <p style="margin: 0 0 4px 0; color: #4b5563; font-size: 12px;">
+                        <strong>LGD Code:</strong> ${point.lgd_code}
+                      </p>
+                      <p style="margin: 0 0 4px 0; color: #4b5563; font-size: 12px;">
+                        <strong>Asset Code:</strong> ${parsedProps.asset_code || '-'}
+                      </p>
+                      <p style="margin: 0 0 4px 0; color: #4b5563; font-size: 12px;">
+                        <strong>Status:</strong> ${parsedProps.status || '-'}
+                      </p>
+                      <p style="margin: 0 0 4px 0; color: #4b5563; font-size: 12px;">
+                        <strong>Remarks:</strong> ${parsedProps.remarks || '-'}
+                      </p>
+                      <p style="margin: 0 0 4px 0; color: #4b5563; font-size: 12px;">
+                        <strong>Type:</strong> ${parsedProps.asset_type || parsedProps.type || '-'}
+                      </p>
+                      <p style="margin: 0 0 4px 0; color: #4b5563; font-size: 12px;">
+                        <strong>Route:</strong> ${parsedProps.route_code || parsedProps.ring || '-'}
+                      </p>
+                      <p style="margin: 0 0 4px 0; color: #6b7280; font-size: 11px;">
+                        <strong>Block:</strong> ${kml.blk_name}
+                      </p>
+                      <p style="margin: 0; color: #6b7280; font-size: 11px;">
+                        <strong>District:</strong> ${parsedProps.dt_name || '-'}
+                      </p>
+                    </div>
+                  `;
+                })(),
+              });
+
+              marker.addListener('click', () => {
+                infoWindow.open(map, marker);
+              });
+
+              newMarkers.push(marker);
+            }
+          } catch (e) {
+            console.error('Error parsing point coordinates:', e);
+          }
+        });
+      });
+    });
+
+    setKmlPointMarkers(newMarkers);
   }, [map, kmlData]);
 
   // Render construction path polylines (work done)
@@ -329,12 +426,14 @@ const MapComponent: React.FC<MapComponentProps> = ({
             `,
           });
           google.maps.event.addListenerOnce(infoWindow, 'domready', () => {
-          document.getElementById('viewDetailsBtn')?.addEventListener('click', () => {
-            navigate('/construction-details', {
-              state: { row: survey.survey_id, multipreview: true },
-            });
+            document
+              .getElementById('viewDetailsBtn')
+              ?.addEventListener('click', () => {
+                navigate('/construction-details', {
+                  state: { row: survey.survey_id, multipreview: true },
+                });
+              });
           });
-        });
 
           polyline.addListener('click', (event: google.maps.MapMouseEvent) => {
             if (event.latLng) {
@@ -356,6 +455,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
   useEffect(() => {
     return () => {
       polylines.forEach((polyline) => polyline.setMap(null));
+      kmlPointMarkers.forEach((marker) => marker.setMap(null));
       constructionPolylines.forEach((polyline) => polyline.setMap(null));
     };
   }, []);
@@ -380,28 +480,28 @@ const MapComponent: React.FC<MapComponentProps> = ({
             <div className="w-3 h-3 rounded-full bg-yellow-300"></div>
             <span className="text-xs text-gray-700">Construction Path</span>
           </div>
+          <div className="flex items-center gap-2 mt-1">
+            <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+            <span className="text-xs text-gray-700">KML Points</span>
+          </div>
         </div>
 
         {/* KML Legend */}
         <div className="mb-3">
-          <h4 className="text-sm font-semibold text-gray-900 mb-2">
-           Machines
-          </h4>
+          <h4 className="text-sm font-semibold text-gray-900 mb-2">Machines</h4>
           <div className="flex items-center gap-2">
             <div
               className="w-3 h-3 rounded-full"
               style={{ backgroundColor: '#16a34a' }}
             ></div>
             <span className="text-xs text-gray-700">Active</span>
-             <div
+            <div
               className="w-3 h-3 rounded-full"
               style={{ backgroundColor: '#FF0000' }}
             ></div>
             <span className="text-xs text-gray-700">InActive</span>
           </div>
         </div>
-
-        
       </div>
 
       {/* Legend */}

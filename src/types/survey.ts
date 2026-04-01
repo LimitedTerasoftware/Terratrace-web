@@ -762,6 +762,15 @@ export interface KMLConnection {
   status: string;
   properties: string;
 }
+export interface KMLPoint {
+  id: number;
+  network_id: number;
+  name: string;
+  coordinates: string; // "[long, lat]"
+  lgd_code: string;
+  created_at: string; // ISO date
+  properties: string; // stringified JSON (parse separately)
+}
 
 export interface KMLData {
   id: number;
@@ -781,6 +790,7 @@ export interface KMLData {
   user_id: number;
   user_name: string;
   connections: KMLConnection[];
+  points:KMLPoint[];
 }
 
 export interface MachineBlockKMLResponse {

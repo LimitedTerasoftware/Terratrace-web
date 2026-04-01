@@ -1,10 +1,10 @@
 import axios from 'axios';
 import { Search, User, Eye, X } from 'lucide-react';
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UGConstructionSurveyData } from '../../types/survey';
 import moment from 'moment';
-import * as XLSX from "xlsx";
+import * as XLSX from 'xlsx';
 import DataTable, { TableColumn } from 'react-data-table-component';
 import { AddConstModal } from './AddConstModal';
 
@@ -19,24 +19,35 @@ interface ReportProps {
     globalsearch: string;
     excel: boolean;
     filtersReady: boolean;
-    preview:boolean;
-    isAddModalOpen:boolean;
-
+    preview: boolean;
+    isAddModalOpen: boolean;
+    selectedConnection: number | null;
+    selectedRouteLink: number | null;
+    connectionStart?: string;
+    connectionEnd?: string;
   };
   Onexcel: () => void;
   OnPreview: () => void;
-  OnModal:()=>void;
+  OnModal: () => void;
 }
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
-const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview,OnModal }) => {
+const Report: React.FC<ReportProps> = ({
+  Data,
+  Onexcel,
+  OnPreview,
+  OnModal,
+}) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<UGConstructionSurveyData[]>([]);
-  const [selectedRows, setSelectedRows] = useState<UGConstructionSurveyData[]>([]);
+  const [selectedRows, setSelectedRows] = useState<UGConstructionSurveyData[]>(
+    [],
+  );
   const [toggleCleared, setToggleCleared] = useState(false);
-  const [selectedSurvey, setSelectedSurvey] = useState<UGConstructionSurveyData | null>(null);
+  const [selectedSurvey, setSelectedSurvey] =
+    useState<UGConstructionSurveyData | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -50,14 +61,14 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview,OnModal }) => {
         if (Data.selectedBlock) params.block_id = Data.selectedBlock;
         if (Data.fromdate) params.from_date = Data.fromdate;
         if (Data.todate) params.to_date = Data.todate;
-        if(Data.selectedStatus !== null) params.status = Data.selectedStatus;
-        if(Data.globalsearch.trim()) params.search = Data.globalsearch.trim();
-        
-        const response = await axios.get<{ status: boolean; data: UGConstructionSurveyData[] }>(
-          `${TraceBASEURL}/get-survey-data`,
-          { params }
-        );
-        
+        if (Data.selectedStatus !== null) params.status = Data.selectedStatus;
+        if (Data.globalsearch.trim()) params.search = Data.globalsearch.trim();
+
+        const response = await axios.get<{
+          status: boolean;
+          data: UGConstructionSurveyData[];
+        }>(`${TraceBASEURL}/get-survey-data`, { params });
+
         if (response.data.status) {
           setData(response.data.data);
         } else {
@@ -72,12 +83,25 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview,OnModal }) => {
         setLoading(false);
       }
     };
-    
+
     if (!Data.filtersReady) return;
     fetchSurveyData();
-  }, [Data.selectedState, Data.selectedDistrict, Data.selectedBlock, Data.fromdate, Data.todate, Data.filtersReady,Data.selectedStatus, Data.globalsearch,Data.isAddModalOpen]);
+  }, [
+    Data.selectedState,
+    Data.selectedDistrict,
+    Data.selectedBlock,
+    Data.fromdate,
+    Data.todate,
+    Data.filtersReady,
+    Data.selectedStatus,
+    Data.globalsearch,
+    Data.isAddModalOpen,
+  ]);
 
-  const handleView = async (row: UGConstructionSurveyData | any,check:boolean) => {
+  const handleView = async (
+    row: UGConstructionSurveyData | any,
+    check: boolean,
+  ) => {
     navigate('/construction-details', { state: { row, multipreview: check } });
   };
 
@@ -87,14 +111,19 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview,OnModal }) => {
     const lowerSearch = Data.globalsearch.toLowerCase();
 
     return data.filter((row: UGConstructionSurveyData) =>
-      Object.values(row).some((value) =>
-        (typeof value === 'string' || typeof value === 'number') &&
-        value.toString().toLowerCase().includes(lowerSearch)
-      )
+      Object.values(row).some(
+        (value) =>
+          (typeof value === 'string' || typeof value === 'number') &&
+          value.toString().toLowerCase().includes(lowerSearch),
+      ),
     );
   }, [Data.globalsearch, data]);
 
-  const handleRowSelected = (state: { allSelected: boolean; selectedCount: number; selectedRows: UGConstructionSurveyData[] }) => {
+  const handleRowSelected = (state: {
+    allSelected: boolean;
+    selectedCount: number;
+    selectedRows: UGConstructionSurveyData[];
+  }) => {
     setSelectedRows(state.selectedRows);
   };
 
@@ -149,94 +178,76 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview,OnModal }) => {
 
   const columns: TableColumn<UGConstructionSurveyData>[] = [
     {
-      name: "Survey ID",
-      selector: row => row.id,
+      name: 'Survey ID',
+      selector: (row) => row.id,
       sortable: true,
     },
     {
-      name: "State",
-      selector: row => row.state_name,
+      name: 'State',
+      selector: (row) => row.state_name,
       sortable: true,
-      wrap:true,
+      wrap: true,
+      cell: (row) => <span title={row.state_name}>{row.state_name}</span>,
+    },
+    {
+      name: 'District',
+      selector: (row) => row.district_name,
+      sortable: true,
+      maxWidth: '150px',
+      wrap: true,
+      cell: (row) => <span title={row.district_name}>{row.district_name}</span>,
+    },
+    {
+      name: 'Block',
+      selector: (row) => row.block_name,
+      sortable: true,
+      maxWidth: '130px',
+      wrap: true,
+      cell: (row) => <span title={row.block_name}>{row.block_name}</span>,
+    },
+    {
+      name: 'Construction Type',
+      selector: (row) => row.construction_type || '-',
+      sortable: true,
+      maxWidth: '150px',
       cell: (row) => (
-        <span title={row.state_name}>
-          {row.state_name}
+        <span
+          title={row.construction_type || '-'}
+          className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800 border border-purple-200 whitespace-nowrap truncate"
+        >
+          {row.construction_type || '-'}
         </span>
       ),
     },
     {
-      name: "District", 
-      selector: row => row.district_name,
+      name: 'Start GP',
+      selector: (row) => row.start_lgd_name,
       sortable: true,
-      maxWidth: "150px",
-      wrap:true,
+      maxWidth: '160px',
+      wrap: true,
       cell: (row) => (
-        <span title={row.district_name}>
-          {row.district_name}
-        </span>
+        <span title={row.start_lgd_name}>{row.start_lgd_name}</span>
       ),
     },
     {
-      name: "Block",
-      selector: row => row.block_name,
+      name: 'End GP',
+      selector: (row) => row.end_lgd_name,
       sortable: true,
-      maxWidth: "130px",
-      wrap:true,
-      cell: (row) => (
-        <span title={row.block_name} >
-          {row.block_name}
-        </span>
-      ),
+      maxWidth: '160px',
+      wrap: true,
+      cell: (row) => <span title={row.end_lgd_name}>{row.end_lgd_name}</span>,
     },
     {
-  name: "Construction Type",
-  selector: row => row.construction_type || "-",
-  sortable: true,
-  maxWidth: "150px",
-  cell: (row) => (
-    <span 
-      title={row.construction_type || "-"} 
-      className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800 border border-purple-200 whitespace-nowrap truncate"
-    >
-      {row.construction_type || "-"}
-    </span>
-  ),
-},
-    {
-      name: "Start GP",
-      selector: row => row.start_lgd_name,
-      sortable: true,
-      maxWidth: "160px",
-      wrap:true,
-      cell: (row) => (
-        <span title={row.start_lgd_name}>
-          {row.start_lgd_name}
-        </span>
-      ),
-    },
-    {
-      name: "End GP",
-      selector: row => row.end_lgd_name,
-      sortable: true,
-      maxWidth: "160px",
-      wrap:true,
-      cell: (row) => (
-        <span title={row.end_lgd_name}>
-          {row.end_lgd_name}
-        </span>
-      ),
-    },
-    {
-      name: "Distance (m)",
-      selector: row => row.total_distance || "0.00",
+      name: 'Distance (m)',
+      selector: (row) => row.total_distance || '0.00',
       sortable: true,
     },
     {
-      name: "Surveyor",
-      selector: row => row.user_name,
+      name: 'Surveyor',
+      selector: (row) => row.user_name,
       sortable: true,
-      minWidth: "160px",
-      maxWidth: "200px",
+      minWidth: '160px',
+      maxWidth: '200px',
       cell: (row) => (
         <div className="flex items-center min-w-0 w-full">
           <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center mr-2 flex-shrink-0">
@@ -249,44 +260,47 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview,OnModal }) => {
       ),
     },
     {
-      name: "Phone",
-      selector: row => row.user_mobile,
+      name: 'Phone',
+      selector: (row) => row.user_mobile,
       sortable: true,
-      minWidth: "130px",
-      maxWidth: "140px",
+      minWidth: '130px',
+      maxWidth: '140px',
       cell: (row) => (
-        <span className="font-mono text-sm">
-          {row.user_mobile}
-        </span>
+        <span className="font-mono text-sm">{row.user_mobile}</span>
       ),
     },
-     {
-        name: "Status",
-        selector: row => row.is_active,
-        sortable: true,
-        cell: (row ) => {
-          const status = row.is_active as 0 | 1 | 2;
-          const statusConfig = {
-            0: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800' },
-            1: { label: 'Accepted', className: 'bg-green-100 text-green-800' },
-            2: { label: 'Rejected', className: 'bg-red-100 text-red-800' }
-          };
-          const config = statusConfig[status] || { label: 'Unknown', className: 'bg-gray-100 text-gray-800' };
-
-          return (
-            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${config.className}`}>
-              {config.label}
-            </span>
-          );
-        }
-      },
-   
     {
-      name: "Created",
-      selector: row => row.created_at,
+      name: 'Status',
+      selector: (row) => row.is_active,
       sortable: true,
-      maxWidth: "140px",
-      cell: (row) => moment(row.created_at).format("DD/MM/YYYY"),
+      cell: (row) => {
+        const status = row.is_active as 0 | 1 | 2;
+        const statusConfig = {
+          0: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800' },
+          1: { label: 'Accepted', className: 'bg-green-100 text-green-800' },
+          2: { label: 'Rejected', className: 'bg-red-100 text-red-800' },
+        };
+        const config = statusConfig[status] || {
+          label: 'Unknown',
+          className: 'bg-gray-100 text-gray-800',
+        };
+
+        return (
+          <span
+            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${config.className}`}
+          >
+            {config.label}
+          </span>
+        );
+      },
+    },
+
+    {
+      name: 'Created',
+      selector: (row) => row.created_at,
+      sortable: true,
+      maxWidth: '140px',
+      cell: (row) => moment(row.created_at).format('DD/MM/YYYY'),
     },
     {
       name: 'Actions',
@@ -310,7 +324,7 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview,OnModal }) => {
       ignoreRowClick: true,
       allowOverflow: true,
       button: true,
-      maxWidth: "120px",
+      maxWidth: '120px',
     },
   ];
 
@@ -321,19 +335,25 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview,OnModal }) => {
         const workbook = XLSX.utils.book_new();
 
         const headers = [
-          "State Name",
-          "District Name", "Block Name",
-          "Start Location", "End Location","Construction Type",
-          "Surveyor Name", "Surveyor Mobile", "Created At", "Updated At",
+          'State Name',
+          'District Name',
+          'Block Name',
+          'Start Location',
+          'End Location',
+          'Construction Type',
+          'Surveyor Name',
+          'Surveyor Mobile',
+          'Created At',
+          'Updated At',
         ];
 
-        const dataRows = filteredData.map(row => [
+        const dataRows = filteredData.map((row) => [
           row.state_name,
           row.district_name,
           row.block_name,
           row.start_lgd_name,
           row.end_lgd_name,
-          row.construction_type || "-",
+          row.construction_type || '-',
           row.user_name,
           row.user_mobile,
           row.created_at,
@@ -341,8 +361,14 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview,OnModal }) => {
         ]);
 
         const worksheet = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Underground Construction");
-        XLSX.writeFile(workbook, "Underground_Construction.xlsx", { compression: true });
+        XLSX.utils.book_append_sheet(
+          workbook,
+          worksheet,
+          'Underground Construction',
+        );
+        XLSX.writeFile(workbook, 'Underground_Construction.xlsx', {
+          compression: true,
+        });
         Onexcel();
         setLoading(false);
       };
@@ -350,22 +376,24 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview,OnModal }) => {
     }
   }, [Data.excel]);
 
-
-  useEffect(()=>{
-    if(Data.preview === true ){
-      if(selectedRows.length === 0){
-      alert('Please select at least one row to preview the data.');
-      return;
+  useEffect(() => {
+    if (Data.preview === true) {
+      if (selectedRows.length === 0) {
+        alert('Please select at least one row to preview the data.');
+        return;
       }
-      const rowIds=selectedRows.map(row => row.id);
-      handleView(rowIds, true)
+      const rowIds = selectedRows.map((row) => row.id);
+      handleView(rowIds, true);
       OnPreview();
     }
-  },[Data.preview])
+  }, [Data.preview]);
 
   if (error) {
     return (
-      <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-200 dark:text-red-800" role="alert">
+      <div
+        className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-200 dark:text-red-800"
+        role="alert"
+      >
         <span className="font-medium">Error loading data:</span> {error}
       </div>
     );
@@ -400,12 +428,13 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview,OnModal }) => {
             <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
               <Search className="w-8 h-8 text-gray-400" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No construction data found</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              No construction data found
+            </h3>
             <p className="text-gray-500">
               {Data.globalsearch
                 ? 'Try adjusting your search or filter criteria.'
-                : 'There is no construction data available.'
-              }
+                : 'There is no construction data available.'}
             </p>
           </div>
         ) : (
@@ -429,9 +458,24 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview,OnModal }) => {
               progressPending={loading}
               progressComponent={
                 <div className="flex items-center justify-center py-8">
-                  <svg className="animate-spin h-8 w-8 text-blue-500" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin h-8 w-8 text-blue-500"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                 </div>
               }
@@ -445,7 +489,9 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview,OnModal }) => {
             <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6 border-b border-gray-200">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-xl font-semibold text-gray-900">Underground Construction  Details</h3>
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    Underground Construction Details
+                  </h3>
                   <button
                     onClick={() => setSelectedSurvey(null)}
                     className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
@@ -460,13 +506,17 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview,OnModal }) => {
                     <label className="block text-sm font-medium text-gray-500 mb-1">
                       State
                     </label>
-                    <p className="text-gray-900 font-medium">{selectedSurvey.state_name}</p>
+                    <p className="text-gray-900 font-medium">
+                      {selectedSurvey.state_name}
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-500 mb-1">
                       District
                     </label>
-                    <p className="text-gray-900">{selectedSurvey.district_name}</p>
+                    <p className="text-gray-900">
+                      {selectedSurvey.district_name}
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-500 mb-1">
@@ -484,13 +534,17 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview,OnModal }) => {
                     <label className="block text-sm font-medium text-gray-500 mb-1">
                       Start Location
                     </label>
-                    <p className="text-gray-900">{selectedSurvey.start_lgd_name}</p>
+                    <p className="text-gray-900">
+                      {selectedSurvey.start_lgd_name}
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-500 mb-1">
                       End Location
                     </label>
-                    <p className="text-gray-900">{selectedSurvey.end_lgd_name}</p>
+                    <p className="text-gray-900">
+                      {selectedSurvey.end_lgd_name}
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-500 mb-1">
@@ -502,7 +556,9 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview,OnModal }) => {
                     <label className="block text-sm font-medium text-gray-500 mb-1">
                       Surveyor Mobile
                     </label>
-                    <p className="text-gray-900">{selectedSurvey.user_mobile}</p>
+                    <p className="text-gray-900">
+                      {selectedSurvey.user_mobile}
+                    </p>
                   </div>
                 </div>
 
@@ -512,7 +568,9 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview,OnModal }) => {
                       Created At
                     </label>
                     <p className="text-gray-900 text-sm">
-                      {moment(selectedSurvey.created_at).format("DD/MM/YYYY, hh:mm A")}
+                      {moment(selectedSurvey.created_at).format(
+                        'DD/MM/YYYY, hh:mm A',
+                      )}
                     </p>
                   </div>
                   <div>
@@ -520,7 +578,9 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview,OnModal }) => {
                       Last Updated
                     </label>
                     <p className="text-gray-900 text-sm">
-                      {moment(selectedSurvey.updated_at).format("DD/MM/YYYY, hh:mm A")}
+                      {moment(selectedSurvey.updated_at).format(
+                        'DD/MM/YYYY, hh:mm A',
+                      )}
                     </p>
                   </div>
                 </div>
@@ -529,7 +589,7 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview,OnModal }) => {
                 <button
                   onClick={() => {
                     setSelectedSurvey(null);
-                    handleView(selectedSurvey,false);
+                    handleView(selectedSurvey, false);
                   }}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                 >
@@ -547,13 +607,13 @@ const Report: React.FC<ReportProps> = ({ Data, Onexcel,OnPreview,OnModal }) => {
         )}
       </div>
       <AddConstModal
-          isOpen={Data.isAddModalOpen}
-          onClose={()=>OnModal()}
-          onSuccess={()=>{
-              OnModal();
-          }}
-          baseUrl={TraceBASEURL}
-       />
+        isOpen={Data.isAddModalOpen}
+        onClose={() => OnModal()}
+        onSuccess={() => {
+          OnModal();
+        }}
+        baseUrl={TraceBASEURL}
+      />
     </div>
   );
 };
