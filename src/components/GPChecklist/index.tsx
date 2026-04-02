@@ -99,6 +99,13 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white border border-gray-300 rounded-lg shadow-md"
+      >
+        {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+      </button>
+
       <div className="flex">
         <div
           className={`${

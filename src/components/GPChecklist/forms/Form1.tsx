@@ -1,5 +1,14 @@
 import { useState, useEffect } from 'react';
-import { MapPin, Upload } from 'lucide-react';
+import {
+  MapPin,
+  Upload,
+  Building2,
+  QrCode,
+  FileText,
+  Camera,
+  CheckSquare,
+  Server,
+} from 'lucide-react';
 import { FormData } from '../../../types/gp-checklist';
 import {
   getStateData,
@@ -13,8 +22,8 @@ interface Form1Props {
   data: FormData['form1'];
   onChange: (data: FormData['form1']) => void;
 }
-  const BASEURL = import.meta.env.VITE_API_BASE;
-  const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
+const BASEURL = import.meta.env.VITE_API_BASE;
+const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
 export default function Form1({ data, onChange }: Form1Props) {
   const updateField = (field: string, value: string) => {
@@ -24,7 +33,7 @@ export default function Form1({ data, onChange }: Form1Props) {
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
-  const [Gps,setGPs] = useState<{ id: string; name: string }[]>([]);
+  const [Gps, setGPs] = useState<{ id: string; name: string }[]>([]);
   const [loadingStates, setLoadingStates] = useState(false);
   const [loadingDistricts, setLoadingDistricts] = useState(false);
   const [loadingBlocks, setLoadingBlocks] = useState(false);
@@ -102,13 +111,13 @@ export default function Form1({ data, onChange }: Form1Props) {
   const fetchGPs = async (blockCode: string) => {
     setLoadingGPs(true);
     try {
-       const res = await axios.get(`${BASEURL}/gpdata?block_code=${blockCode}`);
-        const data = res.data;
-        const options = data.map((g: any) => ({
-          id: g.id.toString(),
-          name: g.name.toString(),
-        }));
-        setGPs(options);
+      const res = await axios.get(`${BASEURL}/gpdata?block_code=${blockCode}`);
+      const data = res.data;
+      const options = data.map((g: any) => ({
+        id: g.id.toString(),
+        name: g.name.toString(),
+      }));
+      setGPs(options);
     } catch (error) {
       console.error('Error fetching GPs:', error);
     } finally {
@@ -118,12 +127,24 @@ export default function Form1({ data, onChange }: Form1Props) {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-gray-900">
-        General Site Verification
-      </h2>
+      <div className="flex items-center gap-3">
+        <div className="p-3 bg-blue-100 rounded-xl">
+          <MapPin className="w-6 h-6 text-blue-600" />
+        </div>
+        <h2 className="text-2xl font-semibold text-gray-900">
+          General Site Verification
+        </h2>
+      </div>
 
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-6">
-        <h3 className="text-lg font-medium text-gray-900">Location Details</h3>
+      <div className="bg-gradient-to-br from-gray-50 to-blue-50 border border-blue-200 rounded-xl p-6 space-y-6">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-blue-200 rounded-lg">
+            <MapPin className="w-4 h-4 text-blue-700" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Location Details
+          </h3>
+        </div>
         <div className="space-y-3">
           <select
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
@@ -171,7 +192,8 @@ export default function Form1({ data, onChange }: Form1Props) {
               </option>
             ))}
           </select>
-          <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+          <select
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             value={selectedGP}
             onChange={(e) => setSelectedGP(e.target.value)}
             disabled={loadingGPs || !selectedBlock}
@@ -185,10 +207,15 @@ export default function Form1({ data, onChange }: Form1Props) {
           </select>
         </div>
       </div>
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-4">
-        <h3 className="text-lg font-medium text-gray-900">
-          GP Location Verification
-        </h3>
+      <div className="bg-gradient-to-br from-gray-50 to-green-50 border border-green-200 rounded-xl p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-green-200 rounded-lg">
+            <MapPin className="w-4 h-4 text-green-700" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            GP Location Verification
+          </h3>
+        </div>
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input
@@ -213,11 +240,18 @@ export default function Form1({ data, onChange }: Form1Props) {
         </div>
       </div>
 
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-4">
-        <h3 className="text-lg font-medium text-gray-900">
-          GP Building Availability
-        </h3>
-        <p className="text-sm text-gray-600">Identify site infrastructure</p>
+      <div className="bg-gradient-to-br from-gray-50 to-purple-50 border border-purple-200 rounded-xl p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-purple-200 rounded-lg">
+            <Building2 className="w-4 h-4 text-purple-700" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            GP Building Availability
+          </h3>
+        </div>
+        <p className="text-sm text-gray-600 ml-7">
+          Identify site infrastructure
+        </p>
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium text-gray-900 mb-2">
@@ -239,18 +273,30 @@ export default function Form1({ data, onChange }: Form1Props) {
         </div>
       </div>
 
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-4">
-        <h3 className="text-lg font-medium text-gray-900">QR Code Images</h3>
+      <div className="bg-gradient-to-br from-gray-50 to-orange-50 border border-orange-200 rounded-xl p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-orange-200 rounded-lg">
+            <QrCode className="w-4 h-4 text-orange-700" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            QR Code Images
+          </h3>
+        </div>
         <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer">
           <Upload className="w-6 h-6 mx-auto mb-2 text-blue-600" />
           <p className="text-sm text-gray-600">Upload QR Code Image</p>
         </div>
       </div>
 
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-4">
-        <h3 className="text-lg font-medium text-gray-900">
-          Ensure route connectivity from Block to GP is complete and tested
-        </h3>
+      <div className="bg-gradient-to-br from-gray-50 to-red-50 border border-red-200 rounded-xl p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-red-200 rounded-lg">
+            <FileText className="w-4 h-4 text-red-700" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Ensure route connectivity from Block to GP is complete and tested
+          </h3>
+        </div>
         <div>
           <label className="block text-sm font-medium text-gray-900 mb-2">
             OTDR Report PDF
@@ -263,10 +309,15 @@ export default function Form1({ data, onChange }: Form1Props) {
         </div>
       </div>
 
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-4">
-        <h3 className="text-lg font-medium text-gray-900">
-          Geo-tagged site photo uploaded
-        </h3>
+      <div className="bg-gradient-to-br from-gray-50 to-cyan-50 border border-cyan-200 rounded-xl p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-cyan-200 rounded-lg">
+            <Camera className="w-4 h-4 text-cyan-700" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Geo-tagged site photo uploaded
+          </h3>
+        </div>
         <div className="flex gap-4">
           <label className="flex items-center cursor-pointer">
             <input
@@ -301,10 +352,15 @@ export default function Form1({ data, onChange }: Form1Props) {
         </button>
       </div>
 
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-4">
-        <h3 className="text-lg font-medium text-gray-900">
-          Site board installed
-        </h3>
+      <div className="bg-gradient-to-br from-gray-50 to-indigo-50 border border-indigo-200 rounded-xl p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-indigo-200 rounded-lg">
+            <CheckSquare className="w-4 h-4 text-indigo-700" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Site board installed
+          </h3>
+        </div>
         <div className="flex gap-4">
           <label className="flex items-center cursor-pointer">
             <input
@@ -346,10 +402,15 @@ export default function Form1({ data, onChange }: Form1Props) {
         </div>
       </div>
 
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-4">
-        <h3 className="text-lg font-medium text-gray-900">
-          Smart Rack Installed?
-        </h3>
+      <div className="bg-gradient-to-br from-gray-50 to-pink-50 border border-pink-200 rounded-xl p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-pink-200 rounded-lg">
+            <Server className="w-4 h-4 text-pink-700" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Smart Rack Installed?
+          </h3>
+        </div>
         <div className="flex gap-3">
           <button className="flex-1 px-6 py-3 bg-white border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-sm font-medium">
             YES

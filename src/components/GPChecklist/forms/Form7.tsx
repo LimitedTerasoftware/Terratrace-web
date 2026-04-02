@@ -1,4 +1,5 @@
-import { FormData } from "../../../types/gp-checklist";
+import { ClipboardCheck, FileCheck, QrCode, PenTool } from 'lucide-react';
+import { FormData } from '../../../types/gp-checklist';
 
 interface Form7Props {
   data: FormData['form7'];
@@ -12,9 +13,25 @@ export default function Form7({ data, onChange }: Form7Props) {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-gray-900">Final Acceptance</h2>
+      <div className="flex items-center gap-3">
+        <div className="p-3 bg-emerald-100 rounded-xl">
+          <ClipboardCheck className="w-6 h-6 text-emerald-600" />
+        </div>
+        <h2 className="text-2xl font-semibold text-gray-900">
+          Final Acceptance
+        </h2>
+      </div>
 
-      <div className="space-y-6">
+      <div className="bg-gradient-to-br from-gray-50 to-blue-50 border border-blue-200 rounded-xl p-6 space-y-6">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-blue-200 rounded-lg">
+            <ClipboardCheck className="w-4 h-4 text-blue-700" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            PAT Completion
+          </h3>
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-900 mb-2">
             PAT completed and results uploaded
@@ -45,6 +62,15 @@ export default function Form7({ data, onChange }: Form7Props) {
             </label>
           </div>
         </div>
+      </div>
+
+      <div className="bg-gradient-to-br from-gray-50 to-green-50 border border-green-200 rounded-xl p-6 space-y-6">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-green-200 rounded-lg">
+            <FileCheck className="w-4 h-4 text-green-700" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">FAT Approval</h3>
+        </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-900 mb-2">
@@ -59,7 +85,7 @@ export default function Form7({ data, onChange }: Form7Props) {
                 value="yes"
                 checked={data?.fatApproved === 'yes'}
                 onChange={(e) => updateField('fatApproved', e.target.value)}
-                className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
               />
               <span className="ml-2 text-sm text-gray-700">Yes</span>
             </label>
@@ -70,18 +96,31 @@ export default function Form7({ data, onChange }: Form7Props) {
                 value="no"
                 checked={data?.fatApproved === 'no'}
                 onChange={(e) => updateField('fatApproved', e.target.value)}
-                className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
               />
               <span className="ml-2 text-sm text-gray-700">No</span>
             </label>
           </div>
+        </div>
+      </div>
+
+      <div className="bg-gradient-to-br from-gray-50 to-orange-50 border border-orange-200 rounded-xl p-6 space-y-6">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-orange-200 rounded-lg">
+            <QrCode className="w-4 h-4 text-orange-700" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            QR Tag Verification
+          </h3>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-900 mb-2">
             QR tag verified to link with GIS asset record
           </label>
-          <p className="text-sm text-gray-600 mb-3">QR Tag Verification Image</p>
+          <p className="text-sm text-gray-600 mb-3">
+            QR Tag Verification Image
+          </p>
           <div className="flex gap-4">
             <label className="flex items-center cursor-pointer">
               <input
@@ -90,7 +129,7 @@ export default function Form7({ data, onChange }: Form7Props) {
                 value="yes"
                 checked={data?.qrTagVerified === 'yes'}
                 onChange={(e) => updateField('qrTagVerified', e.target.value)}
-                className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                className="w-4 h-4 text-orange-600 border-gray-300 focus:ring-orange-500"
               />
               <span className="ml-2 text-sm text-gray-700">Yes</span>
             </label>
@@ -101,19 +140,32 @@ export default function Form7({ data, onChange }: Form7Props) {
                 value="no"
                 checked={data?.qrTagVerified === 'no'}
                 onChange={(e) => updateField('qrTagVerified', e.target.value)}
-                className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                className="w-4 h-4 text-orange-600 border-gray-300 focus:ring-orange-500"
               />
               <span className="ml-2 text-sm text-gray-700">No</span>
             </label>
           </div>
+        </div>
+      </div>
+
+      <div className="bg-gradient-to-br from-gray-50 to-purple-50 border border-purple-200 rounded-xl p-6 space-y-6">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-purple-200 rounded-lg">
+            <PenTool className="w-4 h-4 text-purple-700" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">HOTO Memo</h3>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-900 mb-2">
             HOTO (Hand Over-Take Over) memo signed
           </label>
-          <p className="text-sm text-gray-600 mb-3">Sign Off Handover Ops Team</p>
-          <p className="text-sm text-gray-600 mb-3">HOTO Memo Signature Image</p>
+          <p className="text-sm text-gray-600 mb-3">
+            Sign Off Handover Ops Team
+          </p>
+          <p className="text-sm text-gray-600 mb-3">
+            HOTO Memo Signature Image
+          </p>
           <div className="flex gap-4">
             <label className="flex items-center cursor-pointer">
               <input
@@ -122,7 +174,7 @@ export default function Form7({ data, onChange }: Form7Props) {
                 value="yes"
                 checked={data?.hotoSigned === 'yes'}
                 onChange={(e) => updateField('hotoSigned', e.target.value)}
-                className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
               />
               <span className="ml-2 text-sm text-gray-700">Yes</span>
             </label>
@@ -133,7 +185,7 @@ export default function Form7({ data, onChange }: Form7Props) {
                 value="no"
                 checked={data?.hotoSigned === 'no'}
                 onChange={(e) => updateField('hotoSigned', e.target.value)}
-                className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
               />
               <span className="ml-2 text-sm text-gray-700">No</span>
             </label>

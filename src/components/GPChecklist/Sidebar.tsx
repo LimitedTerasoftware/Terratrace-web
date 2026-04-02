@@ -1,4 +1,15 @@
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  MapPin,
+  Network,
+  Wrench,
+  Zap,
+  Globe,
+  ShieldCheck,
+  ClipboardCheck,
+  FileCheck,
+} from 'lucide-react';
 import { FormStep } from '../../types/gp-checklist';
 
 interface SidebarProps {
@@ -42,6 +53,16 @@ const formSteps: FormStep[] = [
   },
 ];
 
+const formIcons = {
+  1: MapPin,
+  2: Network,
+  3: Wrench,
+  4: Zap,
+  5: Globe,
+  6: ShieldCheck,
+  7: ClipboardCheck,
+};
+
 export default function Sidebar({
   currentForm,
   progress,
@@ -49,11 +70,14 @@ export default function Sidebar({
   completedForms,
 }: SidebarProps) {
   return (
-    <div className="w-72 bg-white border-r border-gray-200 h-fit flex-shrink-0">
+    <div className="w-72 bg-white border-r border-gray-200 h-screen flex-shrink-0">
       <div className="p-6 h-full overflow-y-auto">
-        <h1 className="text-2xl font-semibold text-blue-600 mb-1">
-          GP Checklist
-        </h1>
+        <div className="flex items-center gap-3 mb-2">
+          <div className="p-2 bg-blue-100 rounded-lg">
+            <FileCheck className="w-6 h-6 text-blue-600" />
+          </div>
+          <h1 className="text-2xl font-semibold text-blue-600">GP Checklist</h1>
+        </div>
         <p className="text-sm text-gray-600 mb-6">
           Telecom Project Verification
         </p>
@@ -77,6 +101,7 @@ export default function Sidebar({
           {formSteps.map((step) => {
             const isActive = currentForm === step.id;
             const isCompleted = completedForms.has(step.id);
+            const Icon = formIcons[step.id as keyof typeof formIcons];
 
             return (
               <button
@@ -88,25 +113,34 @@ export default function Sidebar({
                     : 'border-2 border-transparent hover:bg-gray-50'
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <span
-                    className={`text-sm font-medium ${isActive ? 'text-blue-700' : 'text-gray-700'}`}
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`p-2 rounded-lg ${isActive ? 'bg-blue-100' : 'bg-gray-100'}`}
                   >
-                    {step.title}
-                  </span>
+                    <Icon
+                      className={`w-5 h-5 ${isActive ? 'text-blue-600' : 'text-gray-500'}`}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <span
+                      className={`text-sm font-medium ${isActive ? 'text-blue-700' : 'text-gray-700'}`}
+                    >
+                      {step.title}
+                    </span>
+                    {isCompleted && !isActive && (
+                      <div className="mt-1">
+                        <span className="text-xs text-green-600 font-medium">
+                          ✓ Completed
+                        </span>
+                      </div>
+                    )}
+                  </div>
                   {isActive ? (
                     <ChevronUp className="w-4 h-4 text-blue-600" />
                   ) : (
                     <ChevronDown className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
                   )}
                 </div>
-                {isCompleted && !isActive && (
-                  <div className="mt-1">
-                    <span className="text-xs text-green-600 font-medium">
-                      ✓ Completed
-                    </span>
-                  </div>
-                )}
               </button>
             );
           })}
