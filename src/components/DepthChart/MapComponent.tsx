@@ -233,8 +233,8 @@ const MapComponent: React.FC<MapComponentProps> = ({
                 geodesic: true,
                 strokeColor:
                   connection.type === 'existing' ? '#00FF41' : '#FF1744',
-                strokeOpacity: 0.9,
-                strokeWeight: 5,
+                strokeOpacity: connection.type === 'existing' ? 0.7 : 1.0,
+                strokeWeight: connection.type === 'existing' ? 3 : 4,
               });
 
               const infoWindow = new google.maps.InfoWindow({
@@ -304,27 +304,97 @@ const MapComponent: React.FC<MapComponentProps> = ({
               number,
             ];
             if (coordinates.length === 2) {
+              let parsedProps: Record<string, string> = {};
+              try {
+                parsedProps = JSON.parse(point.properties);
+              } catch {}
+              let markerIcon: google.maps.Symbol | google.maps.Icon | undefined;
+              const assetType =
+                parsedProps.asset_type || parsedProps.type || 'FPOI';
+
+              if (assetType === 'GP') {
+                markerIcon = {
+                  path: google.maps.SymbolPath.CIRCLE,
+                  scale: 14,
+                  fillColor: '#4ECDC4',
+                  fillOpacity: 0.9,
+                  strokeColor: '#000000',
+                  strokeWeight: 3,
+                } as google.maps.Symbol;
+              } else if (assetType === 'BHQ') {
+                markerIcon = {
+                  path: 'M-8,-8 L8,-8 L8,8 L-8,8 Z',
+                  scale: 1,
+                  fillColor: '#DC2626',
+                  fillOpacity: 0.9,
+                  strokeColor: '#ffffff',
+                  strokeWeight: 3,
+                } as google.maps.Symbol;
+              } else if (assetType === 'Block Router') {
+                markerIcon = {
+                  path: 'M-8,-8 L8,-8 L8,8 L-8,8 Z',
+                  scale: 1,
+                  fillColor: '#1F2937',
+                  fillOpacity: 0.9,
+                  strokeColor: '#ffffff',
+                  strokeWeight: 3,
+                } as google.maps.Symbol;
+              } else if (assetType === 'FPOI') {
+                markerIcon = {
+                  path: 'M0,-12 L8,8 L-8,8 Z',
+                  scale: 1,
+                  fillColor: '#F8C471',
+                  fillOpacity: 0.9,
+                  strokeColor: '#ffffff',
+                  strokeWeight: 2,
+                } as google.maps.Symbol;
+              } else if (assetType === 'SJC') {
+                markerIcon = {
+                  path: 'M-6,-6 L6,-6 L6,6 L-6,6 Z',
+                  scale: 1.2,
+                  fillColor: '#22D3EE',
+                  fillOpacity: 0.9,
+                  strokeColor: '#ffffff',
+                  strokeWeight: 2,
+                  rotation: 45,
+                } as google.maps.Symbol;
+              } else if (assetType === 'BJC') {
+                markerIcon = {
+                  path: google.maps.SymbolPath.CIRCLE,
+                  scale: 8,
+                  fillColor: '#A78BFA',
+                  fillOpacity: 0.9,
+                  strokeColor: '#ffffff',
+                  strokeWeight: 2,
+                } as google.maps.Symbol;
+              } else if (assetType === 'LC') {
+                markerIcon = {
+                  path: 'M0,-8 L8,0 L0,8 L-8,0 Z',
+                  scale: 1,
+                  fillColor: '#FBBF24',
+                  fillOpacity: 0.9,
+                  strokeColor: '#ffffff',
+                  strokeWeight: 2,
+                } as google.maps.Symbol;
+              } else {
+                markerIcon = {
+                  path: 'M-6,-6 L6,-6 L6,6 L-6,6 Z M-4,-4 L4,-4 L4,4 L-4,4 Z',
+                  scale: 1,
+                  fillColor: '#EF4444',
+                  fillOpacity: 0.9,
+                  strokeColor: '#ffffff',
+                  strokeWeight: 2,
+                } as google.maps.Symbol;
+              }
               const marker = new google.maps.Marker({
                 position: { lat: coordinates[1], lng: coordinates[0] },
                 map: map,
                 title: point.name,
-                icon: {
-                  path: google.maps.SymbolPath.CIRCLE,
-                  scale: 8,
-                  fillColor: '#9333ea',
-                  fillOpacity: 1,
-                  strokeColor: '#ffffff',
-                  strokeWeight: 2,
-                },
+                icon: markerIcon,
               });
 
               const infoWindow = new google.maps.InfoWindow({
                 content: (() => {
-                  let parsedProps: Record<string, string> = {};
-                  try {
-                    parsedProps = JSON.parse(point.properties);
-                  } catch {}
-
                   return `
                     <div style="padding: 8px; min-width: 220px; max-width: 300px;">
                       <h3 style="margin: 0 0 8px 0; color: #1f2937; font-size: 14px; font-weight: 600;">
@@ -463,73 +533,99 @@ const MapComponent: React.FC<MapComponentProps> = ({
     <div className="relative w-full h-full">
       <div ref={mapRef} className="w-full h-full rounded-lg" />
       <div className="absolute top-20 right-4 bg-white p-3 rounded-lg shadow-lg border border-gray-200 max-w-xs">
-        {/* Status Legend */}
         <div className="mb-3">
           <h4 className="text-sm font-semibold text-gray-900 mb-2">Cable</h4>
-
           <div className="flex items-center gap-2 mb-1">
-            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+            <div className="w-3 h-3 rounded-full bg-[#00FF41]"></div>
             <span className="text-xs text-gray-700">Existing</span>
           </div>
-
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-red-500"></div>
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-3 h-3 rounded-full bg-[#FF1744]"></div>
             <span className="text-xs text-gray-700">Proposed</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-yellow-300"></div>
+            <div className="w-3 h-3 rounded-full bg-[#FFFF2E]"></div>
             <span className="text-xs text-gray-700">Construction Path</span>
           </div>
-          <div className="flex items-center gap-2 mt-1">
-            <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-            <span className="text-xs text-gray-700">KML Points</span>
-          </div>
         </div>
 
-        {/* KML Legend */}
         <div className="mb-3">
-          <h4 className="text-sm font-semibold text-gray-900 mb-2">Machines</h4>
-          <div className="flex items-center gap-2">
-            <div
-              className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: '#16a34a' }}
-            ></div>
-            <span className="text-xs text-gray-700">Active</span>
-            <div
-              className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: '#FF0000' }}
-            ></div>
-            <span className="text-xs text-gray-700">InActive</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Legend */}
-      {machineData && Object.keys(machineData).length > 0 && (
-        <div className="absolute top-20 right-4 bg-white p-3 rounded-lg shadow-lg border border-gray-200 max-w-xs">
           <h4 className="text-sm font-semibold text-gray-900 mb-2">
-            Machine Id
+            Points
           </h4>
-
-          <div className="space-y-1">
-            {Array.from(
-              new Set(
-                Object.values(machineData).map((m) => m.registration_number),
-              ),
-            ).map((regNumber) => (
-              <div key={regNumber} className="flex items-center gap-2">
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: getColorByRegistration(regNumber) }}
-                ></div>
-                <span className="text-xs text-gray-700">
-                  {regNumber.replace('_', ' ')}
-                </span>
-              </div>
-            ))}
+          <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+            <div className="flex items-center gap-1">
+              <div className="w-2.5 h-2.5 rounded-full bg-[#4ECDC4]"></div>
+              <span className="text-xs text-gray-700">GP</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2.5 h-2.5 rounded bg-[#DC2626]"></div>
+              <span className="text-xs text-gray-700">BHQ</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2.5 h-2.5 rounded bg-[#1F2937]"></div>
+              <span className="text-xs text-gray-700">Block Router</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-0 h-0 border-l-[5px] border-r-[5px] border-b-[8px] border-l-transparent border-r-transparent border-b-[#F8C471]"></div>
+              <span className="text-xs text-gray-700">FPOI</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2.5 h-2.5 rotate-45 bg-[#22D3EE]"></div>
+              <span className="text-xs text-gray-700">SJC</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2.5 h-2.5 rounded-full bg-[#A78BFA]"></div>
+              <span className="text-xs text-gray-700">BJC</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-0 h-0 border-l-[4px] border-r-[4px] border-b-[6px] border-l-transparent border-r-transparent border-b-[#FBBF24]"></div>
+              <span className="text-xs text-gray-700">LC</span>
+            </div>
           </div>
         </div>
-      )}
+
+        <div className="mb-3">
+          <h4 className="text-sm font-semibold text-gray-900 mb-2">
+            Machine Status
+          </h4>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-[#16a34a]"></div>
+            <span className="text-xs text-gray-700">Active</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-[#dc2626]"></div>
+            <span className="text-xs text-gray-700">Inactive</span>
+          </div>
+        </div>
+
+        {machineData && Object.keys(machineData).length > 0 && (
+          <div className="mb-3">
+            <h4 className="text-sm font-semibold text-gray-900 mb-2">
+              Machine Id
+            </h4>
+            <div className="space-y-1">
+              {Array.from(
+                new Set(
+                  Object.values(machineData).map((m) => m.registration_number),
+                ),
+              ).map((regNumber) => (
+                <div key={regNumber} className="flex items-center gap-2">
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{
+                      backgroundColor: getColorByRegistration(regNumber),
+                    }}
+                  ></div>
+                  <span className="text-xs text-gray-700">
+                    {regNumber.replace('_', ' ')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

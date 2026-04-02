@@ -50,6 +50,9 @@ import {
   ChartGanttIcon,
   ClipboardIcon,
   AlertTriangle,
+  ListCheckIcon,
+  ListFilterIcon,
+  ListOrdered,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -582,14 +585,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                     `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
                                   }
                                 >
-                                  <Building2
+                                  <ListCheckIcon
                                     size={16}
                                     className="min-w-[16px] flex-shrink-0 opacity-80"
                                   />
                                   <span
                                     className={`${isOpen ? 'block' : 'hidden'} truncate`}
                                   >
-                                    Construction
+                                    Construction List
                                   </span>
                                 </NavLink>
                               </li>
@@ -730,14 +733,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                     `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
                                   }
                                 >
-                                  <Settings
+                                  <ListOrdered
                                     size={16}
                                     className="min-w-[16px] flex-shrink-0 opacity-80"
                                   />
                                   <span
                                     className={`${isOpen ? 'block' : 'hidden'} truncate`}
                                   >
-                                    Equipment Installation
+                                    Installation List
                                   </span>
                                 </NavLink>
                               </li>
