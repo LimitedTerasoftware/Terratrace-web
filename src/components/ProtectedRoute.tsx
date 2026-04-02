@@ -13,8 +13,13 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 export const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   const token = localStorage.getItem('token');
+  const { pathname } = window.location;
 
-  if (token) {
+  if (
+    token &&
+    pathname !== '/gp-checklist' &&
+    pathname !== '/machine-activity'
+  ) {
     return <Navigate to="/dashboard" replace />;
   }
 

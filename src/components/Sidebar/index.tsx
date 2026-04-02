@@ -53,6 +53,7 @@ import {
   ListCheckIcon,
   ListFilterIcon,
   ListOrdered,
+  CheckSquare,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -661,7 +662,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                 {/* Installation */}
                 {(!viewOnly || installationAccess || adminUser) && (
                   <SidebarLinkGroup
-                    activeCondition={pathname.includes('installation')}
+                    activeCondition={
+                      pathname.includes('installation') ||
+                      pathname.includes('gp-checklist')
+                    }
                   >
                     {(handleClick, open) => {
                       return (
@@ -741,6 +745,25 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                     className={`${isOpen ? 'block' : 'hidden'} truncate`}
                                   >
                                     Installation List
+                                  </span>
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/gp-checklist"
+                                  target="_blank"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <CheckSquare
+                                    size={16}
+                                    className="min-w-[16px] flex-shrink-0 opacity-80"
+                                  />
+                                  <span
+                                    className={`${isOpen ? 'block' : 'hidden'} truncate`}
+                                  >
+                                    GP Checklist
                                   </span>
                                 </NavLink>
                               </li>

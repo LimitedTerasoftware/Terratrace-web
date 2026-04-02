@@ -412,7 +412,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
                       <p style="margin: 0 0 4px 0; color: #4b5563; font-size: 12px;">
                         <strong>Remarks:</strong> ${parsedProps.remarks || '-'}
                       </p>
-                      <p style="margin: 0 0 4px 0; color: #4b5563; font-size: 12px;">
+                      <p style="margin: 0 0 4px 0; color: #4b5563; font-size: 12px; background-color: #f3f4f6; padding: 4px;">
                         <strong>Type:</strong> ${parsedProps.asset_type || parsedProps.type || '-'}
                       </p>
                       <p style="margin: 0 0 4px 0; color: #4b5563; font-size: 12px;">

@@ -83,6 +83,7 @@ import NewConstructionDashboard from './components/Dashboards/NewConstructionDas
 import ConstructionIssues from './components/DepthChart/ConstructionIssues';
 import ProtectedRoute, { PublicRoute } from './components/ProtectedRoute';
 import NewInstallationDashboard from './components/Dashboards/NewInstallationDashboard';
+import GPChecklist from './components/GPChecklist';
 //import AuditLogs from './components/AuditLogs';
 
 function App() {
@@ -101,7 +102,10 @@ function App() {
   const isAuthRoute =
     pathname === '/auth/signin' ||
     pathname === '/auth/signup' ||
-    pathname === '/machine-activity';
+    pathname === '/machine-activity' ||
+    pathname === '/gp-checklist' ||
+    pathname === '/privacy' ||
+    pathname === '/terms';
 
   return loading ? (
     <Loader />
@@ -137,6 +141,33 @@ function App() {
                 <>
                   <PageTitle title="Machine Activity" />
                   <MachineSurveyDashboard />
+                </>
+              }
+            />
+            <Route
+              path="/gp-checklist"
+              element={
+                <>
+                  <PageTitle title="GP Checklist" />
+                  <GPChecklist />
+                </>
+              }
+            />
+            <Route
+              path="/privacy"
+              element={
+                <>
+                  <PageTitle title="PrivacyPolicy" />
+                  <PrivacyPolicy />
+                </>
+              }
+            />
+            <Route
+              path="/terms"
+              element={
+                <>
+                  <PageTitle title="Terms" />
+                  <Terms />
                 </>
               }
             />
@@ -856,24 +887,6 @@ function App() {
                 }
               />
 
-              <Route
-                path="/privacy"
-                element={
-                  <>
-                    <PageTitle title="PrivacyPolicy" />
-                    <PrivacyPolicy />
-                  </>
-                }
-              />
-              <Route
-                path="/terms"
-                element={
-                  <>
-                    <PageTitle title="Terms" />
-                    <Terms />
-                  </>
-                }
-              />
               <Route
                 path="*"
                 element={
