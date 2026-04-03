@@ -43,6 +43,9 @@ export default function Form1({ data, onChange }: Form1Props) {
   const [selectedDistrict, setSelectedDistrict] = useState('');
   const [selectedBlock, setSelectedBlock] = useState('');
   const [selectedGP, setSelectedGP] = useState('');
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
+  const [gpsLoading, setGpsLoading] = useState(false);
 
   useEffect(() => {
     fetchStates();
@@ -123,6 +126,26 @@ export default function Form1({ data, onChange }: Form1Props) {
     } finally {
       setLoadingGPs(false);
     }
+  };
+
+  const captureGPSLocation = () => {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser');
+      return;
+    }
+    setGpsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLatitude(position.coords.latitude.toString());
+        setLongitude(position.coords.longitude.toString());
+        setGpsLoading(false);
+      },
+      (error) => {
+        alert('Error getting location: ' + error.message);
+        setGpsLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
   };
 
   return (
@@ -222,16 +245,24 @@ export default function Form1({ data, onChange }: Form1Props) {
               type="text"
               placeholder="Latitude"
               className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              value={latitude}
+              onChange={(e) => setLatitude(e.target.value)}
             />
             <input
               type="text"
               placeholder="Longitude"
               className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              value={longitude}
+              onChange={(e) => setLongitude(e.target.value)}
             />
           </div>
-          <button className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm font-medium">
+          <button
+            className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm font-medium disabled:opacity-50"
+            onClick={captureGPSLocation}
+            disabled={gpsLoading}
+          >
             <MapPin className="w-4 h-4" />
-            CAPTURE GPS LOCATION
+            {gpsLoading ? 'Capturing...' : 'CAPTURE GPS LOCATION'}
           </button>
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer">
             <Upload className="w-6 h-6 mx-auto mb-2 text-blue-600" />
