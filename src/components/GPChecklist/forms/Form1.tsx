@@ -8,8 +8,9 @@ import {
   Camera,
   CheckSquare,
   Server,
+  X,
 } from 'lucide-react';
-import { FormData } from '../../../types/gp-checklist';
+import { FormData, GeoTaggedImage } from '../../../types/gp-checklist';
 import {
   getStateData,
   getDistrictData,
@@ -17,19 +18,17 @@ import {
 } from '../../Services/api';
 import { StateData, District, Block } from '../../../types/survey';
 import axios from 'axios';
+import ImageCapture from './ImageCapture';
+import TricadLogo from '../../../images/logo/Tricad.png';
 
 interface Form1Props {
-  data: FormData['form1'];
-  onChange: (data: FormData['form1']) => void;
+  data: FormData['form1'] | undefined;
+  onChange: (data: FormData['form1'] | undefined) => void;
 }
 const BASEURL = import.meta.env.VITE_API_BASE;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
 export default function Form1({ data, onChange }: Form1Props) {
-  const updateField = (field: string, value: string) => {
-    onChange({ ...data, [field]: value });
-  };
-
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -46,6 +45,11 @@ export default function Form1({ data, onChange }: Form1Props) {
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
   const [gpsLoading, setGpsLoading] = useState(false);
+  const [siteImages, setSiteImages] = useState<GeoTaggedImage[]>([]);
+  const [geotaggedSiteImages, setGeotaggedSiteImages] = useState<GeoTaggedImage[]>([]);
+  const [buildingImages, setBuildingImages] = useState<GeoTaggedImage[]>([]);
+  const [qrCodeImages, setQrCodeImages] = useState<GeoTaggedImage[]>([]);
+  const [smartRackImages, setSmartRackImages] = useState<GeoTaggedImage[]>([]);
 
   useEffect(() => {
     fetchStates();
@@ -136,8 +140,11 @@ export default function Form1({ data, onChange }: Form1Props) {
     setGpsLoading(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setLatitude(position.coords.latitude.toString());
-        setLongitude(position.coords.longitude.toString());
+        const lat = position.coords.latitude.toString();
+        const lng = position.coords.longitude.toString();
+        setLatitude(lat);
+        setLongitude(lng);
+        onChange({ ...data, latitude: lat, longitude: lng });
         setGpsLoading(false);
       },
       (error) => {
@@ -146,6 +153,106 @@ export default function Form1({ data, onChange }: Form1Props) {
       },
       { enableHighAccuracy: true, timeout: 10000 },
     );
+  };
+
+  const handleStateChange = (stateId: string) => {
+    setSelectedState(stateId);
+    setSelectedDistrict('');
+    setSelectedBlock('');
+    setSelectedGP('');
+    onChange({
+      ...data,
+      stateId,
+      districtId: '',
+      blockId: '',
+      gpId: '',
+      gpName: '',
+    });
+  };
+
+  const handleDistrictChange = (districtId: string) => {
+    setSelectedDistrict(districtId);
+    setSelectedBlock('');
+    setSelectedGP('');
+    onChange({ ...data, districtId, blockId: '', gpId: '', gpName: '' });
+  };
+
+  const handleBlockChange = (blockId: string) => {
+    setSelectedBlock(blockId);
+    setSelectedGP('');
+    onChange({ ...data, blockId, gpId: '', gpName: '' });
+  };
+
+  const handleGPChange = (gpId: string) => {
+    const gp = Gps.find((g) => g.id === gpId);
+    setSelectedGP(gpId);
+    onChange({ ...data, gpId, gpName: gp?.name || '' });
+  };
+
+  const handleBuildingTypeChange = (buildingType: string) => {
+    onChange({ ...data, building_type: buildingType });
+  };
+
+  const handleGeoTaggedChange = (value: string) => {
+    onChange({ ...data, geoTaggedPhoto: value });
+  };
+
+  const handleSiteBoardChange = (value: string) => {
+    onChange({ ...data, siteBoardInstalled: value });
+  };
+
+  const handleSiteBoardRemarkChange = (value: string) => {
+    onChange({ ...data, siteBoardRemark: value });
+  };
+
+  const handleSmartRackChange = (value: string) => {
+    onChange({ ...data, smartRackInstalled: value });
+  };
+
+  const handleSiteImageCapture = (image: GeoTaggedImage) => {
+    const updatedImages = [...siteImages, image];
+    setSiteImages(updatedImages);
+    onChange({ ...data, siteImages: updatedImages });
+  };
+ 
+  const handleGeotaggedSiteImageCapture = (image: GeoTaggedImage) => { 
+    const updatedImages = [...geotaggedSiteImages, image];
+    setGeotaggedSiteImages(updatedImages);
+    onChange({ ...data, geotaggedSiteImages: updatedImages });
+  };
+  const handleBuildingImageCapture = (image: GeoTaggedImage) => {
+    const updatedImages = [...buildingImages, image];
+    setBuildingImages(updatedImages);
+    onChange({ ...data, buildingImages: updatedImages });
+  };
+
+  const handleQRCodeImageCapture = (image: GeoTaggedImage) => {
+    const updatedImages = [...qrCodeImages, image];
+    setQrCodeImages(updatedImages);
+    onChange({ ...data, qrCodeImages: updatedImages });
+  };
+
+  const handleSmartRackImageCapture = (image: GeoTaggedImage) => {
+    const updatedImages = [...smartRackImages, image];
+    setSmartRackImages(updatedImages);
+    onChange({ ...data, smartRackPhoto: updatedImages });
+  };
+
+  const removeImage = (
+    imageId: string,
+    images: GeoTaggedImage[],
+    setImages: React.Dispatch<React.SetStateAction<GeoTaggedImage[]>>,
+    fieldName:
+      | 'siteImages'
+      | 'buildingImages'
+      | 'qrCodeImages'
+      | 'smartRackPhoto'
+      | 'geotaggedSiteImages'
+      ,
+  ) => {
+    const updated = images.filter((img) => img.id !== imageId);
+    setImages(updated);
+    onChange({ ...data, [fieldName]: updated });
   };
 
   return (
@@ -172,11 +279,7 @@ export default function Form1({ data, onChange }: Form1Props) {
           <select
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             value={selectedState}
-            onChange={(e) => {
-              setSelectedState(e.target.value);
-              setSelectedDistrict('');
-              setSelectedBlock('');
-            }}
+            onChange={(e) => handleStateChange(e.target.value)}
             disabled={loadingStates}
           >
             <option value="">Select State</option>
@@ -189,10 +292,7 @@ export default function Form1({ data, onChange }: Form1Props) {
           <select
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             value={selectedDistrict}
-            onChange={(e) => {
-              setSelectedDistrict(e.target.value);
-              setSelectedBlock('');
-            }}
+            onChange={(e) => handleDistrictChange(e.target.value)}
             disabled={loadingDistricts || !selectedState}
           >
             <option value="">Select District</option>
@@ -205,7 +305,7 @@ export default function Form1({ data, onChange }: Form1Props) {
           <select
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             value={selectedBlock}
-            onChange={(e) => setSelectedBlock(e.target.value)}
+            onChange={(e) => handleBlockChange(e.target.value)}
             disabled={loadingBlocks || !selectedDistrict}
           >
             <option value="">Select Block</option>
@@ -218,7 +318,7 @@ export default function Form1({ data, onChange }: Form1Props) {
           <select
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             value={selectedGP}
-            onChange={(e) => setSelectedGP(e.target.value)}
+            onChange={(e) => handleGPChange(e.target.value)}
             disabled={loadingGPs || !selectedBlock}
           >
             <option value="">Select GP</option>
@@ -264,9 +364,41 @@ export default function Form1({ data, onChange }: Form1Props) {
             <MapPin className="w-4 h-4" />
             {gpsLoading ? 'Capturing...' : 'CAPTURE GPS LOCATION'}
           </button>
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer">
-            <Upload className="w-6 h-6 mx-auto mb-2 text-blue-600" />
-            <p className="text-sm text-gray-600">Upload Site Image</p>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-900">
+              Site Images
+            </label>
+            <ImageCapture
+              onCapture={handleSiteImageCapture}
+              label="Capture Site Image"
+            />
+            {siteImages.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                {siteImages.map((img) => (
+                  <div key={img.id} className="relative group">
+                    <img
+                      src={img.preview}
+                      alt="Site"
+                      className="w-full h-24 object-cover rounded-lg"
+                    />
+                  
+                    <button
+                      onClick={() =>
+                        removeImage(
+                          img.id,
+                          siteImages,
+                          setSiteImages,
+                          'siteImages',
+                        )
+                      }
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -288,18 +420,56 @@ export default function Form1({ data, onChange }: Form1Props) {
             <label className="block text-sm font-medium text-gray-900 mb-2">
               Select Building Type
             </label>
-            <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
-              <option>Select Building</option>
+            <select
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              value={data?.building_type || ''}
+              onChange={(e) => handleBuildingTypeChange(e.target.value)}
+            >
+              <option value="">Select Building</option>
+              <option value="Panchayat Bhawan">Panchayat Bhawan</option>
+              <option value="School">School</option>
+              <option value="CSC (Common Service Center)">
+                CSC (Common Service Center)
+              </option>
+              <option value="Anganwadi">Anganwadi</option>
+              <option value="Other">Other</option>
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-900 mb-2">
               Building Images
             </label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer">
-              <Upload className="w-6 h-6 mx-auto mb-2 text-blue-600" />
-              <p className="text-sm text-gray-600">Upload Building Image</p>
-            </div>
+            <ImageCapture
+              onCapture={handleBuildingImageCapture}
+              label="Capture Building Image"
+            />
+            {buildingImages.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                {buildingImages.map((img) => (
+                  <div key={img.id} className="relative group">
+                    <img
+                      src={img.preview}
+                      alt="Building"
+                      className="w-full h-24 object-cover rounded-lg"
+                    />
+                   
+                    <button
+                      onClick={() =>
+                        removeImage(
+                          img.id,
+                          buildingImages,
+                          setBuildingImages,
+                          'buildingImages',
+                        )
+                      }
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -313,10 +483,37 @@ export default function Form1({ data, onChange }: Form1Props) {
             QR Code Images
           </h3>
         </div>
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer">
-          <Upload className="w-6 h-6 mx-auto mb-2 text-blue-600" />
-          <p className="text-sm text-gray-600">Upload QR Code Image</p>
-        </div>
+        <ImageCapture
+          onCapture={handleQRCodeImageCapture}
+          label="Capture QR Code Image"
+        />
+        {qrCodeImages.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+            {qrCodeImages.map((img) => (
+              <div key={img.id} className="relative group">
+                <img
+                  src={img.preview}
+                  alt="QR Code"
+                  className="w-full h-24 object-cover rounded-lg"
+                />
+            
+                <button
+                  onClick={() =>
+                    removeImage(
+                      img.id,
+                      qrCodeImages,
+                      setQrCodeImages,
+                      'qrCodeImages',
+                    )
+                  }
+                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="bg-gradient-to-br from-gray-50 to-red-50 border border-red-200 rounded-xl p-6 space-y-4">
@@ -332,11 +529,30 @@ export default function Form1({ data, onChange }: Form1Props) {
           <label className="block text-sm font-medium text-gray-900 mb-2">
             OTDR Report PDF
           </label>
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer">
-            <Upload className="w-6 h-6 mx-auto mb-2 text-blue-600" />
-            <p className="text-sm text-gray-600">Upload PDF</p>
-          </div>
-          <p className="text-sm text-gray-500 mt-2">No PDF Selected</p>
+         
+          <input
+            type="file"
+            accept="application/pdf"
+            className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer
+              block w-full text-sm text-gray-500
+              file:mr-4 file:py-2 file:px-4
+              file:rounded-lg file:border-0
+              file:text-sm file:font-medium
+              file:bg-blue-50 file:text-blue-700
+              hover:file:bg-blue-100
+              "
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                onChange({ ...data, otdrReport: file });
+              }
+            }}
+          />
+          {data?.otdrReport && (
+            <p className="text-sm text-green-600 mt-2">
+              Selected: {(data.otdrReport as File).name}
+            </p>
+          )}
         </div>
       </div>
 
@@ -355,6 +571,8 @@ export default function Form1({ data, onChange }: Form1Props) {
               type="radio"
               name="geo-tagged-site-photo"
               value="yes"
+              checked={data?.geoTaggedPhoto === 'yes'}
+              onChange={(e) => handleGeoTaggedChange(e.target.value)}
               className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
             />
             <span className="ml-2 text-sm text-gray-700">YES</span>
@@ -364,6 +582,8 @@ export default function Form1({ data, onChange }: Form1Props) {
               type="radio"
               name="geo-tagged-site-photo"
               value="no"
+              checked={data?.geoTaggedPhoto === 'no'}
+              onChange={(e) => handleGeoTaggedChange(e.target.value)}
               className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
             />
             <span className="ml-2 text-sm text-gray-700">NO</span>
@@ -373,14 +593,43 @@ export default function Form1({ data, onChange }: Form1Props) {
               type="radio"
               name="geo-tagged-site-photo"
               value="na"
+              checked={data?.geoTaggedPhoto === 'na'}
+              onChange={(e) => handleGeoTaggedChange(e.target.value)}
               className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
             />
             <span className="ml-2 text-sm text-gray-700">NA</span>
           </label>
         </div>
-        <button className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
-          TAKE PHOTO
-        </button>
+        <div className="space-y-2">
+          <ImageCapture onCapture={handleGeotaggedSiteImageCapture} label="TAKE PHOTO" />
+          {geotaggedSiteImages.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+              {geotaggedSiteImages.map((img) => (
+                <div key={img.id} className="relative group">
+                  <img
+                    src={img.watermarkedPreview || img.preview}
+                    alt="Geo-tagged Site"  
+                    className="w-full h-24 object-cover rounded-lg"
+                  />
+                
+                  <button
+                    onClick={() =>
+                      removeImage(
+                        img.id,
+                        geotaggedSiteImages,
+                        setGeotaggedSiteImages,
+                        'geotaggedSiteImages',
+                      )
+                    }
+                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="bg-gradient-to-br from-gray-50 to-indigo-50 border border-indigo-200 rounded-xl p-6 space-y-4">
@@ -398,6 +647,8 @@ export default function Form1({ data, onChange }: Form1Props) {
               type="radio"
               name="site-board-installed"
               value="yes"
+              checked={data?.siteBoardInstalled === 'yes'}
+              onChange={(e) => handleSiteBoardChange(e.target.value)}
               className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
             />
             <span className="ml-2 text-sm text-gray-700">YES</span>
@@ -407,6 +658,8 @@ export default function Form1({ data, onChange }: Form1Props) {
               type="radio"
               name="site-board-installed"
               value="no"
+              checked={data?.siteBoardInstalled === 'no'}
+              onChange={(e) => handleSiteBoardChange(e.target.value)}
               className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
             />
             <span className="ml-2 text-sm text-gray-700">NO</span>
@@ -416,6 +669,8 @@ export default function Form1({ data, onChange }: Form1Props) {
               type="radio"
               name="site-board-installed"
               value="na"
+              checked={data?.siteBoardInstalled === 'na'}
+              onChange={(e) => handleSiteBoardChange(e.target.value)}
               className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
             />
             <span className="ml-2 text-sm text-gray-700">NA</span>
@@ -429,6 +684,8 @@ export default function Form1({ data, onChange }: Form1Props) {
             placeholder="Enter remark"
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             rows={3}
+            value={data?.siteBoardRemark || ''}
+            onChange={(e) => handleSiteBoardRemarkChange(e.target.value)}
           />
         </div>
       </div>
@@ -443,16 +700,59 @@ export default function Form1({ data, onChange }: Form1Props) {
           </h3>
         </div>
         <div className="flex gap-3">
-          <button className="flex-1 px-6 py-3 bg-white border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-sm font-medium">
+          <button
+            className={`flex-1 px-6 py-3 border-2 rounded-lg transition-colors text-sm font-medium ${
+              data?.smartRackInstalled === 'yes'
+                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                : 'border-gray-300 hover:border-blue-500 hover:bg-blue-50'
+            }`}
+            onClick={() => handleSmartRackChange('yes')}
+          >
             YES
           </button>
-          <button className="flex-1 px-6 py-3 bg-white border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-sm font-medium">
+          <button
+            className={`flex-1 px-6 py-3 border-2 rounded-lg transition-colors text-sm font-medium ${
+              data?.smartRackInstalled === 'no'
+                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                : 'border-gray-300 hover:border-blue-500 hover:bg-blue-50'
+            }`}
+            onClick={() => handleSmartRackChange('no')}
+          >
             NO
           </button>
         </div>
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer">
-          <Upload className="w-6 h-6 mx-auto mb-2 text-blue-600" />
-          <p className="text-sm text-gray-600">Upload Rack Photo</p>
+        <div className="space-y-2">
+          <ImageCapture
+            onCapture={handleSmartRackImageCapture}
+            label="Capture Rack Photo"
+          />
+          {smartRackImages.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+              {smartRackImages.map((img) => (
+                <div key={img.id} className="relative group">
+                  <img
+                    src={img.watermarkedPreview || img.preview}
+                    alt="Rack"
+                    className="w-full h-24 object-cover rounded-lg"
+                  />
+                 
+                  <button
+                    onClick={() =>
+                      removeImage(
+                        img.id,
+                        smartRackImages,
+                        setSmartRackImages,
+                        'smartRackPhoto',
+                      )
+                    }
+                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
