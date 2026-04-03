@@ -1,13 +1,16 @@
-import { Zap, PanelBottom, Battery, CircleDot } from 'lucide-react';
+import { Zap, PanelBottom, Battery, CircleDot, Upload } from 'lucide-react';
 import { FormData } from '../../../types/gp-checklist';
 
 interface Form4Props {
-  data: FormData['form4'];
-  onChange: (data: FormData['form4']) => void;
+  data: FormData['form4'] | undefined;
+  onChange: (data: FormData['form4'] | undefined) => void;
 }
 
 export default function Form4({ data, onChange }: Form4Props) {
-  const updateField = (field: string, value: string | boolean) => {
+  const updateField = (
+    field: string,
+    value: string | boolean | File | null,
+  ) => {
     onChange({ ...data, [field]: value });
   };
 
@@ -186,6 +189,33 @@ export default function Form4({ data, onChange }: Form4Props) {
             <option value="battery">Battery Only</option>
           </select>
         </div>
+
+        {data?.earthingVerified === 'yes' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-2">
+              Earthing Verification Video (2 min)
+            </label>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-red-400 transition-colors">
+              <input
+                type="file"
+                accept="video/*"
+                onChange={(e) =>
+                  updateField('earthingVideo', e.target.files?.[0] || null)
+                }
+                className="hidden"
+                id="earthing-video-upload"
+              />
+              <label htmlFor="earthing-video-upload" className="cursor-pointer">
+                <Upload className="w-10 h-10 mx-auto text-gray-400 mb-2" />
+                <p className="text-sm text-gray-600">
+                  {data?.earthingVideo
+                    ? data.earthingVideo.name
+                    : 'Click to upload video'}
+                </p>
+              </label>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

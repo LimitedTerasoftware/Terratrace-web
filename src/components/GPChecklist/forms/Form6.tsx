@@ -1,13 +1,22 @@
-import { ShieldCheck, CheckCircle, ClipboardList, Tag } from 'lucide-react';
+import {
+  ShieldCheck,
+  CheckCircle,
+  ClipboardList,
+  Tag,
+  Upload,
+} from 'lucide-react';
 import { FormData } from '../../../types/gp-checklist';
 
 interface Form6Props {
-  data: FormData['form6'];
-  onChange: (data: FormData['form6']) => void;
+  data: FormData['form6'] | undefined;
+  onChange: (data: FormData['form6'] | undefined) => void;
 }
 
 export default function Form6({ data, onChange }: Form6Props) {
-  const updateField = (field: string, value: string | boolean) => {
+  const updateField = (
+    field: string,
+    value: string | boolean | File | null,
+  ) => {
     onChange({ ...data, [field]: value });
   };
 
@@ -116,6 +125,36 @@ export default function Form6({ data, onChange }: Form6Props) {
             </label>
           </div>
         </div>
+
+        {data?.socialAudit === 'yes' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-2">
+              Upload Social Audit Video (15-30 min)
+            </label>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-purple-400 transition-colors">
+              <input
+                type="file"
+                accept="video/*"
+                onChange={(e) =>
+                  updateField('socialAuditVideo', e.target.files?.[0] || null)
+                }
+                className="hidden"
+                id="social-audit-video-upload"
+              />
+              <label
+                htmlFor="social-audit-video-upload"
+                className="cursor-pointer"
+              >
+                <Upload className="w-10 h-10 mx-auto text-gray-400 mb-2" />
+                <p className="text-sm text-gray-600">
+                  {data?.socialAuditVideo
+                    ? data.socialAuditVideo.name
+                    : 'Click to upload video'}
+                </p>
+              </label>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="bg-gradient-to-br from-gray-50 to-orange-50 border border-orange-200 rounded-xl p-6 space-y-4">

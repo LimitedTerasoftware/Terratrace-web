@@ -1,13 +1,22 @@
-import { Globe, Camera, FileCheck, Map, UserCheck } from 'lucide-react';
+import { Globe, Camera, FileCheck, Map, UserCheck, Upload } from 'lucide-react';
 import { FormData } from '../../../types/gp-checklist';
+import ImageCapture from './ImageCapture';
 
 interface Form5Props {
-  data: FormData['form5'];
-  onChange: (data: FormData['form5']) => void;
+  data: FormData['form5'] | undefined;
+  onChange: (data: FormData['form5'] | undefined) => void;
 }
 
 export default function Form5({ data, onChange }: Form5Props) {
-  const updateField = (field: string, value: string | boolean) => {
+  const updateField = (
+    field: string,
+    value:
+      | string
+      | boolean
+      | File
+      | null
+      | FormData['form5']['photosAngleImages'],
+  ) => {
     onChange({ ...data, [field]: value });
   };
 
@@ -60,6 +69,19 @@ export default function Form5({ data, onChange }: Form5Props) {
           </div>
         </div>
 
+        {data?.photosGeoTagged === 'yes' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-2">
+              Upload 5 Angle Photos (Close-up + 4 Directional)
+            </label>
+            <ImageCapture
+              images={data?.photosAngleImages || []}
+              onChange={(imgs) => updateField('photosAngleImages', imgs)}
+              maxImages={5}
+            />
+          </div>
+        )}
+
         <div>
           <label className="block text-sm font-medium text-gray-900 mb-3">
             Video of GP installation uploaded to BharatNet GIS app
@@ -89,6 +111,33 @@ export default function Form5({ data, onChange }: Form5Props) {
             </label>
           </div>
         </div>
+
+        {data?.videoUploaded === 'yes' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-2">
+              Upload Installation Video
+            </label>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-teal-400 transition-colors">
+              <input
+                type="file"
+                accept="video/*"
+                onChange={(e) =>
+                  updateField('videoUploadedFile', e.target.files?.[0] || null)
+                }
+                className="hidden"
+                id="gis-video-upload"
+              />
+              <label htmlFor="gis-video-upload" className="cursor-pointer">
+                <Upload className="w-10 h-10 mx-auto text-gray-400 mb-2" />
+                <p className="text-sm text-gray-600">
+                  {data?.videoUploadedFile
+                    ? data.videoUploadedFile.name
+                    : 'Click to upload video'}
+                </p>
+              </label>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="bg-gradient-to-br from-gray-50 to-blue-50 border border-blue-200 rounded-xl p-6 space-y-6">

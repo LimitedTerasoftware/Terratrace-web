@@ -70,6 +70,28 @@ const uploadDocs = async (files: File[]): Promise<string[]> => {
   }
 };
 
+const geotagImage = async (
+  imageUrl: string,
+  latitude: number,
+  longitude: number,
+): Promise<void> => {
+  try {
+    await fetch(`${TraceBASEURL}/geotag-image`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        imageUrl,
+        latitude,
+        longitude,
+      }),
+    });
+  } catch (error) {
+    console.error('Geotag error:', error);
+  }
+};
+
 function App() {
   const [currentForm, setCurrentForm] = useState(1);
   const [formData, setFormData] = useState<FormData>({});
@@ -87,14 +109,52 @@ function App() {
     }));
   };
 
-  const handleSaveDraft = () => {
-    console.log('Saving draft...', formData);
-    alert('Draft saved successfully!');
-  };
-
   const handleSubmit = async () => {
     if (!formData.form1) {
       alert('Please fill in Form 1');
+      return;
+    }
+
+    const f1 = formData.form1;
+    const requiredFields = [
+      { value: f1.stateId, field: 'State' },
+      { value: f1.districtId, field: 'District' },
+      { value: f1.blockId, field: 'Block' },
+      { value: f1.gpId, field: 'GP' },
+      { value: f1.latitude, field: 'Latitude' },
+      { value: f1.longitude, field: 'Longitude' },
+      { value: f1.building_type, field: 'Building Type' },
+      { value: f1.geoTaggedPhoto, field: 'Geo-tagged Photo' },
+      { value: f1.siteBoardInstalled, field: 'Site Board Installed' },
+      { value: f1.smartRackInstalled, field: 'Smart Rack Installed' },
+      { value: f1.otdrReport, field: 'OTDR Report' },
+    ];
+
+    const missingFields = requiredFields
+      .filter((f) => !f.value)
+      .map((f) => f.field);
+
+    if (missingFields.length > 0) {
+      alert(`Please fill required fields: ${missingFields.join(', ')}`);
+      return;
+    }
+
+    if (
+      !f1.siteImages?.length ||
+      !f1.buildingImages?.length ||
+      !f1.qrCodeImages?.length
+    ) {
+      alert('Please capture required images (Site, Building, QR Code)');
+      return;
+    }
+
+    if (f1.geoTaggedPhoto === 'yes' && !f1.geotaggedSiteImages?.length) {
+      alert('Please capture geo-tagged site photo');
+      return;
+    }
+
+    if (f1.smartRackInstalled === 'yes' && !f1.smartRackPhoto?.length) {
+      alert('Please capture smart rack photo');
       return;
     }
 
@@ -103,12 +163,50 @@ function App() {
     try {
       const f1 = formData.form1;
 
+      const convertBase64ToFile = (base64: string, filename: string): File => {
+        const arr = base64.split(',');
+        const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new File([u8arr], filename, { type: mime });
+      };
+
       const allImageFiles = [
-        ...(f1.siteImages || []).map((img) => img.file),
-        ...(f1.buildingImages || []).map((img) => img.file),
-        ...(f1.qrCodeImages || []).map((img) => img.file),
-        ...(f1.smartRackPhoto || []).map((img) => img.file),
-        ...(f1.geotaggedSiteImages || []).map((img) => img.file),
+        ...(f1.siteImages || []).map((img) =>
+          img.watermarkedPreview
+            ? convertBase64ToFile(img.watermarkedPreview, `site_${img.id}.jpg`)
+            : img.file,
+        ),
+        ...(f1.buildingImages || []).map((img) =>
+          img.watermarkedPreview
+            ? convertBase64ToFile(
+                img.watermarkedPreview,
+                `building_${img.id}.jpg`,
+              )
+            : img.file,
+        ),
+        ...(f1.qrCodeImages || []).map((img) =>
+          img.watermarkedPreview
+            ? convertBase64ToFile(img.watermarkedPreview, `qr_${img.id}.jpg`)
+            : img.file,
+        ),
+        ...(f1.smartRackPhoto || []).map((img) =>
+          img.watermarkedPreview
+            ? convertBase64ToFile(img.watermarkedPreview, `rack_${img.id}.jpg`)
+            : img.file,
+        ),
+        ...(f1.geotaggedSiteImages || []).map((img) =>
+          img.watermarkedPreview
+            ? convertBase64ToFile(
+                img.watermarkedPreview,
+                `geotagged_${img.id}.jpg`,
+              )
+            : img.file,
+        ),
       ];
 
       const uploadedImageUrls: string[] =
@@ -126,11 +224,44 @@ function App() {
       );
       const smartRackImagesData = (f1.smartRackPhoto || []).map(
         () => uploadedImageUrls[imageIndex++] || '',
-     
       );
       const geotaggedSiteImagesData = (f1.geotaggedSiteImages || []).map(
         () => uploadedImageUrls[imageIndex++] || '',
       );
+
+      const allImagesWithCoords: { url: string; lat: number; lng: number }[] = [
+        ...(f1.siteImages || []).map((img, i) => ({
+          url: siteImagesData[i],
+          lat: img.latitude,
+          lng: img.longitude,
+        })),
+        ...(f1.buildingImages || []).map((img, i) => ({
+          url: buildingImagesData[i],
+          lat: img.latitude,
+          lng: img.longitude,
+        })),
+        ...(f1.qrCodeImages || []).map((img, i) => ({
+          url: qrCodeImagesData[i],
+          lat: img.latitude,
+          lng: img.longitude,
+        })),
+        ...(f1.smartRackPhoto || []).map((img, i) => ({
+          url: smartRackImagesData[i],
+          lat: img.latitude,
+          lng: img.longitude,
+        })),
+        ...(f1.geotaggedSiteImages || []).map((img, i) => ({
+          url: geotaggedSiteImagesData[i],
+          lat: img.latitude,
+          lng: img.longitude,
+        })),
+      ];
+
+      for (const imgData of allImagesWithCoords) {
+        if (imgData.url) {
+          await geotagImage(imgData.url, imgData.lat, imgData.lng);
+        }
+      }
 
       const pdfFiles = f1.otdrReport ? [f1.otdrReport] : [];
       const uploadedPdfUrls: string[] =
@@ -147,21 +278,18 @@ function App() {
                 ? 0
                 : 0,
           images: geotaggedSiteImagesData,
-         
         },
         {
           form_type: 'General verification form',
           item_name: 'QR Images',
           status: (f1.qrCodeImages?.length || 0) > 0 ? 1 : 0,
           images: qrCodeImagesData,
-         
         },
         {
           form_type: 'General verification form',
           item_name: 'OTDR Report',
           status: f1.otdrReport ? 1 : 0,
           images: uploadedPdfUrls,
-       
         },
         {
           form_type: 'General verification form',
@@ -172,7 +300,7 @@ function App() {
               : f1.siteBoardInstalled === 'no'
                 ? 0
                 : 0,
-         
+
           remark: f1.siteBoardRemark || '',
         },
         {
@@ -185,7 +313,6 @@ function App() {
                 ? 0
                 : 0,
           images: smartRackImagesData,
-        
         },
       ];
 
@@ -324,13 +451,6 @@ function App() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-end">
-              <button
-                onClick={handleSaveDraft}
-                className="flex items-center justify-center gap-2 px-6 py-3 border-2 border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-              >
-                <Save className="w-5 h-5" />
-                <span>Save as Draft</span>
-              </button>
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting}

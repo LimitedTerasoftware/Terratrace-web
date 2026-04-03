@@ -1,13 +1,23 @@
-import { ClipboardCheck, FileCheck, QrCode, PenTool } from 'lucide-react';
+import {
+  ClipboardCheck,
+  FileCheck,
+  QrCode,
+  PenTool,
+  Upload,
+} from 'lucide-react';
 import { FormData } from '../../../types/gp-checklist';
+import ImageCapture from './ImageCapture';
 
 interface Form7Props {
-  data: FormData['form7'];
-  onChange: (data: FormData['form7']) => void;
+  data: FormData['form7'] | undefined;
+  onChange: (data: FormData['form7'] | undefined) => void;
 }
 
 export default function Form7({ data, onChange }: Form7Props) {
-  const updateField = (field: string, value: string) => {
+  const updateField = (
+    field: string,
+    value: string | File | null | FormData['form7']['qrTagImage'],
+  ) => {
     onChange({ ...data, [field]: value });
   };
 
@@ -62,6 +72,33 @@ export default function Form7({ data, onChange }: Form7Props) {
             </label>
           </div>
         </div>
+
+        {data?.patCompleted === 'yes' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-2">
+              Upload PAT Proof
+            </label>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                onChange={(e) =>
+                  updateField('patProof', e.target.files?.[0] || null)
+                }
+                className="hidden"
+                id="pat-proof-upload"
+              />
+              <label htmlFor="pat-proof-upload" className="cursor-pointer">
+                <Upload className="w-10 h-10 mx-auto text-gray-400 mb-2" />
+                <p className="text-sm text-gray-600">
+                  {data?.patProof
+                    ? data.patProof.name
+                    : 'Click to upload PAT proof'}
+                </p>
+              </label>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="bg-gradient-to-br from-gray-50 to-green-50 border border-green-200 rounded-xl p-6 space-y-6">
@@ -102,6 +139,33 @@ export default function Form7({ data, onChange }: Form7Props) {
             </label>
           </div>
         </div>
+
+        {data?.fatApproved === 'yes' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-2">
+              Upload FAT Approval Proof
+            </label>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-green-400 transition-colors">
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                onChange={(e) =>
+                  updateField('fatApprovalProof', e.target.files?.[0] || null)
+                }
+                className="hidden"
+                id="fat-proof-upload"
+              />
+              <label htmlFor="fat-proof-upload" className="cursor-pointer">
+                <Upload className="w-10 h-10 mx-auto text-gray-400 mb-2" />
+                <p className="text-sm text-gray-600">
+                  {data?.fatApprovalProof
+                    ? data.fatApprovalProof.name
+                    : 'Click to upload FAT proof'}
+                </p>
+              </label>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="bg-gradient-to-br from-gray-50 to-orange-50 border border-orange-200 rounded-xl p-6 space-y-6">
@@ -146,6 +210,19 @@ export default function Form7({ data, onChange }: Form7Props) {
             </label>
           </div>
         </div>
+
+        {data?.qrTagVerified === 'yes' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-2">
+              Upload QR Tag Verification Image
+            </label>
+            <ImageCapture
+              images={data?.qrTagImage || []}
+              onChange={(imgs) => updateField('qrTagImage', imgs)}
+              maxImages={1}
+            />
+          </div>
+        )}
       </div>
 
       <div className="bg-gradient-to-br from-gray-50 to-purple-50 border border-purple-200 rounded-xl p-6 space-y-6">
@@ -191,6 +268,33 @@ export default function Form7({ data, onChange }: Form7Props) {
             </label>
           </div>
         </div>
+
+        {data?.hotoSigned === 'yes' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-2">
+              Upload HOTO Memo Signature
+            </label>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-purple-400 transition-colors">
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                onChange={(e) =>
+                  updateField('hotoMemoSignature', e.target.files?.[0] || null)
+                }
+                className="hidden"
+                id="hoto-signature-upload"
+              />
+              <label htmlFor="hoto-signature-upload" className="cursor-pointer">
+                <Upload className="w-10 h-10 mx-auto text-gray-400 mb-2" />
+                <p className="text-sm text-gray-600">
+                  {data?.hotoMemoSignature
+                    ? data.hotoMemoSignature.name
+                    : 'Click to upload signature'}
+                </p>
+              </label>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

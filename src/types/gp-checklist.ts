@@ -16,24 +16,24 @@ export interface GeoTaggedImage {
 
 export interface FormData {
   form1?: {
-    stateId?: string | "";
-    districtId?: string | "";
-    blockId?: string | "";
-    gpId?: string | "";
-    gpName?: string | "";
-    latitude?: string | "";
-    longitude?: string | "";
+    stateId?: string | '';
+    districtId?: string | '';
+    blockId?: string | '';
+    gpId?: string | '';
+    gpName?: string | '';
+    latitude?: string | '';
+    longitude?: string | '';
     siteImages?: GeoTaggedImage[] | [];
-    building_type?: string | "";
+    building_type?: string | '';
     buildingImages?: GeoTaggedImage[] | [];
     qrCodeImages?: GeoTaggedImage[] | [];
     otdrReport?: File | null;
-    geoTaggedPhoto?: string | "";
-    siteBoardInstalled?: string | "";
-    siteBoardRemark?: string | "";
-    smartRackInstalled?: string | "";
+    geoTaggedPhoto?: string | '';
+    siteBoardInstalled?: string | '';
+    siteBoardRemark?: string | '';
+    smartRackInstalled?: string | '';
     smartRackPhoto?: GeoTaggedImage[] | [];
-      geotaggedSiteImages?: GeoTaggedImage[] | [];
+    geotaggedSiteImages?: GeoTaggedImage[] | [];
   };
   form2?: {
     ofcConnected?: string;
@@ -60,11 +60,14 @@ export interface FormData {
     solarPanelFunctional?: string;
     batteryBackup?: string;
     earthingVerified?: string;
+    earthingVideo?: File | null;
     powerSource?: string;
   };
   form5?: {
     photosGeoTagged?: string;
+    photosAngleImages?: GeoTaggedImage[];
     videoUploaded?: string;
+    videoUploadedFile?: File | null;
     abdUpdated?: boolean;
     gisEntryCompleted?: string;
     ieVerification?: string;
@@ -73,13 +76,18 @@ export interface FormData {
     siteClean?: string;
     materialsApproved?: boolean;
     socialAudit?: string;
+    socialAuditVideo?: File | null;
     siteLabelBoard?: boolean;
   };
   form7?: {
     patCompleted?: string;
+    patProof?: File | null;
     fatApproved?: string;
+    fatApprovalProof?: File | null;
     qrTagVerified?: string;
+    qrTagImage?: GeoTaggedImage[];
     hotoSigned?: string;
+    hotoMemoSignature?: File | null;
   };
 }
 

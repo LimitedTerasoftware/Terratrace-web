@@ -1,15 +1,87 @@
-import { Upload, Wrench, Router, QrCode, Wifi } from 'lucide-react';
-import { FormData } from '../../../types/gp-checklist';
+import { Upload, Wrench, Router, QrCode, Wifi, X } from 'lucide-react';
+import { FormData, GeoTaggedImage } from '../../../types/gp-checklist';
+import { useState } from 'react';
+import ImageCapture from './ImageCapture';
+import TricadLogo from '../../../images/logo/Tricad.png';
 
 interface Form3Props {
-  data: FormData['form3'];
-  onChange: (data: FormData['form3']) => void;
+  data: FormData['form3'] | undefined;
+  onChange: (data: FormData['form3'] | undefined) => void;
 }
 
 export default function Form3({ data, onChange }: Form3Props) {
   const updateField = (field: string, value: string | File | null) => {
     onChange({ ...data, [field]: value });
   };
+
+  const [routerImages, setRouterImages] = useState<GeoTaggedImage[]>([]);
+  const [snocImages, setSnocImages] = useState<GeoTaggedImage[]>([]);
+  const [qrCodeImages, setQrCodeImages] = useState<GeoTaggedImage[]>([]);
+
+  const handleRouterCapture = (image: GeoTaggedImage) => {
+    const updated = [...routerImages, image];
+    setRouterImages(updated);
+    onChange({ ...data, routerImage: updated });
+  };
+
+  const handleSnocCapture = (image: GeoTaggedImage) => {
+    const updated = [...snocImages, image];
+    setSnocImages(updated);
+    onChange({ ...data, snocImage: updated });
+  };
+
+  const handleQrCodeCapture = (image: GeoTaggedImage) => {
+    const updated = [...qrCodeImages, image];
+    setQrCodeImages(updated);
+    onChange({ ...data, qrCodeImage: updated });
+  };
+
+  const removeImage = (
+    imageId: string,
+    images: GeoTaggedImage[],
+    setImages: React.Dispatch<React.SetStateAction<GeoTaggedImage[]>>,
+  ) => {
+    const updated = images.filter((img) => img.id !== imageId);
+    setImages(updated);
+  };
+
+  const ImagePreview = ({
+    images,
+    setImages,
+    label,
+  }: {
+    images: GeoTaggedImage[];
+    setImages: React.Dispatch<React.SetStateAction<GeoTaggedImage[]>>;
+    label: string;
+  }) => (
+    <>
+      {images.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+          {images.map((img) => (
+            <div key={img.id} className="relative group">
+              <img
+                src={img.watermarkedPreview || img.preview}
+                alt={label}
+                className="w-full h-24 object-cover rounded-lg"
+              />
+              <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white text-xs p-1 rounded-b-lg flex justify-between items-center">
+                <span>
+                  {img.latitude.toFixed(4)}, {img.longitude.toFixed(4)}
+                </span>
+                <img src={TricadLogo} alt="Logo" className="h-3" />
+              </div>
+              <button
+                onClick={() => removeImage(img.id, images, setImages)}
+                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
 
   return (
     <div className="space-y-6">
@@ -36,13 +108,17 @@ export default function Form3({ data, onChange }: Form3Props) {
           <label className="block text-sm font-medium text-gray-900 mb-3">
             Router Image
           </label>
-          <div className="flex gap-4">
+          <div className="flex gap-4 mb-3">
             <label className="flex items-center cursor-pointer">
               <input
                 type="radio"
                 name="routerImage"
                 value="yes"
-                checked={data?.routerImage === 'yes'}
+                checked={
+                  (data?.routerImage as GeoTaggedImage[] | undefined)?.length
+                    ? true
+                    : undefined
+                }
                 onChange={(e) => updateField('routerImage', e.target.value)}
                 className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
               />
@@ -53,26 +129,38 @@ export default function Form3({ data, onChange }: Form3Props) {
                 type="radio"
                 name="routerImage"
                 value="no"
-                checked={data?.routerImage === 'no'}
                 onChange={(e) => updateField('routerImage', e.target.value)}
                 className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
               />
               <span className="ml-2 text-sm text-gray-700">No</span>
             </label>
           </div>
+          <ImageCapture
+            onCapture={handleRouterCapture}
+            label="Capture Router Image"
+          />
+          <ImagePreview
+            images={routerImages}
+            setImages={setRouterImages}
+            label="Router"
+          />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-900 mb-3">
             SNOC Image
           </label>
-          <div className="flex gap-4">
+          <div className="flex gap-4 mb-3">
             <label className="flex items-center cursor-pointer">
               <input
                 type="radio"
                 name="snocImage"
                 value="yes"
-                checked={data?.snocImage === 'yes'}
+                checked={
+                  (data?.snocImage as GeoTaggedImage[] | undefined)?.length
+                    ? true
+                    : undefined
+                }
                 onChange={(e) => updateField('snocImage', e.target.value)}
                 className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
               />
@@ -83,13 +171,21 @@ export default function Form3({ data, onChange }: Form3Props) {
                 type="radio"
                 name="snocImage"
                 value="no"
-                checked={data?.snocImage === 'no'}
                 onChange={(e) => updateField('snocImage', e.target.value)}
                 className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
               />
               <span className="ml-2 text-sm text-gray-700">No</span>
             </label>
           </div>
+          <ImageCapture
+            onCapture={handleSnocCapture}
+            label="Capture SNOC Image"
+          />
+          <ImagePreview
+            images={snocImages}
+            setImages={setSnocImages}
+            label="SNOC"
+          />
         </div>
       </div>
 
@@ -148,18 +244,15 @@ export default function Form3({ data, onChange }: Form3Props) {
             <option value="battery">Battery</option>
           </select>
 
-          <div className="border-2 border-dashed border-orange-300 rounded-lg p-8 text-center hover:border-orange-400 transition-colors cursor-pointer">
-            <Upload className="w-8 h-8 text-orange-500 mx-auto mb-3" />
-            <p className="text-sm text-gray-600">Upload QR Code Image</p>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) =>
-                updateField('qrCodeImage', e.target.files?.[0] || null)
-              }
-              className="hidden"
-            />
-          </div>
+          <ImageCapture
+            onCapture={handleQrCodeCapture}
+            label="Capture QR Code Image"
+          />
+          <ImagePreview
+            images={qrCodeImages}
+            setImages={setQrCodeImages}
+            label="QR Code"
+          />
         </div>
       </div>
 
