@@ -17,6 +17,7 @@ interface SidebarProps {
   progress: number;
   onFormChange: (formId: number) => void;
   completedForms: Set<number>;
+  gpMainId: number | null;
 }
 
 const formSteps: FormStep[] = [
@@ -68,6 +69,7 @@ export default function Sidebar({
   progress,
   onFormChange,
   completedForms,
+  gpMainId,
 }: SidebarProps) {
   return (
     <div className="w-72 bg-white border-r border-gray-200 h-screen flex-shrink-0">
@@ -101,16 +103,20 @@ export default function Sidebar({
           {formSteps.map((step) => {
             const isActive = currentForm === step.id;
             const isCompleted = completedForms.has(step.id);
+            const isDisabled = step.id > 1 && !gpMainId;
             const Icon = formIcons[step.id as keyof typeof formIcons];
 
             return (
               <button
                 key={step.id}
-                onClick={() => onFormChange(step.id)}
+                onClick={() => !isDisabled && onFormChange(step.id)}
+                disabled={isDisabled}
                 className={`w-full text-left px-4 py-3 rounded-lg transition-all duration-200 group ${
                   isActive
                     ? 'bg-blue-50 border-2 border-blue-500 text-blue-700'
-                    : 'border-2 border-transparent hover:bg-gray-50'
+                    : isDisabled
+                      ? 'opacity-50 cursor-not-allowed bg-gray-50'
+                      : 'border-2 border-transparent hover:bg-gray-50'
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -123,9 +129,10 @@ export default function Sidebar({
                   </div>
                   <div className="flex-1">
                     <span
-                      className={`text-sm font-medium ${isActive ? 'text-blue-700' : 'text-gray-700'}`}
+                      className={`text-sm font-medium ${isActive ? 'text-blue-700' : isDisabled ? 'text-gray-400' : 'text-gray-700'}`}
                     >
                       {step.title}
+                      {isDisabled && ' (Locked)'}
                     </span>
                     {isCompleted && !isActive && (
                       <div className="mt-1">
@@ -137,6 +144,8 @@ export default function Sidebar({
                   </div>
                   {isActive ? (
                     <ChevronUp className="w-4 h-4 text-blue-600" />
+                  ) : isDisabled ? (
+                    <span className="text-xs text-gray-400">🔒</span>
                   ) : (
                     <ChevronDown className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
                   )}

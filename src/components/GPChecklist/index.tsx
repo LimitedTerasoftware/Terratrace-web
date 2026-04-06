@@ -189,7 +189,7 @@ const getFormFiles = (
     }
   }
 
-  return { images, docs ,videos };
+  return { images, docs, videos };
 };
 
 const submitFormItems = async (
@@ -217,11 +217,11 @@ const submitFormItems = async (
 const buildFormItems = (
   formNumber: number,
   formData: FormData,
-   uploads: {
+  uploads: {
     imageUrls: string[];
     docUrls: string[];
     videoUrls: string[];
-  }
+  },
 ): Array<{
   form_type: string;
   item_name: string;
@@ -281,7 +281,7 @@ const buildFormItems = (
         {
           form_type: 'OFC and connectivity form',
           item_name: 'OTDR PDF',
-           status: f2.isOtdrReportUploaded === 'yes' ? 1 : 0,
+          status: f2.isOtdrReportUploaded === 'yes' ? 1 : 0,
           images: f2.isOtdrReportUploaded === 'yes' ? uploads.docUrls : [],
         },
       );
@@ -318,11 +318,11 @@ const buildFormItems = (
         {
           form_type: 'Equipement Installation',
           item_name: 'QR Code Imag',
-          item_type:  f3.qrType || '',
+          item_type: f3.qrType || '',
           status: f3.qrCodeImage?.length ? 1 : 0,
           images: getImages(f3.qrCodeImage),
         },
-        { 
+        {
           form_type: 'Equipement Installation',
           item_name: 'Device Ping Image',
           status: f3.devicePing === 'yes' ? 1 : 0,
@@ -341,21 +341,18 @@ const buildFormItems = (
           status: f4.solarPanelInstalled ? 1 : 0,
           images: getImages(f4.solarPanelImage),
         },
-       
+
         {
           form_type: 'Power Earth Verification',
           item_name: 'Battery backup installed, charged',
-          status:
-            f4.batteryBackup === 'yes' ? 1  : 0,
+          status: f4.batteryBackup === 'yes' ? 1 : 0,
           images: getImages(f4.batteryBackupImage),
         },
         {
           form_type: 'Power Earth Verification',
           item_name: 'Proper earthing resistance verified',
-          status:
-            f4.earthingVerified === 'yes'
-              ? 1: 0,
-          images: f4.earthingVideo ?  uploads.videoUrls : [],
+          status: f4.earthingVerified === 'yes' ? 1 : 0,
+          images: f4.earthingVideo ? uploads.videoUrls : [],
         },
         {
           form_type: 'Power Earth Verification',
@@ -372,17 +369,15 @@ const buildFormItems = (
       items.push(
         {
           form_type: 'Gsi Mapping',
-          item_name: 'Photos taken (5 angles: close-up + 4 directional) and geo-tagged',
-          status:
-            f5.photosGeoTagged === 'yes'
-              ? 1 : 0,
+          item_name:
+            'Photos taken (5 angles: close-up + 4 directional) and geo-tagged',
+          status: f5.photosGeoTagged === 'yes' ? 1 : 0,
           images: getImages(f5.photosAngleImages),
         },
-      {
+        {
           form_type: 'Gsi Mapping',
           item_name: 'Video of GP installation uploaded to BharatNet GIS app',
-          status:
-            f5.videoUploaded === 'yes' ? 1  : 0,
+          status: f5.videoUploaded === 'yes' ? 1 : 0,
           images: f5.videoUploaded === 'yes' ? uploads.videoUrls : [],
         },
         {
@@ -393,18 +388,15 @@ const buildFormItems = (
         },
         {
           form_type: 'Gsi Mapping',
-          item_name: 'GIS entry  latitude, longitude, route code, and asset type',
-          status:
-            f5.gisEntryCompleted === 'yes'
-              ? 1 : 0,
+          item_name:
+            'GIS entry  latitude, longitude, route code, and asset type',
+          status: f5.gisEntryCompleted === 'yes' ? 1 : 0,
           images: getImages(f5.GISImgages),
         },
         {
           form_type: 'Gsi Mapping',
           item_name: 'Verification by Independent Engineer',
-          status:
-            f5.ieVerification === 'yes'
-              ? 1 : 0,
+          status: f5.ieVerification === 'yes' ? 1 : 0,
           images: getImages(f5.IEimages),
         },
       );
@@ -420,20 +412,23 @@ const buildFormItems = (
           item_type: f6.siteClean || '',
           status: f6.siteClean === 'yes' ? 1 : f6.siteClean === 'no' ? 0 : 0,
           images: getImages(f6.materialImgages),
-
         },
         {
           form_type: 'Safe Quality Verification',
           item_name: 'TEC Approval Proof,',
           status: f6.materialsApproved ? 1 : 0,
-          images: f6.materialsApproved && f6.verificationProof ? uploads.docUrls : [],
+          images:
+            f6.materialsApproved && f6.verificationProof ? uploads.docUrls : [],
         },
         {
           form_type: 'Safe Quality Verification',
           item_name: 'Social Audit Video',
           status:
             f6.socialAudit === 'yes' ? 1 : f6.socialAudit === 'no' ? 0 : 0,
-          images: f6.socialAudit === 'yes' && f6.socialAuditVideo ? uploads.videoUrls : [],
+          images:
+            f6.socialAudit === 'yes' && f6.socialAuditVideo
+              ? uploads.videoUrls
+              : [],
         },
         {
           form_type: 'Safe Quality Verification',
@@ -453,29 +448,31 @@ const buildFormItems = (
           item_name: 'PAT Completed Proof',
           status:
             f7.patCompleted === 'yes' ? 1 : f7.patCompleted === 'no' ? 0 : 0,
-          images: f7.patCompleted === 'yes' && getImages(f7.patProof) || [],
+          images: (f7.patCompleted === 'yes' && getImages(f7.patProof)) || [],
         },
         {
           form_type: 'Final Acceptance',
           item_name: 'FAT Approval Proof',
           status:
             f7.fatApproved === 'yes' ? 1 : f7.fatApproved === 'no' ? 0 : 0,
-          images: f7.fatApproved === 'yes' && getImages(f7.fatApprovalProof) || [],
+          images:
+            (f7.fatApproved === 'yes' && getImages(f7.fatApprovalProof)) || [],
         },
         {
           form_type: 'Final Acceptance',
           item_name: 'QR Tag Verification Image',
           status:
             f7.qrTagVerified === 'yes' ? 1 : f7.qrTagVerified === 'no' ? 0 : 0,
-          images:f7.qrTagVerified === 'yes' && getImages(f7.qrTagImage) || [],
-
+          images:
+            (f7.qrTagVerified === 'yes' && getImages(f7.qrTagImage)) || [],
         },
-      
+
         {
           form_type: 'Final Acceptance',
           item_name: 'HOTO Memo Signature Image',
           status: f7.hotoSigned === 'yes' ? 1 : f7.hotoSigned === 'no' ? 0 : 0,
-          images: f7.hotoSigned === 'yes' && getImages(f7.hotoMemoSignature) || [],
+          images:
+            (f7.hotoSigned === 'yes' && getImages(f7.hotoMemoSignature)) || [],
         },
       );
       break;
@@ -493,10 +490,7 @@ function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [gpMainId, setGpMainId] = useState<number | null>(null);
 
-  const updateFormData = (
-    formNumber: number,
-    data: any,
-  ) => {
+  const updateFormData = (formNumber: number, data: any) => {
     setFormData((prev) => ({
       ...prev,
       [`form${formNumber}`]: data,
@@ -738,52 +732,49 @@ function App() {
         setGpMainId(newGpMainId);
       }
       if (currentForm > 1 && newGpMainId) {
-        const { images: formImages, docs: formDocs, videos: formVideos } = getFormFiles(
-          currentForm,
-          formData,
-        );
+        const {
+          images: formImages,
+          docs: formDocs,
+          videos: formVideos,
+        } = getFormFiles(currentForm, formData);
         const imageFiles = formImages.map((img) =>
           img.watermarkedPreview
             ? convertBase64ToFile(
                 img.watermarkedPreview,
-                `form${currentForm}_${img.id}.jpg`
+                `form${currentForm}_${img.id}.jpg`,
               )
-            : img.file
+            : img.file,
         );
 
         const docFiles = formDocs;
         const videoFiles = formVideos;
 
-       const uploadedImageUrls = imageFiles.length
-        ? await uploadImages(imageFiles)
-        : [];
+        const uploadedImageUrls = imageFiles.length
+          ? await uploadImages(imageFiles)
+          : [];
 
-       const uploadedDocUrls = docFiles.length
-        ? await uploadDocs(docFiles)
-        : [];
+        const uploadedDocUrls = docFiles.length
+          ? await uploadDocs(docFiles)
+          : [];
 
-       const uploadedVideoUrls = videoFiles.length
-        ? await uploadVideos(videoFiles)
-        : [];
+        const uploadedVideoUrls = videoFiles.length
+          ? await uploadVideos(videoFiles)
+          : [];
 
-       for (let i = 0; i < formImages.length; i++) {
-        const img = formImages[i];
-        const url = uploadedImageUrls[i];
+        for (let i = 0; i < formImages.length; i++) {
+          const img = formImages[i];
+          const url = uploadedImageUrls[i];
 
-        if (url && img.latitude && img.longitude) {
-          await geotagImage(url, img.latitude, img.longitude);
-        }
-      }
-    
-        const currentFormItems = buildFormItems(
-          currentForm,
-          formData,
-          {
-            imageUrls: uploadedImageUrls,
-            docUrls: uploadedDocUrls,
-            videoUrls: uploadedVideoUrls,
+          if (url && img.latitude && img.longitude) {
+            await geotagImage(url, img.latitude, img.longitude);
           }
-        );
+        }
+
+        const currentFormItems = buildFormItems(currentForm, formData, {
+          imageUrls: uploadedImageUrls,
+          docUrls: uploadedDocUrls,
+          videoUrls: uploadedVideoUrls,
+        });
         if (currentFormItems.length > 0) {
           await submitFormItems(newGpMainId, currentFormItems);
         }
@@ -886,6 +877,7 @@ function App() {
                 setSidebarOpen(false);
               }}
               completedForms={completedForms}
+              gpMainId={gpMainId}
             />
           </div>
         </div>
