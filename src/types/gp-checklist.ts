@@ -36,29 +36,34 @@ export interface FormData {
     geotaggedSiteImages?: GeoTaggedImage[] | [];
   };
   form2?: {
-    ofcConnected?: string;
-    fiberLength?: string;
-    otdrTest?: string;
-    linkStatus?: string;
     ofcRouteImages?: GeoTaggedImage[];
+    ofcConnected?: string;
     opticalPowerImages?: GeoTaggedImage[];
+    opticalPowerConnected?: string;
     splicingImages?: GeoTaggedImage[];
+    splicingConnected?: string;
     routeIndicatorImages?: GeoTaggedImage[];
+    routeIndicatorConnected?: string;
     otdrPdf?: File | null;
+    isOtdrReportUploaded?: string;
   };
   form3?: {
     routerImage?: GeoTaggedImage[];
+    routerConnected?: string;
     snocImage?: GeoTaggedImage[];
+    snocImageConnected?: string;
     serialNumber?: string;
     macId?: string;
     qrType?: string;
     qrCodeImage?: GeoTaggedImage[];
     devicePing?: string;
+    pingProofImg?: GeoTaggedImage[];
   };
   form4?: {
-    solarPanelInstalled?: boolean;
-    solarPanelFunctional?: string;
+    solarPanelInstalled?: string;
+    solarPanelImage?: GeoTaggedImage[];
     batteryBackup?: string;
+    batteryBackupImage?: GeoTaggedImage[];
     earthingVerified?: string;
     earthingVideo?: File | null;
     powerSource?: string;
@@ -68,26 +73,32 @@ export interface FormData {
     photosAngleImages?: GeoTaggedImage[];
     videoUploaded?: string;
     videoUploadedFile?: File | null;
-    abdUpdated?: boolean;
+    abdUpdated?: string;
+    abdPDF?: File | null;
     gisEntryCompleted?: string;
+    GISImgages?: GeoTaggedImage[];
     ieVerification?: string;
+    IEimages?: GeoTaggedImage[];
   };
   form6?: {
     siteClean?: string;
-    materialsApproved?: boolean;
+    materialsApproved?: string;
+    verificationProof?: File | null;
+    materialImgages?: GeoTaggedImage[];
     socialAudit?: string;
     socialAuditVideo?: File | null;
-    siteLabelBoard?: boolean;
+    siteLabelBoard?: string;
+    siteLabelBoardImage?: GeoTaggedImage[];
   };
   form7?: {
     patCompleted?: string;
-    patProof?: File | null;
+    patProof?: GeoTaggedImage[];
     fatApproved?: string;
-    fatApprovalProof?: File | null;
+    fatApprovalProof?: GeoTaggedImage[];
     qrTagVerified?: string;
     qrTagImage?: GeoTaggedImage[];
     hotoSigned?: string;
-    hotoMemoSignature?: File | null;
+    hotoMemoSignature?: GeoTaggedImage[];
   };
 }
 

@@ -1,5 +1,7 @@
-import { Zap, PanelBottom, Battery, CircleDot, Upload } from 'lucide-react';
-import { FormData } from '../../../types/gp-checklist';
+import { Zap, PanelBottom, Battery, CircleDot, Upload, X } from 'lucide-react';
+import { FormData, GeoTaggedImage } from '../../../types/gp-checklist';
+import { useState } from 'react';
+import ImageCapture from './ImageCapture';
 
 interface Form4Props {
   data: FormData['form4'] | undefined;
@@ -13,7 +15,60 @@ export default function Form4({ data, onChange }: Form4Props) {
   ) => {
     onChange({ ...data, [field]: value });
   };
+  const[solarImg, setSolarImg] = useState<GeoTaggedImage[]>([]);
+  const[batteryImg, setBatteryImg] = useState<GeoTaggedImage[]>([]);
 
+  const handleSolarCapture = (image: GeoTaggedImage) => {
+    const updated = [...solarImg, image];
+    setSolarImg(updated);
+    onChange({ ...data, solarPanelImage: updated });
+  }
+  const handleBatteryCapture = (image: GeoTaggedImage) => {
+    const updated = [...batteryImg, image];
+    setBatteryImg(updated);
+    onChange({ ...data, batteryBackupImage: updated });
+  }
+  const removeImage = (
+    imageId: string,
+    images: GeoTaggedImage[],
+    setImages: React.Dispatch<React.SetStateAction<GeoTaggedImage[]>>,
+  ) => {
+    const updated = images.filter((img) => img.id !== imageId);
+    setImages(updated);
+  };
+
+ const ImagePreview = ({
+    images,
+    setImages,
+    label,
+  }: {
+    images: GeoTaggedImage[];
+    setImages: React.Dispatch<React.SetStateAction<GeoTaggedImage[]>>;
+    label: string;
+  }) => (
+    <>
+      {images.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+          {images.map((img) => (
+            <div key={img.id} className="relative group">
+              <img
+                src={img.watermarkedPreview || img.preview}
+                alt={label}
+                className="w-full h-24 object-cover rounded-lg"
+              />
+            
+              <button
+                onClick={() => removeImage(img.id, images, setImages)}
+                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -32,37 +87,19 @@ export default function Form4({ data, onChange }: Form4Props) {
           </div>
           <h3 className="text-lg font-semibold text-gray-900">Solar Panel</h3>
         </div>
-
         <div>
           <label className="block text-sm font-medium text-gray-900 mb-3">
             Solar panel installed and functional
           </label>
-          <label className="flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={data?.solarPanelInstalled || false}
-              onChange={(e) =>
-                updateField('solarPanelInstalled', e.target.checked)
-              }
-              className="w-5 h-5 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500"
-            />
-            <span className="ml-3 text-sm text-gray-700">Yes</span>
-          </label>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-900 mb-3">
-            Solar panel installed and functional
-          </label>
-          <div className="flex gap-4">
+          <div className="flex gap-4 mb-3">
             <label className="flex items-center cursor-pointer">
               <input
                 type="radio"
-                name="solarPanelFunctional"
+                name="solarPanelImage"
                 value="yes"
-                checked={data?.solarPanelFunctional === 'yes'}
+                checked={data?.solarPanelInstalled === 'yes'}
                 onChange={(e) =>
-                  updateField('solarPanelFunctional', e.target.value)
+                  updateField('solarPanelInstalled', e.target.value)
                 }
                 className="w-4 h-4 text-yellow-600 border-gray-300 focus:ring-yellow-500"
               />
@@ -71,17 +108,27 @@ export default function Form4({ data, onChange }: Form4Props) {
             <label className="flex items-center cursor-pointer">
               <input
                 type="radio"
-                name="solarPanelFunctional"
+                name="solarPanelImage"
                 value="no"
-                checked={data?.solarPanelFunctional === 'no'}
+                checked={data?.solarPanelInstalled === 'no'}
                 onChange={(e) =>
-                  updateField('solarPanelFunctional', e.target.value)
+                  updateField('solarPanelInstalled', e.target.value)
                 }
                 className="w-4 h-4 text-yellow-600 border-gray-300 focus:ring-yellow-500"
               />
               <span className="ml-2 text-sm text-gray-700">No</span>
             </label>
           </div>
+          {data?.solarPanelInstalled === 'yes' && (
+             <><ImageCapture
+              onCapture={handleSolarCapture}
+              label="Capture Solar Panel Image" />
+              <ImagePreview
+                images={solarImg}
+                setImages={setSolarImg}
+                label="Solar Panel" /></>
+          )}
+  
         </div>
       </div>
 
@@ -99,11 +146,11 @@ export default function Form4({ data, onChange }: Form4Props) {
           <label className="block text-sm font-medium text-gray-900 mb-3">
             Battery backup installed, charged
           </label>
-          <div className="flex gap-4">
+          <div className="flex gap-4 mb-3">
             <label className="flex items-center cursor-pointer">
               <input
                 type="radio"
-                name="batteryBackup"
+                name="batteryBackupImage"
                 value="yes"
                 checked={data?.batteryBackup === 'yes'}
                 onChange={(e) => updateField('batteryBackup', e.target.value)}
@@ -114,7 +161,7 @@ export default function Form4({ data, onChange }: Form4Props) {
             <label className="flex items-center cursor-pointer">
               <input
                 type="radio"
-                name="batteryBackup"
+                name="batteryBackupImage"
                 value="no"
                 checked={data?.batteryBackup === 'no'}
                 onChange={(e) => updateField('batteryBackup', e.target.value)}
@@ -123,6 +170,16 @@ export default function Form4({ data, onChange }: Form4Props) {
               <span className="ml-2 text-sm text-gray-700">No</span>
             </label>
           </div>
+          {data?.batteryBackup === 'yes' && (
+             <><ImageCapture
+              onCapture={handleBatteryCapture}
+              label="Capture Battery Backup Image" />
+              <ImagePreview
+                images={batteryImg}
+                setImages={setBatteryImg}
+                label="Battery Backup" /></>
+          )}
+
         </div>
       </div>
 
@@ -183,10 +240,8 @@ export default function Form4({ data, onChange }: Form4Props) {
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all bg-white"
           >
             <option value="">Select Power Source</option>
-            <option value="grid">Grid Power</option>
-            <option value="solar">Solar Power</option>
-            <option value="hybrid">Hybrid (Grid + Solar)</option>
-            <option value="battery">Battery Only</option>
+            <option value="Grid">Grid</option>
+            <option value="Solar">Solar</option>
           </select>
         </div>
 

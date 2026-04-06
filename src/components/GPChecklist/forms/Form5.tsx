@@ -1,6 +1,7 @@
-import { Globe, Camera, FileCheck, Map, UserCheck, Upload } from 'lucide-react';
-import { FormData } from '../../../types/gp-checklist';
+import { Globe, Camera, FileCheck, Map, UserCheck, Upload, X, FileText } from 'lucide-react';
+import { FormData, GeoTaggedImage } from '../../../types/gp-checklist';
 import ImageCapture from './ImageCapture';
+import { useState } from 'react';
 
 interface Form5Props {
   data: FormData['form5'] | undefined;
@@ -8,17 +9,72 @@ interface Form5Props {
 }
 
 export default function Form5({ data, onChange }: Form5Props) {
-  const updateField = (
-    field: string,
-    value:
-      | string
-      | boolean
-      | File
-      | null
-      | FormData['form5']['photosAngleImages'],
-  ) => {
+
+   const updateField = (field: string, value: string | File | null) => {
     onChange({ ...data, [field]: value });
   };
+ const [photosAngleImages, setPhotosAngleImages] = useState<GeoTaggedImage[]>([]);
+ const [GISImgages, setGISImages] = useState<GeoTaggedImage[]>([]);
+ const [IEimages, setIEImages] = useState<GeoTaggedImage[]>([]);
+ const handleAngleImagesChange = (image: GeoTaggedImage) => {
+    const updated = [...photosAngleImages, image];
+    setPhotosAngleImages(updated);
+    onChange({ ...data, photosAngleImages: updated });
+  };
+  const handleGISImagesChange = (image: GeoTaggedImage) => {
+    const updated = [...GISImgages, image];
+    setGISImages(updated);
+    onChange({ ...data, GISImgages: updated });
+  };
+  const handleIEImagesChange = (image: GeoTaggedImage) => {
+    const updated = [...IEimages, image];
+    setIEImages(updated);
+    onChange({ ...data, ieVerification: 'yes', IEimages: updated });
+  };
+
+
+   const removeImage = (
+    imageId: string,
+    images: GeoTaggedImage[],
+    setImages: React.Dispatch<React.SetStateAction<GeoTaggedImage[]>>,
+  ) => {
+    const updated = images.filter((img) => img.id !== imageId);
+    setImages(updated);
+  };
+
+   const ImagePreview = ({
+    images,
+    setImages,
+    label,
+  }: {
+    images: GeoTaggedImage[];
+    setImages: React.Dispatch<React.SetStateAction<GeoTaggedImage[]>>;
+    label: string;
+  }) => (
+    <>
+      {images.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+          {images.map((img) => (
+            <div key={img.id} className="relative group">
+              <img
+                src={img.watermarkedPreview || img.preview}
+                alt={label}
+                className="w-full h-24 object-cover rounded-lg"
+              />
+            
+              <button
+                onClick={() => removeImage(img.id, images, setImages)}
+                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+
 
   return (
     <div className="space-y-6">
@@ -75,10 +131,14 @@ export default function Form5({ data, onChange }: Form5Props) {
               Upload 5 Angle Photos (Close-up + 4 Directional)
             </label>
             <ImageCapture
-              images={data?.photosAngleImages || []}
-              onChange={(imgs) => updateField('photosAngleImages', imgs)}
-              maxImages={5}
+              onCapture={handleAngleImagesChange}
+              label="Capture Photos"
             />
+            <ImagePreview
+            images={photosAngleImages}
+            setImages={setPhotosAngleImages}
+            label="Photos (5 Angles)"
+          />
           </div>
         )}
 
@@ -157,12 +217,36 @@ export default function Form5({ data, onChange }: Form5Props) {
           <label className="flex items-center cursor-pointer">
             <input
               type="checkbox"
-              checked={data?.abdUpdated || false}
-              onChange={(e) => updateField('abdUpdated', e.target.checked)}
+              checked={data?.abdUpdated === 'yes'}
+              onChange={(e) => updateField('abdUpdated', e.target.checked ? 'yes' : 'no')}
               className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
             <span className="ml-3 text-sm text-gray-700">Yes</span>
           </label>
+           {data?.abdUpdated === 'yes' && (
+          <div className="border-2 border-dashed border-green-300 rounded-lg p-6 text-center hover:border-green-500 transition-colors cursor-pointer">
+            <input
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              id="abd-pdf-upload"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  onChange({ ...data, abdPDF: file });
+                }
+              }}
+            />
+            <label htmlFor="abd-pdf-upload" className="cursor-pointer">
+              <FileText className="w-6 h-6 mx-auto mb-2 text-green-600" />
+              <p className="text-sm text-gray-600">
+                {data?.abdPDF
+                  ? (data.abdPDF as File).name
+                  : 'Upload ABD PDF'}
+              </p>
+            </label>
+          </div>
+          )}
         </div>
 
         <div>
@@ -170,7 +254,7 @@ export default function Form5({ data, onChange }: Form5Props) {
             GIS entry completed with latitude, longitude, route code, and asset
             type
           </label>
-          <div className="flex gap-4">
+          <div className="flex gap-4 mb-3">
             <label className="flex items-center cursor-pointer">
               <input
                 type="radio"
@@ -198,6 +282,16 @@ export default function Form5({ data, onChange }: Form5Props) {
               <span className="ml-2 text-sm text-gray-700">No</span>
             </label>
           </div>
+          {data?.gisEntryCompleted === 'yes' && (
+            <><ImageCapture
+              onCapture={handleGISImagesChange}
+              label="Capture Photos" />
+              <ImagePreview
+                images={GISImgages}
+                setImages={setGISImages}
+                label="Photos" /></>
+          )}
+
         </div>
       </div>
 
@@ -215,7 +309,7 @@ export default function Form5({ data, onChange }: Form5Props) {
           <label className="block text-sm font-medium text-gray-900 mb-3">
             Verification by Independent Engineer (IE) completed and signed
           </label>
-          <div className="flex gap-4">
+          <div className="flex gap-4 mb-3">
             <label className="flex items-center cursor-pointer">
               <input
                 type="radio"
@@ -239,6 +333,19 @@ export default function Form5({ data, onChange }: Form5Props) {
               <span className="ml-2 text-sm text-gray-700">No</span>
             </label>
           </div>
+          {data?.ieVerification === 'yes' && (
+            <>
+              <ImageCapture
+                onCapture={handleIEImagesChange}
+                label="Capture Photos"
+              />
+              <ImagePreview
+                images={IEimages}
+                setImages={setIEImages}
+                label="Photos of IE Verification"
+              />
+            </>
+          )}
         </div>
       </div>
     </div>

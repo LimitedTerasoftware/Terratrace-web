@@ -4,9 +4,11 @@ import {
   QrCode,
   PenTool,
   Upload,
+  X,
 } from 'lucide-react';
-import { FormData } from '../../../types/gp-checklist';
+import { FormData, GeoTaggedImage } from '../../../types/gp-checklist';
 import ImageCapture from './ImageCapture';
+import { useState } from 'react';
 
 interface Form7Props {
   data: FormData['form7'] | undefined;
@@ -16,10 +18,93 @@ interface Form7Props {
 export default function Form7({ data, onChange }: Form7Props) {
   const updateField = (
     field: string,
-    value: string | File | null | FormData['form7']['qrTagImage'],
+    value: string | boolean | File | null,
   ) => {
     onChange({ ...data, [field]: value });
   };
+  const [hotoSignatureImage, setHotoSignatureImage] = useState<
+    GeoTaggedImage[]
+  >(data?.hotoMemoSignature || []);
+
+  const [patImgages, setPatImages] = useState<GeoTaggedImage[]>(data?.patProof || []);
+
+  const [fatApprovalProof, setFatApprovalProof] = useState<GeoTaggedImage[]>(data?.fatApprovalProof || []);
+
+  const handleFatApprovalProofChange = (images: GeoTaggedImage) => {
+    const updated = [...fatApprovalProof,images];
+    setFatApprovalProof(updated);
+    onChange({ ...data, fatApprovalProof: updated });
+  }
+
+  const handlePatProofChange = (images: GeoTaggedImage) => {
+    const updated = [...patImgages,images];
+    setPatImages(updated);
+    onChange({ ...data, patProof: updated });
+  }
+
+const handleHotoSignatureChange = (images: GeoTaggedImage) => {
+    const updated = [...hotoSignatureImage,images];
+    setHotoSignatureImage(updated);
+    onChange({ ...data, hotoMemoSignature: updated });
+  };
+
+  const [qrTagImages, setQrTagImages] = useState<GeoTaggedImage[]>(
+    data?.qrTagImage || [],
+  );
+
+  const handleQrTagImageChange = (images: GeoTaggedImage) => {
+    const updated = [...qrTagImages,images];
+    setQrTagImages(updated);
+    onChange({ ...data, qrTagImage: updated });
+  };
+
+
+
+
+
+
+  const removeImage = (
+    imageId: string,
+    images: GeoTaggedImage[],
+    setImages: React.Dispatch<React.SetStateAction<GeoTaggedImage[]>>,
+  ) => {
+    const updated = images.filter((img) => img.id !== imageId);
+    setImages(updated);
+  };
+
+   const ImagePreview = ({
+    images,
+    setImages,
+    label,
+  }: {
+    images: GeoTaggedImage[];
+    setImages: React.Dispatch<React.SetStateAction<GeoTaggedImage[]>>;
+    label: string;
+  }) => (
+    <>
+      {images.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+          {images.map((img) => (
+            <div key={img.id} className="relative group">
+              <img
+                src={img.watermarkedPreview || img.preview}
+                alt={label}
+                className="w-full h-24 object-cover rounded-lg"
+              />
+            
+              <button
+                onClick={() => removeImage(img.id, images, setImages)}
+                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+
 
   return (
     <div className="space-y-6">
@@ -74,30 +159,14 @@ export default function Form7({ data, onChange }: Form7Props) {
         </div>
 
         {data?.patCompleted === 'yes' && (
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">
-              Upload PAT Proof
-            </label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
-              <input
-                type="file"
-                accept="image/*,.pdf"
-                onChange={(e) =>
-                  updateField('patProof', e.target.files?.[0] || null)
-                }
-                className="hidden"
-                id="pat-proof-upload"
-              />
-              <label htmlFor="pat-proof-upload" className="cursor-pointer">
-                <Upload className="w-10 h-10 mx-auto text-gray-400 mb-2" />
-                <p className="text-sm text-gray-600">
-                  {data?.patProof
-                    ? data.patProof.name
-                    : 'Click to upload PAT proof'}
-                </p>
-              </label>
-            </div>
-          </div>
+        <><ImageCapture
+            onCapture={handlePatProofChange}
+            label="Capture Photos" />
+            <ImagePreview
+              images={patImgages}
+              setImages={setPatImages}
+              label="Photos of PAT completion proof" />
+            </>
         )}
       </div>
 
@@ -141,30 +210,14 @@ export default function Form7({ data, onChange }: Form7Props) {
         </div>
 
         {data?.fatApproved === 'yes' && (
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">
-              Upload FAT Approval Proof
-            </label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-green-400 transition-colors">
-              <input
-                type="file"
-                accept="image/*,.pdf"
-                onChange={(e) =>
-                  updateField('fatApprovalProof', e.target.files?.[0] || null)
-                }
-                className="hidden"
-                id="fat-proof-upload"
-              />
-              <label htmlFor="fat-proof-upload" className="cursor-pointer">
-                <Upload className="w-10 h-10 mx-auto text-gray-400 mb-2" />
-                <p className="text-sm text-gray-600">
-                  {data?.fatApprovalProof
-                    ? data.fatApprovalProof.name
-                    : 'Click to upload FAT proof'}
-                </p>
-              </label>
-            </div>
-          </div>
+          <><ImageCapture
+            onCapture={handleFatApprovalProofChange}
+            label="Capture Photos" />
+            <ImagePreview
+              images={fatApprovalProof}
+              setImages={setFatApprovalProof}
+              label="Photos of FAT approval proof" />
+          </>
         )}
       </div>
 
@@ -217,9 +270,13 @@ export default function Form7({ data, onChange }: Form7Props) {
               Upload QR Tag Verification Image
             </label>
             <ImageCapture
-              images={data?.qrTagImage || []}
-              onChange={(imgs) => updateField('qrTagImage', imgs)}
-              maxImages={1}
+              onCapture={handleQrTagImageChange}
+              label="Capture Photos"
+            />
+            <ImagePreview
+              images={qrTagImages}
+              setImages={setQrTagImages}
+              label="Photos of QR tag verification"
             />
           </div>
         )}
@@ -270,30 +327,17 @@ export default function Form7({ data, onChange }: Form7Props) {
         </div>
 
         {data?.hotoSigned === 'yes' && (
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">
-              Upload HOTO Memo Signature
-            </label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-purple-400 transition-colors">
-              <input
-                type="file"
-                accept="image/*,.pdf"
-                onChange={(e) =>
-                  updateField('hotoMemoSignature', e.target.files?.[0] || null)
-                }
-                className="hidden"
-                id="hoto-signature-upload"
-              />
-              <label htmlFor="hoto-signature-upload" className="cursor-pointer">
-                <Upload className="w-10 h-10 mx-auto text-gray-400 mb-2" />
-                <p className="text-sm text-gray-600">
-                  {data?.hotoMemoSignature
-                    ? data.hotoMemoSignature.name
-                    : 'Click to upload signature'}
-                </p>
-              </label>
-            </div>
-          </div>
+          <>
+            <ImageCapture
+              onCapture={handleHotoSignatureChange}
+              label="Capture Photos"
+            />
+            <ImagePreview
+              images={hotoSignatureImage}
+              setImages={setHotoSignatureImage}
+              label="Photos of hoto signature"
+            />
+          </>
         )}
       </div>
     </div>

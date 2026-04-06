@@ -1,16 +1,12 @@
 import {
-  Upload,
   Network,
   Gauge,
   FileText,
-  Scissors,
-  Waypoints,
   X,
 } from 'lucide-react';
 import { FormData, GeoTaggedImage } from '../../../types/gp-checklist';
 import { useState } from 'react';
 import ImageCapture from './ImageCapture';
-import TricadLogo from '../../../images/logo/Tricad.png';
 
 interface Form2Props {
   data: FormData['form2'] | undefined;
@@ -95,12 +91,7 @@ export default function Form2({ data, onChange }: Form2Props) {
                 alt={label}
                 className="w-full h-24 object-cover rounded-lg"
               />
-              <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white text-xs p-1 rounded-b-lg flex justify-between items-center">
-                <span>
-                  {img.latitude.toFixed(4)}, {img.longitude.toFixed(4)}
-                </span>
-                <img src={TricadLogo} alt="Logo" className="h-3" />
-              </div>
+              
               <button
                 onClick={() =>
                   removeImage(img.id, images, setImages, fieldName)
@@ -147,7 +138,7 @@ export default function Form2({ data, onChange }: Form2Props) {
                 type="radio"
                 name="ofcRouteImages"
                 value="yes"
-                checked={data?.ofcRouteImages ? true : undefined}
+                checked={data?.ofcConnected === 'yes'}
                 onChange={(e) => updateField('ofcConnected', e.target.value)}
                 className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
               />
@@ -158,6 +149,7 @@ export default function Form2({ data, onChange }: Form2Props) {
                 type="radio"
                 name="ofcRouteImages"
                 value="no"
+                checked={data?.ofcConnected === 'no'}
                 onChange={(e) => updateField('ofcConnected', e.target.value)}
                 className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
               />
@@ -167,6 +159,7 @@ export default function Form2({ data, onChange }: Form2Props) {
           <ImageCapture
             onCapture={handleOfcRouteCapture}
             label="Capture OFC Route Image"
+            show={data?.ofcConnected === 'yes' || ofcRouteImages.length > 0}
           />
           <ImagePreview
             images={ofcRouteImages}
@@ -186,8 +179,9 @@ export default function Form2({ data, onChange }: Form2Props) {
                 type="radio"
                 name="opticalPowerImages"
                 value="yes"
+                checked={data?.opticalPowerConnected === 'yes'}
                 onChange={(e) =>
-                  updateField('opticalPowerImages', e.target.value)
+                  updateField('opticalPowerConnected', e.target.value)
                 }
                 className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
               />
@@ -198,8 +192,9 @@ export default function Form2({ data, onChange }: Form2Props) {
                 type="radio"
                 name="opticalPowerImages"
                 value="no"
+                checked={data?.opticalPowerConnected === 'no'}
                 onChange={(e) =>
-                  updateField('opticalPowerImages', e.target.value)
+                  updateField('opticalPowerConnected', e.target.value)
                 }
                 className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
               />
@@ -209,6 +204,10 @@ export default function Form2({ data, onChange }: Form2Props) {
           <ImageCapture
             onCapture={handleOpticalPowerCapture}
             label="Capture Optical Power Image"
+            show={
+              data?.opticalPowerConnected === 'yes' ||
+              opticalPowerImages.length > 0
+            }
           />
           <ImagePreview
             images={opticalPowerImages}
@@ -228,8 +227,8 @@ export default function Form2({ data, onChange }: Form2Props) {
                 type="radio"
                 name="otdrPdf"
                 value="yes"
-                checked={data?.otdrPdf ? true : undefined}
-                onChange={(e) => updateField('otdrPdf', e.target.value)}
+                checked={data?.isOtdrReportUploaded === 'yes'}
+                onChange={(e) => updateField('isOtdrReportUploaded', e.target.value)}
                 className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
               />
               <span className="ml-2 text-sm text-gray-700">Yes</span>
@@ -239,12 +238,14 @@ export default function Form2({ data, onChange }: Form2Props) {
                 type="radio"
                 name="otdrPdf"
                 value="no"
-                onChange={(e) => updateField('otdrPdf', e.target.value)}
+                checked={data?.isOtdrReportUploaded === 'no'}
+                onChange={(e) => updateField('isOtdrReportUploaded', e.target.value)}
                 className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
               />
               <span className="ml-2 text-sm text-gray-700">No</span>
             </label>
           </div>
+          {data?.isOtdrReportUploaded === 'yes' && (
           <div className="border-2 border-dashed border-green-300 rounded-lg p-6 text-center hover:border-green-500 transition-colors cursor-pointer">
             <input
               type="file"
@@ -267,7 +268,9 @@ export default function Form2({ data, onChange }: Form2Props) {
               </p>
             </label>
           </div>
+          )}
         </div>
+               
 
         <div>
           <label className="block text-sm font-medium text-gray-900 mb-3">
@@ -279,8 +282,8 @@ export default function Form2({ data, onChange }: Form2Props) {
                 type="radio"
                 name="splicingImages"
                 value="yes"
-                checked={(data?.splicingImages?.length || 0) > 0}
-                onChange={(e) => updateField('splicingImages', e.target.value)}
+                checked={(data?.splicingConnected === 'yes') }
+                onChange={(e) => updateField('splicingConnected', e.target.value)}
                 className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
               />
               <span className="ml-2 text-sm text-gray-700">Yes</span>
@@ -290,7 +293,8 @@ export default function Form2({ data, onChange }: Form2Props) {
                 type="radio"
                 name="splicingImages"
                 value="no"
-                onChange={(e) => updateField('splicingImages', e.target.value)}
+                checked={data?.splicingConnected === 'no'}
+                onChange={(e) => updateField('splicingConnected', e.target.value)}
                 className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
               />
               <span className="ml-2 text-sm text-gray-700">No</span>
@@ -299,6 +303,7 @@ export default function Form2({ data, onChange }: Form2Props) {
           <ImageCapture
             onCapture={handleSplicingCapture}
             label="Capture Splicing Image"
+            show={data?.splicingConnected === 'yes' || splicingImages.length > 0}
           />
           <ImagePreview
             images={splicingImages}
@@ -318,9 +323,9 @@ export default function Form2({ data, onChange }: Form2Props) {
                 type="radio"
                 name="routeIndicatorImages"
                 value="yes"
-                checked={(data?.routeIndicatorImages?.length || 0) > 0}
+                checked={(data?.routeIndicatorConnected === 'yes') }
                 onChange={(e) =>
-                  updateField('routeIndicatorImages', e.target.value)
+                  updateField('routeIndicatorConnected', e.target.value)
                 }
                 className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
               />
@@ -331,8 +336,9 @@ export default function Form2({ data, onChange }: Form2Props) {
                 type="radio"
                 name="routeIndicatorImages"
                 value="no"
+                checked={data?.routeIndicatorConnected === 'no'}
                 onChange={(e) =>
-                  updateField('routeIndicatorImages', e.target.value)
+                  updateField('routeIndicatorConnected', e.target.value)
                 }
                 className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
               />
@@ -343,6 +349,10 @@ export default function Form2({ data, onChange }: Form2Props) {
             <ImageCapture
               onCapture={handleRouteIndicatorCapture}
               label="Capture Route Indicator Image"
+              show={
+                data?.routeIndicatorConnected === 'yes' ||
+                routeIndicatorImages.length > 0
+              }
             />
             <ImagePreview
               images={routeIndicatorImages}

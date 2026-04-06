@@ -1,8 +1,7 @@
-import { Upload, Wrench, Router, QrCode, Wifi, X } from 'lucide-react';
+import { Wrench, Router, QrCode, Wifi, X } from 'lucide-react';
 import { FormData, GeoTaggedImage } from '../../../types/gp-checklist';
 import { useState } from 'react';
 import ImageCapture from './ImageCapture';
-import TricadLogo from '../../../images/logo/Tricad.png';
 
 interface Form3Props {
   data: FormData['form3'] | undefined;
@@ -17,6 +16,7 @@ export default function Form3({ data, onChange }: Form3Props) {
   const [routerImages, setRouterImages] = useState<GeoTaggedImage[]>([]);
   const [snocImages, setSnocImages] = useState<GeoTaggedImage[]>([]);
   const [qrCodeImages, setQrCodeImages] = useState<GeoTaggedImage[]>([]);
+  const [pingProofImages, setPingProofImages] = useState<GeoTaggedImage[]>([]);
 
   const handleRouterCapture = (image: GeoTaggedImage) => {
     const updated = [...routerImages, image];
@@ -35,6 +35,11 @@ export default function Form3({ data, onChange }: Form3Props) {
     setQrCodeImages(updated);
     onChange({ ...data, qrCodeImage: updated });
   };
+  const handlePingProofCapture= (image: GeoTaggedImage) => {
+    const updated = [...(data?.pingProofImg || []), image];
+    setPingProofImages(updated);
+    onChange({ ...data, pingProofImg: updated });
+  }
 
   const removeImage = (
     imageId: string,
@@ -64,12 +69,7 @@ export default function Form3({ data, onChange }: Form3Props) {
                 alt={label}
                 className="w-full h-24 object-cover rounded-lg"
               />
-              <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white text-xs p-1 rounded-b-lg flex justify-between items-center">
-                <span>
-                  {img.latitude.toFixed(4)}, {img.longitude.toFixed(4)}
-                </span>
-                <img src={TricadLogo} alt="Logo" className="h-3" />
-              </div>
+            
               <button
                 onClick={() => removeImage(img.id, images, setImages)}
                 className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -114,12 +114,8 @@ export default function Form3({ data, onChange }: Form3Props) {
                 type="radio"
                 name="routerImage"
                 value="yes"
-                checked={
-                  (data?.routerImage as GeoTaggedImage[] | undefined)?.length
-                    ? true
-                    : undefined
-                }
-                onChange={(e) => updateField('routerImage', e.target.value)}
+                checked={data?.routerConnected as string === 'yes'}
+                onChange={(e) => updateField('routerConnected', e.target.value)}
                 className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
               />
               <span className="ml-2 text-sm text-gray-700">Yes</span>
@@ -129,16 +125,19 @@ export default function Form3({ data, onChange }: Form3Props) {
                 type="radio"
                 name="routerImage"
                 value="no"
-                onChange={(e) => updateField('routerImage', e.target.value)}
+                checked={data?.routerConnected as string === 'no'}
+                onChange={(e) => updateField('routerConnected', e.target.value)}
                 className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
               />
               <span className="ml-2 text-sm text-gray-700">No</span>
             </label>
           </div>
-          <ImageCapture
-            onCapture={handleRouterCapture}
-            label="Capture Router Image"
-          />
+          {data?.routerConnected as string === 'yes' && (
+            <ImageCapture
+              onCapture={handleRouterCapture}
+              label="Capture Router Image"
+            />
+          )}
           <ImagePreview
             images={routerImages}
             setImages={setRouterImages}
@@ -156,12 +155,8 @@ export default function Form3({ data, onChange }: Form3Props) {
                 type="radio"
                 name="snocImage"
                 value="yes"
-                checked={
-                  (data?.snocImage as GeoTaggedImage[] | undefined)?.length
-                    ? true
-                    : undefined
-                }
-                onChange={(e) => updateField('snocImage', e.target.value)}
+                checked={data?.snocImageConnected as string === 'yes'}
+                onChange={(e) => updateField('snocImageConnected', e.target.value)}
                 className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
               />
               <span className="ml-2 text-sm text-gray-700">Yes</span>
@@ -171,16 +166,19 @@ export default function Form3({ data, onChange }: Form3Props) {
                 type="radio"
                 name="snocImage"
                 value="no"
-                onChange={(e) => updateField('snocImage', e.target.value)}
+                checked={data?.snocImageConnected as string === 'no'}
+                onChange={(e) => updateField('snocImageConnected', e.target.value)}
                 className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
               />
               <span className="ml-2 text-sm text-gray-700">No</span>
             </label>
           </div>
-          <ImageCapture
-            onCapture={handleSnocCapture}
-            label="Capture SNOC Image"
-          />
+          {data?.snocImageConnected as string === 'yes' && (
+            <ImageCapture
+              onCapture={handleSnocCapture}
+              label="Capture SNOC Image"
+            />
+          )}
           <ImagePreview
             images={snocImages}
             setImages={setSnocImages}
@@ -238,10 +236,10 @@ export default function Form3({ data, onChange }: Form3Props) {
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all bg-white"
           >
             <option value="">Select Qr Type</option>
-            <option value="router">Router</option>
-            <option value="snoc">SNOC</option>
-            <option value="antenna">Antenna</option>
-            <option value="battery">Battery</option>
+            <option value="ONT">ONT</option>
+            <option value="Enclosure">Enclosure</option>
+            <option value="Solar Panel">Solar Panel</option>
+            <option value="Battery">Battery</option>
           </select>
 
           <ImageCapture
@@ -289,6 +287,19 @@ export default function Form3({ data, onChange }: Form3Props) {
             <span className="ml-2 text-sm text-gray-700">No</span>
           </label>
         </div>
+        {data?.devicePing === 'yes' && (
+          <div className="mt-4">
+            <ImageCapture
+              onCapture={handlePingProofCapture}
+              label="Capture Ping Proof Image"
+            />
+            <ImagePreview
+              images={pingProofImages}
+              setImages={setPingProofImages}
+              label="Ping Proof"
+            />
+          </div>
+        )}
       </div>
     </div>
   );

@@ -14,11 +14,13 @@ interface GeoTaggedImage {
 interface ImageCaptureProps {
   onCapture: (image: GeoTaggedImage) => void;
   label?: string;
+  show?: boolean;
 }
 
 export default function ImageCapture({
   onCapture,
   label = 'Capture Image',
+  show = true,
 }: ImageCaptureProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -220,13 +222,15 @@ export default function ImageCapture({
 
   return (
     <>
-      <button
-        onClick={() => setIsModalOpen(true)}
-        className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-      >
-        <Camera className="w-4 h-4 inline mr-2" />
-        {label}
-      </button>
+      {show && (
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+        >
+          <Camera className="w-4 h-4 inline mr-2" />
+          {label}
+        </button>
+      )}
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">

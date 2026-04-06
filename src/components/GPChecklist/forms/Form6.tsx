@@ -4,8 +4,12 @@ import {
   ClipboardList,
   Tag,
   Upload,
+  X,
+  FileText,
 } from 'lucide-react';
-import { FormData } from '../../../types/gp-checklist';
+import { FormData, GeoTaggedImage } from '../../../types/gp-checklist';
+import { useState } from 'react';
+import ImageCapture from './ImageCapture';
 
 interface Form6Props {
   data: FormData['form6'] | undefined;
@@ -19,6 +23,63 @@ export default function Form6({ data, onChange }: Form6Props) {
   ) => {
     onChange({ ...data, [field]: value });
   };
+ const [materialImages, setMaterialImages] = useState<GeoTaggedImage[]>(data?.materialImgages || []);
+ const [siteLabelBoardImages, setSiteLabelBoardImages] = useState<GeoTaggedImage[]>(data?.siteLabelBoardImage || []);
+  const handlematerialImageUpload = (image: GeoTaggedImage) => {
+    const updated = [...materialImages, image];
+    setMaterialImages(updated);
+    onChange({ ...data, materialImgages: updated });
+  };
+
+  const handleSiteLabelBoardImageUpload = (image: GeoTaggedImage) => {
+    const updated = [...siteLabelBoardImages, image];
+    setSiteLabelBoardImages(updated);
+    onChange({ ...data, siteLabelBoardImage: updated });
+  }
+
+  
+   const removeImage = (
+    imageId: string,
+    images: GeoTaggedImage[],
+    setImages: React.Dispatch<React.SetStateAction<GeoTaggedImage[]>>,
+  ) => {
+    const updated = images.filter((img) => img.id !== imageId);
+    setImages(updated);
+  };
+
+   const ImagePreview = ({
+    images,
+    setImages,
+    label,
+  }: {
+    images: GeoTaggedImage[];
+    setImages: React.Dispatch<React.SetStateAction<GeoTaggedImage[]>>;
+    label: string;
+  }) => (
+    <>
+      {images.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+          {images.map((img) => (
+            <div key={img.id} className="relative group">
+              <img
+                src={img.watermarkedPreview || img.preview}
+                alt={label}
+                className="w-full h-24 object-cover rounded-lg"
+              />
+            
+              <button
+                onClick={() => removeImage(img.id, images, setImages)}
+                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+
 
   return (
     <div className="space-y-6">
@@ -51,11 +112,23 @@ export default function Form6({ data, onChange }: Form6Props) {
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all bg-white"
           >
             <option value="">Select</option>
-            <option value="yes">Yes - Site is clean</option>
-            <option value="no">No - Requires cleanup</option>
-            <option value="partial">Partially clean</option>
+            <option value="Loose cables">Loose cables</option>
+            <option value="Debris">Debris</option>
+            <option value="Obstructions">Obstructions</option>
           </select>
         </div>
+            <>
+             <ImageCapture
+                          onCapture={handlematerialImageUpload}
+                          label="Capture Photos"
+               />
+              <ImagePreview
+                        images={materialImages}
+                        setImages={setMaterialImages}
+                        label="Photos of materials used"
+              /></>
+          
+
       </div>
 
       <div className="bg-gradient-to-br from-gray-50 to-blue-50 border border-blue-200 rounded-xl p-6 space-y-6">
@@ -75,14 +148,38 @@ export default function Form6({ data, onChange }: Form6Props) {
           <label className="flex items-center cursor-pointer">
             <input
               type="checkbox"
-              checked={data?.materialsApproved || false}
+              checked={data?.materialsApproved === 'yes'}
               onChange={(e) =>
-                updateField('materialsApproved', e.target.checked)
+                updateField('materialsApproved', e.target.checked ? 'yes' : 'no')
               }
               className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
             <span className="ml-3 text-sm text-gray-700">Yes</span>
-          </label>
+          </label><br/>
+           {data?.materialsApproved === 'yes' && (
+          <div className="border-2 border-dashed border-green-300 rounded-lg p-6 text-center hover:border-green-500 transition-colors cursor-pointer">
+            <input
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              id="verification-proof-upload"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  onChange({ ...data, verificationProof: file });
+                }
+              }}
+            />
+            <label htmlFor="verification-proof-upload" className="cursor-pointer">
+              <FileText className="w-6 h-6 mx-auto mb-2 text-green-600" />
+              <p className="text-sm text-gray-600">
+                {data?.verificationProof
+                  ? (data.verificationProof as File).name
+                  : 'Upload Verification Proof (PDF)'}
+              </p>
+            </label>
+          </div>
+          )}
         </div>
       </div>
 
@@ -174,13 +271,28 @@ export default function Form6({ data, onChange }: Form6Props) {
           <label className="flex items-center cursor-pointer">
             <input
               type="checkbox"
-              checked={data?.siteLabelBoard || false}
-              onChange={(e) => updateField('siteLabelBoard', e.target.checked)}
+              checked={data?.siteLabelBoard === 'yes'}
+              onChange={(e) => updateField('siteLabelBoard', e.target.checked ? 'yes' : 'no')}
               className="w-5 h-5 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
             />
             <span className="ml-3 text-sm text-gray-700">Yes</span>
           </label>
         </div>
+        {data?.siteLabelBoard === 'yes' && (
+          <>
+              <ImageCapture
+                onCapture={handleSiteLabelBoardImageUpload}
+                label="Capture Photos"
+              />
+              <ImagePreview
+                images={siteLabelBoardImages}
+                setImages={setSiteLabelBoardImages}
+                label="Photos of site label board"
+              />
+          </>
+        )}
+
+
       </div>
     </div>
   );
