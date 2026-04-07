@@ -1,6 +1,6 @@
 import { Zap, PanelBottom, Battery, CircleDot, Upload, X } from 'lucide-react';
 import { FormData, GeoTaggedImage } from '../../../types/gp-checklist';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ImageCapture from './ImageCapture';
 
 interface Form4Props {
@@ -15,19 +15,30 @@ export default function Form4({ data, onChange }: Form4Props) {
   ) => {
     onChange({ ...data, [field]: value });
   };
-  const[solarImg, setSolarImg] = useState<GeoTaggedImage[]>([]);
-  const[batteryImg, setBatteryImg] = useState<GeoTaggedImage[]>([]);
+  const [solarImg, setSolarImg] = useState<GeoTaggedImage[]>(
+    data?.solarPanelImage || [],
+  );
+  const [batteryImg, setBatteryImg] = useState<GeoTaggedImage[]>(
+    data?.batteryBackupImage || [],
+  );
+
+  useEffect(() => {
+    if (data) {
+      if (data.solarPanelImage) setSolarImg(data.solarPanelImage);
+      if (data.batteryBackupImage) setBatteryImg(data.batteryBackupImage);
+    }
+  }, [data]);
 
   const handleSolarCapture = (image: GeoTaggedImage) => {
     const updated = [...solarImg, image];
     setSolarImg(updated);
     onChange({ ...data, solarPanelImage: updated });
-  }
+  };
   const handleBatteryCapture = (image: GeoTaggedImage) => {
     const updated = [...batteryImg, image];
     setBatteryImg(updated);
     onChange({ ...data, batteryBackupImage: updated });
-  }
+  };
   const removeImage = (
     imageId: string,
     images: GeoTaggedImage[],
@@ -37,7 +48,7 @@ export default function Form4({ data, onChange }: Form4Props) {
     setImages(updated);
   };
 
- const ImagePreview = ({
+  const ImagePreview = ({
     images,
     setImages,
     label,
@@ -56,7 +67,7 @@ export default function Form4({ data, onChange }: Form4Props) {
                 alt={label}
                 className="w-full h-24 object-cover rounded-lg"
               />
-            
+
               <button
                 onClick={() => removeImage(img.id, images, setImages)}
                 className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -120,15 +131,18 @@ export default function Form4({ data, onChange }: Form4Props) {
             </label>
           </div>
           {data?.solarPanelInstalled === 'yes' && (
-             <><ImageCapture
-              onCapture={handleSolarCapture}
-              label="Capture Solar Panel Image" />
+            <>
+              <ImageCapture
+                onCapture={handleSolarCapture}
+                label="Capture Solar Panel Image"
+              />
               <ImagePreview
                 images={solarImg}
                 setImages={setSolarImg}
-                label="Solar Panel" /></>
+                label="Solar Panel"
+              />
+            </>
           )}
-  
         </div>
       </div>
 
@@ -171,15 +185,18 @@ export default function Form4({ data, onChange }: Form4Props) {
             </label>
           </div>
           {data?.batteryBackup === 'yes' && (
-             <><ImageCapture
-              onCapture={handleBatteryCapture}
-              label="Capture Battery Backup Image" />
+            <>
+              <ImageCapture
+                onCapture={handleBatteryCapture}
+                label="Capture Battery Backup Image"
+              />
               <ImagePreview
                 images={batteryImg}
                 setImages={setBatteryImg}
-                label="Battery Backup" /></>
+                label="Battery Backup"
+              />
+            </>
           )}
-
         </div>
       </div>
 

@@ -1,11 +1,6 @@
-import {
-  Network,
-  Gauge,
-  FileText,
-  X,
-} from 'lucide-react';
+import { Network, Gauge, FileText, X } from 'lucide-react';
 import { FormData, GeoTaggedImage } from '../../../types/gp-checklist';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ImageCapture from './ImageCapture';
 
 interface Form2Props {
@@ -17,14 +12,29 @@ export default function Form2({ data, onChange }: Form2Props) {
   const updateField = (field: string, value: string) => {
     onChange({ ...data, [field]: value });
   };
-  const [ofcRouteImages, setOfcRouteImages] = useState<GeoTaggedImage[]>([]);
+  const [ofcRouteImages, setOfcRouteImages] = useState<GeoTaggedImage[]>(
+    data?.ofcRouteImages || [],
+  );
   const [opticalPowerImages, setOpticalPowerImages] = useState<
     GeoTaggedImage[]
-  >([]);
-  const [splicingImages, setSplicingImages] = useState<GeoTaggedImage[]>([]);
+  >(data?.opticalPowerImages || []);
+  const [splicingImages, setSplicingImages] = useState<GeoTaggedImage[]>(
+    data?.splicingImages || [],
+  );
   const [routeIndicatorImages, setRouteIndicatorImages] = useState<
     GeoTaggedImage[]
-  >([]);
+  >(data?.routeIndicatorImages || []);
+
+  useEffect(() => {
+    if (data) {
+      if (data.ofcRouteImages) setOfcRouteImages(data.ofcRouteImages);
+      if (data.opticalPowerImages)
+        setOpticalPowerImages(data.opticalPowerImages);
+      if (data.splicingImages) setSplicingImages(data.splicingImages);
+      if (data.routeIndicatorImages)
+        setRouteIndicatorImages(data.routeIndicatorImages);
+    }
+  }, [data]);
 
   const handleOfcRouteCapture = (image: GeoTaggedImage) => {
     const updated = [...ofcRouteImages, image];
@@ -90,7 +100,7 @@ export default function Form2({ data, onChange }: Form2Props) {
                 alt={label}
                 className="w-full h-24 object-cover rounded-lg"
               />
-              
+
               <button
                 onClick={() =>
                   removeImage(img.id, images, setImages, fieldName)
@@ -227,7 +237,9 @@ export default function Form2({ data, onChange }: Form2Props) {
                 name="otdrPdf"
                 value="yes"
                 checked={data?.isOtdrReportUploaded === 'yes'}
-                onChange={(e) => updateField('isOtdrReportUploaded', e.target.value)}
+                onChange={(e) =>
+                  updateField('isOtdrReportUploaded', e.target.value)
+                }
                 className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
               />
               <span className="ml-2 text-sm text-gray-700">Yes</span>
@@ -238,38 +250,39 @@ export default function Form2({ data, onChange }: Form2Props) {
                 name="otdrPdf"
                 value="no"
                 checked={data?.isOtdrReportUploaded === 'no'}
-                onChange={(e) => updateField('isOtdrReportUploaded', e.target.value)}
+                onChange={(e) =>
+                  updateField('isOtdrReportUploaded', e.target.value)
+                }
                 className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
               />
               <span className="ml-2 text-sm text-gray-700">No</span>
             </label>
           </div>
           {data?.isOtdrReportUploaded === 'yes' && (
-          <div className="border-2 border-dashed border-green-300 rounded-lg p-6 text-center hover:border-green-500 transition-colors cursor-pointer">
-            <input
-              type="file"
-              accept="application/pdf"
-              className="hidden"
-              id="otdr-pdf-upload"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  onChange({ ...data, otdrPdf: file });
-                }
-              }}
-            />
-            <label htmlFor="otdr-pdf-upload" className="cursor-pointer">
-              <FileText className="w-6 h-6 mx-auto mb-2 text-green-600" />
-              <p className="text-sm text-gray-600">
-                {data?.otdrPdf
-                  ? (data.otdrPdf as File).name
-                  : 'Upload OTDR PDF'}
-              </p>
-            </label>
-          </div>
+            <div className="border-2 border-dashed border-green-300 rounded-lg p-6 text-center hover:border-green-500 transition-colors cursor-pointer">
+              <input
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                id="otdr-pdf-upload"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    onChange({ ...data, otdrPdf: file });
+                  }
+                }}
+              />
+              <label htmlFor="otdr-pdf-upload" className="cursor-pointer">
+                <FileText className="w-6 h-6 mx-auto mb-2 text-green-600" />
+                <p className="text-sm text-gray-600">
+                  {data?.otdrPdf
+                    ? (data.otdrPdf as File).name
+                    : 'Upload OTDR PDF'}
+                </p>
+              </label>
+            </div>
           )}
         </div>
-               
 
         <div>
           <label className="block text-sm font-medium text-gray-900 mb-3">
@@ -281,8 +294,10 @@ export default function Form2({ data, onChange }: Form2Props) {
                 type="radio"
                 name="splicingImages"
                 value="yes"
-                checked={(data?.splicingConnected === 'yes') }
-                onChange={(e) => updateField('splicingConnected', e.target.value)}
+                checked={data?.splicingConnected === 'yes'}
+                onChange={(e) =>
+                  updateField('splicingConnected', e.target.value)
+                }
                 className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
               />
               <span className="ml-2 text-sm text-gray-700">Yes</span>
@@ -293,7 +308,9 @@ export default function Form2({ data, onChange }: Form2Props) {
                 name="splicingImages"
                 value="no"
                 checked={data?.splicingConnected === 'no'}
-                onChange={(e) => updateField('splicingConnected', e.target.value)}
+                onChange={(e) =>
+                  updateField('splicingConnected', e.target.value)
+                }
                 className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
               />
               <span className="ml-2 text-sm text-gray-700">No</span>
@@ -302,7 +319,9 @@ export default function Form2({ data, onChange }: Form2Props) {
           <ImageCapture
             onCapture={handleSplicingCapture}
             label="Capture Splicing Image"
-            show={data?.splicingConnected === 'yes' || splicingImages.length > 0}
+            show={
+              data?.splicingConnected === 'yes' || splicingImages.length > 0
+            }
           />
           <ImagePreview
             images={splicingImages}
@@ -322,7 +341,7 @@ export default function Form2({ data, onChange }: Form2Props) {
                 type="radio"
                 name="routeIndicatorImages"
                 value="yes"
-                checked={(data?.routeIndicatorConnected === 'yes') }
+                checked={data?.routeIndicatorConnected === 'yes'}
                 onChange={(e) =>
                   updateField('routeIndicatorConnected', e.target.value)
                 }

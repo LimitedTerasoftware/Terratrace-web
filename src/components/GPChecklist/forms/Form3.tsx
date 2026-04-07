@@ -1,6 +1,6 @@
 import { Wrench, Router, QrCode, Wifi, X } from 'lucide-react';
 import { FormData, GeoTaggedImage } from '../../../types/gp-checklist';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ImageCapture from './ImageCapture';
 
 interface Form3Props {
@@ -13,10 +13,27 @@ export default function Form3({ data, onChange }: Form3Props) {
     onChange({ ...data, [field]: value });
   };
 
-  const [routerImages, setRouterImages] = useState<GeoTaggedImage[]>([]);
-  const [snocImages, setSnocImages] = useState<GeoTaggedImage[]>([]);
-  const [qrCodeImages, setQrCodeImages] = useState<GeoTaggedImage[]>([]);
-  const [pingProofImages, setPingProofImages] = useState<GeoTaggedImage[]>([]);
+  const [routerImages, setRouterImages] = useState<GeoTaggedImage[]>(
+    data?.routerImage || [],
+  );
+  const [snocImages, setSnocImages] = useState<GeoTaggedImage[]>(
+    data?.snocImage || [],
+  );
+  const [qrCodeImages, setQrCodeImages] = useState<GeoTaggedImage[]>(
+    data?.qrCodeImage || [],
+  );
+  const [pingProofImages, setPingProofImages] = useState<GeoTaggedImage[]>(
+    data?.pingProofImg || [],
+  );
+
+  useEffect(() => {
+    if (data) {
+      if (data.routerImage) setRouterImages(data.routerImage);
+      if (data.snocImage) setSnocImages(data.snocImage);
+      if (data.qrCodeImage) setQrCodeImages(data.qrCodeImage);
+      if (data.pingProofImg) setPingProofImages(data.pingProofImg);
+    }
+  }, [data]);
 
   const handleRouterCapture = (image: GeoTaggedImage) => {
     const updated = [...routerImages, image];
@@ -35,11 +52,11 @@ export default function Form3({ data, onChange }: Form3Props) {
     setQrCodeImages(updated);
     onChange({ ...data, qrCodeImage: updated });
   };
-  const handlePingProofCapture= (image: GeoTaggedImage) => {
+  const handlePingProofCapture = (image: GeoTaggedImage) => {
     const updated = [...(data?.pingProofImg || []), image];
     setPingProofImages(updated);
     onChange({ ...data, pingProofImg: updated });
-  }
+  };
 
   const removeImage = (
     imageId: string,
@@ -69,7 +86,7 @@ export default function Form3({ data, onChange }: Form3Props) {
                 alt={label}
                 className="w-full h-24 object-cover rounded-lg"
               />
-            
+
               <button
                 onClick={() => removeImage(img.id, images, setImages)}
                 className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -114,7 +131,7 @@ export default function Form3({ data, onChange }: Form3Props) {
                 type="radio"
                 name="routerImage"
                 value="yes"
-                checked={data?.routerConnected as string === 'yes'}
+                checked={(data?.routerConnected as string) === 'yes'}
                 onChange={(e) => updateField('routerConnected', e.target.value)}
                 className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
               />
@@ -125,14 +142,14 @@ export default function Form3({ data, onChange }: Form3Props) {
                 type="radio"
                 name="routerImage"
                 value="no"
-                checked={data?.routerConnected as string === 'no'}
+                checked={(data?.routerConnected as string) === 'no'}
                 onChange={(e) => updateField('routerConnected', e.target.value)}
                 className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
               />
               <span className="ml-2 text-sm text-gray-700">No</span>
             </label>
           </div>
-          {data?.routerConnected as string === 'yes' && (
+          {(data?.routerConnected as string) === 'yes' && (
             <ImageCapture
               onCapture={handleRouterCapture}
               label="Capture Router Image"
@@ -155,8 +172,10 @@ export default function Form3({ data, onChange }: Form3Props) {
                 type="radio"
                 name="snocImage"
                 value="yes"
-                checked={data?.snocImageConnected as string === 'yes'}
-                onChange={(e) => updateField('snocImageConnected', e.target.value)}
+                checked={(data?.snocImageConnected as string) === 'yes'}
+                onChange={(e) =>
+                  updateField('snocImageConnected', e.target.value)
+                }
                 className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
               />
               <span className="ml-2 text-sm text-gray-700">Yes</span>
@@ -166,14 +185,16 @@ export default function Form3({ data, onChange }: Form3Props) {
                 type="radio"
                 name="snocImage"
                 value="no"
-                checked={data?.snocImageConnected as string === 'no'}
-                onChange={(e) => updateField('snocImageConnected', e.target.value)}
+                checked={(data?.snocImageConnected as string) === 'no'}
+                onChange={(e) =>
+                  updateField('snocImageConnected', e.target.value)
+                }
                 className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
               />
               <span className="ml-2 text-sm text-gray-700">No</span>
             </label>
           </div>
-          {data?.snocImageConnected as string === 'yes' && (
+          {(data?.snocImageConnected as string) === 'yes' && (
             <ImageCapture
               onCapture={handleSnocCapture}
               label="Capture SNOC Image"

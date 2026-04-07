@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { FormData, GeoTaggedImage } from '../../../types/gp-checklist';
 import ImageCapture from './ImageCapture';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface Form7Props {
   data: FormData['form7'] | undefined;
@@ -26,42 +26,50 @@ export default function Form7({ data, onChange }: Form7Props) {
     GeoTaggedImage[]
   >(data?.hotoMemoSignature || []);
 
-  const [patImgages, setPatImages] = useState<GeoTaggedImage[]>(data?.patProof || []);
+  const [patImgages, setPatImages] = useState<GeoTaggedImage[]>(
+    data?.patProof || [],
+  );
 
-  const [fatApprovalProof, setFatApprovalProof] = useState<GeoTaggedImage[]>(data?.fatApprovalProof || []);
-
-  const handleFatApprovalProofChange = (images: GeoTaggedImage) => {
-    const updated = [...fatApprovalProof,images];
-    setFatApprovalProof(updated);
-    onChange({ ...data, fatApprovalProof: updated });
-  }
-
-  const handlePatProofChange = (images: GeoTaggedImage) => {
-    const updated = [...patImgages,images];
-    setPatImages(updated);
-    onChange({ ...data, patProof: updated });
-  }
-
-const handleHotoSignatureChange = (images: GeoTaggedImage) => {
-    const updated = [...hotoSignatureImage,images];
-    setHotoSignatureImage(updated);
-    onChange({ ...data, hotoMemoSignature: updated });
-  };
+  const [fatApprovalProof, setFatApprovalProof] = useState<GeoTaggedImage[]>(
+    data?.fatApprovalProof || [],
+  );
 
   const [qrTagImages, setQrTagImages] = useState<GeoTaggedImage[]>(
     data?.qrTagImage || [],
   );
 
+  useEffect(() => {
+    if (data) {
+      if (data.hotoMemoSignature) setHotoSignatureImage(data.hotoMemoSignature);
+      if (data.patProof) setPatImages(data.patProof);
+      if (data.fatApprovalProof) setFatApprovalProof(data.fatApprovalProof);
+      if (data.qrTagImage) setQrTagImages(data.qrTagImage);
+    }
+  }, [data]);
+
+  const handleFatApprovalProofChange = (images: GeoTaggedImage) => {
+    const updated = [...fatApprovalProof, images];
+    setFatApprovalProof(updated);
+    onChange({ ...data, fatApprovalProof: updated });
+  };
+
+  const handlePatProofChange = (images: GeoTaggedImage) => {
+    const updated = [...patImgages, images];
+    setPatImages(updated);
+    onChange({ ...data, patProof: updated });
+  };
+
+  const handleHotoSignatureChange = (images: GeoTaggedImage) => {
+    const updated = [...hotoSignatureImage, images];
+    setHotoSignatureImage(updated);
+    onChange({ ...data, hotoMemoSignature: updated });
+  };
+
   const handleQrTagImageChange = (images: GeoTaggedImage) => {
-    const updated = [...qrTagImages,images];
+    const updated = [...qrTagImages, images];
     setQrTagImages(updated);
     onChange({ ...data, qrTagImage: updated });
   };
-
-
-
-
-
 
   const removeImage = (
     imageId: string,
@@ -72,7 +80,7 @@ const handleHotoSignatureChange = (images: GeoTaggedImage) => {
     setImages(updated);
   };
 
-   const ImagePreview = ({
+  const ImagePreview = ({
     images,
     setImages,
     label,
@@ -91,7 +99,7 @@ const handleHotoSignatureChange = (images: GeoTaggedImage) => {
                 alt={label}
                 className="w-full h-24 object-cover rounded-lg"
               />
-            
+
               <button
                 onClick={() => removeImage(img.id, images, setImages)}
                 className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -104,7 +112,6 @@ const handleHotoSignatureChange = (images: GeoTaggedImage) => {
       )}
     </>
   );
-
 
   return (
     <div className="space-y-6">
@@ -159,14 +166,17 @@ const handleHotoSignatureChange = (images: GeoTaggedImage) => {
         </div>
 
         {data?.patCompleted === 'yes' && (
-        <><ImageCapture
-            onCapture={handlePatProofChange}
-            label="Capture Photos" />
+          <>
+            <ImageCapture
+              onCapture={handlePatProofChange}
+              label="Capture Photos"
+            />
             <ImagePreview
               images={patImgages}
               setImages={setPatImages}
-              label="Photos of PAT completion proof" />
-            </>
+              label="Photos of PAT completion proof"
+            />
+          </>
         )}
       </div>
 
@@ -210,13 +220,16 @@ const handleHotoSignatureChange = (images: GeoTaggedImage) => {
         </div>
 
         {data?.fatApproved === 'yes' && (
-          <><ImageCapture
-            onCapture={handleFatApprovalProofChange}
-            label="Capture Photos" />
+          <>
+            <ImageCapture
+              onCapture={handleFatApprovalProofChange}
+              label="Capture Photos"
+            />
             <ImagePreview
               images={fatApprovalProof}
               setImages={setFatApprovalProof}
-              label="Photos of FAT approval proof" />
+              label="Photos of FAT approval proof"
+            />
           </>
         )}
       </div>

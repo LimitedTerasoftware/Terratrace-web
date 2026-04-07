@@ -8,7 +8,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { FormData, GeoTaggedImage } from '../../../types/gp-checklist';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ImageCapture from './ImageCapture';
 
 interface Form6Props {
@@ -23,8 +23,20 @@ export default function Form6({ data, onChange }: Form6Props) {
   ) => {
     onChange({ ...data, [field]: value });
   };
- const [materialImages, setMaterialImages] = useState<GeoTaggedImage[]>(data?.materialImgages || []);
- const [siteLabelBoardImages, setSiteLabelBoardImages] = useState<GeoTaggedImage[]>(data?.siteLabelBoardImage || []);
+  const [materialImages, setMaterialImages] = useState<GeoTaggedImage[]>(
+    data?.materialImgages || [],
+  );
+  const [siteLabelBoardImages, setSiteLabelBoardImages] = useState<
+    GeoTaggedImage[]
+  >(data?.siteLabelBoardImage || []);
+
+  useEffect(() => {
+    if (data) {
+      if (data.materialImgages) setMaterialImages(data.materialImgages);
+      if (data.siteLabelBoardImage)
+        setSiteLabelBoardImages(data.siteLabelBoardImage);
+    }
+  }, [data]);
   const handlematerialImageUpload = (image: GeoTaggedImage) => {
     const updated = [...materialImages, image];
     setMaterialImages(updated);
@@ -35,10 +47,9 @@ export default function Form6({ data, onChange }: Form6Props) {
     const updated = [...siteLabelBoardImages, image];
     setSiteLabelBoardImages(updated);
     onChange({ ...data, siteLabelBoardImage: updated });
-  }
+  };
 
-  
-   const removeImage = (
+  const removeImage = (
     imageId: string,
     images: GeoTaggedImage[],
     setImages: React.Dispatch<React.SetStateAction<GeoTaggedImage[]>>,
@@ -47,7 +58,7 @@ export default function Form6({ data, onChange }: Form6Props) {
     setImages(updated);
   };
 
-   const ImagePreview = ({
+  const ImagePreview = ({
     images,
     setImages,
     label,
@@ -66,7 +77,7 @@ export default function Form6({ data, onChange }: Form6Props) {
                 alt={label}
                 className="w-full h-24 object-cover rounded-lg"
               />
-            
+
               <button
                 onClick={() => removeImage(img.id, images, setImages)}
                 className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -79,7 +90,6 @@ export default function Form6({ data, onChange }: Form6Props) {
       )}
     </>
   );
-
 
   return (
     <div className="space-y-6">
@@ -117,18 +127,17 @@ export default function Form6({ data, onChange }: Form6Props) {
             <option value="Obstructions">Obstructions</option>
           </select>
         </div>
-            <>
-             <ImageCapture
-                          onCapture={handlematerialImageUpload}
-                          label="Capture Photos"
-               />
-              <ImagePreview
-                        images={materialImages}
-                        setImages={setMaterialImages}
-                        label="Photos of materials used"
-              /></>
-          
-
+        <>
+          <ImageCapture
+            onCapture={handlematerialImageUpload}
+            label="Capture Photos"
+          />
+          <ImagePreview
+            images={materialImages}
+            setImages={setMaterialImages}
+            label="Photos of materials used"
+          />
+        </>
       </div>
 
       <div className="bg-gradient-to-br from-gray-50 to-blue-50 border border-blue-200 rounded-xl p-6 space-y-6">
@@ -150,35 +159,42 @@ export default function Form6({ data, onChange }: Form6Props) {
               type="checkbox"
               checked={data?.materialsApproved === 'yes'}
               onChange={(e) =>
-                updateField('materialsApproved', e.target.checked ? 'yes' : 'no')
+                updateField(
+                  'materialsApproved',
+                  e.target.checked ? 'yes' : 'no',
+                )
               }
               className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
             <span className="ml-3 text-sm text-gray-700">Yes</span>
-          </label><br/>
-           {data?.materialsApproved === 'yes' && (
-          <div className="border-2 border-dashed border-green-300 rounded-lg p-6 text-center hover:border-green-500 transition-colors cursor-pointer">
-            <input
-              type="file"
-              accept="application/pdf"
-              className="hidden"
-              id="verification-proof-upload"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  onChange({ ...data, verificationProof: file });
-                }
-              }}
-            />
-            <label htmlFor="verification-proof-upload" className="cursor-pointer">
-              <FileText className="w-6 h-6 mx-auto mb-2 text-green-600" />
-              <p className="text-sm text-gray-600">
-                {data?.verificationProof
-                  ? (data.verificationProof as File).name
-                  : 'Upload Verification Proof (PDF)'}
-              </p>
-            </label>
-          </div>
+          </label>
+          <br />
+          {data?.materialsApproved === 'yes' && (
+            <div className="border-2 border-dashed border-green-300 rounded-lg p-6 text-center hover:border-green-500 transition-colors cursor-pointer">
+              <input
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                id="verification-proof-upload"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    onChange({ ...data, verificationProof: file });
+                  }
+                }}
+              />
+              <label
+                htmlFor="verification-proof-upload"
+                className="cursor-pointer"
+              >
+                <FileText className="w-6 h-6 mx-auto mb-2 text-green-600" />
+                <p className="text-sm text-gray-600">
+                  {data?.verificationProof
+                    ? (data.verificationProof as File).name
+                    : 'Upload Verification Proof (PDF)'}
+                </p>
+              </label>
+            </div>
           )}
         </div>
       </div>
@@ -272,7 +288,9 @@ export default function Form6({ data, onChange }: Form6Props) {
             <input
               type="checkbox"
               checked={data?.siteLabelBoard === 'yes'}
-              onChange={(e) => updateField('siteLabelBoard', e.target.checked ? 'yes' : 'no')}
+              onChange={(e) =>
+                updateField('siteLabelBoard', e.target.checked ? 'yes' : 'no')
+              }
               className="w-5 h-5 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
             />
             <span className="ml-3 text-sm text-gray-700">Yes</span>
@@ -280,19 +298,17 @@ export default function Form6({ data, onChange }: Form6Props) {
         </div>
         {data?.siteLabelBoard === 'yes' && (
           <>
-              <ImageCapture
-                onCapture={handleSiteLabelBoardImageUpload}
-                label="Capture Photos"
-              />
-              <ImagePreview
-                images={siteLabelBoardImages}
-                setImages={setSiteLabelBoardImages}
-                label="Photos of site label board"
-              />
+            <ImageCapture
+              onCapture={handleSiteLabelBoardImageUpload}
+              label="Capture Photos"
+            />
+            <ImagePreview
+              images={siteLabelBoardImages}
+              setImages={setSiteLabelBoardImages}
+              label="Photos of site label board"
+            />
           </>
         )}
-
-
       </div>
     </div>
   );

@@ -1,7 +1,16 @@
-import { Globe, Camera, FileCheck, Map, UserCheck, Upload, X, FileText } from 'lucide-react';
+import {
+  Globe,
+  Camera,
+  FileCheck,
+  Map,
+  UserCheck,
+  Upload,
+  X,
+  FileText,
+} from 'lucide-react';
 import { FormData, GeoTaggedImage } from '../../../types/gp-checklist';
 import ImageCapture from './ImageCapture';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface Form5Props {
   data: FormData['form5'] | undefined;
@@ -9,14 +18,27 @@ interface Form5Props {
 }
 
 export default function Form5({ data, onChange }: Form5Props) {
-
-   const updateField = (field: string, value: string | File | null) => {
+  const updateField = (field: string, value: string | File | null) => {
     onChange({ ...data, [field]: value });
   };
- const [photosAngleImages, setPhotosAngleImages] = useState<GeoTaggedImage[]>([]);
- const [GISImgages, setGISImages] = useState<GeoTaggedImage[]>([]);
- const [IEimages, setIEImages] = useState<GeoTaggedImage[]>([]);
- const handleAngleImagesChange = (image: GeoTaggedImage) => {
+  const [photosAngleImages, setPhotosAngleImages] = useState<GeoTaggedImage[]>(
+    data?.photosAngleImages || [],
+  );
+  const [GISImgages, setGISImages] = useState<GeoTaggedImage[]>(
+    data?.GISImgages || [],
+  );
+  const [IEimages, setIEImages] = useState<GeoTaggedImage[]>(
+    data?.IEimages || [],
+  );
+
+  useEffect(() => {
+    if (data) {
+      if (data.photosAngleImages) setPhotosAngleImages(data.photosAngleImages);
+      if (data.GISImgages) setGISImages(data.GISImgages);
+      if (data.IEimages) setIEImages(data.IEimages);
+    }
+  }, [data]);
+  const handleAngleImagesChange = (image: GeoTaggedImage) => {
     const updated = [...photosAngleImages, image];
     setPhotosAngleImages(updated);
     onChange({ ...data, photosAngleImages: updated });
@@ -32,8 +54,7 @@ export default function Form5({ data, onChange }: Form5Props) {
     onChange({ ...data, ieVerification: 'yes', IEimages: updated });
   };
 
-
-   const removeImage = (
+  const removeImage = (
     imageId: string,
     images: GeoTaggedImage[],
     setImages: React.Dispatch<React.SetStateAction<GeoTaggedImage[]>>,
@@ -42,7 +63,7 @@ export default function Form5({ data, onChange }: Form5Props) {
     setImages(updated);
   };
 
-   const ImagePreview = ({
+  const ImagePreview = ({
     images,
     setImages,
     label,
@@ -61,7 +82,7 @@ export default function Form5({ data, onChange }: Form5Props) {
                 alt={label}
                 className="w-full h-24 object-cover rounded-lg"
               />
-            
+
               <button
                 onClick={() => removeImage(img.id, images, setImages)}
                 className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -74,7 +95,6 @@ export default function Form5({ data, onChange }: Form5Props) {
       )}
     </>
   );
-
 
   return (
     <div className="space-y-6">
@@ -135,10 +155,10 @@ export default function Form5({ data, onChange }: Form5Props) {
               label="Capture Photos"
             />
             <ImagePreview
-            images={photosAngleImages}
-            setImages={setPhotosAngleImages}
-            label="Photos (5 Angles)"
-          />
+              images={photosAngleImages}
+              setImages={setPhotosAngleImages}
+              label="Photos (5 Angles)"
+            />
           </div>
         )}
 
@@ -218,34 +238,34 @@ export default function Form5({ data, onChange }: Form5Props) {
             <input
               type="checkbox"
               checked={data?.abdUpdated === 'yes'}
-              onChange={(e) => updateField('abdUpdated', e.target.checked ? 'yes' : 'no')}
+              onChange={(e) =>
+                updateField('abdUpdated', e.target.checked ? 'yes' : 'no')
+              }
               className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
             <span className="ml-3 text-sm text-gray-700">Yes</span>
           </label>
-           {data?.abdUpdated === 'yes' && (
-          <div className="border-2 border-dashed border-green-300 rounded-lg p-6 text-center hover:border-green-500 transition-colors cursor-pointer">
-            <input
-              type="file"
-              accept="application/pdf"
-              className="hidden"
-              id="abd-pdf-upload"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  onChange({ ...data, abdPDF: file });
-                }
-              }}
-            />
-            <label htmlFor="abd-pdf-upload" className="cursor-pointer">
-              <FileText className="w-6 h-6 mx-auto mb-2 text-green-600" />
-              <p className="text-sm text-gray-600">
-                {data?.abdPDF
-                  ? (data.abdPDF as File).name
-                  : 'Upload ABD PDF'}
-              </p>
-            </label>
-          </div>
+          {data?.abdUpdated === 'yes' && (
+            <div className="border-2 border-dashed border-green-300 rounded-lg p-6 text-center hover:border-green-500 transition-colors cursor-pointer">
+              <input
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                id="abd-pdf-upload"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    onChange({ ...data, abdPDF: file });
+                  }
+                }}
+              />
+              <label htmlFor="abd-pdf-upload" className="cursor-pointer">
+                <FileText className="w-6 h-6 mx-auto mb-2 text-green-600" />
+                <p className="text-sm text-gray-600">
+                  {data?.abdPDF ? (data.abdPDF as File).name : 'Upload ABD PDF'}
+                </p>
+              </label>
+            </div>
           )}
         </div>
 
@@ -283,15 +303,18 @@ export default function Form5({ data, onChange }: Form5Props) {
             </label>
           </div>
           {data?.gisEntryCompleted === 'yes' && (
-            <><ImageCapture
-              onCapture={handleGISImagesChange}
-              label="Capture Photos" />
+            <>
+              <ImageCapture
+                onCapture={handleGISImagesChange}
+                label="Capture Photos"
+              />
               <ImagePreview
                 images={GISImgages}
                 setImages={setGISImages}
-                label="Photos" /></>
+                label="Photos"
+              />
+            </>
           )}
-
         </div>
       </div>
 
