@@ -6,6 +6,7 @@ import LiveTrack from './LiveTrack';
 import Dashboard from './MachineWorkChart/Dashboard';
 import IndexPerformanceChart from './PerformanceChart';
 
+
 function MainIndex() {
 type TabType = "live-track" | "Machine-Data" | "Machine-Work-Chart" | "Performance-Chart";
 

@@ -756,11 +756,12 @@ export default function Dashboard() {
                           </p>
                         </div>
                         <button
-                          onClick={() =>
-                            navigate(
-                              `/machine-management/machine-details/${machine.machine_id}`,
-                            )
-                          }
+                          // onClick={() =>
+                          //   navigate(
+                          //     `/machine-management/machine-details/${machine.machine_id}`,
+                          //   )
+                          // }
+                            onClick={() => navigate(`/machine-management/machine-tracking/?tab=tracking&machine_id=${machine.machine_id}`)}
                           className="mt-3 px-3 py-1 text-xs bg-green-600 text-white rounded"
                         >
                           Track Machine

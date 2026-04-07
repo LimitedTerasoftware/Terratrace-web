@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Wrapper } from '@googlemaps/react-wrapper';
 import { Satellite, RefreshCw } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import MapComponent from './MapComponent';
 import ActivityDetails from './ActivityDetails';
 import StatsPanel from './StatsPanel';
@@ -61,6 +61,9 @@ const EVENT_TYPE_MAPPING = {
 };
 
 function LiveTrack() {
+  const [searchParams] = useSearchParams();
+
+  const machineId = searchParams.get('machine_id');
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -74,7 +77,8 @@ function LiveTrack() {
     null,
   );
   const [isAutoRefresh, setIsAutoRefresh] = useState(true);
-  const [Machine, setMachine] = useState('');
+  const [Machine, setMachine] = useState(machineId || '');
+  const [histmachineData,setHistMachineData] = useState('');
   const { activities, totalCount, isLoading, error, refetch, machineData } =
     useActivities(selectedState, selectedDistrict, selectedBlock, Machine);
 
@@ -253,6 +257,9 @@ function LiveTrack() {
     setSelectedDistrict(null);
     setSelectedBlock(null);
   };
+  const filteredMachines = Machine
+  ? machinesData.filter((m) => m.machine_id == Machine)
+  : machinesData;
   return (
     <>
       <div className="mb-4">
@@ -408,6 +415,40 @@ function LiveTrack() {
               {blocks.map((block) => (
                 <option key={block.block_id} value={block.block_id}>
                   {block.block_name}
+                </option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+              <svg
+                className="w-4 h-4 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </div>
+          </div>
+            <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+            <select
+              value={histmachineData !== '' ? histmachineData : ''}
+              onChange={(e) => {
+                setHistMachineData(e.target.value !== '' ? e.target.value : '');
+                   navigate(
+                `/machine-management/machine-details/${e.target.value}`,
+              );
+              }}
+              className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            >
+              <option value="">History</option>
+              {filteredMachines.map((machine) => (
+                <option key={machine.machine_id} value={machine.machine_id}>
+                  {machine.registration_number}
                 </option>
               ))}
             </select>
