@@ -335,27 +335,37 @@ const Report: React.FC<ReportProps> = ({
         const workbook = XLSX.utils.book_new();
 
         const headers = [
+          'Survey ID',
           'State Name',
           'District Name',
           'Block Name',
           'Start Location',
           'End Location',
           'Construction Type',
+          'Distance (m)',
           'Surveyor Name',
           'Surveyor Mobile',
+          'Status',
           'Created At',
           'Updated At',
         ];
 
         const dataRows = filteredData.map((row) => [
+          row.id,
           row.state_name,
           row.district_name,
           row.block_name,
           row.start_lgd_name,
           row.end_lgd_name,
           row.construction_type || '-',
+          row.total_distance || '0.00',
           row.user_name,
           row.user_mobile,
+          row.is_active === 0
+            ? 'Pending'
+            : row.is_active === 1
+              ? 'Accepted'
+              : 'Rejected',
           row.created_at,
           row.updated_at,
         ]);

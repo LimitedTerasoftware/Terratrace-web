@@ -39,7 +39,7 @@ const MachineChart: React.FC<MachineChartProps> = ({ data, machineId, machineNam
     datasets: [
       {
         label: `Machine ${machineName} Daily Distance`,
-        data: data.map(item => parseDistance(item.totalDistance)),
+        data: data.map(item => parseDistance(item.total_distance_km || '0.00')),
         borderColor: 'rgb(59, 130, 246)',
         backgroundColor: 'rgba(59, 130, 246, 0.1)',
         borderWidth: 3,
@@ -68,7 +68,7 @@ const MachineChart: React.FC<MachineChartProps> = ({ data, machineId, machineNam
           padding: 20,
           font: {
             size: 12,
-            weight: '500',
+            weight: 500,
           },
         },
       },
@@ -76,7 +76,7 @@ const MachineChart: React.FC<MachineChartProps> = ({ data, machineId, machineNam
         backgroundColor: 'rgba(0, 0, 0, 0.8)',
         titleFont: {
           size: 14,
-          weight: '600',
+          weight: 600,
         },
         bodyFont: {
           size: 13,
@@ -125,9 +125,9 @@ const MachineChart: React.FC<MachineChartProps> = ({ data, machineId, machineNam
     },
   };
 
-  const totalDistance = data.reduce((sum, item) => sum + parseDistance(item.totalDistance), 0);
+  const totalDistance = data.reduce((sum, item) => sum + parseDistance(item.total_distance_km || '0.00'), 0);
   const avgDistance = data.length > 0 ? totalDistance / data.length : 0;
-  const workingDays = data.filter(item => parseDistance(item.totalDistance) > 0).length;
+  const workingDays = data.filter(item => parseDistance(item.total_distance_km || '0.00') > 0).length;
 
   if (isLoading) {
     return (

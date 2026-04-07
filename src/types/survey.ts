@@ -489,6 +489,7 @@ export interface UGConstructionSurveyData {
 export interface MachineData {
   date: string;
   totalDistance: string;
+  total_distance_km?: string;
 }
 
 export interface MachineDataApiResponse {

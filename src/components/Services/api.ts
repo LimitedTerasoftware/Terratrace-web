@@ -186,13 +186,13 @@ export const useActivities = (
   }, [fetchActivities]);
 
   // Auto refresh every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchActivities();
-    }, 30000);
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     fetchActivities();
+  //   }, 30000);
 
-    return () => clearInterval(interval);
-  }, [fetchActivities]);
+  //   return () => clearInterval(interval);
+  // }, [fetchActivities]);
 
   return {
     activities,
