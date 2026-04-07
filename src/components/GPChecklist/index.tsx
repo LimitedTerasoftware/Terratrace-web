@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Save, CheckCircle, Menu, X, Bell, Users, Loader2 } from 'lucide-react';
 import Form1 from './forms/Form1';
 import Form2 from './forms/Form2';
@@ -10,6 +10,7 @@ import Form7 from './forms/Form7';
 import type { FormData, GeoTaggedImage } from '../../types/gp-checklist';
 import Sidebar from './Sidebar';
 import axios from 'axios';
+import { getStateData, getDistrictData, getBlockData } from '../Services/api';
 
 const BASEURL = import.meta.env.VITE_API_BASE;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -23,7 +24,23 @@ interface ImageUploadResponse {
     docs?: string[];
   };
 }
-
+interface GpData {
+  id: number;
+  name: string;
+  lattitude: string;
+  longitude: string;
+  type: string;
+  blk_code: number;
+  blk_name: string;
+  dt_code: number;
+  dt_name: string;
+  st_code: number;
+  st_name: string;
+  lgd_code: number;
+  remark: string | null;
+  created_at: string;
+  updated_at: string;
+}
 const uploadImages = async (files: File[]): Promise<string[]> => {
   const formData = new FormData();
   files.forEach((file) => {
@@ -489,6 +506,372 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [gpMainId, setGpMainId] = useState<number | null>(null);
+  const [showGpModal, setShowGpModal] = useState(true);
+  const [isLoadingData, setIsLoadingData] = useState(false);
+
+  const [states, setStates] = useState<
+    { state_id: string; state_name: string }[]
+  >([]);
+  const [districts, setDistricts] = useState<
+    { district_id: string; district_name: string }[]
+  >([]);
+  const [blocks, setBlocks] = useState<
+    { block_id: string; block_name: string }[]
+  >([]);
+  const [gps, setGps] = useState<GpData[]>([]);
+
+  const [selectedState, setSelectedState] = useState<string>('');
+  const [selectedDistrict, setSelectedDistrict] = useState<string>('');
+  const [selectedBlock, setSelectedBlock] = useState<string>('');
+  const [selectedGp, setSelectedGp] = useState<string>('');
+
+  useEffect(() => {
+    getStateData().then((data) => setStates(data));
+  }, []);
+
+  useEffect(() => {
+    if (selectedState) {
+      getDistrictData(selectedState).then((data) => setDistricts(data));
+      setSelectedDistrict('');
+      setBlocks([]);
+      setGps([]);
+    }
+  }, [selectedState]);
+
+  useEffect(() => {
+    if (selectedDistrict) {
+      getBlockData(selectedDistrict).then((data) => setBlocks(data));
+      setSelectedBlock('');
+      setGps([]);
+    }
+  }, [selectedDistrict]);
+
+  useEffect(() => {
+    if (selectedBlock) {
+      axios
+        .get(`${BASEURL}/gpdata`, { params: { block_code: selectedBlock } })
+        .then((res) => setGps(res.data || []))
+        .catch(() => setGps([]));
+      setSelectedGp('');
+    }
+  }, [selectedBlock]);
+
+  const fetchExistingData = async (
+    stateId: string,
+    districtId: string,
+    blockId: string,
+    gpId: string,
+  ) => {
+    setIsLoadingData(true);
+    try {
+      const response = await axios.get(`${TraceBASEURL}/get-checklist-data`, {
+        params: {
+          state_id: stateId,
+          district_id: districtId,
+          block_id: blockId,
+          gp_id: gpId,
+        },
+      });
+
+      if (response.data?.status && response.data?.data) {
+        const { main, items } = response.data.data;
+        setGpMainId(main.id);
+
+        const parseImages = (images: any): string[] => {
+          if (!images) return [];
+          try {
+            return typeof images === 'string' ? JSON.parse(images) : images;
+          } catch {
+            return [];
+          }
+        };
+
+        const itemsMap: Record<string, any> = {};
+
+        items.forEach((item: any) => {
+          itemsMap[item.item_name] = {
+            ...item,
+            images: parseImages(item.images),
+          };
+        });
+
+        const mapToImages = (
+          urls: string[],
+          prefix: string,
+        ): GeoTaggedImage[] =>
+          urls.map((url, index) => ({
+            id: `${prefix}_${index}`,
+            file: new File([], `${prefix}_${index}.jpg`),
+            preview: url.startsWith('http') ? url : `${ImgbaseUrl}/${url}`,
+            latitude: 0,
+            longitude: 0,
+            timestamp: '',
+          }));
+
+        const getStatus = (itemName: string) => {
+          const item = items.find((i: any) => i.item_name === itemName);
+          return item?.status === 1 ? 'yes' : item?.status === 0 ? 'no' : '';
+        };
+
+        const getRemark = (itemName: string) => {
+          const item = items.find((i: any) => i.item_name === itemName);
+          return item?.remark || '';
+        };
+
+        const getItemImages = (itemName: string, prefix: string) => {
+          const item = items.find((i: any) => i.item_name === itemName);
+          return mapToImages(parseImages(item?.images), prefix);
+        };
+
+        const f1Data: FormData['form1'] = {
+          stateId: main.state_id?.toString(),
+          districtId: main.district_id?.toString(),
+          blockId: main.block_id?.toString(),
+          gpId: main.gp_id?.toString(),
+          gpName: main.gp_name,
+          latitude: main.latitude,
+          longitude: main.longitude,
+          building_type: main.building_type,
+          geoTaggedPhoto: getStatus('Geo Tagged'),
+          geotaggedSiteImages: getItemImages('Geo Tagged', 'geotagged'),
+          siteBoardInstalled: getStatus('Board Installed'),
+          siteBoardRemark: getRemark('Board Installed'),
+          smartRackInstalled: getStatus('Smart Rack Installed'),
+          smartRackPhoto: getItemImages('Smart Rack Installed', 'smart_rack'),
+          qrCodeImages: getItemImages('QR Images', 'qr'),
+          siteImages: mapToImages(parseImages(main.site_images), 'site'),
+          buildingImages: mapToImages(
+            parseImages(main.building_images),
+            'building',
+          ),
+          otdrReport: getItemImages('OTDR Report', 'otdr')[0]
+            ? new File([], 'otdr_report.pdf')
+            : undefined,
+        };
+
+        const f2Items = items.filter(
+          (i: any) => i.form_type === 'OFC and connectivity form',
+        );
+        const f2Data: FormData['form2'] = {
+          ofcConnected: f2Items.length > 0 ? 'yes' : 'no',
+          ofcRouteImages: getItemImages('OFC Route Images', 'ofc_route'),
+          opticalPowerConnected: f2Items.some(
+            (i: any) =>
+              i.item_name === 'Optical Power Images' && i.status === 1,
+          )
+            ? 'yes'
+            : 'no',
+          opticalPowerImages: getItemImages(
+            'Optical Power Images',
+            'optical_power',
+          ),
+          splicingConnected: f2Items.some(
+            (i: any) => i.item_name === 'Splicing Images' && i.status === 1,
+          )
+            ? 'yes'
+            : 'no',
+          splicingImages: getItemImages('Splicing Images', 'splicing'),
+          routeIndicatorConnected: f2Items.some(
+            (i: any) =>
+              i.item_name === 'Route Indicator Images' && i.status === 1,
+          )
+            ? 'yes'
+            : 'no',
+          routeIndicatorImages: getItemImages(
+            'Route Indicator Images',
+            'route_indicator',
+          ),
+          otdrPdf: f2Items.some(
+            (i: any) => i.item_name === 'OTDR PDF' && i.status === 1,
+          )
+            ? new File([], 'otdr.pdf')
+            : null,
+          isOtdrReportUploaded: f2Items.some(
+            (i: any) => i.item_name === 'OTDR PDF' && i.status === 1,
+          )
+            ? 'yes'
+            : 'no',
+        };
+
+        const f3Items = items.filter(
+          (i: any) => i.form_type === 'Equipement Installation',
+        );
+        const f3Data: FormData['form3'] = {
+          routerImage: getItemImages('Router Image', 'router'),
+          snocImage: getItemImages('SNOc Image', 'snoc'),
+          serialNumber:
+            f3Items.find((i: any) => i.item_name === 'Serial Number')?.remark ||
+            '',
+          macId:
+            f3Items.find((i: any) => i.item_name === 'MAC ID')?.remark || '',
+          qrType:
+            f3Items.find((i: any) => i.item_name === 'QR Type')?.remark || '',
+          qrCodeImage: getItemImages('QR Code Image', 'qr_code'),
+          devicePing:
+            f3Items.find((i: any) => i.item_name === 'Device Ping')?.status ===
+            1
+              ? 'success'
+              : 'failed',
+        };
+
+        const f4Items = items.filter(
+          (i: any) => i.form_type === 'Power Earth Verification',
+        );
+        const f4Data: FormData['form4'] = {
+          solarPanelInstalled: f4Items.some(
+            (i: any) =>
+              i.item_name === 'Solar panel installed and functional' && i.status === 1,
+          ),
+         batteryBackup:
+            f4Items.find((i: any) => i.item_name === 'Battery backup installed, charged')
+              ?.status === 1
+              ? 'yes'
+              : 'no',
+          earthingVerified:
+            f4Items.find((i: any) => i.item_name === 'Proper earthing resistance verified')
+              ?.status === 1
+              ? 'yes'
+              : 'no',
+          powerSource:
+            f4Items.find((i: any) => i.item_name === 'Power Source')?.remark ||
+            '',
+        };
+
+        const f5Items = items.filter(
+          (i: any) =>
+            i.form_type === 'ABD/GIS form' || i.form_type === 'Gsi Mapping',
+        );
+        const f5Data: FormData['form5'] = {
+          photosGeoTagged: f5Items.some(
+            (i: any) => i.item_name.includes('Photos taken (5 angles: close-up + 4 directional) and geo-tagged') && i.status === 1,
+          )
+            ? 'yes'
+            : 'no',
+          photosAngleImages: getItemImages(
+            'Photos taken (5 angles: close-up + 4 directional) and geo-tagged',
+            'photos_angle',
+          ),
+          videoUploaded: f5Items.some(
+            (i: any) => i.item_name.includes('Video of GP installation uploaded to BharatNet GIS app') && i.status === 1,
+          )
+            ? 'yes'
+            : 'no',
+          abdUpdated: f5Items.some(
+            (i: any) => i.item_name.includes('Digital As-Built Drawing (ABD)') && i.status === 1,
+          ),
+          gisEntryCompleted: f5Items.some(
+            (i: any) => i.item_name.includes('GIS entry  latitude, longitude, route code, and asset type') && i.status === 1,
+          )
+            ? 'yes'
+            : 'no',
+          ieVerification: f5Items.some(
+            (i: any) =>
+              i.item_name.includes('Verification by Independent Engineer') ||
+              (i.item_name.includes('Verification by Independent Engineer') &&
+                i.status === 1),
+          )
+            ? 'yes'
+            : 'no',
+        };
+
+        const f6Items = items.filter(
+          (i: any) =>
+            i.form_type === 'Safe Quality Verification' 
+           
+        );
+        const f6Data: FormData['form6'] = {
+          siteClean:
+            f6Items.find((i: any) => i.item_name === 'Site Clear Images')?.status === 1
+              ? 'yes'
+              : 'no',
+          materialsApproved: f6Items.some(
+            (i: any) => i.item_name.includes('TEC Approval Proof') && i.status === 1,
+          ),
+          socialAudit: f6Items.some(
+            (i: any) => i.item_name.includes('Social Audit Video') && i.status === 1,
+          )
+            ? 'yes'
+            : 'no',
+          siteLabelBoard: f6Items.some(
+            (i: any) => i.item_name.includes('Site Label Verification') && i.status === 1,
+          ),
+        };
+
+        const f7Items = items.filter(
+          (i: any) =>
+            i.form_type === 'Final Acceptance' 
+           
+        );
+        const f7Data: FormData['form7'] = {
+          patCompleted: f7Items.find(
+            (i: any) => i.item_name.includes('PAT Completed Proof') && i.status === 1,
+          )
+            ? 'yes'
+            : 'no',
+          fatApproved: f7Items.find(
+            (i: any) => i.item_name.includes('FAT Approval Proof') && i.status === 1,
+          )
+            ? 'yes'
+            : 'no',
+          qrTagVerified: f7Items.some(
+            (i: any) => i.item_name.includes('QR Tag Verification Image') && i.status === 1,
+          )
+            ? 'yes'
+            : 'no',
+          qrTagImage: getItemImages('qr_tag_image', 'qr_tag'),
+          hotoSigned: f7Items.some(
+            (i: any) => i.item_name.includes('HOTO Memo Signature Image') && i.status === 1,
+          )
+            ? 'yes'
+            : 'no',
+        };
+
+        setFormData({
+          form1: f1Data,
+          form2: f2Data,
+          form3: f3Data,
+          form4: f4Data,
+          form5: f5Data,
+          form6: f6Data,
+          form7: f7Data,
+        });
+
+        const completed = new Set<number>();
+        completed.add(1);
+
+        const formTypes = new Set(items.map((i: any) => i.form_type));
+        if (formTypes.has('OFC and connectivity form')) completed.add(2);
+        if (formTypes.has('Equipement Installation')) completed.add(3);
+        if (formTypes.has('Power Earth Verification')) completed.add(4);
+        if (formTypes.has('ABD/GIS form') || formTypes.has('Gsi Mapping'))
+          completed.add(5);
+        if (
+          formTypes.has('Site clean and material form') ||
+          formTypes.has('Safe Quality Verification')
+        )
+          completed.add(6);
+        if (formTypes.has('PAT/ FAT form') || formTypes.has('Final Acceptance'))
+          completed.add(7);
+        setCompletedForms(completed);
+      }
+    } catch (error) {
+      console.error('Error fetching existing data:', error);
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
+
+  const handleGpSelect = () => {
+    if (selectedState && selectedDistrict && selectedBlock && selectedGp) {
+      setShowGpModal(false);
+      fetchExistingData(
+        selectedState,
+        selectedDistrict,
+        selectedBlock,
+        selectedGp,
+      );
+    }
+  };
 
   const updateFormData = (formNumber: number, data: any) => {
     setFormData((prev) => ({
@@ -497,7 +880,7 @@ function App() {
     }));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmitForm1 = async () => {
     if (!formData.form1) {
       alert('Please fill in Form 1');
       return;
@@ -720,8 +1103,6 @@ function App() {
         items,
       };
 
-      console.log('Submitting payload:', payload);
-
       const response = await axios.post(
         `${TraceBASEURL}/submit-gp-checklist`,
         payload,
@@ -731,69 +1112,103 @@ function App() {
       if (newGpMainId) {
         setGpMainId(newGpMainId);
       }
-      if (currentForm > 1 && newGpMainId) {
-        const {
-          images: formImages,
-          docs: formDocs,
-          videos: formVideos,
-        } = getFormFiles(currentForm, formData);
-        const imageFiles = formImages.map((img) =>
-          img.watermarkedPreview
-            ? convertBase64ToFile(
-                img.watermarkedPreview,
-                `form${currentForm}_${img.id}.jpg`,
-              )
-            : img.file,
-        );
 
-        const docFiles = formDocs;
-        const videoFiles = formVideos;
-
-        const uploadedImageUrls = imageFiles.length
-          ? await uploadImages(imageFiles)
-          : [];
-
-        const uploadedDocUrls = docFiles.length
-          ? await uploadDocs(docFiles)
-          : [];
-
-        const uploadedVideoUrls = videoFiles.length
-          ? await uploadVideos(videoFiles)
-          : [];
-
-        for (let i = 0; i < formImages.length; i++) {
-          const img = formImages[i];
-          const url = uploadedImageUrls[i];
-
-          if (url && img.latitude && img.longitude) {
-            await geotagImage(url, img.latitude, img.longitude);
-          }
-        }
-
-        const currentFormItems = buildFormItems(currentForm, formData, {
-          imageUrls: uploadedImageUrls,
-          docUrls: uploadedDocUrls,
-          videoUrls: uploadedVideoUrls,
-        });
-        if (currentFormItems.length > 0) {
-          await submitFormItems(newGpMainId, currentFormItems);
-        }
-      }
       const newCompleted = new Set(completedForms);
-      newCompleted.add(currentForm);
+      newCompleted.add(1);
       setCompletedForms(newCompleted);
 
-      if (currentForm < 7) {
-        setCurrentForm(currentForm + 1);
-        alert(`Form ${currentForm} submitted successfully!`);
-      } else {
-        alert('All forms completed! Project submitted successfully.');
-      }
+      alert('Form 1 submitted successfully!');
     } catch (error) {
       console.error('Error submitting form:', error);
       alert('Failed to submit form. Please try again.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmitOtherForm = async (formNumber: number) => {
+    if (!gpMainId) {
+      alert('Please submit Form 1 first');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const convertBase64ToFile = (base64: string, filename: string): File => {
+        const arr = base64.split(',');
+        const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new File([u8arr], filename, { type: mime });
+      };
+
+      const {
+        images: formImages,
+        docs: formDocs,
+        videos: formVideos,
+      } = getFormFiles(formNumber, formData);
+
+      const imageFiles = formImages.map((img) =>
+        img.watermarkedPreview
+          ? convertBase64ToFile(
+              img.watermarkedPreview,
+              `form${formNumber}_${img.id}.jpg`,
+            )
+          : img.file,
+      );
+
+      const uploadedImageUrls = imageFiles.length
+        ? await uploadImages(imageFiles)
+        : [];
+
+      const uploadedDocUrls = formDocs.length ? await uploadDocs(formDocs) : [];
+
+      const uploadedVideoUrls = formVideos.length
+        ? await uploadVideos(formVideos)
+        : [];
+
+      for (let i = 0; i < formImages.length; i++) {
+        const img = formImages[i];
+        const url = uploadedImageUrls[i];
+
+        if (url && img.latitude && img.longitude) {
+          await geotagImage(url, img.latitude, img.longitude);
+        }
+      }
+
+      const formItems = buildFormItems(formNumber, formData, {
+        imageUrls: uploadedImageUrls,
+        docUrls: uploadedDocUrls,
+        videoUrls: uploadedVideoUrls,
+      });
+
+      if (formItems.length > 0) {
+        await submitFormItems(gpMainId, formItems);
+      }
+
+      const newCompleted = new Set(completedForms);
+      newCompleted.add(formNumber);
+      setCompletedForms(newCompleted);
+
+      alert(`Form ${formNumber} submitted successfully!`);
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      alert('Failed to submit form. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (currentForm === 1) {
+      await handleSubmitForm1();
+    } else {
+      await handleSubmitOtherForm(currentForm);
     }
   };
 
@@ -852,6 +1267,118 @@ function App() {
         return null;
     }
   };
+
+  if (showGpModal) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+        <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            Select GP Location
+          </h2>
+
+          {isLoadingData ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              <span className="ml-2 text-gray-600">Loading...</span>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  State
+                </label>
+                <select
+                  value={selectedState}
+                  onChange={(e) => setSelectedState(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                >
+                  <option value="">Select State</option>
+                  {states.map((state) => (
+                    <option key={state.state_id} value={state.state_id}>
+                      {state.state_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  District
+                </label>
+                <select
+                  value={selectedDistrict}
+                  onChange={(e) => setSelectedDistrict(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  disabled={!selectedState}
+                >
+                  <option value="">Select District</option>
+                  {districts.map((district) => (
+                    <option
+                      key={district.district_id}
+                      value={district.district_id}
+                    >
+                      {district.district_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Block
+                </label>
+                <select
+                  value={selectedBlock}
+                  onChange={(e) => setSelectedBlock(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  disabled={!selectedDistrict}
+                >
+                  <option value="">Select Block</option>
+                  {blocks.map((block) => (
+                    <option key={block.block_id} value={block.block_id}>
+                      {block.block_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  GP
+                </label>
+                <select
+                  value={selectedGp}
+                  onChange={(e) => setSelectedGp(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  disabled={!selectedBlock}
+                >
+                  <option value="">Select GP</option>
+                  {gps.map((gp) => (
+                    <option key={gp.id} value={gp.id}>
+                      {gp.name}-{gp.lgd_code}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                onClick={handleGpSelect}
+                disabled={
+                  !selectedState ||
+                  !selectedDistrict ||
+                  !selectedBlock ||
+                  !selectedGp
+                }
+                className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Continue
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

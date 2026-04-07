@@ -28,6 +28,7 @@ const BASEURL = import.meta.env.VITE_API_BASE;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
 export default function Form1({ data, onChange }: Form1Props) {
+  console.log('Form1 data:', data);
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -37,12 +38,14 @@ export default function Form1({ data, onChange }: Form1Props) {
   const [loadingBlocks, setLoadingBlocks] = useState(false);
   const [loadingGPs, setLoadingGPs] = useState(false);
 
-  const [selectedState, setSelectedState] = useState('');
-  const [selectedDistrict, setSelectedDistrict] = useState('');
-  const [selectedBlock, setSelectedBlock] = useState('');
-  const [selectedGP, setSelectedGP] = useState('');
-  const [latitude, setLatitude] = useState('');
-  const [longitude, setLongitude] = useState('');
+  const [selectedState, setSelectedState] = useState(data?.stateId || '');
+  const [selectedDistrict, setSelectedDistrict] = useState(
+    data?.districtId || '',
+  );
+  const [selectedBlock, setSelectedBlock] = useState(data?.blockId || '');
+  const [selectedGP, setSelectedGP] = useState(data?.gpId || '');
+  const [latitude, setLatitude] = useState(data?.latitude || '');
+  const [longitude, setLongitude] = useState(data?.longitude || '');
   const [gpsLoading, setGpsLoading] = useState(false);
   const [siteImages, setSiteImages] = useState<GeoTaggedImage[]>([]);
   const [geotaggedSiteImages, setGeotaggedSiteImages] = useState<
@@ -51,6 +54,38 @@ export default function Form1({ data, onChange }: Form1Props) {
   const [buildingImages, setBuildingImages] = useState<GeoTaggedImage[]>([]);
   const [qrCodeImages, setQrCodeImages] = useState<GeoTaggedImage[]>([]);
   const [smartRackImages, setSmartRackImages] = useState<GeoTaggedImage[]>([]);
+  const [dataLoadedFromParent, setDataLoadedFromParent] = useState(false);
+
+  useEffect(() => {
+    if (data) {
+      setDataLoadedFromParent(true);
+      setSelectedState(data.stateId || '');
+      setSelectedDistrict(data.districtId || '');
+      setSelectedBlock(data.blockId || '');
+      setSelectedGP(data.gpId || '');
+      setLatitude(data.latitude || '');
+      setLongitude(data.longitude || '');
+      setGeotaggedSiteImages(data.geotaggedSiteImages || []);
+      setSiteImages(data.siteImages || []);
+      setBuildingImages(data.buildingImages || []);
+      setQrCodeImages(data.qrCodeImages || []);
+      setSmartRackImages(data.smartRackPhoto || []);
+
+      if (data.stateId) fetchDistricts(data.stateId);
+    }
+  }, [data]);
+
+  useEffect(() => {
+    if (dataLoadedFromParent && data?.districtId) {
+      fetchBlocks(data.districtId);
+    }
+  }, [dataLoadedFromParent]);
+
+  useEffect(() => {
+    if (dataLoadedFromParent && data?.blockId) {
+      fetchGPs(data.blockId);
+    }
+  }, [dataLoadedFromParent]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -104,28 +139,29 @@ export default function Form1({ data, onChange }: Form1Props) {
   }, []);
 
   useEffect(() => {
-    if (selectedState) {
+    if (selectedState && data?.stateId && !dataLoadedFromParent) {
       fetchDistricts(selectedState);
-    } else {
-      setDistricts([]);
+    } else if (selectedState) {
+      fetchDistricts(selectedState);
     }
   }, [selectedState]);
 
   useEffect(() => {
-    if (selectedDistrict) {
+    if (selectedDistrict && data?.districtId && !dataLoadedFromParent) {
       fetchBlocks(selectedDistrict);
-    } else {
-      setBlocks([]);
+    } else if (selectedDistrict) {
+      fetchBlocks(selectedDistrict);
     }
   }, [selectedDistrict]);
 
   useEffect(() => {
-    if (selectedBlock) {
+    if (selectedBlock && data?.blockId && !dataLoadedFromParent) {
       fetchGPs(selectedBlock);
-    } else {
-      setGPs([]);
+    } else if (selectedBlock) {
+      fetchGPs(selectedBlock);
     }
   }, [selectedBlock]);
+
 
   const fetchStates = async () => {
     setLoadingStates(true);
@@ -179,6 +215,46 @@ export default function Form1({ data, onChange }: Form1Props) {
       setLoadingGPs(false);
     }
   };
+
+  useEffect(() => {
+    if (data && data.stateId && data.districtId && data.blockId && data.gpId) {
+      setSelectedState(data.stateId);
+      setSelectedDistrict(data.districtId);
+      setSelectedBlock(data.blockId);
+      setSelectedGP(data.gpId);
+      setLatitude(data.latitude || '');
+      setLongitude(data.longitude || '');
+      setGeotaggedSiteImages(data.geotaggedSiteImages || []);
+      setSiteImages(data.siteImages || []);
+      setBuildingImages(data.buildingImages || []);
+      setQrCodeImages(data.qrCodeImages || []);
+      setSmartRackImages(data.smartRackPhoto || []);
+
+      getDistrictData(data.stateId).then((res) => {
+        setDistricts(res || []);
+        getBlockData(data.districtId || '').then((res2) => {
+          setBlocks(res2 || []);
+          axios
+            .get(`${BASEURL}/gpdata`, { params: { block_code: data.blockId } })
+            .then((res3) => {
+              const gpOptions = Array.isArray(res3.data.data)
+                ? res3.data.data.map((gp: any) => ({
+                    id: gp.id.toString(),
+                    name: gp.gp_name || gp.name,
+                  }))
+                : Array.isArray(res3.data)
+                  ? res3.data.map((gp: any) => ({
+                      id: gp.id.toString(),
+                      name: gp.gp_name || gp.name,
+                    }))
+                  : [];
+              setGPs(gpOptions);
+            })
+            .catch(() => setGPs([]));
+        });
+      });
+    }
+  }, [data]);
 
   const captureGPSLocation = () => {
     if (!navigator.geolocation) {
