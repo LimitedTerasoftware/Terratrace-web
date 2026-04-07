@@ -28,7 +28,7 @@ const NG_USER_EMAIL = "ng@terasoftware.com";
 const ADMIN_EMAIL = "admin@terasoftware.com";
 
 // Users with installation page access
-const INSTALLATION_ACCESS_EMAILS = ["survey@terasoftware.com"];
+const INSTALLATION_ACCESS_EMAILS = ["survey@terasoftware.com","wb@terasoftware.com"];
 
 export const getUser = (): User | null => {
   const user = localStorage.getItem("userData");

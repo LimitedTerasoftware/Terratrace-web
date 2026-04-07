@@ -748,6 +748,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                   </span>
                                 </NavLink>
                               </li>
+                              {(!viewOnly || adminUser) && (
                               <li>
                                 <NavLink
                                   to="/gp-checklist"
@@ -767,6 +768,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                   </span>
                                 </NavLink>
                               </li>
+                             )}
                             </ul>
                           </div>
                         </React.Fragment>
