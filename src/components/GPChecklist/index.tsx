@@ -11,6 +11,7 @@ import type { FormData, GeoTaggedImage } from '../../types/gp-checklist';
 import Sidebar from './Sidebar';
 import axios from 'axios';
 import { getStateData, getDistrictData, getBlockData } from '../Services/api';
+import { file } from 'jszip';
 
 const BASEURL = import.meta.env.VITE_API_BASE;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -150,7 +151,10 @@ const getFormFiles = (
         images.push(...(f2.opticalPowerImages || []));
         images.push(...(f2.splicingImages || []));
         images.push(...(f2.routeIndicatorImages || []));
-        if (f2.otdrPdf) docs.push(f2.otdrPdf);
+        if (f2.otdrPdf instanceof File) {
+          docs.push(f2.otdrPdf);
+        }
+
       }
       break;
     }
@@ -167,7 +171,7 @@ const getFormFiles = (
     case 4: {
       const f4 = formData.form4;
       if (f4) {
-        if (f4.earthingVideo) videos.push(f4.earthingVideo);
+        if (f4.earthingVideo instanceof File) videos.push(f4.earthingVideo);
         images.push(...(f4.solarPanelImage || []));
         images.push(...(f4.batteryBackupImage || []));
       }
@@ -177,8 +181,8 @@ const getFormFiles = (
       const f5 = formData.form5;
       if (f5) {
         images.push(...(f5.photosAngleImages || []));
-        if (f5.videoUploadedFile) videos.push(f5.videoUploadedFile);
-        if (f5.abdPDF) docs.push(f5.abdPDF);
+        if (f5.videoUploadedFile instanceof File) videos.push(f5.videoUploadedFile);
+        if (f5.abdPDF instanceof File) docs.push(f5.abdPDF);
         images.push(...(f5.GISImgages || []));
         images.push(...(f5.IEimages || []));
       }
@@ -187,10 +191,10 @@ const getFormFiles = (
     case 6: {
       const f6 = formData.form6;
       if (f6) {
-        if (f6.socialAuditVideo) videos.push(f6.socialAuditVideo);
+        if (f6.socialAuditVideo instanceof File) videos.push(f6.socialAuditVideo);
         if (f6.siteLabelBoardImage) images.push(...f6.siteLabelBoardImage);
         if (f6.materialImgages) images.push(...f6.materialImgages);
-        if (f6.verificationProof) docs.push(f6.verificationProof);
+        if (f6.verificationProof instanceof File) docs.push(f6.verificationProof);
       }
       break;
     }
@@ -334,7 +338,7 @@ const buildFormItems = (
         },
         {
           form_type: 'Equipement Installation',
-          item_name: 'QR Code Imag',
+          item_name: 'QR Code Image',
           item_type: f3.qrType || '',
           status: f3.qrCodeImage?.length ? 1 : 0,
           images: getImages(f3.qrCodeImage),
@@ -427,12 +431,12 @@ const buildFormItems = (
           form_type: 'Safe Quality Verification',
           item_name: 'Site Clear Images',
           item_type: f6.siteClean || '',
-          status: f6.siteClean === 'yes' ? 1 : f6.siteClean === 'no' ? 0 : 0,
+          status: f6.siteClean != '' ? 1 : 0,
           images: getImages(f6.materialImgages),
         },
         {
           form_type: 'Safe Quality Verification',
-          item_name: 'TEC Approval Proof,',
+          item_name: 'TEC Approval Proof',
           status: f6.materialsApproved ? 1 : 0,
           images:
             f6.materialsApproved && f6.verificationProof ? uploads.docUrls : [],
@@ -610,7 +614,7 @@ function App() {
 
         const getStatus = (itemName: string) => {
           const item = items.find((i: any) => i.item_name === itemName);
-          return item?.status === 1 ? 'yes' : item?.status === 0 ? 'no' : '';
+          return item?.status === 1 ? 'yes' : item?.status === 0 ? 'no' : "";
         };
 
         const getRemark = (itemName: string) => {
@@ -621,6 +625,11 @@ function App() {
         const getItemImages = (itemName: string, prefix: string) => {
           const item = items.find((i: any) => i.item_name === itemName);
           return mapToImages(parseImages(item?.images), prefix);
+        };
+        const getSingleFileUrl = (itemName: string): string | null => {
+          const item = items.find((i: any) => i.item_name === itemName);
+          const parsed = parseImages(item?.images);
+          return parsed?.[0] ? `${ImgbaseUrl}/${parsed[0]}` : null;
         };
 
         const f1Data: FormData['form1'] = {
@@ -644,134 +653,87 @@ function App() {
             parseImages(main.building_images),
             'building',
           ),
-          otdrReport: getItemImages('OTDR Report', 'otdr')[0]
-            ? new File([], 'otdr_report.pdf')
-            : undefined,
+          otdrReport: getSingleFileUrl('OTDR Report')
+        
         };
 
         const f2Items = items.filter(
           (i: any) => i.form_type === 'OFC and connectivity form',
         );
+     
         const f2Data: FormData['form2'] = {
-          ofcConnected: f2Items.length > 0 ? 'yes' : 'no',
+          ofcConnected: getStatus('OFC Route Images'),
           ofcRouteImages: getItemImages('OFC Route Images', 'ofc_route'),
-          opticalPowerConnected: f2Items.some(
-            (i: any) =>
-              i.item_name === 'Optical Power Images' && i.status === 1,
-          )
-            ? 'yes'
-            : 'no',
+          opticalPowerConnected: getStatus('Optical Power Images'),
           opticalPowerImages: getItemImages(
             'Optical Power Images',
             'optical_power',
           ),
-          splicingConnected: f2Items.some(
-            (i: any) => i.item_name === 'Splicing Images' && i.status === 1,
-          )
-            ? 'yes'
-            : 'no',
+          splicingConnected: getStatus('Splicing Images'),
           splicingImages: getItemImages('Splicing Images', 'splicing'),
-          routeIndicatorConnected: f2Items.some(
-            (i: any) =>
-              i.item_name === 'Route Indicator Images' && i.status === 1,
-          )
-            ? 'yes'
-            : 'no',
+          routeIndicatorConnected: getStatus('Route Indicator Images'),
           routeIndicatorImages: getItemImages(
             'Route Indicator Images',
             'route_indicator',
           ),
-          otdrPdf: f2Items.some(
-            (i: any) => i.item_name === 'OTDR PDF' && i.status === 1,
-          )
-            ? new File([], 'otdr.pdf')
-            : null,
-          isOtdrReportUploaded: f2Items.some(
-            (i: any) => i.item_name === 'OTDR PDF' && i.status === 1,
-          )
-            ? 'yes'
-            : 'no',
+          otdrPdf: getSingleFileUrl('OTDR PDF'),
+          isOtdrReportUploaded: getStatus('OTDR PDF'),
         };
-
         const f3Items = items.filter(
           (i: any) => i.form_type === 'Equipement Installation',
         );
         const f3Data: FormData['form3'] = {
           routerImage: getItemImages('Router Image', 'router'),
-          snocImage: getItemImages('SNOc Image', 'snoc'),
+          routerConnected: getStatus('Router Image'),
+          snocImage: getItemImages('SNOC Image', 'snoc'),
+          snocImageConnected: getStatus('SNOC Image'),
           serialNumber:
-            f3Items.find((i: any) => i.item_name === 'Serial Number')?.remark ||
+            f3Items.find((i: any) => i.item_name === 'Serial Number')?.item_type ||
             '',
           macId:
-            f3Items.find((i: any) => i.item_name === 'MAC ID')?.remark || '',
+            f3Items.find((i: any) => i.item_name === 'MAC ID')?.item_type || '',
           qrType:
-            f3Items.find((i: any) => i.item_name === 'QR Type')?.remark || '',
+            f3Items.find((i: any) => i.item_name === 'QR Code Image')?.item_type || '',
           qrCodeImage: getItemImages('QR Code Image', 'qr_code'),
-          devicePing:
-            f3Items.find((i: any) => i.item_name === 'Device Ping')?.status ===
-            1
-              ? 'success'
-              : 'failed',
+          devicePing:getStatus('Device Ping Image'),
+          pingProofImg: getItemImages('Device Ping Image', 'ping_proof'),
+         
         };
 
         const f4Items = items.filter(
           (i: any) => i.form_type === 'Power Earth Verification',
         );
         const f4Data: FormData['form4'] = {
-          solarPanelInstalled: f4Items.some(
-            (i: any) =>
-              i.item_name === 'Solar panel installed and functional' && i.status === 1,
-          ),
+          solarPanelInstalled: getStatus('Solar panel installed and functional'),
+          solarPanelImage: getItemImages('Solar panel installed and functional', 'solar_panel'),
          batteryBackup:
-            f4Items.find((i: any) => i.item_name === 'Battery backup installed, charged')
-              ?.status === 1
-              ? 'yes'
-              : 'no',
-          earthingVerified:
-            f4Items.find((i: any) => i.item_name === 'Proper earthing resistance verified')
-              ?.status === 1
-              ? 'yes'
-              : 'no',
-          powerSource:
-            f4Items.find((i: any) => i.item_name === 'Power Source')?.remark ||
+            getStatus('Battery backup installed, charged') || '',
+          batteryBackupImage: getItemImages('Battery backup installed, charged', 'battery_backup'),
+          earthingVerified:getStatus('Proper earthing resistance verified') || '',
+          earthingVideo: getSingleFileUrl('Proper earthing resistance verified'),         
+           powerSource:
+            f4Items.find((i: any) => i.item_name === 'Power Source')?.item_type ||
             '',
         };
 
         const f5Items = items.filter(
           (i: any) =>
-            i.form_type === 'ABD/GIS form' || i.form_type === 'Gsi Mapping',
+            i.form_type === 'Gsi Mapping',
         );
         const f5Data: FormData['form5'] = {
-          photosGeoTagged: f5Items.some(
-            (i: any) => i.item_name.includes('Photos taken (5 angles: close-up + 4 directional) and geo-tagged') && i.status === 1,
-          )
-            ? 'yes'
-            : 'no',
+          photosGeoTagged: getStatus('Photos taken (5 angles: close-up + 4 directional) and geo-tagged'),
           photosAngleImages: getItemImages(
             'Photos taken (5 angles: close-up + 4 directional) and geo-tagged',
             'photos_angle',
           ),
-          videoUploaded: f5Items.some(
-            (i: any) => i.item_name.includes('Video of GP installation uploaded to BharatNet GIS app') && i.status === 1,
-          )
-            ? 'yes'
-            : 'no',
-          abdUpdated: f5Items.some(
-            (i: any) => i.item_name.includes('Digital As-Built Drawing (ABD)') && i.status === 1,
-          ),
-          gisEntryCompleted: f5Items.some(
-            (i: any) => i.item_name.includes('GIS entry  latitude, longitude, route code, and asset type') && i.status === 1,
-          )
-            ? 'yes'
-            : 'no',
-          ieVerification: f5Items.some(
-            (i: any) =>
-              i.item_name.includes('Verification by Independent Engineer') ||
-              (i.item_name.includes('Verification by Independent Engineer') &&
-                i.status === 1),
-          )
-            ? 'yes'
-            : 'no',
+          videoUploadedFile:getSingleFileUrl('Video of GP installation uploaded to BharatNet GIS app'),
+          videoUploaded:getStatus('Video of GP installation uploaded to BharatNet GIS app'),
+          abdPDF:getSingleFileUrl('Digital As-Built Drawing (ABD)'),
+          abdUpdated:getStatus('Digital As-Built Drawing (ABD)'),
+          gisEntryCompleted: getStatus('GIS entry  latitude, longitude, route code, and asset type'),
+          GISImgages: getItemImages('GIS entry  latitude, longitude, route code, and asset type', 'gis'),
+          ieVerification: getStatus('Verification by Independent Engineer'),
+          IEimages: getItemImages('Verification by Independent Engineer', 'ie'),
         };
 
         const f6Items = items.filter(
@@ -780,21 +742,14 @@ function App() {
            
         );
         const f6Data: FormData['form6'] = {
-          siteClean:
-            f6Items.find((i: any) => i.item_name === 'Site Clear Images')?.status === 1
-              ? 'yes'
-              : 'no',
-          materialsApproved: f6Items.some(
-            (i: any) => i.item_name.includes('TEC Approval Proof') && i.status === 1,
-          ),
-          socialAudit: f6Items.some(
-            (i: any) => i.item_name.includes('Social Audit Video') && i.status === 1,
-          )
-            ? 'yes'
-            : 'no',
-          siteLabelBoard: f6Items.some(
-            (i: any) => i.item_name.includes('Site Label Verification') && i.status === 1,
-          ),
+          siteClean:f6Items.find((i: any) => i.item_name === 'Site Clear Images') ?.item_type || '',
+          materialImgages: getItemImages('Site Clear Images', 'site_clean'),
+          materialsApproved: getStatus('TEC Approval Proof'),
+          verificationProof: getSingleFileUrl('TEC Approval Proof'),
+          socialAudit: getStatus('Social Audit Video'),
+          socialAuditVideo: getSingleFileUrl('Social Audit Video'),
+          siteLabelBoard: getStatus('Site Label Verification'),
+          siteLabelBoardImage: getItemImages('Site Label Verification', 'site_label_board'),
         };
 
         const f7Items = items.filter(
@@ -803,37 +758,24 @@ function App() {
            
         );
         const f7Data: FormData['form7'] = {
-          patCompleted: f7Items.find(
-            (i: any) => i.item_name.includes('PAT Completed Proof') && i.status === 1,
-          )
-            ? 'yes'
-            : 'no',
-          fatApproved: f7Items.find(
-            (i: any) => i.item_name.includes('FAT Approval Proof') && i.status === 1,
-          )
-            ? 'yes'
-            : 'no',
-          qrTagVerified: f7Items.some(
-            (i: any) => i.item_name.includes('QR Tag Verification Image') && i.status === 1,
-          )
-            ? 'yes'
-            : 'no',
+          patCompleted: getStatus('PAT Completed Proof'),
+          patProof: getItemImages('PAT Completed Proof', 'pat_proof'),
+          fatApproved: getStatus('FAT Approval Proof'),
+          fatApprovalProof: getItemImages('FAT Approval Proof', 'fat_approval'),
+          qrTagVerified: getStatus('QR Tag Verification Image'),
           qrTagImage: getItemImages('qr_tag_image', 'qr_tag'),
-          hotoSigned: f7Items.some(
-            (i: any) => i.item_name.includes('HOTO Memo Signature Image') && i.status === 1,
-          )
-            ? 'yes'
-            : 'no',
+          hotoSigned: getStatus('HOTO Memo Signature Image'),
+          hotoMemoSignature: getItemImages('HOTO Memo Signature Image', 'hoto_signature'),
         };
 
         setFormData({
           form1: f1Data,
-          form2: f2Data,
-          form3: f3Data,
-          form4: f4Data,
-          form5: f5Data,
-          form6: f6Data,
-          form7: f7Data,
+          form2: f2Items.length > 0 ? f2Data : undefined,
+          form3: f3Items.length > 0 ? f3Data : undefined,
+          form4: f4Items.length > 0 ? f4Data : undefined,
+          form5: f5Items.length > 0 ? f5Data : undefined,
+          form6: f6Items.length > 0 ? f6Data : undefined,
+          form7: f7Items.length > 0 ? f7Data : undefined,
         });
 
         const completed = new Set<number>();
@@ -1034,7 +976,7 @@ function App() {
         }
       }
 
-      const pdfFiles = f1.otdrReport ? [f1.otdrReport] : [];
+      const pdfFiles = f1.otdrReport instanceof File ? [f1.otdrReport] : [];
       const uploadedPdfUrls: string[] =
         pdfFiles.length > 0 ? await uploadDocs(pdfFiles) : [];
 

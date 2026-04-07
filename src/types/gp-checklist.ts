@@ -27,7 +27,7 @@ export interface FormData {
     building_type?: string | '';
     buildingImages?: GeoTaggedImage[] | [];
     qrCodeImages?: GeoTaggedImage[] | [];
-    otdrReport?: File | null;
+    otdrReport?: File | null | string;
     geoTaggedPhoto?: string | '';
     siteBoardInstalled?: string | '';
     siteBoardRemark?: string | '';
@@ -44,7 +44,7 @@ export interface FormData {
     splicingConnected?: string;
     routeIndicatorImages?: GeoTaggedImage[];
     routeIndicatorConnected?: string;
-    otdrPdf?: File | null;
+    otdrPdf?: File | null | string;
     isOtdrReportUploaded?: string;
   };
   form3?: {
@@ -65,16 +65,16 @@ export interface FormData {
     batteryBackup?: string;
     batteryBackupImage?: GeoTaggedImage[];
     earthingVerified?: string;
-    earthingVideo?: File | null;
+    earthingVideo?: File | null | string;
     powerSource?: string;
   };
   form5?: {
     photosGeoTagged?: string;
     photosAngleImages?: GeoTaggedImage[];
     videoUploaded?: string;
-    videoUploadedFile?: File | null;
+    videoUploadedFile?: File | null | string;
     abdUpdated?: string;
-    abdPDF?: File | null;
+    abdPDF?: File | null | string;
     gisEntryCompleted?: string;
     GISImgages?: GeoTaggedImage[];
     ieVerification?: string;
@@ -83,10 +83,10 @@ export interface FormData {
   form6?: {
     siteClean?: string;
     materialsApproved?: string;
-    verificationProof?: File | null;
+    verificationProof?: File | null | string;
     materialImgages?: GeoTaggedImage[];
     socialAudit?: string;
-    socialAuditVideo?: File | null;
+    socialAuditVideo?: File | null | string;
     siteLabelBoard?: string;
     siteLabelBoardImage?: GeoTaggedImage[];
   };

@@ -17,7 +17,6 @@ export default function Form2({ data, onChange }: Form2Props) {
   const updateField = (field: string, value: string) => {
     onChange({ ...data, [field]: value });
   };
-
   const [ofcRouteImages, setOfcRouteImages] = useState<GeoTaggedImage[]>([]);
   const [opticalPowerImages, setOpticalPowerImages] = useState<
     GeoTaggedImage[]
