@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Camera, Upload, X, MapPin } from 'lucide-react';
 
 interface GeoTaggedImage {
@@ -32,6 +32,32 @@ export default function ImageCapture({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const initializeCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' },
+      });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (error) {
+      console.error('Error accessing camera:', error);
+      alert('Could not access camera. Please check permissions.');
+      setCapturing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (capturing) {
+      initializeCamera();
+    }
+    return () => {
+      const stream = videoRef.current?.srcObject as MediaStream;
+      stream?.getTracks().forEach((track) => track.stop());
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [capturing]);
 
   const captureGPS = (): Promise<{ lat: number; lng: number }> => {
     return new Promise((resolve, reject) => {
@@ -126,18 +152,7 @@ export default function ImageCapture({
   };
 
   const handleOpenCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
-      });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      setCapturing(true);
-    } catch (error) {
-      console.error('Error accessing camera:', error);
-      alert('Could not access camera. Please check permissions.');
-    }
+    setCapturing(true);
   };
 
   const handleCapturePhoto = async () => {
@@ -153,7 +168,12 @@ export default function ImageCapture({
 
     const dataUrl = canvas.toDataURL('image/jpeg');
     setCapturedImage(dataUrl);
-
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    const file = new File([blob], `capture_${Date.now()}.jpg`, {
+      type: 'image/jpeg',
+    });
+    setCapturedFile(file);
     const stream = video.srcObject as MediaStream;
     stream?.getTracks().forEach((track) => track.stop());
     setCapturing(false);
@@ -278,6 +298,7 @@ export default function ImageCapture({
                     ref={videoRef}
                     autoPlay
                     playsInline
+                    onLoadedMetadata={() => videoRef.current?.play()}
                     className="w-full rounded-lg"
                   />
                   <button

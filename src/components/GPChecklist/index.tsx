@@ -567,6 +567,7 @@ function App() {
     districtId: string,
     blockId: string,
     gpId: string,
+    gpName: string,
   ) => {
     setIsLoadingData(true);
     try {
@@ -579,7 +580,7 @@ function App() {
         },
       });
 
-      if (response.data?.status && response.data?.data) {
+      if (response.data?.status && response.data?.data?.main) {
         const { main, items } = response.data.data;
         setGpMainId(main.id);
 
@@ -825,6 +826,16 @@ function App() {
         if (firstIncompleteForm) {
           setCurrentForm(firstIncompleteForm);
         }
+      }else{
+          const f1Data: FormData['form1'] = {
+          stateId: stateId?.toString(),
+          districtId: districtId?.toString(),
+          blockId: blockId?.toString(),
+          gpId: gpId?.toString(),
+          gpName: gpName,}
+        setFormData({form1: f1Data});
+
+
       }
     } catch (error) {
       console.error('Error fetching existing data:', error);
@@ -835,12 +846,15 @@ function App() {
 
   const handleGpSelect = () => {
     if (selectedState && selectedDistrict && selectedBlock && selectedGp) {
+          const gp = gps.find((g) => g.id === Number(selectedGp));
+
       setShowGpModal(false);
       fetchExistingData(
         selectedState,
         selectedDistrict,
         selectedBlock,
         selectedGp,
+        gp?.name || '',
       );
     }
   };
@@ -1080,7 +1094,7 @@ function App() {
         payload,
       );
       const newGpMainId =
-        response.data?.gp_main_id || response.data?.data?.gp_main_id;
+        response.data?.id;
       if (newGpMainId) {
         setGpMainId(newGpMainId);
       }
@@ -1088,6 +1102,12 @@ function App() {
       const newCompleted = new Set(completedForms);
       newCompleted.add(1);
       setCompletedForms(newCompleted);
+      const firstIncompleteForm = [1, 2, 3, 4, 5, 6, 7].find(
+          (f) => !newCompleted.has(f),
+        );
+        if (firstIncompleteForm) {
+          setCurrentForm(firstIncompleteForm);
+        }
 
       alert('Form 1 submitted successfully!');
     } catch (error) {
@@ -1161,11 +1181,21 @@ function App() {
 
       if (formItems.length > 0) {
         await submitFormItems(gpMainId, formItems);
+      }else{        
+        alert('No data to submit for this form');
+        setIsSubmitting(false);
+        return;
       }
 
       const newCompleted = new Set(completedForms);
       newCompleted.add(formNumber);
       setCompletedForms(newCompleted);
+        const firstIncompleteForm = [1, 2, 3, 4, 5, 6, 7].find(
+          (f) => !newCompleted.has(f),
+        );
+        if (firstIncompleteForm) {
+          setCurrentForm(firstIncompleteForm);
+        }
 
       alert(`Form ${formNumber} submitted successfully!`);
     } catch (error) {
