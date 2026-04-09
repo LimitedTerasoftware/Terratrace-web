@@ -4,27 +4,23 @@ import {
   CheckSquare,
   ListOrdered,
   Search,
-  Filter,
   Download,
   ChevronDown,
-  ChevronUp,
   Loader2,
+  Eye,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
+import {
+  getBlockData,
+  getDistrictData,
+  getStateData,
+  getChecklistData,
+} from '../../Services/api';
+import DataTable, { TableColumn } from 'react-data-table-component';
+import { GPChecklistData } from '../../../types/gp-checklist';
 import axios from 'axios';
-import { getBlockData, getDistrictData, getStateData } from '../../Services/api';
 import { set } from 'date-fns';
-
-interface GPChecklistData {
-  id: string;
-  state_name?: string;
-  district_name?: string;
-  block_name?: string;
-  gp_name?: string;
-  submitted_at?: string;
-  status?: string;
-  form_data?: any;
-}
 
 interface StatsData {
   total: number;
@@ -32,14 +28,19 @@ interface StatsData {
   pending: number;
   byState: Record<string, number>;
 }
-
+type StatusOption = {
+  value: number;
+  label: string;
+};
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const BASEURL = import.meta.env.VITE_API_BASE;
+const ImgbaseUrl = import.meta.env.VITE_Image_URL;
 
 function GPChecklistList() {
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
+  const [selectedStatus, setSelectedStatus] = useState<number | null>(null);
 
   const [selectedStateId, setSelectedStateId] = useState<string | null>(null);
 
@@ -69,6 +70,32 @@ function GPChecklistList() {
     pending: 0,
     byState: {},
   });
+ 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
+
+  const parseMediaUrls = (raw: string | null): string[] => {
+    if (!raw || typeof raw !== 'string') return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [parsed];
+    } catch {
+      return [];
+    }
+  };
+
+  const getSiteImages = (row: GPChecklistData) => {
+    const urls = parseMediaUrls(row.site_images);
+    if (urls.length === 0) return null;
+    return urls.map((url) => `${ImgbaseUrl}${url}`);
+  };
+
+  const getBuildingImages = (row: GPChecklistData) => {
+    const urls = parseMediaUrls(row.building_images);
+    if (urls.length === 0) return null;
+    return urls.map((url) => `${ImgbaseUrl}${url}`);
+  };
 
   const Header = () => {
     return (
@@ -192,19 +219,32 @@ function GPChecklistList() {
     );
   };
 
-  const fetchStates = async () => {
-     setLoadingStates(true);
-     try {
-       const data = await getStateData();
-       setStates(data || []);
-     } catch (error) {
-       console.error('Error fetching states:', error);
-     } finally {
-       setLoadingStates(false);
-     }
-   };
+  const statusMap: Record<number, string> = {
+    1: 'Accepted',
+    2: 'Rejected',
+    0: 'Pending',
+  };
 
- const fetchDistricts = async (stateCode: string) => {
+
+   const statusOptions: StatusOption[] = Object.entries(statusMap).map(
+    ([value, label]) => ({
+      value: Number(value),
+      label,
+    }),
+  );
+  const fetchStates = async () => {
+    setLoadingStates(true);
+    try {
+      const data = await getStateData();
+      setStates(data || []);
+    } catch (error) {
+      console.error('Error fetching states:', error);
+    } finally {
+      setLoadingStates(false);
+    }
+  };
+
+  const fetchDistricts = async (stateCode: string) => {
     setLoadingDistricts(true);
     try {
       const data = await getDistrictData(stateCode);
@@ -232,7 +272,7 @@ function GPChecklistList() {
   const fetchGPs = async (blockId: string) => {
     try {
       if (!blockId) return;
-        setLoadingGP(true);
+      setLoadingGP(true);
       axios
         .get(`${BASEURL}/gpdata`, { params: { block_code: blockId } })
         .then((res) => setGPs(res.data || []))
@@ -249,41 +289,37 @@ function GPChecklistList() {
   const fetchChecklistData = async () => {
     try {
       setLoadingData(true);
-      const params = new URLSearchParams();
-      if (selectedStateId) params.append('state_code', selectedStateId);
-      if (selectedDistrictId)
-        params.append('district_code', selectedDistrictId);
-      if (selectedBlockId) params.append('block_code', selectedBlockId);
-      if (fromdate) params.append('from_date', fromdate);
-      if (todate) params.append('to_date', todate);
-      if (globalsearch) params.append('search', globalsearch);
 
-      const queryString = params.toString();
-      const urlSuffix = queryString ? `?${queryString}` : '';
+      const response = await getChecklistData({
+        state_id: selectedStateId || undefined,
+        district_id: selectedDistrictId || undefined,
+        block_id: selectedBlockId || undefined,
+        gp_id: selectedGPId || undefined,
+        from_date: fromdate || undefined,
+        to_date: todate || undefined,
+        search: globalsearch || undefined,
+        page: currentPage,
+        per_page: rowsPerPage,
+      });
 
-      const response = await axios.get<{
-        status: boolean;
-        data: GPChecklistData[];
-      }>(`${TraceBASEURL}/get-gp-checklist${urlSuffix}`);
-
-      if (response.data.status && response.data.data) {
-        setChecklistData(response.data.data);
+      if (response.status && response.data) {
+        setChecklistData(response.data);
 
         const newStats: StatsData = {
-          total: response.data.data.length,
-          completed: response.data.data.filter(
-            (item: GPChecklistData) => item.status === 'completed',
+          total: response.total || response.data.length,
+          completed: response.data.filter(
+            (item: GPChecklistData) => item.status === 1,
           ).length,
-          pending: response.data.data.filter(
-            (item: GPChecklistData) => item.status === 'pending',
+          pending: response.data.filter(
+            (item: GPChecklistData) => item.status === 0,
           ).length,
           byState: {},
         };
 
-        response.data.data.forEach((item: GPChecklistData) => {
-          if (item.state_name) {
-            newStats.byState[item.state_name] =
-              (newStats.byState[item.state_name] || 0) + 1;
+        response.data.forEach((item: GPChecklistData) => {
+          if (item.state_id) {
+            newStats.byState[item.state_id.toString()] =
+              (newStats.byState[item.state_id.toString()] || 0) + 1;
           }
         });
 
@@ -315,9 +351,9 @@ function GPChecklistList() {
     fetchBlock();
   }, [selectedDistrictId]);
   useEffect(() => {
-    if(selectedBlockId){
+    if (selectedBlockId) {
       fetchGPs(selectedBlockId);
-    }else{
+    } else {
       setGPs([]);
     }
   }, [selectedBlockId]);
@@ -339,26 +375,29 @@ function GPChecklistList() {
     setFiltersReady(true);
   }, []);
 
- 
-
   useEffect(() => {
     if (filtersReady) {
       fetchChecklistData();
     }
   }, [
     filtersReady,
-          selectedStateId,
+    selectedStateId,
     selectedDistrictId,
     selectedBlockId,
+    selectedGPId,
     fromdate,
     todate,
     globalsearch,
+    currentPage,
+    rowsPerPage,
   ]);
 
   const handleFilterChange = (
     stateId: string | null,
     districtId: string | null,
     blockId: string | null,
+    gpId: string | null,
+    status: number | null,
     from_date: string | null,
     to_date: string | null,
     search: string | null,
@@ -367,6 +406,8 @@ function GPChecklistList() {
     if (stateId) params.state_code = stateId;
     if (districtId) params.district_code = districtId;
     if (blockId) params.block_code = blockId;
+    if (gpId) params.gp_id = gpId;
+    if (status !== null) params.status = status.toString();
     if (from_date) params.from_date = from_date;
     if (to_date) params.to_date = to_date;
     if (search) params.search = search;
@@ -377,53 +418,81 @@ function GPChecklistList() {
     setSelectedStateId(null);
     setSelectedDistrictId(null);
     setSelectedBlockId(null);
+    setSelectedGPId(null);
+    setSelectedStatus(null);
     setGlobalSearch('');
     setFromDate('');
     setToDate('');
     setSearchParams({});
   };
-const handleStateChange = (value: string | null) => {
+  const handleStateChange = (value: string | null) => {
     setSelectedStateId(value);
     setSelectedDistrictId(null);
     setSelectedBlockId(null);
-    handleFilterChange(
-      value,
-      null,
-      null,
-      fromdate,
-      todate,
-      globalsearch,
-    );
+    handleFilterChange(value, null, null,null,null, fromdate, todate, globalsearch);
   };
-const handleDistrictChange = (value: string | null) => {  
+  const handleDistrictChange = (value: string | null) => {
     setSelectedDistrictId(value);
     setSelectedBlockId(null);
     handleFilterChange(
       selectedStateId,
       value,
       null,
+      null,
+      null,
       fromdate,
       todate,
       globalsearch,
     );
   };
-const handleBlockChange = (value: string | null) => {
+  const handleBlockChange = (value: string | null) => {
     setSelectedBlockId(value);
     handleFilterChange(
       selectedStateId,
       selectedDistrictId,
       value,
+      null,
+      null,
       fromdate,
       todate,
       globalsearch,
     );
   };
-const handleFromDateChange = (value: string) => {
+  const handleGPChange = (value: string | null) => {
+    setSelectedGPId(value);
+    handleFilterChange(
+      selectedStateId,
+      selectedDistrictId,
+      selectedBlockId,
+      value,
+      null,
+      fromdate,
+      todate,
+      globalsearch,
+    );
+  }
+   const handleStatusChange = (value: string) => {
+    const statusValue = value === 'null' ? null : Number(value);
+    setSelectedStatus(statusValue);
+    handleFilterChange(
+      selectedStateId,
+      selectedDistrictId,
+      selectedBlockId,
+      selectedGPId,
+      statusValue,
+      fromdate,
+      todate,
+      globalsearch,
+    );
+  };
+  const handleFromDateChange = (value: string) => {
     setFromDate(value);
     handleFilterChange(
       selectedStateId,
       selectedDistrictId,
       selectedBlockId,
+      selectedGPId,
+      selectedStatus,
       value,
       todate,
       globalsearch,
@@ -436,6 +505,8 @@ const handleFromDateChange = (value: string) => {
       selectedStateId,
       selectedDistrictId,
       selectedBlockId,
+      selectedGPId,
+      selectedStatus,
       fromdate,
       value,
       globalsearch,
@@ -448,39 +519,161 @@ const handleFromDateChange = (value: string) => {
       selectedStateId,
       selectedDistrictId,
       selectedBlockId,
+      selectedGPId,
+      selectedStatus,
       fromdate,
       todate,
       value,
     );
   };
 
-  const getStatusBadge = (status?: string) => {
-    switch (status) {
-      case 'completed':
+  const columns: TableColumn<GPChecklistData>[] = [
+    {
+      name: 'Sl.No',
+      selector: (_row, index = 0) =>
+        (currentPage - 1) * rowsPerPage + index + 1,
+      width: '70px',
+    },
+    {
+      name: 'GP Name',
+      selector: (row) => row.gp_name,
+      cell: (row) => (
+        <span className="text-sm font-medium text-gray-900">{row.gp_name}</span>
+      ),
+    },
+    // {
+    //   name: 'GP ID',
+    //   selector: (row) => row.gp_id,
+    //   cell: (row) => <span className="text-sm text-gray-600">{row.gp_id}</span>,
+    // },
+    {
+      name: 'Building Type',
+      selector: (row) => row.building_type,
+      cell: (row) => (
+        <span className="text-sm text-gray-600">{row.building_type}</span>
+      ),
+    },
+    {
+      name: 'Latitude',
+      selector: (row) => row.latitude,
+      cell: (row) => (
+        <span className="text-sm text-gray-600">{row.latitude}</span>
+      ),
+    },
+    {
+      name: 'Longitude',
+      selector: (row) => row.longitude,
+      cell: (row) => (
+        <span className="text-sm text-gray-600">{row.longitude}</span>
+      ),
+    },
+    {
+      name: 'Site Images',
+      cell: (row) => {
+        const images = getSiteImages(row);
+        if (!images || images.length === 0) {
+          return <span className="text-gray-400">-</span>;
+        }
         return (
-          <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-            Completed
+          <button
+            onClick={() => setZoomImage(images[0])}
+            className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-gray-100 cursor-pointer"
+            title="View image"
+          >
+            <ImageIcon size={16} className="text-blue-600" />
+            <span className="text-xs text-blue-600 font-medium">
+              {images.length}
+            </span>
+          </button>
+        );
+      },
+      width: '100px',
+    },
+    {
+      name: 'Building Images',
+      cell: (row) => {
+        const images = getBuildingImages(row);
+        if (!images || images.length === 0) {
+          return <span className="text-gray-400">-</span>;
+        }
+        return (
+          <button
+            onClick={() => setZoomImage(images[0])}
+            className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-gray-100 cursor-pointer"
+            title="View image"
+          >
+            <ImageIcon size={16} className="text-green-600" />
+            <span className="text-xs text-green-600 font-medium">
+              {images.length}
+            </span>
+          </button>
+        );
+      },
+      width: '130px',
+    },
+ 
+    {
+      name: 'Status',
+      selector: (row) => row.status,
+      sortable: true,
+      cell: (row) => {
+        const status = row.status as 0 | 1 | 2;
+        const statusConfig = {
+          0: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800' },
+          1: { label: 'Accepted', className: 'bg-green-100 text-green-800' },
+          2: { label: 'Rejected', className: 'bg-red-100 text-red-800' },
+        };
+        const config = statusConfig[status] || {
+          label: 'Unknown',
+          className: 'bg-gray-100 text-gray-800',
+        };
+
+        return (
+          <span
+            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${config.className}`}
+          >
+            {config.label}
           </span>
         );
-      case 'pending':
-        return (
-          <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
-            Pending
-          </span>
-        );
-      case 'in-progress':
-        return (
-          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-            In Progress
-          </span>
-        );
-      default:
-        return (
-          <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
-            {status || 'Unknown'}
-          </span>
-        );
-    }
+      },
+    },
+
+    {
+      name: 'Created At',
+      selector: (row) => row.created_at,
+      cell: (row) => (
+        <span className="text-sm text-gray-600">
+          {new Date(row.created_at).toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          })}
+        </span>
+      ),
+    },
+    {
+      name: 'Actions',
+      cell: (row) => (
+        <Link
+          to={`/gp-checklist/view/${row.id}`}
+          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+          title="View Details"
+        >
+          <Eye className="w-4 h-4" />
+        </Link>
+      ),
+      ignoreRowClick: true,
+      width: '80px',
+    },
+  ];
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleRowsPerPageChange = (newRowsPerPage: number, newPage: number) => {
+    setRowsPerPage(newRowsPerPage);
+    setCurrentPage(newPage);
   };
 
   return (
@@ -490,7 +683,7 @@ const handleFromDateChange = (value: string) => {
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="p-6 border-b border-gray-200">
-          <div className="flex flex-wrap items-center gap-3 mb-4">
+          <div className="flex flex-wrap items-center gap-2 mb-4">
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
               <select
                 value={selectedStateId || ''}
@@ -619,7 +812,7 @@ const handleFromDateChange = (value: string) => {
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
               <select
                 value={selectedGPId || ''}
-                onChange={(e) => setSelectedGPId(e.target.value || null)}
+                onChange={(e) => handleGPChange(e.target.value || null)}
                 disabled={!selectedBlockId || loadingGP}
                 className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
               >
@@ -655,8 +848,37 @@ const handleFromDateChange = (value: string) => {
                   <ChevronDown className="w-4 h-4 text-gray-400" />
                 )}
               </div>
-
             </div>
+            <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+              <select
+                value={selectedStatus !== null ? selectedStatus : ''}
+                onChange={(e) => handleStatusChange(e.target.value)}
+                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              >
+                <option value="null">All Status</option>
+                {statusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                <svg
+                  className="w-4 h-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </div>
+            </div>
+
 
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
               <input
@@ -712,76 +934,51 @@ const handleFromDateChange = (value: string) => {
             </button>
 
             <div className="flex items-center text-sm text-gray-500 ml-auto">
-              <span>Total Records: {checklistData.length}</span>
+              <span>Total Records: {stats.total}</span>
             </div>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3">Sl.No</th>
-                <th className="px-6 py-3">State</th>
-                <th className="px-6 py-3">District</th>
-                <th className="px-6 py-3">Block</th>
-                <th className="px-6 py-3">GP Name</th>
-                <th className="px-6 py-3">Submitted Date</th>
-                <th className="px-6 py-3">Status</th>
-                <th className="px-6 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loadingData ? (
-                <tr>
-                  <td colSpan={8} className="px-6 py-8 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-                      <span>Loading data...</span>
-                    </div>
-                  </td>
-                </tr>
-              ) : checklistData.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={8}
-                    className="px-6 py-8 text-center text-gray-500"
-                  >
-                    No checklist data found
-                  </td>
-                </tr>
-              ) : (
-                checklistData.map((item, index) => (
-                  <tr
-                    key={item.id || index}
-                    className="bg-white border-b hover:bg-gray-50"
-                  >
-                    <td className="px-6 py-4">{index + 1}</td>
-                    <td className="px-6 py-4">{item.state_name || '-'}</td>
-                    <td className="px-6 py-4">{item.district_name || '-'}</td>
-                    <td className="px-6 py-4">{item.block_name || '-'}</td>
-                    <td className="px-6 py-4">{item.gp_name || '-'}</td>
-                    <td className="px-6 py-4">
-                      {item.submitted_at
-                        ? new Date(item.submitted_at).toLocaleDateString()
-                        : '-'}
-                    </td>
-                    <td className="px-6 py-4">{getStatusBadge(item.status)}</td>
-                    <td className="px-6 py-4">
-                      <Link
-                        to={`/gp-checklist/view/${item.id}`}
-                        className="text-blue-600 hover:text-blue-800 font-medium"
-                      >
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        <div className="p-4">
+          <DataTable
+            columns={columns}
+            data={checklistData}
+            pagination
+            paginationServer
+            paginationTotalRows={stats.total}
+            paginationPerPage={rowsPerPage}
+            paginationRowsPerPageOptions={[10, 25, 50, 100]}
+            onChangePage={handlePageChange}
+            onChangeRowsPerPage={handleRowsPerPageChange}
+            highlightOnHover
+            pointerOnHover
+            progressPending={loadingData}
+            progressComponent={
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            }
+            noDataComponent={
+              <div className="p-6 text-center text-gray-500">
+                No checklist data found
+              </div>
+            }
+          />
         </div>
       </div>
+
+      {zoomImage && (
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-80 z-50 cursor-pointer"
+          onClick={() => setZoomImage(null)}
+        >
+          <img
+            src={zoomImage}
+            alt="Zoomed"
+            className="max-w-full max-h-full p-4 rounded-lg"
+          />
+        </div>
+      )}
     </div>
   );
 }

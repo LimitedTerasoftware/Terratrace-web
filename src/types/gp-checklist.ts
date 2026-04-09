@@ -113,3 +113,20 @@ export interface Project {
   updated_at: string;
   user_id: string;
 }
+export interface GPChecklistData {
+  id: number;
+  state_id: number;
+  district_id: number;
+  block_id: number;
+  gp_id: string;
+  gp_name: string;
+  latitude: string;
+  longitude: string;
+  site_images: string;
+  building_images: string;
+  building_type: string;
+  user_id: string | null;
+  status: number;
+  created_at: string;
+  updated_at: string;
+}

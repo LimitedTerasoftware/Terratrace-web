@@ -64,8 +64,8 @@ export const fetchMachineData = async (
 
 export const getMachineOptions = async (firm_id?: string) => {
   try {
-    const resp = await axios.get(`${TraceBASEURL}/get-all-machines`,{
-       params: { firm_id: firm_id },
+    const resp = await axios.get(`${TraceBASEURL}/get-all-machines`, {
+      params: { firm_id: firm_id },
     });
     if (resp.status === 200 || resp.status === 201) {
       return resp.data.machines;
@@ -271,6 +271,70 @@ export const getGpData = async (
   }
 };
 
+export interface GPChecklistData {
+  id: number;
+  state_id: number;
+  district_id: number;
+  block_id: number;
+  gp_id: string;
+  gp_name: string;
+  latitude: string;
+  longitude: string;
+  site_images: string;
+  building_images: string;
+  building_type: string;
+  user_id: string | null;
+  status: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GPChecklistResponse {
+  status: boolean;
+  message: string;
+  data: GPChecklistData[];
+  total?: number;
+}
+
+export const getChecklistData = async (filters: {
+  state_id?: string;
+  district_id?: string;
+  block_id?: string;
+  gp_id?: string;
+  from_date?: string;
+  to_date?: string;
+  search?: string;
+  page?: number;
+  per_page?: number;
+}): Promise<GPChecklistResponse> => {
+  try {
+    const params = new URLSearchParams();
+    if (filters.state_id) params.append('state_id', filters.state_id);
+    if (filters.district_id) params.append('district_id', filters.district_id);
+    if (filters.block_id) params.append('block_id', filters.block_id);
+    if (filters.gp_id) params.append('gp_id', filters.gp_id);
+    if (filters.from_date) params.append('from_date', filters.from_date);
+    if (filters.to_date) params.append('to_date', filters.to_date);
+    if (filters.search) params.append('search', filters.search);
+    if (filters.page) params.append('page', filters.page.toString());
+    if (filters.per_page)
+      params.append('per_page', filters.per_page.toString());
+
+    const queryString = params.toString();
+    const urlSuffix = queryString ? `?${queryString}` : '';
+
+    const resp = await axios.get(`${TraceBASEURL}/get-checklist${urlSuffix}`);
+    if (resp.status === 200 || resp.status === 201) {
+      return resp.data;
+    } else {
+      throw new Error(`HTTP error! status: ${resp.status}`);
+    }
+  } catch (error) {
+    console.error('Error fetching checklist data:', error);
+    throw error;
+  }
+};
+
 export const updateAerialData = async (payload: EditPayload): Promise<any> => {
   try {
     const response = await fetch(`${TraceBASEURL}/aerial/update-by-type`, {
@@ -336,8 +400,6 @@ export const machineApi = {
     }
     return response.json();
   },
-
-
 
   getFirmDistanceStats: async (
     stateId?: string,
