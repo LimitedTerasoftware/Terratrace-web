@@ -10,6 +10,7 @@ import {
   Eye,
   Image as ImageIcon,
 } from 'lucide-react';
+import MediaCarousel from '../../DepthChart/MediaCarousel';
 import { useSearchParams, Link } from 'react-router-dom';
 import {
   getBlockData,
@@ -70,10 +71,13 @@ function GPChecklistList() {
     pending: 0,
     byState: {},
   });
- 
+
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [isCarouselOpen, setIsCarouselOpen] = useState<boolean>(false);
+  const [carouselImages, setCarouselImages] = useState<string[]>([]);
+  const [carouselInitialIndex, setCarouselInitialIndex] = useState<number>(0);
 
   const parseMediaUrls = (raw: string | null): string[] => {
     if (!raw || typeof raw !== 'string') return [];
@@ -95,6 +99,24 @@ function GPChecklistList() {
     const urls = parseMediaUrls(row.building_images);
     if (urls.length === 0) return null;
     return urls.map((url) => `${ImgbaseUrl}${url}`);
+  };
+
+  const openSiteImagesCarousel = (row: GPChecklistData) => {
+    const images = getSiteImages(row);
+    if (images && images.length > 0) {
+      setCarouselImages(images);
+      setCarouselInitialIndex(0);
+      setIsCarouselOpen(true);
+    }
+  };
+
+  const openBuildingImagesCarousel = (row: GPChecklistData) => {
+    const images = getBuildingImages(row);
+    if (images && images.length > 0) {
+      setCarouselImages(images);
+      setCarouselInitialIndex(0);
+      setIsCarouselOpen(true);
+    }
   };
 
   const Header = () => {
@@ -225,8 +247,7 @@ function GPChecklistList() {
     0: 'Pending',
   };
 
-
-   const statusOptions: StatusOption[] = Object.entries(statusMap).map(
+  const statusOptions: StatusOption[] = Object.entries(statusMap).map(
     ([value, label]) => ({
       value: Number(value),
       label,
@@ -429,7 +450,16 @@ function GPChecklistList() {
     setSelectedStateId(value);
     setSelectedDistrictId(null);
     setSelectedBlockId(null);
-    handleFilterChange(value, null, null,null,null, fromdate, todate, globalsearch);
+    handleFilterChange(
+      value,
+      null,
+      null,
+      null,
+      null,
+      fromdate,
+      todate,
+      globalsearch,
+    );
   };
   const handleDistrictChange = (value: string | null) => {
     setSelectedDistrictId(value);
@@ -470,8 +500,8 @@ function GPChecklistList() {
       todate,
       globalsearch,
     );
-  }
-   const handleStatusChange = (value: string) => {
+  };
+  const handleStatusChange = (value: string) => {
     const statusValue = value === 'null' ? null : Number(value);
     setSelectedStatus(statusValue);
     handleFilterChange(
@@ -576,7 +606,7 @@ function GPChecklistList() {
         }
         return (
           <button
-            onClick={() => setZoomImage(images[0])}
+            onClick={() => openSiteImagesCarousel(row)}
             className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-gray-100 cursor-pointer"
             title="View image"
           >
@@ -598,7 +628,7 @@ function GPChecklistList() {
         }
         return (
           <button
-            onClick={() => setZoomImage(images[0])}
+            onClick={() => openBuildingImagesCarousel(row)}
             className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-gray-100 cursor-pointer"
             title="View image"
           >
@@ -611,7 +641,7 @@ function GPChecklistList() {
       },
       width: '130px',
     },
- 
+
     {
       name: 'Status',
       selector: (row) => row.status,
@@ -879,7 +909,6 @@ function GPChecklistList() {
               </div>
             </div>
 
-
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
               <input
                 type="date"
@@ -979,6 +1008,17 @@ function GPChecklistList() {
           />
         </div>
       )}
+
+      <MediaCarousel
+        isOpen={isCarouselOpen}
+        onClose={() => setIsCarouselOpen(false)}
+        mediaItems={carouselImages.map((url, index) => ({
+          type: 'image',
+          url,
+          label: `Image ${index + 1}`,
+        }))}
+        initialIndex={carouselInitialIndex}
+      />
     </div>
   );
 }

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { X, ChevronLeft, ChevronRight, Image as ImageIcon, Video } from 'lucide-react';
 
 interface MediaItem {
-  type: 'image' | 'video';
+  type: string;
   url: string;
   label: string;
 }

@@ -8,6 +8,7 @@ import {
   X,
   Loader2,
 } from 'lucide-react';
+import MediaCarousel from '../../DepthChart/MediaCarousel';
 import { getChecklistPreview } from '../../Services/api';
 import { Header } from '../../Breadcrumbs/Header';
 
@@ -66,6 +67,11 @@ function GPChecklistView() {
   const [main, setMain] = useState<ChecklistMain | null>(null);
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [isCarouselOpen, setIsCarouselOpen] = useState<boolean>(false);
+  const [carouselMedia, setCarouselMedia] = useState<
+    { type: string; url: string; label: string }[]
+  >([]);
+  const [carouselInitialIndex, setCarouselInitialIndex] = useState<number>(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -104,22 +110,15 @@ function GPChecklistView() {
       case 1:
         return (
           <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 flex items-center gap-1">
-            <Check className="w-3 h-3" /> Completed
+            <Check className="w-3 h-3" />With Proof
           </span>
         );
       case 0:
         return (
-          <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 flex items-center gap-1">
-            <X className="w-3 h-3" /> Pending
-          </span>
-        );
-      case 2:
-        return (
           <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 flex items-center gap-1">
-            <X className="w-3 h-3" /> Rejected
+            <X className="w-3 h-3" /> Without Proof
           </span>
         );
-      
       default:
         return (
           <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
@@ -138,6 +137,98 @@ function GPChecklistView() {
   const isVideoOrPdf = (url: string) => {
     const ext = url.split('.').pop()?.toLowerCase();
     return ext === 'pdf' || ext === 'mp4' || ext === 'webm';
+  };
+
+  const getMediaType = (url: string): 'image' | 'video' | 'pdf' => {
+    const ext = url.split('.').pop()?.toLowerCase();
+    if (ext === 'mp4' || ext === 'webm') return 'video';
+    if (ext === 'pdf') return 'pdf';
+    return 'image';
+  };
+
+  const isPdf = (url: string) => url.toLowerCase().endsWith('.pdf');
+
+  const openSiteImagesCarousel = () => {
+    if (!main?.site_images) return;
+    const urls = parseMediaUrls(main.site_images).map(
+      (url) => `${ImgbaseUrl}${url}`,
+    );
+    if (urls.length > 0) {
+      const pdfUrls = urls.filter(isPdf);
+      const mediaUrls = urls.filter((url) => !isPdf(url));
+
+      if (pdfUrls.length > 0) {
+        setZoomImage(pdfUrls[0]);
+      }
+
+      if (mediaUrls.length > 0) {
+        setCarouselMedia(
+          mediaUrls.map((url, idx) => ({
+            type: getMediaType(url),
+            url,
+            label: `Site Image ${idx + 1}`,
+          })),
+        );
+        setCarouselInitialIndex(0);
+        setIsCarouselOpen(true);
+      }
+    }
+  };
+
+  const openBuildingImagesCarousel = () => {
+    if (!main?.building_images) return;
+    const urls = parseMediaUrls(main.building_images).map(
+      (url) => `${ImgbaseUrl}${url}`,
+    );
+    if (urls.length > 0) {
+      const pdfUrls = urls.filter(isPdf);
+      const mediaUrls = urls.filter((url) => !isPdf(url));
+
+      if (pdfUrls.length > 0) {
+        setZoomImage(pdfUrls[0]);
+      }
+
+      if (mediaUrls.length > 0) {
+        setCarouselMedia(
+          mediaUrls.map((url, idx) => ({
+            type: getMediaType(url),
+            url,
+            label: `Building Image ${idx + 1}`,
+          })),
+        );
+        setCarouselInitialIndex(0);
+        setIsCarouselOpen(true);
+      }
+    }
+  };
+
+  const openItemImagesCarousel = (images: string[]) => {
+    if (!images || images.length === 0) return;
+
+    const pdfFiles = images.filter((url) => url.toLowerCase().endsWith('.pdf'));
+    const mediaFiles = images.filter(
+      (url) => !url.toLowerCase().endsWith('.pdf'),
+    );
+
+    if (pdfFiles.length > 0) {
+      setZoomImage(pdfFiles[0]);
+    }
+
+    if (mediaFiles.length > 0) {
+      const mediaItems = mediaFiles.map((url, idx) => {
+        const isVideo =
+          url.toLowerCase().endsWith('.mp4') ||
+          url.toLowerCase().endsWith('.webm');
+        return {
+          type: isVideo ? 'video' : 'image',
+          url,
+          label: isVideo ? `Video ${idx + 1}` : `Image ${idx + 1}`,
+        };
+      });
+      setCarouselMedia(mediaItems);
+      setCarouselInitialIndex(0);
+      setIsCarouselOpen(true);
+    }
   };
 
   const InfoCard = ({
@@ -168,7 +259,7 @@ function GPChecklistView() {
       </span>
     </div>
   );
-  
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -205,7 +296,8 @@ function GPChecklistView() {
         >
           {isVideoOrPdf(zoomImage) ? (
             <div className="bg-white p-4 rounded-lg">
-              <a href={zoomImage} download className="text-blue-600 underline">
+              <a  href={zoomImage}  target="_blank"
+                 rel="noopener noreferrer" download className="text-blue-600 underline">
                 Download {zoomImage.split('.').pop()?.toUpperCase()} File
               </a>
             </div>
@@ -219,9 +311,15 @@ function GPChecklistView() {
         </div>
       )}
 
+      <MediaCarousel
+        isOpen={isCarouselOpen}
+        onClose={() => setIsCarouselOpen(false)}
+        mediaItems={carouselMedia}
+        initialIndex={carouselInitialIndex}
+      />
+
       <div className="min-h-screen bg-gray-50">
         <Header activeTab="installation-gpchecklistview" BackBut={true} />
-
 
         <div className="container mx-auto px-4 py-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -238,7 +336,7 @@ function GPChecklistView() {
                 <DataRow label="Latitude" value={main?.latitude || ''} />
                 <DataRow label="Longitude" value={main?.longitude || ''} />
               </div>
-          </InfoCard>
+            </InfoCard>
 
             {main?.site_images && (
               <InfoCard title="Site Images" icon={ImageIcon}>
@@ -247,7 +345,7 @@ function GPChecklistView() {
                     <div
                       key={idx}
                       className="relative group cursor-pointer"
-                      onClick={() => setZoomImage(`${ImgbaseUrl}${url}`)}
+                      onClick={openSiteImagesCarousel}
                     >
                       <div className="w-full h-32 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
                         <img
@@ -259,6 +357,14 @@ function GPChecklistView() {
                     </div>
                   ))}
                 </div>
+                {parseMediaUrls(main.site_images).length > 1 && (
+                  <button
+                    onClick={openSiteImagesCarousel}
+                    className="mt-2 text-sm text-blue-600 hover:underline"
+                  >
+                    View all {parseMediaUrls(main.site_images).length} images
+                  </button>
+                )}
               </InfoCard>
             )}
 
@@ -269,7 +375,7 @@ function GPChecklistView() {
                     <div
                       key={idx}
                       className="relative group cursor-pointer"
-                      onClick={() => setZoomImage(`${ImgbaseUrl}${url}`)}
+                      onClick={openBuildingImagesCarousel}
                     >
                       <div className="w-full h-32 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
                         <img
@@ -281,6 +387,15 @@ function GPChecklistView() {
                     </div>
                   ))}
                 </div>
+                {parseMediaUrls(main.building_images).length > 1 && (
+                  <button
+                    onClick={openBuildingImagesCarousel}
+                    className="mt-2 text-sm text-blue-600 hover:underline"
+                  >
+                    View all {parseMediaUrls(main.building_images).length}{' '}
+                    images
+                  </button>
+                )}
               </InfoCard>
             )}
           </div>
@@ -326,22 +441,15 @@ function GPChecklistView() {
                           )}
                           {images && images.length > 0 && (
                             <div className="mt-2">
-                              <div className="flex flex-wrap gap-1">
-                                {images.map((img, idx) => {
-                                  const isFile = isVideoOrPdf(img);
-                                  return (
-                                    <button
-                                      key={idx}
-                                      onClick={() => setZoomImage(img)}
-                                      className="text-xs text-blue-600 hover:underline"
-                                    >
-                                      {isFile
-                                        ? `File ${idx + 1}`
-                                        : `Image ${idx + 1}`}
-                                    </button>
-                                  );
-                                })}
-                              </div>
+                              <button
+                                onClick={() => openItemImagesCarousel(images)}
+                                className="text-xs text-blue-600 hover:underline"
+                              >
+                                {images.length}{' '}
+                                {images.length === 1
+                                  ? 'attachment'
+                                  : 'attachments'}
+                              </button>
                             </div>
                           )}
                         </div>

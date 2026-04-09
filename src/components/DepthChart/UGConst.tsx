@@ -181,6 +181,12 @@ const Report: React.FC<ReportProps> = ({
       },
     },
   };
+const linkColumn: TableColumn<UGConstructionSurveyData> = {
+  name: 'Link Name',
+  selector: () => Data?.selectedConnection || '-',
+  wrap:true,
+  sortable: true,
+};
 
   const columns: TableColumn<UGConstructionSurveyData>[] = [
     {
@@ -243,7 +249,8 @@ const Report: React.FC<ReportProps> = ({
       wrap: true,
       cell: (row) => <span title={row.end_lgd_name}>{row.end_lgd_name}</span>,
     },
-    {
+   ...(Data?.selectedConnection ? [linkColumn] : []),
+   {
       name: 'Distance (m)',
       selector: (row) => row.total_distance || '0.00',
       sortable: true,
