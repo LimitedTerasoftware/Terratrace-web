@@ -12,6 +12,7 @@ import Sidebar from './Sidebar';
 import axios from 'axios';
 import { getStateData, getDistrictData, getBlockData } from '../Services/api';
 import { file } from 'jszip';
+import { GPList } from '../../types/survey';
 
 const BASEURL = import.meta.env.VITE_API_BASE;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -25,23 +26,7 @@ interface ImageUploadResponse {
     docs?: string[];
   };
 }
-interface GpData {
-  id: number;
-  name: string;
-  lattitude: string;
-  longitude: string;
-  type: string;
-  blk_code: number;
-  blk_name: string;
-  dt_code: number;
-  dt_name: string;
-  st_code: number;
-  st_name: string;
-  lgd_code: number;
-  remark: string | null;
-  created_at: string;
-  updated_at: string;
-}
+
 const uploadImages = async (files: File[]): Promise<string[]> => {
   const formData = new FormData();
   files.forEach((file) => {
@@ -524,7 +509,7 @@ function App() {
   const [blocks, setBlocks] = useState<
     { block_id: string; block_name: string }[]
   >([]);
-  const [gps, setGps] = useState<GpData[]>([]);
+  const [gps, setGps] = useState<GPList[]>([]);
 
   const [selectedState, setSelectedState] = useState<string>('');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('');

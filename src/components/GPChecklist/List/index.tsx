@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { StateData, District, Block } from '../../../types/survey';
+import { StateData, District, Block, GPList } from '../../../types/survey';
 import {
   CheckSquare,
   ListOrdered,
@@ -13,6 +13,7 @@ import {
 import { useSearchParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { getBlockData, getDistrictData, getStateData } from '../../Services/api';
+import { set } from 'date-fns';
 
 interface GPChecklistData {
   id: string;
@@ -33,6 +34,7 @@ interface StatsData {
 }
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
+const BASEURL = import.meta.env.VITE_API_BASE;
 
 function GPChecklistList() {
   const [states, setStates] = useState<StateData[]>([]);
@@ -46,7 +48,9 @@ function GPChecklistList() {
   );
 
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
- 
+  const [gps, setGPs] = useState<GPList[]>([]);
+  const [selectedGPId, setSelectedGPId] = useState<string | null>(null);
+  const [loadingGP, setLoadingGP] = useState<boolean>(false);
   const [globalsearch, setGlobalSearch] = useState<string>('');
   const [loadingStates, setLoadingStates] = useState<boolean>(false);
   const [loadingDistricts, setLoadingDistricts] = useState<boolean>(false);
@@ -225,6 +229,22 @@ function GPChecklistList() {
       setLoadingBlock(false);
     }
   };
+  const fetchGPs = async (blockId: string) => {
+    try {
+      if (!blockId) return;
+        setLoadingGP(true);
+      axios
+        .get(`${BASEURL}/gpdata`, { params: { block_code: blockId } })
+        .then((res) => setGPs(res.data || []))
+        .catch(() => setGPs([]));
+      setSelectedGPId('');
+      setLoadingGP(false);
+    } catch (error) {
+      console.error('Error fetching GPs:', error);
+      setGPs([]);
+      setLoadingGP(false);
+    }
+  };
 
   const fetchChecklistData = async () => {
     try {
@@ -294,6 +314,13 @@ function GPChecklistList() {
   useEffect(() => {
     fetchBlock();
   }, [selectedDistrictId]);
+  useEffect(() => {
+    if(selectedBlockId){
+      fetchGPs(selectedBlockId);
+    }else{
+      setGPs([]);
+    }
+  }, [selectedBlockId]);
 
   useEffect(() => {
     const state_code = searchParams.get('state_code') || null;
@@ -588,6 +615,47 @@ const handleFromDateChange = (value: string) => {
                   <ChevronDown className="w-4 h-4 text-gray-400" />
                 )}
               </div>
+            </div>
+            <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+              <select
+                value={selectedGPId || ''}
+                onChange={(e) => setSelectedGPId(e.target.value || null)}
+                disabled={!selectedBlockId || loadingGP}
+                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
+              >
+                <option value="">All GPs</option>
+                {gps.map((gp) => (
+                  <option key={gp.id} value={gp.id}>
+                    {gp.name}-{gp.lgd_code}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                {loadingGP ? (
+                  <svg
+                    className="animate-spin h-4 w-4 text-gray-400"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                )}
+              </div>
+
             </div>
 
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
