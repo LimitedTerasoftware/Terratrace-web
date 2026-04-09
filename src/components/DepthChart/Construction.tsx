@@ -40,13 +40,10 @@ function ConstructionPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [filtersReady, setFiltersReady] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [selectedRouteLink, setSelectedRouteLink] = useState<number | null>(
-    null,
-  );
   const [connections, setConnections] = useState<
-    { id: number; original_name: string; start: string; end: string }[]
+    { route_name: string; startLocation: string; endLocation: string }[]
   >([]);
-  const [selectedConnection, setSelectedConnection] = useState<number | null>(
+  const [selectedConnection, setSelectedConnection] = useState<string | null>(
     null,
   );
   const [loadingConnections, setLoadingConnections] = useState(false);
@@ -114,32 +111,8 @@ function ConstructionPage() {
     }
   };
 
-  // New function to fetch all survey data for stats
-  const fetchSurveyDataForStats = async () => {
-    try {
-      setLoadingStats(true);
-      const response = await axios.get<{
-        status: boolean;
-        data: UGConstructionSurveyData[];
-      }>(`${TraceBASEURL}/get-survey-data`);
-
-      if (response.data.status) {
-        setSurveyData(response.data.data);
-      } else {
-        console.error('API returned status=false', response.data);
-        setSurveyData([]);
-      }
-    } catch (error) {
-      console.error('Error fetching survey data for stats', error);
-      setSurveyData([]);
-    } finally {
-      setLoadingStats(false);
-    }
-  };
-
-  useEffect(() => {
+ useEffect(() => {
     fetchStates();
-    fetchSurveyDataForStats(); // Fetch survey data for stats panel
   }, []);
 
   const fetchDistricts = async (stateId: string) => {
@@ -185,75 +158,40 @@ function ConstructionPage() {
 
   const fetchVerifiedNetworks = async () => {
     try {
-      if (!selectedState || !selectedDistrict || !selectedBlock) {
-        setSelectedRouteLink(null);
+      if (!selectedBlock) {
         return;
       }
-  
+      setLoadingConnections(true);
+
       const response = await fetch(
-        `${TraceBASEURL}/get-verified-netwrorks?page=1&limit=10&st_code=${selectedState}&dt_code=${selectedDistrict}&blk_code=${selectedBlock}`,
+        `${TraceBASEURL}/get-linknames?block_id=${selectedBlock}`,
       );
       const result = await response.json();
-      if (result.success && result.data?.length > 0) {
-        setSelectedRouteLink(result.data[0].id); // Auto-select the first route link
+      if (result.status && result.data?.length > 0) {
+        setConnections(result.data); 
       
-      } else {
-        setSelectedRouteLink(null);
-      }
-    } catch (error) {
-      console.error('Error fetching verified networks:', error);
-      setSelectedRouteLink(null);
-    } 
-  };
-
-  const fetchGPList = async (networkId: number) => {
-    try {
-      setLoadingConnections(true);
-      const response = await fetch(`${TraceBASEURL}/get-gplist/${networkId}`);
-      const result = await response.json();
-      if (result.success && result.data?.connections?.length > 0) {
-        setConnections(
-          result.data.connections.map(
-            (conn: {
-              id: number;
-              original_name: string;
-              start: string;
-              end: string;
-            }) => ({
-              id: conn.id,
-              original_name: conn.original_name,
-              start: conn.start,
-              end: conn.end,
-            }),
-          ),
-        );
       } else {
         setConnections([]);
       }
     } catch (error) {
-      console.error('Error fetching GP list:', error);
-      setConnections([]);
-    } finally {
+      console.error('Error fetching verified networks:', error);
+      setLoadingConnections(false);
+    }finally {
       setLoadingConnections(false);
     }
   };
+
+ 
 
   useEffect(() => {
     fetchVerifiedNetworks();
   }, [selectedState, selectedDistrict, selectedBlock]);
 
-  useEffect(() => {
-    if (selectedRouteLink) {
-      fetchGPList(selectedRouteLink);
-    } else {
-      setConnections([]);
-      setSelectedConnection(null);
-    }
-  }, [selectedRouteLink]);
+ 
 
   const getSelectedConnectionDetails = () => {
     if (!selectedConnection) return null;
-    return connections.find((c) => c.id === selectedConnection);
+    return connections.find((c) => c.route_name === selectedConnection);
   };
 
   useEffect(() => {
@@ -291,6 +229,7 @@ function ConstructionPage() {
     newState: string | null,
     newDistrict: string | null,
     newBlock: string | null,
+    newLink:string|null,
     status: number | null,
     from_date: string | null,
     to_date: string | null,
@@ -300,6 +239,7 @@ function ConstructionPage() {
     if (newState) params.state_id = newState;
     if (newDistrict) params.district_id = newDistrict;
     if (newBlock) params.block_id = newBlock;
+    if(newLink) params.link=newLink;
     if (status) params.status = String(status);
     if (from_date) params.from_date = from_date;
     if (to_date) params.to_date = to_date;
@@ -311,6 +251,7 @@ function ConstructionPage() {
     setSelectedState(null);
     setSelectedDistrict(null);
     setSelectedBlock(null);
+    setSelectedConnection(null);
     setSelectedStatus(null);
     setGlobalSearch('');
     setFromDate('');
@@ -320,10 +261,15 @@ function ConstructionPage() {
 
   const handleStateChange = (value: string) => {
     setSelectedState(value || null);
+    setSelectedDistrict(null);
+    setSelectedBlock(null);
+    setSelectedConnection(null);
+
     handleFilterChange(
       value || null,
-      selectedDistrict,
-      selectedBlock,
+      null,
+      null,
+      null,
       selectedStatus,
       fromdate,
       todate,
@@ -333,10 +279,13 @@ function ConstructionPage() {
 
   const handleDistrictChange = (value: string) => {
     setSelectedDistrict(value || null);
+     setSelectedBlock(null);
+     setSelectedConnection(null);
     handleFilterChange(
       selectedState,
       value || null,
-      selectedBlock,
+      null,
+      null,
       selectedStatus,
       fromdate,
       todate,
@@ -346,16 +295,33 @@ function ConstructionPage() {
 
   const handleBlockChange = (value: string) => {
     setSelectedBlock(value || null);
+    setSelectedConnection(null);
+
     handleFilterChange(
       selectedState,
       selectedDistrict,
       value || null,
+      null,
       selectedStatus,
       fromdate,
       todate,
       globalsearch,
     );
   };
+  const handleLinkChange = (value:string) =>{
+    setSelectedConnection(value || null);
+      handleFilterChange(
+      selectedState,
+      selectedDistrict,
+      selectedBlock,
+      selectedConnection,
+      selectedStatus,
+      fromdate,
+      todate,
+      globalsearch,
+    );
+
+  }
 
   const handleStatusChange = (value: string) => {
     const statusValue = value === 'null' ? null : Number(value);
@@ -364,6 +330,7 @@ function ConstructionPage() {
       selectedState,
       selectedDistrict,
       selectedBlock,
+      selectedConnection,
       statusValue,
       fromdate,
       todate,
@@ -377,6 +344,7 @@ function ConstructionPage() {
       selectedState,
       selectedDistrict,
       selectedBlock,
+      selectedConnection,
       selectedStatus,
       value,
       todate,
@@ -390,6 +358,7 @@ function ConstructionPage() {
       selectedState,
       selectedDistrict,
       selectedBlock,
+      selectedConnection,
       selectedStatus,
       fromdate,
       value,
@@ -403,6 +372,7 @@ function ConstructionPage() {
       selectedState,
       selectedDistrict,
       selectedBlock,
+      selectedConnection,
       selectedStatus,
       fromdate,
       todate,
@@ -610,17 +580,17 @@ function ConstructionPage() {
               <select
                 value={selectedConnection || ''}
                 onChange={(e) =>
-                  setSelectedConnection(
-                    e.target.value ? Number(e.target.value) : null,
+                  handleLinkChange(
+                    e.target.value ,
                   )
                 }
-                disabled={!selectedRouteLink || loadingConnections}
+                disabled={!selectedBlock || loadingConnections}
                 className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
               >
                 <option value="">Select Links</option>
                 {connections.map((conn) => (
-                  <option key={conn.id} value={conn.id}>
-                    {conn.original_name}
+                  <option  value={conn.route_name} key={conn.route_name}>
+                    {conn.route_name}
                   </option>
                 ))}
               </select>
@@ -797,13 +767,13 @@ function ConstructionPage() {
               preview,
               isAddModalOpen,
               selectedConnection,
-              selectedRouteLink,
-              connectionStart: getSelectedConnectionDetails()?.start,
-              connectionEnd: getSelectedConnectionDetails()?.end,
+              connectionStart: getSelectedConnectionDetails()?.startLocation,
+              connectionEnd: getSelectedConnectionDetails()?.endLocation,
             }}
             Onexcel={() => setExcel(false)}
             OnPreview={() => setPreview(false)}
             OnModal={() => setIsAddModalOpen(false)}
+            OnData={(data:UGConstructionSurveyData[])=> setSurveyData(data)}
           />
         )}
       </div>

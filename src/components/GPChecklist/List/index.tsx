@@ -655,7 +655,7 @@ function GPChecklistList() {
       name: 'Actions',
       cell: (row) => (
         <Link
-          to={`/gp-checklist/view/${row.id}`}
+          to={`/installation-gp-checklist/view/${row.id}`}
           className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
           title="View Details"
         >

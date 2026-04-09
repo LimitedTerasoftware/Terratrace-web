@@ -56,6 +56,7 @@ export default function NewConstructionDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [selectedState, setSelectedState] = useState<string>('');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('');
+  const [selectedBlock, setSelectedBlock] = useState<string>('');
   const [selectedVendor, setSelectedVendor] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
@@ -106,6 +107,7 @@ export default function NewConstructionDashboard() {
     fetchKmTrend(
       selectedState,
       selectedDistrict,
+      selectedBlock,
       fromDate,
       toDate,
       selectedVendor,
@@ -113,6 +115,7 @@ export default function NewConstructionDashboard() {
     fetchIssues(
       selectedState,
       selectedDistrict,
+      selectedBlock,
       fromDate,
       toDate,
       selectedVendor,
@@ -120,6 +123,7 @@ export default function NewConstructionDashboard() {
     fetchMachineDetails(
       selectedState,
       selectedDistrict,
+      selectedBlock,
       fromDate,
       toDate,
       searchQuery,
@@ -128,6 +132,7 @@ export default function NewConstructionDashboard() {
   }, [
     selectedState,
     selectedDistrict,
+    selectedBlock,
     selectedPeriod,
     searchQuery,
     selectedVendor,
@@ -161,6 +166,7 @@ export default function NewConstructionDashboard() {
 
         if (selectedState) params.state_id = selectedState;
         if (selectedDistrict) params.district_id = selectedDistrict;
+        if (selectedBlock) params.block_id = selectedBlock;
         if (selectedVendor) params.firm_id = selectedVendor;
         if (searchQuery) params.search = searchQuery;
 
@@ -198,11 +204,12 @@ export default function NewConstructionDashboard() {
       }
     };
     fetchTodaySurveyCount();
-  }, [selectedState, selectedDistrict, selectedVendor, searchQuery]);
+  }, [selectedState, selectedDistrict, selectedBlock, selectedVendor, searchQuery]);
 
   const fetchKmTrend = async (
     stateId?: string,
     districtId?: string,
+    blockId?: string,
     fromDate?: string,
     toDate?: string,
     firmId?: string,
@@ -212,7 +219,7 @@ export default function NewConstructionDashboard() {
       const response = await machineApi.getKmTrend(
         stateId,
         districtId,
-        undefined,
+        blockId,
         fromDate,
         toDate,
         firmId,
@@ -233,6 +240,7 @@ export default function NewConstructionDashboard() {
   const fetchIssues = async (
     stateId?: string,
     districtId?: string,
+    blockId?: string,
     fromDate?: string,
     toDate?: string,
     firmId?: string,
@@ -242,7 +250,7 @@ export default function NewConstructionDashboard() {
       const response = await machineApi.getIssues(
         stateId,
         districtId,
-        undefined,
+        blockId,
         fromDate,
         toDate,
         firmId,
@@ -266,6 +274,7 @@ export default function NewConstructionDashboard() {
   const fetchMachineDetails = async (
     stateId?: string,
     districtId?: string,
+    blockId?: string,
     fromDate?: string,
     toDate?: string,
     search?: string,
@@ -276,7 +285,7 @@ export default function NewConstructionDashboard() {
       const response = await machineApi.getFirmDistanceStats(
         stateId,
         districtId,
-        undefined,
+        blockId,
         fromDate,
         toDate,
         search,
@@ -295,6 +304,7 @@ export default function NewConstructionDashboard() {
     setSelectedState('');
     setSelectedDistrict('');
     setSelectedVendor('');
+    setSelectedBlock('');
     setSelectedPeriod('30');
     setSearchQuery('');
   };
@@ -304,11 +314,13 @@ export default function NewConstructionDashboard() {
       <Filters
         selectedState={selectedState}
         selectedDistrict={selectedDistrict}
+        selectedBlock={selectedBlock}
         selectedVendor={selectedVendor}
         selectedPeriod={selectedPeriod}
         searchQuery={searchQuery}
         onStateChange={setSelectedState}
         onDistrictChange={setSelectedDistrict}
+        onBlockChange={setSelectedBlock}
         onVendorChange={setSelectedVendor}
         onPeriodChange={setSelectedPeriod}
         onSearchChange={setSearchQuery}
@@ -357,6 +369,7 @@ export default function NewConstructionDashboard() {
           <SurveyInventory
             selectedState={selectedState}
             selectedDistrict={selectedDistrict}
+            selectedBlock={selectedBlock}
             selectedVendor={selectedVendor}
             searchQuery={searchQuery}
             selectedPeriod={selectedPeriod}

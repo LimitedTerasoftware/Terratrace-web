@@ -21,14 +21,14 @@ interface ReportProps {
     filtersReady: boolean;
     preview: boolean;
     isAddModalOpen: boolean;
-    selectedConnection: number | null;
-    selectedRouteLink: number | null;
+    selectedConnection: string | null;
     connectionStart?: string;
     connectionEnd?: string;
   };
   Onexcel: () => void;
   OnPreview: () => void;
   OnModal: () => void;
+  OnData: (data: UGConstructionSurveyData[]) => void;
 }
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -38,6 +38,7 @@ const Report: React.FC<ReportProps> = ({
   Onexcel,
   OnPreview,
   OnModal,
+  OnData,
 }) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +60,8 @@ const Report: React.FC<ReportProps> = ({
         if (Data.selectedState) params.state_id = Data.selectedState;
         if (Data.selectedDistrict) params.district_id = Data.selectedDistrict;
         if (Data.selectedBlock) params.block_id = Data.selectedBlock;
+        if(Data.connectionStart) params.start = Data.connectionStart;
+        if(Data.connectionEnd)  params.end = Data.connectionEnd;
         if (Data.fromdate) params.from_date = Data.fromdate;
         if (Data.todate) params.to_date = Data.todate;
         if (Data.selectedStatus !== null) params.status = Data.selectedStatus;
@@ -71,6 +74,7 @@ const Report: React.FC<ReportProps> = ({
 
         if (response.data.status) {
           setData(response.data.data);
+          OnData(response.data.data);
         } else {
           console.error('API returned status=false', response.data);
           setData([]);
@@ -90,6 +94,8 @@ const Report: React.FC<ReportProps> = ({
     Data.selectedState,
     Data.selectedDistrict,
     Data.selectedBlock,
+    Data.connectionStart,
+    Data.connectionEnd,
     Data.fromdate,
     Data.todate,
     Data.filtersReady,

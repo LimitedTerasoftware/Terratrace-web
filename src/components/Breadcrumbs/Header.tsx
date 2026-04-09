@@ -1,7 +1,7 @@
 import { Satellite, Map, Camera, Truck, ClipboardList, Building2, ArrowLeft, Edit3, Home, ListTree } from "lucide-react"; 
 import { Link } from "react-router-dom";
 
-type TabType = "bsnl" | "gp" | "aerial" | "ground" | "hoto" | "bsnlaview" | "bsnledit" | "gpview" | "joints" | "jointview";
+type TabType = "bsnl" | "gp" | "aerial" | "ground" | "hoto" | "bsnlaview" | "bsnledit" | "gpview" | "joints" | "jointview" | "installation-gpchecklistview";
 
 const tabHeaderData: Record<
   string,
@@ -66,7 +66,14 @@ const tabHeaderData: Record<
     title: "Joint Details",
     subtitle: "fiber optic joint details",
     bgColor: "bg-red-600"
-  }
+  },
+  "installation-gpchecklistview": {
+    icon: ListTree,
+    title: "GP Checklist Details",
+    subtitle: "Detailed view of GP checklist",
+    bgColor: "bg-green-600"
+  },
+
 };
 export  function Header({ activeTab ,BackBut}: { activeTab: TabType ,BackBut:boolean}) {
   const { icon: Icon, title, subtitle, bgColor } = tabHeaderData[activeTab] || tabHeaderData.bsnl;

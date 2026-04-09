@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react';
 import { Search, Download } from 'lucide-react';
-import { getStateData, getDistrictData, getFirms } from '../Services/api';
-import { District, StateData } from '../../types/survey';
+import { getStateData, getDistrictData, getFirms, getBlockData } from '../Services/api';
+import { Block, District, StateData } from '../../types/survey';
 import { Firm } from '../../types/firm';
 
 interface FiltersProps {
   selectedState: string;
   selectedDistrict: string;
+  selectedBlock: string;
   selectedVendor: string;
   selectedPeriod: string;
   searchQuery: string;
   onStateChange: (state: string) => void;
   onDistrictChange: (district: string) => void;
+  onBlockChange: (block: string) => void;
   onVendorChange: (vendor: string) => void;
   onPeriodChange: (period: string) => void;
   onSearchChange: (query: string) => void;
@@ -21,11 +23,13 @@ interface FiltersProps {
 export default function Filters({
   selectedState,
   selectedDistrict,
+  selectedBlock,
   selectedVendor,
   selectedPeriod,
   searchQuery,
   onStateChange,
   onDistrictChange,
+  onBlockChange,
   onVendorChange,
   onPeriodChange,
   onSearchChange,
@@ -33,10 +37,12 @@ export default function Filters({
 }: FiltersProps) {
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
+  const [blocks, setBlocks] = useState<Block[]>([]);
   const [vendors, setVendors] = useState<Firm[]>([]);
   const [loadingStates, setLoadingStates] = useState(false);
   const [loadingDistricts, setLoadingDistricts] = useState(false);
   const [loadingVendors, setLoadingVendors] = useState(false);
+  const [loadingBlock, setLoadingBlock] = useState(false);
 
   useEffect(() => {
     fetchStates();
@@ -50,6 +56,10 @@ export default function Filters({
       setDistricts([]);
     }
   }, [selectedState]);
+  
+  useEffect(() => {
+    fetchBlock();
+  }, [selectedDistrict]);
 
   const fetchStates = async () => {
     setLoadingStates(true);
@@ -74,6 +84,20 @@ export default function Filters({
       setLoadingDistricts(false);
     }
   };
+  
+    const fetchBlock = async () => {
+      try {
+        if (!selectedDistrict) return;
+        setLoadingBlock(true);
+        const data = await getBlockData(selectedDistrict);
+        setBlocks(data || []);
+      } catch (error) {
+        console.error('Error fetching blocks:', error);
+        setBlocks([]);
+      } finally {
+        setLoadingBlock(false);
+      }
+    };
 
   const fetchVendors = async () => {
     setLoadingVendors(true);
@@ -114,6 +138,19 @@ export default function Filters({
           {districts.map((district) => (
             <option key={district.district_id} value={district.district_id}>
               {district.district_name}
+            </option>
+          ))}
+        </select>
+        <select
+          className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[100px]"
+          value={selectedBlock}
+          onChange={(e) => onBlockChange(e.target.value)}
+          disabled={loadingBlock || !selectedDistrict}
+        >
+          <option value="">All Blocks</option>
+          {blocks.map((block) => (
+            <option key={block.block_id} value={block.block_id}>
+              {block.block_name}
             </option>
           ))}
         </select>

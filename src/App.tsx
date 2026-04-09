@@ -85,6 +85,7 @@ import ProtectedRoute, { PublicRoute } from './components/ProtectedRoute';
 import NewInstallationDashboard from './components/Dashboards/NewInstallationDashboard';
 import GPChecklist from './components/GPChecklist';
 import GPChecklistList from './components/GPChecklist/List';
+import GPChecklistView from './components/GPChecklist/View';
 //import AuditLogs from './components/AuditLogs';
 
 function App() {
@@ -154,7 +155,7 @@ function App() {
                 </>
               }
             />
-           
+
             <Route
               path="/privacy"
               element={
@@ -888,17 +889,28 @@ function App() {
                   </>
                 }
               />
-            <Route
-              path="/installation-gp-checklist-list"
-              element={
-                <>
-                  <DefaultLayout>
-                    <PageTitle title="GP Checklist List" />
-                    <GPChecklistList />
-                  </DefaultLayout>
-                </>
-              }
-            />
+              <Route
+                path="/installation-gp-checklist-list"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="GP Checklist List" />
+                      <GPChecklistList />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/installation-gp-checklist/view/:id"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="GP Checklist View" />
+                      <GPChecklistView />
+                    </DefaultLayout>
+                  </>
+                }
+              />
 
               <Route
                 path="*"

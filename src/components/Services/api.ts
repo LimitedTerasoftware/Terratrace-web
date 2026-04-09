@@ -335,6 +335,68 @@ export const getChecklistData = async (filters: {
   }
 };
 
+export interface ChecklistItem {
+  id: number;
+  gp_main_id: number;
+  gp_id: string | null;
+  form_type: string;
+  item_name: string;
+  status: number;
+  images: string | null;
+  remark: string | null;
+  item_type: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChecklistMain {
+  id: number;
+  state_id: number;
+  district_id: number;
+  block_id: number;
+  gp_id: string;
+  gp_name: string;
+  latitude: string;
+  longitude: string;
+  site_images: string;
+  building_images: string;
+  building_type: string;
+  user_id: string | null;
+  status: number;
+  created_at: string;
+  updated_at: string;
+  state_name: string;
+  district_name: string;
+  block_name: string;
+}
+
+export interface GPChecklistPreviewResponse {
+  status: boolean;
+  message: string;
+  data: {
+    main: ChecklistMain;
+    items: ChecklistItem[];
+  };
+}
+
+export const getChecklistPreview = async (
+  gpMainId: number,
+): Promise<GPChecklistPreviewResponse> => {
+  try {
+    const resp = await axios.get(
+      `${TraceBASEURL}/get-checklist-preview?gp_main_id=${gpMainId}`,
+    );
+    if (resp.status === 200 || resp.status === 201) {
+      return resp.data;
+    } else {
+      throw new Error(`HTTP error! status: ${resp.status}`);
+    }
+  } catch (error) {
+    console.error('Error fetching checklist preview:', error);
+    throw error;
+  }
+};
+
 export const updateAerialData = async (payload: EditPayload): Promise<any> => {
   try {
     const response = await fetch(`${TraceBASEURL}/aerial/update-by-type`, {

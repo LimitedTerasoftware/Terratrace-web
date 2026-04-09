@@ -10,6 +10,7 @@ const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 interface SurveyInventoryProps {
   selectedState?: string;
   selectedDistrict?: string;
+  selectedBlock?: string;
   selectedVendor?: string;
   searchQuery?: string;
   selectedPeriod?: string;
@@ -18,6 +19,7 @@ interface SurveyInventoryProps {
 export default function SurveyInventory({
   selectedState,
   selectedDistrict,
+  selectedBlock,
   selectedVendor,
   searchQuery,
   selectedPeriod,
@@ -36,6 +38,7 @@ export default function SurveyInventory({
 
         if (selectedState) params.state_id = selectedState;
         if (selectedDistrict) params.district_id = selectedDistrict;
+        if (selectedBlock) params.block_id = selectedBlock;
         if (selectedVendor) params.firm_id = selectedVendor;
         if (searchQuery) params.search = searchQuery;
 
@@ -60,6 +63,7 @@ export default function SurveyInventory({
   }, [
     selectedState,
     selectedDistrict,
+    selectedBlock,
     selectedVendor,
     searchQuery,
     selectedPeriod,
