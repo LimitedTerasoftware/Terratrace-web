@@ -15,12 +15,14 @@ interface ImageCaptureProps {
   onCapture: (image: GeoTaggedImage) => void;
   label?: string;
   show?: boolean;
+  readOnly?: boolean;
 }
 
 export default function ImageCapture({
   onCapture,
   label = 'Capture Image',
   show = true,
+  readOnly = false,
 }: ImageCaptureProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -242,7 +244,7 @@ export default function ImageCapture({
 
   return (
     <>
-      {show && (
+      {show && !readOnly && (
         <button
           onClick={() => setIsModalOpen(true)}
           className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"

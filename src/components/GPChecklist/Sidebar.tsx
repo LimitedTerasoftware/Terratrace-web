@@ -103,7 +103,8 @@ export default function Sidebar({
           {formSteps.map((step) => {
             const isActive = currentForm === step.id;
             const isCompleted = completedForms.has(step.id);
-            const isDisabled = step.id > 1 && !gpMainId;
+            const isDisabled =
+              step.id > 1 && !gpMainId;
             const Icon = formIcons[step.id as keyof typeof formIcons];
 
             return (

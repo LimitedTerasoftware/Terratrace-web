@@ -11,7 +11,6 @@ import type { FormData, GeoTaggedImage } from '../../types/gp-checklist';
 import Sidebar from './Sidebar';
 import axios from 'axios';
 import { getStateData, getDistrictData, getBlockData } from '../Services/api';
-import { file } from 'jszip';
 import { GPList } from '../../types/survey';
 
 const BASEURL = import.meta.env.VITE_API_BASE;
@@ -494,6 +493,8 @@ function App() {
   const [currentForm, setCurrentForm] = useState(1);
   const [formData, setFormData] = useState<FormData>({});
   const [completedForms, setCompletedForms] = useState<Set<number>>(new Set());
+  const [form1Existing, setForm1Existing] = useState(false);
+  const [existingForms, setExistingForms] = useState<Set<number>>(new Set());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [gpMainId, setGpMainId] = useState<number | null>(null);
@@ -787,23 +788,46 @@ function App() {
           form7: f7Items.length > 0 ? f7Data : undefined,
         });
 
+        setForm1Existing(true);
+
         const completed = new Set<number>();
+        const existForms = new Set<number>();
         completed.add(1);
+        existForms.add(1);
 
         const formTypes = new Set(items.map((i: any) => i.form_type));
-        if (formTypes.has('OFC and connectivity form')) completed.add(2);
-        if (formTypes.has('Equipement Installation')) completed.add(3);
-        if (formTypes.has('Power Earth Verification')) completed.add(4);
-        if (formTypes.has('ABD/GIS form') || formTypes.has('Gsi Mapping'))
+        if (formTypes.has('OFC and connectivity form')) {
+          completed.add(2);
+          existForms.add(2);
+        }
+        if (formTypes.has('Equipement Installation')) {
+          completed.add(3);
+          existForms.add(3);
+        }
+        if (formTypes.has('Power Earth Verification')) {
+          completed.add(4);
+          existForms.add(4);
+        }
+        if (formTypes.has('ABD/GIS form') || formTypes.has('Gsi Mapping')) {
           completed.add(5);
+          existForms.add(5);
+        }
         if (
           formTypes.has('Site clean and material form') ||
           formTypes.has('Safe Quality Verification')
-        )
+        ) {
           completed.add(6);
-        if (formTypes.has('PAT/ FAT form') || formTypes.has('Final Acceptance'))
+          existForms.add(6);
+        }
+        if (
+          formTypes.has('PAT/ FAT form') ||
+          formTypes.has('Final Acceptance')
+        ) {
           completed.add(7);
+          existForms.add(7);
+        }
         setCompletedForms(completed);
+        setExistingForms(existForms);
 
         const firstIncompleteForm = [1, 2, 3, 4, 5, 6, 7].find(
           (f) => !completed.has(f),
@@ -811,16 +835,15 @@ function App() {
         if (firstIncompleteForm) {
           setCurrentForm(firstIncompleteForm);
         }
-      }else{
-          const f1Data: FormData['form1'] = {
+      } else {
+        const f1Data: FormData['form1'] = {
           stateId: stateId?.toString(),
           districtId: districtId?.toString(),
           blockId: blockId?.toString(),
           gpId: gpId?.toString(),
-          gpName: gpName,}
-        setFormData({form1: f1Data});
-
-
+          gpName: gpName,
+        };
+        setFormData({ form1: f1Data });
       }
     } catch (error) {
       console.error('Error fetching existing data:', error);
@@ -831,7 +854,7 @@ function App() {
 
   const handleGpSelect = () => {
     if (selectedState && selectedDistrict && selectedBlock && selectedGp) {
-          const gp = gps.find((g) => g.id === Number(selectedGp));
+      const gp = gps.find((g) => g.id === Number(selectedGp));
 
       setShowGpModal(false);
       fetchExistingData(
@@ -1058,7 +1081,7 @@ function App() {
         },
       ];
 
-      const payload = {
+      const payload: any = {
         gpData: {
           state_id: parseInt(f1.stateId || '0'),
           district_id: parseInt(f1.districtId || '0'),
@@ -1074,12 +1097,15 @@ function App() {
         items,
       };
 
+      if (gpMainId) {
+        payload.gp_main_id = gpMainId;
+      }
+
       const response = await axios.post(
         `${TraceBASEURL}/submit-gp-checklist`,
         payload,
       );
-      const newGpMainId =
-        response.data?.id;
+      const newGpMainId = response.data?.id;
       if (newGpMainId) {
         setGpMainId(newGpMainId);
       }
@@ -1088,11 +1114,11 @@ function App() {
       newCompleted.add(1);
       setCompletedForms(newCompleted);
       const firstIncompleteForm = [1, 2, 3, 4, 5, 6, 7].find(
-          (f) => !newCompleted.has(f),
-        );
-        if (firstIncompleteForm) {
-          setCurrentForm(firstIncompleteForm);
-        }
+        (f) => !newCompleted.has(f),
+      );
+      if (firstIncompleteForm) {
+        setCurrentForm(firstIncompleteForm);
+      }
 
       alert('Form 1 submitted successfully!');
     } catch (error) {
@@ -1166,7 +1192,7 @@ function App() {
 
       if (formItems.length > 0) {
         await submitFormItems(gpMainId, formItems);
-      }else{        
+      } else {
         alert('No data to submit for this form');
         setIsSubmitting(false);
         return;
@@ -1175,12 +1201,12 @@ function App() {
       const newCompleted = new Set(completedForms);
       newCompleted.add(formNumber);
       setCompletedForms(newCompleted);
-        const firstIncompleteForm = [1, 2, 3, 4, 5, 6, 7].find(
-          (f) => !newCompleted.has(f),
-        );
-        if (firstIncompleteForm) {
-          setCurrentForm(firstIncompleteForm);
-        }
+      const firstIncompleteForm = [1, 2, 3, 4, 5, 6, 7].find(
+        (f) => !newCompleted.has(f),
+      );
+      if (firstIncompleteForm) {
+        setCurrentForm(firstIncompleteForm);
+      }
 
       alert(`Form ${formNumber} submitted successfully!`);
     } catch (error) {
@@ -1206,6 +1232,7 @@ function App() {
           <Form1
             data={formData.form1}
             onChange={(data) => updateFormData(1, data)}
+            readOnly={form1Existing}
           />
         );
       case 2:
@@ -1366,7 +1393,7 @@ function App() {
       </div>
     );
   }
-
+console.log(form1Existing,currentForm);
   return (
     <div className="min-h-screen bg-gray-50">
       <button
@@ -1409,25 +1436,33 @@ function App() {
               {renderForm()}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-end">
-              <button
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Submitting...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="w-5 h-5" />
-                    <span>Submit</span>
-                  </>
-                )}
-              </button>
-            </div>
+            {!(form1Existing && currentForm === 1) &&  (
+              <div className="flex flex-col sm:flex-row gap-4 justify-end">
+                <button
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span>
+                        {completedForms.has(currentForm)
+                          ? 'Updating...'
+                          : 'Submitting...'}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-5 h-5" />
+                      <span>
+                        {completedForms.has(currentForm) ? 'Update' : 'Submit'}
+                      </span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         </main>
       </div>

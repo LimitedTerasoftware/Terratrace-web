@@ -18,16 +18,47 @@ import {
 import { StateData, District, Block } from '../../../types/survey';
 import axios from 'axios';
 import ImageCapture from './ImageCapture';
+import MediaCarousel from '../../DepthChart/MediaCarousel';
 
 interface Form1Props {
   data: FormData['form1'] | undefined;
   onChange: (data: FormData['form1'] | undefined) => void;
   validate?: () => boolean;
+  readOnly?: boolean;
 }
 const BASEURL = import.meta.env.VITE_API_BASE;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
-export default function Form1({ data, onChange }: Form1Props) {
+export default function Form1({
+  data,
+  onChange,
+  readOnly: readOnlyProp,
+}: Form1Props) {
+  const [readOnly, setReadOnly] = useState(false);
+  const [isCarouselOpen, setIsCarouselOpen] = useState(false);
+  const [carouselImages, setCarouselImages] = useState<
+    { type: string; url: string; label: string }[]
+  >([]);
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (readOnlyProp !== undefined) {
+      setReadOnly(readOnlyProp);
+    }
+  }, [readOnlyProp]);
+
+  const openCarousel = (images: GeoTaggedImage[], label: string) => {
+    const items = images.map((img, idx) => ({
+      type: 'image',
+      url: img.preview,
+      label: `${label} ${idx + 1}`,
+    }));
+    setCarouselImages(items);
+    setCarouselIndex(0);
+    setIsCarouselOpen(true);
+  };
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -160,7 +191,6 @@ export default function Form1({ data, onChange }: Form1Props) {
       fetchGPs(selectedBlock);
     }
   }, [selectedBlock]);
-
 
   const fetchStates = async () => {
     setLoadingStates(true);
@@ -400,10 +430,11 @@ export default function Form1({ data, onChange }: Form1Props) {
         <div className="space-y-3">
           <div>
             <select
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.state ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.state ? 'border-red-500' : 'border-gray-300'}
+              ${readOnly && 'opacity-50 cursor-not-allowed bg-gray-50'}}`}
               value={selectedState}
               onChange={(e) => handleStateChange(e.target.value)}
-              disabled={loadingStates}
+              disabled={loadingStates || readOnly}
             >
               <option value="">Select State</option>
               {states.map((state) => (
@@ -418,10 +449,11 @@ export default function Form1({ data, onChange }: Form1Props) {
           </div>
           <div>
             <select
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.district ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.district ? 'border-red-500' : 'border-gray-300'}
+                ${readOnly && 'opacity-50 cursor-not-allowed bg-gray-50'}`}
               value={selectedDistrict}
               onChange={(e) => handleDistrictChange(e.target.value)}
-              disabled={loadingDistricts || !selectedState}
+              disabled={loadingDistricts || !selectedState || readOnly}
             >
               <option value="">Select District</option>
               {districts.map((district) => (
@@ -436,10 +468,11 @@ export default function Form1({ data, onChange }: Form1Props) {
           </div>
           <div>
             <select
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.block ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.block ? 'border-red-500' : 'border-gray-300'}
+                ${readOnly && 'opacity-50 cursor-not-allowed bg-gray-50'}`}
               value={selectedBlock}
               onChange={(e) => handleBlockChange(e.target.value)}
-              disabled={loadingBlocks || !selectedDistrict}
+              disabled={loadingBlocks || !selectedDistrict || readOnly}
             >
               <option value="">Select Block</option>
               {blocks.map((block) => (
@@ -454,10 +487,11 @@ export default function Form1({ data, onChange }: Form1Props) {
           </div>
           <div>
             <select
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.gp ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.gp ? 'border-red-500' : 'border-gray-300'}
+                ${readOnly && 'opacity-50 cursor-not-allowed bg-gray-50'}`}
               value={selectedGP}
               onChange={(e) => handleGPChange(e.target.value)}
-              disabled={loadingGPs || !selectedBlock}
+              disabled={loadingGPs || !selectedBlock || readOnly}
             >
               <option value="">Select GP</option>
               {Gps.map((gp) => (
@@ -487,9 +521,11 @@ export default function Form1({ data, onChange }: Form1Props) {
               <input
                 type="text"
                 placeholder="Latitude"
-                className={`px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all w-full ${errors.latitude ? 'border-red-500' : 'border-gray-300'}`}
+                className={`px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all w-full ${errors.latitude ? 'border-red-500' : 'border-gray-300'}
+                  ${readOnly && 'opacity-50 cursor-not-allowed bg-gray-50'}`}
                 value={latitude}
                 onChange={(e) => setLatitude(e.target.value)}
+                disabled={readOnly}
               />
               {errors.latitude && (
                 <p className="text-red-500 text-sm mt-1">{errors.latitude}</p>
@@ -499,23 +535,27 @@ export default function Form1({ data, onChange }: Form1Props) {
               <input
                 type="text"
                 placeholder="Longitude"
-                className={`px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all w-full ${errors.longitude ? 'border-red-500' : 'border-gray-300'}`}
+                className={`px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all w-full ${errors.longitude ? 'border-red-500' : 'border-gray-300'}
+                  ${readOnly && 'opacity-50 cursor-not-allowed bg-gray-50'}`}
                 value={longitude}
                 onChange={(e) => setLongitude(e.target.value)}
+                disabled={readOnly}
               />
               {errors.longitude && (
                 <p className="text-red-500 text-sm mt-1">{errors.longitude}</p>
               )}
             </div>
           </div>
-          <button
-            className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm font-medium disabled:opacity-50"
-            onClick={captureGPSLocation}
-            disabled={gpsLoading}
-          >
-            <MapPin className="w-4 h-4" />
-            {gpsLoading ? 'Capturing...' : 'CAPTURE GPS LOCATION'}
-          </button>
+          {!readOnly && (
+            <button
+              className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm font-medium disabled:opacity-50"
+              onClick={captureGPSLocation}
+              disabled={gpsLoading}
+            >
+              <MapPin className="w-4 h-4" />
+              {gpsLoading ? 'Capturing...' : 'CAPTURE GPS LOCATION'}
+            </button>
+          )}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-900">
               Site Images
@@ -523,6 +563,7 @@ export default function Form1({ data, onChange }: Form1Props) {
             <ImageCapture
               onCapture={handleSiteImageCapture}
               label="Capture Site Image"
+              readOnly={readOnly}
             />
             {siteImages.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
@@ -531,22 +572,27 @@ export default function Form1({ data, onChange }: Form1Props) {
                     <img
                       src={img.preview}
                       alt="Site"
-                      className="w-full h-24 object-cover rounded-lg"
+                      className={`w-full h-24 object-cover rounded-lg ${readOnly ? 'cursor-pointer' : ''}`}
+                      onClick={() =>
+                        readOnly && openCarousel(siteImages, 'Site Image')
+                      }
                     />
 
-                    <button
-                      onClick={() =>
-                        removeImage(
-                          img.id,
-                          siteImages,
-                          setSiteImages,
-                          'siteImages',
-                        )
-                      }
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
+                    {!readOnly && (
+                      <button
+                        onClick={() =>
+                          removeImage(
+                            img.id,
+                            siteImages,
+                            setSiteImages,
+                            'siteImages',
+                          )
+                        }
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -573,9 +619,10 @@ export default function Form1({ data, onChange }: Form1Props) {
               Select Building Type
             </label>
             <select
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${readOnly && 'opacity-50 cursor-not-allowed bg-gray-50'}`}
               value={data?.building_type || ''}
               onChange={(e) => handleBuildingTypeChange(e.target.value)}
+              disabled={readOnly}
             >
               <option value="">Select Building</option>
               <option value="Panchayat Bhawan">Panchayat Bhawan</option>
@@ -594,6 +641,7 @@ export default function Form1({ data, onChange }: Form1Props) {
             <ImageCapture
               onCapture={handleBuildingImageCapture}
               label="Capture Building Image"
+              readOnly={readOnly}
             />
             {buildingImages.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
@@ -602,22 +650,28 @@ export default function Form1({ data, onChange }: Form1Props) {
                     <img
                       src={img.preview}
                       alt="Building"
-                      className="w-full h-24 object-cover rounded-lg"
+                      className={`w-full h-24 object-cover rounded-lg ${readOnly ? 'cursor-pointer' : ''}`}
+                      onClick={() =>
+                        readOnly &&
+                        openCarousel(buildingImages, 'Building Image')
+                      }
                     />
 
-                    <button
-                      onClick={() =>
-                        removeImage(
-                          img.id,
-                          buildingImages,
-                          setBuildingImages,
-                          'buildingImages',
-                        )
-                      }
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
+                    {!readOnly && (
+                      <button
+                        onClick={() =>
+                          removeImage(
+                            img.id,
+                            buildingImages,
+                            setBuildingImages,
+                            'buildingImages',
+                          )
+                        }
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -638,6 +692,7 @@ export default function Form1({ data, onChange }: Form1Props) {
         <ImageCapture
           onCapture={handleQRCodeImageCapture}
           label="Capture QR Code Image"
+          readOnly={readOnly}
         />
         {qrCodeImages.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
@@ -646,22 +701,27 @@ export default function Form1({ data, onChange }: Form1Props) {
                 <img
                   src={img.preview}
                   alt="QR Code"
-                  className="w-full h-24 object-cover rounded-lg"
+                  className={`w-full h-24 object-cover rounded-lg ${readOnly ? 'cursor-pointer' : ''}`}
+                  onClick={() =>
+                    readOnly && openCarousel(qrCodeImages, 'QR Code')
+                  }
                 />
 
-                <button
-                  onClick={() =>
-                    removeImage(
-                      img.id,
-                      qrCodeImages,
-                      setQrCodeImages,
-                      'qrCodeImages',
-                    )
-                  }
-                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <X className="w-3 h-3" />
-                </button>
+                {!readOnly && (
+                  <button
+                    onClick={() =>
+                      removeImage(
+                        img.id,
+                        qrCodeImages,
+                        setQrCodeImages,
+                        'qrCodeImages',
+                      )
+                    }
+                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -685,6 +745,7 @@ export default function Form1({ data, onChange }: Form1Props) {
           <input
             type="file"
             accept="application/pdf"
+            disabled={readOnly}
             className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer
               block w-full text-sm text-gray-500
               file:mr-4 file:py-2 file:px-4
@@ -700,11 +761,22 @@ export default function Form1({ data, onChange }: Form1Props) {
               }
             }}
           />
-          {data?.otdrReport && (
-            <p className="text-sm text-green-600 mt-2">
-              Selected: {(data.otdrReport as File).name}
-            </p>
-          )}
+          {data?.otdrReport &&
+            (readOnly && typeof data.otdrReport === 'string' ? (
+              <button
+                onClick={() => {
+                  setPdfUrl(data.otdrReport as string);
+                  setIsPdfModalOpen(true);
+                }}
+                className="text-sm text-blue-600 hover:underline mt-2"
+              >
+                View OTDR Report PDF
+              </button>
+            ) : (
+              <p className="text-sm text-green-600 mt-2">
+                Selected: {(data.otdrReport as File).name}
+              </p>
+            ))}
         </div>
       </div>
 
@@ -725,7 +797,8 @@ export default function Form1({ data, onChange }: Form1Props) {
               value="yes"
               checked={data?.geoTaggedPhoto === 'yes'}
               onChange={(e) => handleGeoTaggedChange(e.target.value)}
-              className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+              className={`w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500 ${readOnly && 'cursor-not-allowed'}`}
+              disabled={readOnly}
             />
             <span className="ml-2 text-sm text-gray-700">YES</span>
           </label>
@@ -736,7 +809,8 @@ export default function Form1({ data, onChange }: Form1Props) {
               value="no"
               checked={data?.geoTaggedPhoto === 'no'}
               onChange={(e) => handleGeoTaggedChange(e.target.value)}
-              className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+              className={`w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500${readOnly && 'cursor-not-allowed'}`}
+              disabled={readOnly}
             />
             <span className="ml-2 text-sm text-gray-700">NO</span>
           </label>
@@ -747,7 +821,8 @@ export default function Form1({ data, onChange }: Form1Props) {
               value="na"
               checked={data?.geoTaggedPhoto === 'na'}
               onChange={(e) => handleGeoTaggedChange(e.target.value)}
-              className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+              className={`w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500 ${readOnly && 'cursor-not-allowed'}`}
+              disabled={readOnly}
             />
             <span className="ml-2 text-sm text-gray-700">NA</span>
           </label>
@@ -756,7 +831,8 @@ export default function Form1({ data, onChange }: Form1Props) {
           {data?.geoTaggedPhoto === 'yes' && (
             <ImageCapture
               onCapture={handleGeotaggedSiteImageCapture}
-              label="TAKE PHOTO"
+              label="Capture Geo-tagged Site Image"
+              readOnly={readOnly}
             />
           )}
           {geotaggedSiteImages.length > 0 && (
@@ -766,22 +842,28 @@ export default function Form1({ data, onChange }: Form1Props) {
                   <img
                     src={img.watermarkedPreview || img.preview}
                     alt="Geo-tagged Site"
-                    className="w-full h-24 object-cover rounded-lg"
+                    className={`w-full h-24 object-cover rounded-lg ${readOnly ? 'cursor-pointer' : ''}`}
+                    onClick={() =>
+                      readOnly &&
+                      openCarousel(geotaggedSiteImages, 'Geo-tagged Site')
+                    }
                   />
 
-                  <button
-                    onClick={() =>
-                      removeImage(
-                        img.id,
-                        geotaggedSiteImages,
-                        setGeotaggedSiteImages,
-                        'geotaggedSiteImages',
-                      )
-                    }
-                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
+                  {!readOnly && (
+                    <button
+                      onClick={() =>
+                        removeImage(
+                          img.id,
+                          geotaggedSiteImages,
+                          setGeotaggedSiteImages,
+                          'geotaggedSiteImages',
+                        )
+                      }
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -806,7 +888,8 @@ export default function Form1({ data, onChange }: Form1Props) {
               value="yes"
               checked={data?.siteBoardInstalled === 'yes'}
               onChange={(e) => handleSiteBoardChange(e.target.value)}
-              className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+              className={`w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500 ${readOnly && 'cursor-not-allowed'}`}
+              disabled={readOnly}
             />
             <span className="ml-2 text-sm text-gray-700">YES</span>
           </label>
@@ -817,7 +900,8 @@ export default function Form1({ data, onChange }: Form1Props) {
               value="no"
               checked={data?.siteBoardInstalled === 'no'}
               onChange={(e) => handleSiteBoardChange(e.target.value)}
-              className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+              className={`w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500 ${readOnly && 'cursor-not-allowed'}`}
+              disabled={readOnly}
             />
             <span className="ml-2 text-sm text-gray-700">NO</span>
           </label>
@@ -828,7 +912,8 @@ export default function Form1({ data, onChange }: Form1Props) {
               value="na"
               checked={data?.siteBoardInstalled === 'na'}
               onChange={(e) => handleSiteBoardChange(e.target.value)}
-              className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+              className={`w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500 ${readOnly && 'cursor-not-allowed'}`}
+              disabled={readOnly}
             />
             <span className="ml-2 text-sm text-gray-700">NA</span>
           </label>
@@ -845,6 +930,7 @@ export default function Form1({ data, onChange }: Form1Props) {
               rows={3}
               value={data?.siteBoardRemark || ''}
               onChange={(e) => handleSiteBoardRemarkChange(e.target.value)}
+              disabled={readOnly}
             />
           </div>
         )}
@@ -865,8 +951,9 @@ export default function Form1({ data, onChange }: Form1Props) {
               data?.smartRackInstalled === 'yes'
                 ? 'border-blue-500 bg-blue-50 text-blue-700'
                 : 'border-gray-300 hover:border-blue-500 hover:bg-blue-50'
-            }`}
+            } ${readOnly && 'cursor-not-allowed'}`}
             onClick={() => handleSmartRackChange('yes')}
+            disabled={readOnly}
           >
             YES
           </button>
@@ -875,8 +962,9 @@ export default function Form1({ data, onChange }: Form1Props) {
               data?.smartRackInstalled === 'no'
                 ? 'border-blue-500 bg-blue-50 text-blue-700'
                 : 'border-gray-300 hover:border-blue-500 hover:bg-blue-50'
-            }`}
+            } ${readOnly && 'cursor-not-allowed'}`}
             onClick={() => handleSmartRackChange('no')}
+            disabled={readOnly}
           >
             NO
           </button>
@@ -885,7 +973,8 @@ export default function Form1({ data, onChange }: Form1Props) {
           <div className="space-y-2">
             <ImageCapture
               onCapture={handleSmartRackImageCapture}
-              label="Capture Rack Photo"
+              label="Capture Smart Rack Photo"
+              readOnly={readOnly}
             />
             {smartRackImages.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
@@ -894,22 +983,27 @@ export default function Form1({ data, onChange }: Form1Props) {
                     <img
                       src={img.watermarkedPreview || img.preview}
                       alt="Rack"
-                      className="w-full h-24 object-cover rounded-lg"
+                      className={`w-full h-24 object-cover rounded-lg ${readOnly ? 'cursor-pointer' : ''}`}
+                      onClick={() =>
+                        readOnly && openCarousel(smartRackImages, 'Smart Rack')
+                      }
                     />
 
-                    <button
-                      onClick={() =>
-                        removeImage(
-                          img.id,
-                          smartRackImages,
-                          setSmartRackImages,
-                          'smartRackPhoto',
-                        )
-                      }
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
+                    {!readOnly && (
+                      <button
+                        onClick={() =>
+                          removeImage(
+                            img.id,
+                            smartRackImages,
+                            setSmartRackImages,
+                            'smartRackPhoto',
+                          )
+                        }
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -917,6 +1011,40 @@ export default function Form1({ data, onChange }: Form1Props) {
           </div>
         )}
       </div>
+
+      <MediaCarousel
+        isOpen={isCarouselOpen}
+        onClose={() => setIsCarouselOpen(false)}
+        mediaItems={carouselImages}
+        initialIndex={carouselIndex}
+      />
+
+      {isPdfModalOpen && pdfUrl && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4"
+          onClick={() => setIsPdfModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center p-4 border-b">
+              <h3 className="text-lg font-semibold">OTDR Report</h3>
+              <button
+                onClick={() => setIsPdfModalOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <iframe
+              src={pdfUrl}
+              className="w-full h-[80vh]"
+              title="OTDR Report"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
