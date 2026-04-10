@@ -4,6 +4,7 @@ import {
   APIResponseLiveMachine,
   LiveMachines,
   MachineDataApiResponse,
+ 
 } from '../../types/survey';
 import {
   ApiResponse,
@@ -288,12 +289,18 @@ export interface GPChecklistData {
   created_at: string;
   updated_at: string;
 }
-
+export interface Pagination {
+  
+currentPage:number;
+limit:number;
+totalPages:number;
+totalRows:number;
+}
 export interface GPChecklistResponse {
   status: boolean;
   message: string;
   data: GPChecklistData[];
-  total?: number;
+  pagination: Pagination;
 }
 
 export const getChecklistData = async (filters: {

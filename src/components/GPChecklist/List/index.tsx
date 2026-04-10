@@ -327,7 +327,7 @@ function GPChecklistList() {
         setChecklistData(response.data);
 
         const newStats: StatsData = {
-          total: response.total || response.data.length,
+          total: response.pagination.totalRows || 0,
           completed: response.data.filter(
             (item: GPChecklistData) => item.status === 1,
           ).length,
@@ -336,7 +336,8 @@ function GPChecklistList() {
           ).length,
           byState: {},
         };
-
+         setRowsPerPage(response.pagination.limit);
+         setCurrentPage(response.pagination.currentPage);
         response.data.forEach((item: GPChecklistData) => {
           if (item.state_id) {
             newStats.byState[item.state_id.toString()] =
@@ -705,7 +706,6 @@ function GPChecklistList() {
     setRowsPerPage(newRowsPerPage);
     setCurrentPage(newPage);
   };
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
