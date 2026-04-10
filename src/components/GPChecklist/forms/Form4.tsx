@@ -267,25 +267,62 @@ export default function Form4({ data, onChange }: Form4Props) {
             <label className="block text-sm font-medium text-gray-900 mb-2">
               Earthing Verification Video (2 min)
             </label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-red-400 transition-colors">
-              <input
-                type="file"
-                accept="video/*"
-                onChange={(e) =>
-                  updateField('earthingVideo', e.target.files?.[0] || null)
-                }
-                className="hidden"
-                id="earthing-video-upload"
-              />
-              <label htmlFor="earthing-video-upload" className="cursor-pointer">
-                <Upload className="w-10 h-10 mx-auto text-gray-400 mb-2" />
-                <p className="text-sm text-gray-600">
-                  {data?.earthingVideo
-                    ? data.earthingVideo.name
-                    : 'Click to upload video'}
-                </p>
-              </label>
-            </div>
+            {typeof data?.earthingVideo === 'string' && data.earthingVideo ? (
+              <div className="border border-gray-300 rounded-lg p-4 bg-gray-50 mb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <video
+                      src={data.earthingVideo}
+                      className="w-32 h-20 object-cover rounded"
+                      controls
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        Existing Video
+                      </p>
+                      <a
+                        href={data.earthingVideo}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-600 hover:underline"
+                      >
+                        View Video
+                      </a>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onChange({ ...data, earthingVideo: null })}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-red-400 transition-colors">
+                <input
+                  type="file"
+                  accept="video/*"
+                  onChange={(e) =>
+                    updateField('earthingVideo', e.target.files?.[0] || null)
+                  }
+                  className="hidden"
+                  id="earthing-video-upload"
+                />
+                <label
+                  htmlFor="earthing-video-upload"
+                  className="cursor-pointer"
+                >
+                  <Upload className="w-10 h-10 mx-auto text-gray-400 mb-2" />
+                  <p className="text-sm text-gray-600">
+                    {data?.earthingVideo
+                      ? (data.earthingVideo as File).name
+                      : 'Click to upload video'}
+                  </p>
+                </label>
+              </div>
+            )}
           </div>
         )}
       </div>

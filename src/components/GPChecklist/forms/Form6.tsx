@@ -170,30 +170,65 @@ export default function Form6({ data, onChange }: Form6Props) {
           </label>
           <br />
           {data?.materialsApproved === 'yes' && (
-            <div className="border-2 border-dashed border-green-300 rounded-lg p-6 text-center hover:border-green-500 transition-colors cursor-pointer">
-              <input
-                type="file"
-                accept="application/pdf"
-                className="hidden"
-                id="verification-proof-upload"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    onChange({ ...data, verificationProof: file });
-                  }
-                }}
-              />
-              <label
-                htmlFor="verification-proof-upload"
-                className="cursor-pointer"
-              >
-                <FileText className="w-6 h-6 mx-auto mb-2 text-green-600" />
-                <p className="text-sm text-gray-600">
-                  {data?.verificationProof
-                    ? (data.verificationProof as File).name
-                    : 'Upload Verification Proof (PDF)'}
-                </p>
-              </label>
+            <div>
+              {typeof data?.verificationProof === 'string' &&
+              data.verificationProof ? (
+                <div className="border border-green-300 rounded-lg p-4 bg-green-50 mb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <FileText className="w-8 h-8 text-green-600" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          Existing Verification Proof
+                        </p>
+                        <a
+                          href={data.verificationProof}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:underline"
+                        >
+                          View PDF
+                        </a>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onChange({ ...data, verificationProof: null })
+                      }
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-green-300 rounded-lg p-6 text-center hover:border-green-500 transition-colors cursor-pointer">
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    id="verification-proof-upload"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        onChange({ ...data, verificationProof: file });
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor="verification-proof-upload"
+                    className="cursor-pointer"
+                  >
+                    <FileText className="w-6 h-6 mx-auto mb-2 text-green-600" />
+                    <p className="text-sm text-gray-600">
+                      {data?.verificationProof
+                        ? (data.verificationProof as File).name
+                        : 'Upload Verification Proof (PDF)'}
+                    </p>
+                  </label>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -244,28 +279,65 @@ export default function Form6({ data, onChange }: Form6Props) {
             <label className="block text-sm font-medium text-gray-900 mb-2">
               Upload Social Audit Video (15-30 min)
             </label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-purple-400 transition-colors">
-              <input
-                type="file"
-                accept="video/*"
-                onChange={(e) =>
-                  updateField('socialAuditVideo', e.target.files?.[0] || null)
-                }
-                className="hidden"
-                id="social-audit-video-upload"
-              />
-              <label
-                htmlFor="social-audit-video-upload"
-                className="cursor-pointer"
-              >
-                <Upload className="w-10 h-10 mx-auto text-gray-400 mb-2" />
-                <p className="text-sm text-gray-600">
-                  {data?.socialAuditVideo
-                    ? data.socialAuditVideo.name
-                    : 'Click to upload video'}
-                </p>
-              </label>
-            </div>
+            {typeof data?.socialAuditVideo === 'string' &&
+            data.socialAuditVideo ? (
+              <div className="border border-gray-300 rounded-lg p-4 bg-gray-50 mb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <video
+                      src={data.socialAuditVideo}
+                      className="w-32 h-20 object-cover rounded"
+                      controls
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        Existing Video
+                      </p>
+                      <a
+                        href={data.socialAuditVideo}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-600 hover:underline"
+                      >
+                        View Video
+                      </a>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onChange({ ...data, socialAuditVideo: null })
+                    }
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-purple-400 transition-colors">
+                <input
+                  type="file"
+                  accept="video/*"
+                  onChange={(e) =>
+                    updateField('socialAuditVideo', e.target.files?.[0] || null)
+                  }
+                  className="hidden"
+                  id="social-audit-video-upload"
+                />
+                <label
+                  htmlFor="social-audit-video-upload"
+                  className="cursor-pointer"
+                >
+                  <Upload className="w-10 h-10 mx-auto text-gray-400 mb-2" />
+                  <p className="text-sm text-gray-600">
+                    {data?.socialAuditVideo
+                      ? (data.socialAuditVideo as File).name
+                      : 'Click to upload video'}
+                  </p>
+                </label>
+              </div>
+            )}
           </div>
         )}
       </div>

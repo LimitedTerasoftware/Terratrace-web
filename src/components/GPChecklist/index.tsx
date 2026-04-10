@@ -23,6 +23,17 @@ const BASEURL = import.meta.env.VITE_API_BASE;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const ImgbaseUrl = import.meta.env.VITE_Image_URL;
 
+const stripBaseUrl = (url: string): string => {
+  if (!url) return '';
+  if (url.startsWith(ImgbaseUrl)) {
+    return url.replace(ImgbaseUrl, '');
+  }
+  if (url.startsWith(BASEURL)) {
+    return url.replace(BASEURL, '');
+  }
+  return url;
+};
+
 interface ImageUploadResponse {
   success: boolean;
   data: {
@@ -259,45 +270,81 @@ const buildFormItems = (
   const getImages = (images?: GeoTaggedImage[]): string[] => {
     if (!images?.length) return [];
     const urls: string[] = [];
-    images.forEach(() => {
-      urls.push(uploads.imageUrls[imageIndex++] || '');
+    images.forEach((img) => {
+      if (img.originalUrl) {
+        urls.push(stripBaseUrl(img.originalUrl));
+      } else if (
+        img.preview &&
+        (img.preview.startsWith('http') || img.preview.startsWith('/'))
+      ) {
+        urls.push(stripBaseUrl(img.preview));
+      } else if (
+        img.watermarkedPreview &&
+        (img.watermarkedPreview.startsWith('http') ||
+          img.watermarkedPreview.startsWith('/'))
+      ) {
+        urls.push(stripBaseUrl(img.watermarkedPreview));
+      } else {
+        urls.push(uploads.imageUrls[imageIndex++] || '');
+      }
     });
+    console.log(urls, imageIndex);
+
     return urls;
   };
-
   const getItemId = (itemName: string): number | undefined => {
-    if (!itemIds) return undefined;
-    const idMap: Record<string, number[]> = {
-      'OFC Route Images': [],
-      'Optical Power Images': [],
-      'Splicing Images': [],
-      'Route Indicator Images': [],
-      'OTDR PDF': [],
-      'Router Image': [],
-      'SNOC Image': [],
-      'Serial Number': [],
-      'MAC ID': [],
-      'QR Code Image': [],
-      'Device Ping Image': [],
-      'Solar panel installed and functional': [],
-      'Battery backup installed, charged': [],
-      'Proper earthing resistance verified': [],
-      'Power Source': [],
-      'Photos taken (5 angles: close-up + 4 directional) and geo-tagged': [],
-      'Video of GP installation uploaded to BharatNet GIS app': [],
-      'Digital As-Built Drawing (ABD)': [],
-      'GIS entry  latitude, longitude, route code, and asset type': [],
-      'Verification by Independent Engineer': [],
-      'Site Clear Images': [],
-      'TEC Approval Proof': [],
-      'Social Audit Video': [],
-      'Site Label Verification': [],
-      'PAT Completed Proof': [],
-      'FAT Approval Proof': [],
-      'QR Tag Verification Image': [],
-      'HOTO Memo Signature Image': [],
+    if (!itemIds || itemIds.length === 0) return undefined;
+
+    const itemOrder: Record<number, Record<string, number>> = {
+      2: {
+        'OFC Route Images': 0,
+        'Optical Power Images': 1,
+        'Splicing Images': 2,
+        'Route Indicator Images': 3,
+        'OTDR PDF': 4,
+      },
+      3: {
+        'Router Image': 0,
+        'SNOC Image': 1,
+        'Serial Number': 2,
+        'MAC ID': 3,
+        'QR Code Image': 4,
+        'Device Ping Image': 5,
+      },
+      4: {
+        'Solar panel installed and functional': 0,
+        'Battery backup installed, charged': 1,
+        'Proper earthing resistance verified': 2,
+        'Power Source': 3,
+      },
+      5: {
+        'Photos taken (5 angles: close-up + 4 directional) and geo-tagged': 0,
+        'Video of GP installation uploaded to BharatNet GIS app': 1,
+        'Digital As-Built Drawing (ABD)': 2,
+        'GIS entry  latitude, longitude, route code, and asset type': 3,
+        'Verification by Independent Engineer': 4,
+      },
+      6: {
+        'Site Clear Images': 0,
+        'TEC Approval Proof': 1,
+        'Social Audit Video': 2,
+        'Site Label Verification': 3,
+      },
+      7: {
+        'PAT Completed Proof': 0,
+        'FAT Approval Proof': 1,
+        'QR Tag Verification Image': 2,
+        'HOTO Memo Signature Image': 3,
+      },
     };
-    return idMap[itemName]?.[0];
+
+    const formItemOrder = itemOrder[formNumber];
+    if (!formItemOrder) return undefined;
+
+    const index = formItemOrder[itemName];
+    if (index === undefined || index >= itemIds.length) return undefined;
+
+    return itemIds[index];
   };
 
   switch (formNumber) {
@@ -338,7 +385,12 @@ const buildFormItems = (
           form_type: 'OFC and connectivity form',
           item_name: 'OTDR PDF',
           status: f2.isOtdrReportUploaded === 'yes' ? 1 : 0,
-          images: f2.isOtdrReportUploaded === 'yes' ? uploads.docUrls : [],
+          images: (() => {
+            if (typeof f2.otdrPdf === 'string' && f2.otdrPdf) {
+              return [stripBaseUrl(f2.otdrPdf)];
+            }
+            return f2.isOtdrReportUploaded === 'yes' ? uploads.docUrls : [];
+          })(),
         },
       );
       break;
@@ -417,7 +469,12 @@ const buildFormItems = (
           form_type: 'Power Earth Verification',
           item_name: 'Proper earthing resistance verified',
           status: f4.earthingVerified === 'yes' ? 1 : 0,
-          images: f4.earthingVideo ? uploads.videoUrls : [],
+          images: (() => {
+            if (typeof f4.earthingVideo === 'string' && f4.earthingVideo) {
+              return [stripBaseUrl(f4.earthingVideo)];
+            }
+            return f4.earthingVideo ? uploads.videoUrls : [];
+          })(),
         },
         {
           id: getItemId('Power Source'),
@@ -450,14 +507,42 @@ const buildFormItems = (
           form_type: 'Gsi Mapping',
           item_name: 'Video of GP installation uploaded to BharatNet GIS app',
           status: f5.videoUploaded === 'yes' ? 1 : 0,
-          images: f5.videoUploaded === 'yes' ? uploads.videoUrls : [],
+          images: (() => {
+            if (
+              typeof f5.videoUploadedFile === 'string' &&
+              f5.videoUploadedFile
+            ) {
+              return [f5.videoUploadedFile];
+            }
+            return f5.videoUploaded === 'yes' ? uploads.videoUrls : [];
+          })(),
         },
         {
           id: getItemId('Digital As-Built Drawing (ABD)'),
           form_type: 'Gsi Mapping',
           item_name: 'Digital As-Built Drawing (ABD)',
           status: f5.abdUpdated === 'yes' ? 1 : 0,
-          images: f5.abdUpdated === 'yes' && f5.abdPDF ? uploads.docUrls : [],
+          images: (() => {
+            if (
+              typeof f5.videoUploadedFile === 'string' &&
+              f5.videoUploadedFile
+            ) {
+              return [stripBaseUrl(f5.videoUploadedFile)];
+            }
+            return f5.videoUploaded === 'yes' ? uploads.videoUrls : [];
+          })(),
+        },
+        {
+          id: getItemId('Digital As-Built Drawing (ABD)'),
+          form_type: 'Gsi Mapping',
+          item_name: 'Digital As-Built Drawing (ABD)',
+          status: f5.abdUpdated === 'yes' ? 1 : 0,
+          images: (() => {
+            if (typeof f5.abdPDF === 'string' && f5.abdPDF) {
+              return [stripBaseUrl(f5.abdPDF)];
+            }
+            return f5.abdUpdated === 'yes' && f5.abdPDF ? uploads.docUrls : [];
+          })(),
         },
         {
           id: getItemId(
@@ -496,8 +581,17 @@ const buildFormItems = (
           form_type: 'Safe Quality Verification',
           item_name: 'TEC Approval Proof',
           status: f6.materialsApproved ? 1 : 0,
-          images:
-            f6.materialsApproved && f6.verificationProof ? uploads.docUrls : [],
+          images: (() => {
+            if (
+              typeof f6.verificationProof === 'string' &&
+              f6.verificationProof
+            ) {
+              return [stripBaseUrl(f6.verificationProof)];
+            }
+            return f6.materialsApproved && f6.verificationProof
+              ? uploads.docUrls
+              : [];
+          })(),
         },
         {
           id: getItemId('Social Audit Video'),
@@ -505,10 +599,17 @@ const buildFormItems = (
           item_name: 'Social Audit Video',
           status:
             f6.socialAudit === 'yes' ? 1 : f6.socialAudit === 'no' ? 0 : 0,
-          images:
-            f6.socialAudit === 'yes' && f6.socialAuditVideo
+          images: (() => {
+            if (
+              typeof f6.socialAuditVideo === 'string' &&
+              f6.socialAuditVideo
+            ) {
+              return [stripBaseUrl(f6.socialAuditVideo)];
+            }
+            return f6.socialAudit === 'yes' && f6.socialAuditVideo
               ? uploads.videoUrls
-              : [],
+              : [];
+          })(),
         },
         {
           id: getItemId('Site Label Verification'),
@@ -661,6 +762,7 @@ function App() {
                 id: `${prefix}_${index}`,
                 file: new File([], `${prefix}_${index}.jpg`),
                 preview: url.startsWith('http') ? url : `${ImgbaseUrl}/${url}`,
+                originalUrl: url,
                 latitude: 0,
                 longitude: 0,
                 timestamp: '',
@@ -883,7 +985,6 @@ function App() {
       fetchFormData();
     }
   }, [currentForm, gpMainId, previousForm]);
-
   const fetchExistingData = async (
     stateId: string,
     districtId: string,
@@ -932,6 +1033,7 @@ function App() {
             id: `${prefix}_${index}`,
             file: new File([], `${prefix}_${index}.jpg`),
             preview: url.startsWith('http') ? url : `${ImgbaseUrl}/${url}`,
+            originalUrl: url,
             latitude: 0,
             longitude: 0,
             timestamp: '',
@@ -1492,34 +1594,55 @@ function App() {
         videos: formVideos,
       } = getFormFiles(formNumber, formData);
 
-      const imageFiles = formImages.map((img) =>
-        img.watermarkedPreview
-          ? convertBase64ToFile(
-              img.watermarkedPreview,
-              `form${formNumber}_${img.id}.jpg`,
-            )
-          : img.file,
-      );
+      const imageFiles = formImages
+        .filter((img) => {
+          if (img.originalUrl) return false;
+          const preview = img.preview || img.watermarkedPreview || '';
+          return !(preview.startsWith('http') || preview.startsWith('/'));
+        })
+        .map((img) =>
+          img.watermarkedPreview
+            ? convertBase64ToFile(
+                img.watermarkedPreview,
+                `form${formNumber}_${img.id}.jpg`,
+              )
+            : img.file,
+        );
 
       const uploadedImageUrls = imageFiles.length
         ? await uploadImages(imageFiles)
         : [];
 
-      const uploadedDocUrls = formDocs.length ? await uploadDocs(formDocs) : [];
+      const docFiles = formDocs.filter((doc: any) => {
+        return !(
+          typeof doc === 'string' &&
+          (doc.startsWith('http') || doc.startsWith('/'))
+        );
+      });
+      const uploadedDocUrls = docFiles.length ? await uploadDocs(docFiles) : [];
 
-      const uploadedVideoUrls = formVideos.length
-        ? await uploadVideos(formVideos)
+      const videoFiles = formVideos.filter((video: any) => {
+        return !(
+          typeof video === 'string' &&
+          (video.startsWith('http') || video.startsWith('/'))
+        );
+      });
+      const uploadedVideoUrls = videoFiles.length
+        ? await uploadVideos(videoFiles)
         : [];
 
-      for (let i = 0; i < formImages.length; i++) {
-        const img = formImages[i];
+      for (let i = 0; i < imageFiles.length; i++) {
+        const img = formImages.find((img) => {
+          if (img.originalUrl) return false;
+          const preview = img.preview || img.watermarkedPreview || '';
+          return !(preview.startsWith('http') || preview.startsWith('/'));
+        });
         const url = uploadedImageUrls[i];
 
-        if (url && img.latitude && img.longitude) {
+        if (url && img?.latitude && img?.longitude) {
           await geotagImage(url, img.latitude, img.longitude);
         }
       }
-
       const formItems = buildFormItems(
         formNumber,
         formData,
@@ -1530,7 +1653,7 @@ function App() {
         },
         formItemIds[currentForm],
       );
-        if (formItems.length === 0) {
+      if (formItems.length === 0) {
         alert('No data to submit for this form');
         setIsSubmitting(false);
         return;
@@ -1540,11 +1663,10 @@ function App() {
 
       // const itemsToUpdate = formItems.filter((item) => item.id);
       // const itemsToCreate = formItems.filter((item) => !item.id);
-
       if (isFormCompleted) {
         await updateChecklistItems(gpMainId, formItems);
         setPreviousForm(null);
-      }else{
+      } else {
         await submitFormItems(gpMainId, formItems);
       }
       const newCompleted = new Set(completedForms);

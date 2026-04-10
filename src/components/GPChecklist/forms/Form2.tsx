@@ -259,27 +259,59 @@ export default function Form2({ data, onChange }: Form2Props) {
             </label>
           </div>
           {data?.isOtdrReportUploaded === 'yes' && (
-            <div className="border-2 border-dashed border-green-300 rounded-lg p-6 text-center hover:border-green-500 transition-colors cursor-pointer">
-              <input
-                type="file"
-                accept="application/pdf"
-                className="hidden"
-                id="otdr-pdf-upload"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    onChange({ ...data, otdrPdf: file });
-                  }
-                }}
-              />
-              <label htmlFor="otdr-pdf-upload" className="cursor-pointer">
-                <FileText className="w-6 h-6 mx-auto mb-2 text-green-600" />
-                <p className="text-sm text-gray-600">
-                  {data?.otdrPdf
-                    ? (data.otdrPdf as File).name
-                    : 'Upload OTDR PDF'}
-                </p>
-              </label>
+            <div>
+              {typeof data?.otdrPdf === 'string' && data.otdrPdf ? (
+                <div className="border border-green-300 rounded-lg p-4 bg-green-50 mb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <FileText className="w-8 h-8 text-green-600" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          Existing OTDR PDF
+                        </p>
+                        <a
+                          href={data.otdrPdf}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:underline"
+                        >
+                          View PDF
+                        </a>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onChange({ ...data, otdrPdf: null })}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-green-300 rounded-lg p-6 text-center hover:border-green-500 transition-colors cursor-pointer">
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    id="otdr-pdf-upload"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        onChange({ ...data, otdrPdf: file });
+                      }
+                    }}
+                  />
+                  <label htmlFor="otdr-pdf-upload" className="cursor-pointer">
+                    <FileText className="w-6 h-6 mx-auto mb-2 text-green-600" />
+                    <p className="text-sm text-gray-600">
+                      {data?.otdrPdf
+                        ? (data.otdrPdf as File).name
+                        : 'Upload OTDR PDF'}
+                    </p>
+                  </label>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -12,6 +12,7 @@ export interface GeoTaggedImage {
   longitude: number;
   timestamp: string;
   watermarkedPreview?: string;
+  originalUrl?: string;
 }
 
 export interface FormData {
