@@ -260,7 +260,13 @@ function SmartInventory() {
         }
       } catch (error) {
         console.error('Failed to load files:', error);
+         if (axios.isAxiosError(error)) {
+        showNotification('error', error.response?.data.error);
+
+      }else{
         showNotification('error', 'Failed to load files');
+
+      }
       } finally {
         setLoding(false);
       }
@@ -570,10 +576,13 @@ function SmartInventory() {
       if (axios.isAxiosError(error)) {
         console.error('Response status:', error.response?.status);
         console.error('Response data:', error.response?.data);
-      }
-      console.error('=== End Physical Survey API Error ===');
+        showNotification('error', error.response?.data.error);
 
+      }else{
       showNotification('error', 'Failed to load physical survey data');
+
+      }
+
     } finally {
       setIsLoadingPhysical(false);
     }
@@ -704,7 +713,13 @@ function SmartInventory() {
     }
   } catch (error) {
     console.error('Failed to load rectification data:', error);
-    showNotification('error', 'Failed to load rectification data');
+      if (axios.isAxiosError(error)) {
+        showNotification('error',  error.response?.data.error ||'Failed to load rectification data');
+
+      }else{
+            showNotification('error','Failed to load rectification data');
+
+      }
     setRectificationData([]);
     setRectificationCategories([]);
     setRawRectificationData(null);
@@ -765,7 +780,13 @@ function SmartInventory() {
     }
   } catch (error) {
     console.error('Failed to load joints data:', error);
-    showNotification('error', 'Failed to load joints data');
+      if (axios.isAxiosError(error)) {
+        showNotification('error', error.response?.data.message);
+
+      }else{
+     showNotification('error', 'Failed to load joints data');
+
+      }
     setJointsData([]);
     setJointsDataCategories([]);
     setRawJointsData(null);
