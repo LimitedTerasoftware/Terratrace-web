@@ -10,7 +10,13 @@ import Form7 from './forms/Form7';
 import type { FormData, GeoTaggedImage } from '../../types/gp-checklist';
 import Sidebar from './Sidebar';
 import axios from 'axios';
-import { getStateData, getDistrictData, getBlockData } from '../Services/api';
+import {
+  getStateData,
+  getDistrictData,
+  getBlockData,
+  getChecklistPreview,
+  updateChecklistItems,
+} from '../Services/api';
 import { GPList } from '../../types/survey';
 
 const BASEURL = import.meta.env.VITE_API_BASE;
@@ -229,7 +235,9 @@ const buildFormItems = (
     docUrls: string[];
     videoUrls: string[];
   },
+  itemIds?: number[],
 ): Array<{
+  id?: number;
   form_type: string;
   item_name: string;
   item_type?: string;
@@ -238,6 +246,7 @@ const buildFormItems = (
   remark?: string;
 }> => {
   const items: Array<{
+    id?: number;
     form_type: string;
     item_name: string;
     item_type?: string;
@@ -256,36 +265,76 @@ const buildFormItems = (
     return urls;
   };
 
+  const getItemId = (itemName: string): number | undefined => {
+    if (!itemIds) return undefined;
+    const idMap: Record<string, number[]> = {
+      'OFC Route Images': [],
+      'Optical Power Images': [],
+      'Splicing Images': [],
+      'Route Indicator Images': [],
+      'OTDR PDF': [],
+      'Router Image': [],
+      'SNOC Image': [],
+      'Serial Number': [],
+      'MAC ID': [],
+      'QR Code Image': [],
+      'Device Ping Image': [],
+      'Solar panel installed and functional': [],
+      'Battery backup installed, charged': [],
+      'Proper earthing resistance verified': [],
+      'Power Source': [],
+      'Photos taken (5 angles: close-up + 4 directional) and geo-tagged': [],
+      'Video of GP installation uploaded to BharatNet GIS app': [],
+      'Digital As-Built Drawing (ABD)': [],
+      'GIS entry  latitude, longitude, route code, and asset type': [],
+      'Verification by Independent Engineer': [],
+      'Site Clear Images': [],
+      'TEC Approval Proof': [],
+      'Social Audit Video': [],
+      'Site Label Verification': [],
+      'PAT Completed Proof': [],
+      'FAT Approval Proof': [],
+      'QR Tag Verification Image': [],
+      'HOTO Memo Signature Image': [],
+    };
+    return idMap[itemName]?.[0];
+  };
+
   switch (formNumber) {
     case 2: {
       const f2 = formData.form2;
       if (!f2) break;
       items.push(
         {
+          id: getItemId('OFC Route Images'),
           form_type: 'OFC and connectivity form',
           item_name: 'OFC Route Images',
           status: f2.ofcConnected === 'yes' ? 1 : 0,
           images: getImages(f2.ofcRouteImages),
         },
         {
+          id: getItemId('Optical Power Images'),
           form_type: 'OFC and connectivity form',
           item_name: 'Optical Power Images',
           status: f2.opticalPowerConnected === 'yes' ? 1 : 0,
           images: getImages(f2.opticalPowerImages),
         },
         {
+          id: getItemId('Splicing Images'),
           form_type: 'OFC and connectivity form',
           item_name: 'Splicing Images',
           status: f2.splicingConnected === 'yes' ? 1 : 0,
           images: getImages(f2.splicingImages),
         },
         {
+          id: getItemId('Route Indicator Images'),
           form_type: 'OFC and connectivity form',
           item_name: 'Route Indicator Images',
           status: f2.routeIndicatorConnected === 'yes' ? 1 : 0,
           images: getImages(f2.routeIndicatorImages),
         },
         {
+          id: getItemId('OTDR PDF'),
           form_type: 'OFC and connectivity form',
           item_name: 'OTDR PDF',
           status: f2.isOtdrReportUploaded === 'yes' ? 1 : 0,
@@ -299,30 +348,35 @@ const buildFormItems = (
       if (!f3) break;
       items.push(
         {
+          id: getItemId('Router Image'),
           form_type: 'Equipement Installation',
           item_name: 'Router Image',
           status: f3.routerConnected === 'yes' ? 1 : 0,
           images: getImages(f3.routerImage),
         },
         {
+          id: getItemId('SNOC Image'),
           form_type: 'Equipement Installation',
           item_name: 'SNOC Image',
           status: f3.snocImageConnected === 'yes' ? 1 : 0,
           images: getImages(f3.snocImage),
         },
         {
+          id: getItemId('Serial Number'),
           form_type: 'Equipement Installation',
           item_name: 'Serial Number',
           status: f3.serialNumber ? 1 : 0,
           item_type: f3.serialNumber || '',
         },
         {
+          id: getItemId('MAC ID'),
           form_type: 'Equipement Installation',
           item_name: 'MAC ID',
           status: f3.macId ? 1 : 0,
           item_type: f3.macId || '',
         },
         {
+          id: getItemId('QR Code Image'),
           form_type: 'Equipement Installation',
           item_name: 'QR Code Image',
           item_type: f3.qrType || '',
@@ -330,6 +384,7 @@ const buildFormItems = (
           images: getImages(f3.qrCodeImage),
         },
         {
+          id: getItemId('Device Ping Image'),
           form_type: 'Equipement Installation',
           item_name: 'Device Ping Image',
           status: f3.devicePing === 'yes' ? 1 : 0,
@@ -343,6 +398,7 @@ const buildFormItems = (
       if (!f4) break;
       items.push(
         {
+          id: getItemId('Solar panel installed and functional'),
           form_type: 'Power Earth Verification',
           item_name: 'Solar panel installed and functional',
           status: f4.solarPanelInstalled ? 1 : 0,
@@ -350,18 +406,21 @@ const buildFormItems = (
         },
 
         {
+          id: getItemId('Battery backup installed, charged'),
           form_type: 'Power Earth Verification',
           item_name: 'Battery backup installed, charged',
           status: f4.batteryBackup === 'yes' ? 1 : 0,
           images: getImages(f4.batteryBackupImage),
         },
         {
+          id: getItemId('Proper earthing resistance verified'),
           form_type: 'Power Earth Verification',
           item_name: 'Proper earthing resistance verified',
           status: f4.earthingVerified === 'yes' ? 1 : 0,
           images: f4.earthingVideo ? uploads.videoUrls : [],
         },
         {
+          id: getItemId('Power Source'),
           form_type: 'Power Earth Verification',
           item_name: 'Power Source',
           status: f4.powerSource ? 1 : 0,
@@ -375,6 +434,9 @@ const buildFormItems = (
       if (!f5) break;
       items.push(
         {
+          id: getItemId(
+            'Photos taken (5 angles: close-up + 4 directional) and geo-tagged',
+          ),
           form_type: 'Gsi Mapping',
           item_name:
             'Photos taken (5 angles: close-up + 4 directional) and geo-tagged',
@@ -382,18 +444,25 @@ const buildFormItems = (
           images: getImages(f5.photosAngleImages),
         },
         {
+          id: getItemId(
+            'Video of GP installation uploaded to BharatNet GIS app',
+          ),
           form_type: 'Gsi Mapping',
           item_name: 'Video of GP installation uploaded to BharatNet GIS app',
           status: f5.videoUploaded === 'yes' ? 1 : 0,
           images: f5.videoUploaded === 'yes' ? uploads.videoUrls : [],
         },
         {
+          id: getItemId('Digital As-Built Drawing (ABD)'),
           form_type: 'Gsi Mapping',
           item_name: 'Digital As-Built Drawing (ABD)',
           status: f5.abdUpdated === 'yes' ? 1 : 0,
           images: f5.abdUpdated === 'yes' && f5.abdPDF ? uploads.docUrls : [],
         },
         {
+          id: getItemId(
+            'GIS entry  latitude, longitude, route code, and asset type',
+          ),
           form_type: 'Gsi Mapping',
           item_name:
             'GIS entry  latitude, longitude, route code, and asset type',
@@ -401,6 +470,7 @@ const buildFormItems = (
           images: getImages(f5.GISImgages),
         },
         {
+          id: getItemId('Verification by Independent Engineer'),
           form_type: 'Gsi Mapping',
           item_name: 'Verification by Independent Engineer',
           status: f5.ieVerification === 'yes' ? 1 : 0,
@@ -414,6 +484,7 @@ const buildFormItems = (
       if (!f6) break;
       items.push(
         {
+          id: getItemId('Site Clear Images'),
           form_type: 'Safe Quality Verification',
           item_name: 'Site Clear Images',
           item_type: f6.siteClean || '',
@@ -421,6 +492,7 @@ const buildFormItems = (
           images: getImages(f6.materialImgages),
         },
         {
+          id: getItemId('TEC Approval Proof'),
           form_type: 'Safe Quality Verification',
           item_name: 'TEC Approval Proof',
           status: f6.materialsApproved ? 1 : 0,
@@ -428,6 +500,7 @@ const buildFormItems = (
             f6.materialsApproved && f6.verificationProof ? uploads.docUrls : [],
         },
         {
+          id: getItemId('Social Audit Video'),
           form_type: 'Safe Quality Verification',
           item_name: 'Social Audit Video',
           status:
@@ -438,6 +511,7 @@ const buildFormItems = (
               : [],
         },
         {
+          id: getItemId('Site Label Verification'),
           form_type: 'Safe Quality Verification',
           item_name: 'Site Label Verification',
           status: f6.siteLabelBoard === 'yes' ? 1 : 0,
@@ -451,6 +525,7 @@ const buildFormItems = (
       if (!f7) break;
       items.push(
         {
+          id: getItemId('PAT Completed Proof'),
           form_type: 'Final Acceptance',
           item_name: 'PAT Completed Proof',
           status:
@@ -458,6 +533,7 @@ const buildFormItems = (
           images: (f7.patCompleted === 'yes' && getImages(f7.patProof)) || [],
         },
         {
+          id: getItemId('FAT Approval Proof'),
           form_type: 'Final Acceptance',
           item_name: 'FAT Approval Proof',
           status:
@@ -466,6 +542,7 @@ const buildFormItems = (
             (f7.fatApproved === 'yes' && getImages(f7.fatApprovalProof)) || [],
         },
         {
+          id: getItemId('QR Tag Verification Image'),
           form_type: 'Final Acceptance',
           item_name: 'QR Tag Verification Image',
           status:
@@ -475,6 +552,7 @@ const buildFormItems = (
         },
 
         {
+          id: getItemId('HOTO Memo Signature Image'),
           form_type: 'Final Acceptance',
           item_name: 'HOTO Memo Signature Image',
           status: f7.hotoSigned === 'yes' ? 1 : f7.hotoSigned === 'no' ? 0 : 0,
@@ -500,6 +578,8 @@ function App() {
   const [gpMainId, setGpMainId] = useState<number | null>(null);
   const [showGpModal, setShowGpModal] = useState(true);
   const [isLoadingData, setIsLoadingData] = useState(false);
+  const [previousForm, setPreviousForm] = useState<number | null>(null);
+  const [formItemIds, setFormItemIds] = useState<Record<number, number[]>>({});
 
   const [states, setStates] = useState<
     { state_id: string; state_name: string }[]
@@ -547,6 +627,262 @@ function App() {
       setSelectedGp('');
     }
   }, [selectedBlock]);
+
+  useEffect(() => {
+    if (
+      gpMainId &&
+      currentForm >= 2 &&
+      currentForm <= 7 &&
+      previousForm !== currentForm &&
+      completedForms.has(currentForm)
+    ) {
+      setPreviousForm(currentForm);
+
+      const fetchFormData = async () => {
+        try {
+          const response = await getChecklistPreview(gpMainId);
+          if (response.status) {
+            const { items } = response.data;
+
+            const parseImages = (images: any): string[] => {
+              if (!images) return [];
+              try {
+                return typeof images === 'string' ? JSON.parse(images) : images;
+              } catch {
+                return [];
+              }
+            };
+
+            const mapToImages = (
+              urls: string[],
+              prefix: string,
+            ): GeoTaggedImage[] =>
+              urls.map((url, index) => ({
+                id: `${prefix}_${index}`,
+                file: new File([], `${prefix}_${index}.jpg`),
+                preview: url.startsWith('http') ? url : `${ImgbaseUrl}/${url}`,
+                latitude: 0,
+                longitude: 0,
+                timestamp: '',
+              }));
+
+            const getStatus = (itemName: string) => {
+              const item = items.find((i: any) => i.item_name === itemName);
+              return item?.status === 1
+                ? 'yes'
+                : item?.status === 0
+                  ? 'no'
+                  : '';
+            };
+
+            const getItemImages = (itemName: string, prefix: string) => {
+              const item = items.find((i: any) => i.item_name === itemName);
+              return mapToImages(parseImages(item?.images), prefix);
+            };
+
+            const getSingleFileUrl = (itemName: string): string | null => {
+              const item = items.find((i: any) => i.item_name === itemName);
+              const parsed = parseImages(item?.images);
+              return parsed?.[0] ? `${ImgbaseUrl}/${parsed[0]}` : null;
+            };
+
+            const getItemIds = (itemName: string): number[] => {
+              const item = items.find((i: any) => i.item_name === itemName);
+              return item?.id ? [item.id] : [];
+            };
+
+            let formUpdateData: any = {};
+
+            if (currentForm === 2) {
+              const f2Items = items.filter(
+                (i: any) => i.form_type === 'OFC and connectivity form',
+              );
+              setFormItemIds((prev) => ({
+                ...prev,
+                2: f2Items.map((i: any) => i.id),
+              }));
+              formUpdateData = {
+                ofcConnected: getStatus('OFC Route Images'),
+                ofcRouteImages: getItemImages('OFC Route Images', 'ofc_route'),
+                opticalPowerConnected: getStatus('Optical Power Images'),
+                opticalPowerImages: getItemImages(
+                  'Optical Power Images',
+                  'optical_power',
+                ),
+                splicingConnected: getStatus('Splicing Images'),
+                splicingImages: getItemImages('Splicing Images', 'splicing'),
+                routeIndicatorConnected: getStatus('Route Indicator Images'),
+                routeIndicatorImages: getItemImages(
+                  'Route Indicator Images',
+                  'route_indicator',
+                ),
+                otdrPdf: getSingleFileUrl('OTDR PDF'),
+                isOtdrReportUploaded: getStatus('OTDR PDF'),
+              };
+            } else if (currentForm === 3) {
+              const f3Items = items.filter(
+                (i: any) => i.form_type === 'Equipement Installation',
+              );
+              setFormItemIds((prev) => ({
+                ...prev,
+                3: f3Items.map((i: any) => i.id),
+              }));
+              formUpdateData = {
+                routerImage: getItemImages('Router Image', 'router'),
+                routerConnected: getStatus('Router Image'),
+                snocImage: getItemImages('SNOC Image', 'snoc'),
+                snocImageConnected: getStatus('SNOC Image'),
+                serialNumber:
+                  f3Items.find((i: any) => i.item_name === 'Serial Number')
+                    ?.item_type || '',
+                macId:
+                  f3Items.find((i: any) => i.item_name === 'MAC ID')
+                    ?.item_type || '',
+                qrType:
+                  f3Items.find((i: any) => i.item_name === 'QR Code Image')
+                    ?.item_type || '',
+                qrCodeImage: getItemImages('QR Code Image', 'qr_code'),
+                devicePing: getStatus('Device Ping Image'),
+                pingProofImg: getItemImages('Device Ping Image', 'ping_proof'),
+              };
+            } else if (currentForm === 4) {
+              const f4Items = items.filter(
+                (i: any) => i.form_type === 'Power Earth Verification',
+              );
+              setFormItemIds((prev) => ({
+                ...prev,
+                4: f4Items.map((i: any) => i.id),
+              }));
+              formUpdateData = {
+                solarPanelInstalled: getStatus(
+                  'Solar panel installed and functional',
+                ),
+                solarPanelImage: getItemImages(
+                  'Solar panel installed and functional',
+                  'solar_panel',
+                ),
+                batteryBackup:
+                  getStatus('Battery backup installed, charged') || '',
+                batteryBackupImage: getItemImages(
+                  'Battery backup installed, charged',
+                  'battery_backup',
+                ),
+                earthingVerified:
+                  getStatus('Proper earthing resistance verified') || '',
+                earthingVideo: getSingleFileUrl(
+                  'Proper earthing resistance verified',
+                ),
+                powerSource:
+                  f4Items.find((i: any) => i.item_name === 'Power Source')
+                    ?.item_type || '',
+              };
+            } else if (currentForm === 5) {
+              const f5Items = items.filter(
+                (i: any) => i.form_type === 'Gsi Mapping',
+              );
+              setFormItemIds((prev) => ({
+                ...prev,
+                5: f5Items.map((i: any) => i.id),
+              }));
+              formUpdateData = {
+                photosGeoTagged: getStatus(
+                  'Photos taken (5 angles: close-up + 4 directional) and geo-tagged',
+                ),
+                photosAngleImages: getItemImages(
+                  'Photos taken (5 angles: close-up + 4 directional) and geo-tagged',
+                  'photos_angle',
+                ),
+                videoUploadedFile: getSingleFileUrl(
+                  'Video of GP installation uploaded to BharatNet GIS app',
+                ),
+                videoUploaded: getStatus(
+                  'Video of GP installation uploaded to BharatNet GIS app',
+                ),
+                abdPDF: getSingleFileUrl('Digital As-Built Drawing (ABD)'),
+                abdUpdated: getStatus('Digital As-Built Drawing (ABD)'),
+                gisEntryCompleted: getStatus(
+                  'GIS entry  latitude, longitude, route code, and asset type',
+                ),
+                GISImgages: getItemImages(
+                  'GIS entry  latitude, longitude, route code, and asset type',
+                  'gis',
+                ),
+                ieVerification: getStatus(
+                  'Verification by Independent Engineer',
+                ),
+                IEimages: getItemImages(
+                  'Verification by Independent Engineer',
+                  'ie',
+                ),
+              };
+            } else if (currentForm === 6) {
+              const f6Items = items.filter(
+                (i: any) => i.form_type === 'Safe Quality Verification',
+              );
+              setFormItemIds((prev) => ({
+                ...prev,
+                6: f6Items.map((i: any) => i.id),
+              }));
+              formUpdateData = {
+                siteClean:
+                  f6Items.find((i: any) => i.item_name === 'Site Clear Images')
+                    ?.item_type || '',
+                materialImgages: getItemImages(
+                  'Site Clear Images',
+                  'site_clean',
+                ),
+                materialsApproved: getStatus('TEC Approval Proof'),
+                verificationProof: getSingleFileUrl('TEC Approval Proof'),
+                socialAudit: getStatus('Social Audit Video'),
+                socialAuditVideo: getSingleFileUrl('Social Audit Video'),
+                siteLabelBoard: getStatus('Site Label Verification'),
+                siteLabelBoardImage: getItemImages(
+                  'Site Label Verification',
+                  'site_label_board',
+                ),
+              };
+            } else if (currentForm === 7) {
+              const f7Items = items.filter(
+                (i: any) => i.form_type === 'Final Acceptance',
+              );
+              setFormItemIds((prev) => ({
+                ...prev,
+                7: f7Items.map((i: any) => i.id),
+              }));
+              formUpdateData = {
+                patCompleted: getStatus('PAT Completed Proof'),
+                patProof: getItemImages('PAT Completed Proof', 'pat_proof'),
+                fatApproved: getStatus('FAT Approval Proof'),
+                fatApprovalProof: getItemImages(
+                  'FAT Approval Proof',
+                  'fat_approval',
+                ),
+                qrTagVerified: getStatus('QR Tag Verification Image'),
+                qrTagImage: getItemImages(
+                  'QR Tag Verification Image',
+                  'qr_tag',
+                ),
+                hotoSigned: getStatus('HOTO Memo Signature Image'),
+                hotoMemoSignature: getItemImages(
+                  'HOTO Memo Signature Image',
+                  'hoto_signature',
+                ),
+              };
+            }
+
+            setFormData((prev) => ({
+              ...prev,
+              [`form${currentForm}`]: formUpdateData,
+            }));
+          }
+        } catch (error) {
+          console.error('Error fetching form data:', error);
+        }
+      };
+
+      fetchFormData();
+    }
+  }, [currentForm, gpMainId, previousForm]);
 
   const fetchExistingData = async (
     stateId: string,
@@ -1184,20 +1520,33 @@ function App() {
         }
       }
 
-      const formItems = buildFormItems(formNumber, formData, {
-        imageUrls: uploadedImageUrls,
-        docUrls: uploadedDocUrls,
-        videoUrls: uploadedVideoUrls,
-      });
-
-      if (formItems.length > 0) {
-        await submitFormItems(gpMainId, formItems);
-      } else {
+      const formItems = buildFormItems(
+        formNumber,
+        formData,
+        {
+          imageUrls: uploadedImageUrls,
+          docUrls: uploadedDocUrls,
+          videoUrls: uploadedVideoUrls,
+        },
+        formItemIds[currentForm],
+      );
+        if (formItems.length === 0) {
         alert('No data to submit for this form');
         setIsSubmitting(false);
         return;
       }
+      const existingIds = formItemIds[currentForm] || [];
+      const isFormCompleted = existingIds.length > 0;
 
+      // const itemsToUpdate = formItems.filter((item) => item.id);
+      // const itemsToCreate = formItems.filter((item) => !item.id);
+
+      if (isFormCompleted) {
+        await updateChecklistItems(gpMainId, formItems);
+        setPreviousForm(null);
+      }else{
+        await submitFormItems(gpMainId, formItems);
+      }
       const newCompleted = new Set(completedForms);
       newCompleted.add(formNumber);
       setCompletedForms(newCompleted);
@@ -1393,7 +1742,6 @@ function App() {
       </div>
     );
   }
-console.log(form1Existing,currentForm);
   return (
     <div className="min-h-screen bg-gray-50">
       <button
@@ -1436,7 +1784,7 @@ console.log(form1Existing,currentForm);
               {renderForm()}
             </div>
 
-            {!(form1Existing && currentForm === 1) &&  (
+            {!(form1Existing && currentForm === 1) && (
               <div className="flex flex-col sm:flex-row gap-4 justify-end">
                 <button
                   onClick={handleSubmit}

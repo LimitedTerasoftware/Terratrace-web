@@ -4,7 +4,6 @@ import {
   APIResponseLiveMachine,
   LiveMachines,
   MachineDataApiResponse,
- 
 } from '../../types/survey';
 import {
   ApiResponse,
@@ -290,11 +289,10 @@ export interface GPChecklistData {
   updated_at: string;
 }
 export interface Pagination {
-  
-currentPage:number;
-limit:number;
-totalPages:number;
-totalRows:number;
+  currentPage: number;
+  limit: number;
+  totalPages: number;
+  totalRows: number;
 }
 export interface GPChecklistResponse {
   status: boolean;
@@ -400,6 +398,52 @@ export const getChecklistPreview = async (
     }
   } catch (error) {
     console.error('Error fetching checklist preview:', error);
+    throw error;
+  }
+};
+
+export const updateChecklistItem = async (
+  itemId: number,
+  data: {
+    status?: number;
+    images?: string[];
+    remark?: string;
+    item_type?: string;
+  },
+): Promise<any> => {
+  try {
+    const resp = await axios.put(`${TraceBASEURL}/update-checklist-item`, {
+      item_id: itemId,
+      ...data,
+    });
+    return resp.data;
+  } catch (error) {
+    console.error('Error updating checklist item:', error);
+    throw error;
+  }
+};
+
+export const updateChecklistItems = async (
+  gpMainId: number,
+  items: Array<{
+    id?: number;
+    form_type: string;
+    item_name: string;
+    item_type?: string;
+    status: number;
+    images?: string[];
+    remark?: string;
+  }>,
+): Promise<any> => {
+  try {
+    const resp = await axios.post(`${TraceBASEURL}/update-checklist-items`, {
+      gp_main_id: gpMainId,
+      items,
+    });
+
+    return resp.data;
+  } catch (error) {
+    console.error('Error updating checklist items:', error);
     throw error;
   }
 };
