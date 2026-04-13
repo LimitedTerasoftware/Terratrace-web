@@ -43,19 +43,23 @@ export default function Form4({ data, onChange }: Form4Props) {
     imageId: string,
     images: GeoTaggedImage[],
     setImages: React.Dispatch<React.SetStateAction<GeoTaggedImage[]>>,
+    fieldName: 'solarPanelImage' | 'batteryBackupImage',
   ) => {
     const updated = images.filter((img) => img.id !== imageId);
     setImages(updated);
+    onChange({ ...data, [fieldName]: updated });
   };
 
   const ImagePreview = ({
     images,
     setImages,
     label,
+    fieldName,
   }: {
     images: GeoTaggedImage[];
     setImages: React.Dispatch<React.SetStateAction<GeoTaggedImage[]>>;
     label: string;
+    fieldName: 'solarPanelImage' | 'batteryBackupImage';
   }) => (
     <>
       {images.length > 0 && (
@@ -69,7 +73,9 @@ export default function Form4({ data, onChange }: Form4Props) {
               />
 
               <button
-                onClick={() => removeImage(img.id, images, setImages)}
+                onClick={() =>
+                  removeImage(img.id, images, setImages, fieldName)
+                }
                 className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <X className="w-3 h-3" />
@@ -140,6 +146,7 @@ export default function Form4({ data, onChange }: Form4Props) {
                 images={solarImg}
                 setImages={setSolarImg}
                 label="Solar Panel"
+                fieldName="solarPanelImage"
               />
             </>
           )}
@@ -194,6 +201,7 @@ export default function Form4({ data, onChange }: Form4Props) {
                 images={batteryImg}
                 setImages={setBatteryImg}
                 label="Battery Backup"
+                fieldName="batteryBackupImage"
               />
             </>
           )}

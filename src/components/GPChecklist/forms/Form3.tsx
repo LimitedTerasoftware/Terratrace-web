@@ -62,19 +62,23 @@ export default function Form3({ data, onChange }: Form3Props) {
     imageId: string,
     images: GeoTaggedImage[],
     setImages: React.Dispatch<React.SetStateAction<GeoTaggedImage[]>>,
+    fieldName: 'routerImage' | 'snocImage' | 'qrCodeImage' | 'pingProofImg',
   ) => {
     const updated = images.filter((img) => img.id !== imageId);
     setImages(updated);
+    onChange({ ...data, [fieldName]: updated });
   };
 
   const ImagePreview = ({
     images,
     setImages,
     label,
+    fieldName,
   }: {
     images: GeoTaggedImage[];
     setImages: React.Dispatch<React.SetStateAction<GeoTaggedImage[]>>;
     label: string;
+    fieldName: 'routerImage' | 'snocImage' | 'qrCodeImage' | 'pingProofImg';
   }) => (
     <>
       {images.length > 0 && (
@@ -88,7 +92,9 @@ export default function Form3({ data, onChange }: Form3Props) {
               />
 
               <button
-                onClick={() => removeImage(img.id, images, setImages)}
+                onClick={() =>
+                  removeImage(img.id, images, setImages, fieldName)
+                }
                 className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <X className="w-3 h-3" />
@@ -159,6 +165,7 @@ export default function Form3({ data, onChange }: Form3Props) {
             images={routerImages}
             setImages={setRouterImages}
             label="Router"
+            fieldName="routerImage"
           />
         </div>
 
@@ -204,6 +211,7 @@ export default function Form3({ data, onChange }: Form3Props) {
             images={snocImages}
             setImages={setSnocImages}
             label="SNOC"
+            fieldName="snocImage"
           />
         </div>
       </div>
@@ -271,6 +279,7 @@ export default function Form3({ data, onChange }: Form3Props) {
             images={qrCodeImages}
             setImages={setQrCodeImages}
             label="QR Code"
+            fieldName="qrCodeImage"
           />
         </div>
       </div>
@@ -318,6 +327,7 @@ export default function Form3({ data, onChange }: Form3Props) {
               images={pingProofImages}
               setImages={setPingProofImages}
               label="Ping Proof"
+              fieldName="pingProofImg"
             />
           </div>
         )}

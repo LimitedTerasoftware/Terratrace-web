@@ -53,19 +53,23 @@ export default function Form6({ data, onChange }: Form6Props) {
     imageId: string,
     images: GeoTaggedImage[],
     setImages: React.Dispatch<React.SetStateAction<GeoTaggedImage[]>>,
+    fieldName: 'materialImgages' | 'siteLabelBoardImage',
   ) => {
     const updated = images.filter((img) => img.id !== imageId);
     setImages(updated);
+    onChange({ ...data, [fieldName]: updated });
   };
 
   const ImagePreview = ({
     images,
     setImages,
     label,
+    fieldName,
   }: {
     images: GeoTaggedImage[];
     setImages: React.Dispatch<React.SetStateAction<GeoTaggedImage[]>>;
     label: string;
+    fieldName: 'materialImgages' | 'siteLabelBoardImage';
   }) => (
     <>
       {images.length > 0 && (
@@ -79,7 +83,9 @@ export default function Form6({ data, onChange }: Form6Props) {
               />
 
               <button
-                onClick={() => removeImage(img.id, images, setImages)}
+                onClick={() =>
+                  removeImage(img.id, images, setImages, fieldName)
+                }
                 className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <X className="w-3 h-3" />
@@ -136,6 +142,7 @@ export default function Form6({ data, onChange }: Form6Props) {
             images={materialImages}
             setImages={setMaterialImages}
             label="Photos of materials used"
+            fieldName="materialImgages"
           />
         </>
       </div>
@@ -378,6 +385,7 @@ export default function Form6({ data, onChange }: Form6Props) {
               images={siteLabelBoardImages}
               setImages={setSiteLabelBoardImages}
               label="Photos of site label board"
+              fieldName="siteLabelBoardImage"
             />
           </>
         )}

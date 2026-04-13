@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Save, CheckCircle, Menu, X, Bell, Users, Loader2 } from 'lucide-react';
 import Form1 from './forms/Form1';
 import Form2 from './forms/Form2';
@@ -288,7 +288,6 @@ const buildFormItems = (
         urls.push(uploads.imageUrls[imageIndex++] || '');
       }
     });
-    console.log(urls, imageIndex);
 
     return urls;
   };
@@ -681,6 +680,16 @@ function App() {
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [previousForm, setPreviousForm] = useState<number | null>(null);
   const [formItemIds, setFormItemIds] = useState<Record<number, number[]>>({});
+  const formDataRef = useRef(formData);
+  const currentFormRef = useRef(currentForm);
+
+  useEffect(() => {
+    formDataRef.current = formData;
+  }, [formData]);
+
+  useEffect(() => {
+    currentFormRef.current = currentForm;
+  }, [currentForm]);
 
   const [states, setStates] = useState<
     { state_id: string; state_name: string }[]
@@ -1592,7 +1601,7 @@ function App() {
         images: formImages,
         docs: formDocs,
         videos: formVideos,
-      } = getFormFiles(formNumber, formData);
+      } = getFormFiles(formNumber, formDataRef.current);
 
       const imageFiles = formImages
         .filter((img) => {
@@ -1645,20 +1654,20 @@ function App() {
       }
       const formItems = buildFormItems(
         formNumber,
-        formData,
+        formDataRef.current,
         {
           imageUrls: uploadedImageUrls,
           docUrls: uploadedDocUrls,
           videoUrls: uploadedVideoUrls,
         },
-        formItemIds[currentForm],
+        formItemIds[currentFormRef.current],
       );
       if (formItems.length === 0) {
         alert('No data to submit for this form');
         setIsSubmitting(false);
         return;
       }
-      const existingIds = formItemIds[currentForm] || [];
+      const existingIds = formItemIds[currentFormRef.current] || [];
       const isFormCompleted = existingIds.length > 0;
 
       // const itemsToUpdate = formItems.filter((item) => item.id);
@@ -1689,10 +1698,10 @@ function App() {
   };
 
   const handleSubmit = async () => {
-    if (currentForm === 1) {
+    if (currentFormRef.current === 1) {
       await handleSubmitForm1();
     } else {
-      await handleSubmitOtherForm(currentForm);
+      await handleSubmitOtherForm(currentFormRef.current);
     }
   };
 

@@ -75,19 +75,31 @@ export default function Form7({ data, onChange }: Form7Props) {
     imageId: string,
     images: GeoTaggedImage[],
     setImages: React.Dispatch<React.SetStateAction<GeoTaggedImage[]>>,
+    fieldName:
+      | 'patProof'
+      | 'fatApprovalProof'
+      | 'qrTagImage'
+      | 'hotoMemoSignature',
   ) => {
     const updated = images.filter((img) => img.id !== imageId);
     setImages(updated);
+    onChange({ ...data, [fieldName]: updated });
   };
 
   const ImagePreview = ({
     images,
     setImages,
     label,
+    fieldName,
   }: {
     images: GeoTaggedImage[];
     setImages: React.Dispatch<React.SetStateAction<GeoTaggedImage[]>>;
     label: string;
+    fieldName:
+      | 'patProof'
+      | 'fatApprovalProof'
+      | 'qrTagImage'
+      | 'hotoMemoSignature';
   }) => (
     <>
       {images.length > 0 && (
@@ -101,7 +113,9 @@ export default function Form7({ data, onChange }: Form7Props) {
               />
 
               <button
-                onClick={() => removeImage(img.id, images, setImages)}
+                onClick={() =>
+                  removeImage(img.id, images, setImages, fieldName)
+                }
                 className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <X className="w-3 h-3" />
@@ -175,6 +189,7 @@ export default function Form7({ data, onChange }: Form7Props) {
               images={patImgages}
               setImages={setPatImages}
               label="Photos of PAT completion proof"
+              fieldName="patProof"
             />
           </>
         )}
@@ -229,6 +244,7 @@ export default function Form7({ data, onChange }: Form7Props) {
               images={fatApprovalProof}
               setImages={setFatApprovalProof}
               label="Photos of FAT approval proof"
+              fieldName="fatApprovalProof"
             />
           </>
         )}
@@ -290,6 +306,7 @@ export default function Form7({ data, onChange }: Form7Props) {
               images={qrTagImages}
               setImages={setQrTagImages}
               label="Photos of QR tag verification"
+              fieldName="qrTagImage"
             />
           </div>
         )}
@@ -349,6 +366,7 @@ export default function Form7({ data, onChange }: Form7Props) {
               images={hotoSignatureImage}
               setImages={setHotoSignatureImage}
               label="Photos of hoto signature"
+              fieldName="hotoMemoSignature"
             />
           </>
         )}

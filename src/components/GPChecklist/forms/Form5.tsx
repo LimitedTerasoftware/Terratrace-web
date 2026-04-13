@@ -58,19 +58,23 @@ export default function Form5({ data, onChange }: Form5Props) {
     imageId: string,
     images: GeoTaggedImage[],
     setImages: React.Dispatch<React.SetStateAction<GeoTaggedImage[]>>,
+    fieldName: 'photosAngleImages' | 'GISImgages' | 'IEimages',
   ) => {
     const updated = images.filter((img) => img.id !== imageId);
     setImages(updated);
+    onChange({ ...data, [fieldName]: updated });
   };
 
   const ImagePreview = ({
     images,
     setImages,
     label,
+    fieldName,
   }: {
     images: GeoTaggedImage[];
     setImages: React.Dispatch<React.SetStateAction<GeoTaggedImage[]>>;
     label: string;
+    fieldName: 'photosAngleImages' | 'GISImgages' | 'IEimages';
   }) => (
     <>
       {images.length > 0 && (
@@ -84,7 +88,9 @@ export default function Form5({ data, onChange }: Form5Props) {
               />
 
               <button
-                onClick={() => removeImage(img.id, images, setImages)}
+                onClick={() =>
+                  removeImage(img.id, images, setImages, fieldName)
+                }
                 className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <X className="w-3 h-3" />
@@ -158,6 +164,7 @@ export default function Form5({ data, onChange }: Form5Props) {
               images={photosAngleImages}
               setImages={setPhotosAngleImages}
               label="Photos (5 Angles)"
+              fieldName="photosAngleImages"
             />
           </div>
         )}
@@ -386,6 +393,7 @@ export default function Form5({ data, onChange }: Form5Props) {
                 images={GISImgages}
                 setImages={setGISImages}
                 label="Photos"
+                fieldName="GISImgages"
               />
             </>
           )}
@@ -440,6 +448,7 @@ export default function Form5({ data, onChange }: Form5Props) {
                 images={IEimages}
                 setImages={setIEImages}
                 label="Photos of IE Verification"
+                fieldName="IEimages"
               />
             </>
           )}
