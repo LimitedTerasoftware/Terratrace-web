@@ -95,14 +95,28 @@ export interface ProcessedPhysicalSurvey {
 
 export interface SurveyImage {
   url: string;
-  type: 'start_photo' | 'end_photo' | 'fpoi' | 'route_indicator' | 'kmt_stone' | 
-        'fiber_turn' | 'landmark' | 'joint_chamber' | 'road_crossing' | 
-        'videorecord' | 'route_feasibility' | 'area' | 'side' | 'route_details' | 
-        'hold_survey' | 'bridge' | 'culvert' | 'general';
+  type:
+    | 'start_photo'
+    | 'end_photo'
+    | 'fpoi'
+    | 'route_indicator'
+    | 'kmt_stone'
+    | 'fiber_turn'
+    | 'landmark'
+    | 'joint_chamber'
+    | 'road_crossing'
+    | 'videorecord'
+    | 'route_feasibility'
+    | 'area'
+    | 'side'
+    | 'route_details'
+    | 'hold_survey'
+    | 'bridge'
+    | 'culvert'
+    | 'general';
   label: string;
   coordinates?: { lat: number; lng: number };
 }
-
 
 // Desktop Planning types
 export interface DesktopPlanningApiResponse {
@@ -218,18 +232,18 @@ export interface ProcessedRectification {
   eventType: string;
   blockId: string | number;
   blockName?: string;
-  
+
   // Rectification-specific fields
   gpName?: string;
   lgdCode?: string;
   accuracy?: string;
   length?: string | null;
   workToBeDone?: string;
-  
+
   // Image fields
   images: SurveyImage[];
   hasImages: boolean;
-  
+
   // Metadata
   createdTime?: string;
   stateName?: string;
@@ -372,4 +386,69 @@ export interface ProcessedJoints {
   cables: Cable[];
   tube_mapping: TubeMapping[];
   fiber_splicing: FiberSplicing[];
+}
+
+export interface ConstructionApiResponse {
+  status: boolean;
+  data: {
+    [blockId: string]: ConstructionDataPoint[];
+  };
+}
+
+export interface ConstructionDataPoint {
+  id: number;
+  offset: number;
+  link_name: string;
+  routeBelongsTo: string;
+  roadType: string;
+  cableLaidOn: string;
+  soilType: string;
+  executionModality: string;
+  depthLatlong?: string;
+  depthPhoto?: string[];
+  depthMeters?: string;
+  status: number;
+  created_at: string;
+  updated_at: string;
+  start_lgd: string;
+  end_lgd: string;
+  machine_id: string;
+  distance: string;
+  roadWidth?: string;
+  eventType: string;
+  survey_id: number;
+  road_margin?: string;
+  Roadfesibility?: string;
+  area_type?: string;
+  dgps_accuracy?: string;
+  dgps_siv?: number;
+  centerLatLong?: string;
+  block_id: number;
+  startPitLatlong?: string;
+  startPitPhotos?: string[];
+  endPitLatlong?: string;
+  endPitPhotos?: string[];
+}
+
+export interface ProcessedConstruction {
+  id: string;
+  name: string;
+  category: string;
+  type: 'point' | 'polyline';
+  coordinates: { lat: number; lng: number } | { lat: number; lng: number }[];
+  surveyId: string;
+  eventType: string;
+  blockId: string;
+  images: any[];
+  hasImages: boolean;
+  linkName: string;
+  routeBelongsTo: string;
+  roadType: string;
+  cableLaidOn: string;
+  soilType: string;
+  depthMeters?: string;
+  roadWidth?: string;
+  distance: string;
+  roadMargin?: string;
+  areaType?: string;
 }

@@ -49,6 +49,9 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
    const JointsCategories = categories.filter(cat => 
     cat.id.startsWith('Joint-') || cat.name.startsWith('Joint:')
   );
+  const constructionCategories = categories.filter(cat => 
+    cat.id.startsWith('construction-') || cat.name.startsWith('Construction:')
+  );
   
   
   const externalSurveyCategories = categories.filter(cat => 
@@ -72,7 +75,8 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
     !cat.name.startsWith('External BSNL:') &&
     !cat.id.startsWith('rectification-') &&
     !cat.name.startsWith('Rectification:') &&
-    !cat.name.startsWith('Joint:')
+    !cat.name.startsWith('Joint:') &&
+    !cat.name.startsWith('Construction:')
 
   );
 
@@ -115,6 +119,15 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
       icon: <Navigation className="h-4 w-4 text-red-600" />,
       categories: JointsCategories,
       color: 'from-red-50 to-amber-50'
+    });
+  }
+    if (constructionCategories.length > 0) {
+    sections.push({
+      id: 'construction',
+      title: 'API: Construction SURVEY',  
+      icon: <Navigation className="h-4 w-4 text-purple-600" />,
+      categories: constructionCategories,
+      color: 'from-purple-50 to-violet-50'
     });
   }
   if (externalSurveyCategories.length > 0) {
@@ -218,6 +231,10 @@ export const PlacemarkList: React.FC<PlacemarkListProps> = ({
   // Match both with and without prefix
   return p.category === categoryName || 
          p.category === categoryName.replace('Joint: ', '');
+}else if (p.id.startsWith('construction-') && categoryName.startsWith('Construction:')) {
+  // Match both with and without prefix
+  return p.category === categoryName || 
+         p.category === categoryName.replace('Construction: ', '');
 }
     // Handle External file data (including BSNL)
     else if (!p.id.startsWith('physical-') && !p.id.startsWith('desktop-')) {

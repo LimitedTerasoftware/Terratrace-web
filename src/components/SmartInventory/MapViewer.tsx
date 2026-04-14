@@ -1,6 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
-import { ProcessedPlacemark, PlacemarkCategory, ProcessedPhysicalSurvey, ProcessedDesktopPlanning, ProcessedRectification, ProcessedJoints } from '../../types/kmz';
+import {
+  ProcessedPlacemark,
+  PlacemarkCategory,
+  ProcessedPhysicalSurvey,
+  ProcessedDesktopPlanning,
+  ProcessedRectification,
+  ProcessedJoints,
+  ProcessedConstruction,
+} from '../../types/kmz';
 import { PLACEMARK_CATEGORIES } from './PlaceMark';
 import { ProcessedGPData, ProcessedBlockData } from './PlaceMark';
 
@@ -11,11 +19,35 @@ import JointInfoModal from './JointInfoModal';
 import { createRoot } from 'react-dom/client';
 
 interface GoogleMapProps {
-  placemarks: (ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedDesktopPlanning | ProcessedRectification | ProcessedGPData | ProcessedBlockData)[];
+  placemarks: (
+    | ProcessedPlacemark
+    | ProcessedPhysicalSurvey
+    | ProcessedDesktopPlanning
+    | ProcessedRectification
+    | ProcessedGPData
+    | ProcessedBlockData
+    | ProcessedConstruction
+  )[];
   categories: PlacemarkCategory[];
   visibleCategories: Set<string>;
-  highlightedPlacemark?: ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedDesktopPlanning | ProcessedRectification | ProcessedGPData | ProcessedBlockData;
-  onPlacemarkClick: (placemark: ProcessedPlacemark | ProcessedPhysicalSurvey | ProcessedDesktopPlanning | ProcessedRectification | ProcessedGPData | ProcessedBlockData) => void;
+  highlightedPlacemark?:
+    | ProcessedPlacemark
+    | ProcessedPhysicalSurvey
+    | ProcessedDesktopPlanning
+    | ProcessedRectification
+    | ProcessedGPData
+    | ProcessedBlockData
+    | ProcessedConstruction;
+  onPlacemarkClick: (
+    placemark:
+      | ProcessedPlacemark
+      | ProcessedPhysicalSurvey
+      | ProcessedDesktopPlanning
+      | ProcessedRectification
+      | ProcessedGPData
+      | ProcessedBlockData
+      | ProcessedConstruction,
+  ) => void;
   className?: string;
 
   // Enhanced Video Survey integration
@@ -36,14 +68,15 @@ interface GoogleMapProps {
 const baseUrl_public = import.meta.env.VITE_Image_URL;
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
-
 // Helper function to create image gallery HTML (OUTSIDE component to avoid hook issues)
 function createImageGalleryHTML(images: any[]): string {
   if (!images || images.length === 0) return '';
-  
+
   const galleryId = `gallery-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  
-  const imageHTML = images.map((image, index) => `
+
+  const imageHTML = images
+    .map(
+      (image, index) => `
     <div class="survey-image-container" data-gallery="${galleryId}" style="flex: 0 0 auto; width: 200px; margin-right: 12px;">
       <div style="
         font-size: 11px;
@@ -90,8 +123,10 @@ function createImageGalleryHTML(images: any[]): string {
         </div>
       </div>
     </div>
-  `).join('');
-  
+  `,
+    )
+    .join('');
+
   return `
     <div id="${galleryId}-section" class="survey-images-section" style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #E5E7EB;">
       <div id="${galleryId}-header" style="
@@ -195,7 +230,9 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
-  const [selectedJoint, setSelectedJoint] = useState<ProcessedJoints | null>(null);
+  const [selectedJoint, setSelectedJoint] = useState<ProcessedJoints | null>(
+    null,
+  );
 
   // NEW: fast lookup for highlight-by-id (fixes duplicate-name issues)
   const markersByIdRef = useRef<Map<string, google.maps.Marker>>(new Map());
@@ -205,7 +242,10 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
   const videoSurveyPolylinesRef = useRef<google.maps.Polyline[]>([]);
   const surveyDotsRef = useRef<google.maps.Marker[]>([]);
   const currentMarkerRef = useRef<google.maps.Marker | null>(null);
-  const selectionMarkersRef = useRef<{ start?: google.maps.Marker; end?: google.maps.Marker }>({});
+  const selectionMarkersRef = useRef<{
+    start?: google.maps.Marker;
+    end?: google.maps.Marker;
+  }>({});
   const trackFittedOnceRef = useRef(false);
 
   // Photo Survey overlays
@@ -235,15 +275,22 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
           zoom: 6,
           mapTypeId: google.maps.MapTypeId.ROADMAP,
           styles: [
-            { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
-            { featureType: 'transit', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+            {
+              featureType: 'poi',
+              elementType: 'labels',
+              stylers: [{ visibility: 'off' }],
+            },
+            {
+              featureType: 'transit',
+              elementType: 'labels',
+              stylers: [{ visibility: 'off' }],
+            },
           ],
         });
 
         mapInstanceRef.current = map;
         infoWindowRef.current = new google.maps.InfoWindow();
         setMapLoaded(true);
-        
       } catch (error) {
         console.error('Error loading Google Maps:', error);
         setMapError('Failed to load Google Maps. Please check your API key.');
@@ -255,8 +302,8 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
 
   // Helpers to clear overlays
   function clearStandardOverlays() {
-    markersRef.current.forEach(marker => marker.setMap(null));
-    polylinesRef.current.forEach(polyline => polyline.setMap(null));
+    markersRef.current.forEach((marker) => marker.setMap(null));
+    polylinesRef.current.forEach((polyline) => polyline.setMap(null));
     markersRef.current = [];
     polylinesRef.current = [];
     // NEW: also clear the id → marker map
@@ -264,7 +311,7 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
   }
 
   function clearPhotoOverlays() {
-    photoMarkersRef.current.forEach(m => m.setMap(null));
+    photoMarkersRef.current.forEach((m) => m.setMap(null));
     photoMarkersRef.current = [];
   }
 
@@ -273,19 +320,21 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
       surveyPolylineRef.current.setMap(null);
       surveyPolylineRef.current = null;
     }
-    
+
     // Clear video survey polylines separately (don't touch regular polylines)
-    videoSurveyPolylinesRef.current.forEach(polyline => polyline.setMap(null));
+    videoSurveyPolylinesRef.current.forEach((polyline) =>
+      polyline.setMap(null),
+    );
     videoSurveyPolylinesRef.current = [];
-    
-    surveyDotsRef.current.forEach(m => m.setMap(null));
+
+    surveyDotsRef.current.forEach((m) => m.setMap(null));
     surveyDotsRef.current = [];
-    
+
     if (currentMarkerRef.current) {
       currentMarkerRef.current.setMap(null);
       currentMarkerRef.current = null;
     }
-    
+
     // Clear selection markers
     if (selectionMarkersRef.current.start) {
       selectionMarkersRef.current.start.setMap(null);
@@ -300,10 +349,10 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
   // Enhanced track point finder
   const findNearestTrackPoint = (timestamp: number): TrackPoint | null => {
     if (!trackPoints.length) return null;
-    
+
     let nearest = trackPoints[0];
     let minDiff = Math.abs(trackPoints[0].timestamp - timestamp);
-    
+
     for (const point of trackPoints) {
       const diff = Math.abs(point.timestamp - timestamp);
       if (diff < minDiff) {
@@ -311,290 +360,387 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
         nearest = point;
       }
     }
-    
+
     return nearest;
   };
 
   // Enhanced map click handler for segment selection
   const handleMapClick = (e: google.maps.MapMouseEvent) => {
     if (!videoSurveyMode || !onSelectionChange || !e.latLng) return;
-    
+
     const clickedLat = e.latLng.lat();
     const clickedLng = e.latLng.lng();
-    
+
     // Find nearest track point to click
     let nearestPoint: TrackPoint | null = null;
     let minDistance = Infinity;
-    
+
     for (const point of trackPoints) {
       const distance = Math.sqrt(
-        Math.pow(point.lat - clickedLat, 2) + Math.pow(point.lng - clickedLng, 2)
+        Math.pow(point.lat - clickedLat, 2) +
+          Math.pow(point.lng - clickedLng, 2),
       );
       if (distance < minDistance) {
         minDistance = distance;
         nearestPoint = point;
       }
     }
-    
+
     if (!nearestPoint) return;
-    
+
     if (!selection?.start) {
       // Set start point
       onSelectionChange({ start: nearestPoint.timestamp, end: selection?.end });
-      setSelectionState({ mode: 'selecting', pendingStart: nearestPoint.timestamp });
+      setSelectionState({
+        mode: 'selecting',
+        pendingStart: nearestPoint.timestamp,
+      });
     } else if (!selection?.end) {
       // Set end point
-      onSelectionChange({ start: selection.start, end: nearestPoint.timestamp });
+      onSelectionChange({
+        start: selection.start,
+        end: nearestPoint.timestamp,
+      });
       setSelectionState({ mode: 'none' });
     } else {
       // Reset and set new start
       onSelectionChange({ start: nearestPoint.timestamp, end: undefined });
-      setSelectionState({ mode: 'selecting', pendingStart: nearestPoint.timestamp });
+      setSelectionState({
+        mode: 'selecting',
+        pendingStart: nearestPoint.timestamp,
+      });
     }
   };
 
-// Helper function to fetch actual route from API
-async function fetchActualRoute(
-  startLat: number,
-  startLng: number,
-  endLat: number,
-  endLng: number
-): Promise<{ coordinates: google.maps.LatLngLiteral[]; distance: number } | null> {
-  try {
-    const url = `https://api.tricadtrack.com/show-route?lat1=${startLat}&lng1=${startLng}&lat2=${endLat}&lng2=${endLng}`;
-        
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      console.error('Route API error:', response.status, response.statusText);
+  // Helper function to fetch actual route from API
+  async function fetchActualRoute(
+    startLat: number,
+    startLng: number,
+    endLat: number,
+    endLng: number,
+  ): Promise<{
+    coordinates: google.maps.LatLngLiteral[];
+    distance: number;
+  } | null> {
+    try {
+      const url = `https://api.tricadtrack.com/show-route?lat1=${startLat}&lng1=${startLng}&lat2=${endLat}&lng2=${endLng}`;
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        console.error('Route API error:', response.status, response.statusText);
+        return null;
+      }
+
+      const data = await response.json();
+
+      // API returns: [{"route": [[lat, lng], [lat, lng], ...], "distance": 4.167}]
+      if (data && Array.isArray(data) && data.length > 0 && data[0].route) {
+        const routeCoords = data[0].route;
+
+        // Convert [lat, lng] arrays to {lat, lng} objects
+        const formattedCoords = routeCoords.map((coord: number[]) => ({
+          lat: coord[0],
+          lng: coord[1],
+        }));
+
+        return {
+          coordinates: formattedCoords,
+          distance: data[0].distance,
+        };
+      }
+
+      console.warn('Invalid route data structure:', data);
+      return null;
+    } catch (error) {
+      console.error('Error fetching route:', error);
       return null;
     }
-    
-    const data = await response.json();
-    
-    // API returns: [{"route": [[lat, lng], [lat, lng], ...], "distance": 4.167}]
-    if (data && Array.isArray(data) && data.length > 0 && data[0].route) {
-      const routeCoords = data[0].route;
-      
-      // Convert [lat, lng] arrays to {lat, lng} objects
-      const formattedCoords = routeCoords.map((coord: number[]) => ({
-        lat: coord[0],
-        lng: coord[1]
-      }));
-            
-      return {
-        coordinates: formattedCoords,
-        distance: data[0].distance
-      };
-    }
-    
-    console.warn('Invalid route data structure:', data);
-    return null;
-  } catch (error) {
-    console.error('Error fetching route:', error);
-    return null;
   }
-}
 
-// Main useEffect for rendering placemarks with FIXED category matching
-useEffect(() => {
-  if (!mapLoaded || !mapInstanceRef.current) return;
+  // Main useEffect for rendering placemarks with FIXED category matching
+  useEffect(() => {
+    if (!mapLoaded || !mapInstanceRef.current) return;
 
-  clearStandardOverlays();
+    clearStandardOverlays();
 
-  const bounds = new google.maps.LatLngBounds();
-  let hasVisiblePlacemarks = false;
+    const bounds = new google.maps.LatLngBounds();
+    let hasVisiblePlacemarks = false;
+    const constructionPolylinesBySurvey: Record<
+      string,
+      { lat: number; lng: number }[]
+    > = {};
 
-  placemarks.forEach(placemark => {
-    // Determine placemark source from ID prefix
-    const isPhysicalPlacemark = placemark.id.startsWith('physical-') || placemark.id.startsWith('gp-location-') || placemark.id.startsWith('bsnl-block-');
-    const isRectificationPlacemark = placemark.id.startsWith('rectification-');
-    const isJointPlacemark = placemark.id.startsWith('Joint-');
-    
-    const isDesktopPlacemark = placemark.id.startsWith('desktop-');
-    const isExternalPlacemark = !isPhysicalPlacemark && !isRectificationPlacemark && !isDesktopPlacemark && !isJointPlacemark;
-    // Enhanced category matching with source awareness
-    const category = categories.find(cat => {
-      // For Physical Survey placemarks - only match physical categories
-      if (isPhysicalPlacemark) {
-        return cat.id.startsWith('physical-') && cat.name === placemark.category;
-      }
-      
-      // For Rectification placemarks - only match rectification categories
-      if (isRectificationPlacemark) {
-        return cat.id.startsWith('rectification-') && cat.name === placemark.category;
-      }
-       if (isJointPlacemark) {
-        return cat.id.startsWith('Joint-') && cat.name === placemark.category;
-      }
-      // For Desktop Planning placemarks - only match desktop categories
-      if (isDesktopPlacemark) {
-  return cat.name === placemark.category;
-}
-      
-      // For External files - match by full name including prefix
-      if (isExternalPlacemark) {
-        return cat.name === placemark.category;
-      }
-      
-      return false;
-    });
-    
-    if (!category || !visibleCategories.has(category.id)) return;
+    placemarks.forEach((placemark) => {
+      // Determine placemark source from ID prefix
+      const isPhysicalPlacemark =
+        placemark.id.startsWith('physical-') ||
+        placemark.id.startsWith('gp-location-') ||
+        placemark.id.startsWith('bsnl-block-');
+      const isRectificationPlacemark =
+        placemark.id.startsWith('rectification-');
+      const isJointPlacemark = placemark.id.startsWith('Joint-');
+      const isConstructionPlacemark = placemark.id.startsWith('construction-');
 
-    hasVisiblePlacemarks = true;
-
-    if (placemark.type === 'point') {
-      const isGP = placemark.id.startsWith('gp-location-');
-      const isBlock = placemark.id.startsWith('bsnl-block-');
-      const isPhysicalSurvey = placemark.id.startsWith('physical-');
-      const isDesktopPlanning = placemark.id.startsWith('desktop-');
-      const isRectification = placemark.id.startsWith('rectification-'); 
-      const isJoint = placemark.id.startsWith('Joint-'); 
-      const isExternalFile = !placemark.id.startsWith('physical-') && !placemark.id.startsWith('desktop-') && !placemark.id.startsWith('rectification-') && !isGP && !isBlock;
-
-      let markerIcon: google.maps.Symbol | google.maps.Icon | undefined;
-
-      // GP and Block use location pin markers
-      if (isGP) {
-        // GP Installation marker - DARK VIOLET location pin
-        markerIcon = {
-          path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z',
-          fillColor: category.color,
-          fillOpacity: 0.9,
-          strokeColor: '#ffffff',
-          strokeWeight: 2,
-          scale: 1.5,
-          anchor: new google.maps.Point(12, 22),
-        } as google.maps.Symbol;
-      } else if (isBlock) {
-        // BSNL Block marker - BURNT ORANGE location pin
-        markerIcon = {
-          path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z',
-          fillColor: category.color,
-          fillOpacity: 0.9,
-          strokeColor: '#ffffff',
-          strokeWeight: 2,
-          scale: 1.5,
-          anchor: new google.maps.Point(12, 22),
-        } as google.maps.Symbol;
-      } else if (isPhysicalSurvey || isRectification) {
-        // Physical survey and rectification - arrows
-        markerIcon = {
-          path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-          scale: 5,
-          fillColor: category.color,
-          fillOpacity: 0.9,
-          strokeColor: '#ffffff',
-          strokeWeight: 3,
-        } as google.maps.Symbol;
-      } else if (isDesktopPlanning) {
-        const desktopPlacemark = placemark as ProcessedDesktopPlanning;
-        const assetType = desktopPlacemark.assetType || desktopPlacemark.pointType || 'FPOI';
-
-        if (assetType === 'GP') {
-          markerIcon = {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 14,
-            fillColor: category.color,
-            fillOpacity: 0.9,
-            strokeColor: '#000000',
-            strokeWeight: 3,
-          } as google.maps.Symbol;
-        } else if (assetType === 'BHQ' || assetType === 'Block Router') {
-          markerIcon = {
-            path: 'M-8,-8 L8,-8 L8,8 L-8,8 Z',
-            scale: 1,
-            fillColor: category.color,
-            fillOpacity: 0.9,
-            strokeColor: '#ffffff',
-            strokeWeight: 3,
-          } as google.maps.Symbol;
-        } else if (assetType === 'FPOI') {
-          markerIcon = {
-            path: 'M0,-12 L8,8 L-8,8 Z',
-            scale: 1,
-            fillColor: category.color,
-            fillOpacity: 0.9,
-            strokeColor: '#ffffff',
-            strokeWeight: 2,
-          } as google.maps.Symbol;
-        } else if (assetType === 'SJC') {
-          markerIcon = {
-            path: 'M-6,-6 L6,-6 L6,6 L-6,6 Z',
-            scale: 1.2,
-            fillColor: category.color,
-            fillOpacity: 0.9,
-            strokeColor: '#ffffff',
-            strokeWeight: 2,
-            rotation: 45,
-          } as google.maps.Symbol;
-        } else if (assetType === 'BJC') {
-          markerIcon = {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 8,
-            fillColor: category.color,
-            fillOpacity: 0.9,
-            strokeColor: '#ffffff',
-            strokeWeight: 2,
-          } as google.maps.Symbol;
-        } else if (assetType === 'LC') {
-          markerIcon = {
-            path: 'M0,-8 L8,0 L0,8 L-8,0 Z',
-            scale: 1,
-            fillColor: category.color,
-            fillOpacity: 0.9,
-            strokeColor: '#ffffff',
-            strokeWeight: 2,
-          } as google.maps.Symbol;
-        } else {
-          markerIcon = {
-            path: 'M-6,-6 L6,-6 L6,6 L-6,6 Z M-4,-4 L4,-4 L4,4 L-4,4 Z',
-            scale: 1,
-            fillColor: category.color,
-            fillOpacity: 0.9,
-            strokeColor: '#ffffff',
-            strokeWeight: 2,
-          } as google.maps.Symbol;
+      const isDesktopPlacemark = placemark.id.startsWith('desktop-');
+      const isExternalPlacemark =
+        !isPhysicalPlacemark &&
+        !isRectificationPlacemark &&
+        !isDesktopPlacemark &&
+        !isJointPlacemark &&
+        !isConstructionPlacemark;
+      // Enhanced category matching with source awareness
+      const category = categories.find((cat) => {
+        // For Physical Survey placemarks - only match physical categories
+        if (isPhysicalPlacemark) {
+          return (
+            cat.id.startsWith('physical-') && cat.name === placemark.category
+          );
         }
-      }else if(isJoint){
-          markerIcon = {
-            path: 'M-6,-6 L6,-6 L6,6 L-6,6 Z',
-            scale: 1.2,
-            fillColor: category.color,
-            fillOpacity: 0.9,
-            strokeColor: '#ffffff',
-            strokeWeight: 2,
-            rotation: 45,
-          } as google.maps.Symbol;
-      }
 
-      const marker = new google.maps.Marker({
-        position: placemark.coordinates as { lat: number; lng: number },
-        map: mapInstanceRef.current!,
-        title: placemark.name,
-        icon: markerIcon,
+        // For Rectification placemarks - only match rectification categories
+        if (isRectificationPlacemark) {
+          return (
+            cat.id.startsWith('rectification-') &&
+            cat.name === placemark.category
+          );
+        }
+        if (isJointPlacemark) {
+          return cat.id.startsWith('Joint-') && cat.name === placemark.category;
+        }
+        // For Construction placemarks - only match construction categories
+        if (isConstructionPlacemark) {
+          return (
+            cat.id.startsWith('construction-') &&
+            cat.name === placemark.category
+          );
+        }
+        // For Desktop Planning placemarks - only match desktop categories
+        if (isDesktopPlacemark) {
+          return cat.name === placemark.category;
+        }
+
+        // For External files - match by full name including prefix
+        if (isExternalPlacemark) {
+          return cat.name === placemark.category;
+        }
+
+        return false;
       });
 
-      marker.addListener('click', () => {
-        onPlacemarkClick(placemark);
+      if (!category || !visibleCategories.has(category.id)) return;
 
-        if (infoWindowRef.current) {
-          const isPhysical = placemark.id.startsWith('physical-');
-          const isDesktop = placemark.id.startsWith('desktop-');
-          const isRectification = placemark.id.startsWith('rectification-');
-          const isJoint = placemark.id.startsWith('Joint-'); 
+      hasVisiblePlacemarks = true;
 
-          const isGP = placemark.id.startsWith('gp-location-') || placemark.id.startsWith('pole-location-') || placemark.id.startsWith('earthpit-location-');
-          const isBlock = placemark.id.startsWith('bsnl-block-');
-          const isExternal = !isPhysical && !isDesktop && !isRectification && !isGP && !isBlock && !isJoint;
-          
-          let infoContent = '';
+      if (placemark.type === 'point') {
+        const isGP = placemark.id.startsWith('gp-location-');
+        const isBlock = placemark.id.startsWith('bsnl-block-');
+        const isPhysicalSurvey = placemark.id.startsWith('physical-');
+        const isDesktopPlanning = placemark.id.startsWith('desktop-');
+        const isRectification = placemark.id.startsWith('rectification-');
+        const isJoint = placemark.id.startsWith('Joint-');
+        const isConstruction = placemark.id.startsWith('construction-');
+        const isExternalFile =
+          !placemark.id.startsWith('physical-') &&
+          !placemark.id.startsWith('desktop-') &&
+          !placemark.id.startsWith('rectification-') &&
+          !isGP &&
+          !isBlock &&
+          !isJoint &&
+          !isConstruction;
 
-          if (isGP) {
-            const gpInfo = placemark as ProcessedGPData;
-            
-            const baseInfo = `
+        let markerIcon: google.maps.Symbol | google.maps.Icon | undefined;
+
+        // GP and Block use location pin markers
+        if (isGP) {
+          // GP Installation marker - DARK VIOLET location pin
+          markerIcon = {
+            path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z',
+            fillColor: category.color,
+            fillOpacity: 0.9,
+            strokeColor: '#ffffff',
+            strokeWeight: 2,
+            scale: 1.5,
+            anchor: new google.maps.Point(12, 22),
+          } as google.maps.Symbol;
+        } else if (isBlock) {
+          // BSNL Block marker - BURNT ORANGE location pin
+          markerIcon = {
+            path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z',
+            fillColor: category.color,
+            fillOpacity: 0.9,
+            strokeColor: '#ffffff',
+            strokeWeight: 2,
+            scale: 1.5,
+            anchor: new google.maps.Point(12, 22),
+          } as google.maps.Symbol;
+        } else if (isPhysicalSurvey || isRectification) {
+          // Physical survey and rectification - arrows
+          markerIcon = {
+            path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+            scale: 5,
+            fillColor: category.color,
+            fillOpacity: 0.9,
+            strokeColor: '#ffffff',
+            strokeWeight: 3,
+          } as google.maps.Symbol;
+        } else if (isDesktopPlanning) {
+          const desktopPlacemark = placemark as ProcessedDesktopPlanning;
+          const assetType =
+            desktopPlacemark.assetType || desktopPlacemark.pointType || 'FPOI';
+
+          if (assetType === 'GP') {
+            markerIcon = {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 14,
+              fillColor: category.color,
+              fillOpacity: 0.9,
+              strokeColor: '#000000',
+              strokeWeight: 3,
+            } as google.maps.Symbol;
+          } else if (assetType === 'BHQ' || assetType === 'Block Router') {
+            markerIcon = {
+              path: 'M-8,-8 L8,-8 L8,8 L-8,8 Z',
+              scale: 1,
+              fillColor: category.color,
+              fillOpacity: 0.9,
+              strokeColor: '#ffffff',
+              strokeWeight: 3,
+            } as google.maps.Symbol;
+          } else if (assetType === 'FPOI') {
+            markerIcon = {
+              path: 'M0,-12 L8,8 L-8,8 Z',
+              scale: 1,
+              fillColor: category.color,
+              fillOpacity: 0.9,
+              strokeColor: '#ffffff',
+              strokeWeight: 2,
+            } as google.maps.Symbol;
+          } else if (assetType === 'SJC') {
+            markerIcon = {
+              path: 'M-6,-6 L6,-6 L6,6 L-6,6 Z',
+              scale: 1.2,
+              fillColor: category.color,
+              fillOpacity: 0.9,
+              strokeColor: '#ffffff',
+              strokeWeight: 2,
+              rotation: 45,
+            } as google.maps.Symbol;
+          } else if (assetType === 'BJC') {
+            markerIcon = {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 8,
+              fillColor: category.color,
+              fillOpacity: 0.9,
+              strokeColor: '#ffffff',
+              strokeWeight: 2,
+            } as google.maps.Symbol;
+          } else if (assetType === 'LC') {
+            markerIcon = {
+              path: 'M0,-8 L8,0 L0,8 L-8,0 Z',
+              scale: 1,
+              fillColor: category.color,
+              fillOpacity: 0.9,
+              strokeColor: '#ffffff',
+              strokeWeight: 2,
+            } as google.maps.Symbol;
+          } else {
+            markerIcon = {
+              path: 'M-6,-6 L6,-6 L6,6 L-6,6 Z M-4,-4 L4,-4 L4,4 L-4,4 Z',
+              scale: 1,
+              fillColor: category.color,
+              fillOpacity: 0.9,
+              strokeColor: '#ffffff',
+              strokeWeight: 2,
+            } as google.maps.Symbol;
+          }
+        } else if (isJoint) {
+          markerIcon = {
+            path: 'M-6,-6 L6,-6 L6,6 L-6,6 Z',
+            scale: 1.2,
+            fillColor: category.color,
+            fillOpacity: 0.9,
+            strokeColor: '#ffffff',
+            strokeWeight: 2,
+            rotation: 45,
+          } as google.maps.Symbol;
+        } else if (placemark.id.startsWith('construction-')) {
+          const constructionPlacemark = placemark as any;
+          if (constructionPlacemark.eventType === 'DEPTH') {
+            markerIcon = {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 8,
+              fillColor: category.color,
+              fillOpacity: 0.9,
+              strokeColor: '#ffffff',
+              strokeWeight: 2,
+            } as google.maps.Symbol;
+          } else if (constructionPlacemark.eventType === 'STARTPIT') {
+            markerIcon = {
+              path: 'M-6,0 L0,-8 L6,0 L0,8 Z',
+              scale: 1,
+              fillColor: category.color,
+              fillOpacity: 0.9,
+              strokeColor: '#ffffff',
+              strokeWeight: 2,
+            } as google.maps.Symbol;
+          } else if (constructionPlacemark.eventType === 'ENDPIT') {
+            markerIcon = {
+              path: 'M-6,0 L0,-8 L6,0 L0,8 Z',
+              scale: 1,
+              fillColor: category.color,
+              fillOpacity: 0.9,
+              strokeColor: '#ffffff',
+              strokeWeight: 2,
+              rotation: 180,
+            } as google.maps.Symbol;
+          } else {
+            markerIcon = {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 6,
+              fillColor: category.color,
+              fillOpacity: 0.9,
+              strokeColor: '#ffffff',
+              strokeWeight: 2,
+            } as google.maps.Symbol;
+          }
+        }
+
+        const marker = new google.maps.Marker({
+          position: placemark.coordinates as { lat: number; lng: number },
+          map: mapInstanceRef.current!,
+          title: placemark.name,
+          icon: markerIcon,
+        });
+
+        marker.addListener('click', () => {
+          onPlacemarkClick(placemark);
+
+          if (infoWindowRef.current) {
+            const isPhysical = placemark.id.startsWith('physical-');
+            const isDesktop = placemark.id.startsWith('desktop-');
+            const isRectification = placemark.id.startsWith('rectification-');
+            const isJoint = placemark.id.startsWith('Joint-');
+
+            const isGP =
+              placemark.id.startsWith('gp-location-') ||
+              placemark.id.startsWith('pole-location-') ||
+              placemark.id.startsWith('earthpit-location-');
+            const isBlock = placemark.id.startsWith('bsnl-block-');
+            const isExternal =
+              !isPhysical &&
+              !isDesktop &&
+              !isRectification &&
+              !isGP &&
+              !isBlock &&
+              !isJoint;
+
+            let infoContent = '';
+
+            if (isGP) {
+              const gpInfo = placemark as ProcessedGPData;
+
+              const baseInfo = `
               <div class="p-3" style="max-width: 400px;">
                 <h3 class="font-semibold text-gray-900 mb-2" style="font-weight: 600; margin-bottom: 8px;">
                   ${placemark.name}
@@ -619,23 +765,28 @@ useEffect(() => {
                       </div>
                     </div>
                   </div>
-                  ${gpInfo.hasImages ? `
+                  ${
+                    gpInfo.hasImages
+                      ? `
                     <div class="mt-3 pt-2 border-t border-gray-200">
                       <strong>📷 Installation Photos:</strong> ${gpInfo.images.length} images available
                     </div>
-                  ` : ''}
+                  `
+                      : ''
+                  }
                 </div>
             `;
 
-            const imageGallery = (gpInfo.hasImages && gpInfo.images) 
-              ? createImageGalleryHTML(gpInfo.images)
-              : '';
+              const imageGallery =
+                gpInfo.hasImages && gpInfo.images
+                  ? createImageGalleryHTML(gpInfo.images)
+                  : '';
 
-            infoContent = baseInfo + imageGallery + '</div>';
-          } else if (isBlock) {
-            const blockInfo = placemark as ProcessedBlockData;
-            
-            const baseInfo = `
+              infoContent = baseInfo + imageGallery + '</div>';
+            } else if (isBlock) {
+              const blockInfo = placemark as ProcessedBlockData;
+
+              const baseInfo = `
               <div class="p-3" style="max-width: 400px;">
                 <h3 class="font-semibold text-gray-900 mb-2" style="font-weight: 600; margin-bottom: 8px;">
                   ${placemark.name}
@@ -644,23 +795,26 @@ useEffect(() => {
                   <div><strong>Category:</strong> ${placemark.category}</div>
                   <div><strong>Type:</strong> BSNL Block Office</div>
                   <div><strong>Block ID:</strong> ${blockInfo.blockId}</div>
-                  <div><strong>Coordinates:</strong> ${typeof placemark.coordinates === 'object' && 'lat' in placemark.coordinates 
-                    ? `${placemark.coordinates.lat.toFixed(6)}, ${placemark.coordinates.lng.toFixed(6)}`
-                    : 'N/A'}</div>
+                  <div><strong>Coordinates:</strong> ${
+                    typeof placemark.coordinates === 'object' &&
+                    'lat' in placemark.coordinates
+                      ? `${placemark.coordinates.lat.toFixed(6)}, ${placemark.coordinates.lng.toFixed(6)}`
+                      : 'N/A'
+                  }</div>
                   ${blockInfo.hasImages ? `<div class="mt-2"><strong>Installation Photos:</strong> ${blockInfo.images.length} images available</div>` : ''}
                 </div>
             `;
 
-            const imageGallery = (blockInfo.hasImages && blockInfo.images) 
-              ? createImageGalleryHTML(blockInfo.images)
-              : '';
+              const imageGallery =
+                blockInfo.hasImages && blockInfo.images
+                  ? createImageGalleryHTML(blockInfo.images)
+                  : '';
 
-            infoContent = baseInfo + imageGallery + '</div>';
-            
-          } else if (isPhysical) {
-            const physicalInfo = placemark as ProcessedPhysicalSurvey;
-            
-            const baseInfo = `
+              infoContent = baseInfo + imageGallery + '</div>';
+            } else if (isPhysical) {
+              const physicalInfo = placemark as ProcessedPhysicalSurvey;
+
+              const baseInfo = `
               <div class="p-3" style="max-width: 400px;">
                 <h3 class="font-semibold text-gray-900 mb-1" style="font-weight: 600; margin-bottom: 4px;">
                   ${placemark.name}
@@ -670,21 +824,24 @@ useEffect(() => {
                 <p class="text-sm text-gray-600">Survey ID: ${physicalInfo.surveyId || 'N/A'}</p>
                 <p class="text-sm text-gray-600">Block ID: ${physicalInfo.blockId || 'N/A'}</p>
                 <p class="text-sm text-gray-600">Event Type: ${physicalInfo.eventType || physicalInfo.category}</p>
-                <p class="text-sm text-gray-600">Coordinates: ${typeof placemark.coordinates === 'object' && 'lat' in placemark.coordinates 
-                  ? `${placemark.coordinates.lat.toFixed(6)}, ${placemark.coordinates.lng.toFixed(6)}`
-                  : 'N/A'}</p>
+                <p class="text-sm text-gray-600">Coordinates: ${
+                  typeof placemark.coordinates === 'object' &&
+                  'lat' in placemark.coordinates
+                    ? `${placemark.coordinates.lat.toFixed(6)}, ${placemark.coordinates.lng.toFixed(6)}`
+                    : 'N/A'
+                }</p>
             `;
 
-            const imageGallery = (physicalInfo.hasImages && physicalInfo.images) 
-              ? createImageGalleryHTML(physicalInfo.images)
-              : '';
+              const imageGallery =
+                physicalInfo.hasImages && physicalInfo.images
+                  ? createImageGalleryHTML(physicalInfo.images)
+                  : '';
 
-            infoContent = baseInfo + imageGallery + '</div>';
-            
-          } else if (isRectification) {
-            const rectInfo = placemark as ProcessedRectification;
-            
-            const baseInfo = `
+              infoContent = baseInfo + imageGallery + '</div>';
+            } else if (isRectification) {
+              const rectInfo = placemark as ProcessedRectification;
+
+              const baseInfo = `
               <div class="p-3" style="max-width: 400px;">
                 <h3 class="font-semibold text-gray-900 mb-2" style="font-weight: 600; margin-bottom: 8px;">
                   ${placemark.name}
@@ -698,22 +855,27 @@ useEffect(() => {
                   <div><strong>LGD Code:</strong> ${rectInfo.lgdCode}</div>
                   ${rectInfo.accuracy ? `<div><strong>Accuracy:</strong> ${rectInfo.accuracy}m</div>` : ''}
                   ${rectInfo.length ? `<div><strong>Length:</strong> ${rectInfo.length} km</div>` : ''}
-                  <div><strong>Coordinates:</strong> ${typeof placemark.coordinates === 'object' && 'lat' in placemark.coordinates 
-                    ? `${placemark.coordinates.lat.toFixed(6)}, ${placemark.coordinates.lng.toFixed(6)}`
-                    : 'N/A'}</div>
+                  <div><strong>Coordinates:</strong> ${
+                    typeof placemark.coordinates === 'object' &&
+                    'lat' in placemark.coordinates
+                      ? `${placemark.coordinates.lat.toFixed(6)}, ${placemark.coordinates.lng.toFixed(6)}`
+                      : 'N/A'
+                  }</div>
                   ${rectInfo.createdTime ? `<div><strong>Created:</strong> ${new Date(rectInfo.createdTime).toLocaleDateString()}</div>` : ''}
                 </div>
             `;
 
-            const imageGallery = (rectInfo.hasImages && rectInfo.images && rectInfo.images.length > 0) 
-              ? createImageGalleryHTML(rectInfo.images)
-              : '';
+              const imageGallery =
+                rectInfo.hasImages &&
+                rectInfo.images &&
+                rectInfo.images.length > 0
+                  ? createImageGalleryHTML(rectInfo.images)
+                  : '';
 
-            infoContent = baseInfo + imageGallery + '</div>';
-            
-          } else if (isDesktop) {
-            const desktopInfo = placemark as ProcessedDesktopPlanning;
-            infoContent = `
+              infoContent = baseInfo + imageGallery + '</div>';
+            } else if (isDesktop) {
+              const desktopInfo = placemark as ProcessedDesktopPlanning;
+              infoContent = `
               <div class="p-3">
                 <h3 class="font-semibold text-gray-900 mb-1">${placemark.name}</h3>
                 <p class="text-sm text-gray-600">Category: ${placemark.category}</p>
@@ -725,281 +887,384 @@ useEffect(() => {
                 ${desktopInfo.networkId ? `<p class="text-sm text-gray-600">Network ID: ${desktopInfo.networkId}</p>` : ''}
               </div>
             `;
-          } 
-          else if (isJoint) {
-            const jointInfo = placemark as ProcessedJoints;
-            setSelectedJoint(jointInfo);
-          
-          }
-          else if (isExternal) {
-            const externalInfo = placemark as ProcessedPlacemark;
-            const sourceType = placemark.category.startsWith('External Survey:') ? 'Survey File' : 
-                             placemark.category.startsWith('External Desktop:') ? 'Desktop File' : 'External File';
-            
-            infoContent = `
+            } else if (isJoint) {
+              const jointInfo = placemark as ProcessedJoints;
+              setSelectedJoint(jointInfo);
+            } else if (placemark.id.startsWith('construction-')) {
+              const constructionInfo = placemark as ProcessedConstruction;
+              const baseInfo = `
+              <div class="p-3" style="max-width: 400px;">
+                <h3 class="font-semibold text-gray-900 mb-2" style="font-weight: 600; margin-bottom: 8px;">
+                  ${placemark.name}
+                </h3>
+                <div class="text-sm text-gray-700 space-y-1" style="font-size: 14px;">
+                  <div><strong>Category:</strong> ${placemark.category}</div>
+                  <div><strong>Type:</strong> Construction (API)</div>
+                  <div><strong>Link Name:</strong> ${constructionInfo.linkName || 'N/A'}</div>
+                  <div><strong>Route Belongs To:</strong> ${constructionInfo.routeBelongsTo || 'N/A'}</div>
+                  <div><strong>Road Type:</strong> ${constructionInfo.roadType || 'N/A'}</div>
+                  <div><strong>Cable Laid On:</strong> ${constructionInfo.cableLaidOn || 'N/A'}</div>
+                  <div><strong>Soil Type:</strong> ${constructionInfo.soilType || 'N/A'}</div>
+                  <div><strong>Depth (Meters):</strong> ${constructionInfo.depthMeters || 'N/A'}</div>
+                  <div><strong>Road Width:</strong> ${constructionInfo.roadWidth || 'N/A'}</div>
+                  <div><strong>Distance:</strong> ${constructionInfo.distance || 'N/A'}</div>
+                  <div><strong>Road Margin:</strong> ${constructionInfo.roadMargin || 'N/A'}</div>
+                  <div><strong>Area Type:</strong> ${constructionInfo.areaType || 'N/A'}</div>
+                  <div><strong>Coordinates:</strong> ${
+                    typeof placemark.coordinates === 'object' &&
+                    'lat' in placemark.coordinates
+                      ? `${placemark.coordinates.lat.toFixed(6)}, ${placemark.coordinates.lng.toFixed(6)}`
+                      : 'N/A'
+                  }</div>
+                </div>
+            `;
+
+              const imageGallery =
+                constructionInfo.hasImages &&
+                constructionInfo.images &&
+                constructionInfo.images.length > 0
+                  ? createImageGalleryHTML(constructionInfo.images)
+                  : '';
+
+              infoContent = baseInfo + imageGallery + '</div>';
+            } else if (isExternal) {
+              const externalInfo = placemark as ProcessedPlacemark;
+              const sourceType = placemark.category.startsWith(
+                'External Survey:',
+              )
+                ? 'Survey File'
+                : placemark.category.startsWith('External Desktop:')
+                  ? 'Desktop File'
+                  : 'External File';
+
+              infoContent = `
               <div class="p-3">
                 <h3 class="font-semibold text-gray-900 mb-1">${placemark.name}</h3>
                 <p class="text-sm text-gray-600">Category: ${placemark.category.replace(/^External (Survey|Desktop): /, '')}</p>
                 <p class="text-sm text-gray-600">Type: ${sourceType}</p>
                 <p class="text-sm text-gray-600">Point Type: ${externalInfo.pointType || 'N/A'}</p>
-                <p class="text-sm text-gray-600">Coordinates: ${typeof placemark.coordinates === 'object' && 'lat' in placemark.coordinates 
-                  ? `${placemark.coordinates.lat.toFixed(6)}, ${placemark.coordinates.lng.toFixed(6)}`
-                  : 'N/A'}</p>
+                <p class="text-sm text-gray-600">Coordinates: ${
+                  typeof placemark.coordinates === 'object' &&
+                  'lat' in placemark.coordinates
+                    ? `${placemark.coordinates.lat.toFixed(6)}, ${placemark.coordinates.lng.toFixed(6)}`
+                    : 'N/A'
+                }</p>
               </div>
             `;
+            }
+
+            infoWindowRef.current.setContent(infoContent);
+            infoWindowRef.current.open(mapInstanceRef.current!, marker);
           }
+        });
 
-          infoWindowRef.current.setContent(infoContent);
-          infoWindowRef.current.open(mapInstanceRef.current!, marker);
+        // Keep both lists: the array and the id→marker map (for fast lookup by unique id)
+        markersRef.current.push(marker);
+        markersByIdRef.current.set(placemark.id, marker);
+
+        bounds.extend(placemark.coordinates as unknown as google.maps.LatLng);
+
+        // NEW: Group construction markers by survey_id for polyline
+        if (placemark.id.startsWith('construction-')) {
+          const constructionPlacemark = placemark as ProcessedConstruction;
+          const surveyId = constructionPlacemark.surveyId;
+
+          if (surveyId) {
+            if (!constructionPolylinesBySurvey[surveyId]) {
+              constructionPolylinesBySurvey[surveyId] = [];
+            }
+            constructionPolylinesBySurvey[surveyId].push(
+              placemark.coordinates as { lat: number; lng: number },
+            );
+          }
         }
-      });
+      } else if (
+        placemark.type === 'polyline' &&
+        'coordinates' in placemark &&
+        Array.isArray(placemark.coordinates)
+      ) {
+        const isPhysicalSurvey = placemark.id.startsWith('physical-');
+        const isDesktopPlanning = placemark.id.startsWith('desktop-');
+        const isRectification = placemark.id.startsWith('rectification-');
 
-      // Keep both lists: the array and the id→marker map (for fast lookup by unique id)
-      markersRef.current.push(marker);
-      markersByIdRef.current.set(placemark.id, marker);
+        let strokeWeight = 3;
+        let strokeOpacity = 0.8;
+        let strokeColor = category?.color || '#3b82f6';
+        let useCustomIcons = false;
 
-      bounds.extend(placemark.coordinates as unknown as google.maps.LatLng);
-    } else if (placemark.type === 'polyline' && 'coordinates' in placemark && Array.isArray(placemark.coordinates)) {
-      const isPhysicalSurvey = placemark.id.startsWith('physical-');
-      const isDesktopPlanning = placemark.id.startsWith('desktop-');
-      const isRectification = placemark.id.startsWith('rectification-');
-
-      let strokeWeight = 3;
-      let strokeOpacity = 0.8;
-      let strokeColor = category?.color || '#3b82f6';
-      let useCustomIcons = false;
-
-      if (isPhysicalSurvey) {
-        const physicalInfo = placemark as ProcessedPhysicalSurvey;
-        if (physicalInfo.eventType === 'SURVEY_ROUTE') {
-          strokeWeight = 5;
-          strokeOpacity = 0.9;
-          strokeColor = '#FFFF2E'; // Yellow for physical survey route
-          useCustomIcons = true;
-        } 
-      } else if (isRectification) {
-        const rectInfo = placemark as ProcessedPhysicalSurvey;
-        if (rectInfo.eventType === 'SURVEY_ROUTE') {
-          strokeWeight = 5;
-          strokeOpacity = 0.9;
-          strokeColor = '#8B4513'; // Dark brown (SaddleBrown) for rectification survey route
-          useCustomIcons = true;
-        } else {
-          // Other rectification polylines (Patch Replacement, etc.)
-          strokeWeight = 6;
-          strokeOpacity = 0.95;
+        if (isPhysicalSurvey) {
+          const physicalInfo = placemark as ProcessedPhysicalSurvey;
+          if (physicalInfo.eventType === 'SURVEY_ROUTE') {
+            strokeWeight = 5;
+            strokeOpacity = 0.9;
+            strokeColor = '#FFFF2E'; // Yellow for physical survey route
+            useCustomIcons = true;
+          }
+        } else if (isRectification) {
+          const rectInfo = placemark as ProcessedPhysicalSurvey;
+          if (rectInfo.eventType === 'SURVEY_ROUTE') {
+            strokeWeight = 5;
+            strokeOpacity = 0.9;
+            strokeColor = '#8B4513'; // Dark brown (SaddleBrown) for rectification survey route
+            useCustomIcons = true;
+          } else {
+            // Other rectification polylines (Patch Replacement, etc.)
+            strokeWeight = 6;
+            strokeOpacity = 0.95;
+          }
+        } else if (isDesktopPlanning) {
+          const desktopInfo = placemark as ProcessedDesktopPlanning;
+          if ((desktopInfo as any).connectionType === 'incremental') {
+            strokeWeight = 4;
+            strokeOpacity = 1.0;
+          } else {
+            strokeWeight = 3;
+            strokeOpacity = 0.7;
+          }
         }
-      } else if (isDesktopPlanning) {
-        const desktopInfo = placemark as ProcessedDesktopPlanning;
-        if ((desktopInfo as any).connectionType === 'incremental') {
-          strokeWeight = 4;
-          strokeOpacity = 1.0;
-        } else {
-          strokeWeight = 3;
-          strokeOpacity = 0.7;
-        }
-      }
 
-      const polyline = new google.maps.Polyline({
-        path: placemark.coordinates as google.maps.LatLngLiteral[],
-        geodesic: true,
-        strokeColor: strokeColor,
-        strokeOpacity: strokeOpacity,
-        strokeWeight: strokeWeight,
-        ...(useCustomIcons ? {
-          icons: [{
-            icon: {
-              path: 'M 0,-1 0,1',
-              strokeOpacity: 1,
-              scale: 1
-            },
-            offset: '22',
-            repeat: '8px'
-          }]
-        } : {}),
-        map: mapInstanceRef.current!,
-      });
-
-      // Create initial black center line for Patch Replacement (will be removed if actual route loads)
-      let initialCenterLine: google.maps.Polyline | null = null;
-      if (isRectification && placemark.category === 'Rectification: Patch Replacement') {
-        initialCenterLine = new google.maps.Polyline({
+        const polyline = new google.maps.Polyline({
           path: placemark.coordinates as google.maps.LatLngLiteral[],
           geodesic: true,
-          strokeColor: '#000000',
-          strokeOpacity: 1,
-          strokeWeight: 1.5,
-          map: mapInstanceRef.current!,
-          zIndex: 100,
-        });
-        
-        polylinesRef.current.push(initialCenterLine);
-      }
-
-      // NEW: Fetch and render actual route for rectification polylines
-      if (isRectification && Array.isArray(placemark.coordinates) && placemark.coordinates.length === 2) {
-        const coords = placemark.coordinates as google.maps.LatLngLiteral[];
-        const startCoord = coords[0];
-        const endCoord = coords[1];
-        
-        // Fetch actual route from API
-        fetchActualRoute(startCoord.lat, startCoord.lng, endCoord.lat, endCoord.lng)
-          .then(routeData => {
-            if (routeData && routeData.coordinates.length > 2) {
-              // Hide the straight line polyline
-              polyline.setMap(null);
-              
-              // IMPORTANT: Remove the initial straight black center line for Patch Replacement
-              if (initialCenterLine) {
-                initialCenterLine.setMap(null);
-                const centerLineIndex = polylinesRef.current.indexOf(initialCenterLine);
-                if (centerLineIndex > -1) {
-                  polylinesRef.current.splice(centerLineIndex, 1);
-                }
-              }
-              
-              // Create new polyline with actual route
-              const actualPolyline = new google.maps.Polyline({
-                path: routeData.coordinates,
-                geodesic: false,
-                strokeColor: strokeColor, // Use the determined stroke color
-                strokeOpacity: strokeOpacity,
-                strokeWeight: strokeWeight,
-                ...(useCustomIcons ? {
-                  icons: [{
+          strokeColor: strokeColor,
+          strokeOpacity: strokeOpacity,
+          strokeWeight: strokeWeight,
+          ...(useCustomIcons
+            ? {
+                icons: [
+                  {
                     icon: {
                       path: 'M 0,-1 0,1',
                       strokeOpacity: 1,
-                      scale: 1
+                      scale: 1,
                     },
                     offset: '22',
-                    repeat: '8px'
-                  }]
-                } : {}),
-                map: mapInstanceRef.current!,
-              });
-              
-              // Replace in ref array
-              const index = polylinesRef.current.indexOf(polyline);
-              if (index > -1) {
-                polylinesRef.current[index] = actualPolyline;
-              } else {
-                polylinesRef.current.push(actualPolyline);
+                    repeat: '8px',
+                  },
+                ],
               }
-              
-              // Add click listener to the new polyline (reuse same handler)
-              actualPolyline.addListener('click', (event: google.maps.MapMouseEvent) => {
-                google.maps.event.trigger(polyline, 'click', event);
-              });
-              
-              // If this is Patch Replacement, NOW add black center line to actual route
-              if (placemark.category === 'Rectification: Patch Replacement') {
-                const actualCenterLine = new google.maps.Polyline({
+            : {}),
+          map: mapInstanceRef.current!,
+        });
+
+        // Create initial black center line for Patch Replacement (will be removed if actual route loads)
+        let initialCenterLine: google.maps.Polyline | null = null;
+        if (
+          isRectification &&
+          placemark.category === 'Rectification: Patch Replacement'
+        ) {
+          initialCenterLine = new google.maps.Polyline({
+            path: placemark.coordinates as google.maps.LatLngLiteral[],
+            geodesic: true,
+            strokeColor: '#000000',
+            strokeOpacity: 1,
+            strokeWeight: 1.5,
+            map: mapInstanceRef.current!,
+            zIndex: 100,
+          });
+
+          polylinesRef.current.push(initialCenterLine);
+        }
+
+        // NEW: Fetch and render actual route for rectification polylines
+        if (
+          isRectification &&
+          Array.isArray(placemark.coordinates) &&
+          placemark.coordinates.length === 2
+        ) {
+          const coords = placemark.coordinates as google.maps.LatLngLiteral[];
+          const startCoord = coords[0];
+          const endCoord = coords[1];
+
+          // Fetch actual route from API
+          fetchActualRoute(
+            startCoord.lat,
+            startCoord.lng,
+            endCoord.lat,
+            endCoord.lng,
+          )
+            .then((routeData) => {
+              if (routeData && routeData.coordinates.length > 2) {
+                // Hide the straight line polyline
+                polyline.setMap(null);
+
+                // IMPORTANT: Remove the initial straight black center line for Patch Replacement
+                if (initialCenterLine) {
+                  initialCenterLine.setMap(null);
+                  const centerLineIndex =
+                    polylinesRef.current.indexOf(initialCenterLine);
+                  if (centerLineIndex > -1) {
+                    polylinesRef.current.splice(centerLineIndex, 1);
+                  }
+                }
+
+                // Create new polyline with actual route
+                const actualPolyline = new google.maps.Polyline({
                   path: routeData.coordinates,
                   geodesic: false,
-                  strokeColor: '#000000',
-                  strokeOpacity: 1,
-                  strokeWeight: 1.5,
+                  strokeColor: strokeColor, // Use the determined stroke color
+                  strokeOpacity: strokeOpacity,
+                  strokeWeight: strokeWeight,
+                  ...(useCustomIcons
+                    ? {
+                        icons: [
+                          {
+                            icon: {
+                              path: 'M 0,-1 0,1',
+                              strokeOpacity: 1,
+                              scale: 1,
+                            },
+                            offset: '22',
+                            repeat: '8px',
+                          },
+                        ],
+                      }
+                    : {}),
                   map: mapInstanceRef.current!,
-                  zIndex: 100,
                 });
-                
-                polylinesRef.current.push(actualCenterLine);
-              }
-              
-              // NEW: Update start/end markers to match actual route coordinates
-              const actualStartCoord = routeData.coordinates[0];
-              const actualEndCoord = routeData.coordinates[routeData.coordinates.length - 1];
-              
-              // Find existing start/end markers
-              const startMarkerId = `${placemark.id}-start`;
-              const endMarkerId = `${placemark.id}-end`;
-              
-              const existingStartMarker = markersByIdRef.current.get(startMarkerId);
-              const existingEndMarker = markersByIdRef.current.get(endMarkerId);
-              
-              // Update start marker position
-              if (existingStartMarker) {
-                existingStartMarker.setPosition(actualStartCoord);
-              }
-              
-              // Update end marker position
-              if (existingEndMarker) {
-                existingEndMarker.setPosition(actualEndCoord);
-              }
-              
-            } else {
-              console.warn(`Using straight line for ${placemark.name} - route fetch failed or too short`);
-            }
-          })
-          .catch(error => {
-            console.error(`Error rendering actual route for ${placemark.name}:`, error);
-          });
-      }
-      
-      polyline.addListener('click', (event: google.maps.MapMouseEvent) => {
-        onPlacemarkClick(placemark);
 
-        if (infoWindowRef.current && event.latLng) {
-          let infoContent = '';
-          const isRectificationPolyline = placemark.id.startsWith('rectification-');
+                // Replace in ref array
+                const index = polylinesRef.current.indexOf(polyline);
+                if (index > -1) {
+                  polylinesRef.current[index] = actualPolyline;
+                } else {
+                  polylinesRef.current.push(actualPolyline);
+                }
 
-          if (isPhysicalSurvey) {
-            const physicalInfo = placemark as ProcessedPhysicalSurvey;
-            
-            // Parse route details and feasibility
-            let routeDetails: any = {};
-            let routeFeasibility: any = {};
-            
-            try {
-              if (physicalInfo.routeDetails) {
-                routeDetails = typeof physicalInfo.routeDetails === 'string' 
-                  ? JSON.parse(physicalInfo.routeDetails) 
-                  : physicalInfo.routeDetails;
+                // Add click listener to the new polyline (reuse same handler)
+                actualPolyline.addListener(
+                  'click',
+                  (event: google.maps.MapMouseEvent) => {
+                    google.maps.event.trigger(polyline, 'click', event);
+                  },
+                );
+
+                // If this is Patch Replacement, NOW add black center line to actual route
+                if (placemark.category === 'Rectification: Patch Replacement') {
+                  const actualCenterLine = new google.maps.Polyline({
+                    path: routeData.coordinates,
+                    geodesic: false,
+                    strokeColor: '#000000',
+                    strokeOpacity: 1,
+                    strokeWeight: 1.5,
+                    map: mapInstanceRef.current!,
+                    zIndex: 100,
+                  });
+
+                  polylinesRef.current.push(actualCenterLine);
+                }
+
+                // NEW: Update start/end markers to match actual route coordinates
+                const actualStartCoord = routeData.coordinates[0];
+                const actualEndCoord =
+                  routeData.coordinates[routeData.coordinates.length - 1];
+
+                // Find existing start/end markers
+                const startMarkerId = `${placemark.id}-start`;
+                const endMarkerId = `${placemark.id}-end`;
+
+                const existingStartMarker =
+                  markersByIdRef.current.get(startMarkerId);
+                const existingEndMarker =
+                  markersByIdRef.current.get(endMarkerId);
+
+                // Update start marker position
+                if (existingStartMarker) {
+                  existingStartMarker.setPosition(actualStartCoord);
+                }
+
+                // Update end marker position
+                if (existingEndMarker) {
+                  existingEndMarker.setPosition(actualEndCoord);
+                }
+              } else {
+                console.warn(
+                  `Using straight line for ${placemark.name} - route fetch failed or too short`,
+                );
               }
-              if (physicalInfo.routeFeasibility) {
-                routeFeasibility = typeof physicalInfo.routeFeasibility === 'string' 
-                  ? JSON.parse(physicalInfo.routeFeasibility) 
-                  : physicalInfo.routeFeasibility;
+            })
+            .catch((error) => {
+              console.error(
+                `Error rendering actual route for ${placemark.name}:`,
+                error,
+              );
+            });
+        }
+
+        polyline.addListener('click', (event: google.maps.MapMouseEvent) => {
+          onPlacemarkClick(placemark);
+
+          if (infoWindowRef.current && event.latLng) {
+            let infoContent = '';
+            const isRectificationPolyline =
+              placemark.id.startsWith('rectification-');
+
+            if (isPhysicalSurvey) {
+              const physicalInfo = placemark as ProcessedPhysicalSurvey;
+
+              // Parse route details and feasibility
+              let routeDetails: any = {};
+              let routeFeasibility: any = {};
+
+              try {
+                if (physicalInfo.routeDetails) {
+                  routeDetails =
+                    typeof physicalInfo.routeDetails === 'string'
+                      ? JSON.parse(physicalInfo.routeDetails)
+                      : physicalInfo.routeDetails;
+                }
+                if (physicalInfo.routeFeasibility) {
+                  routeFeasibility =
+                    typeof physicalInfo.routeFeasibility === 'string'
+                      ? JSON.parse(physicalInfo.routeFeasibility)
+                      : physicalInfo.routeFeasibility;
+                }
+              } catch (error) {
+                console.warn('Error parsing route details:', error);
               }
-            } catch (error) {
-              console.warn('Error parsing route details:', error);
-            }
 
-            // Calculate route statistics
-            const coordinates = placemark.coordinates as google.maps.LatLngLiteral[];
-            let totalDistance = 0;
-            if (coordinates && coordinates.length > 1) {
-              for (let i = 1; i < coordinates.length; i++) {
-                const prev = coordinates[i-1];
-                const curr = coordinates[i];
-                const R = 6371e3;
-                const φ1 = (prev.lat * Math.PI) / 180;
-                const φ2 = (curr.lat * Math.PI) / 180;
-                const Δφ = ((curr.lat - prev.lat) * Math.PI) / 180;
-                const Δλ = ((curr.lng - prev.lng) * Math.PI) / 180;
-                const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-                         Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                totalDistance += R * c;
+              // Calculate route statistics
+              const coordinates =
+                placemark.coordinates as google.maps.LatLngLiteral[];
+              let totalDistance = 0;
+              if (coordinates && coordinates.length > 1) {
+                for (let i = 1; i < coordinates.length; i++) {
+                  const prev = coordinates[i - 1];
+                  const curr = coordinates[i];
+                  const R = 6371e3;
+                  const φ1 = (prev.lat * Math.PI) / 180;
+                  const φ2 = (curr.lat * Math.PI) / 180;
+                  const Δφ = ((curr.lat - prev.lat) * Math.PI) / 180;
+                  const Δλ = ((curr.lng - prev.lng) * Math.PI) / 180;
+                  const a =
+                    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                    Math.cos(φ1) *
+                      Math.cos(φ2) *
+                      Math.sin(Δλ / 2) *
+                      Math.sin(Δλ / 2);
+                  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                  totalDistance += R * c;
+                }
               }
-            }
 
-            const routeName = physicalInfo.startLgdName && physicalInfo.endLgdName
-              ? `${physicalInfo.startLgdName} to ${physicalInfo.endLgdName}`
-              : `Survey ${physicalInfo.surveyId}`;
-            
-            const routeType = routeDetails.routeType || 'Unknown';
-            const routeBelongsTo = routeDetails.routeBelongsTo || 'Unknown';
-            const roadWidth = routeDetails.roadWidth || 'N/A';
-            const centerToMargin = routeDetails.centerToMargin || 'N/A';
-            const soilType = routeDetails.soilType || 'N/A';
-            const routeFeasible = routeFeasibility.routeFeasible ? 'Yes' : 'No';
-            
-            const distanceKm = (totalDistance / 1000).toFixed(2);
-            const routePoints = coordinates.length;
+              const routeName =
+                physicalInfo.startLgdName && physicalInfo.endLgdName
+                  ? `${physicalInfo.startLgdName} to ${physicalInfo.endLgdName}`
+                  : `Survey ${physicalInfo.surveyId}`;
 
-            infoContent = `
+              const routeType = routeDetails.routeType || 'Unknown';
+              const routeBelongsTo = routeDetails.routeBelongsTo || 'Unknown';
+              const roadWidth = routeDetails.roadWidth || 'N/A';
+              const centerToMargin = routeDetails.centerToMargin || 'N/A';
+              const soilType = routeDetails.soilType || 'N/A';
+              const routeFeasible = routeFeasibility.routeFeasible
+                ? 'Yes'
+                : 'No';
+
+              const distanceKm = (totalDistance / 1000).toFixed(2);
+              const routePoints = coordinates.length;
+
+              infoContent = `
               <div class="p-4" style="max-width: 450px; font-family: system-ui, -apple-system, sans-serif;">
                 <div style="background: linear-gradient(135deg, #FBBF24 0%, #F59E0B 100%); padding: 12px; border-radius: 8px; margin-bottom: 16px;">
                   <h3 style="color: white; font-size: 16px; font-weight: 600; margin: 0; margin-bottom: 4px;">${routeName}</h3>
@@ -1039,15 +1304,21 @@ useEffect(() => {
                     </div>
                   </div>
                 </div>
-                ${physicalInfo.createdTime ? `
+                ${
+                  physicalInfo.createdTime
+                    ? `
                 <div style="margin-bottom: 12px;">
                   <h4 style="font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 14px;">Survey Time</h4>
                   <div style="font-size: 12px; color: #6B7280;">
                     ${new Date(physicalInfo.createdTime).toLocaleString()}
                   </div>
                 </div>
-                ` : ''}
-                ${coordinates && coordinates.length > 0 ? `
+                `
+                    : ''
+                }
+                ${
+                  coordinates && coordinates.length > 0
+                    ? `
                 <div style="margin-bottom: 12px;">
                   <h4 style="font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 14px;">Geographic Bounds</h4>
                   <div style="font-size: 12px; line-height: 1.4;">
@@ -1055,75 +1326,88 @@ useEffect(() => {
                     <div style="margin-bottom: 3px;"><span style="font-weight: 500; color: #6B7280;">End:</span> ${coordinates[coordinates.length - 1].lat.toFixed(6)}, ${coordinates[coordinates.length - 1].lng.toFixed(6)}</div>
                   </div>
                 </div>
-                ` : ''}
+                `
+                    : ''
+                }
               </div>
             `;
-            
-          } else if (isRectificationPolyline) {
-            const rectInfo = placemark as ProcessedRectification;
-            const coordinates = placemark.coordinates as google.maps.LatLngLiteral[];
-            const startCoord = coordinates[0];
-            const endCoord = coordinates[coordinates.length - 1];
-            
-            // Check if this is a SURVEY_ROUTE
-            const isSurveyRoute = (placemark as ProcessedPhysicalSurvey).eventType === 'SURVEY_ROUTE';
+            } else if (isRectificationPolyline) {
+              const rectInfo = placemark as ProcessedRectification;
+              const coordinates =
+                placemark.coordinates as google.maps.LatLngLiteral[];
+              const startCoord = coordinates[0];
+              const endCoord = coordinates[coordinates.length - 1];
 
-            if (isSurveyRoute) {
-              // Enhanced info window for Rectification Survey Route
-              const physicalInfo = placemark as ProcessedPhysicalSurvey;
-              
-              // Parse route details and feasibility
-              let routeDetails: any = {};
-              let routeFeasibility: any = {};
-              
-              try {
-                if (physicalInfo.routeDetails) {
-                  routeDetails = typeof physicalInfo.routeDetails === 'string' 
-                    ? JSON.parse(physicalInfo.routeDetails) 
-                    : physicalInfo.routeDetails;
+              // Check if this is a SURVEY_ROUTE
+              const isSurveyRoute =
+                (placemark as ProcessedPhysicalSurvey).eventType ===
+                'SURVEY_ROUTE';
+
+              if (isSurveyRoute) {
+                // Enhanced info window for Rectification Survey Route
+                const physicalInfo = placemark as ProcessedPhysicalSurvey;
+
+                // Parse route details and feasibility
+                let routeDetails: any = {};
+                let routeFeasibility: any = {};
+
+                try {
+                  if (physicalInfo.routeDetails) {
+                    routeDetails =
+                      typeof physicalInfo.routeDetails === 'string'
+                        ? JSON.parse(physicalInfo.routeDetails)
+                        : physicalInfo.routeDetails;
+                  }
+                  if (physicalInfo.routeFeasibility) {
+                    routeFeasibility =
+                      typeof physicalInfo.routeFeasibility === 'string'
+                        ? JSON.parse(physicalInfo.routeFeasibility)
+                        : physicalInfo.routeFeasibility;
+                  }
+                } catch (error) {
+                  console.warn('Error parsing route details:', error);
                 }
-                if (physicalInfo.routeFeasibility) {
-                  routeFeasibility = typeof physicalInfo.routeFeasibility === 'string' 
-                    ? JSON.parse(physicalInfo.routeFeasibility) 
-                    : physicalInfo.routeFeasibility;
+
+                // Calculate route statistics
+                let totalDistance = 0;
+                if (coordinates && coordinates.length > 1) {
+                  for (let i = 1; i < coordinates.length; i++) {
+                    const prev = coordinates[i - 1];
+                    const curr = coordinates[i];
+                    const R = 6371e3;
+                    const φ1 = (prev.lat * Math.PI) / 180;
+                    const φ2 = (curr.lat * Math.PI) / 180;
+                    const Δφ = ((curr.lat - prev.lat) * Math.PI) / 180;
+                    const Δλ = ((curr.lng - prev.lng) * Math.PI) / 180;
+                    const a =
+                      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                      Math.cos(φ1) *
+                        Math.cos(φ2) *
+                        Math.sin(Δλ / 2) *
+                        Math.sin(Δλ / 2);
+                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                    totalDistance += R * c;
+                  }
                 }
-              } catch (error) {
-                console.warn('Error parsing route details:', error);
-              }
 
-              // Calculate route statistics
-              let totalDistance = 0;
-              if (coordinates && coordinates.length > 1) {
-                for (let i = 1; i < coordinates.length; i++) {
-                  const prev = coordinates[i-1];
-                  const curr = coordinates[i];
-                  const R = 6371e3;
-                  const φ1 = (prev.lat * Math.PI) / 180;
-                  const φ2 = (curr.lat * Math.PI) / 180;
-                  const Δφ = ((curr.lat - prev.lat) * Math.PI) / 180;
-                  const Δλ = ((curr.lng - prev.lng) * Math.PI) / 180;
-                  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-                           Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-                  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                  totalDistance += R * c;
-                }
-              }
+                const routeName =
+                  physicalInfo.startLgdName && physicalInfo.endLgdName
+                    ? `${physicalInfo.startLgdName} to ${physicalInfo.endLgdName}`
+                    : `Survey ${physicalInfo.surveyId}`;
 
-              const routeName = physicalInfo.startLgdName && physicalInfo.endLgdName
-                ? `${physicalInfo.startLgdName} to ${physicalInfo.endLgdName}`
-                : `Survey ${physicalInfo.surveyId}`;
-              
-              const routeType = routeDetails.routeType || 'Unknown';
-              const routeBelongsTo = routeDetails.routeBelongsTo || 'Unknown';
-              const roadWidth = routeDetails.roadWidth || 'N/A';
-              const centerToMargin = routeDetails.centerToMargin || 'N/A';
-              const soilType = routeDetails.soilType || 'N/A';
-              const routeFeasible = routeFeasibility.routeFeasible ? 'Yes' : 'No';
-              
-              const distanceKm = (totalDistance / 1000).toFixed(2);
-              const routePoints = coordinates.length;
+                const routeType = routeDetails.routeType || 'Unknown';
+                const routeBelongsTo = routeDetails.routeBelongsTo || 'Unknown';
+                const roadWidth = routeDetails.roadWidth || 'N/A';
+                const centerToMargin = routeDetails.centerToMargin || 'N/A';
+                const soilType = routeDetails.soilType || 'N/A';
+                const routeFeasible = routeFeasibility.routeFeasible
+                  ? 'Yes'
+                  : 'No';
 
-              infoContent = `
+                const distanceKm = (totalDistance / 1000).toFixed(2);
+                const routePoints = coordinates.length;
+
+                infoContent = `
                 <div class="p-4" style="max-width: 450px; font-family: system-ui, -apple-system, sans-serif;">
                   <div style="background: linear-gradient(135deg, #8B4513 0%, #654321 100%); padding: 12px; border-radius: 8px; margin-bottom: 16px;">
                     <h3 style="color: white; font-size: 16px; font-weight: 600; margin: 0; margin-bottom: 4px;">${routeName}</h3>
@@ -1163,15 +1447,21 @@ useEffect(() => {
                       </div>
                     </div>
                   </div>
-                  ${physicalInfo.createdTime ? `
+                  ${
+                    physicalInfo.createdTime
+                      ? `
                   <div style="margin-bottom: 12px;">
                     <h4 style="font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 14px;">Survey Time</h4>
                     <div style="font-size: 12px; color: #6B7280;">
                       ${new Date(physicalInfo.createdTime).toLocaleString()}
                     </div>
                   </div>
-                  ` : ''}
-                  ${coordinates && coordinates.length > 0 ? `
+                  `
+                      : ''
+                  }
+                  ${
+                    coordinates && coordinates.length > 0
+                      ? `
                   <div style="margin-bottom: 12px;">
                     <h4 style="font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 14px;">Geographic Bounds</h4>
                     <div style="font-size: 12px; line-height: 1.4;">
@@ -1179,12 +1469,14 @@ useEffect(() => {
                       <div style="margin-bottom: 3px;"><span style="font-weight: 500; color: #6B7280;">End:</span> ${coordinates[coordinates.length - 1].lat.toFixed(6)}, ${coordinates[coordinates.length - 1].lng.toFixed(6)}</div>
                     </div>
                   </div>
-                  ` : ''}
+                  `
+                      : ''
+                  }
                 </div>
               `;
-            } else {
-              // Original rectification polyline info (Patch Replacement, etc.)
-              const baseInfo = `
+              } else {
+                // Original rectification polyline info (Patch Replacement, etc.)
+                const baseInfo = `
                 <div class="p-3" style="max-width: 400px;">
                   <h3 class="font-semibold text-gray-900 mb-2" style="font-weight: 600; margin-bottom: 8px;">
                     ${placemark.name}
@@ -1204,16 +1496,18 @@ useEffect(() => {
                   </div>
               `;
 
-              const imageGallery = (rectInfo.hasImages && rectInfo.images && rectInfo.images.length > 0) 
-                ? createImageGalleryHTML(rectInfo.images)
-                : '';
+                const imageGallery =
+                  rectInfo.hasImages &&
+                  rectInfo.images &&
+                  rectInfo.images.length > 0
+                    ? createImageGalleryHTML(rectInfo.images)
+                    : '';
 
-              infoContent = baseInfo + imageGallery + '</div>';
-            }
-            
-          } else if (isDesktopPlanning) {
-            const desktopInfo = placemark as ProcessedDesktopPlanning;
-            infoContent = `
+                infoContent = baseInfo + imageGallery + '</div>';
+              }
+            } else if (isDesktopPlanning) {
+              const desktopInfo = placemark as ProcessedDesktopPlanning;
+              infoContent = `
               <div class="p-3">
                 <h3 class="font-semibold text-gray-900 mb-1">${placemark.name}</h3>
                 <p class="text-sm text-gray-600">Category: ${placemark.category}</p>
@@ -1224,8 +1518,8 @@ useEffect(() => {
                 ${desktopInfo.networkId ? `<p class="text-sm text-gray-600">Network ID: ${desktopInfo.networkId}</p>` : ''}
               </div>
             `;
-          } else {
-            infoContent = `
+            } else {
+              infoContent = `
               <div class="p-3">
                 <h3 class="font-semibold text-gray-900 mb-1">${placemark.name}</h3>
                 <p class="text-sm text-gray-600">Category: ${placemark.category.replace(/^External (Survey|Desktop): /, '')}</p>
@@ -1233,87 +1527,93 @@ useEffect(() => {
                 ${'distance' in placemark && (placemark as any).distance ? `<p class="text-sm text-gray-600">Distance: ${(placemark as any).distance}</p>` : ''}
               </div>
             `;
+            }
+
+            infoWindowRef.current.setContent(infoContent);
+            infoWindowRef.current.setPosition(event.latLng);
+            infoWindowRef.current.open(mapInstanceRef.current!);
           }
+        });
 
-          infoWindowRef.current.setContent(infoContent);
-          infoWindowRef.current.setPosition(event.latLng);
-          infoWindowRef.current.open(mapInstanceRef.current!);
-        }
-      });
+        polylinesRef.current.push(polyline);
 
-      polylinesRef.current.push(polyline);
-      
-      // Add start and end point markers for rectification polylines
-      if (isRectification && Array.isArray(placemark.coordinates) && placemark.coordinates.length >= 2) {
-        const rectInfo = placemark as ProcessedRectification;
-        const coords = placemark.coordinates as google.maps.LatLngLiteral[];
-        const startCoord = coords[0];
-        const endCoord = coords[coords.length - 1];
-        
-        const findMatchingPoint = (coord: google.maps.LatLngLiteral) => {
-          return placemarks.find(p => {
-            if (p.type !== 'point') return false;
-            if (!p.id.startsWith('rectification-')) return false;
-            
-            const pCoord = p.coordinates as { lat: number; lng: number };
-            return Math.abs(pCoord.lat - coord.lat) < 0.00001 && 
-                   Math.abs(pCoord.lng - coord.lng) < 0.00001;
+        // Add start and end point markers for rectification polylines
+        if (
+          isRectification &&
+          Array.isArray(placemark.coordinates) &&
+          placemark.coordinates.length >= 2
+        ) {
+          const rectInfo = placemark as ProcessedRectification;
+          const coords = placemark.coordinates as google.maps.LatLngLiteral[];
+          const startCoord = coords[0];
+          const endCoord = coords[coords.length - 1];
+
+          const findMatchingPoint = (coord: google.maps.LatLngLiteral) => {
+            return placemarks.find((p) => {
+              if (p.type !== 'point') return false;
+              if (!p.id.startsWith('rectification-')) return false;
+
+              const pCoord = p.coordinates as { lat: number; lng: number };
+              return (
+                Math.abs(pCoord.lat - coord.lat) < 0.00001 &&
+                Math.abs(pCoord.lng - coord.lng) < 0.00001
+              );
+            });
+          };
+
+          const startPointData = findMatchingPoint(startCoord);
+          const endPointData = findMatchingPoint(endCoord);
+
+          const startMarker = new google.maps.Marker({
+            position: startCoord,
+            map: mapInstanceRef.current!,
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 8,
+              fillColor: '#10B981',
+              fillOpacity: 0.95,
+              strokeColor: '#ffffff',
+              strokeWeight: 2,
+            },
+            title: `Start: ${placemark.name}`,
+            label: {
+              text: 'S',
+              color: '#ffffff',
+              fontSize: '10px',
+              fontWeight: 'bold',
+            },
+            zIndex: 200,
           });
-        };
-        
-        const startPointData = findMatchingPoint(startCoord);
-        const endPointData = findMatchingPoint(endCoord);
-        
-        const startMarker = new google.maps.Marker({
-          position: startCoord,
-          map: mapInstanceRef.current!,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 8,
-            fillColor: '#10B981',
-            fillOpacity: 0.95,
-            strokeColor: '#ffffff',
-            strokeWeight: 2,
-          },
-          title: `Start: ${placemark.name}`,
-          label: {
-            text: 'S',
-            color: '#ffffff',
-            fontSize: '10px',
-            fontWeight: 'bold',
-          },
-          zIndex: 200,
-        });
-        
-        const endMarker = new google.maps.Marker({
-          position: endCoord,
-          map: mapInstanceRef.current!,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 8,
-            fillColor: '#EF4444',
-            fillOpacity: 0.95,
-            strokeColor: '#ffffff',
-            strokeWeight: 2,
-          },
-          title: `End: ${placemark.name}`,
-          label: {
-            text: 'E',
-            color: '#ffffff',
-            fontSize: '10px',
-            fontWeight: 'bold',
-          },
-          zIndex: 200,
-        });
-        
-        startMarker.addListener('click', () => {
-          if (infoWindowRef.current) {
-            let infoContent = '';
-            
-            if (startPointData) {
-              const pointInfo = startPointData as ProcessedRectification;
-              
-              const baseInfo = `
+
+          const endMarker = new google.maps.Marker({
+            position: endCoord,
+            map: mapInstanceRef.current!,
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 8,
+              fillColor: '#EF4444',
+              fillOpacity: 0.95,
+              strokeColor: '#ffffff',
+              strokeWeight: 2,
+            },
+            title: `End: ${placemark.name}`,
+            label: {
+              text: 'E',
+              color: '#ffffff',
+              fontSize: '10px',
+              fontWeight: 'bold',
+            },
+            zIndex: 200,
+          });
+
+          startMarker.addListener('click', () => {
+            if (infoWindowRef.current) {
+              let infoContent = '';
+
+              if (startPointData) {
+                const pointInfo = startPointData as ProcessedRectification;
+
+                const baseInfo = `
                 <div class="p-3" style="max-width: 400px;">
                   <div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); padding: 10px; border-radius: 6px; margin-bottom: 12px;">
                     <h3 class="font-semibold text-white mb-1" style="font-weight: 600; font-size: 15px;">
@@ -1332,14 +1632,17 @@ useEffect(() => {
                     ${pointInfo.createdTime ? `<div style="font-size: 12px; color: #6B7280; margin-top: 8px;"><strong>Created:</strong> ${new Date(pointInfo.createdTime).toLocaleDateString()}</div>` : ''}
                   </div>
               `;
-              
-              const imageGallery = (pointInfo.hasImages && pointInfo.images && pointInfo.images.length > 0) 
-                ? createImageGalleryHTML(pointInfo.images)
-                : '';
-              
-              infoContent = baseInfo + imageGallery + '</div>';
-            } else {
-              infoContent = `
+
+                const imageGallery =
+                  pointInfo.hasImages &&
+                  pointInfo.images &&
+                  pointInfo.images.length > 0
+                    ? createImageGalleryHTML(pointInfo.images)
+                    : '';
+
+                infoContent = baseInfo + imageGallery + '</div>';
+              } else {
+                infoContent = `
                 <div class="p-3" style="max-width: 350px;">
                   <div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); padding: 10px; border-radius: 6px; margin-bottom: 12px;">
                     <h3 class="font-semibold text-white mb-1" style="font-weight: 600; font-size: 15px;">
@@ -1357,21 +1660,21 @@ useEffect(() => {
                   </div>
                 </div>
               `;
+              }
+
+              infoWindowRef.current.setContent(infoContent);
+              infoWindowRef.current.open(mapInstanceRef.current!, startMarker);
             }
-            
-            infoWindowRef.current.setContent(infoContent);
-            infoWindowRef.current.open(mapInstanceRef.current!, startMarker);
-          }
-        });
-        
-        endMarker.addListener('click', () => {
-          if (infoWindowRef.current) {
-            let infoContent = '';
-            
-            if (endPointData) {
-              const pointInfo = endPointData as ProcessedRectification;
-              
-              const baseInfo = `
+          });
+
+          endMarker.addListener('click', () => {
+            if (infoWindowRef.current) {
+              let infoContent = '';
+
+              if (endPointData) {
+                const pointInfo = endPointData as ProcessedRectification;
+
+                const baseInfo = `
                 <div class="p-3" style="max-width: 400px;">
                   <div style="background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%); padding: 10px; border-radius: 6px; margin-bottom: 12px;">
                     <h3 class="font-semibold text-white mb-1" style="font-weight: 600; font-size: 15px;">
@@ -1390,14 +1693,17 @@ useEffect(() => {
                     ${pointInfo.createdTime ? `<div style="font-size: 12px; color: #6B7280; margin-top: 8px;"><strong>Created:</strong> ${new Date(pointInfo.createdTime).toLocaleDateString()}</div>` : ''}
                   </div>
               `;
-              
-              const imageGallery = (pointInfo.hasImages && pointInfo.images && pointInfo.images.length > 0) 
-                ? createImageGalleryHTML(pointInfo.images)
-                : '';
-              
-              infoContent = baseInfo + imageGallery + '</div>';
-            } else {
-              infoContent = `
+
+                const imageGallery =
+                  pointInfo.hasImages &&
+                  pointInfo.images &&
+                  pointInfo.images.length > 0
+                    ? createImageGalleryHTML(pointInfo.images)
+                    : '';
+
+                infoContent = baseInfo + imageGallery + '</div>';
+              } else {
+                infoContent = `
                 <div class="p-3" style="max-width: 350px;">
                   <div style="background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%); padding: 10px; border-radius: 6px; margin-bottom: 12px;">
                     <h3 class="font-semibold text-white mb-1" style="font-weight: 600; font-size: 15px;">
@@ -1415,92 +1721,146 @@ useEffect(() => {
                   </div>
                 </div>
               `;
+              }
+
+              infoWindowRef.current.setContent(infoContent);
+              infoWindowRef.current.open(mapInstanceRef.current!, endMarker);
             }
-            
-            infoWindowRef.current.setContent(infoContent);
-            infoWindowRef.current.open(mapInstanceRef.current!, endMarker);
-          }
-        });
-        
-        markersRef.current.push(startMarker);
-        markersRef.current.push(endMarker);
-        markersByIdRef.current.set(`${placemark.id}-start`, startMarker);
-        markersByIdRef.current.set(`${placemark.id}-end`, endMarker);
+          });
+
+          markersRef.current.push(startMarker);
+          markersRef.current.push(endMarker);
+          markersByIdRef.current.set(`${placemark.id}-start`, startMarker);
+          markersByIdRef.current.set(`${placemark.id}-end`, endMarker);
+        }
+
+        (placemark.coordinates as google.maps.LatLngLiteral[]).forEach(
+          (coord: any) => bounds.extend(coord),
+        );
       }
-      
-      (placemark.coordinates as google.maps.LatLngLiteral[]).forEach((coord: any) => bounds.extend(coord));
+    });
+
+    // Draw polylines connecting construction markers with same survey_id
+    Object.entries(constructionPolylinesBySurvey).forEach(
+      ([surveyId, coords]) => {
+        if (coords.length < 2) return;
+
+        const sortedCoords = [...coords].sort((a, b) => {
+          const aDist = Math.sqrt(a.lat * a.lat + a.lng * a.lng);
+          const bDist = Math.sqrt(b.lat * b.lat + b.lng * b.lng);
+          return aDist - bDist;
+        });
+
+        const constructionPolyline = new google.maps.Polyline({
+          path: sortedCoords as google.maps.LatLngLiteral[],
+          geodesic: true,
+          strokeColor: '#0891B2',
+          strokeOpacity: 0.8,
+          strokeWeight: 4,
+          map: mapInstanceRef.current!,
+          // title: `Construction Route - Survey ID: ${surveyId}`,
+        });
+
+        polylinesRef.current.push(constructionPolyline);
+
+        sortedCoords.forEach((coord) => {
+          bounds.extend(coord as unknown as google.maps.LatLng);
+        });
+
+        hasVisiblePlacemarks = true;
+      },
+    );
+
+    if (
+      hasVisiblePlacemarks &&
+      !bounds.isEmpty() &&
+      !videoSurveyMode &&
+      !photoSurveyMode
+    ) {
+      mapInstanceRef.current!.fitBounds(bounds, { padding: 50 });
     }
-  });
-
-  if (hasVisiblePlacemarks && !bounds.isEmpty() && !videoSurveyMode && !photoSurveyMode) {
-    mapInstanceRef.current!.fitBounds(bounds, { padding: 50 });
-  }
-}, [placemarks, categories, visibleCategories, mapLoaded, videoSurveyMode, photoSurveyMode]);
-
-
-
+  }, [
+    placemarks,
+    categories,
+    visibleCategories,
+    mapLoaded,
+    videoSurveyMode,
+    photoSurveyMode,
+  ]);
 
   // Enhanced video survey overlays
   useEffect(() => {
-    if (!mapLoaded || !mapInstanceRef.current || !videoSurveyMode || !trackPoints.length) {
+    if (
+      !mapLoaded ||
+      !mapInstanceRef.current ||
+      !videoSurveyMode ||
+      !trackPoints.length
+    ) {
       clearSurveyOverlays();
       return;
     }
 
     clearSurveyOverlays();
     const map = mapInstanceRef.current;
-    
-    const surveyGroups = trackPoints.reduce((groups, point) => {
-      const surveyId = point.surveyId || 'unknown';
-      if (!groups[surveyId]) groups[surveyId] = [];
-      groups[surveyId].push(point);
-      return groups;
-    }, {} as Record<string, TrackPoint[]>);
-    
-    Object.values(surveyGroups).forEach(surveyPoints => {
+
+    const surveyGroups = trackPoints.reduce(
+      (groups, point) => {
+        const surveyId = point.surveyId || 'unknown';
+        if (!groups[surveyId]) groups[surveyId] = [];
+        groups[surveyId].push(point);
+        return groups;
+      },
+      {} as Record<string, TrackPoint[]>,
+    );
+
+    Object.values(surveyGroups).forEach((surveyPoints) => {
       if (surveyPoints.length > 1) {
         const polyline = new google.maps.Polyline({
-          path: surveyPoints.map(point => ({ lat: point.lat, lng: point.lng })),
+          path: surveyPoints.map((point) => ({
+            lat: point.lat,
+            lng: point.lng,
+          })),
           map: null,
           strokeColor: '#008000',
           strokeOpacity: 0.8,
           strokeWeight: 3,
           geodesic: true,
-          icons: [{
-            icon: {
-              path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-              scale: 3,
-              strokeColor: '#3B82F6'
+          icons: [
+            {
+              icon: {
+                path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                scale: 3,
+                strokeColor: '#3B82F6',
+              },
+              offset: '100%',
             },
-            offset: '100%'
-          }]
+          ],
         });
-        
+
         polylinesRef.current.push(polyline);
       }
     });
-    
+
     trackPoints.forEach((point, index) => {
       const dot = new google.maps.Marker({
         position: { lat: point.lat, lng: point.lng },
         map: map,
         icon: {
           url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-          scaledSize: new google.maps.Size(8, 8)
+          scaledSize: new google.maps.Size(8, 8),
         },
         title: `Survey ${point.surveyId} - Point ${index + 1}`,
         zIndex: 500,
       });
-      
+
       dot.addListener('click', () => {
         if (onTrackPointClick) {
           onTrackPointClick(point);
         }
       });
-      
+
       surveyDotsRef.current.push(dot);
     });
-
   }, [mapLoaded, videoSurveyMode, trackPoints, onTrackPointClick]);
 
   // Current position marker
@@ -1545,7 +1905,7 @@ useEffect(() => {
 
     const map = mapInstanceRef.current;
 
-    photoPoints.forEach(point => {
+    photoPoints.forEach((point) => {
       const marker = new google.maps.Marker({
         position: { lat: point.lat, lng: point.lng },
         map: map,
@@ -1568,8 +1928,10 @@ useEffect(() => {
         }
 
         if (infoWindowRef.current) {
-          const imagesList = point.images.map(img => `<li>${img.label}</li>`).join('');
-          
+          const imagesList = point.images
+            .map((img) => `<li>${img.label}</li>`)
+            .join('');
+
           const infoContent = `
             <div class="p-3" style="max-width: 300px;">
               <h3 class="font-semibold text-gray-900 mb-1" style="font-weight: 600; margin-bottom: 4px;">
@@ -1579,7 +1941,9 @@ useEffect(() => {
               <p class="text-sm text-gray-600">Images: ${point.images.length}</p>
               <p class="text-sm text-gray-600">Coordinates: ${point.lat.toFixed(6)}, ${point.lng.toFixed(6)}</p>
               ${point.timestamp ? `<p class="text-sm text-gray-600">Captured: ${new Date(point.timestamp).toLocaleString()}</p>` : ''}
-              ${point.images.length > 0 ? `
+              ${
+                point.images.length > 0
+                  ? `
                 <div class="mt-2">
                   <div class="text-sm font-medium text-gray-700">Available Images:</div>
                   <ul class="text-xs text-gray-600 list-disc pl-4">
@@ -1587,7 +1951,9 @@ useEffect(() => {
                   </ul>
                   <div class="text-xs text-blue-600 mt-2">Click this marker to view photos in the panel →</div>
                 </div>
-              ` : ''}
+              `
+                  : ''
+              }
             </div>
           `;
 
@@ -1598,7 +1964,6 @@ useEffect(() => {
 
       photoMarkersRef.current.push(marker);
     });
-
   }, [mapLoaded, photoSurveyMode, photoPoints, onPhotoPointClick]);
 
   // Highlight selected placemark
@@ -1610,15 +1975,21 @@ useEffect(() => {
     if (highlightedPlacemark.type === 'point') {
       const marker = markersByIdRef.current.get(highlightedPlacemark.id);
       if (marker) {
-        map.panTo(highlightedPlacemark.coordinates as google.maps.LatLngLiteral);
+        map.panTo(
+          highlightedPlacemark.coordinates as google.maps.LatLngLiteral,
+        );
         map.setZoom(15);
         google.maps.event.trigger(marker, 'click');
       }
-    } else if (highlightedPlacemark.type === 'polyline' && 'coordinates' in highlightedPlacemark) {
-      const coords = highlightedPlacemark.coordinates as google.maps.LatLngLiteral[];
+    } else if (
+      highlightedPlacemark.type === 'polyline' &&
+      'coordinates' in highlightedPlacemark
+    ) {
+      const coords =
+        highlightedPlacemark.coordinates as google.maps.LatLngLiteral[];
       if (coords && coords.length) {
         const bounds = new google.maps.LatLngBounds();
-        coords.forEach(c => bounds.extend(c));
+        coords.forEach((c) => bounds.extend(c));
         map.fitBounds(bounds, { padding: 100 });
       }
     }
@@ -1663,14 +2034,16 @@ useEffect(() => {
 
   if (mapError) {
     return (
-      <div className={`bg-red-50 border border-red-200 rounded-lg p-8 text-center ${className}`}>
+      <div
+        className={`bg-red-50 border border-red-200 rounded-lg p-8 text-center ${className}`}
+      >
         <div className="text-red-600 mb-2">⚠️ 🗺️</div>
         <h3 className="text-lg font-semibold text-red-800 mb-2">Map Error</h3>
         <p className="text-red-700">{mapError}</p>
       </div>
     );
   }
-  
+
   return (
     <div className={`relative ${className}`}>
       <div ref={mapRef} className="w-full h-full rounded-lg" />
@@ -1698,7 +2071,8 @@ useEffect(() => {
             )}
             {selection.start && selection.end && (
               <div className="font-medium">
-                Duration: {Math.round((selection.end - selection.start) / 1000)}s
+                Duration: {Math.round((selection.end - selection.start) / 1000)}
+                s
               </div>
             )}
           </div>
@@ -1706,24 +2080,27 @@ useEffect(() => {
       )}
 
       {/* Combined modes indicator */}
-      {videoSurveyMode && photoSurveyMode && trackPoints.length > 0 && photoPoints.length > 0 && (
-        <div className="absolute bottom-4 left-4 bg-purple-100 border border-purple-300 rounded-lg px-3 py-2 shadow-sm">
-          <div className="text-sm font-medium text-purple-800">
-            Combined Survey Mode
+      {videoSurveyMode &&
+        photoSurveyMode &&
+        trackPoints.length > 0 &&
+        photoPoints.length > 0 && (
+          <div className="absolute bottom-4 left-4 bg-purple-100 border border-purple-300 rounded-lg px-3 py-2 shadow-sm">
+            <div className="text-sm font-medium text-purple-800">
+              Combined Survey Mode
+            </div>
+            <div className="text-xs text-purple-600">
+              Enhanced video controls + photo viewing
+            </div>
           </div>
-          <div className="text-xs text-purple-600">
-            Enhanced video controls + photo viewing
-          </div>
-        </div>
-      )}
+        )}
       {selectedJoint && (
         <JointInfoModal
           joint={selectedJoint}
           baseUrl={baseUrl_public}
           onClose={() => {
-        infoWindowRef.current?.close();
-        setSelectedJoint(null);
-      }}
+            infoWindowRef.current?.close();
+            setSelectedJoint(null);
+          }}
         />
       )}
     </div>

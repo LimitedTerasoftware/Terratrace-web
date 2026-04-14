@@ -1,9 +1,21 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from 'react';
 import { Sidebar } from './Sidebar';
 import { FileList } from './FileList';
 import { FilterPanel } from './FilterPanel';
 import {
-  AlertCircle, CheckCircle, Upload, X, FilePlus2Icon, DownloadIcon, ChevronDown
+  AlertCircle,
+  CheckCircle,
+  Upload,
+  X,
+  FilePlus2Icon,
+  DownloadIcon,
+  ChevronDown,
 } from 'lucide-react';
 import axios from 'axios';
 import { GoogleMap } from './MapViewer';
@@ -16,13 +28,24 @@ import {
   processSurveyInfrastructureData,
   detectSurveyFileType,
   processJointsData,
-  processRectificationSurveyData
+  processRectificationSurveyData,
+  processConstructionData,
 } from './PlaceMark';
 import {
-  KMZFile, FilterState, ApiPlacemark, ProcessedPlacemark, PlacemarkCategory,
-  PhysicalSurveyApiResponse, ProcessedPhysicalSurvey, DesktopPlanningApiResponse, ProcessedDesktopPlanning,
-  RectificationApiResponse, ProcessedRectification,
-  JointsApiResponse
+  KMZFile,
+  FilterState,
+  ApiPlacemark,
+  ProcessedPlacemark,
+  PlacemarkCategory,
+  PhysicalSurveyApiResponse,
+  ProcessedPhysicalSurvey,
+  DesktopPlanningApiResponse,
+  ProcessedDesktopPlanning,
+  RectificationApiResponse,
+  ProcessedRectification,
+  JointsApiResponse,
+  ConstructionApiResponse,
+  ProcessedConstruction,
 } from '../../types/kmz';
 import FileUploadModal from './FileUploadModal';
 import { GeographicSelector } from './GeographicSelector';
@@ -31,22 +54,22 @@ import { LandmarkModal } from './LandmarkModal';
 import { canAccessFileOperations } from '../../utils/accessControl';
 
 // Import the VideoSurveyService
-import { 
-  VideoSurveyService, 
-  VideoClip, 
-  TrackPoint, 
+import {
+  VideoSurveyService,
+  VideoClip,
+  TrackPoint,
   VideoSurveyData,
   ValidationResult,
-  LandmarkDetectionResult
+  LandmarkDetectionResult,
 } from './VideoSurveyService';
 
 // Import the PhotoSurveyService
-import { 
-  PhotoSurveyService, 
-  PhotoPoint, 
-  PhotoImage, 
+import {
+  PhotoSurveyService,
+  PhotoPoint,
+  PhotoImage,
   PhotoSurveyData,
-  PhotoValidationResult
+  PhotoValidationResult,
 } from './PhotoSurveyService';
 import PhotoSurveyPanel from './PhotoSurveyPanel';
 
@@ -64,7 +87,11 @@ function SmartInventory() {
   // UI STATE MANAGEMENT
   // ==============================================
   const [isModalOpen, setModalOpen] = useState(false);
-  const [Notifier, setNotifier] = useState<NotifierState>({ type: 'success', message: '', visible: false });
+  const [Notifier, setNotifier] = useState<NotifierState>({
+    type: 'success',
+    message: '',
+    visible: false,
+  });
   const notifierTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [loading, setLoding] = useState<boolean>(false);
@@ -84,123 +111,183 @@ function SmartInventory() {
   const [allProcessedFiles, setAllProcessedFiles] = useState<any[]>([]);
 
   // External Files - Processed Data
-  const [processedPlacemarks, setProcessedPlacemarks] = useState<ProcessedPlacemark[]>([]);
-  const [placemarkCategories, setPlacemarkCategories] = useState<PlacemarkCategory[]>([]);
+  const [processedPlacemarks, setProcessedPlacemarks] = useState<
+    ProcessedPlacemark[]
+  >([]);
+  const [placemarkCategories, setPlacemarkCategories] = useState<
+    PlacemarkCategory[]
+  >([]);
 
   // ==============================================
   // API DATA STATE (Left Sidebar)
   // ==============================================
   // Physical Survey Data
-  const [physicalSurveyData, setPhysicalSurveyData] = 
-  useState<(ProcessedPhysicalSurvey | ProcessedGPData | ProcessedBlockData)[]>([]);
-  const [physicalSurveyCategories, setPhysicalSurveyCategories] = useState<PlacemarkCategory[]>([]);
+  const [physicalSurveyData, setPhysicalSurveyData] = useState<
+    (ProcessedPhysicalSurvey | ProcessedGPData | ProcessedBlockData)[]
+  >([]);
+  const [physicalSurveyCategories, setPhysicalSurveyCategories] = useState<
+    PlacemarkCategory[]
+  >([]);
   const [isLoadingPhysical, setIsLoadingPhysical] = useState(false);
   const [rawPhysicalSurveyData, setRawPhysicalSurveyData] = useState<any>(null);
 
   // Desktop Planning Data
-  const [desktopPlanningData, setDesktopPlanningData] = useState<ProcessedDesktopPlanning[]>([]);
-  const [desktopPlanningCategories, setDesktopPlanningCategories] = useState<PlacemarkCategory[]>([]);
-  const [isLoadingDesktopPlanning, setIsLoadingDesktopPlanning] = useState(false);
-  const [rawDesktopPlanningData, setRawDesktopPlanningData] = useState<any>(null);
+  const [desktopPlanningData, setDesktopPlanningData] = useState<
+    ProcessedDesktopPlanning[]
+  >([]);
+  const [desktopPlanningCategories, setDesktopPlanningCategories] = useState<
+    PlacemarkCategory[]
+  >([]);
+  const [isLoadingDesktopPlanning, setIsLoadingDesktopPlanning] =
+    useState(false);
+  const [rawDesktopPlanningData, setRawDesktopPlanningData] =
+    useState<any>(null);
 
   // Rectification Data
-  const [rectificationData, setRectificationData] = useState<ProcessedRectification[]>([]);
-  const [rectificationCategories, setRectificationCategories] = useState<PlacemarkCategory[]>([]);
+  const [rectificationData, setRectificationData] = useState<
+    ProcessedRectification[]
+  >([]);
+  const [rectificationCategories, setRectificationCategories] = useState<
+    PlacemarkCategory[]
+  >([]);
   const [isLoadingRectification, setIsLoadingRectification] = useState(false);
 
-  const [rawRectificationData, setRawRectificationData] = useState<RectificationApiResponse | null>(null);
- 
+  const [rawRectificationData, setRawRectificationData] =
+    useState<RectificationApiResponse | null>(null);
+
   // Joints
   const [JointsData, setJointsData] = useState<ProcessedDesktopPlanning[]>([]);
-  const [JointsDataCategories, setJointsDataCategories] = useState<PlacemarkCategory[]>([]);
+  const [JointsDataCategories, setJointsDataCategories] = useState<
+    PlacemarkCategory[]
+  >([]);
   const [isLoadingJoints, setisLoadingJoints] = useState(false);
-  const [rawJointsData, setRawJointsData] = useState<JointsApiResponse | null>(null);
+  const [rawJointsData, setRawJointsData] = useState<JointsApiResponse | null>(
+    null,
+  );
+
+  // Construction Data
+  const [constructionData, setConstructionData] = useState<
+    ProcessedConstruction[]
+  >([]);
+  const [constructionCategories, setConstructionCategories] = useState<
+    PlacemarkCategory[]
+  >([]);
+  const [isLoadingConstruction, setIsLoadingConstruction] = useState(false);
+  const [rawConstructionData, setRawConstructionData] =
+    useState<ConstructionApiResponse | null>(null);
 
   // ==============================================
   // MAP STATE
   // ==============================================
-  const [visibleCategories, setVisibleCategories] = useState<Set<string>>(new Set());
-  const [highlightedPlacemark, setHighlightedPlacemark] = useState<ProcessedPlacemark>();
+  const [visibleCategories, setVisibleCategories] = useState<Set<string>>(
+    new Set(),
+  );
+  const [highlightedPlacemark, setHighlightedPlacemark] =
+    useState<ProcessedPlacemark>();
 
   // ==============================================
   // VIDEO SURVEY STATE (Using VideoSurveyService)
   // ==============================================
   const [isVideoSurveyMode, setIsVideoSurveyMode] = useState(false);
-  const [videoSurveyData, setVideoSurveyData] = useState<VideoSurveyData>(VideoSurveyService.processPhysicalSurveyData(null));
+  const [videoSurveyData, setVideoSurveyData] = useState<VideoSurveyData>(
+    VideoSurveyService.processPhysicalSurveyData(null),
+  );
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [currentTime, setCurrentTime] = useState<number>(0); // absolute ms in survey timeline
-  const [currentPosition, setCurrentPosition] = useState<{ lat: number; lng: number } | null>(null);
-  const [selection, setSelection] = useState<{ start?: number; end?: number }>({});
+  const [currentPosition, setCurrentPosition] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const [selection, setSelection] = useState<{ start?: number; end?: number }>(
+    {},
+  );
   const [showRightPanel, setShowRightPanel] = useState(false);
 
   // ==============================================
   // ENHANCED LANDMARK DETECTION STATE
   // ==============================================
   const [landmarkPauseMode, setLandmarkPauseMode] = useState(true);
-  const [currentLandmarks, setCurrentLandmarks] = useState<ProcessedPhysicalSurvey[]>([]);
-  const [previousLandmarks, setPreviousLandmarks] = useState<ProcessedPhysicalSurvey[]>([]);
+  const [currentLandmarks, setCurrentLandmarks] = useState<
+    ProcessedPhysicalSurvey[]
+  >([]);
+  const [previousLandmarks, setPreviousLandmarks] = useState<
+    ProcessedPhysicalSurvey[]
+  >([]);
   const [showLandmarkModal, setShowLandmarkModal] = useState(false);
-  const [videoWasPausedByLandmark, setVideoWasPausedByLandmark] = useState(false);
+  const [videoWasPausedByLandmark, setVideoWasPausedByLandmark] =
+    useState(false);
   const [shouldResumeVideo, setShouldResumeVideo] = useState(false);
   const [lastDetectionTime, setLastDetectionTime] = useState<number>(0);
-  const [landmarkDetectionEnabled, setLandmarkDetectionEnabled] = useState(true);
+  const [landmarkDetectionEnabled, setLandmarkDetectionEnabled] =
+    useState(true);
   const [lastLandmarkPosition, setLastLandmarkPosition] = useState<{
-  lat: number; 
-  lng: number; 
-  landmarkIds: string;
-  timestamp: number;
-} | null>(null);
-  const [shownLandmarkIds, setShownLandmarkIds] = useState<Set<string>>(new Set());
+    lat: number;
+    lng: number;
+    landmarkIds: string;
+    timestamp: number;
+  } | null>(null);
+  const [shownLandmarkIds, setShownLandmarkIds] = useState<Set<string>>(
+    new Set(),
+  );
   const showFileOperations = canAccessFileOperations();
-
 
   // ==============================================
   // PHOTO SURVEY STATE (Using PhotoSurveyService)
   // ==============================================
   const [isPhotoSurveyMode, setIsPhotoSurveyMode] = useState(false);
-  const [photoSurveyData, setPhotoSurveyData] = useState<PhotoSurveyData>(PhotoSurveyService.processPhysicalSurveyData(null));
-  const [currentPhotoPoint, setCurrentPhotoPoint] = useState<PhotoPoint | null>(null);
+  const [photoSurveyData, setPhotoSurveyData] = useState<PhotoSurveyData>(
+    PhotoSurveyService.processPhysicalSurveyData(null),
+  );
+  const [currentPhotoPoint, setCurrentPhotoPoint] = useState<PhotoPoint | null>(
+    null,
+  );
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showPhotoPanel, setShowPhotoPanel] = useState(false);
 
   const [externalFilesByCategory, setExternalFilesByCategory] = useState<{
-    survey: { placemarks: ProcessedPlacemark[]; categories: PlacemarkCategory[] };
-    desktop: { placemarks: ProcessedPlacemark[]; categories: PlacemarkCategory[] };
+    survey: {
+      placemarks: ProcessedPlacemark[];
+      categories: PlacemarkCategory[];
+    };
+    desktop: {
+      placemarks: ProcessedPlacemark[];
+      categories: PlacemarkCategory[];
+    };
   }>({
     survey: { placemarks: [], categories: [] },
-    desktop: { placemarks: [], categories: [] }
+    desktop: { placemarks: [], categories: [] },
   });
 
   const getDefaultVisibility = (categoryName: string): boolean => {
     // Survey file defaults
     const defaultSurveyCategories = [
       'External Survey: GP',
-      'External Survey: FPOI', 
+      'External Survey: FPOI',
       'External Survey: BHQ',
       'External Survey: Bridge',
       'External Survey: Culvert',
       'External Survey: Block Router',
       'External Survey: Incremental Cable',
-      'External Survey: Proposed Cable', 
-      'External Survey: Survey: Block to FPOI Cable', 
+      'External Survey: Proposed Cable',
+      'External Survey: Survey: Block to FPOI Cable',
       'External Survey: RI',
       'External Survey: AIRTEL RI',
-      'External Survey: RJIL RI', 
+      'External Survey: RJIL RI',
       'External Survey: VITIL RI',
       'External Survey: Landmark',
-      'External Survey: KILOMETERSTONE'
+      'External Survey: KILOMETERSTONE',
     ];
 
-    // Desktop file defaults  
+    // Desktop file defaults
     const defaultDesktopCategories = [
       'External Desktop: GP',
       'External Desktop: FPOI',
-      'External Desktop: BHQ', 
+      'External Desktop: BHQ',
       'External Desktop: Bridge',
       'External Desktop: Culvert',
       'External Desktop: Block Router',
       'External Desktop: Incremental Cable',
-      'External Desktop: Proposed Cable'
+      'External Desktop: Proposed Cable',
     ];
 
     const defaultBSNLCategories = [
@@ -217,7 +304,7 @@ function SmartInventory() {
       'External BSNL: RJIL RI',
       'External BSNL: VITIL RI',
       'External BSNL: Landmark',
-      'External BSNL: KILOMETERSTONE'
+      'External BSNL: KILOMETERSTONE',
     ];
 
     // Rectification defaults
@@ -230,10 +317,20 @@ function SmartInventory() {
       'Rectification: Joint Repair',
     ];
 
-    return defaultSurveyCategories.includes(categoryName) || 
-           defaultDesktopCategories.includes(categoryName) ||
-           defaultBSNLCategories.includes(categoryName) ||
-           defaultRectificationCategories.includes(categoryName);
+    // Construction defaults
+    const defaultConstructionCategories = [
+      'Construction: Depth',
+      'Construction: Start Pit',
+      'Construction: End Pit',
+    ];
+
+    return (
+      defaultSurveyCategories.includes(categoryName) ||
+      defaultDesktopCategories.includes(categoryName) ||
+      defaultBSNLCategories.includes(categoryName) ||
+      defaultRectificationCategories.includes(categoryName) ||
+      defaultConstructionCategories.includes(categoryName)
+    );
   };
 
   // ==============================================
@@ -253,20 +350,20 @@ function SmartInventory() {
         if (searchQuery) params.filename = searchQuery;
         if (fileCategory) params.category = fileCategory;
 
-        const savedFiles = await axios.get(`${BASEURL}/get-external-files`, { params });
+        const savedFiles = await axios.get(`${BASEURL}/get-external-files`, {
+          params,
+        });
 
         if (savedFiles.status === 200 || savedFiles.status === 201) {
           setFiles(savedFiles.data.data);
         }
       } catch (error) {
         console.error('Failed to load files:', error);
-         if (axios.isAxiosError(error)) {
-        showNotification('error', error.response?.data.error);
-
-      }else{
-        showNotification('error', 'Failed to load files');
-
-      }
+        if (axios.isAxiosError(error)) {
+          showNotification('error', error.response?.data.error);
+        } else {
+          showNotification('error', 'Failed to load files');
+        }
       } finally {
         setLoding(false);
       }
@@ -276,223 +373,274 @@ function SmartInventory() {
   }, [filters, searchQuery, fileCategory]);
 
   // Process selected external files
-   useEffect(() => {
-  const handleParsed = async () => {
-    if (selectedFiles.length > 0) {
-      let allPlacemarks: ProcessedPlacemark[] = [];
-      let allCategoryData: Record<string, number> = {};
-      let combinedPhysicalSurveyData: any = { data: {} };
-      let processedFilesData: any[] = [];
+  useEffect(() => {
+    const handleParsed = async () => {
+      if (selectedFiles.length > 0) {
+        let allPlacemarks: ProcessedPlacemark[] = [];
+        let allCategoryData: Record<string, number> = {};
+        let combinedPhysicalSurveyData: any = { data: {} };
+        let processedFilesData: any[] = [];
 
-      try {
-        for (const file of selectedFiles) {
-          const params: any = {};
-          if (file.filepath) params.filepath = file.filepath;
-          if (file.file_type) params.fileType = file.file_type;
+        try {
+          for (const file of selectedFiles) {
+            const params: any = {};
+            if (file.filepath) params.filepath = file.filepath;
+            if (file.file_type) params.fileType = file.file_type;
 
-          const resp = await axios.get(`${BASEURL}/preview-file`, { params });
-          if (resp.status === 200 || resp.status === 201) {
+            const resp = await axios.get(`${BASEURL}/preview-file`, { params });
+            if (resp.status === 200 || resp.status === 201) {
+              if (
+                file.category === 'Survey' ||
+                file.category === 'BSNL_Cables' ||
+                file.category === 'Desktop'
+              ) {
+                const apiData: ApiPlacemark = resp.data.data.parsed_data;
 
-            if (file.category === 'Survey' || file.category === 'BSNL_Cables' || file.category === 'Desktop') {
-              
-              const apiData: ApiPlacemark = resp.data.data.parsed_data;
-              
-              // ALL Survey and BSNL files go through infrastructure processing first
-              if (file.category === 'Survey' || file.category === 'BSNL_Cables') {
-                
-                // Process through infrastructure pipeline (handles all point types properly)
-                const { placemarks: infraPlacemarks, categories: infraCategories } = 
-                  processSurveyInfrastructureData(apiData);
-                
-                processedFilesData.push({
-                  fileId: file.id,
-                  filename: file.filename,
-                  category: file.category,
-                  rawData: resp.data.data,
-                  transformedData: null,
-                  originalFile: file
-                });
+                // ALL Survey and BSNL files go through infrastructure processing first
+                if (
+                  file.category === 'Survey' ||
+                  file.category === 'BSNL_Cables'
+                ) {
+                  // Process through infrastructure pipeline (handles all point types properly)
+                  const {
+                    placemarks: infraPlacemarks,
+                    categories: infraCategories,
+                  } = processSurveyInfrastructureData(apiData);
 
-                const filePrefix = file.id;
-                const prefixedPlacemarks = infraPlacemarks.map(placemark => ({
-                  ...placemark,
-                  id: `${filePrefix}-${placemark.id}`,
-                  category: file.category === 'BSNL_Cables' 
-                    ? `External BSNL: ${placemark.category}` 
-                    : `External Survey: ${placemark.category}`
-                }));
+                  processedFilesData.push({
+                    fileId: file.id,
+                    filename: file.filename,
+                    category: file.category,
+                    rawData: resp.data.data,
+                    transformedData: null,
+                    originalFile: file,
+                  });
 
-                allPlacemarks = [...allPlacemarks, ...prefixedPlacemarks];
+                  const filePrefix = file.id;
+                  const prefixedPlacemarks = infraPlacemarks.map(
+                    (placemark) => ({
+                      ...placemark,
+                      id: `${filePrefix}-${placemark.id}`,
+                      category:
+                        file.category === 'BSNL_Cables'
+                          ? `External BSNL: ${placemark.category}`
+                          : `External Survey: ${placemark.category}`,
+                    }),
+                  );
 
-                infraCategories.forEach(category => {
-                  const externalCategoryName = file.category === 'BSNL_Cables'
-                    ? `External BSNL: ${category.name}`
-                    : `External Survey: ${category.name}`;
-                  allCategoryData[externalCategoryName] = (allCategoryData[externalCategoryName] || 0) + category.count;
-                });
+                  allPlacemarks = [...allPlacemarks, ...prefixedPlacemarks];
 
-                // ADDITIONALLY: Check if this has actual survey data for video/photo modes
-                const surveyFileType = detectSurveyFileType(apiData);
-                if (surveyFileType === 'physical_survey') {
-                  // Transform and add to physical survey data for video/photo processing
-                  const physicalSurveyData = transformKMLToPhysicalSurvey(apiData, file);
-                  
-                  if (physicalSurveyData && physicalSurveyData.data) {
-                    Object.keys(physicalSurveyData.data).forEach(blockId => {
-                      if (!combinedPhysicalSurveyData.data[blockId]) {
-                        combinedPhysicalSurveyData.data[blockId] = [];
-                      }
-                      combinedPhysicalSurveyData.data[blockId] = [
-                        ...combinedPhysicalSurveyData.data[blockId],
-                        ...physicalSurveyData.data[blockId]
-                      ];
-                    });
+                  infraCategories.forEach((category) => {
+                    const externalCategoryName =
+                      file.category === 'BSNL_Cables'
+                        ? `External BSNL: ${category.name}`
+                        : `External Survey: ${category.name}`;
+                    allCategoryData[externalCategoryName] =
+                      (allCategoryData[externalCategoryName] || 0) +
+                      category.count;
+                  });
+
+                  // ADDITIONALLY: Check if this has actual survey data for video/photo modes
+                  const surveyFileType = detectSurveyFileType(apiData);
+                  if (surveyFileType === 'physical_survey') {
+                    // Transform and add to physical survey data for video/photo processing
+                    const physicalSurveyData = transformKMLToPhysicalSurvey(
+                      apiData,
+                      file,
+                    );
+
+                    if (physicalSurveyData && physicalSurveyData.data) {
+                      Object.keys(physicalSurveyData.data).forEach(
+                        (blockId) => {
+                          if (!combinedPhysicalSurveyData.data[blockId]) {
+                            combinedPhysicalSurveyData.data[blockId] = [];
+                          }
+                          combinedPhysicalSurveyData.data[blockId] = [
+                            ...combinedPhysicalSurveyData.data[blockId],
+                            ...physicalSurveyData.data[blockId],
+                          ];
+                        },
+                      );
+                    }
                   }
                 }
+                // Desktop files use standard processApiData function
+                else if (file.category === 'Desktop') {
+                  const {
+                    placemarks: desktopPlacemarks,
+                    categories: desktopCategories,
+                  } = processApiData(apiData);
 
-              } 
-              // Desktop files use standard processApiData function
-              else if (file.category === 'Desktop') {
-                const { placemarks: desktopPlacemarks, categories: desktopCategories } = 
-                  processApiData(apiData);
-                
-                processedFilesData.push({
-                  fileId: file.id,
-                  filename: file.filename,
-                  category: file.category,
-                  rawData: resp.data.data,
-                  transformedData: null,
-                  originalFile: file
-                });
+                  processedFilesData.push({
+                    fileId: file.id,
+                    filename: file.filename,
+                    category: file.category,
+                    rawData: resp.data.data,
+                    transformedData: null,
+                    originalFile: file,
+                  });
 
-                const filePrefix = file.id;
-                const prefixedDesktopPlacemarks = desktopPlacemarks.map(placemark => ({
-                  ...placemark,
-                  id: `${filePrefix}-${placemark.id}`,
-                  category: `External Desktop: ${placemark.category}`
-                }));
+                  const filePrefix = file.id;
+                  const prefixedDesktopPlacemarks = desktopPlacemarks.map(
+                    (placemark) => ({
+                      ...placemark,
+                      id: `${filePrefix}-${placemark.id}`,
+                      category: `External Desktop: ${placemark.category}`,
+                    }),
+                  );
 
-                allPlacemarks = [...allPlacemarks, ...prefixedDesktopPlacemarks];
+                  allPlacemarks = [
+                    ...allPlacemarks,
+                    ...prefixedDesktopPlacemarks,
+                  ];
 
-                desktopCategories.forEach(category => {
-                  const externalCategoryName = `External Desktop: ${category.name}`;
-                  allCategoryData[externalCategoryName] = (allCategoryData[externalCategoryName] || 0) + category.count;
-                });
-              }
-            } else {
-              showNotification("error", `Failed to load ${file.filename}: Unsupported category ${file.category}`);
-            }
-          }
-        }
-
-        // Rest of the processing logic remains the same...
-        setAllProcessedFiles(processedFilesData);
-
-        // Only set physical survey data if we have actual survey content
-        if (Object.keys(combinedPhysicalSurveyData.data).length > 0) {
-          setRawPhysicalSurveyData(prevData => {
-            if (prevData && prevData.data) {
-              const mergedData = { ...prevData.data };
-              Object.keys(combinedPhysicalSurveyData.data).forEach(blockId => {
-                if (!mergedData[blockId]) {
-                  mergedData[blockId] = [];
+                  desktopCategories.forEach((category) => {
+                    const externalCategoryName = `External Desktop: ${category.name}`;
+                    allCategoryData[externalCategoryName] =
+                      (allCategoryData[externalCategoryName] || 0) +
+                      category.count;
+                  });
                 }
-                mergedData[blockId] = [
-                  ...mergedData[blockId],
-                  ...combinedPhysicalSurveyData.data[blockId]
-                ];
-              });
-              return { ...prevData, data: mergedData };
+              } else {
+                showNotification(
+                  'error',
+                  `Failed to load ${file.filename}: Unsupported category ${file.category}`,
+                );
+              }
             }
-            return combinedPhysicalSurveyData;
-          });
-        }
-
-        // Create categories with proper external prefixes and colors
-        const combinedCategories = Object.entries(allCategoryData).map(([name, count]) => {
-          const baseCategoryName = name
-            .replace(/^External (Survey|Desktop|BSNL): /, '');
-          
-          let config;
-          if (name === 'External Desktop: Incremental Cable') {
-            config = { color: '#8B5CF6', icon: '████' };
-          } else if (name === 'External Desktop: Proposed Cable') {
-            config = { color: '#F59E0B', icon: '████' };
-          } else if (name === 'External Survey: Incremental Cable') {
-            config = { color: '#06B6D4', icon: '⚡' };
-          } else if (name === 'External Survey: Proposed Cable') {
-            config = { color: '#800080', icon: '➖' };
-          } else if (name === 'External Survey: Survey: Block to FPOI Cable') {
-            config = { color: '#000000', icon: '🔗🔗' };
-          } else if (name === 'External BSNL: Incremental Cable') {
-            config = { color: '#00FF00', icon: '⚡' };
-          } else if (name === 'External BSNL: Proposed Cable') {
-            config = { color: '#FF0000', icon: '➖' };
-          } else if (name.startsWith('External BSNL:')) {
-            const categoryConfig = Object.entries(PLACEMARK_CATEGORIES).find(([key]) => key === baseCategoryName);
-            config = categoryConfig ? categoryConfig[1] : { color: '#FF6B35', icon: '📍' };
-          } else {
-            const categoryConfig = Object.entries(PLACEMARK_CATEGORIES).find(([key]) => key === baseCategoryName);
-            config = categoryConfig ? categoryConfig[1] : { color: '#6B7280', icon: '📍' };
           }
 
-          return {
-            id: name.toLowerCase().replace(/\s+/g, '-'),
-            name,
-            count,
-            visible: getDefaultVisibility(name),
-            color: config.color,
-            icon: config.icon
-          };
-        }).filter(category => category.count > 0);
+          // Rest of the processing logic remains the same...
+          setAllProcessedFiles(processedFilesData);
 
-        setProcessedPlacemarks(allPlacemarks);
-        setPlacemarkCategories(combinedCategories);
+          // Only set physical survey data if we have actual survey content
+          if (Object.keys(combinedPhysicalSurveyData.data).length > 0) {
+            setRawPhysicalSurveyData((prevData) => {
+              if (prevData && prevData.data) {
+                const mergedData = { ...prevData.data };
+                Object.keys(combinedPhysicalSurveyData.data).forEach(
+                  (blockId) => {
+                    if (!mergedData[blockId]) {
+                      mergedData[blockId] = [];
+                    }
+                    mergedData[blockId] = [
+                      ...mergedData[blockId],
+                      ...combinedPhysicalSurveyData.data[blockId],
+                    ];
+                  },
+                );
+                return { ...prevData, data: mergedData };
+              }
+              return combinedPhysicalSurveyData;
+            });
+          }
 
-        const autoVisibleCategories = combinedCategories
-          .filter(category => category.visible)
-          .map(category => category.id);
-        
-        if (autoVisibleCategories.length > 0) {
-          setVisibleCategories(prev => {
-            const newSet = new Set(prev);
-            autoVisibleCategories.forEach(categoryId => newSet.add(categoryId));
-            return newSet;
-          });
+          // Create categories with proper external prefixes and colors
+          const combinedCategories = Object.entries(allCategoryData)
+            .map(([name, count]) => {
+              const baseCategoryName = name.replace(
+                /^External (Survey|Desktop|BSNL): /,
+                '',
+              );
+
+              let config;
+              if (name === 'External Desktop: Incremental Cable') {
+                config = { color: '#8B5CF6', icon: '████' };
+              } else if (name === 'External Desktop: Proposed Cable') {
+                config = { color: '#F59E0B', icon: '████' };
+              } else if (name === 'External Survey: Incremental Cable') {
+                config = { color: '#06B6D4', icon: '⚡' };
+              } else if (name === 'External Survey: Proposed Cable') {
+                config = { color: '#800080', icon: '➖' };
+              } else if (
+                name === 'External Survey: Survey: Block to FPOI Cable'
+              ) {
+                config = { color: '#000000', icon: '🔗🔗' };
+              } else if (name === 'External BSNL: Incremental Cable') {
+                config = { color: '#00FF00', icon: '⚡' };
+              } else if (name === 'External BSNL: Proposed Cable') {
+                config = { color: '#FF0000', icon: '➖' };
+              } else if (name.startsWith('External BSNL:')) {
+                const categoryConfig = Object.entries(
+                  PLACEMARK_CATEGORIES,
+                ).find(([key]) => key === baseCategoryName);
+                config = categoryConfig
+                  ? categoryConfig[1]
+                  : { color: '#FF6B35', icon: '📍' };
+              } else {
+                const categoryConfig = Object.entries(
+                  PLACEMARK_CATEGORIES,
+                ).find(([key]) => key === baseCategoryName);
+                config = categoryConfig
+                  ? categoryConfig[1]
+                  : { color: '#6B7280', icon: '📍' };
+              }
+
+              return {
+                id: name.toLowerCase().replace(/\s+/g, '-'),
+                name,
+                count,
+                visible: getDefaultVisibility(name),
+                color: config.color,
+                icon: config.icon,
+              };
+            })
+            .filter((category) => category.count > 0);
+
+          setProcessedPlacemarks(allPlacemarks);
+          setPlacemarkCategories(combinedCategories);
+
+          const autoVisibleCategories = combinedCategories
+            .filter((category) => category.visible)
+            .map((category) => category.id);
+
+          if (autoVisibleCategories.length > 0) {
+            setVisibleCategories((prev) => {
+              const newSet = new Set(prev);
+              autoVisibleCategories.forEach((categoryId) =>
+                newSet.add(categoryId),
+              );
+              return newSet;
+            });
+          }
+
+          if (selectedFiles.length > 1) {
+            showNotification(
+              'success',
+              `Successfully loaded ${selectedFiles.length} files with ${allPlacemarks.length} placemarks`,
+            );
+          }
+        } catch (error) {
+          console.error('Failed to show preview:', error);
+          showNotification('error', 'Failed to show preview');
         }
+      } else {
+        // Clear external file data when no files selected
+        setProcessedPlacemarks([]);
+        setPlacemarkCategories([]);
+        setAllProcessedFiles([]);
 
-        if (selectedFiles.length > 1) {
-          showNotification("success", `Successfully loaded ${selectedFiles.length} files with ${allPlacemarks.length} placemarks`);
-        }
-
-      } catch (error) {
-        console.error('Failed to show preview:', error);
-        showNotification("error", 'Failed to show preview');
+        setVisibleCategories((prev) => {
+          const newSet = new Set(prev);
+          placemarkCategories.forEach((cat) => newSet.delete(cat.id));
+          return newSet;
+        });
       }
-    } else {
-      // Clear external file data when no files selected
-      setProcessedPlacemarks([]);
-      setPlacemarkCategories([]);
-      setAllProcessedFiles([]);
-
-      setVisibleCategories(prev => {
-        const newSet = new Set(prev);
-        placemarkCategories.forEach(cat => newSet.delete(cat.id));
-        return newSet;
-      });
-    }
-  };
-  handleParsed();
-}, [selectedFiles]);
+    };
+    handleParsed();
+  }, [selectedFiles]);
 
   // ==============================================
   // API DATA MANAGEMENT (Physical Survey & Desktop Planning)
   // ==============================================
 
   // Enhanced physical survey data loading with video and photo validation
-  const loadPhysicalData = async (state: string[], division: string[], block: string[]) => {
+  const loadPhysicalData = async (
+    state: string[],
+    division: string[],
+    block: string[],
+  ) => {
     try {
-
       setIsLoadingPhysical(true);
       const params: any = {};
 
@@ -506,21 +654,23 @@ function SmartInventory() {
         params.block_id = block.join(',');
       }
 
-      const response = await axios.get(`${BASEURL}/get-physical-survey`, { params });
+      const response = await axios.get(`${BASEURL}/get-physical-survey`, {
+        params,
+      });
       const result: PhysicalSurveyApiResponse = response.data;
 
       if (response.status === 200 || response.status === 201) {
         if (Object.keys(result.data).length > 0) {
-
-          Object.entries(result.data).forEach(([blockId, points]) => {
-          });
+          Object.entries(result.data).forEach(([blockId, points]) => {});
 
           // Use VideoSurveyService for video validation
-          const videoValidation: ValidationResult = VideoSurveyService.validateVideoSurveyData(result);
-          
-          // Use PhotoSurveyService for photo validation  
-          const photoValidation: PhotoValidationResult = PhotoSurveyService.validatePhotoSurveyData(result);
-          
+          const videoValidation: ValidationResult =
+            VideoSurveyService.validateVideoSurveyData(result);
+
+          // Use PhotoSurveyService for photo validation
+          const photoValidation: PhotoValidationResult =
+            PhotoSurveyService.validatePhotoSurveyData(result);
+
           // Combined notification
           const notifications = [];
           if (videoValidation.videoClipCount > 0) {
@@ -532,12 +682,15 @@ function SmartInventory() {
           if (videoValidation.trackPointCount > 0) {
             notifications.push(`${videoValidation.trackPointCount} GPS points`);
           }
-          
+
           if (notifications.length > 0) {
             showNotification('success', `Loaded ${notifications.join(', ')}`);
           }
-          
-          const allIssues = [...videoValidation.issues, ...photoValidation.issues];
+
+          const allIssues = [
+            ...videoValidation.issues,
+            ...photoValidation.issues,
+          ];
           if (allIssues.length > 0) {
             console.warn('Data quality issues:', allIssues);
             showNotification('success', `Data loaded`);
@@ -551,23 +704,34 @@ function SmartInventory() {
 
           // Auto-enable categories that are marked as visible by default
           const autoVisibleCategories = categories
-            .filter(category => category.visible)
-            .map(category => category.id);
-          
-          
+            .filter((category) => category.visible)
+            .map((category) => category.id);
+
           if (autoVisibleCategories.length > 0) {
-            setVisibleCategories(prev => {
+            setVisibleCategories((prev) => {
               const newSet = new Set(prev);
-              autoVisibleCategories.forEach(categoryId => newSet.add(categoryId));
+              autoVisibleCategories.forEach((categoryId) =>
+                newSet.add(categoryId),
+              );
               return newSet;
             });
           }
 
-          if (videoValidation.videoClipCount === 0 && videoValidation.trackPointCount === 0 && photoValidation.imageCount === 0) {
-            showNotification('success', `Loaded ${placemarks.length} physical survey points`);
+          if (
+            videoValidation.videoClipCount === 0 &&
+            videoValidation.trackPointCount === 0 &&
+            photoValidation.imageCount === 0
+          ) {
+            showNotification(
+              'success',
+              `Loaded ${placemarks.length} physical survey points`,
+            );
           }
         } else {
-          showNotification('info', 'No physical survey data found for selected area');
+          showNotification(
+            'info',
+            'No physical survey data found for selected area',
+          );
         }
       }
     } catch (error) {
@@ -577,12 +741,9 @@ function SmartInventory() {
         console.error('Response status:', error.response?.status);
         console.error('Response data:', error.response?.data);
         showNotification('error', error.response?.data.error);
-
-      }else{
-      showNotification('error', 'Failed to load physical survey data');
-
+      } else {
+        showNotification('error', 'Failed to load physical survey data');
       }
-
     } finally {
       setIsLoadingPhysical(false);
     }
@@ -597,7 +758,7 @@ function SmartInventory() {
       stateId?: string;
       districtId?: string;
       blockId?: string;
-    }
+    },
   ) => {
     try {
       setIsLoadingDesktopPlanning(true);
@@ -607,16 +768,23 @@ function SmartInventory() {
       const blockId = hierarchyContext?.blockId || block[0];
 
       if (!stateId || !districtId || !blockId) {
-        showNotification('error', 'Please select a state, district, and block to load desktop planning data');
+        showNotification(
+          'error',
+          'Please select a state, district, and block to load desktop planning data',
+        );
         setIsLoadingDesktopPlanning(false);
         return;
       }
 
       const requestData = { stateId, districtId, blockId };
 
-      const response = await axios.post(`${BASEURL}/get-desktop-planning`, requestData, {
-        headers: { 'Content-Type': 'application/json' }
-      });
+      const response = await axios.post(
+        `${BASEURL}/get-desktop-planning`,
+        requestData,
+        {
+          headers: { 'Content-Type': 'application/json' },
+        },
+      );
 
       const result: DesktopPlanningApiResponse = response.data;
 
@@ -628,20 +796,28 @@ function SmartInventory() {
           setDesktopPlanningCategories(categories);
 
           const autoVisibleCategories = categories
-          .filter(category => category.visible)
-          .map(category => category.id);
-        
-        if (autoVisibleCategories.length > 0) {
-          setVisibleCategories(prev => {
-            const newSet = new Set(prev);
-            autoVisibleCategories.forEach(categoryId => newSet.add(categoryId));
-            return newSet;
-          });
-        }
+            .filter((category) => category.visible)
+            .map((category) => category.id);
 
-          showNotification('success', `Loaded ${placemarks.length} desktop planning items from ${result.data.length} network(s) for the selected area`);
+          if (autoVisibleCategories.length > 0) {
+            setVisibleCategories((prev) => {
+              const newSet = new Set(prev);
+              autoVisibleCategories.forEach((categoryId) =>
+                newSet.add(categoryId),
+              );
+              return newSet;
+            });
+          }
+
+          showNotification(
+            'success',
+            `Loaded ${placemarks.length} desktop planning items from ${result.data.length} network(s) for the selected area`,
+          );
         } else {
-          showNotification('info', 'No desktop planning data found for selected area');
+          showNotification(
+            'info',
+            'No desktop planning data found for selected area',
+          );
           setDesktopPlanningData([]);
           setDesktopPlanningCategories([]);
           setRawDesktopPlanningData(null);
@@ -650,236 +826,357 @@ function SmartInventory() {
     } catch (error) {
       console.error('Failed to load desktop planning data:', error);
       if (axios.isAxiosError(error) && error.response) {
-        const errorMsg = (error.response.data as any)?.message || `API Error: ${error.response.status}`;
-        showNotification('error', `Failed to load desktop planning data: ${errorMsg}`);
+        const errorMsg =
+          (error.response.data as any)?.message ||
+          `API Error: ${error.response.status}`;
+        showNotification(
+          'error',
+          `Failed to load desktop planning data: ${errorMsg}`,
+        );
       } else {
-        showNotification('error', 'Failed to load desktop planning data: Network error');
+        showNotification(
+          'error',
+          'Failed to load desktop planning data: Network error',
+        );
       }
     } finally {
       setIsLoadingDesktopPlanning(false);
     }
   };
 
-  const loadRectificationData = async (state: string[], division: string[], block: string[]) => {
-  try {
-    setIsLoadingRectification(true);
-    setLoding(true);
+  const loadRectificationData = async (
+    state: string[],
+    division: string[],
+    block: string[],
+  ) => {
+    try {
+      setIsLoadingRectification(true);
+      setLoding(true);
 
-    const params: any = {};
+      const params: any = {};
 
-    if (state.length > 0) {
-      params.state_id = state.join(',');
-    }
-    if (division.length > 0) {
-      params.district_id = division.join(',');
-    }
-    if (block.length > 0) {
-      params.block_id = block.join(',');
-    }
-
-    const response = await axios.get(`${BASEURL}/get-rectification-survey`, { params });
-    
-    // The response now has PhysicalSurveyApiResponse structure
-    const apiData: PhysicalSurveyApiResponse = response.data;
-
-    if (response.status === 200 || response.status === 201) {
-      if (apiData.status && apiData.data && Object.keys(apiData.data).length > 0) {
-        
-        // Use the NEW rectification processor that handles physical survey structure
-        const { placemarks, categories } = processRectificationSurveyData(apiData);
-
-        setRawRectificationData(apiData);
-        setRectificationData(placemarks);
-        setRectificationCategories(categories);
-
-        // Set default visibility for rectification categories
-        setVisibleCategories(prev => {
-  const newVisible = new Set(prev);
-  categories.forEach(cat => {
-    if (cat.visible) {  // ADD THIS CHECK
-      newVisible.add(cat.id);
-    }
-  });
-  return newVisible;
-});
-
-        showNotification('success', `Loaded ${placemarks.length} rectification items from ${Object.keys(apiData.data).length} blocks`);
-      } else {
-        showNotification('info', 'No rectification data found for selected area');
-        setRectificationData([]);
-        setRectificationCategories([]);
-        setRawRectificationData(null);
+      if (state.length > 0) {
+        params.state_id = state.join(',');
       }
-    }
-  } catch (error) {
-    console.error('Failed to load rectification data:', error);
-      if (axios.isAxiosError(error)) {
-        showNotification('error',  error.response?.data.error ||'Failed to load rectification data');
-
-      }else{
-            showNotification('error','Failed to load rectification data');
-
+      if (division.length > 0) {
+        params.district_id = division.join(',');
       }
-    setRectificationData([]);
-    setRectificationCategories([]);
-    setRawRectificationData(null);
-  } finally {
-    setIsLoadingRectification(false);
-    setLoding(false);
-  }
-};
+      if (block.length > 0) {
+        params.block_id = block.join(',');
+      }
 
-  const loadJointsData = async (state: string[], division: string[], block: string[]) => {
-  try {
-    setisLoadingJoints(true);
-    setLoding(true);
+      const response = await axios.get(`${BASEURL}/get-rectification-survey`, {
+        params,
+      });
 
-    const params: any = {};
+      // The response now has PhysicalSurveyApiResponse structure
+      const apiData: PhysicalSurveyApiResponse = response.data;
 
-    if (state.length > 0) {
-      params.state_id = state.join(',');
-    }
-    if (division.length > 0) {
-      params.district_id = division.join(',');
-    }
-    if (block.length > 0) {
-      params.block_id = block.join(',');
-    }
+      if (response.status === 200 || response.status === 201) {
+        if (
+          apiData.status &&
+          apiData.data &&
+          Object.keys(apiData.data).length > 0
+        ) {
+          // Use the NEW rectification processor that handles physical survey structure
+          const { placemarks, categories } =
+            processRectificationSurveyData(apiData);
 
-    const response = await axios.get(`${BASEURL}/fetch-joints-location`, { params });
-    
-    const apiData: JointsApiResponse = response.data;
+          setRawRectificationData(apiData);
+          setRectificationData(placemarks);
+          setRectificationCategories(categories);
 
-    if (response.status === 200 || response.status === 201) {
-      if (apiData.success && apiData.data && Object.keys(apiData.data).length > 0) {
-        
-        const { placemarks, categories } = processJointsData(apiData);
-
-        setRawJointsData(apiData);
-        setJointsData(placemarks);
-        setJointsDataCategories(categories);
-
-        // Set default visibility for joints categories
-        setVisibleCategories(prev => {
-          const newVisible = new Set(prev);
-          categories.forEach(cat => {
-            if (cat.visible) {  
-              newVisible.add(cat.id);
-            }
+          // Set default visibility for rectification categories
+          setVisibleCategories((prev) => {
+            const newVisible = new Set(prev);
+            categories.forEach((cat) => {
+              if (cat.visible) {
+                // ADD THIS CHECK
+                newVisible.add(cat.id);
+              }
+            });
+            return newVisible;
           });
-          return newVisible;
-        });
 
-        showNotification('success', `Loaded ${placemarks.length} joints items from ${Object.keys(apiData.data).length} blocks`);
-      } else {
-        showNotification('info', 'No joints data found for selected area');
-        setJointsData([]);
-        setJointsDataCategories([]);
-        setRawJointsData(null);
+          showNotification(
+            'success',
+            `Loaded ${placemarks.length} rectification items from ${Object.keys(apiData.data).length} blocks`,
+          );
+        } else {
+          showNotification(
+            'info',
+            'No rectification data found for selected area',
+          );
+          setRectificationData([]);
+          setRectificationCategories([]);
+          setRawRectificationData(null);
+        }
       }
+    } catch (error) {
+      console.error('Failed to load rectification data:', error);
+      if (axios.isAxiosError(error)) {
+        showNotification(
+          'error',
+          error.response?.data.error || 'Failed to load rectification data',
+        );
+      } else {
+        showNotification('error', 'Failed to load rectification data');
+      }
+      setRectificationData([]);
+      setRectificationCategories([]);
+      setRawRectificationData(null);
+    } finally {
+      setIsLoadingRectification(false);
+      setLoding(false);
     }
-  } catch (error) {
-    console.error('Failed to load joints data:', error);
+  };
+
+  const loadJointsData = async (
+    state: string[],
+    division: string[],
+    block: string[],
+  ) => {
+    try {
+      setisLoadingJoints(true);
+      setLoding(true);
+
+      const params: any = {};
+
+      if (state.length > 0) {
+        params.state_id = state.join(',');
+      }
+      if (division.length > 0) {
+        params.district_id = division.join(',');
+      }
+      if (block.length > 0) {
+        params.block_id = block.join(',');
+      }
+
+      const response = await axios.get(`${BASEURL}/fetch-joints-location`, {
+        params,
+      });
+
+      const apiData: JointsApiResponse = response.data;
+
+      if (response.status === 200 || response.status === 201) {
+        if (
+          apiData.success &&
+          apiData.data &&
+          Object.keys(apiData.data).length > 0
+        ) {
+          const { placemarks, categories } = processJointsData(apiData);
+
+          setRawJointsData(apiData);
+          setJointsData(placemarks);
+          setJointsDataCategories(categories);
+
+          // Set default visibility for joints categories
+          setVisibleCategories((prev) => {
+            const newVisible = new Set(prev);
+            categories.forEach((cat) => {
+              if (cat.visible) {
+                newVisible.add(cat.id);
+              }
+            });
+            return newVisible;
+          });
+
+          showNotification(
+            'success',
+            `Loaded ${placemarks.length} joints items from ${Object.keys(apiData.data).length} blocks`,
+          );
+        } else {
+          showNotification('info', 'No joints data found for selected area');
+          setJointsData([]);
+          setJointsDataCategories([]);
+          setRawJointsData(null);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load joints data:', error);
       if (axios.isAxiosError(error)) {
         showNotification('error', error.response?.data.message);
-
-      }else{
-     showNotification('error', 'Failed to load joints data');
-
+      } else {
+        showNotification('error', 'Failed to load joints data');
       }
-    setJointsData([]);
-    setJointsDataCategories([]);
-    setRawJointsData(null);
-  } finally {
-    setisLoadingJoints(false);
-    setLoding(false);
-  }
-};
+      setJointsData([]);
+      setJointsDataCategories([]);
+      setRawJointsData(null);
+    } finally {
+      setisLoadingJoints(false);
+      setLoding(false);
+    }
+  };
+
+  const loadConstructionData = async (
+    state: string[],
+    division: string[],
+    block: string[],
+  ) => {
+    try {
+      setIsLoadingConstruction(true);
+      setLoding(true);
+
+      const params: any = {};
+
+      if (state.length > 0) {
+        params.state_id = state.join(',');
+      }
+      if (division.length > 0) {
+        params.district_id = division.join(',');
+      }
+      if (block.length > 0) {
+        params.block_id = block.join(',');
+      }
+
+      const response = await axios.get(`${BASEURL}/get-construction-data`, {
+        params,
+      });
+
+      const apiData: ConstructionApiResponse = response.data;
+
+      if (response.status === 200 || response.status === 201) {
+        if (
+          apiData.status &&
+          apiData.data &&
+          Object.keys(apiData.data).length > 0
+        ) {
+          const { placemarks, categories } = processConstructionData(apiData);
+          setRawConstructionData(apiData);
+          setConstructionData(placemarks);
+          setConstructionCategories(categories);
+
+          setVisibleCategories((prev) => {
+            const newVisible = new Set(prev);
+            categories.forEach((cat) => {
+              if (cat.visible) {
+                newVisible.add(cat.id);
+              }
+            });
+            return newVisible;
+          });
+
+          showNotification(
+            'success',
+            `Loaded ${placemarks.length} construction items from ${Object.keys(apiData.data).length} blocks`,
+          );
+        } else {
+          showNotification(
+            'info',
+            'No construction data found for selected area',
+          );
+          setConstructionData([]);
+          setConstructionCategories([]);
+          setRawConstructionData(null);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load construction data:', error);
+      if (axios.isAxiosError(error)) {
+        showNotification(
+          'error',
+          error.response?.data.error || 'Failed to load construction data',
+        );
+      } else {
+        showNotification('error', 'Failed to load construction data');
+      }
+      setConstructionData([]);
+      setConstructionCategories([]);
+      setRawConstructionData(null);
+    } finally {
+      setIsLoadingConstruction(false);
+      setLoding(false);
+    }
+  };
 
   // ==============================================
   // ENHANCED LANDMARK DETECTION LOGIC
   // ==============================================
 
   useEffect(() => {
-  if (!isVideoSurveyMode || !landmarkPauseMode || !landmarkDetectionEnabled || 
-      !videoSurveyData.videoClips.length || showLandmarkModal) {
-    return;
-  }
-  
-  const landmarkDetection = VideoSurveyService.detectLandmarkAtCurrentTime(
-    physicalSurveyData,
+    if (
+      !isVideoSurveyMode ||
+      !landmarkPauseMode ||
+      !landmarkDetectionEnabled ||
+      !videoSurveyData.videoClips.length ||
+      showLandmarkModal
+    ) {
+      return;
+    }
+
+    const landmarkDetection = VideoSurveyService.detectLandmarkAtCurrentTime(
+      physicalSurveyData,
+      currentTime,
+      videoSurveyData.trackPoints,
+      visibleCategories,
+      0.00001,
+    );
+
+    if (
+      landmarkDetection.hasLandmark &&
+      landmarkDetection.landmarks.length > 0
+    ) {
+      // Filter out landmarks we've already shown
+      const newLandmarks = landmarkDetection.landmarks.filter(
+        (landmark) => !shownLandmarkIds.has(landmark.id),
+      );
+
+      if (newLandmarks.length > 0) {
+        // Mark these landmarks as shown
+        setShownLandmarkIds((prev) => {
+          const updated = new Set(prev);
+          newLandmarks.forEach((landmark) => updated.add(landmark.id));
+          return updated;
+        });
+
+        // Show modal
+        setCurrentLandmarks(newLandmarks);
+        setCurrentPosition(landmarkDetection.position);
+        setShowLandmarkModal(true);
+        setVideoWasPausedByLandmark(true);
+      }
+    }
+  }, [
     currentTime,
+    isVideoSurveyMode,
+    landmarkPauseMode,
+    landmarkDetectionEnabled,
+    physicalSurveyData,
     videoSurveyData.trackPoints,
     visibleCategories,
-    0.00001
-  );
-  
-  if (landmarkDetection.hasLandmark && landmarkDetection.landmarks.length > 0) {
-    // Filter out landmarks we've already shown
-    const newLandmarks = landmarkDetection.landmarks.filter(
-      landmark => !shownLandmarkIds.has(landmark.id)
-    );
-    
-    if (newLandmarks.length > 0) {
-      // Mark these landmarks as shown
-      setShownLandmarkIds(prev => {
-        const updated = new Set(prev);
-        newLandmarks.forEach(landmark => updated.add(landmark.id));
-        return updated;
-      });
-      
-      // Show modal
-      setCurrentLandmarks(newLandmarks);
-      setCurrentPosition(landmarkDetection.position);
-      setShowLandmarkModal(true);
-      setVideoWasPausedByLandmark(true);
-      
-    }
-  }
-}, [
-  currentTime,
-  isVideoSurveyMode,
-  landmarkPauseMode, 
-  landmarkDetectionEnabled,
-  physicalSurveyData,
-  videoSurveyData.trackPoints,
-  visibleCategories,
-  showLandmarkModal,
-  shownLandmarkIds
-]);
+    showLandmarkModal,
+    shownLandmarkIds,
+  ]);
 
-// Reset when switching videos/surveys
-useEffect(() => {
-  setShownLandmarkIds(new Set());
-}, [currentVideoIndex]);
+  // Reset when switching videos/surveys
+  useEffect(() => {
+    setShownLandmarkIds(new Set());
+  }, [currentVideoIndex]);
 
   // ==============================================
   // LANDMARK MODAL HANDLERS
   // ==============================================
 
   const handleLandmarkContinue = useCallback(() => {
-    
     // Close modal and reset landmark state
     setShowLandmarkModal(false);
     setCurrentLandmarks([]);
     setVideoWasPausedByLandmark(false);
-    
+
     // Signal video to resume
     setShouldResumeVideo(true);
-    
+
     // Log the action for debugging
   }, []);
 
   const handleLandmarkClose = useCallback(() => {
-    
     // Close modal and reset landmark state
     setShowLandmarkModal(false);
     setCurrentLandmarks([]);
     setVideoWasPausedByLandmark(false);
-    
+
     // Don't auto-resume video when user clicks close - let them manually control playback
     setShouldResumeVideo(false);
-    
   }, []);
 
   const handleVideoResumeComplete = useCallback(() => {
@@ -889,7 +1186,7 @@ useEffect(() => {
 
   const handleLandmarkPauseModeToggle = useCallback((enabled: boolean) => {
     setLandmarkPauseMode(enabled);
-    
+
     if (!enabled) {
       // If disabling landmark pause, close any open modals and reset state
       setShowLandmarkModal(false);
@@ -897,7 +1194,6 @@ useEffect(() => {
       setPreviousLandmarks([]);
       setVideoWasPausedByLandmark(false);
       setShouldResumeVideo(false);
-      
     } else {
       null;
     }
@@ -905,7 +1201,7 @@ useEffect(() => {
 
   const handleLandmarkDetectionToggle = useCallback((enabled: boolean) => {
     setLandmarkDetectionEnabled(enabled);
-    
+
     if (!enabled) {
       // Reset all landmark-related state when detection is disabled
       setShowLandmarkModal(false);
@@ -914,7 +1210,6 @@ useEffect(() => {
       setVideoWasPausedByLandmark(false);
       setShouldResumeVideo(false);
       setLastDetectionTime(0);
-      
     }
   }, []);
 
@@ -923,9 +1218,13 @@ useEffect(() => {
   // ==============================================
 
   // Transform KML/KMZ data to Physical Survey format
-  function transformKMLToPhysicalSurvey(apiData: ApiPlacemark, file: KMZFile): any {
+  function transformKMLToPhysicalSurvey(
+    apiData: ApiPlacemark,
+    file: KMZFile,
+  ): any {
     const physicalSurveyData = { data: {} as Record<string, any[]> };
-    const blockId = (file as any).blk_code || (file as any).id || 'unknown_block';
+    const blockId =
+      (file as any).blk_code || (file as any).id || 'unknown_block';
     physicalSurveyData.data[blockId] = [];
 
     if ((apiData as any).points) {
@@ -940,7 +1239,7 @@ useEffect(() => {
           ...point.properties,
           filename: (file as any).filename,
           uploaded_at: (file as any).uploaded_at,
-          block_id: blockId
+          block_id: blockId,
         });
       });
     }
@@ -951,14 +1250,14 @@ useEffect(() => {
   // Helper function to map KML types to survey event types
   function mapKMLTypeToSurveyEvent(kmlType: string): string {
     const typeMapping: Record<string, string> = {
-      'LANDMARK': 'LANDMARK',
-      'GP': 'LANDMARK',
-      'FPOI': 'ROUTEINDICATOR',
-      'BHQ': 'LANDMARK',
-      'BR': 'LANDMARK',
-      'Bridge': 'LANDMARK',
-      'Culvert': 'LANDMARK',
-      'ROADCROSSING': 'ROUTEFEASIBILITY',
+      LANDMARK: 'LANDMARK',
+      GP: 'LANDMARK',
+      FPOI: 'ROUTEINDICATOR',
+      BHQ: 'LANDMARK',
+      BR: 'LANDMARK',
+      Bridge: 'LANDMARK',
+      Culvert: 'LANDMARK',
+      ROADCROSSING: 'ROUTEFEASIBILITY',
     };
 
     return typeMapping[kmlType] || 'LANDMARK';
@@ -975,13 +1274,13 @@ useEffect(() => {
     stateId: string,
     districtId: string,
     blockId: string,
-    category: string
+    category: string,
   ) => {
     setIsUploading(true);
     setUploadError('');
     try {
       const formData = new FormData();
-      
+
       // Handle different categories with different form field names
       if (category === 'BSNL') {
         // For BSNL category, use 'BSNL_Cables' as form field name
@@ -990,7 +1289,7 @@ useEffect(() => {
         // For Survey and Desktop categories, use 'desktop_planning' as form field name
         formData.append('desktop_planning', desktopFile);
       }
-      
+
       // Common form fields for all categories
       formData.append('state_code', stateId);
       formData.append('dtcode', districtId);
@@ -998,12 +1297,19 @@ useEffect(() => {
       formData.append('FileName', fileName);
       formData.append('category', category);
 
-      const response = await axios.post(`${BASEURL}/upload-external-data`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const response = await axios.post(
+        `${BASEURL}/upload-external-data`,
+        formData,
+        {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        },
+      );
 
       if (response.status === 200 || response.status === 201) {
-        showNotification("success", `${desktopFile.name} file uploaded successfully in ${category} category`);
+        showNotification(
+          'success',
+          `${desktopFile.name} file uploaded successfully in ${category} category`,
+        );
       }
 
       // Reset form state
@@ -1013,42 +1319,51 @@ useEffect(() => {
       setModalOpen(false);
     } catch (error: any) {
       console.error('Failed to upload file:', error);
-      setUploadError(error instanceof Error ? error.message : 'Failed to upload file');
-      showNotification("error", "Failed to upload file");
+      setUploadError(
+        error instanceof Error ? error.message : 'Failed to upload file',
+      );
+      showNotification('error', 'Failed to upload file');
     } finally {
       setIsUploading(false);
     }
   };
 
   // File Selection
-  const handleFileSelect = useCallback((file: KMZFile, isMultiSelect: boolean = false) => {
-    if (isMultiSelect) {
-      setSelectedFiles(prev => {
-        const isAlreadySelected = prev.some(f => f.id === file.id);
-        if (isAlreadySelected) {
-          return prev.filter(f => f.id !== file.id);
-        } else {
-          return [...prev, file];
-        }
-      });
-    } else {
-      setSelectedFiles([file]);
-    }
-    setHighlightedPlacemark(undefined);
-  }, []);
+  const handleFileSelect = useCallback(
+    (file: KMZFile, isMultiSelect: boolean = false) => {
+      if (isMultiSelect) {
+        setSelectedFiles((prev) => {
+          const isAlreadySelected = prev.some((f) => f.id === file.id);
+          if (isAlreadySelected) {
+            return prev.filter((f) => f.id !== file.id);
+          } else {
+            return [...prev, file];
+          }
+        });
+      } else {
+        setSelectedFiles([file]);
+      }
+      setHighlightedPlacemark(undefined);
+    },
+    [],
+  );
 
   // File Deletion
   const handleFileDelete = async (id: string) => {
     try {
-      const confirmed = window.confirm('Are you sure you want to delete this file? This action cannot be undone.');
+      const confirmed = window.confirm(
+        'Are you sure you want to delete this file? This action cannot be undone.',
+      );
       if (!confirmed) return;
 
       setLoding(true);
-      const response = await axios.post(`${BASEURL}/delete-physicalsurvey/${id}`);
+      const response = await axios.post(
+        `${BASEURL}/delete-physicalsurvey/${id}`,
+      );
 
       if (response.status === 200 || response.status === 201) {
         showNotification('success', 'File deleted successfully');
-        setSelectedFiles(prev => prev.filter(f => f.id !== id));
+        setSelectedFiles((prev) => prev.filter((f) => f.id !== id));
         setHighlightedPlacemark(undefined);
 
         // Trigger reload by resetting filters briefly
@@ -1065,14 +1380,14 @@ useEffect(() => {
           setSearchQuery(currentSearch);
           setFileCategory(currentCategory);
         }, 100);
-
       } else {
         showNotification('error', 'Failed to delete file');
       }
     } catch (error: any) {
       console.error('Failed to delete file:', error);
       if (axios.isAxiosError(error)) {
-        const errorMessage = error.response?.data?.message || 'Failed to delete file';
+        const errorMessage =
+          error.response?.data?.message || 'Failed to delete file';
         showNotification('error', errorMessage);
       } else {
         showNotification('error', 'Failed to delete file');
@@ -1083,63 +1398,109 @@ useEffect(() => {
   };
 
   // Geographic Selection Handlers
-  const handleSelectionChange = (selectedStates: string[], selectedDistricts: string[], selectedBlocks: string[]) => {
+  const handleSelectionChange = (
+    selectedStates: string[],
+    selectedDistricts: string[],
+    selectedBlocks: string[],
+  ) => {
     // Hook provided for auto-loading if needed
     // loadPhysicalData(selectedStates, selectedDistricts, selectedBlocks);
   };
 
   const handlePreview = (item: {
-  type: 'state' | 'district' | 'block' | 'universal';
-  selectedStates: string[];
-  selectedDistricts: string[];
-  selectedBlocks: string[];
-  name: string;
-  dataType: 'physical' | 'desktop' | 'rectification' | 'joints';   // ADD rectification
-  hierarchyContext?: {
-    stateId?: string;
-    districtId?: string;
-    blockId?: string;
+    type: 'state' | 'district' | 'block' | 'universal';
+    selectedStates: string[];
+    selectedDistricts: string[];
+    selectedBlocks: string[];
+    name: string;
+    dataType:
+      | 'physical'
+      | 'desktop'
+      | 'rectification'
+      | 'joints'
+      | 'construction';
+    hierarchyContext?: {
+      stateId?: string;
+      districtId?: string;
+      blockId?: string;
+    };
+  }) => {
+    if (item.dataType === 'physical') {
+      loadPhysicalData(
+        item.selectedStates,
+        item.selectedDistricts,
+        item.selectedBlocks,
+      );
+    } else if (item.dataType === 'desktop') {
+      loadDesktopPlanningData(
+        item.selectedStates,
+        item.selectedDistricts,
+        item.selectedBlocks,
+        item.hierarchyContext,
+      );
+    } else if (item.dataType === 'rectification') {
+      loadRectificationData(
+        item.selectedStates,
+        item.selectedDistricts,
+        item.selectedBlocks,
+      );
+    } else if (item.dataType === 'joints') {
+      loadJointsData(
+        item.selectedStates,
+        item.selectedDistricts,
+        item.selectedBlocks,
+      );
+    } else if (item.dataType === 'construction') {
+      loadConstructionData(
+        item.selectedStates,
+        item.selectedDistricts,
+        item.selectedBlocks,
+      );
+    }
   };
-}) => {
-  if (item.dataType === 'physical') {
-    loadPhysicalData(item.selectedStates, item.selectedDistricts, item.selectedBlocks);
-  } else if (item.dataType === 'desktop') {
-    loadDesktopPlanningData(item.selectedStates, item.selectedDistricts, item.selectedBlocks, item.hierarchyContext);
-  } else if (item.dataType === 'rectification') {
-    // ADD THIS
-    loadRectificationData(item.selectedStates, item.selectedDistricts, item.selectedBlocks);
-  }else if(item.dataType === 'joints'){
-    loadJointsData(item.selectedStates, item.selectedDistricts, item.selectedBlocks);
 
-  }
-};
-
-const handleRefresh = (item: {
-  type: 'state' | 'district' | 'block' | 'universal';
-  selectedStates: string[];
-  selectedDistricts: string[];
-  selectedBlocks: string[];
-  name: string;
-  dataType: 'physical' | 'desktop' | 'rectification'; // ADD rectification
-  hierarchyContext?: {
-    stateId?: string;
-    districtId?: string;
-    blockId?: string;
+  const handleRefresh = (item: {
+    type: 'state' | 'district' | 'block' | 'universal';
+    selectedStates: string[];
+    selectedDistricts: string[];
+    selectedBlocks: string[];
+    name: string;
+    dataType: 'physical' | 'desktop' | 'rectification'; // ADD rectification
+    hierarchyContext?: {
+      stateId?: string;
+      districtId?: string;
+      blockId?: string;
+    };
+  }) => {
+    if (item.dataType === 'physical') {
+      loadPhysicalData(
+        item.selectedStates,
+        item.selectedDistricts,
+        item.selectedBlocks,
+      );
+    } else if (item.dataType === 'desktop') {
+      loadDesktopPlanningData(
+        item.selectedStates,
+        item.selectedDistricts,
+        item.selectedBlocks,
+        item.hierarchyContext,
+      );
+    } else if (item.dataType === 'rectification') {
+      // ADD THIS
+      loadRectificationData(
+        item.selectedStates,
+        item.selectedDistricts,
+        item.selectedBlocks,
+      );
+    }
   };
-}) => {
-  if (item.dataType === 'physical') {
-    loadPhysicalData(item.selectedStates, item.selectedDistricts, item.selectedBlocks);
-  } else if (item.dataType === 'desktop') {
-    loadDesktopPlanningData(item.selectedStates, item.selectedDistricts, item.selectedBlocks, item.hierarchyContext);
-  } else if (item.dataType === 'rectification') {
-    // ADD THIS
-    loadRectificationData(item.selectedStates, item.selectedDistricts, item.selectedBlocks);
-  }
-};
 
   // Map Handlers
-  const handleCategoryVisibilityChange = (categoryId: string, visible: boolean) => {
-    setVisibleCategories(prev => {
+  const handleCategoryVisibilityChange = (
+    categoryId: string,
+    visible: boolean,
+  ) => {
+    setVisibleCategories((prev) => {
       const newSet = new Set(prev);
       if (visible) {
         newSet.add(categoryId);
@@ -1156,7 +1517,7 @@ const handleRefresh = (item: {
 
   const handleSidebarToggle = useCallback(() => {
     try {
-      setSidebarOpen(prev => !prev);
+      setSidebarOpen((prev) => !prev);
     } catch (error) {
       console.error('Error toggling sidebar:', error);
       setSidebarOpen(false);
@@ -1174,7 +1535,10 @@ const handleRefresh = (item: {
   };
 
   // Notification system
-  const showNotification = (type: 'success' | 'error' | 'info' | 'warning', message: string) => {
+  const showNotification = (
+    type: 'success' | 'error' | 'info' | 'warning',
+    message: string,
+  ) => {
     if (notifierTimeoutRef.current) {
       clearTimeout(notifierTimeoutRef.current);
       notifierTimeoutRef.current = null;
@@ -1184,7 +1548,7 @@ const handleRefresh = (item: {
     const hideDelay = type === 'success' ? 5000 : 10000;
 
     notifierTimeoutRef.current = setTimeout(() => {
-      setNotifier(prev => ({ ...prev, visible: false }));
+      setNotifier((prev) => ({ ...prev, visible: false }));
       notifierTimeoutRef.current = null;
     }, hideDelay);
   };
@@ -1199,295 +1563,405 @@ const handleRefresh = (item: {
   }, []);
 
   function mergeRawSurveyData(physicalData: any, rectificationData: any): any {
-  // If neither exist, return null
-  if (!physicalData && !rectificationData) {
-    return null;
-  }
-  
-  // If only one exists, return it
-  if (!physicalData) return rectificationData;
-  if (!rectificationData) return physicalData;
-  
-  // Both exist - merge them
-  const merged = {
-    status: true,
-    data: { ...physicalData.data }
-  };
-  
-  // Add rectification data to merged object
-  Object.entries(rectificationData.data || {}).forEach(([blockId, points]) => {
-    if (!merged.data[blockId]) {
-      // Block doesn't exist in physical data, add it
-      merged.data[blockId] = [];
+    // If neither exist, return null
+    if (!physicalData && !rectificationData) {
+      return null;
     }
-    
-    // Tag rectification points for identification (optional but useful)
-    const taggedPoints = (points as any[]).map(p => ({
-      ...p,
-      _source: 'rectification', // Helps identify source later if needed
-      _isRectification: true     // Alternative flag
-    }));
-    
-    // Merge rectification points with physical points for this block
-    merged.data[blockId] = [...merged.data[blockId], ...taggedPoints];
-  });
-  
-  return merged;
-}
+
+    // If only one exists, return it
+    if (!physicalData) return rectificationData;
+    if (!rectificationData) return physicalData;
+
+    // Both exist - merge them
+    const merged = {
+      status: true,
+      data: { ...physicalData.data },
+    };
+
+    // Add rectification data to merged object
+    Object.entries(rectificationData.data || {}).forEach(
+      ([blockId, points]) => {
+        if (!merged.data[blockId]) {
+          // Block doesn't exist in physical data, add it
+          merged.data[blockId] = [];
+        }
+
+        // Tag rectification points for identification (optional but useful)
+        const taggedPoints = (points as any[]).map((p) => ({
+          ...p,
+          _source: 'rectification', // Helps identify source later if needed
+          _isRectification: true, // Alternative flag
+        }));
+
+        // Merge rectification points with physical points for this block
+        merged.data[blockId] = [...merged.data[blockId], ...taggedPoints];
+      },
+    );
+
+    return merged;
+  }
 
   // ==============================================
   // VIDEO SURVEY INTEGRATION (using VideoSurveyService)
   // ==============================================
 
   useEffect(() => {
-  // Check which specific video survey categories are enabled
-  const physicalVideoEnabled = visibleCategories.has('physical-video_survey');
-  const rectificationVideoEnabled = Array.from(visibleCategories).some(id => 
-    id.startsWith('rectification-') && (id.includes('video_survey') || id.includes('video-survey'))
-  );
-  
-  const isOn = physicalVideoEnabled || rectificationVideoEnabled;
-  
-  setIsVideoSurveyMode(isOn);
-  if (!isOn) {
-    setShowRightPanel(false);
-    // Reset landmark state when video mode is disabled
-    setShowLandmarkModal(false);
-    setCurrentLandmarks([]);
-    setPreviousLandmarks([]);
-    setVideoWasPausedByLandmark(false);
-    setShouldResumeVideo(false);
-  }
-}, [visibleCategories]);
-
-// Process video survey data using VideoSurveyService (ENHANCED with rectification support)
-useEffect(() => {
-  if (!isVideoSurveyMode) {
-    setVideoSurveyData(VideoSurveyService.processPhysicalSurveyData(null));
-    return;
-  }
-  
-  try {
-    // Check which specific sources are enabled
+    // Check which specific video survey categories are enabled
     const physicalVideoEnabled = visibleCategories.has('physical-video_survey');
-    const rectificationVideoEnabled = Array.from(visibleCategories).some(id => 
-      id.startsWith('rectification-') && (id.includes('video_survey') || id.includes('video-survey'))
+    const rectificationVideoEnabled = Array.from(visibleCategories).some(
+      (id) =>
+        id.startsWith('rectification-') &&
+        (id.includes('video_survey') || id.includes('video-survey')),
     );
-    
-    // Only include data from enabled sources
-    let dataToProcess = null;
-    
-    if (physicalVideoEnabled && rectificationVideoEnabled) {
-      // Both enabled - merge them
-      dataToProcess = mergeRawSurveyData(rawPhysicalSurveyData, rawRectificationData);
-    } else if (physicalVideoEnabled) {
-      // Only physical survey video enabled
-      dataToProcess = rawPhysicalSurveyData;
-    } else if (rectificationVideoEnabled) {
-      // Only rectification video enabled
-      dataToProcess = rawRectificationData;
+
+    const isOn = physicalVideoEnabled || rectificationVideoEnabled;
+
+    setIsVideoSurveyMode(isOn);
+    if (!isOn) {
+      setShowRightPanel(false);
+      // Reset landmark state when video mode is disabled
+      setShowLandmarkModal(false);
+      setCurrentLandmarks([]);
+      setPreviousLandmarks([]);
+      setVideoWasPausedByLandmark(false);
+      setShouldResumeVideo(false);
     }
-    
-    if (!dataToProcess) {
+  }, [visibleCategories]);
+
+  // Process video survey data using VideoSurveyService (ENHANCED with rectification support)
+  useEffect(() => {
+    if (!isVideoSurveyMode) {
       setVideoSurveyData(VideoSurveyService.processPhysicalSurveyData(null));
       return;
     }
-    
-    // Use simplified processing (same as video playback page)
-    const processedVideoData = VideoSurveyService.processPhysicalSurveyData(dataToProcess);
-    
-    // Validation (keep existing)
-    const validation = VideoSurveyService.validateVideoSurveyData(dataToProcess);
-    
-    if (validation.issues.length > 0) {
-      console.warn('Video survey data validation issues:', validation.issues);
-      showNotification('warning', `Video survey data issues: ${validation.issues.length} problems found`);
+
+    try {
+      // Check which specific sources are enabled
+      const physicalVideoEnabled = visibleCategories.has(
+        'physical-video_survey',
+      );
+      const rectificationVideoEnabled = Array.from(visibleCategories).some(
+        (id) =>
+          id.startsWith('rectification-') &&
+          (id.includes('video_survey') || id.includes('video-survey')),
+      );
+
+      // Only include data from enabled sources
+      let dataToProcess = null;
+
+      if (physicalVideoEnabled && rectificationVideoEnabled) {
+        // Both enabled - merge them
+        dataToProcess = mergeRawSurveyData(
+          rawPhysicalSurveyData,
+          rawRectificationData,
+        );
+      } else if (physicalVideoEnabled) {
+        // Only physical survey video enabled
+        dataToProcess = rawPhysicalSurveyData;
+      } else if (rectificationVideoEnabled) {
+        // Only rectification video enabled
+        dataToProcess = rawRectificationData;
+      }
+
+      if (!dataToProcess) {
+        setVideoSurveyData(VideoSurveyService.processPhysicalSurveyData(null));
+        return;
+      }
+
+      // Use simplified processing (same as video playback page)
+      const processedVideoData =
+        VideoSurveyService.processPhysicalSurveyData(dataToProcess);
+
+      // Validation (keep existing)
+      const validation =
+        VideoSurveyService.validateVideoSurveyData(dataToProcess);
+
+      if (validation.issues.length > 0) {
+        console.warn('Video survey data validation issues:', validation.issues);
+        showNotification(
+          'warning',
+          `Video survey data issues: ${validation.issues.length} problems found`,
+        );
+      }
+
+      setVideoSurveyData(processedVideoData);
+
+      if (processedVideoData.trackPoints.length === 0) {
+        showNotification(
+          'warning',
+          'No valid GPS track points found in survey data',
+        );
+        return;
+      }
+
+      if (processedVideoData.videoClips.length === 0) {
+        showNotification('info', 'No video clips found in survey data');
+        setCurrentTime(processedVideoData.trackPoints[0]?.timestamp ?? 0);
+        return;
+      }
+
+      // Initialize with first clip (same as video playback page)
+      setCurrentVideoIndex(0);
+      setCurrentTime(processedVideoData.videoClips[0].startTimeStamp);
+
+      // Build notification message based on what's actually enabled
+      const sources = [];
+      if (
+        physicalVideoEnabled &&
+        rawPhysicalSurveyData?.data &&
+        Object.keys(rawPhysicalSurveyData.data).length > 0
+      ) {
+        sources.push('Physical Survey');
+      }
+      if (
+        rectificationVideoEnabled &&
+        rawRectificationData?.data &&
+        Object.keys(rawRectificationData.data).length > 0
+      ) {
+        sources.push('Rectification Survey');
+      }
+
+      const sourceText =
+        sources.length > 0 ? ` from ${sources.join(' + ')}` : '';
+
+      showNotification(
+        'success',
+        `Video survey loaded${sourceText}: ${processedVideoData.trackPoints.length} track points, ${processedVideoData.videoClips.length} video clips`,
+      );
+    } catch (error) {
+      console.error('Error processing video survey data:', error);
+      showNotification('error', 'Failed to process video survey data');
+      setVideoSurveyData(VideoSurveyService.processPhysicalSurveyData(null));
     }
-    
-    setVideoSurveyData(processedVideoData);
-    
-    if (processedVideoData.trackPoints.length === 0) {
-      showNotification('warning', 'No valid GPS track points found in survey data');
-      return;
-    }
-    
-    if (processedVideoData.videoClips.length === 0) {
-      showNotification('info', 'No video clips found in survey data');
-      setCurrentTime(processedVideoData.trackPoints[0]?.timestamp ?? 0);
-      return;
-    }
-    
-    // Initialize with first clip (same as video playback page)
-    setCurrentVideoIndex(0);
-    setCurrentTime(processedVideoData.videoClips[0].startTimeStamp);
-    
-    // Build notification message based on what's actually enabled
-    const sources = [];
-    if (physicalVideoEnabled && rawPhysicalSurveyData?.data && Object.keys(rawPhysicalSurveyData.data).length > 0) {
-      sources.push('Physical Survey');
-    }
-    if (rectificationVideoEnabled && rawRectificationData?.data && Object.keys(rawRectificationData.data).length > 0) {
-      sources.push('Rectification Survey');
-    }
-    
-    const sourceText = sources.length > 0 ? ` from ${sources.join(' + ')}` : '';
-    
-    showNotification('success', 
-      `Video survey loaded${sourceText}: ${processedVideoData.trackPoints.length} track points, ${processedVideoData.videoClips.length} video clips`
-    );
-    
-  } catch (error) {
-    console.error('Error processing video survey data:', error);
-    showNotification('error', 'Failed to process video survey data');
-    setVideoSurveyData(VideoSurveyService.processPhysicalSurveyData(null));
-  }
-}, [isVideoSurveyMode, rawPhysicalSurveyData, rawRectificationData, visibleCategories]);
+  }, [
+    isVideoSurveyMode,
+    rawPhysicalSurveyData,
+    rawRectificationData,
+    visibleCategories,
+  ]);
 
   // Keep map marker in sync when currentTime changes using VideoSurveyService
   useEffect(() => {
     if (!videoSurveyData.trackPoints.length) return;
-    
-    const position = VideoSurveyService.interpolatePosition(videoSurveyData.trackPoints, currentTime);
+
+    const position = VideoSurveyService.interpolatePosition(
+      videoSurveyData.trackPoints,
+      currentTime,
+    );
     setCurrentPosition(position);
   }, [currentTime, videoSurveyData.trackPoints]);
 
   // Enhanced track point click handler using VideoSurveyService
-  const handleTrackPointClick = useCallback((point: TrackPoint) => {
-    try {
-      setShowRightPanel(true);
-      
-      // Strategy: Find video from SAME survey first
-      const pointSurveyId = point.surveyId;
-      
-      if (!pointSurveyId) {
-        showNotification('warning', 'Track point has no survey ID');
-        return;
-      }
-      
-      // Filter videos by the clicked point's survey
-      const sameSurveyVideos = videoSurveyData.videoClips.filter(
-        clip => clip.meta?.surveyId === pointSurveyId
-      );
-      
-      let selectedClip = null;
-      let selectedIndex = -1;
-      
-      if (sameSurveyVideos.length > 0) {
-        // Look for exact timestamp match within the same survey
-        const clipMatch = VideoSurveyService.findVideoClipForTimestamp(sameSurveyVideos, point.timestamp);
-        
-        if (clipMatch) {
-          // Find the actual index in the full video array
-          selectedIndex = videoSurveyData.videoClips.findIndex(clip => clip.id === clipMatch.clip.id);
-          selectedClip = clipMatch.clip;
+  const handleTrackPointClick = useCallback(
+    (point: TrackPoint) => {
+      try {
+        setShowRightPanel(true);
+
+        // Strategy: Find video from SAME survey first
+        const pointSurveyId = point.surveyId;
+
+        if (!pointSurveyId) {
+          showNotification('warning', 'Track point has no survey ID');
+          return;
+        }
+
+        // Filter videos by the clicked point's survey
+        const sameSurveyVideos = videoSurveyData.videoClips.filter(
+          (clip) => clip.meta?.surveyId === pointSurveyId,
+        );
+
+        let selectedClip = null;
+        let selectedIndex = -1;
+
+        if (sameSurveyVideos.length > 0) {
+          // Look for exact timestamp match within the same survey
+          const clipMatch = VideoSurveyService.findVideoClipForTimestamp(
+            sameSurveyVideos,
+            point.timestamp,
+          );
+
+          if (clipMatch) {
+            // Find the actual index in the full video array
+            selectedIndex = videoSurveyData.videoClips.findIndex(
+              (clip) => clip.id === clipMatch.clip.id,
+            );
+            selectedClip = clipMatch.clip;
+          } else {
+            // No exact match, find nearest video within same survey
+            const nearestMatch = VideoSurveyService.findNearestVideoClip(
+              sameSurveyVideos,
+              point.timestamp,
+            );
+
+            if (nearestMatch) {
+              selectedIndex = videoSurveyData.videoClips.findIndex(
+                (clip) => clip.id === nearestMatch.clip.id,
+              );
+              selectedClip = nearestMatch.clip;
+
+              const timeDiff = Math.abs(
+                point.timestamp - nearestMatch.clip.startTimeStamp,
+              );
+              if (timeDiff > 30000) {
+                // More than 30 seconds away
+                showNotification(
+                  'success',
+                  `Showing nearest video from Survey ${pointSurveyId})`,
+                );
+              }
+            }
+          }
         } else {
-          // No exact match, find nearest video within same survey
-          const nearestMatch = VideoSurveyService.findNearestVideoClip(sameSurveyVideos, point.timestamp);
-          
-          if (nearestMatch) {
-            selectedIndex = videoSurveyData.videoClips.findIndex(clip => clip.id === nearestMatch.clip.id);
-            selectedClip = nearestMatch.clip;
-            
-            const timeDiff = Math.abs(point.timestamp - nearestMatch.clip.startTimeStamp);
-            if (timeDiff > 30000) { // More than 30 seconds away
-              showNotification('success', `Showing nearest video from Survey ${pointSurveyId})`);
+          // Fallback: no videos in same survey - use cross-survey matching with warning
+          console.warn(
+            `No videos found for Survey ${pointSurveyId}, falling back to cross-survey matching`,
+          );
+
+          const clipMatch = VideoSurveyService.findVideoClipForTimestamp(
+            videoSurveyData.videoClips,
+            point.timestamp,
+          );
+
+          if (clipMatch) {
+            selectedClip = clipMatch.clip;
+            selectedIndex = clipMatch.index;
+            showNotification(
+              'warning',
+              `No videos in Survey ${pointSurveyId}. Showing from Survey ${selectedClip.meta?.surveyId}`,
+            );
+          } else {
+            // Last resort: find any nearest video
+            const nearestMatch = VideoSurveyService.findNearestVideoClip(
+              videoSurveyData.videoClips,
+              point.timestamp,
+            );
+            if (nearestMatch) {
+              selectedClip = nearestMatch.clip;
+              selectedIndex = nearestMatch.index;
+              showNotification(
+                'warning',
+                `No matching video found. Showing nearest from Survey ${selectedClip.meta?.surveyId}`,
+              );
             }
           }
         }
-      } else {
-        // Fallback: no videos in same survey - use cross-survey matching with warning
-        console.warn(`No videos found for Survey ${pointSurveyId}, falling back to cross-survey matching`);
-        
-        const clipMatch = VideoSurveyService.findVideoClipForTimestamp(videoSurveyData.videoClips, point.timestamp);
-        
-        if (clipMatch) {
-          selectedClip = clipMatch.clip;
-          selectedIndex = clipMatch.index;
-          showNotification('warning', `No videos in Survey ${pointSurveyId}. Showing from Survey ${selectedClip.meta?.surveyId}`);
+
+        if (selectedClip && selectedIndex >= 0) {
+          setCurrentVideoIndex(selectedIndex);
+          setCurrentTime(point.timestamp);
         } else {
-          // Last resort: find any nearest video
-          const nearestMatch = VideoSurveyService.findNearestVideoClip(videoSurveyData.videoClips, point.timestamp);
-          if (nearestMatch) {
-            selectedClip = nearestMatch.clip;
-            selectedIndex = nearestMatch.index;
-            showNotification('warning', `No matching video found. Showing nearest from Survey ${selectedClip.meta?.surveyId}`);
-          }
+          showNotification(
+            'error',
+            'No video clips available for this track point',
+          );
         }
+      } catch (error) {
+        console.error('Error handling track point click:', error);
+        showNotification('error', 'Failed to process track point click');
       }
-      
-      if (selectedClip && selectedIndex >= 0) {
-        setCurrentVideoIndex(selectedIndex);
-        setCurrentTime(point.timestamp);
-      } else {
-        showNotification('error', 'No video clips available for this track point');
-      }
-      
-    } catch (error) {
-      console.error('Error handling track point click:', error);
-      showNotification('error', 'Failed to process track point click');
-    }
-  }, [videoSurveyData.videoClips]);
+    },
+    [videoSurveyData.videoClips],
+  );
 
   // Enhanced position tracking with blue point snapping
   useEffect(() => {
     if (!videoSurveyData.trackPoints.length) return;
-    
+
     // Get current video clip to determine which survey is active
     const currentClip = videoSurveyData.videoClips[currentVideoIndex];
-    
+
     if (currentClip && currentClip.meta?.surveyId) {
       // Filter to current survey's points only
-      const currentSurveyPoints = videoSurveyData.trackPoints.filter(
-        point => point.surveyId === currentClip.meta.surveyId
-      ).sort((a, b) => a.timestamp - b.timestamp);
-      
+      const currentSurveyPoints = videoSurveyData.trackPoints
+        .filter((point) => point.surveyId === currentClip.meta.surveyId)
+        .sort((a, b) => a.timestamp - b.timestamp);
+
       if (currentSurveyPoints.length > 0) {
         // Define survey time boundaries
         const surveyStart = currentSurveyPoints[0].timestamp;
-        const surveyEnd = currentSurveyPoints[currentSurveyPoints.length - 1].timestamp;
-        
+        const surveyEnd =
+          currentSurveyPoints[currentSurveyPoints.length - 1].timestamp;
+
         // Add buffer for video/GPS sync issues (10 seconds)
         const buffer = 10000;
         const extendedStart = surveyStart - buffer;
         const extendedEnd = surveyEnd + buffer;
-        
+
         // Check if currentTime belongs to this survey's time range
         if (currentTime >= extendedStart && currentTime <= extendedEnd) {
           // Safe to interpolate within this survey
-          const position = VideoSurveyService.interpolatePosition(currentSurveyPoints, currentTime);
+          const position = VideoSurveyService.interpolatePosition(
+            currentSurveyPoints,
+            currentTime,
+          );
           setCurrentPosition(position);
         } else {
           // Time is outside this survey's range - hide red dot to prevent wrong positioning
-          console.warn(`Time ${new Date(currentTime).toLocaleTimeString()} outside Survey ${currentClip.meta.surveyId} range [${new Date(surveyStart).toLocaleTimeString()}, ${new Date(surveyEnd).toLocaleTimeString()}]`);
+          console.warn(
+            `Time ${new Date(currentTime).toLocaleTimeString()} outside Survey ${currentClip.meta.surveyId} range [${new Date(surveyStart).toLocaleTimeString()}, ${new Date(surveyEnd).toLocaleTimeString()}]`,
+          );
           setCurrentPosition(null);
         }
       } else {
         // No track points for this survey
-        console.warn(`No track points found for Survey ${currentClip.meta.surveyId}`);
+        console.warn(
+          `No track points found for Survey ${currentClip.meta.surveyId}`,
+        );
         setCurrentPosition(null);
       }
     } else {
       // No active video clip or no survey ID
       setCurrentPosition(null);
     }
-  }, [currentTime, videoSurveyData.trackPoints, videoSurveyData.videoClips, currentVideoIndex]);
+  }, [
+    currentTime,
+    videoSurveyData.trackPoints,
+    videoSurveyData.videoClips,
+    currentVideoIndex,
+  ]);
 
   // Provide a summary node for the video panel using VideoSurveyService
   const summaryNode = useMemo(() => {
     const clip = videoSurveyData.videoClips[currentVideoIndex];
     if (!clip) return null;
-    
+
     return (
       <div className="text-xs space-y-1">
-        <div><span className="font-medium">Survey ID:</span> {clip.meta?.surveyId || '—'}</div>
-        <div><span className="font-medium">Clip:</span> {currentVideoIndex + 1} / {videoSurveyData.videoClips.length}</div>
-        <div><span className="font-medium">Start:</span> {new Date(clip.startTimeStamp).toLocaleString()}</div>
-        <div><span className="font-medium">End:</span> {new Date(clip.endTimeStamp).toLocaleString()}</div>
-        <div><span className="font-medium">Duration:</span> {VideoSurveyService.formatDuration(clip.endTimeStamp - clip.startTimeStamp)}</div>
-        <div><span className="font-medium">Total Survey:</span> {VideoSurveyService.formatDuration(videoSurveyData.metadata.totalDuration)}</div>
+        <div>
+          <span className="font-medium">Survey ID:</span>{' '}
+          {clip.meta?.surveyId || '—'}
+        </div>
+        <div>
+          <span className="font-medium">Clip:</span> {currentVideoIndex + 1} /{' '}
+          {videoSurveyData.videoClips.length}
+        </div>
+        <div>
+          <span className="font-medium">Start:</span>{' '}
+          {new Date(clip.startTimeStamp).toLocaleString()}
+        </div>
+        <div>
+          <span className="font-medium">End:</span>{' '}
+          {new Date(clip.endTimeStamp).toLocaleString()}
+        </div>
+        <div>
+          <span className="font-medium">Duration:</span>{' '}
+          {VideoSurveyService.formatDuration(
+            clip.endTimeStamp - clip.startTimeStamp,
+          )}
+        </div>
+        <div>
+          <span className="font-medium">Total Survey:</span>{' '}
+          {VideoSurveyService.formatDuration(
+            videoSurveyData.metadata.totalDuration,
+          )}
+        </div>
       </div>
     );
-  }, [videoSurveyData.videoClips, videoSurveyData.metadata.totalDuration, currentVideoIndex]);
+  }, [
+    videoSurveyData.videoClips,
+    videoSurveyData.metadata.totalDuration,
+    currentVideoIndex,
+  ]);
 
   // ==============================================
   // PHOTO SURVEY INTEGRATION (using PhotoSurveyService)
@@ -1495,101 +1969,127 @@ useEffect(() => {
 
   // Watch for Photo Survey category toggle to enable/disable mode
   useEffect(() => {
-  // Check which specific photo survey categories are enabled
-  const physicalPhotoEnabled = visibleCategories.has('physical-photo_survey');
-  const rectificationPhotoEnabled = Array.from(visibleCategories).some(id => 
-    id.startsWith('rectification-') && (id.includes('photo_survey') || id.includes('photo-survey'))
-  );
-  
-  const isOn = physicalPhotoEnabled || rectificationPhotoEnabled;
-  
-  setIsPhotoSurveyMode(isOn);
-  if (!isOn) {
-    setShowPhotoPanel(false);
-    setCurrentPhotoPoint(null);
-  }
-}, [visibleCategories]);
-
-
-// Process photo survey data using PhotoSurveyService (ENHANCED with rectification support)
-useEffect(() => {
-  if (!isPhotoSurveyMode) {
-    setPhotoSurveyData(PhotoSurveyService.processPhysicalSurveyData(null));
-    return;
-  }
-  
-  try {
-    // Check which specific sources are enabled
+    // Check which specific photo survey categories are enabled
     const physicalPhotoEnabled = visibleCategories.has('physical-photo_survey');
-    const rectificationPhotoEnabled = Array.from(visibleCategories).some(id => 
-      id.startsWith('rectification-') && (id.includes('photo_survey') || id.includes('photo-survey'))
+    const rectificationPhotoEnabled = Array.from(visibleCategories).some(
+      (id) =>
+        id.startsWith('rectification-') &&
+        (id.includes('photo_survey') || id.includes('photo-survey')),
     );
-    
-    // Only include data from enabled sources
-    let dataToProcess = null;
-    
-    if (physicalPhotoEnabled && rectificationPhotoEnabled) {
-      // Both enabled - merge them
-      dataToProcess = mergeRawSurveyData(rawPhysicalSurveyData, rawRectificationData);
-    } else if (physicalPhotoEnabled) {
-      // Only physical survey photo enabled
-      dataToProcess = rawPhysicalSurveyData;
-    } else if (rectificationPhotoEnabled) {
-      // Only rectification photo enabled
-      dataToProcess = rawRectificationData;
+
+    const isOn = physicalPhotoEnabled || rectificationPhotoEnabled;
+
+    setIsPhotoSurveyMode(isOn);
+    if (!isOn) {
+      setShowPhotoPanel(false);
+      setCurrentPhotoPoint(null);
     }
-    
-    if (!dataToProcess) {
+  }, [visibleCategories]);
+
+  // Process photo survey data using PhotoSurveyService (ENHANCED with rectification support)
+  useEffect(() => {
+    if (!isPhotoSurveyMode) {
       setPhotoSurveyData(PhotoSurveyService.processPhysicalSurveyData(null));
       return;
     }
-    
-    // Use PhotoSurveyService to process the data
-    const processedPhotoData: PhotoSurveyData = PhotoSurveyService.processPhysicalSurveyData(dataToProcess);
-    
-    // Validate the processed data
-    const validation: PhotoValidationResult = PhotoSurveyService.validatePhotoSurveyData(dataToProcess);
-    
-    if (validation.issues.length > 0) {
-      console.warn('Photo survey data validation issues:', validation.issues);
-      showNotification('warning', `Photo survey data issues: ${validation.issues.length} problems found`);
+
+    try {
+      // Check which specific sources are enabled
+      const physicalPhotoEnabled = visibleCategories.has(
+        'physical-photo_survey',
+      );
+      const rectificationPhotoEnabled = Array.from(visibleCategories).some(
+        (id) =>
+          id.startsWith('rectification-') &&
+          (id.includes('photo_survey') || id.includes('photo-survey')),
+      );
+
+      // Only include data from enabled sources
+      let dataToProcess = null;
+
+      if (physicalPhotoEnabled && rectificationPhotoEnabled) {
+        // Both enabled - merge them
+        dataToProcess = mergeRawSurveyData(
+          rawPhysicalSurveyData,
+          rawRectificationData,
+        );
+      } else if (physicalPhotoEnabled) {
+        // Only physical survey photo enabled
+        dataToProcess = rawPhysicalSurveyData;
+      } else if (rectificationPhotoEnabled) {
+        // Only rectification photo enabled
+        dataToProcess = rawRectificationData;
+      }
+
+      if (!dataToProcess) {
+        setPhotoSurveyData(PhotoSurveyService.processPhysicalSurveyData(null));
+        return;
+      }
+
+      // Use PhotoSurveyService to process the data
+      const processedPhotoData: PhotoSurveyData =
+        PhotoSurveyService.processPhysicalSurveyData(dataToProcess);
+
+      // Validate the processed data
+      const validation: PhotoValidationResult =
+        PhotoSurveyService.validatePhotoSurveyData(dataToProcess);
+
+      if (validation.issues.length > 0) {
+        console.warn('Photo survey data validation issues:', validation.issues);
+        showNotification(
+          'warning',
+          `Photo survey data issues: ${validation.issues.length} problems found`,
+        );
+      }
+
+      // Update state with processed data
+      setPhotoSurveyData(processedPhotoData);
+
+      if (processedPhotoData.photoPoints.length === 0) {
+        showNotification('info', 'No photo points found in survey data');
+        return;
+      }
+
+      if (processedPhotoData.metadata.totalImages === 0) {
+        showNotification('warning', 'Photo points found but no valid images');
+        return;
+      }
+
+      // Build notification message based on what's actually enabled
+      const sources = [];
+      if (
+        physicalPhotoEnabled &&
+        rawPhysicalSurveyData?.data &&
+        Object.keys(rawPhysicalSurveyData.data).length > 0
+      ) {
+        sources.push('Physical Survey');
+      }
+      if (
+        rectificationPhotoEnabled &&
+        rawRectificationData?.data &&
+        Object.keys(rawRectificationData.data).length > 0
+      ) {
+        sources.push('Rectification Survey');
+      }
+
+      const sourceText =
+        sources.length > 0 ? ` from ${sources.join(' + ')}` : '';
+
+      showNotification(
+        'success',
+        `Photo survey loaded${sourceText}: ${processedPhotoData.photoPoints.length} photo points with ${processedPhotoData.metadata.totalImages} images`,
+      );
+    } catch (error) {
+      console.error('Error processing photo survey data:', error);
+      showNotification('error', 'Failed to process photo survey data');
+      setPhotoSurveyData(PhotoSurveyService.processPhysicalSurveyData(null));
     }
-    
-    // Update state with processed data
-    setPhotoSurveyData(processedPhotoData);
-    
-    if (processedPhotoData.photoPoints.length === 0) {
-      showNotification('info', 'No photo points found in survey data');
-      return;
-    }
-    
-    if (processedPhotoData.metadata.totalImages === 0) {
-      showNotification('warning', 'Photo points found but no valid images');
-      return;
-    }
-    
-    // Build notification message based on what's actually enabled
-    const sources = [];
-    if (physicalPhotoEnabled && rawPhysicalSurveyData?.data && Object.keys(rawPhysicalSurveyData.data).length > 0) {
-      sources.push('Physical Survey');
-    }
-    if (rectificationPhotoEnabled && rawRectificationData?.data && Object.keys(rawRectificationData.data).length > 0) {
-      sources.push('Rectification Survey');
-    }
-    
-    const sourceText = sources.length > 0 ? ` from ${sources.join(' + ')}` : '';
-    
-    showNotification('success', 
-      `Photo survey loaded${sourceText}: ${processedPhotoData.photoPoints.length} photo points with ${processedPhotoData.metadata.totalImages} images`
-    );
-    
-  } catch (error) {
-    console.error('Error processing photo survey data:', error);
-    showNotification('error', 'Failed to process photo survey data');
-    setPhotoSurveyData(PhotoSurveyService.processPhysicalSurveyData(null));
-  }
-  
-}, [isPhotoSurveyMode, rawPhysicalSurveyData, rawRectificationData, visibleCategories]);
+  }, [
+    isPhotoSurveyMode,
+    rawPhysicalSurveyData,
+    rawRectificationData,
+    visibleCategories,
+  ]);
 
   // Photo point click handler
   const handlePhotoPointClick = useCallback((point: PhotoPoint) => {
@@ -1597,7 +2097,7 @@ useEffect(() => {
       setCurrentPhotoPoint(point);
       setCurrentImageIndex(0); // Reset to first image
       setShowPhotoPanel(true);
-      
+
       if (point.images.length === 0) {
         showNotification('warning', 'No images available for this photo point');
       }
@@ -1610,19 +2110,43 @@ useEffect(() => {
   // Photo summary node for the photo panel
   const photoSummaryNode = useMemo(() => {
     if (!currentPhotoPoint) return null;
-    
+
     return (
       <div className="text-xs space-y-1">
-        <div><span className="font-medium">Survey ID:</span> {currentPhotoPoint.surveyId}</div>
-        <div><span className="font-medium">Block ID:</span> {currentPhotoPoint.blockId}</div>
-        <div><span className="font-medium">Event:</span> {currentPhotoPoint.eventType}</div>
-        <div><span className="font-medium">Images:</span> {currentPhotoPoint.images.length}</div>
-        <div><span className="font-medium">Location:</span> {currentPhotoPoint.lat.toFixed(6)}, {currentPhotoPoint.lng.toFixed(6)}</div>
+        <div>
+          <span className="font-medium">Survey ID:</span>{' '}
+          {currentPhotoPoint.surveyId}
+        </div>
+        <div>
+          <span className="font-medium">Block ID:</span>{' '}
+          {currentPhotoPoint.blockId}
+        </div>
+        <div>
+          <span className="font-medium">Event:</span>{' '}
+          {currentPhotoPoint.eventType}
+        </div>
+        <div>
+          <span className="font-medium">Images:</span>{' '}
+          {currentPhotoPoint.images.length}
+        </div>
+        <div>
+          <span className="font-medium">Location:</span>{' '}
+          {currentPhotoPoint.lat.toFixed(6)}, {currentPhotoPoint.lng.toFixed(6)}
+        </div>
         {currentPhotoPoint.timestamp && (
-          <div><span className="font-medium">Captured:</span> {new Date(currentPhotoPoint.timestamp).toLocaleString()}</div>
+          <div>
+            <span className="font-medium">Captured:</span>{' '}
+            {new Date(currentPhotoPoint.timestamp).toLocaleString()}
+          </div>
         )}
-        <div><span className="font-medium">Total Photos:</span> {photoSurveyData.metadata.totalImages}</div>
-        <div><span className="font-medium">Total Points:</span> {photoSurveyData.metadata.totalPoints}</div>
+        <div>
+          <span className="font-medium">Total Photos:</span>{' '}
+          {photoSurveyData.metadata.totalImages}
+        </div>
+        <div>
+          <span className="font-medium">Total Points:</span>{' '}
+          {photoSurveyData.metadata.totalPoints}
+        </div>
       </div>
     );
   }, [currentPhotoPoint, photoSurveyData.metadata]);
@@ -1632,36 +2156,53 @@ useEffect(() => {
   // ==============================================
 
   // Separate data for different contexts
-const allPlacemarks = useMemo(() => {
+  const allPlacemarks = useMemo(() => {
+    const externalFilePlacemarks = processedPlacemarks;
+    const apiPlacemarks = [
+      ...physicalSurveyData,
+      ...desktopPlanningData,
+      ...rectificationData,
+      ...JointsData,
+      ...constructionData,
+    ];
+    return [...externalFilePlacemarks, ...apiPlacemarks];
+  }, [
+    processedPlacemarks,
+    physicalSurveyData,
+    desktopPlanningData,
+    rectificationData,
+    JointsData,
+    constructionData,
+  ]);
+
+  const allCategories = useMemo(() => {
+    const externalFileCategories = placemarkCategories;
+    const apiCategories = [
+      ...physicalSurveyCategories,
+      ...desktopPlanningCategories,
+      ...rectificationCategories,
+      ...JointsDataCategories,
+      ...constructionCategories,
+    ];
+    return [...externalFileCategories, ...apiCategories];
+  }, [
+    placemarkCategories,
+    physicalSurveyCategories,
+    desktopPlanningCategories,
+    rectificationCategories,
+    JointsDataCategories,
+    constructionCategories,
+  ]); // ADD rectificationCategories
+
+  // Individual arrays for specific contexts
   const externalFilePlacemarks = processedPlacemarks;
   const apiPlacemarks = [
-    ...physicalSurveyData, 
+    ...physicalSurveyData,
     ...desktopPlanningData,
     ...rectificationData, // ADD THIS
-    ...JointsData
+    ...JointsData,
+    ...constructionData,
   ];
-  return [...externalFilePlacemarks, ...apiPlacemarks];
-}, [processedPlacemarks, physicalSurveyData, desktopPlanningData, rectificationData,JointsData]); // ADD rectificationData
-
-const allCategories = useMemo(() => {
-  const externalFileCategories = placemarkCategories;
-  const apiCategories = [
-    ...physicalSurveyCategories, 
-    ...desktopPlanningCategories,
-    ...rectificationCategories, // ADD THIS
-    ...JointsDataCategories
-  ];
-  return [...externalFileCategories, ...apiCategories];
-}, [placemarkCategories, physicalSurveyCategories, desktopPlanningCategories, rectificationCategories,JointsDataCategories]); // ADD rectificationCategories
-
-// Individual arrays for specific contexts
-const externalFilePlacemarks = processedPlacemarks;
-const apiPlacemarks = [
-  ...physicalSurveyData, 
-  ...desktopPlanningData,
-  ...rectificationData, // ADD THIS
-  ...JointsData
-];
 
   // ==============================================
   // RENDER
@@ -1677,19 +2218,22 @@ const apiPlacemarks = [
       )}
 
       {/* LEFT SIDEBAR - API Data Management */}
-       <Sidebar isOpen={sidebarOpen} onToggle={handleSidebarToggle}>
-        
+      <Sidebar isOpen={sidebarOpen} onToggle={handleSidebarToggle}>
         {/* NEW: Conditionally show Upload Controls */}
         {showFileOperations && (
           <div className="flex items-center gap-2">
             <button
-              onClick={() => { setModalOpen(true); setUploadError(''); }}
+              onClick={() => {
+                setModalOpen(true);
+                setUploadError('');
+              }}
               disabled={isUploading}
               className={`
                 w-full px-1 py-3 rounded-lg border-2 border-dashed 
-                ${isUploading
-                  ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
-                  : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
+                ${
+                  isUploading
+                    ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
+                    : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
                 }
                 transition-all duration-200 flex items-center justify-center gap-2
                 text-sm font-medium text-gray-700
@@ -1709,18 +2253,21 @@ const apiPlacemarks = [
             </button>
 
             <button
-              onClick={() => { setShowFiles(!ShowFiles); }}
+              onClick={() => {
+                setShowFiles(!ShowFiles);
+              }}
               className={`
                 border-2 border-dashed 
                 w-20 h-12 rounded-full flex items-center justify-center transition-colors 
-                ${ShowFiles
-                  ? 'border-gray-300 bg-blue-100'
-                  : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
+                ${
+                  ShowFiles
+                    ? 'border-gray-300 bg-blue-100'
+                    : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
                 }
                 transition-all duration-200 flex items-center justify-center gap-2
                 text-sm font-medium text-gray-700
               `}
-              title='External Data'
+              title="External Data"
             >
               <FilePlus2Icon size={18} />
             </button>
@@ -1734,9 +2281,10 @@ const apiPlacemarks = [
               onClick={() => setOpen(!open)}
               className={`
                 w-full px-1 py-3 rounded-lg border-2 border-dashed 
-                ${loading
-                  ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
-                  : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
+                ${
+                  loading
+                    ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
+                    : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
                 }
                 transition-all duration-200 flex items-center justify-center gap-2
                 text-sm font-medium text-gray-700
@@ -1752,7 +2300,10 @@ const apiPlacemarks = [
                 <ul className="py-1 text-sm text-gray-700">
                   <li>
                     <button
-                      onClick={() => { downloadShapefile(); setOpen(false); }}
+                      onClick={() => {
+                        downloadShapefile();
+                        setOpen(false);
+                      }}
                       className="w-full px-4 py-2 text-left hover:bg-gray-100"
                     >
                       Shapefile
@@ -1760,7 +2311,10 @@ const apiPlacemarks = [
                   </li>
                   <li>
                     <button
-                      onClick={() => { downloadExcel(); setOpen(false); }}
+                      onClick={() => {
+                        downloadExcel();
+                        setOpen(false);
+                      }}
                       className="w-full px-4 py-2 text-left hover:bg-gray-100"
                     >
                       Excel
@@ -1782,7 +2336,7 @@ const apiPlacemarks = [
           isLoadingDesktopPlanning={isLoadingDesktopPlanning}
           isLoadingRectification={isLoadingRectification}
           isLoadingJoints={isLoadingJoints}
-
+          isLoadingConstruction={isLoadingConstruction}
         />
 
         <PlacemarkList
@@ -1796,7 +2350,9 @@ const apiPlacemarks = [
       </Sidebar>
 
       {/* MAIN CONTENT - Map */}
-      <main className={`flex-1 relative flex ${showRightPanel || showPhotoPanel ? 'divide-x' : ''}`}>
+      <main
+        className={`flex-1 relative flex ${showRightPanel || showPhotoPanel ? 'divide-x' : ''}`}
+      >
         {/* File Upload Modal */}
         <FileUploadModal
           isOpen={isModalOpen}
@@ -1807,11 +2363,13 @@ const apiPlacemarks = [
         />
 
         {/* LEFT SIDE - Map Container */}
-        <div className={`relative ${
-          showRightPanel || showPhotoPanel 
-            ? 'flex-1 min-w-0' // Flexible width, takes remaining space
-            : 'w-full'         // Full view: map takes full width
-        }`}>
+        <div
+          className={`relative ${
+            showRightPanel || showPhotoPanel
+              ? 'flex-1 min-w-0' // Flexible width, takes remaining space
+              : 'w-full' // Full view: map takes full width
+          }`}
+        >
           {/* Google Map */}
           <GoogleMap
             placemarks={allPlacemarks}
@@ -1836,7 +2394,9 @@ const apiPlacemarks = [
           {allPlacemarks.length > 0 && !showRightPanel && !showPhotoPanel && (
             <div className="absolute bottom-4 left-2 bg-white rounded-lg shadow-lg border border-gray-200 p-3">
               <div className="text-sm text-gray-600">
-                <div className="font-semibold text-gray-900 mb-1">Map Statistics</div>
+                <div className="font-semibold text-gray-900 mb-1">
+                  Map Statistics
+                </div>
                 <div>Total Placemarks: {allPlacemarks.length}</div>
                 <div>External Files: {externalFilePlacemarks.length}</div>
                 <div>Physical Survey: {physicalSurveyData.length}</div>
@@ -1844,16 +2404,30 @@ const apiPlacemarks = [
                 <div>Visible Categories: {visibleCategories.size}</div>
                 {isVideoSurveyMode && (
                   <>
-                    <div>Track Points: {videoSurveyData.trackPoints.length} (all shown)</div>
+                    <div>
+                      Track Points: {videoSurveyData.trackPoints.length} (all
+                      shown)
+                    </div>
                     <div>Video Clips: {videoSurveyData.videoClips.length}</div>
-                    <div>Survey Duration: {VideoSurveyService.formatDuration(videoSurveyData.metadata.totalDuration)}</div>        
+                    <div>
+                      Survey Duration:{' '}
+                      {VideoSurveyService.formatDuration(
+                        videoSurveyData.metadata.totalDuration,
+                      )}
+                    </div>
                   </>
                 )}
                 {isPhotoSurveyMode && (
                   <>
-                    <div>Photo Points: {photoSurveyData.photoPoints.length}</div>
-                    <div>Total Images: {photoSurveyData.metadata.totalImages}</div>
-                    <div>Survey IDs: {photoSurveyData.metadata.surveyIds.length}</div>
+                    <div>
+                      Photo Points: {photoSurveyData.photoPoints.length}
+                    </div>
+                    <div>
+                      Total Images: {photoSurveyData.metadata.totalImages}
+                    </div>
+                    <div>
+                      Survey IDs: {photoSurveyData.metadata.surveyIds.length}
+                    </div>
                   </>
                 )}
               </div>
@@ -1879,8 +2453,7 @@ const apiPlacemarks = [
               surveySummary={summaryNode}
               landmarkPauseEnabled={landmarkPauseMode}
               showingLandmark={showLandmarkModal}
-              onLandmarkPause={() => {
-              }}
+              onLandmarkPause={() => {}}
               shouldResumeAfterLandmark={shouldResumeVideo}
               onResumeComplete={handleVideoResumeComplete}
             />
@@ -1905,12 +2478,16 @@ const apiPlacemarks = [
 
         {/* RIGHT SIDEBAR - External Files Management (Overlay when split view is active) */}
         {ShowFiles && (
-          <div className={`absolute top-0 right-0 h-full bg-white rounded-lg shadow-lg border border-gray-200 p-3 overflow-hidden z-20 ${
-            showRightPanel || showPhotoPanel ? 'w-80' : 'w-96'
-          }`}>
+          <div
+            className={`absolute top-0 right-0 h-full bg-white rounded-lg shadow-lg border border-gray-200 p-3 overflow-hidden z-20 ${
+              showRightPanel || showPhotoPanel ? 'w-80' : 'w-96'
+            }`}
+          >
             {/* Close Button Header */}
             <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200">
-              <h3 className="text-sm font-semibold text-gray-700">External Files</h3>
+              <h3 className="text-sm font-semibold text-gray-700">
+                External Files
+              </h3>
               <button
                 onClick={() => setShowFiles(false)}
                 className="p-1 hover:bg-gray-100 rounded-full transition-colors"
@@ -1919,7 +2496,7 @@ const apiPlacemarks = [
                 <X className="h-4 w-4 text-gray-500" />
               </button>
             </div>
-            
+
             <FilterPanel
               filters={filters}
               onFiltersChange={setFilters}
@@ -1932,7 +2509,7 @@ const apiPlacemarks = [
             <br />
             <FileList
               files={files}
-              selectedFileIds={selectedFiles.map(f => f.id)}
+              selectedFileIds={selectedFiles.map((f) => f.id)}
               onFileSelect={handleFileSelect}
               onFileDelete={handleFileDelete}
             />
@@ -2021,28 +2598,28 @@ const apiPlacemarks = [
       {/* Notification System */}
       {Notifier.visible && (
         <div
-          className={`fixed top-4 right-4 z-[10000] p-4 rounded-lg shadow-lg flex items-start max-w-md transform transition-all duration-500 ease-in-out ${Notifier.type === 'success'
-            ? 'bg-green-100 border-l-4 border-green-500 text-green-700'
-            : 'bg-red-100 border-l-4 border-red-500 text-red-700'
-            } animate-fadeIn`}
+          className={`fixed top-4 right-4 z-[10000] p-4 rounded-lg shadow-lg flex items-start max-w-md transform transition-all duration-500 ease-in-out ${
+            Notifier.type === 'success'
+              ? 'bg-green-100 border-l-4 border-green-500 text-green-700'
+              : 'bg-red-100 border-l-4 border-red-500 text-red-700'
+          } animate-fadeIn`}
           style={{ animation: 'fadeIn 0.3s ease-out' }}
         >
           <div className="mr-3 mt-0.5">
-            {Notifier.type === 'success'
-              ? <CheckCircle size={20} className="text-green-500" />
-              : <AlertCircle size={20} className="text-red-500" />
-            }
+            {Notifier.type === 'success' ? (
+              <CheckCircle size={20} className="text-green-500" />
+            ) : (
+              <AlertCircle size={20} className="text-red-500" />
+            )}
           </div>
           <div>
             <p className="font-bold text-sm">
               {Notifier.type === 'success' ? 'Success!' : 'Oops!'}
             </p>
-            <p className="text-sm">
-              {Notifier.message}
-            </p>
+            <p className="text-sm">{Notifier.message}</p>
           </div>
           <button
-            onClick={() => setNotifier(prev => ({ ...prev, visible: false }))}
+            onClick={() => setNotifier((prev) => ({ ...prev, visible: false }))}
             className="ml-auto p-1 hover:bg-opacity-20 hover:bg-gray-500 rounded"
             aria-label="Close notification"
           >
