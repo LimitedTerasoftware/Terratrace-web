@@ -2997,7 +2997,7 @@ export function processConstructionData(
 
         processedPlacemarks.push({
           id: `construction-${point.id}`,
-          name: `${category.replace('Construction: ', '')} - ${point.link_name}`,
+          name: `${category.replace('Construction: ', '')} - ${point.survey_id}-${point.id}`,
           category,
           type: 'point',
           coordinates,

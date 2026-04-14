@@ -468,7 +468,7 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
     let hasVisiblePlacemarks = false;
     const constructionPolylinesBySurvey: Record<
       string,
-      { lat: number; lng: number }[]
+      { lat: number; lng: number; id: string }[]
     > = {};
 
     placemarks.forEach((placemark) => {
@@ -898,6 +898,8 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
                   ${placemark.name}
                 </h3>
                 <div class="text-sm text-gray-700 space-y-1" style="font-size: 14px;">
+                  <div><strong>Survey ID:</strong> ${constructionInfo.surveyId || 'N/A'}</div>
+                  <div><strong>ID:</strong> ${constructionInfo.id || 'N/A'}</div>
                   <div><strong>Category:</strong> ${placemark.category}</div>
                   <div><strong>Type:</strong> Construction (API)</div>
                   <div><strong>Link Name:</strong> ${constructionInfo.linkName || 'N/A'}</div>
@@ -973,9 +975,11 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
             if (!constructionPolylinesBySurvey[surveyId]) {
               constructionPolylinesBySurvey[surveyId] = [];
             }
-            constructionPolylinesBySurvey[surveyId].push(
-              placemark.coordinates as { lat: number; lng: number },
-            );
+            constructionPolylinesBySurvey[surveyId].push({
+              lat: (placemark.coordinates as { lat: number; lng: number }).lat,
+              lng: (placemark.coordinates as { lat: number; lng: number }).lng,
+              id: constructionPlacemark.id,
+            });
           }
         }
       } else if (
@@ -1746,9 +1750,9 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
         if (coords.length < 2) return;
 
         const sortedCoords = [...coords].sort((a, b) => {
-          const aDist = Math.sqrt(a.lat * a.lat + a.lng * a.lng);
-          const bDist = Math.sqrt(b.lat * b.lat + b.lng * b.lng);
-          return aDist - bDist;
+          const aId = a.id || '';
+          const bId = b.id || '';
+          return aId.localeCompare(bId, undefined, { numeric: true });
         });
 
         const constructionPolyline = new google.maps.Polyline({
