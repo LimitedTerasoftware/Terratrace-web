@@ -275,6 +275,7 @@ export interface Activity {
   offset: string | null;
   start_duct: string;
   end_duct: string;
+  order_index?: number;
 }
 
 export interface ApiResponseMachine {

@@ -543,6 +543,11 @@ function Eventreport() {
       },
     },
     {
+      name:'Order Index',
+      selector: (row) => row.order_index?.toString() || '-',
+      sortable: true,
+    },
+    {
       name: 'Cable Stack',
       selector: (row) => (row.cable_stack !== 'null' && row.cable_stack) || '-',
       sortable: true,
@@ -1028,6 +1033,7 @@ function Eventreport() {
       'Event Type',
       'Latitude',
       'Longitude',
+      'Order Index',
       'Images',
       'Videos',
       'Cable Stack',
@@ -1149,6 +1155,7 @@ function Eventreport() {
         item.eventType,
         latitude,
         longitude,
+        item.order_index,
         imageLinks,
         VideoUrl,
         item.cable_stack,
