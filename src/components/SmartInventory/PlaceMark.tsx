@@ -2920,7 +2920,7 @@ export function processConstructionData(
   constructionCategories.forEach((c) => (categoryCounts[c] = 0));
 
   Object.entries(apiData.data).forEach(([blockId, points]) => {
-    points.forEach((point, index) => {
+    points.filter((point) => point.status === 0).forEach((point, index) => {
       try {
         const eventType = point.eventType || '';
         let category = '';
