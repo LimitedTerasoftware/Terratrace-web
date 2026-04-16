@@ -24,6 +24,7 @@ import { hasViewOnlyAccess, isAdminUser } from '../../utils/accessControl';
 import { ToastContainer, toast } from 'react-toastify';
 import { EditModal } from './EditModal';
 import { AddEventModal } from './AddEventModal';
+import ReorderModal from './ReorderModal';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const BASEURL_Val = import.meta.env.VITE_API_BASE;
@@ -72,6 +73,7 @@ function Eventreport() {
   const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
   const [statusLoading, setStatusLoading] = useState<number | null>(null);
 
   const viewOnly = hasViewOnlyAccess();
@@ -285,7 +287,11 @@ function Eventreport() {
     const mediaItems: MediaItem[] = [];
 
     const addImages = (rawPhotoData: any, labelPrefix: string) => {
-      if (typeof rawPhotoData === 'string' && rawPhotoData.trim() !== '' && rawPhotoData !== 'null') {
+      if (
+        typeof rawPhotoData === 'string' &&
+        rawPhotoData.trim() !== '' &&
+        rawPhotoData !== 'null'
+      ) {
         const urls = parseMediaUrls(rawPhotoData);
 
         urls.forEach((url, index) => {
@@ -355,7 +361,7 @@ function Eventreport() {
     const parseDuctData = (data: any): any[] => {
       if (!data) return [];
       if (Array.isArray(data)) return data;
-      if (typeof data === 'string' && data !== "null") {
+      if (typeof data === 'string' && data !== 'null') {
         try {
           return JSON.parse(data);
         } catch {
@@ -543,7 +549,7 @@ function Eventreport() {
       },
     },
     {
-      name:'Order Index',
+      name: 'Order Index',
       selector: (row) => row.order_index?.toString() || '-',
       sortable: true,
     },
@@ -1231,7 +1237,7 @@ function Eventreport() {
       <ToastContainer />
       <div className="mb-4">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
+          <div className="flex justify-between items-center">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-blue-600 rounded-lg">
                 <Folder className="w-6 h-6 text-white" />
@@ -1296,7 +1302,7 @@ function Eventreport() {
             </li>
           </ul>
 
-          <div className="flex flex-wrap items-center gap-3 mb-4">
+          <div className="flex flex-wrap items-center gap-3 mt-4">
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
               <select
                 value={selectedEvent || ''}
@@ -1381,6 +1387,15 @@ function Eventreport() {
                 Add New Event
               </button>
             )}
+            {multipreview === false && (
+              <button
+                onClick={() => setIsReorderModalOpen(true)}
+                className="flex-none h-10 px-4 py-2 text-sm font-medium text-purple-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-purple-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
+              >
+                <Edit2Icon className="h-4 w-4 text-purple-600" />
+                Edit Order Index
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1458,6 +1473,16 @@ function Eventreport() {
           getData();
         }}
         baseUrl={TraceBASEURL}
+      />
+
+      <ReorderModal
+        isOpen={isReorderModalOpen}
+        onClose={() => setIsReorderModalOpen(false)}
+        surveyId={MainData?.id}
+        eventData={depthData}
+        onSuccess={() => {
+          getData();
+        }}
       />
 
       {zoomImage && (

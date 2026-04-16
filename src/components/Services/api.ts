@@ -677,3 +677,24 @@ export const machineApi = {
     return response.json();
   },
 };
+
+export interface ReorderItem {
+  id: number;
+  order_index: number;
+}
+
+export const reorderSurvey = async (
+  surveyId: number,
+  reorderedData: ReorderItem[],
+): Promise<any> => {
+  try {
+    const resp = await axios.post(`${TraceBASEURL}/reorder-survey`, {
+      survey_id: surveyId,
+      reorderedData,
+    });
+    return resp.data;
+  } catch (error) {
+    console.error('Error reordering survey:', error);
+    throw error;
+  }
+};
