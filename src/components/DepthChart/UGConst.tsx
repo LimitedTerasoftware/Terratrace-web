@@ -221,7 +221,7 @@ const linkColumn: TableColumn<UGConstructionSurveyData> = {
       name: 'Construction Type',
       selector: (row) => row.construction_type || '-',
       sortable: true,
-      maxWidth: '150px',
+      minWidth: '150px',
       cell: (row) => (
         <span
           title={row.construction_type || '-'}
@@ -229,6 +229,26 @@ const linkColumn: TableColumn<UGConstructionSurveyData> = {
         >
           {row.construction_type || '-'}
         </span>
+      ),
+    },
+    {
+      name: 'Work Type',
+      selector: (row) => row.workType || '-',
+      sortable: true,
+      wrap: true,
+      minWidth: '120px',
+      cell: (row) => (
+        <span title={row.workType || '-'}>{row.workType || '-'}</span>
+      ),
+    },
+    {
+      name: 'Cable Type',
+      selector: (row) => row.cableType || '-',
+      sortable: true,
+      wrap: true,
+        minWidth: '120px',
+      cell: (row) => (
+        <span title={row.cableType || '-'}>{row.cableType || '-'}</span>
       ),
     },
     {
@@ -355,6 +375,8 @@ const linkColumn: TableColumn<UGConstructionSurveyData> = {
           'Start Location',
           'End Location',
           'Construction Type',
+          'Work Type',
+          'Cable Type',
           'Distance (m)',
           'Surveyor Name',
           'Surveyor Mobile',
@@ -371,6 +393,8 @@ const linkColumn: TableColumn<UGConstructionSurveyData> = {
           row.start_lgd_name,
           row.end_lgd_name,
           row.construction_type || '-',
+          row.workType || '-',
+          row.cableType || '-',
           row.total_distance || '0.00',
           row.user_name,
           row.user_mobile,

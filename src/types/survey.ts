@@ -483,6 +483,8 @@ export interface UGConstructionSurveyData {
   user_mobile: string;
   construction_type: string | null;
   total_distance: string | null;
+  workType: string | null;
+  cableType: string | null;
 }
 
 // MachineWork Chart
