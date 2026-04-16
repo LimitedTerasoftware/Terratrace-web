@@ -247,6 +247,7 @@ function Eventreport() {
           eventType: row.eventType,
           id: row.id,
           survey_id: row.survey_id,
+          index_id: row.order_index,
         };
       }
     }
@@ -260,6 +261,7 @@ function Eventreport() {
       eventType: string;
       id: number;
       survey_id: number;
+      index_id: number ;
     } => m !== null,
   );
 

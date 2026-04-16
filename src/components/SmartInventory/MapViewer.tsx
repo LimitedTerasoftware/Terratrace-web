@@ -468,7 +468,7 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
     let hasVisiblePlacemarks = false;
     const constructionPolylinesBySurvey: Record<
       string,
-      { lat: number; lng: number; id: string }[]
+      { lat: number; lng: number; id: string ; order_id: number }[]
     > = {};
 
     placemarks.forEach((placemark) => {
@@ -979,6 +979,7 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
               lat: (placemark.coordinates as { lat: number; lng: number }).lat,
               lng: (placemark.coordinates as { lat: number; lng: number }).lng,
               id: constructionPlacemark.id,
+              order_id: constructionPlacemark.order_id,
             });
           }
         }
@@ -1749,9 +1750,10 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
       ([surveyId, coords]) => {
         if (coords.length < 2) return;
 
-        const sortedCoords = [...coords].sort((a, b) => {
-          const aId = a.id || '';
-          const bId = b.id || '';
+      const sortedCoords = [...coords].sort((a, b) => {
+          const aId = String(a.order_id ?? a.id ?? '');
+          const bId = String(b.order_id ?? b.id ?? '');
+
           return aId.localeCompare(bId, undefined, { numeric: true });
         });
 

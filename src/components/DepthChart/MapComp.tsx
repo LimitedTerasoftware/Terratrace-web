@@ -442,19 +442,21 @@ useEffect(() => {
     const surveyPoints = groupedBySurvey[surveyId];
 
     // Sort survey-wise
-    const sortedData = [...surveyPoints].sort((a, b) => {
-      const eventA = eventData.find(e => e.id === a.id);
-      const eventB = eventData.find(e => e.id === b.id);
+    // const sortedData = [...surveyPoints].sort((a, b) => {
+    //   const eventA = eventData.find(e => e.id === a.id);
+    //   const eventB = eventData.find(e => e.id === b.id);
 
-      if (eventA?.created_at && eventB?.created_at) {
-        return (
-          new Date(eventA.created_at).getTime() -
-          new Date(eventB.created_at).getTime()
-        );
-      }
-      return 0;
-    });
-
+    //   if (eventA?.created_at && eventB?.created_at) {
+    //     return (
+    //       new Date(eventA.created_at).getTime() -
+    //       new Date(eventB.created_at).getTime()
+    //     );
+    //   }
+    //   return 0;
+    // });
+  const sortedData = [...surveyPoints].sort((a, b) => {
+    return a.index_id || a.id - b.index_id || b.id;
+  });
     const path = sortedData
       .filter(point => visibleEventTypes.has(point.eventType))
       .map(point => ({ lat: point.lat, lng: point.lng }));

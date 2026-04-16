@@ -397,6 +397,7 @@ export interface ConstructionApiResponse {
 
 export interface ConstructionDataPoint {
   id: number;
+  order_index: number;
   offset: number;
   link_name: string;
   routeBelongsTo: string;
@@ -432,6 +433,7 @@ export interface ConstructionDataPoint {
 
 export interface ProcessedConstruction {
   id: string;
+  order_id: number;
   name: string;
   category: string;
   type: 'point' | 'polyline';
