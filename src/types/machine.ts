@@ -181,6 +181,7 @@ export interface MachineDataListItem {
   user_name: string;
   user_mobile: string;
   url: string | null;
+  order_index: number;
 }
 
 export interface MachineApiResponse {

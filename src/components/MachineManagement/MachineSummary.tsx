@@ -86,7 +86,7 @@ const MachineSurveyDashboard: React.FC = () => {
       if (data.status && data.data) {
         const allActivities: MachineDataListItem[] = Object.values(data.data).flat();
         const validActivities = allActivities.filter((activity) => {
-          if (machineId && Number(activity.machine_id) !== Number(machineId)) {
+          if (machineId && Number(activity.machine_id) !== Number(machineId) && activity.status === 1) {
              setActivities([]);
             return false;
             
@@ -94,7 +94,9 @@ const MachineSurveyDashboard: React.FC = () => {
           return true;
         });
 
-        validActivities.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        validActivities.sort(
+          (a, b) => Number(a.order_index || a.id) - Number(b.order_index || b.id)
+        );
         setActivities(validActivities);
       } else {
         setActivities([]);
