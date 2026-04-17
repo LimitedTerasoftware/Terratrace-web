@@ -22,7 +22,7 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ activities, isLoading }) => {
 
     const today = new Date();
 
-    activities.forEach((item) => {
+    activities.filter((item) => item.status !== 1).forEach((item) => {
       const created = new Date(item.created_at);
 
       const isToday =

@@ -196,6 +196,8 @@ function LiveTrack() {
   const markers: LiveMarkerData[] = useMemo(() => {
     return activities
       .filter((activity) => {
+         if (activity.status === 1) return false;
+
         // Get the coordinate field based on event type
         const mapping =
           EVENT_TYPE_MAPPING[
