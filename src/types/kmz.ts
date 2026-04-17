@@ -8,6 +8,7 @@ export interface KMZFile {
   size?: number;
   originalData?: ArrayBuffer;
   placemarks?: ProcessedPlacemark[];
+  category?: string;
 }
 
 export interface FilterState {

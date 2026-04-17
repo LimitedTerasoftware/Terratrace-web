@@ -197,7 +197,7 @@ function SmartInventory() {
   const [currentPosition, setCurrentPosition] = useState<{
     lat: number;
     lng: number;
-  } | null>(null);
+  } | undefined>(undefined);
   const [selection, setSelection] = useState<{ start?: number; end?: number }>(
     {},
   );
@@ -515,7 +515,7 @@ function SmartInventory() {
 
           // Only set physical survey data if we have actual survey content
           if (Object.keys(combinedPhysicalSurveyData.data).length > 0) {
-            setRawPhysicalSurveyData((prevData) => {
+            setRawPhysicalSurveyData((prevData:any) => {
               if (prevData && prevData.data) {
                 const mergedData = { ...prevData.data };
                 Object.keys(combinedPhysicalSurveyData.data).forEach(
@@ -1465,7 +1465,7 @@ function SmartInventory() {
     selectedDistricts: string[];
     selectedBlocks: string[];
     name: string;
-    dataType: 'physical' | 'desktop' | 'rectification'; // ADD rectification
+    dataType: 'physical' | 'desktop' | 'rectification' | 'joints' | 'construction'; // ADD rectification
     hierarchyContext?: {
       stateId?: string;
       districtId?: string;
@@ -1488,6 +1488,18 @@ function SmartInventory() {
     } else if (item.dataType === 'rectification') {
       // ADD THIS
       loadRectificationData(
+        item.selectedStates,
+        item.selectedDistricts,
+        item.selectedBlocks,
+      );
+    } else if (item.dataType === 'joints') {
+      loadJointsData(
+        item.selectedStates,
+        item.selectedDistricts,
+        item.selectedBlocks,
+      );
+    } else if (item.dataType === 'construction') {
+      loadConstructionData(
         item.selectedStates,
         item.selectedDistricts,
         item.selectedBlocks,

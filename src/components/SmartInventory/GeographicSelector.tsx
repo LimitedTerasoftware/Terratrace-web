@@ -118,6 +118,7 @@ const PreviewDropdown: React.FC<PreviewDropdownProps> = ({
         </button>
         <button
           onClick={() => {
+            onDesktopPlanning();
             onConstruction();
             onClose();
           }}
@@ -139,7 +140,7 @@ interface GeographicSelectorProps {
     selectedBlocks: string[],
   ) => void;
   onPreview?: (item: {
-    type: 'state' | 'district' | 'block';
+    type: 'state' | 'district' | 'block' | 'universal';
     selectedStates: string[];
     selectedDistricts: string[];
     selectedBlocks: string[];
