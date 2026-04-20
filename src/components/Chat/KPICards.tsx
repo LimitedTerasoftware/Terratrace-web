@@ -73,7 +73,7 @@ export default function KPICards({
               KM Completed Today
             </p>
             <p className="text-3xl font-bold text-gray-900 mt-2">
-              {((Data?.summary?.todays_distance ?? 0) / 1000).toFixed(2)}{' '}
+              {((Data?.summary?.todays_distance ?? 0) / 1000).toFixed(3)}{' '}
               <span className="text-lg font-normal text-gray-600">km</span>
             </p>
 
