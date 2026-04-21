@@ -1,20 +1,20 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
-import { useParams, useNavigate } from "react-router-dom";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import { 
-  ArrowLeft, 
-  Save, 
-  X, 
-  Plus, 
+import React, { useEffect, useState, useRef } from 'react';
+import axios from 'axios';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import {
+  ArrowLeft,
+  Save,
+  X,
+  Plus,
   Trash2,
   Loader2,
   AlertCircle,
   Upload,
-  Image as ImageIcon
-} from "lucide-react";
-import { Header } from "../../Breadcrumbs/Header";
+  Image as ImageIcon,
+} from 'lucide-react';
+import { Header } from '../../Breadcrumbs/Header';
 
 interface GPInstallationData {
   id: number;
@@ -88,13 +88,27 @@ interface SFPItem {
 }
 
 const BASEURL = import.meta.env.VITE_TraceAPI_URL;
+const ViteBASEURL = import.meta.env.VITE_API_BASE;
 
 const GPInstallationEdit = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [installationData, setInstallationData] = useState<GPInstallationData | null>(null);
-  
+  const [installationData, setInstallationData] =
+    useState<GPInstallationData | null>(null);
+
+  const gpPhotoFileInput = useRef<HTMLInputElement>(null);
+  const equipmentPhotoFileInput = useRef<HTMLInputElement>(null);
+  const smartRackFileInput = useRef<HTMLInputElement>(null);
+  const powerSystemFileInput = useRef<HTMLInputElement>(null);
+  const [smartRackPhotoIndex, setSmartRackPhotoIndex] = useState<number | null>(
+    null,
+  );
+  const [powerSystemPhotoIndex, setPowerSystemPhotoIndex] = useState<{
+    type: string;
+    index: number;
+  } | null>(null);
+
   // Form state - Basic Information
   const [stateCode, setStateCode] = useState<string>('');
   const [districtCode, setDistrictCode] = useState<string>('');
@@ -104,7 +118,7 @@ const GPInstallationEdit = () => {
   const [gpLatitude, setGpLatitude] = useState<string>('');
   const [gpLongitude, setGpLongitude] = useState<string>('');
   const [gpPhotos, setGpPhotos] = useState<string[]>([]);
-  
+
   // Equipment State
   const [smartRack, setSmartRack] = useState<SmartRackItem[]>([]);
   const [fdmsShelf, setFdmsShelf] = useState<EquipmentItem[]>([]);
@@ -112,28 +126,32 @@ const GPInstallationEdit = () => {
   const [sfp10g, setSfp10g] = useState<SFPItem[]>([]);
   const [sfp1g, setSfp1g] = useState<SFPItem[]>([]);
   const [equipmentPhotos, setEquipmentPhotos] = useState<string[]>([]);
-  
+
   // Power Systems
-  const [powerSystemWithMppt, setPowerSystemWithMppt] = useState<PowerSystemItem[]>([]);
-  const [powerSystemWithoutMppt, setPowerSystemWithoutMppt] = useState<PowerSystemItem[]>([]);
+  const [powerSystemWithMppt, setPowerSystemWithMppt] = useState<
+    PowerSystemItem[]
+  >([]);
+  const [powerSystemWithoutMppt, setPowerSystemWithoutMppt] = useState<
+    PowerSystemItem[]
+  >([]);
   const [mpptSolar1kw, setMpptSolar1kw] = useState<PowerSystemItem[]>([]);
   const [electricityMeter, setElectricityMeter] = useState<EquipmentItem[]>([]);
   const [earthpit, setEarthpit] = useState<EquipmentItem[]>([]);
-  
+
   // Contact Information
   const [gpContact, setGpContact] = useState<ContactInfo>({
     name: '',
     phone: '',
     email: '',
-    designation: ''
+    designation: '',
   });
   const [keyPerson, setKeyPerson] = useState<ContactInfo>({
     name: '',
     phone: '',
     email: '',
-    designation: ''
+    designation: '',
   });
-  
+
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -141,13 +159,15 @@ const GPInstallationEdit = () => {
     try {
       setLoading(true);
       const response = await axios.get(`${BASEURL}/get-gp-installation`);
-      
+
       if (response.data.status && response.data.data) {
-        const foundRecord = response.data.data.find((item: GPInstallationData) => item.id.toString() === id);
-        
+        const foundRecord = response.data.data.find(
+          (item: GPInstallationData) => item.id.toString() === id,
+        );
+
         if (foundRecord) {
           setInstallationData(foundRecord);
-          
+
           // Set basic information
           setStateCode(foundRecord.state_code);
           setDistrictCode(foundRecord.district_code);
@@ -156,7 +176,7 @@ const GPInstallationEdit = () => {
           setGpName(foundRecord.gp_name);
           setGpLatitude(foundRecord.gp_latitude);
           setGpLongitude(foundRecord.gp_longitude);
-          
+
           // Parse photos
           if (foundRecord.gp_photos) {
             try {
@@ -166,7 +186,7 @@ const GPInstallationEdit = () => {
               setGpPhotos([]);
             }
           }
-          
+
           if (foundRecord.equipment_photo) {
             try {
               const parsed = JSON.parse(foundRecord.equipment_photo);
@@ -175,7 +195,7 @@ const GPInstallationEdit = () => {
               setEquipmentPhotos([]);
             }
           }
-          
+
           // Parse and set equipment data
           parseAndSetEquipmentData(foundRecord);
         } else {
@@ -183,7 +203,7 @@ const GPInstallationEdit = () => {
         }
       }
     } catch (err: any) {
-      setError(err.message || "Failed to fetch installation data");
+      setError(err.message || 'Failed to fetch installation data');
       console.error(err);
     } finally {
       setLoading(false);
@@ -197,67 +217,66 @@ const GPInstallationEdit = () => {
         const parsed = JSON.parse(data.smart_rack);
         setSmartRack(Array.isArray(parsed) ? parsed : [parsed]);
       }
-      
+
       // FDMS Shelf
       if (data.fdms_shelf) {
         const parsed = JSON.parse(data.fdms_shelf);
         setFdmsShelf(Array.isArray(parsed) ? parsed : [parsed]);
       }
-      
+
       // IP MPLS Router
       if (data.ip_mpls_router) {
         const parsed = JSON.parse(data.ip_mpls_router);
         setIpMplsRouter(Array.isArray(parsed) ? parsed : [parsed]);
       }
-      
+
       // SFP Items
       if (data.sfp_10g) {
         const parsed = JSON.parse(data.sfp_10g);
         setSfp10g(Array.isArray(parsed) ? parsed : [parsed]);
       }
-      
+
       if (data.sfp_1g) {
         const parsed = JSON.parse(data.sfp_1g);
         setSfp1g(Array.isArray(parsed) ? parsed : [parsed]);
       }
-      
+
       // Power Systems
       if (data.power_system_with_mppt) {
         const parsed = JSON.parse(data.power_system_with_mppt);
         setPowerSystemWithMppt(Array.isArray(parsed) ? parsed : [parsed]);
       }
-      
+
       if (data.power_system_with_out_mppt) {
         const parsed = JSON.parse(data.power_system_with_out_mppt);
         setPowerSystemWithoutMppt(Array.isArray(parsed) ? parsed : [parsed]);
       }
-      
+
       if (data.mppt_solar_1kw) {
         const parsed = JSON.parse(data.mppt_solar_1kw);
         setMpptSolar1kw(Array.isArray(parsed) ? parsed : [parsed]);
       }
-      
+
       if (data.electricity_meter) {
         const parsed = JSON.parse(data.electricity_meter);
         setElectricityMeter(Array.isArray(parsed) ? parsed : [parsed]);
       }
-      
+
       if (data.earthpit) {
         const parsed = JSON.parse(data.earthpit);
         setEarthpit(Array.isArray(parsed) ? parsed : [parsed]);
       }
-      
+
       // Contacts
       if (data.gp_contact) {
         const parsed = JSON.parse(data.gp_contact);
         setGpContact(parsed);
       }
-      
+
       if (data.key_person) {
         const parsed = JSON.parse(data.key_person);
         setKeyPerson(parsed);
       }
-      
     } catch (e) {
       console.error('Error parsing equipment data:', e);
     }
@@ -270,7 +289,83 @@ const GPInstallationEdit = () => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      
+
+      const filteredGpPhotos = gpPhotos.filter((photo) => photo.trim());
+      const filteredEquipmentPhotos = equipmentPhotos.filter((photo) =>
+        photo.trim(),
+      );
+
+      const newGpPhotoUrls = filteredGpPhotos.filter((photo) =>
+        isDataUrl(photo),
+      );
+      const existingGpPhotoUrls = filteredGpPhotos.filter(
+        (photo) => !isDataUrl(photo),
+      );
+
+      const newEquipmentPhotoUrls = filteredEquipmentPhotos.filter((photo) =>
+        isDataUrl(photo),
+      );
+      const existingEquipmentPhotoUrls = filteredEquipmentPhotos.filter(
+        (photo) => !isDataUrl(photo),
+      );
+
+      let uploadedGpUrls: string[] = [];
+      let uploadedEquipmentUrls: string[] = [];
+
+      if (newGpPhotoUrls.length > 0) {
+        uploadedGpUrls = await uploadImagesToServer(newGpPhotoUrls);
+      }
+
+      if (newEquipmentPhotoUrls.length > 0) {
+        uploadedEquipmentUrls = await uploadImagesToServer(
+          newEquipmentPhotoUrls,
+        );
+      }
+
+      const finalGpPhotos = [...existingGpPhotoUrls, ...uploadedGpUrls];
+      const finalEquipmentPhotos = [
+        ...existingEquipmentPhotoUrls,
+        ...uploadedEquipmentUrls,
+      ];
+
+      const processEquipmentPhotos = async (items: PowerSystemItem[]) => {
+        const results = [];
+        for (const item of items) {
+          if (!item.make && !item.type && !item.model) continue;
+
+          const newItem = { ...item };
+          if (item.photo && isDataUrl(item.photo)) {
+            const uploadedUrls = await uploadImagesToServer([item.photo]);
+            newItem.photo = uploadedUrls[0] || '';
+          }
+          results.push(newItem);
+        }
+        return results;
+      };
+
+      const processSmartRackPhotos = async () => {
+        const results = [];
+        for (const item of smartRack) {
+          if (!item.make && !item.type && !item.serial_no) continue;
+
+          const newItem = { ...item };
+          if (item.photo && isDataUrl(item.photo)) {
+            const uploadedUrls = await uploadImagesToServer([item.photo]);
+            newItem.photo = uploadedUrls[0] || '';
+          }
+          results.push(newItem);
+        }
+        return results;
+      };
+
+      const finalSmartRack = await processSmartRackPhotos();
+      const finalPowerSystemWithMppt =
+        await processEquipmentPhotos(powerSystemWithMppt);
+      const finalPowerSystemWithoutMppt = await processEquipmentPhotos(
+        powerSystemWithoutMppt,
+      );
+      const finalMpptSolar1kw = await processEquipmentPhotos(mpptSolar1kw);
+
       const updatePayload = {
         id: parseInt(id || '0'),
         state_code: stateCode,
@@ -280,36 +375,49 @@ const GPInstallationEdit = () => {
         gp_name: gpName,
         gp_latitude: gpLatitude,
         gp_longitude: gpLongitude,
-        gp_photos: gpPhotos.filter(photo => photo.trim()),
-        smart_rack: smartRack.filter(item => item.make || item.type || item.serial_no),
-        fdms_shelf: fdmsShelf.filter(item => item.make || item.type || item.model),
-        ip_mpls_router: ipMplsRouter.filter(item => item.make || item.type || item.model),
-        sfp_10g: sfp10g.filter(item => item.type || item.make || item.model),
-        sfp_1g: sfp1g.filter(item => item.type || item.make || item.model),
-        power_system_with_mppt: powerSystemWithMppt.filter(item => item.make || item.type || item.model),
-        power_system_with_out_mppt: powerSystemWithoutMppt.filter(item => item.make || item.type || item.model),
-        mppt_solar_1kw: mpptSolar1kw.filter(item => item.make || item.type || item.model),
-        equipment_photo: equipmentPhotos.filter(photo => photo.trim()),
-        electricity_meter: electricityMeter.filter(item => item.make || item.type || item.model),
-        earthpit: earthpit.filter(item => item.make || item.type || item.model),
+        gp_photos: finalGpPhotos,
+        smart_rack: finalSmartRack,
+        fdms_shelf: fdmsShelf.filter(
+          (item) => item.make || item.type || item.model,
+        ),
+        ip_mpls_router: ipMplsRouter.filter(
+          (item) => item.make || item.type || item.model,
+        ),
+        sfp_10g: sfp10g.filter((item) => item.type || item.make || item.model),
+        sfp_1g: sfp1g.filter((item) => item.type || item.make || item.model),
+        power_system_with_mppt: finalPowerSystemWithMppt,
+        power_system_with_out_mppt: finalPowerSystemWithoutMppt,
+        mppt_solar_1kw: finalMpptSolar1kw,
+        equipment_photo: finalEquipmentPhotos,
+        electricity_meter: electricityMeter.filter(
+          (item) => item.make || item.type || item.model,
+        ),
+        earthpit: earthpit.filter(
+          (item) => item.make || item.type || item.model,
+        ),
         gp_contact: gpContact.name || gpContact.phone ? gpContact : null,
-        key_person: keyPerson.name || keyPerson.phone ? keyPerson : null
+        key_person: keyPerson.name || keyPerson.phone ? keyPerson : null,
       };
 
       // Changed from PUT to POST
-      const response = await axios.post(`${BASEURL}/update-gp-installation`, updatePayload);
-      
+      const response = await axios.post(
+        `${BASEURL}/update-gp-installation`,
+        updatePayload,
+      );
+
       if (response.data.status) {
-        toast.success("GP installation updated successfully!");
+        toast.success('GP installation updated successfully!');
         setTimeout(() => {
           navigate(`/installation/gp-detail/${id}`);
         }, 1500);
       } else {
-        toast.error("Failed to update GP installation");
+        toast.error('Failed to update GP installation');
       }
     } catch (error: any) {
       console.error('Update error:', error);
-      toast.error(error.response?.data?.message || "Failed to update GP installation");
+      toast.error(
+        error.response?.data?.message || 'Failed to update GP installation',
+      );
     } finally {
       setSaving(false);
     }
@@ -320,7 +428,11 @@ const GPInstallationEdit = () => {
   };
 
   // Generic handlers for different equipment types
-  const handleSmartRackChange = (index: number, field: keyof SmartRackItem, value: string) => {
+  const handleSmartRackChange = (
+    index: number,
+    field: keyof SmartRackItem,
+    value: string,
+  ) => {
     const updated = [...smartRack];
     updated[index] = { ...updated[index], [field]: value };
     setSmartRack(updated);
@@ -328,9 +440,9 @@ const GPInstallationEdit = () => {
 
   const handleEquipmentChange = (
     type: 'fdms' | 'router' | 'electricity' | 'earthpit',
-    index: number, 
-    field: keyof EquipmentItem, 
-    value: string
+    index: number,
+    field: keyof EquipmentItem,
+    value: string,
   ) => {
     if (type === 'fdms') {
       const updated = [...fdmsShelf];
@@ -355,7 +467,7 @@ const GPInstallationEdit = () => {
     type: 'with_mppt' | 'without_mppt' | 'solar_1kw',
     index: number,
     field: keyof PowerSystemItem,
-    value: string
+    value: string,
   ) => {
     if (type === 'with_mppt') {
       const updated = [...powerSystemWithMppt];
@@ -376,7 +488,7 @@ const GPInstallationEdit = () => {
     type: '10g' | '1g',
     index: number,
     field: keyof SFPItem,
-    value: string
+    value: string,
   ) => {
     if (type === '10g') {
       const updated = [...sfp10g];
@@ -389,24 +501,33 @@ const GPInstallationEdit = () => {
     }
   };
 
-  const handleContactChange = (type: 'gp' | 'key', field: keyof ContactInfo, value: string) => {
+  const handleContactChange = (
+    type: 'gp' | 'key',
+    field: keyof ContactInfo,
+    value: string,
+  ) => {
     if (type === 'gp') {
-      setGpContact(prev => ({ ...prev, [field]: value }));
+      setGpContact((prev) => ({ ...prev, [field]: value }));
     } else {
-      setKeyPerson(prev => ({ ...prev, [field]: value }));
+      setKeyPerson((prev) => ({ ...prev, [field]: value }));
     }
   };
 
   // Add/Remove handlers
   const addSmartRackItem = () => {
-    setSmartRack([...smartRack, { type: '', photo: '', make: '', serial_no: '' }]);
+    setSmartRack([
+      ...smartRack,
+      { type: '', photo: '', make: '', serial_no: '' },
+    ]);
   };
 
   const removeSmartRackItem = (index: number) => {
     setSmartRack(smartRack.filter((_, i) => i !== index));
   };
 
-  const addEquipmentItem = (type: 'fdms' | 'router' | 'electricity' | 'earthpit') => {
+  const addEquipmentItem = (
+    type: 'fdms' | 'router' | 'electricity' | 'earthpit',
+  ) => {
     const newItem = { make: '', type: '', model: '', serial_no: '', photo: '' };
     if (type === 'fdms') {
       setFdmsShelf([...fdmsShelf, newItem]);
@@ -419,7 +540,10 @@ const GPInstallationEdit = () => {
     }
   };
 
-  const removeEquipmentItem = (type: 'fdms' | 'router' | 'electricity' | 'earthpit', index: number) => {
+  const removeEquipmentItem = (
+    type: 'fdms' | 'router' | 'electricity' | 'earthpit',
+    index: number,
+  ) => {
     if (type === 'fdms') {
       setFdmsShelf(fdmsShelf.filter((_, i) => i !== index));
     } else if (type === 'router') {
@@ -431,8 +555,18 @@ const GPInstallationEdit = () => {
     }
   };
 
-  const addPowerSystemItem = (type: 'with_mppt' | 'without_mppt' | 'solar_1kw') => {
-    const newItem = { type: '', make: '', model: '', capacity: '', voltage: '', photo: '', serial_no: '' };
+  const addPowerSystemItem = (
+    type: 'with_mppt' | 'without_mppt' | 'solar_1kw',
+  ) => {
+    const newItem = {
+      type: '',
+      make: '',
+      model: '',
+      capacity: '',
+      voltage: '',
+      photo: '',
+      serial_no: '',
+    };
     if (type === 'with_mppt') {
       setPowerSystemWithMppt([...powerSystemWithMppt, newItem]);
     } else if (type === 'without_mppt') {
@@ -442,18 +576,29 @@ const GPInstallationEdit = () => {
     }
   };
 
-  const removePowerSystemItem = (type: 'with_mppt' | 'without_mppt' | 'solar_1kw', index: number) => {
+  const removePowerSystemItem = (
+    type: 'with_mppt' | 'without_mppt' | 'solar_1kw',
+    index: number,
+  ) => {
     if (type === 'with_mppt') {
       setPowerSystemWithMppt(powerSystemWithMppt.filter((_, i) => i !== index));
     } else if (type === 'without_mppt') {
-      setPowerSystemWithoutMppt(powerSystemWithoutMppt.filter((_, i) => i !== index));
+      setPowerSystemWithoutMppt(
+        powerSystemWithoutMppt.filter((_, i) => i !== index),
+      );
     } else if (type === 'solar_1kw') {
       setMpptSolar1kw(mpptSolar1kw.filter((_, i) => i !== index));
     }
   };
 
   const addSFPItem = (type: '10g' | '1g') => {
-    const newItem = { type: '', make: '', model: '', serial_no: '', port_count: '' };
+    const newItem = {
+      type: '',
+      make: '',
+      model: '',
+      serial_no: '',
+      port_count: '',
+    };
     if (type === '10g') {
       setSfp10g([...sfp10g, newItem]);
     } else if (type === '1g') {
@@ -474,6 +619,141 @@ const GPInstallationEdit = () => {
       setGpPhotos([...gpPhotos, url]);
     } else {
       setEquipmentPhotos([...equipmentPhotos, url]);
+    }
+  };
+
+  const handleFileUpload =
+    (type: 'gp' | 'equipment') =>
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const files = event.target.files;
+      if (!files) return;
+
+      Array.from(files).forEach((file) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const dataUrl = e.target?.result as string;
+          if (type === 'gp') {
+            setGpPhotos([...gpPhotos, dataUrl]);
+          } else {
+            setEquipmentPhotos([...equipmentPhotos, dataUrl]);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+
+      event.target.value = '';
+    };
+
+  const triggerGpPhotoUpload = () => {
+    gpPhotoFileInput.current?.click();
+  };
+
+  const triggerEquipmentPhotoUpload = () => {
+    equipmentPhotoFileInput.current?.click();
+  };
+
+  const triggerSmartRackPhotoUpload = (index: number) => {
+    setSmartRackPhotoIndex(index);
+    smartRackFileInput.current?.click();
+  };
+
+  const triggerPowerSystemPhotoUpload = (type: string, index: number) => {
+    setPowerSystemPhotoIndex({ type, index });
+    powerSystemFileInput.current?.click();
+  };
+
+  const handleSmartRackPhotoUpload = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = event.target.files;
+    if (!files || smartRackPhotoIndex === null) return;
+
+    const file = files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      const updated = [...smartRack];
+      updated[smartRackPhotoIndex] = {
+        ...updated[smartRackPhotoIndex],
+        photo: dataUrl,
+      };
+      setSmartRack(updated);
+      setSmartRackPhotoIndex(null);
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  };
+
+  const handlePowerSystemPhotoUpload = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = event.target.files;
+    if (!files || !powerSystemPhotoIndex) return;
+
+    const file = files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      const { type, index } = powerSystemPhotoIndex;
+
+      if (type === 'with_mppt') {
+        const updated = [...powerSystemWithMppt];
+        updated[index] = { ...updated[index], photo: dataUrl };
+        setPowerSystemWithMppt(updated);
+      } else if (type === 'without_mppt') {
+        const updated = [...powerSystemWithoutMppt];
+        updated[index] = { ...updated[index], photo: dataUrl };
+        setPowerSystemWithoutMppt(updated);
+      } else if (type === 'solar_1kw') {
+        const updated = [...mpptSolar1kw];
+        updated[index] = { ...updated[index], photo: dataUrl };
+        setMpptSolar1kw(updated);
+      }
+      setPowerSystemPhotoIndex(null);
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  };
+
+  const isDataUrl = (str: string): boolean => {
+    return str.startsWith('data:image/');
+  };
+
+  const uploadImagesToServer = async (dataUrls: string[]) => {
+    const files: File[] = [];
+
+    for (const dataUrl of dataUrls) {
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      const matches = dataUrl.match(/^data:image\/(\w+);base64,/);
+      const extension = matches ? matches[1] : 'jpg';
+      const fileName = `photo_${Date.now()}_${Math.random()}.${extension}`;
+      const file = new File([blob], fileName, { type: `image/${extension}` });
+      files.push(file);
+    }
+
+    if (files.length === 0) return [];
+
+    const formData = new FormData();
+    files.forEach((file) => {
+      formData.append('images[]', file);
+    });
+
+    try {
+      const response = await fetch(`${ViteBASEURL}/upload-image`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      return data.data?.images || [];
+    } catch (error) {
+      console.error('Upload error:', error);
+      throw error;
     }
   };
 
@@ -501,7 +781,9 @@ const GPInstallationEdit = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white p-8 rounded-xl shadow-lg text-center max-w-md">
           <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Data</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Error Loading Data
+          </h3>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
             onClick={() => navigate('/installation')}
@@ -517,15 +799,17 @@ const GPInstallationEdit = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <ToastContainer />
-      
+
       <div className="container mx-auto px-1">
         <Header activeTab="installation" BackBut={true} />
-        
+
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 mt-3">
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Edit GP Installation</h2>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Edit GP Installation
+                </h2>
                 <p className="text-sm text-gray-600 mt-1">
                   Complete editing for all GP installation data
                 </p>
@@ -557,10 +841,14 @@ const GPInstallationEdit = () => {
           <div className="p-6 space-y-8">
             {/* Basic Information Section */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Basic Information
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">State Code</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    State Code
+                  </label>
                   <input
                     type="text"
                     value={stateCode}
@@ -569,9 +857,11 @@ const GPInstallationEdit = () => {
                     placeholder="Enter state code"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">District Code</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    District Code
+                  </label>
                   <input
                     type="text"
                     value={districtCode}
@@ -580,9 +870,11 @@ const GPInstallationEdit = () => {
                     placeholder="Enter district code"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Block Code</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Block Code
+                  </label>
                   <input
                     type="text"
                     value={blockCode}
@@ -591,9 +883,11 @@ const GPInstallationEdit = () => {
                     placeholder="Enter block code"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">GP Code</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    GP Code
+                  </label>
                   <input
                     type="text"
                     value={gpCode}
@@ -602,9 +896,11 @@ const GPInstallationEdit = () => {
                     placeholder="Enter GP code"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">GP Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    GP Name
+                  </label>
                   <input
                     type="text"
                     value={gpName}
@@ -613,9 +909,11 @@ const GPInstallationEdit = () => {
                     placeholder="Enter GP name"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Latitude</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Latitude
+                  </label>
                   <input
                     type="text"
                     value={gpLatitude}
@@ -624,9 +922,11 @@ const GPInstallationEdit = () => {
                     placeholder="Enter latitude"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Longitude</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Longitude
+                  </label>
                   <input
                     type="text"
                     value={gpLongitude}
@@ -641,19 +941,26 @@ const GPInstallationEdit = () => {
             {/* GP Photos Section */}
             <div className="border-t border-gray-200 pt-8">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">GP Photos</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  GP Photos
+                </h3>
                 <button
-                  onClick={() => {
-                    const url = prompt('Enter photo URL:');
-                    if (url) handlePhotoAdd('gp', url);
-                  }}
+                  onClick={triggerGpPhotoUpload}
                   className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
                 >
                   <Plus className="h-4 w-4" />
                   Add Photo
                 </button>
               </div>
-              
+              <input
+                type="file"
+                ref={gpPhotoFileInput}
+                onChange={handleFileUpload('gp')}
+                accept="image/*"
+                multiple
+                className="hidden"
+              />
+
               {gpPhotos.length === 0 ? (
                 <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                   <ImageIcon className="h-8 w-8 mx-auto mb-2" />
@@ -690,52 +997,76 @@ const GPInstallationEdit = () => {
 
             {/* Contact Information */}
             <div className="border-t border-gray-200 pt-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h3>
-              
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Contact Information
+              </h3>
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* GP Contact */}
                 <div>
-                  <h4 className="text-md font-medium text-gray-800 mb-3">GP Contact</h4>
+                  <h4 className="text-md font-medium text-gray-800 mb-3">
+                    GP Contact
+                  </h4>
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Name
+                      </label>
                       <input
                         type="text"
                         value={gpContact.name}
-                        onChange={(e) => handleContactChange('gp', 'name', e.target.value)}
+                        onChange={(e) =>
+                          handleContactChange('gp', 'name', e.target.value)
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Enter contact name"
                       />
                     </div>
-                    
+
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Phone
+                      </label>
                       <input
                         type="tel"
                         value={gpContact.phone}
-                        onChange={(e) => handleContactChange('gp', 'phone', e.target.value)}
+                        onChange={(e) =>
+                          handleContactChange('gp', 'phone', e.target.value)
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Enter phone number"
                       />
                     </div>
-                    
+
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Email
+                      </label>
                       <input
                         type="email"
                         value={gpContact.email}
-                        onChange={(e) => handleContactChange('gp', 'email', e.target.value)}
+                        onChange={(e) =>
+                          handleContactChange('gp', 'email', e.target.value)
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Enter email address"
                       />
                     </div>
-                    
+
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Designation
+                      </label>
                       <input
                         type="text"
                         value={gpContact.designation}
-                        onChange={(e) => handleContactChange('gp', 'designation', e.target.value)}
+                        onChange={(e) =>
+                          handleContactChange(
+                            'gp',
+                            'designation',
+                            e.target.value,
+                          )
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Enter designation"
                       />
@@ -745,47 +1076,69 @@ const GPInstallationEdit = () => {
 
                 {/* Key Person */}
                 <div>
-                  <h4 className="text-md font-medium text-gray-800 mb-3">Key Person</h4>
+                  <h4 className="text-md font-medium text-gray-800 mb-3">
+                    Key Person
+                  </h4>
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Name
+                      </label>
                       <input
                         type="text"
                         value={keyPerson.name}
-                        onChange={(e) => handleContactChange('key', 'name', e.target.value)}
+                        onChange={(e) =>
+                          handleContactChange('key', 'name', e.target.value)
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Enter key person name"
                       />
                     </div>
-                    
+
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Phone
+                      </label>
                       <input
                         type="tel"
                         value={keyPerson.phone}
-                        onChange={(e) => handleContactChange('key', 'phone', e.target.value)}
+                        onChange={(e) =>
+                          handleContactChange('key', 'phone', e.target.value)
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Enter phone number"
                       />
                     </div>
-                    
+
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Email
+                      </label>
                       <input
                         type="email"
                         value={keyPerson.email}
-                        onChange={(e) => handleContactChange('key', 'email', e.target.value)}
+                        onChange={(e) =>
+                          handleContactChange('key', 'email', e.target.value)
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Enter email address"
                       />
                     </div>
-                    
+
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Designation
+                      </label>
                       <input
                         type="text"
                         value={keyPerson.designation}
-                        onChange={(e) => handleContactChange('key', 'designation', e.target.value)}
+                        onChange={(e) =>
+                          handleContactChange(
+                            'key',
+                            'designation',
+                            e.target.value,
+                          )
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Enter designation"
                       />
@@ -798,7 +1151,9 @@ const GPInstallationEdit = () => {
             {/* Smart Rack Section */}
             <div className="border-t border-gray-200 pt-8">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Smart Rack Equipment</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Smart Rack Equipment
+                </h3>
                 <button
                   onClick={addSmartRackItem}
                   className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
@@ -807,7 +1162,7 @@ const GPInstallationEdit = () => {
                   Add Item
                 </button>
               </div>
-              
+
               {smartRack.length === 0 ? (
                 <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                   <p>No smart rack items configured.</p>
@@ -815,9 +1170,14 @@ const GPInstallationEdit = () => {
               ) : (
                 <div className="space-y-4">
                   {smartRack.map((item, index) => (
-                    <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div
+                      key={index}
+                      className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                    >
                       <div className="flex items-center justify-between mb-3">
-                        <span className="font-medium text-gray-700">Smart Rack Item {index + 1}</span>
+                        <span className="font-medium text-gray-700">
+                          Smart Rack Item {index + 1}
+                        </span>
                         <button
                           onClick={() => removeSmartRackItem(index)}
                           className="p-1 text-red-500 hover:bg-red-50 rounded"
@@ -825,50 +1185,95 @@ const GPInstallationEdit = () => {
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Type
+                          </label>
                           <input
                             type="text"
                             value={item.type}
-                            onChange={(e) => handleSmartRackChange(index, 'type', e.target.value)}
+                            onChange={(e) =>
+                              handleSmartRackChange(
+                                index,
+                                'type',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter type"
                           />
                         </div>
-                        
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Make</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Make
+                          </label>
                           <input
                             type="text"
                             value={item.make}
-                            onChange={(e) => handleSmartRackChange(index, 'make', e.target.value)}
+                            onChange={(e) =>
+                              handleSmartRackChange(
+                                index,
+                                'make',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter make"
                           />
                         </div>
-                        
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Serial Number</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Serial Number
+                          </label>
                           <input
                             type="text"
                             value={item.serial_no}
-                            onChange={(e) => handleSmartRackChange(index, 'serial_no', e.target.value)}
+                            onChange={(e) =>
+                              handleSmartRackChange(
+                                index,
+                                'serial_no',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter serial number"
                           />
                         </div>
-                        
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Photo URL</label>
-                          <input
-                            type="url"
-                            value={item.photo}
-                            onChange={(e) => handleSmartRackChange(index, 'photo', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="https://example.com/photo.jpg"
-                          />
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Photo
+                          </label>
+                          {item.photo ? (
+                            <div className="relative mb-2">
+                              <img
+                                src={item.photo}
+                                alt="Smart Rack"
+                                className="h-20 w-auto rounded-md border border-gray-200 object-cover"
+                              />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleSmartRackChange(index, 'photo', '')
+                                }
+                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => triggerSmartRackPhotoUpload(index)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2"
+                          >
+                            <Upload className="h-4 w-4" />
+                            {item.photo ? 'Change Photo' : 'Upload Photo'}
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -880,7 +1285,9 @@ const GPInstallationEdit = () => {
             {/* Power System with MPPT Section */}
             <div className="border-t border-gray-200 pt-8">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Power System with MPPT</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Power System with MPPT
+                </h3>
                 <button
                   onClick={() => addPowerSystemItem('with_mppt')}
                   className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
@@ -889,7 +1296,7 @@ const GPInstallationEdit = () => {
                   Add Item
                 </button>
               </div>
-              
+
               {powerSystemWithMppt.length === 0 ? (
                 <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                   <p>No power system with MPPT configured.</p>
@@ -897,93 +1304,182 @@ const GPInstallationEdit = () => {
               ) : (
                 <div className="space-y-4">
                   {powerSystemWithMppt.map((item, index) => (
-                    <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div
+                      key={index}
+                      className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                    >
                       <div className="flex items-center justify-between mb-3">
-                        <span className="font-medium text-gray-700">Power System Item {index + 1}</span>
+                        <span className="font-medium text-gray-700">
+                          Power System Item {index + 1}
+                        </span>
                         <button
-                          onClick={() => removePowerSystemItem('with_mppt', index)}
+                          onClick={() =>
+                            removePowerSystemItem('with_mppt', index)
+                          }
                           className="p-1 text-red-500 hover:bg-red-50 rounded"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Type
+                          </label>
                           <input
                             type="text"
                             value={item.type}
-                            onChange={(e) => handlePowerSystemChange('with_mppt', index, 'type', e.target.value)}
+                            onChange={(e) =>
+                              handlePowerSystemChange(
+                                'with_mppt',
+                                index,
+                                'type',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter type"
                           />
                         </div>
-                        
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Make</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Make
+                          </label>
                           <input
                             type="text"
                             value={item.make}
-                            onChange={(e) => handlePowerSystemChange('with_mppt', index, 'make', e.target.value)}
+                            onChange={(e) =>
+                              handlePowerSystemChange(
+                                'with_mppt',
+                                index,
+                                'make',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter make"
                           />
                         </div>
-                        
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Model</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Model
+                          </label>
                           <input
                             type="text"
                             value={item.model}
-                            onChange={(e) => handlePowerSystemChange('with_mppt', index, 'model', e.target.value)}
+                            onChange={(e) =>
+                              handlePowerSystemChange(
+                                'with_mppt',
+                                index,
+                                'model',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter model"
                           />
                         </div>
-                        
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Capacity</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Capacity
+                          </label>
                           <input
                             type="text"
                             value={item.capacity}
-                            onChange={(e) => handlePowerSystemChange('with_mppt', index, 'capacity', e.target.value)}
+                            onChange={(e) =>
+                              handlePowerSystemChange(
+                                'with_mppt',
+                                index,
+                                'capacity',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter capacity"
                           />
                         </div>
-                        
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Voltage</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Voltage
+                          </label>
                           <input
                             type="text"
                             value={item.voltage}
-                            onChange={(e) => handlePowerSystemChange('with_mppt', index, 'voltage', e.target.value)}
+                            onChange={(e) =>
+                              handlePowerSystemChange(
+                                'with_mppt',
+                                index,
+                                'voltage',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter voltage"
                           />
                         </div>
-                        
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Serial Number</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Serial Number
+                          </label>
                           <input
                             type="text"
                             value={item.serial_no}
-                            onChange={(e) => handlePowerSystemChange('with_mppt', index, 'serial_no', e.target.value)}
+                            onChange={(e) =>
+                              handlePowerSystemChange(
+                                'with_mppt',
+                                index,
+                                'serial_no',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter serial number"
                           />
                         </div>
-                        
+
                         <div className="md:col-span-2 lg:col-span-3">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Photo URL</label>
-                          <input
-                            type="url"
-                            value={item.photo}
-                            onChange={(e) => handlePowerSystemChange('with_mppt', index, 'photo', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="https://example.com/photo.jpg"
-                          />
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Photo
+                          </label>
+                          {item.photo ? (
+                            <div className="relative mb-2">
+                              <img
+                                src={item.photo}
+                                alt="Power System"
+                                className="h-20 w-auto rounded-md border border-gray-200 object-cover"
+                              />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handlePowerSystemChange(
+                                    'with_mppt',
+                                    index,
+                                    'photo',
+                                    '',
+                                  )
+                                }
+                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              triggerPowerSystemPhotoUpload('with_mppt', index)
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2"
+                          >
+                            <Upload className="h-4 w-4" />
+                            {item.photo ? 'Change Photo' : 'Upload Photo'}
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -995,19 +1491,40 @@ const GPInstallationEdit = () => {
             {/* Equipment Photos Section */}
             <div className="border-t border-gray-200 pt-8">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Equipment Photos</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Equipment Photos
+                </h3>
                 <button
-                  onClick={() => {
-                    const url = prompt('Enter photo URL:');
-                    if (url) handlePhotoAdd('equipment', url);
-                  }}
+                  onClick={triggerEquipmentPhotoUpload}
                   className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
                 >
                   <Plus className="h-4 w-4" />
                   Add Photo
                 </button>
               </div>
-              
+              <input
+                type="file"
+                ref={equipmentPhotoFileInput}
+                onChange={handleFileUpload('equipment')}
+                accept="image/*"
+                multiple
+                className="hidden"
+              />
+              <input
+                type="file"
+                ref={smartRackFileInput}
+                onChange={handleSmartRackPhotoUpload}
+                accept="image/*"
+                className="hidden"
+              />
+              <input
+                type="file"
+                ref={powerSystemFileInput}
+                onChange={handlePowerSystemPhotoUpload}
+                accept="image/*"
+                className="hidden"
+              />
+
               {equipmentPhotos.length === 0 ? (
                 <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                   <ImageIcon className="h-8 w-8 mx-auto mb-2" />
