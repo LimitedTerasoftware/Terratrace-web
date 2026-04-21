@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+// import 'react-toastify/dist/ReactToastify.css';
 import {
   ArrowLeft,
   Save,
@@ -89,6 +89,7 @@ interface SFPItem {
 
 const BASEURL = import.meta.env.VITE_TraceAPI_URL;
 const ViteBASEURL = import.meta.env.VITE_API_BASE;
+const ImgbaseUrl = import.meta.env.VITE_Image_URL;
 
 const GPInstallationEdit = () => {
   const [loading, setLoading] = useState<boolean>(true);
@@ -967,26 +968,26 @@ const GPInstallationEdit = () => {
                   <p>No GP photos added. Click "Add Photo" to add images.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {gpPhotos.map((photo, index) => (
                     <div key={index} className="relative group">
-                      <div className="flex items-center gap-2 p-3 border border-gray-200 rounded-lg bg-gray-50">
-                        <input
-                          type="url"
-                          value={photo}
-                          onChange={(e) => {
-                            const updated = [...gpPhotos];
-                            updated[index] = e.target.value;
-                            setGpPhotos(updated);
+                      <div className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                        <img
+                          src={
+                            isDataUrl(photo) ? photo : `${ImgbaseUrl}/${photo}`
+                          }
+                          alt={`GP Photo ${index + 1}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = photo;
                           }}
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                          placeholder="Photo URL"
                         />
                         <button
+                          type="button"
                           onClick={() => handlePhotoRemove('gp', index)}
-                          className="p-1 text-red-500 hover:bg-red-50 rounded"
+                          className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <X className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
@@ -1251,9 +1252,17 @@ const GPInstallationEdit = () => {
                           {item.photo ? (
                             <div className="relative mb-2">
                               <img
-                                src={item.photo}
+                                src={
+                                  isDataUrl(item.photo)
+                                    ? item.photo
+                                    : `${ImgbaseUrl}/${item.photo}`
+                                }
                                 alt="Smart Rack"
                                 className="h-20 w-auto rounded-md border border-gray-200 object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src =
+                                    item.photo;
+                                }}
                               />
                               <button
                                 type="button"
@@ -1450,9 +1459,17 @@ const GPInstallationEdit = () => {
                           {item.photo ? (
                             <div className="relative mb-2">
                               <img
-                                src={item.photo}
+                                src={
+                                  isDataUrl(item.photo)
+                                    ? item.photo
+                                    : `${ImgbaseUrl}/${item.photo}`
+                                }
                                 alt="Power System"
                                 className="h-20 w-auto rounded-md border border-gray-200 object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src =
+                                    item.photo;
+                                }}
                               />
                               <button
                                 type="button"
@@ -1531,26 +1548,26 @@ const GPInstallationEdit = () => {
                   <p>No equipment photos added.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {equipmentPhotos.map((photo, index) => (
                     <div key={index} className="relative group">
-                      <div className="flex items-center gap-2 p-3 border border-gray-200 rounded-lg bg-gray-50">
-                        <input
-                          type="url"
-                          value={photo}
-                          onChange={(e) => {
-                            const updated = [...equipmentPhotos];
-                            updated[index] = e.target.value;
-                            setEquipmentPhotos(updated);
+                      <div className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                        <img
+                          src={
+                            isDataUrl(photo) ? photo : `${ImgbaseUrl}/${photo}`
+                          }
+                          alt={`Equipment Photo ${index + 1}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = photo;
                           }}
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                          placeholder="Photo URL"
                         />
                         <button
+                          type="button"
                           onClick={() => handlePhotoRemove('equipment', index)}
-                          className="p-1 text-red-500 hover:bg-red-50 rounded"
+                          className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <X className="h-4 w-4" />
                         </button>
                       </div>
                     </div>

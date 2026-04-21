@@ -1,20 +1,20 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
-import { useParams, useNavigate } from "react-router-dom";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import { 
-  ArrowLeft, 
-  Save, 
-  X, 
-  Plus, 
+import React, { useEffect, useState, useRef } from 'react';
+import axios from 'axios';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ToastContainer, toast } from 'react-toastify';
+// import 'react-toastify/dist/ReactToastify.css';
+import {
+  ArrowLeft,
+  Save,
+  X,
+  Plus,
   Trash2,
   Loader2,
   AlertCircle,
   Upload,
-  Image as ImageIcon
-} from "lucide-react";
-import { Header } from "../../Breadcrumbs/Header";
+  Image as ImageIcon,
+} from 'lucide-react';
+import { Header } from '../../Breadcrumbs/Header';
 
 interface BlockInstallationData {
   id: number;
@@ -70,13 +70,16 @@ interface SFPItem {
 }
 
 const BASEURL = import.meta.env.VITE_TraceAPI_URL;
+const ImgbaseUrl = import.meta.env.VITE_Image_URL;
+const VitBASEURL = import.meta.env.VITE_API_BASE;
 
 const BlockInstallationEdit = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [installationData, setInstallationData] = useState<BlockInstallationData | null>(null);
-  
+  const [installationData, setInstallationData] =
+    useState<BlockInstallationData | null>(null);
+
   // Form state - Basic Information
   const [stateCode, setStateCode] = useState<string>('');
   const [districtCode, setDistrictCode] = useState<string>('');
@@ -85,7 +88,7 @@ const BlockInstallationEdit = () => {
   const [blockLatitude, setBlockLatitude] = useState<string>('');
   const [blockLongitude, setBlockLongitude] = useState<string>('');
   const [blockPhotos, setBlockPhotos] = useState<string[]>([]);
-  
+
   // Equipment State
   const [smartRack, setSmartRack] = useState<SmartRackItem[]>([]);
   const [fdmsShelf, setFdmsShelf] = useState<EquipmentItem[]>([]);
@@ -95,24 +98,41 @@ const BlockInstallationEdit = () => {
   const [sfp1g, setSfp1g] = useState<SFPItem[]>([]);
   const [sfp100g, setSfp100g] = useState<SFPItem[]>([]);
   const [equipmentPhotos, setEquipmentPhotos] = useState<string[]>([]);
-  
+
   // Contact Information
   const [blockContacts, setBlockContacts] = useState<ContactInfo[]>([]);
-  
+
   const { id } = useParams();
   const navigate = useNavigate();
+
+  const blockPhotoFileInput = useRef<HTMLInputElement>(null);
+  const equipmentPhotoFileInput = useRef<HTMLInputElement>(null);
+  const smartRackFileInput = useRef<HTMLInputElement>(null);
+  const fdmsFileInput = useRef<HTMLInputElement>(null);
+  const routerFileInput = useRef<HTMLInputElement>(null);
+  const [smartRackPhotoIndex, setSmartRackPhotoIndex] = useState<number | null>(
+    null,
+  );
+  const [fdmsPhotoIndex, setFdmsPhotoIndex] = useState<number | null>(null);
+  const [routerPhotoIndex, setRouterPhotoIndex] = useState<number | null>(null);
+
+  const isDataUrl = (str: string): boolean => {
+    return str.startsWith('data:image/');
+  };
 
   const fetchInstallationData = async () => {
     try {
       setLoading(true);
       const response = await axios.get(`${BASEURL}/get-block-installation`);
-      
+
       if (response.data.status && response.data.data) {
-        const foundRecord = response.data.data.find((item: BlockInstallationData) => item.id.toString() === id);
-        
+        const foundRecord = response.data.data.find(
+          (item: BlockInstallationData) => item.id.toString() === id,
+        );
+
         if (foundRecord) {
           setInstallationData(foundRecord);
-          
+
           // Set basic information
           setStateCode(foundRecord.state_code);
           setDistrictCode(foundRecord.district_code);
@@ -120,11 +140,21 @@ const BlockInstallationEdit = () => {
           setBlockName(foundRecord.block_name);
           setBlockLatitude(foundRecord.block_latitude);
           setBlockLongitude(foundRecord.block_longitude);
-          setBlockPhotos(Array.isArray(foundRecord.block_photos) ? foundRecord.block_photos : 
-            foundRecord.block_photos ? JSON.parse(foundRecord.block_photos) : []);
-          setEquipmentPhotos(Array.isArray(foundRecord.equipment_photo) ? foundRecord.equipment_photo :
-            foundRecord.equipment_photo ? JSON.parse(foundRecord.equipment_photo) : []);
-          
+          setBlockPhotos(
+            Array.isArray(foundRecord.block_photos)
+              ? foundRecord.block_photos
+              : foundRecord.block_photos
+                ? JSON.parse(foundRecord.block_photos)
+                : [],
+          );
+          setEquipmentPhotos(
+            Array.isArray(foundRecord.equipment_photo)
+              ? foundRecord.equipment_photo
+              : foundRecord.equipment_photo
+                ? JSON.parse(foundRecord.equipment_photo)
+                : [],
+          );
+
           // Parse and set equipment data
           parseAndSetEquipmentData(foundRecord);
         } else {
@@ -132,7 +162,7 @@ const BlockInstallationEdit = () => {
         }
       }
     } catch (err: any) {
-      setError(err.message || "Failed to fetch installation data");
+      setError(err.message || 'Failed to fetch installation data');
       console.error(err);
     } finally {
       setLoading(false);
@@ -143,50 +173,71 @@ const BlockInstallationEdit = () => {
     try {
       // Smart Rack
       if (data.smart_rack) {
-        const parsed = typeof data.smart_rack === 'string' ? JSON.parse(data.smart_rack) : data.smart_rack;
+        const parsed =
+          typeof data.smart_rack === 'string'
+            ? JSON.parse(data.smart_rack)
+            : data.smart_rack;
         setSmartRack(Array.isArray(parsed) ? parsed : [parsed]);
       }
-      
+
       // FDMS Shelf
       if (data.fdms_shelf) {
-        const parsed = typeof data.fdms_shelf === 'string' ? JSON.parse(data.fdms_shelf) : data.fdms_shelf;
+        const parsed =
+          typeof data.fdms_shelf === 'string'
+            ? JSON.parse(data.fdms_shelf)
+            : data.fdms_shelf;
         setFdmsShelf(Array.isArray(parsed) ? parsed : [parsed]);
       }
-      
+
       // IP MPLS Router
       if (data.ip_mpls_router) {
-        const parsed = typeof data.ip_mpls_router === 'string' ? JSON.parse(data.ip_mpls_router) : data.ip_mpls_router;
+        const parsed =
+          typeof data.ip_mpls_router === 'string'
+            ? JSON.parse(data.ip_mpls_router)
+            : data.ip_mpls_router;
         setIpMplsRouter(Array.isArray(parsed) ? parsed : [parsed]);
       }
-      
+
       // RFMS
       if (data.rfms) {
-        const parsed = typeof data.rfms === 'string' ? JSON.parse(data.rfms) : data.rfms;
+        const parsed =
+          typeof data.rfms === 'string' ? JSON.parse(data.rfms) : data.rfms;
         setRfms(Array.isArray(parsed) ? parsed : [parsed]);
       }
-      
+
       // SFP Items
       if (data.sfp_10g) {
-        const parsed = typeof data.sfp_10g === 'string' ? JSON.parse(data.sfp_10g) : data.sfp_10g;
+        const parsed =
+          typeof data.sfp_10g === 'string'
+            ? JSON.parse(data.sfp_10g)
+            : data.sfp_10g;
         setSfp10g(Array.isArray(parsed) ? parsed : [parsed]);
       }
-      
+
       if (data.sfp_1g) {
-        const parsed = typeof data.sfp_1g === 'string' ? JSON.parse(data.sfp_1g) : data.sfp_1g;
+        const parsed =
+          typeof data.sfp_1g === 'string'
+            ? JSON.parse(data.sfp_1g)
+            : data.sfp_1g;
         setSfp1g(Array.isArray(parsed) ? parsed : [parsed]);
       }
-      
+
       if (data.sfp_100g) {
-        const parsed = typeof data.sfp_100g === 'string' ? JSON.parse(data.sfp_100g) : data.sfp_100g;
+        const parsed =
+          typeof data.sfp_100g === 'string'
+            ? JSON.parse(data.sfp_100g)
+            : data.sfp_100g;
         setSfp100g(Array.isArray(parsed) ? parsed : [parsed]);
       }
-      
+
       // Block Contacts
       if (data.block_contacts) {
-        const parsed = typeof data.block_contacts === 'string' ? JSON.parse(data.block_contacts) : data.block_contacts;
+        const parsed =
+          typeof data.block_contacts === 'string'
+            ? JSON.parse(data.block_contacts)
+            : data.block_contacts;
         setBlockContacts(Array.isArray(parsed) ? parsed : [parsed]);
       }
-      
     } catch (e) {
       console.error('Error parsing equipment data:', e);
     }
@@ -196,10 +247,127 @@ const BlockInstallationEdit = () => {
     fetchInstallationData();
   }, [id]);
 
+  const uploadImagesToServer = async (dataUrls: string[]) => {
+    const files: File[] = [];
+
+    for (const dataUrl of dataUrls) {
+      try {
+        const response = await fetch(dataUrl);
+        const blob = await response.blob();
+        const matches = dataUrl.match(/^data:image\/(\w+);base64,/);
+        const extension = matches ? matches[1] : 'jpg';
+        const fileName = `photo_${Date.now()}_${Math.random()}.${extension}`;
+        const file = new File([blob], fileName, { type: `image/${extension}` });
+        files.push(file);
+      } catch (e) {
+        console.error('Error converting data URL to file:', e);
+      }
+    }
+
+    if (files.length === 0) return [];
+
+    const formData = new FormData();
+    files.forEach((file) => {
+      formData.append('images[]', file);
+    });
+
+    try {
+      const response = await fetch(`${VitBASEURL}/upload-image`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      return data.data?.images || [];
+    } catch (error) {
+      console.error('Upload error:', error);
+      throw error;
+    }
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
-      
+
+      const filteredBlockPhotos = blockPhotos.filter((photo) => photo.trim());
+      const filteredEquipmentPhotos = equipmentPhotos.filter((photo) =>
+        photo.trim(),
+      );
+
+      const newBlockPhotoUrls = filteredBlockPhotos.filter((photo) =>
+        isDataUrl(photo),
+      );
+      const existingBlockPhotoUrls = filteredBlockPhotos.filter(
+        (photo) => !isDataUrl(photo),
+      );
+
+      const newEquipmentPhotoUrls = filteredEquipmentPhotos.filter((photo) =>
+        isDataUrl(photo),
+      );
+      const existingEquipmentPhotoUrls = filteredEquipmentPhotos.filter(
+        (photo) => !isDataUrl(photo),
+      );
+
+      let uploadedBlockUrls: string[] = [];
+      let uploadedEquipmentUrls: string[] = [];
+
+      if (newBlockPhotoUrls.length > 0) {
+        uploadedBlockUrls = await uploadImagesToServer(newBlockPhotoUrls);
+      }
+
+      if (newEquipmentPhotoUrls.length > 0) {
+        uploadedEquipmentUrls = await uploadImagesToServer(
+          newEquipmentPhotoUrls,
+        );
+      }
+
+      const finalBlockPhotos = [
+        ...existingBlockPhotoUrls,
+        ...uploadedBlockUrls,
+      ];
+      const finalEquipmentPhotos = [
+        ...existingEquipmentPhotoUrls,
+        ...uploadedEquipmentUrls,
+      ];
+
+      const processEquipmentPhotos = async (items: EquipmentItem[]) => {
+        const results = [];
+        for (const item of items) {
+          if (!item.make && !item.type && !item.model) continue;
+
+          const newItem = { ...item };
+          if (item.photo && isDataUrl(item.photo)) {
+            const uploadedUrls = await uploadImagesToServer([item.photo]);
+            newItem.photo = uploadedUrls[0] || '';
+          }
+          results.push(newItem);
+        }
+        return results;
+      };
+
+      const processSmartRackPhotos = async () => {
+        const results = [];
+        for (const item of smartRack) {
+          if (!item.make && !item.type && !item.serial_no) continue;
+
+          const newItem = { ...item };
+          if (item.photo && isDataUrl(item.photo)) {
+            const uploadedUrls = await uploadImagesToServer([item.photo]);
+            newItem.photo = uploadedUrls[0] || '';
+          }
+          results.push(newItem);
+        }
+        return results;
+      };
+
+      const finalSmartRack = await processSmartRackPhotos();
+      const finalFdmsShelf = await processEquipmentPhotos(fdmsShelf);
+      const finalIpMplsRouter = await processEquipmentPhotos(ipMplsRouter);
+
       const updatePayload = {
         id: parseInt(id || '0'),
         state_code: stateCode,
@@ -208,32 +376,41 @@ const BlockInstallationEdit = () => {
         block_name: blockName,
         block_latitude: blockLatitude,
         block_longitude: blockLongitude,
-        block_photos: blockPhotos.filter(photo => photo.trim()),
-        smart_rack: smartRack.filter(item => item.make || item.type || item.serial_no),
-        fdms_shelf: fdmsShelf.filter(item => item.make || item.type || item.model),
-        ip_mpls_router: ipMplsRouter.filter(item => item.make || item.type || item.model),
-        rfms: rfms.filter(item => item.make || item.type || item.model),
-        sfp_10g: sfp10g.filter(item => item.type || item.make || item.model),
-        sfp_1g: sfp1g.filter(item => item.type || item.make || item.model),
-        sfp_100g: sfp100g.filter(item => item.type || item.make || item.model),
-        equipment_photo: equipmentPhotos.filter(photo => photo.trim()),
-        block_contacts: blockContacts.filter(contact => contact.name || contact.phone)
+        block_photos: finalBlockPhotos,
+        smart_rack: finalSmartRack,
+        fdms_shelf: finalFdmsShelf,
+        ip_mpls_router: finalIpMplsRouter,
+        rfms: rfms.filter((item) => item.make || item.type || item.model),
+        sfp_10g: sfp10g.filter((item) => item.type || item.make || item.model),
+        sfp_1g: sfp1g.filter((item) => item.type || item.make || item.model),
+        sfp_100g: sfp100g.filter(
+          (item) => item.type || item.make || item.model,
+        ),
+        equipment_photo: finalEquipmentPhotos,
+        block_contacts: blockContacts.filter(
+          (contact) => contact.name || contact.phone,
+        ),
       };
 
       // Changed from PUT to POST
-      const response = await axios.post(`${BASEURL}/update-block-installation`, updatePayload);
-      
+      const response = await axios.post(
+        `${BASEURL}/update-block-installation`,
+        updatePayload,
+      );
+
       if (response.data.status) {
-        toast.success("Block installation updated successfully!");
+        toast.success('Block installation updated successfully!');
         setTimeout(() => {
           navigate(`/installation/block-detail/${id}`);
         }, 1500);
       } else {
-        toast.error("Failed to update block installation");
+        toast.error('Failed to update block installation');
       }
     } catch (error: any) {
       console.error('Update error:', error);
-      toast.error(error.response?.data?.message || "Failed to update block installation");
+      toast.error(
+        error.response?.data?.message || 'Failed to update block installation',
+      );
     } finally {
       setSaving(false);
     }
@@ -244,7 +421,11 @@ const BlockInstallationEdit = () => {
   };
 
   // Generic handlers for different equipment types
-  const handleSmartRackChange = (index: number, field: keyof SmartRackItem, value: string) => {
+  const handleSmartRackChange = (
+    index: number,
+    field: keyof SmartRackItem,
+    value: string,
+  ) => {
     const updated = [...smartRack];
     updated[index] = { ...updated[index], [field]: value };
     setSmartRack(updated);
@@ -252,9 +433,9 @@ const BlockInstallationEdit = () => {
 
   const handleEquipmentChange = (
     type: 'fdms' | 'router' | 'rfms',
-    index: number, 
-    field: keyof EquipmentItem, 
-    value: string
+    index: number,
+    field: keyof EquipmentItem,
+    value: string,
   ) => {
     if (type === 'fdms') {
       const updated = [...fdmsShelf];
@@ -275,7 +456,7 @@ const BlockInstallationEdit = () => {
     type: '10g' | '1g' | '100g',
     index: number,
     field: keyof SFPItem,
-    value: string
+    value: string,
   ) => {
     if (type === '10g') {
       const updated = [...sfp10g];
@@ -292,7 +473,11 @@ const BlockInstallationEdit = () => {
     }
   };
 
-  const handleContactChange = (index: number, field: keyof ContactInfo, value: string) => {
+  const handleContactChange = (
+    index: number,
+    field: keyof ContactInfo,
+    value: string,
+  ) => {
     const updated = [...blockContacts];
     updated[index] = { ...updated[index], [field]: value };
     setBlockContacts(updated);
@@ -300,7 +485,10 @@ const BlockInstallationEdit = () => {
 
   // Add/Remove handlers
   const addSmartRackItem = () => {
-    setSmartRack([...smartRack, { make: '', type: '', photo: '', serial_no: '' }]);
+    setSmartRack([
+      ...smartRack,
+      { make: '', type: '', photo: '', serial_no: '' },
+    ]);
   };
 
   const removeSmartRackItem = (index: number) => {
@@ -318,7 +506,10 @@ const BlockInstallationEdit = () => {
     }
   };
 
-  const removeEquipmentItem = (type: 'fdms' | 'router' | 'rfms', index: number) => {
+  const removeEquipmentItem = (
+    type: 'fdms' | 'router' | 'rfms',
+    index: number,
+  ) => {
     if (type === 'fdms') {
       setFdmsShelf(fdmsShelf.filter((_, i) => i !== index));
     } else if (type === 'router') {
@@ -329,7 +520,13 @@ const BlockInstallationEdit = () => {
   };
 
   const addSFPItem = (type: '10g' | '1g' | '100g') => {
-    const newItem = { type: '', make: '', model: '', serial_no: '', port_count: '' };
+    const newItem = {
+      type: '',
+      make: '',
+      model: '',
+      serial_no: '',
+      port_count: '',
+    };
     if (type === '10g') {
       setSfp10g([...sfp10g, newItem]);
     } else if (type === '1g') {
@@ -350,7 +547,10 @@ const BlockInstallationEdit = () => {
   };
 
   const addContact = () => {
-    setBlockContacts([...blockContacts, { name: '', phone: '', email: '', designation: '' }]);
+    setBlockContacts([
+      ...blockContacts,
+      { name: '', phone: '', email: '', designation: '' },
+    ]);
   };
 
   const removeContact = (index: number) => {
@@ -363,6 +563,114 @@ const BlockInstallationEdit = () => {
     } else {
       setEquipmentPhotos([...equipmentPhotos, url]);
     }
+  };
+
+  const handleFileUpload =
+    (type: 'block' | 'equipment') =>
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const files = event.target.files;
+      if (!files) return;
+
+      Array.from(files).forEach((file) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const dataUrl = e.target?.result as string;
+          if (type === 'block') {
+            setBlockPhotos([...blockPhotos, dataUrl]);
+          } else {
+            setEquipmentPhotos([...equipmentPhotos, dataUrl]);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+
+      event.target.value = '';
+    };
+
+  const triggerBlockPhotoUpload = () => {
+    blockPhotoFileInput.current?.click();
+  };
+
+  const triggerEquipmentPhotoUpload = () => {
+    equipmentPhotoFileInput.current?.click();
+  };
+
+  const triggerSmartRackPhotoUpload = (index: number) => {
+    setSmartRackPhotoIndex(index);
+    smartRackFileInput.current?.click();
+  };
+
+  const handleSmartRackPhotoUpload = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = event.target.files;
+    if (!files || smartRackPhotoIndex === null) return;
+
+    const file = files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      const updated = [...smartRack];
+      updated[smartRackPhotoIndex] = {
+        ...updated[smartRackPhotoIndex],
+        photo: dataUrl,
+      };
+      setSmartRack(updated);
+      setSmartRackPhotoIndex(null);
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  };
+
+  const triggerFdmsPhotoUpload = (index: number) => {
+    setFdmsPhotoIndex(index);
+    fdmsFileInput.current?.click();
+  };
+
+  const handleFdmsPhotoUpload = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = event.target.files;
+    if (!files || fdmsPhotoIndex === null) return;
+
+    const file = files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      const updated = [...fdmsShelf];
+      updated[fdmsPhotoIndex] = { ...updated[fdmsPhotoIndex], photo: dataUrl };
+      setFdmsShelf(updated);
+      setFdmsPhotoIndex(null);
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  };
+
+  const triggerRouterPhotoUpload = (index: number) => {
+    setRouterPhotoIndex(index);
+    routerFileInput.current?.click();
+  };
+
+  const handleRouterPhotoUpload = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = event.target.files;
+    if (!files || routerPhotoIndex === null) return;
+
+    const file = files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      const updated = [...ipMplsRouter];
+      updated[routerPhotoIndex] = {
+        ...updated[routerPhotoIndex],
+        photo: dataUrl,
+      };
+      setIpMplsRouter(updated);
+      setRouterPhotoIndex(null);
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
   };
 
   const handlePhotoRemove = (type: 'block' | 'equipment', index: number) => {
@@ -389,7 +697,9 @@ const BlockInstallationEdit = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white p-8 rounded-xl shadow-lg text-center max-w-md">
           <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Data</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Error Loading Data
+          </h3>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
             onClick={() => navigate('/installation')}
@@ -405,15 +715,17 @@ const BlockInstallationEdit = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <ToastContainer />
-      
+
       <div className="container mx-auto px-1">
-        <Header activeTab="installation" BackBut={true} />
-        
+        <Header activeTab ="installation" BackBut={true} />
+
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 mt-3">
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Edit Block Installation</h2>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Edit Block Installation
+                </h2>
                 <p className="text-sm text-gray-600 mt-1">
                   Complete editing for all installation data
                 </p>
@@ -445,10 +757,14 @@ const BlockInstallationEdit = () => {
           <div className="p-6 space-y-8">
             {/* Basic Information Section */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Basic Information
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">State Code</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    State Code
+                  </label>
                   <input
                     type="text"
                     value={stateCode}
@@ -457,9 +773,11 @@ const BlockInstallationEdit = () => {
                     placeholder="Enter state code"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">District Code</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    District Code
+                  </label>
                   <input
                     type="text"
                     value={districtCode}
@@ -468,9 +786,11 @@ const BlockInstallationEdit = () => {
                     placeholder="Enter district code"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Block Code</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Block Code
+                  </label>
                   <input
                     type="text"
                     value={blockCode}
@@ -479,9 +799,11 @@ const BlockInstallationEdit = () => {
                     placeholder="Enter block code"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Block Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Block Name
+                  </label>
                   <input
                     type="text"
                     value={blockName}
@@ -490,9 +812,11 @@ const BlockInstallationEdit = () => {
                     placeholder="Enter block name"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Latitude</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Latitude
+                  </label>
                   <input
                     type="text"
                     value={blockLatitude}
@@ -501,9 +825,11 @@ const BlockInstallationEdit = () => {
                     placeholder="Enter latitude"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Longitude</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Longitude
+                  </label>
                   <input
                     type="text"
                     value={blockLongitude}
@@ -518,45 +844,52 @@ const BlockInstallationEdit = () => {
             {/* Block Photos Section */}
             <div className="border-t border-gray-200 pt-8">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Block Photos</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Block Photos
+                </h3>
                 <button
-                  onClick={() => {
-                    const url = prompt('Enter photo URL:');
-                    if (url) handlePhotoAdd('block', url);
-                  }}
+                  onClick={triggerBlockPhotoUpload}
                   className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
                 >
                   <Plus className="h-4 w-4" />
                   Add Photo
                 </button>
               </div>
-              
+              <input
+                type="file"
+                ref={blockPhotoFileInput}
+                onChange={handleFileUpload('block')}
+                accept="image/*"
+                multiple
+                className="hidden"
+              />
+
               {blockPhotos.length === 0 ? (
                 <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                   <ImageIcon className="h-8 w-8 mx-auto mb-2" />
                   <p>No block photos added. Click "Add Photo" to add images.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {blockPhotos.map((photo, index) => (
                     <div key={index} className="relative group">
-                      <div className="flex items-center gap-2 p-3 border border-gray-200 rounded-lg bg-gray-50">
-                        <input
-                          type="url"
-                          value={photo}
-                          onChange={(e) => {
-                            const updated = [...blockPhotos];
-                            updated[index] = e.target.value;
-                            setBlockPhotos(updated);
+                      <div className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                        <img
+                          src={
+                            isDataUrl(photo) ? photo : `${ImgbaseUrl}/${photo}`
+                          }
+                          alt={`Block Photo ${index + 1}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = photo;
                           }}
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                          placeholder="Photo URL"
                         />
                         <button
+                          type="button"
                           onClick={() => handlePhotoRemove('block', index)}
-                          className="p-1 text-red-500 hover:bg-red-50 rounded"
+                          className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <X className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
@@ -568,7 +901,9 @@ const BlockInstallationEdit = () => {
             {/* Smart Rack Section */}
             <div className="border-t border-gray-200 pt-8">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Smart Rack Equipment</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Smart Rack Equipment
+                </h3>
                 <button
                   onClick={addSmartRackItem}
                   className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
@@ -577,17 +912,25 @@ const BlockInstallationEdit = () => {
                   Add Item
                 </button>
               </div>
-              
+
               {smartRack.length === 0 ? (
                 <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                  <p>No smart rack items configured. Click "Add Item" to add equipment.</p>
+                  <p>
+                    No smart rack items configured. Click "Add Item" to add
+                    equipment.
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {smartRack.map((item, index) => (
-                    <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div
+                      key={index}
+                      className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                    >
                       <div className="flex items-center justify-between mb-3">
-                        <span className="font-medium text-gray-700">Smart Rack Item {index + 1}</span>
+                        <span className="font-medium text-gray-700">
+                          Smart Rack Item {index + 1}
+                        </span>
                         <button
                           onClick={() => removeSmartRackItem(index)}
                           className="p-1 text-red-500 hover:bg-red-50 rounded"
@@ -595,50 +938,103 @@ const BlockInstallationEdit = () => {
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Make</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Make
+                          </label>
                           <input
                             type="text"
                             value={item.make}
-                            onChange={(e) => handleSmartRackChange(index, 'make', e.target.value)}
+                            onChange={(e) =>
+                              handleSmartRackChange(
+                                index,
+                                'make',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="e.g., Cisco"
                           />
                         </div>
-                        
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Type
+                          </label>
                           <input
                             type="text"
                             value={item.type}
-                            onChange={(e) => handleSmartRackChange(index, 'type', e.target.value)}
+                            onChange={(e) =>
+                              handleSmartRackChange(
+                                index,
+                                'type',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="e.g., Type-A"
                           />
                         </div>
-                        
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Serial Number</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Serial Number
+                          </label>
                           <input
                             type="text"
                             value={item.serial_no}
-                            onChange={(e) => handleSmartRackChange(index, 'serial_no', e.target.value)}
+                            onChange={(e) =>
+                              handleSmartRackChange(
+                                index,
+                                'serial_no',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="e.g., SR12345"
                           />
                         </div>
-                        
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Photo URL</label>
-                          <input
-                            type="url"
-                            value={item.photo}
-                            onChange={(e) => handleSmartRackChange(index, 'photo', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="https://example.com/photo.jpg"
-                          />
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Photo
+                          </label>
+                          {item.photo ? (
+                            <div className="relative mb-2">
+                              <img
+                                src={
+                                  isDataUrl(item.photo)
+                                    ? item.photo
+                                    : `${ImgbaseUrl}/${item.photo}`
+                                }
+                                alt="Smart Rack"
+                                className="h-20 w-auto rounded-md border border-gray-200 object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src =
+                                    item.photo;
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleSmartRackChange(index, 'photo', '')
+                                }
+                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => triggerSmartRackPhotoUpload(index)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2"
+                          >
+                            <Upload className="h-4 w-4" />
+                            {item.photo ? 'Change Photo' : 'Upload Photo'}
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -648,11 +1044,13 @@ const BlockInstallationEdit = () => {
             </div>
 
             {/* Continue with more sections - I'll create the remaining sections in subsequent parts due to length... */}
-            
+
             {/* Contact Information */}
             <div className="border-t border-gray-200 pt-8">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Block Contacts</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Block Contacts
+                </h3>
                 <button
                   onClick={addContact}
                   className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
@@ -661,17 +1059,25 @@ const BlockInstallationEdit = () => {
                   Add Contact
                 </button>
               </div>
-              
+
               {blockContacts.length === 0 ? (
                 <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                  <p>No contacts added. Click "Add Contact" to add contact information.</p>
+                  <p>
+                    No contacts added. Click "Add Contact" to add contact
+                    information.
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {blockContacts.map((contact, index) => (
-                    <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div
+                      key={index}
+                      className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                    >
                       <div className="flex items-center justify-between mb-3">
-                        <span className="font-medium text-gray-700">Contact {index + 1}</span>
+                        <span className="font-medium text-gray-700">
+                          Contact {index + 1}
+                        </span>
                         <button
                           onClick={() => removeContact(index)}
                           className="p-1 text-red-500 hover:bg-red-50 rounded"
@@ -679,47 +1085,75 @@ const BlockInstallationEdit = () => {
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Name
+                          </label>
                           <input
                             type="text"
                             value={contact.name}
-                            onChange={(e) => handleContactChange(index, 'name', e.target.value)}
+                            onChange={(e) =>
+                              handleContactChange(index, 'name', e.target.value)
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter contact name"
                           />
                         </div>
-                        
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Phone
+                          </label>
                           <input
                             type="tel"
                             value={contact.phone}
-                            onChange={(e) => handleContactChange(index, 'phone', e.target.value)}
+                            onChange={(e) =>
+                              handleContactChange(
+                                index,
+                                'phone',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter phone number"
                           />
                         </div>
-                        
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Email
+                          </label>
                           <input
                             type="email"
                             value={contact.email}
-                            onChange={(e) => handleContactChange(index, 'email', e.target.value)}
+                            onChange={(e) =>
+                              handleContactChange(
+                                index,
+                                'email',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter email address"
                           />
                         </div>
-                        
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Designation
+                          </label>
                           <input
                             type="text"
                             value={contact.designation}
-                            onChange={(e) => handleContactChange(index, 'designation', e.target.value)}
+                            onChange={(e) =>
+                              handleContactChange(
+                                index,
+                                'designation',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter designation"
                           />
@@ -734,7 +1168,9 @@ const BlockInstallationEdit = () => {
             {/* FDMS Shelf Section */}
             <div className="border-t border-gray-200 pt-8">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">FDMS Shelf Equipment</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  FDMS Shelf Equipment
+                </h3>
                 <button
                   onClick={() => addEquipmentItem('fdms')}
                   className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
@@ -743,7 +1179,7 @@ const BlockInstallationEdit = () => {
                   Add Item
                 </button>
               </div>
-              
+
               {fdmsShelf.length === 0 ? (
                 <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                   <p>No FDMS shelf items configured.</p>
@@ -751,9 +1187,14 @@ const BlockInstallationEdit = () => {
               ) : (
                 <div className="space-y-4">
                   {fdmsShelf.map((item, index) => (
-                    <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div
+                      key={index}
+                      className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                    >
                       <div className="flex items-center justify-between mb-3">
-                        <span className="font-medium text-gray-700">FDMS Shelf Item {index + 1}</span>
+                        <span className="font-medium text-gray-700">
+                          FDMS Shelf Item {index + 1}
+                        </span>
                         <button
                           onClick={() => removeEquipmentItem('fdms', index)}
                           className="p-1 text-red-500 hover:bg-red-50 rounded"
@@ -761,61 +1202,131 @@ const BlockInstallationEdit = () => {
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Make</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Make
+                          </label>
                           <input
                             type="text"
                             value={item.make}
-                            onChange={(e) => handleEquipmentChange('fdms', index, 'make', e.target.value)}
+                            onChange={(e) =>
+                              handleEquipmentChange(
+                                'fdms',
+                                index,
+                                'make',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter make"
                           />
                         </div>
-                        
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Type
+                          </label>
                           <input
                             type="text"
                             value={item.type}
-                            onChange={(e) => handleEquipmentChange('fdms', index, 'type', e.target.value)}
+                            onChange={(e) =>
+                              handleEquipmentChange(
+                                'fdms',
+                                index,
+                                'type',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter type"
                           />
                         </div>
-                        
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Model</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Model
+                          </label>
                           <input
                             type="text"
                             value={item.model}
-                            onChange={(e) => handleEquipmentChange('fdms', index, 'model', e.target.value)}
+                            onChange={(e) =>
+                              handleEquipmentChange(
+                                'fdms',
+                                index,
+                                'model',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter model"
                           />
                         </div>
-                        
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Serial Number</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Serial Number
+                          </label>
                           <input
                             type="text"
                             value={item.serial_no}
-                            onChange={(e) => handleEquipmentChange('fdms', index, 'serial_no', e.target.value)}
+                            onChange={(e) =>
+                              handleEquipmentChange(
+                                'fdms',
+                                index,
+                                'serial_no',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter serial number"
                           />
                         </div>
-                        
+
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Photo URL</label>
-                          <input
-                            type="url"
-                            value={item.photo}
-                            onChange={(e) => handleEquipmentChange('fdms', index, 'photo', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="https://example.com/photo.jpg"
-                          />
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Photo
+                          </label>
+                          {item.photo ? (
+                            <div className="relative mb-2">
+                              <img
+                                src={
+                                  isDataUrl(item.photo)
+                                    ? item.photo
+                                    : `${ImgbaseUrl}/${item.photo}`
+                                }
+                                alt="FDMS Shelf"
+                                className="h-20 w-auto rounded-md border border-gray-200 object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src =
+                                    item.photo;
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleEquipmentChange(
+                                    'fdms',
+                                    index,
+                                    'photo',
+                                    '',
+                                  )
+                                }
+                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => triggerFdmsPhotoUpload(index)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2"
+                          >
+                            <Upload className="h-4 w-4" />
+                            {item.photo ? 'Change Photo' : 'Upload Photo'}
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -827,7 +1338,9 @@ const BlockInstallationEdit = () => {
             {/* IP MPLS Router Section */}
             <div className="border-t border-gray-200 pt-8">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">IP MPLS Router Equipment</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  IP MPLS Router Equipment
+                </h3>
                 <button
                   onClick={() => addEquipmentItem('router')}
                   className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
@@ -836,7 +1349,7 @@ const BlockInstallationEdit = () => {
                   Add Item
                 </button>
               </div>
-              
+
               {ipMplsRouter.length === 0 ? (
                 <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                   <p>No IP MPLS router items configured.</p>
@@ -844,9 +1357,14 @@ const BlockInstallationEdit = () => {
               ) : (
                 <div className="space-y-4">
                   {ipMplsRouter.map((item, index) => (
-                    <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div
+                      key={index}
+                      className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                    >
                       <div className="flex items-center justify-between mb-3">
-                        <span className="font-medium text-gray-700">Router Item {index + 1}</span>
+                        <span className="font-medium text-gray-700">
+                          Router Item {index + 1}
+                        </span>
                         <button
                           onClick={() => removeEquipmentItem('router', index)}
                           className="p-1 text-red-500 hover:bg-red-50 rounded"
@@ -854,61 +1372,131 @@ const BlockInstallationEdit = () => {
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Make</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Make
+                          </label>
                           <input
                             type="text"
                             value={item.make}
-                            onChange={(e) => handleEquipmentChange('router', index, 'make', e.target.value)}
+                            onChange={(e) =>
+                              handleEquipmentChange(
+                                'router',
+                                index,
+                                'make',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter make"
                           />
                         </div>
-                        
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Type
+                          </label>
                           <input
                             type="text"
                             value={item.type}
-                            onChange={(e) => handleEquipmentChange('router', index, 'type', e.target.value)}
+                            onChange={(e) =>
+                              handleEquipmentChange(
+                                'router',
+                                index,
+                                'type',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter type"
                           />
                         </div>
-                        
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Model</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Model
+                          </label>
                           <input
                             type="text"
                             value={item.model}
-                            onChange={(e) => handleEquipmentChange('router', index, 'model', e.target.value)}
+                            onChange={(e) =>
+                              handleEquipmentChange(
+                                'router',
+                                index,
+                                'model',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter model"
                           />
                         </div>
-                        
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Serial Number</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Serial Number
+                          </label>
                           <input
                             type="text"
                             value={item.serial_no}
-                            onChange={(e) => handleEquipmentChange('router', index, 'serial_no', e.target.value)}
+                            onChange={(e) =>
+                              handleEquipmentChange(
+                                'router',
+                                index,
+                                'serial_no',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter serial number"
                           />
                         </div>
-                        
+
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Photo URL</label>
-                          <input
-                            type="url"
-                            value={item.photo}
-                            onChange={(e) => handleEquipmentChange('router', index, 'photo', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="https://example.com/photo.jpg"
-                          />
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Photo
+                          </label>
+                          {item.photo ? (
+                            <div className="relative mb-2">
+                              <img
+                                src={
+                                  isDataUrl(item.photo)
+                                    ? item.photo
+                                    : `${ImgbaseUrl}/${item.photo}`
+                                }
+                                alt="IP MPLS Router"
+                                className="h-20 w-auto rounded-md border border-gray-200 object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src =
+                                    item.photo;
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleEquipmentChange(
+                                    'router',
+                                    index,
+                                    'photo',
+                                    '',
+                                  )
+                                }
+                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => triggerRouterPhotoUpload(index)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2"
+                          >
+                            <Upload className="h-4 w-4" />
+                            {item.photo ? 'Change Photo' : 'Upload Photo'}
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -920,7 +1508,9 @@ const BlockInstallationEdit = () => {
             {/* SFP 10G Section */}
             <div className="border-t border-gray-200 pt-8">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">SFP 10G Components</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  SFP 10G Components
+                </h3>
                 <button
                   onClick={() => addSFPItem('10g')}
                   className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
@@ -929,7 +1519,7 @@ const BlockInstallationEdit = () => {
                   Add Item
                 </button>
               </div>
-              
+
               {sfp10g.length === 0 ? (
                 <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                   <p>No SFP 10G items configured.</p>
@@ -937,9 +1527,14 @@ const BlockInstallationEdit = () => {
               ) : (
                 <div className="space-y-4">
                   {sfp10g.map((item, index) => (
-                    <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div
+                      key={index}
+                      className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                    >
                       <div className="flex items-center justify-between mb-3">
-                        <span className="font-medium text-gray-700">SFP 10G Item {index + 1}</span>
+                        <span className="font-medium text-gray-700">
+                          SFP 10G Item {index + 1}
+                        </span>
                         <button
                           onClick={() => removeSFPItem('10g', index)}
                           className="p-1 text-red-500 hover:bg-red-50 rounded"
@@ -947,58 +1542,103 @@ const BlockInstallationEdit = () => {
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Type
+                          </label>
                           <input
                             type="text"
                             value={item.type}
-                            onChange={(e) => handleSFPChange('10g', index, 'type', e.target.value)}
+                            onChange={(e) =>
+                              handleSFPChange(
+                                '10g',
+                                index,
+                                'type',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter type"
                           />
                         </div>
-                        
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Make</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Make
+                          </label>
                           <input
                             type="text"
                             value={item.make}
-                            onChange={(e) => handleSFPChange('10g', index, 'make', e.target.value)}
+                            onChange={(e) =>
+                              handleSFPChange(
+                                '10g',
+                                index,
+                                'make',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter make"
                           />
                         </div>
-                        
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Model</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Model
+                          </label>
                           <input
                             type="text"
                             value={item.model}
-                            onChange={(e) => handleSFPChange('10g', index, 'model', e.target.value)}
+                            onChange={(e) =>
+                              handleSFPChange(
+                                '10g',
+                                index,
+                                'model',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter model"
                           />
                         </div>
-                        
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Serial Number</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Serial Number
+                          </label>
                           <input
                             type="text"
                             value={item.serial_no}
-                            onChange={(e) => handleSFPChange('10g', index, 'serial_no', e.target.value)}
+                            onChange={(e) =>
+                              handleSFPChange(
+                                '10g',
+                                index,
+                                'serial_no',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter serial number"
                           />
                         </div>
-                        
+
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Port Count</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Port Count
+                          </label>
                           <input
                             type="text"
                             value={item.port_count}
-                            onChange={(e) => handleSFPChange('10g', index, 'port_count', e.target.value)}
+                            onChange={(e) =>
+                              handleSFPChange(
+                                '10g',
+                                index,
+                                'port_count',
+                                e.target.value,
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Enter port count"
                           />
@@ -1013,45 +1653,73 @@ const BlockInstallationEdit = () => {
             {/* Equipment Photos Section */}
             <div className="border-t border-gray-200 pt-8">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Equipment Photos</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Equipment Photos
+                </h3>
                 <button
-                  onClick={() => {
-                    const url = prompt('Enter photo URL:');
-                    if (url) handlePhotoAdd('equipment', url);
-                  }}
+                  onClick={triggerEquipmentPhotoUpload}
                   className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
                 >
                   <Plus className="h-4 w-4" />
                   Add Photo
                 </button>
               </div>
-              
+              <input
+                type="file"
+                ref={equipmentPhotoFileInput}
+                onChange={handleFileUpload('equipment')}
+                accept="image/*"
+                multiple
+                className="hidden"
+              />
+              <input
+                type="file"
+                ref={smartRackFileInput}
+                onChange={handleSmartRackPhotoUpload}
+                accept="image/*"
+                className="hidden"
+              />
+              <input
+                type="file"
+                ref={fdmsFileInput}
+                onChange={handleFdmsPhotoUpload}
+                accept="image/*"
+                className="hidden"
+              />
+              <input
+                type="file"
+                ref={routerFileInput}
+                onChange={handleRouterPhotoUpload}
+                accept="image/*"
+                className="hidden"
+              />
+
               {equipmentPhotos.length === 0 ? (
                 <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                   <ImageIcon className="h-8 w-8 mx-auto mb-2" />
                   <p>No equipment photos added.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {equipmentPhotos.map((photo, index) => (
                     <div key={index} className="relative group">
-                      <div className="flex items-center gap-2 p-3 border border-gray-200 rounded-lg bg-gray-50">
-                        <input
-                          type="url"
-                          value={photo}
-                          onChange={(e) => {
-                            const updated = [...equipmentPhotos];
-                            updated[index] = e.target.value;
-                            setEquipmentPhotos(updated);
+                      <div className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                        <img
+                          src={
+                            isDataUrl(photo) ? photo : `${ImgbaseUrl}/${photo}`
+                          }
+                          alt={`Equipment Photo ${index + 1}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = photo;
                           }}
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                          placeholder="Photo URL"
                         />
                         <button
+                          type="button"
                           onClick={() => handlePhotoRemove('equipment', index)}
-                          className="p-1 text-red-500 hover:bg-red-50 rounded"
+                          className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <X className="h-4 w-4" />
                         </button>
                       </div>
                     </div>

@@ -1,7 +1,7 @@
 import { Satellite, Map, Camera, Truck, ClipboardList, Building2, ArrowLeft, Edit3, Home, ListTree } from "lucide-react"; 
 import { Link } from "react-router-dom";
 
-type TabType = "bsnl" | "gp" | "aerial" | "ground" | "hoto" | "bsnlaview" | "bsnledit" | "gpview" | "joints" | "jointview" | "installation-gpchecklistview";
+type TabType = "bsnl" | "gp" | "aerial" | "ground" | "hoto" | "bsnlaview" | "bsnledit" | "gpview" | "joints" | "jointview" | "installation-gpchecklistview" | "installation";
 
 const tabHeaderData: Record<
   string,
