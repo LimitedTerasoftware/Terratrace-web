@@ -26,7 +26,6 @@ const MachineSurveyDashboard: React.FC = () => {
     '#10b981', '#8b5cf6', '#ec4899', '#14b8a6', '#6b7280',
   ];
 
-
   const getColorByRegistration = useCallback((() => {
     const colorMap: Record<string, string> = {};
     let colorIndex = 0;
@@ -49,33 +48,31 @@ const MachineSurveyDashboard: React.FC = () => {
   }, []);
 
   useEffect(() => {
-  const fetchData = async () => {
-    try {
-      const response = await machineApi.getMachineLinkStats(
-        parseInt(machineId!)
-      );
+    const fetchData = async () => {
+      try {
+        const response = await machineApi.getMachineLinkStats(
+          parseInt(machineId!)
+        );
+        setData(response);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An error occurred");
+      }
+    };
 
-      setData(response);
-      setError(null);
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+    if (machineId) {
+      fetchData();
     }
-  };
-
-  if (machineId) {
-    fetchData();
-  }
-
-}, [machineId]);
-  
+  }, [machineId]);
 
   const fetchMachineData = useCallback(async () => {
+    if (!machineId) return;
+
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(`${TraceBASEURL}/get-latest-activity`);
+      const response = await fetch(`${TraceBASEURL}/get-latest-activity?machine_id=${machineId}`);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -85,14 +82,7 @@ const MachineSurveyDashboard: React.FC = () => {
 
       if (data.status && data.data) {
         const allActivities: MachineDataListItem[] = Object.values(data.data).flat();
-        const validActivities = allActivities.filter((activity) => {
-          if (machineId && Number(activity.machine_id) !== Number(machineId) && activity.status === 1) {
-             setActivities([]);
-            return false;
-            
-          }
-          return true;
-        });
+        const validActivities = allActivities;
 
         validActivities.sort(
           (a, b) => Number(a.order_index || a.id) - Number(b.order_index || b.id)
@@ -154,6 +144,7 @@ const totalDistance = activities.reduce((sum, survey) => {
   const distance = parseFloat(survey.distance || "0");
   return sum + (isNaN(distance) ? 0 : distance);
 }, 0);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="container mx-auto px-4 py-2">

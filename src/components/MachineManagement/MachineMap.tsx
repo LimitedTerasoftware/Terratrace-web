@@ -38,13 +38,14 @@ export const MachineMapComponent: React.FC<MachineMapComponentProps> = ({
   const currentInfoWindowRef = useRef<google.maps.InfoWindow | null>(null);
 
   const parsePhotos = (photoString: string | null): string[] => {
-    if (!photoString) return [];
-    try {
-      return JSON.parse(photoString);
-    } catch {
-      return photoString.split(',').map(p => p.trim());
-    }
-  };
+  if (!photoString) return [];
+  try {
+    const parsed = JSON.parse(photoString);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return photoString.split(',').map(p => p.trim());
+  }
+};
 
   const getDepthValue = (depthStr: string): number => {
     const cleanDepth = depthStr.replace('m', '').trim();
