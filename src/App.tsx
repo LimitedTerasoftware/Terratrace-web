@@ -86,6 +86,7 @@ import NewInstallationDashboard from './components/Dashboards/NewInstallationDas
 import GPChecklist from './components/GPChecklist';
 import GPChecklistList from './components/GPChecklist/List';
 import GPChecklistView from './components/GPChecklist/View';
+import BlockRouterChecklist from './components/BlockRouterChecklist';
 //import AuditLogs from './components/AuditLogs';
 
 function App() {
@@ -106,6 +107,7 @@ function App() {
     pathname === '/auth/signup' ||
     pathname === '/machine-activity' ||
     pathname === '/gp-checklist' ||
+    pathname === '/block-router-checklist' ||
     pathname === '/privacy' ||
     pathname === '/terms';
 
@@ -152,6 +154,15 @@ function App() {
                 <>
                   <PageTitle title="GP Checklist" />
                   <GPChecklist />
+                </>
+              }
+            />
+            <Route
+              path="/block-router-checklist"
+              element={
+                <>
+                  <PageTitle title="Block Router Checklist" />
+                  <BlockRouterChecklist />
                 </>
               }
             />

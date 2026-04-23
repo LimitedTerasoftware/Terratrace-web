@@ -664,7 +664,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                   <SidebarLinkGroup
                     activeCondition={
                       pathname.includes('installation') ||
-                      pathname.includes('gp-checklist') 
+                      pathname.includes('gp-checklist')
                     }
                   >
                     {(handleClick, open) => {
@@ -769,25 +769,45 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                   </NavLink>
                                 </li>
                               )}
+                              {(!viewOnly || adminUser) && (
                                 <li>
                                   <NavLink
-                                    to="/installation-gp-checklist-list"
+                                    to="/block-router-checklist"
+                                    target="_blank"
                                     className={({ isActive }) =>
                                       `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
                                     }
                                   >
-                                    <ListOrdered
+                                    <CheckSquare
                                       size={16}
                                       className="min-w-[16px] flex-shrink-0 opacity-80"
                                     />
                                     <span
                                       className={`${isOpen ? 'block' : 'hidden'} truncate`}
                                     >
-                                      GP Checklist List
+                                      Block Router Checklist
                                     </span>
                                   </NavLink>
                                 </li>
-                              
+                              )}
+                              <li>
+                                <NavLink
+                                  to="/installation-gp-checklist-list"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <ListOrdered
+                                    size={16}
+                                    className="min-w-[16px] flex-shrink-0 opacity-80"
+                                  />
+                                  <span
+                                    className={`${isOpen ? 'block' : 'hidden'} truncate`}
+                                  >
+                                    GP Checklist List
+                                  </span>
+                                </NavLink>
+                              </li>
                             </ul>
                           </div>
                         </React.Fragment>
