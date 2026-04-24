@@ -1,12 +1,5 @@
 import { useState, useEffect } from 'react';
-import {
-  Loader2,
-  X,
-  Upload,
-  Camera,
-  FileText,
-  CheckCircle,
-} from 'lucide-react';
+import { Loader2, X, CheckCircle } from 'lucide-react';
 import { getStateData, getDistrictData, getBlockData } from '../Services/api';
 import { Block, District, StateData } from '../../types/survey';
 import RFMSForm from './forms/RFMSForm';
@@ -15,11 +8,33 @@ import FDMSForm from './forms/FDMSForm';
 
 type FormType = 'RFMS' | 'Block Router' | 'FDMS';
 
+interface RFMSData {
+  status: boolean;
+  block_id?: number;
+  completion_percentage?: string;
+  filled_tests?: number;
+  total_tests?: number;
+  tests?: Record<
+    string,
+    { Image: string; remarks: string; compliance: string } | null
+  >;
+  message?: string;
+}
+
+interface BlockCreateResponse {
+  status: boolean;
+  message: string;
+  block_id: number;
+}
+
+const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
+
 const BlockRouterChecklist = () => {
   const [showModal, setShowModal] = useState(true);
   const [selectedState, setSelectedState] = useState<string>('');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('');
   const [selectedBlock, setSelectedBlock] = useState<string>('');
+  const [selectedBlockName, setSelectedBlockName] = useState<string>('');
   const [selectedFormType, setSelectedFormType] = useState<FormType | ''>('');
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
@@ -27,6 +42,8 @@ const BlockRouterChecklist = () => {
   const [loading, setLoading] = useState(true);
   const [loadingDistricts, setLoadingDistricts] = useState(false);
   const [loadingBlocks, setLoadingBlocks] = useState(false);
+  const [loadingRfms, setLoadingRfms] = useState(false);
+  const [rfmsData, setRfmsData] = useState<RFMSData | null>(null);
 
   useEffect(() => {
     const fetchStates = async () => {
@@ -71,15 +88,37 @@ const BlockRouterChecklist = () => {
     }
   };
 
-  const handleBlockChange = (blockId: string) => {
+  const handleBlockChange = (blockId: string, blockName?: string) => {
     setSelectedBlock(blockId);
+    if (blockName) {
+      setSelectedBlockName(blockName);
+    }
+  };
+
+  const fetchRfmsData = async (blockId: string) => {
+    setLoadingRfms(true);
+    try {
+      const response = await fetch(`${TraceBASEURL}/get-rfms-data/${blockId}`);
+      const data: RFMSData = await response.json();
+
+      if (data.status && data.tests) {
+        setRfmsData(data);
+      } else {
+        setRfmsData(null);
+      }
+    } catch (error) {
+      console.error('Error fetching RFMS data:', error);
+      setRfmsData(null);
+    } finally {
+      setLoadingRfms(false);
+    }
   };
 
   const handleFormTypeChange = (formType: FormType) => {
     setSelectedFormType(formType);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (
       !selectedState ||
       !selectedDistrict ||
@@ -89,6 +128,47 @@ const BlockRouterChecklist = () => {
       alert('Please fill all fields');
       return;
     }
+
+    if (
+      selectedFormType === 'RFMS' ||
+      selectedFormType === 'Block Router' ||
+      selectedFormType === 'FDMS'
+    ) {
+      try {
+        const blockName =
+          blocks.find((b) => b.block_id == selectedBlock)?.block_name || '';
+        const response = await fetch(`${TraceBASEURL}/insert-block`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            state_id: parseInt(selectedState),
+            district_id: parseInt(selectedDistrict),
+            block_id: parseInt(selectedBlock),
+            block_name: selectedBlockName || blockName,
+          }),
+        });
+
+        const data: BlockCreateResponse = await response.json();
+
+        if (!data.status) {
+          console.log('Block already exists, continuing...');
+        } else if (!data.status) {
+          alert(data.message);
+          return;
+        } else {
+          console.log(data.message);
+        }
+      } catch (error) {
+        console.error('Error creating block:', error);
+      }
+    }
+
+    if (selectedFormType === 'RFMS') {
+      await fetchRfmsData(selectedBlock);
+    }
+
     setShowModal(false);
   };
 
@@ -97,7 +177,7 @@ const BlockRouterChecklist = () => {
   const renderForm = () => {
     switch (selectedFormType) {
       case 'RFMS':
-        return <RFMSForm />;
+        return <RFMSForm blockId={selectedBlock} existingData={rfmsData} />;
       case 'Block Router':
         return <BlockRouterForm />;
       case 'FDMS':
@@ -181,7 +261,12 @@ const BlockRouterChecklist = () => {
                 </label>
                 <select
                   value={selectedBlock}
-                  onChange={(e) => handleBlockChange(e.target.value)}
+                  onChange={(e) => {
+                    const block = blocks.find(
+                      (b) => b.block_id == e.target.value,
+                    );
+                    handleBlockChange(e.target.value, block?.block_name);
+                  }}
                   disabled={!selectedDistrict || loadingBlocks}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:bg-gray-100"
                 >

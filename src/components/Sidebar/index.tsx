@@ -785,7 +785,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                     <span
                                       className={`${isOpen ? 'block' : 'hidden'} truncate`}
                                     >
-                                      Block Router Checklist
+                                      Block Checklist
                                     </span>
                                   </NavLink>
                                 </li>
