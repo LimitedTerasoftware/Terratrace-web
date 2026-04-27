@@ -1,55 +1,25 @@
 import { useState, useEffect } from 'react';
 import { Loader2, X, CheckCircle } from 'lucide-react';
-import { getStateData, getDistrictData, getBlockData } from '../Services/api';
+import {
+  getStateData,
+  getDistrictData,
+  getBlockData,
+  getRFMSData,
+  getBlockRouterData,
+} from '../Services/api';
 import { Block, District, StateData } from '../../types/survey';
 import RFMSForm from './forms/RFMSForm';
 import BlockRouterForm from './forms/BlockRouterForm';
 import FDMSForm from './forms/FDMSForm';
+import { RouterData } from '../../types/block-router-checklist';
 
 type FormType = 'RFMS' | 'Block Router' | 'FDMS';
-
-interface RFMSData {
-  status: boolean;
-  block_id?: number;
-  completion_percentage?: string;
-  filled_tests?: number;
-  total_tests?: number;
-  tests?: Record<
-    string,
-    {
-      Image: string;
-      remarks: string;
-      compliance: string;
-      result?: string;
-    } | null
-  >;
-  message?: string;
-}
-
-interface RouterData {
-  status: boolean;
-  block_id?: number;
-  completion_percentage?: string;
-  filled_tests?: number;
-  total_tests?: number;
-  tests?: Record<
-    string,
-    {
-      Image: string;
-      remarks: string;
-      compliance: string;
-      result?: string;
-    } | null
-  >;
-  message?: string;
-}
 
 interface BlockCreateResponse {
   status: boolean;
   message: string;
   block_id: number;
 }
-
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
 const BlockRouterChecklist = () => {
@@ -66,7 +36,7 @@ const BlockRouterChecklist = () => {
   const [loadingDistricts, setLoadingDistricts] = useState(false);
   const [loadingBlocks, setLoadingBlocks] = useState(false);
   const [loadingRfms, setLoadingRfms] = useState(false);
-  const [rfmsData, setRfmsData] = useState<RFMSData | null>(null);
+  const [rfmsData, setRfmsData] = useState<RouterData | null>(null);
   const [routerData, setRouterData] = useState<RouterData | null>(null);
 
   useEffect(() => {
@@ -122,8 +92,7 @@ const BlockRouterChecklist = () => {
   const fetchRfmsData = async (blockId: string) => {
     setLoadingRfms(true);
     try {
-      const response = await fetch(`${TraceBASEURL}/get-rfms-data/${blockId}`);
-      const data: RFMSData = await response.json();
+      const data = await getRFMSData(blockId);
 
       if (data.status && data.tests) {
         setRfmsData(data);
@@ -141,10 +110,7 @@ const BlockRouterChecklist = () => {
   const fetchRouterData = async (blockId: string) => {
     setLoadingRfms(true);
     try {
-      const response = await fetch(
-        `${TraceBASEURL}/get-blockrouter-data/${blockId}`,
-      );
-      const data: RouterData = await response.json();
+      const data = await getBlockRouterData(blockId);
 
       if (data.status && data.tests) {
         setRouterData(data);
@@ -158,7 +124,7 @@ const BlockRouterChecklist = () => {
       setLoadingRfms(false);
     }
   };
-
+ 
   const handleFormTypeChange = (formType: FormType) => {
     setSelectedFormType(formType);
   };

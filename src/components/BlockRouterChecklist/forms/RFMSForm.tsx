@@ -14,6 +14,7 @@ import {
   Download,
 } from 'lucide-react';
 import Tricad from '../../../images/logo/Tricad.png';
+import { RouterData } from '../../../types/block-router-checklist';
 
 const BASEURL = import.meta.env.VITE_API_BASE;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -73,18 +74,7 @@ interface RFMSItem {
 
 interface RFMSFormProps {
   blockId: string;
-  existingData?: {
-    status: boolean;
-    block_id?: number;
-    completion_percentage?: string;
-    filled_tests?: number;
-    total_tests?: number;
-    tests?: Record<
-      string,
-      { Image: string; remarks: string; compliance: string } | null
-    >;
-    message?: string;
-  } | null;
+  existingData?: RouterData | null;
 }
 
 const rfmsTestCases = [

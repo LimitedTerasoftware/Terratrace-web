@@ -14,6 +14,7 @@ import {
   Video,
 } from 'lucide-react';
 import Tricad from '../../../images/logo/Tricad.png';
+import { RouterData } from '../../../types/block-router-checklist';
 
 const BASEURL = import.meta.env.VITE_API_BASE;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -81,26 +82,11 @@ interface RouterFormItem extends RouterCheckItem {
   videos: UploadedVideo[];
 }
 
-interface ExistingRouterData {
-  status: boolean;
-  block_id?: number;
-  completion_percentage?: string;
-  filled_tests?: number;
-  total_tests?: number;
-  tests?: Record<
-    string,
-    {
-      Image: string;
-      remarks: string;
-      compliance: string;
-    } | null
-  >;
-  message?: string;
-}
+
 
 interface BlockRouterFormProps {
   blockId: string;
-  existingData?: ExistingRouterData | null;
+  existingData?: RouterData | null;
 }
 
 const routerTestCases: RouterCheckItem[] = [

@@ -87,6 +87,7 @@ import GPChecklist from './components/GPChecklist';
 import GPChecklistList from './components/GPChecklist/List';
 import GPChecklistView from './components/GPChecklist/View';
 import BlockRouterChecklist from './components/BlockRouterChecklist';
+import BlockChecklistList from './components/BlockRouterChecklist/List';
 //import AuditLogs from './components/AuditLogs';
 
 function App() {
@@ -918,6 +919,17 @@ function App() {
                     <DefaultLayout>
                       <PageTitle title="GP Checklist View" />
                       <GPChecklistView />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/installation-block-checklist-list"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Block Checklist List" />
+                      <BlockChecklistList />
                     </DefaultLayout>
                   </>
                 }
