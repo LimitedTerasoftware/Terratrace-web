@@ -4,12 +4,12 @@ import {
   CheckSquare,
   ListOrdered,
   Search,
-  Download,
   ChevronDown,
   Loader2,
   Eye,
+  Wifi,
 } from 'lucide-react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import {
   getBlockData,
   getDistrictData,
@@ -17,7 +17,7 @@ import {
   getBlocksChecklist,
 } from '../../Services/api';
 import DataTable, { TableColumn } from 'react-data-table-component';
-import { BlockChecklistData} from '../../../types/block-router-checklist';
+import { BlockChecklistData } from '../../../types/block-router-checklist';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const ImgbaseUrl = import.meta.env.VITE_Image_URL;
@@ -190,7 +190,7 @@ function BlockChecklistList() {
     2: 'Rejected',
     0: 'Pending',
   };
-    const statusOptions: StatusOption[] = Object.entries(statusMap).map(
+  const statusOptions: StatusOption[] = Object.entries(statusMap).map(
     ([value, label]) => ({
       value: Number(value),
       label,
@@ -234,7 +234,7 @@ function BlockChecklistList() {
     }
   };
 
-const fetchChecklistData = async () => {
+  const fetchChecklistData = async () => {
     try {
       setLoadingData(true);
 
@@ -263,8 +263,8 @@ const fetchChecklistData = async () => {
           ).length,
           byState: {},
         };
-         setRowsPerPage(response.pagination.limit);
-         setCurrentPage(response.pagination.page);
+        setRowsPerPage(response.pagination.limit);
+        setCurrentPage(response.pagination.page);
 
         response.blocks.forEach((item: BlockChecklistData) => {
           if (item.state_id) {
@@ -286,7 +286,7 @@ const fetchChecklistData = async () => {
     }
   };
 
-useEffect(() => {
+  useEffect(() => {
     fetchStates();
   }, []);
 
@@ -324,7 +324,18 @@ useEffect(() => {
     if (filtersReady) {
       fetchChecklistData();
     }
-  }, [filtersReady, selectedStateId, selectedDistrictId, selectedBlockId, globalsearch, fromdate, todate, selectedStatus, currentPage, rowsPerPage]);
+  }, [
+    filtersReady,
+    selectedStateId,
+    selectedDistrictId,
+    selectedBlockId,
+    globalsearch,
+    fromdate,
+    todate,
+    selectedStatus,
+    currentPage,
+    rowsPerPage,
+  ]);
 
   const handleFilterChange = (
     stateId: string | null,
@@ -361,15 +372,7 @@ useEffect(() => {
     setSelectedStateId(value);
     setSelectedDistrictId(null);
     setSelectedBlockId(null);
-    handleFilterChange(
-      value,
-      null,
-      null,
-      null,
-      fromdate,
-      todate,
-      globalsearch,
-    );
+    handleFilterChange(value, null, null, null, fromdate, todate, globalsearch);
   };
 
   const handleDistrictChange = (value: string | null) => {
@@ -383,7 +386,8 @@ useEffect(() => {
       fromdate,
       todate,
       globalsearch,
-    );  };
+    );
+  };
 
   const handleBlockChange = (value: string | null) => {
     setSelectedBlockId(value);
@@ -436,10 +440,9 @@ useEffect(() => {
     );
   };
 
-
   const handleSearchChange = (value: string) => {
     setGlobalSearch(value);
-      handleFilterChange(
+    handleFilterChange(
       selectedStateId,
       selectedDistrictId,
       selectedBlockId,
@@ -480,7 +483,7 @@ useEffect(() => {
         <span className="text-sm text-gray-600">{row.district_name}</span>
       ),
     },
-     {
+    {
       name: 'Status',
       selector: (row) => row.is_active,
       sortable: true,
@@ -531,7 +534,21 @@ useEffect(() => {
         </span>
       ),
     },
-    
+    {
+      name: 'Actions',
+      cell: (row) => (
+        <Link
+          to={`/installation-block-checklist/view/${row.block_id}/?state_id=${row.state_name}&district_id=${row.district_name}&block_id=${row.block_name}`}
+          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+          title="View Details"
+        >
+          <Eye className="w-4 h-4" />
+        </Link>
+      ),
+      ignoreRowClick: true,
+      width: '80px',
+    },
+  
   ];
 
   const handlePageChange = (page: number) => {

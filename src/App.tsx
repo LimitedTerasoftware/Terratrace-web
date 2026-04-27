@@ -87,6 +87,7 @@ import GPChecklist from './components/GPChecklist';
 import GPChecklistList from './components/GPChecklist/List';
 import GPChecklistView from './components/GPChecklist/View';
 import BlockRouterChecklist from './components/BlockRouterChecklist';
+import BlockRouterChecklistView from './components/BlockRouterChecklist/List/BlockRouterChecklistView';
 import BlockChecklistList from './components/BlockRouterChecklist/List';
 //import AuditLogs from './components/AuditLogs';
 
@@ -167,6 +168,7 @@ function App() {
                 </>
               }
             />
+          
 
             <Route
               path="/privacy"
@@ -930,6 +932,17 @@ function App() {
                     <DefaultLayout>
                       <PageTitle title="Block Checklist List" />
                       <BlockChecklistList />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/installation-block-checklist/view/:blockId"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Block Checklist View" />
+                      <BlockRouterChecklistView />
                     </DefaultLayout>
                   </>
                 }
