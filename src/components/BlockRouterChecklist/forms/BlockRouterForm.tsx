@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Upload,
   CheckCircle,
@@ -12,13 +12,41 @@ import {
   ClipboardCheck,
   Loader2,
   Video,
-  Play,
 } from 'lucide-react';
 import Tricad from '../../../images/logo/Tricad.png';
 
 const BASEURL = import.meta.env.VITE_API_BASE;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const ImgbaseUrl = import.meta.env.VITE_Image_URL;
+
+const parseImageUrls = (imageString: string): string[] => {
+  if (!imageString || imageString === '[]') return [];
+  const cleaned = imageString.replace(/^\[|\]$/g, '');
+  if (!cleaned) return [];
+  return cleaned.split(',').map((url) => url.trim());
+};
+
+const getFullImageUrl = (url: string): string => {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `${ImgbaseUrl}${url}`;
+};
+
+
+
+const isImageUrl = (url: string): boolean => {
+  if (!url) return false;
+  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+  const lowerUrl = url.toLowerCase();
+  return imageExtensions.some((ext) => lowerUrl.includes(ext));
+};
+
+const isVideoUrl = (url: string): boolean => {
+  if (!url) return false;
+  const videoExtensions = ['.mp4', '.mov', '.avi', '.webm'];
+  const lowerUrl = url.toLowerCase();
+  return videoExtensions.some((ext) => lowerUrl.includes(ext));
+};
 
 interface UploadedFile {
   id: string;
@@ -53,10 +81,32 @@ interface RouterFormItem extends RouterCheckItem {
   videos: UploadedVideo[];
 }
 
+interface ExistingRouterData {
+  status: boolean;
+  block_id?: number;
+  completion_percentage?: string;
+  filled_tests?: number;
+  total_tests?: number;
+  tests?: Record<
+    string,
+    {
+      Image: string;
+      remarks: string;
+      compliance: string;
+    } | null
+  >;
+  message?: string;
+}
+
+interface BlockRouterFormProps {
+  blockId: string;
+  existingData?: ExistingRouterData | null;
+}
+
 const routerTestCases: RouterCheckItem[] = [
   {
     id: 'T1',
-    testCaseNo: 'T1',
+    testCaseNo: '4(a)',
     description:
       'Router serial number and its TSEC and QA certificate: Check whether TSEC is available for this model number of Router. Check whether QA certificate is available for the Router serial number.',
     procedure:
@@ -67,7 +117,7 @@ const routerTestCases: RouterCheckItem[] = [
   },
   {
     id: 'T2',
-    testCaseNo: 'T2',
+    testCaseNo: '4(b)',
     description:
       'Check whether the following condition is qualified: "If the items mentioned herein are not dispatched within 15 days from the date of Dispatch Advice, they shall be re-offered for inspection to BSNL-QA."',
     procedure: 'Verify dispatch timeline compliance with BSNL-QA requirements',
@@ -77,7 +127,7 @@ const routerTestCases: RouterCheckItem[] = [
   },
   {
     id: 'T3',
-    testCaseNo: 'T3',
+    testCaseNo: '4(c)',
     description:
       'Check whether the Router has the latest OS (TSEC Version or higher). If not, then first get the OS upgraded to the latest version (TSEC Version or higher). OEM Undertaking for higher version complying to all RFP requirements need to be submitted. The latest version would be displayed on SNOC.',
     procedure:
@@ -88,7 +138,7 @@ const routerTestCases: RouterCheckItem[] = [
   },
   {
     id: 'T4',
-    testCaseNo: 'T4',
+    testCaseNo: '4(d)',
     description:
       'All installed and configured ports of the Router should be up and active. Check through Command Line Interface (CLI).',
     procedure:
@@ -99,7 +149,7 @@ const routerTestCases: RouterCheckItem[] = [
   },
   {
     id: 'T5',
-    testCaseNo: 'T5',
+    testCaseNo: '4(e)',
     description:
       'Videos and photos of the Router installation as per RFP should be available. Check PIA PM tool.',
     procedure:
@@ -110,7 +160,7 @@ const routerTestCases: RouterCheckItem[] = [
   },
   {
     id: 'T6',
-    testCaseNo: 'T6',
+    testCaseNo: '4(f)',
     description:
       'Whether the product qualifies the "Trusted products" as mandated by DoT vide File no- 20-271/2010 AS-I (Vol-III) dated 10.3.2021, along with its amendments, issued from time to time. The certificate can be provided once for one model number.',
     procedure:
@@ -121,7 +171,7 @@ const routerTestCases: RouterCheckItem[] = [
   },
   {
     id: 'T7',
-    testCaseNo: 'T7',
+    testCaseNo: '4(g)',
     description:
       'Whether OEM undertaking as per para 10.2 and 10.3 of Section-I of RFP regarding originality of hardware and software is submitted?',
     procedure:
@@ -132,7 +182,7 @@ const routerTestCases: RouterCheckItem[] = [
   },
   {
     id: 'T8',
-    testCaseNo: 'T8',
+    testCaseNo: '4(h)',
     description:
       'Whether undertaking as per S.No. 18 of Table - "Technical Specifications for Routers" regarding software updates/bug is submitted?',
     procedure:
@@ -143,7 +193,7 @@ const routerTestCases: RouterCheckItem[] = [
   },
   {
     id: 'T9',
-    testCaseNo: 'T9',
+    testCaseNo: '4(i)',
     description:
       'Whether the PIA has done Pre-AT and the Block availability in last one week is more than 99.5%?',
     procedure:
@@ -154,7 +204,7 @@ const routerTestCases: RouterCheckItem[] = [
   },
   {
     id: 'T10',
-    testCaseNo: 'T10',
+    testCaseNo: '4(j)',
     description:
       'Activation/Deactivation of Router through a CLI command from SNOC should be available. like RFMS form',
     procedure:
@@ -165,7 +215,7 @@ const routerTestCases: RouterCheckItem[] = [
   },
 ];
 
-const BlockRouterForm = () => {
+const BlockRouterForm = ({ blockId, existingData }: BlockRouterFormProps) => {
   const [items, setItems] = useState<RouterFormItem[]>(
     routerTestCases.map((tc) => ({
       ...tc,
@@ -178,6 +228,67 @@ const BlockRouterForm = () => {
   );
   const [expandedId, setExpandedId] = useState<string | null>('T1');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (existingData?.tests) {
+      const updatedItems = routerTestCases.map((tc) => {
+        const testData = existingData.tests?.[tc.id];
+        if (testData) {
+          const urls = parseImageUrls(testData.Image);
+          const existingImages: UploadedFile[] = [];
+          const existingDocs: UploadedFile[] = [];
+          const existingVideos: UploadedVideo[] = [];
+
+          urls.forEach((url, idx) => {
+            if (isVideoUrl(url)) {
+              existingVideos.push({
+                id: `existing-video-${idx}`,
+                preview: getFullImageUrl(url),
+                url: url,
+              });
+            } else if (isImageUrl(url)) {
+              existingImages.push({
+                id: `existing-img-${idx}`,
+                preview: getFullImageUrl(url),
+                url: url,
+                isDocument: false,
+              });
+            } else {
+              existingDocs.push({
+                id: `existing-doc-${idx}`,
+                preview: getFullImageUrl(url),
+                url: url,
+                isDocument: true,
+              });
+            }
+          });
+
+          return {
+            ...tc,
+            compliance:
+              testData.compliance === 'Yes' || testData.compliance === 'Y'
+                ? 'Yes'
+                : testData.compliance === 'No' || testData.compliance === 'N'
+                  ? 'No'
+                  : '',
+            remarks: testData.remarks || '',
+            images: existingImages,
+            documents: existingDocs,
+            videos: existingVideos,
+          };
+        }
+        return {
+          ...tc,
+          compliance: '',
+          remarks: '',
+          images: [],
+          documents: [],
+          videos: [],
+        };
+      });
+      setItems(updatedItems);
+    }
+  }, [existingData]);
 
   const handleComplianceChange = (id: string, value: string) => {
     setItems((prev) =>
@@ -263,7 +374,18 @@ const BlockRouterForm = () => {
     );
   };
 
-  const uploadFiles = async (files: File[]): Promise<string[]> => {
+  const stripBaseUrl = (url: string): string => {
+    if (!url) return '';
+    if (url.startsWith(ImgbaseUrl)) {
+      return url.replace(ImgbaseUrl, '');
+    }
+    if (url.startsWith(BASEURL)) {
+      return url.replace(BASEURL, '');
+    }
+    return url;
+  };
+
+  const uploadImages = async (files: File[]): Promise<string[]> => {
     const formData = new FormData();
     files.forEach((file) => {
       formData.append('images[]', file);
@@ -287,6 +409,54 @@ const BlockRouterForm = () => {
     }
   };
 
+  const uploadVideos = async (files: File[]): Promise<string[]> => {
+    const formData = new FormData();
+    files.forEach((file) => {
+      formData.append('videos[]', file);
+    });
+
+    try {
+      const response = await fetch(`${BASEURL}/upload-image`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      return data.data?.videos || [];
+    } catch (error) {
+      console.error('Upload error:', error);
+      throw error;
+    }
+  };
+
+  const uploadDocs = async (files: File[]): Promise<string[]> => {
+    const formData = new FormData();
+    files.forEach((file) => {
+      formData.append('docs[]', file);
+    });
+
+    try {
+      const response = await fetch(`${BASEURL}/upload-image`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      return data.data?.docs || [];
+    } catch (error) {
+      console.error('Upload error:', error);
+      throw error;
+    }
+  };
+
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
@@ -298,9 +468,82 @@ const BlockRouterForm = () => {
         return;
       }
 
-      console.log('Router Checklist Data:', items);
+      const routerData: Record<
+        string,
+        { compliance: string; remarks: string; Image: string }
+      > = {};
+
+      for (const item of completedItems) {
+        const uploadedUrls: string[] = [];
+
+        const newImages = item.images.filter((img) => img.file);
+        const existingImageUrls = item.images
+          .filter((img) => img.url)
+          .map((img) => stripBaseUrl(img.url as string));
+
+        const newDocs = item.documents.filter((doc) => doc.file);
+        const existingDocUrls = item.documents
+          .filter((doc) => doc.url)
+          .map((doc) => stripBaseUrl(doc.url as string));
+
+        const newVideos = item.videos.filter((v) => v.file);
+        const existingVideoUrls = item.videos
+          .filter((v) => v.url)
+          .map((v) => stripBaseUrl(v.url as string));
+
+        if (newImages.length > 0) {
+          const files = newImages.map((img) => img.file as File);
+          const uploadedImgUrls = await uploadImages(files);
+          uploadedUrls.push(...uploadedImgUrls);
+        }
+
+        if (newDocs.length > 0) {
+          const files = newDocs.map((doc) => doc.file as File);
+          const uploadedDocs = await uploadDocs(files);
+          uploadedUrls.push(...uploadedDocs);
+        }
+
+        if (newVideos.length > 0) {
+          const files = newVideos.map((v) => v.file as File);
+          const uploadedVideoUrls = await uploadVideos(files);
+          uploadedUrls.push(...uploadedVideoUrls);
+        }
+
+        const allUrls = [
+          ...existingImageUrls,
+          ...existingDocUrls,
+          ...existingVideoUrls,
+          ...uploadedUrls,
+        ];
+
+        routerData[item.id] = {
+          compliance: item.compliance,
+          remarks: item.remarks,
+          Image: allUrls.length > 0 ? `[${allUrls.join(',')}]` : '[]',
+        };
+      }
+
+      const payload = {
+        block_id: parseInt(blockId),
+        ...routerData,
+      };
+
+      const response = await fetch(`${TraceBASEURL}/upload-blockrouter-data`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit Router checklist data');
+      }
+
+      const result = await response.json();
+      console.log('Router Submit Result:', result);
       alert('Router Checklist submitted successfully!');
-      window.location.reload();
+       window.location.reload();
     } catch (error) {
       console.error('Error submitting Router checklist:', error);
       alert('Failed to submit Router checklist. Please try again.');

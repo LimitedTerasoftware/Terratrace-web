@@ -16,7 +16,30 @@ interface RFMSData {
   total_tests?: number;
   tests?: Record<
     string,
-    { Image: string; remarks: string; compliance: string } | null
+    {
+      Image: string;
+      remarks: string;
+      compliance: string;
+      result?: string;
+    } | null
+  >;
+  message?: string;
+}
+
+interface RouterData {
+  status: boolean;
+  block_id?: number;
+  completion_percentage?: string;
+  filled_tests?: number;
+  total_tests?: number;
+  tests?: Record<
+    string,
+    {
+      Image: string;
+      remarks: string;
+      compliance: string;
+      result?: string;
+    } | null
   >;
   message?: string;
 }
@@ -44,6 +67,7 @@ const BlockRouterChecklist = () => {
   const [loadingBlocks, setLoadingBlocks] = useState(false);
   const [loadingRfms, setLoadingRfms] = useState(false);
   const [rfmsData, setRfmsData] = useState<RFMSData | null>(null);
+  const [routerData, setRouterData] = useState<RouterData | null>(null);
 
   useEffect(() => {
     const fetchStates = async () => {
@@ -114,6 +138,27 @@ const BlockRouterChecklist = () => {
     }
   };
 
+  const fetchRouterData = async (blockId: string) => {
+    setLoadingRfms(true);
+    try {
+      const response = await fetch(
+        `${TraceBASEURL}/get-blockrouter-data/${blockId}`,
+      );
+      const data: RouterData = await response.json();
+
+      if (data.status && data.tests) {
+        setRouterData(data);
+      } else {
+        setRouterData(null);
+      }
+    } catch (error) {
+      console.error('Error fetching Router data:', error);
+      setRouterData(null);
+    } finally {
+      setLoadingRfms(false);
+    }
+  };
+
   const handleFormTypeChange = (formType: FormType) => {
     setSelectedFormType(formType);
   };
@@ -169,6 +214,10 @@ const BlockRouterChecklist = () => {
       await fetchRfmsData(selectedBlock);
     }
 
+    if (selectedFormType === 'Block Router') {
+      await fetchRouterData(selectedBlock);
+    }
+
     setShowModal(false);
   };
 
@@ -179,7 +228,9 @@ const BlockRouterChecklist = () => {
       case 'RFMS':
         return <RFMSForm blockId={selectedBlock} existingData={rfmsData} />;
       case 'Block Router':
-        return <BlockRouterForm />;
+        return (
+          <BlockRouterForm blockId={selectedBlock} existingData={routerData} />
+        );
       case 'FDMS':
         return <FDMSForm />;
       default:
