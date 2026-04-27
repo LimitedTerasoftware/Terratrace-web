@@ -431,10 +431,20 @@ const RFMSForm = ({ blockId, existingData }: RFMSFormProps) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-blue-50 p-2 md:p-4">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-700 rounded-2xl p-4 md:p-6 mb-4 text-white shadow-lg">
+      <div
+        className="rounded-2xl p-4 md:p-6 mb-4 text-white shadow-lg"
+        style={{
+          background:
+            'linear-gradient(135deg, #0d47a1 0%, #1565c0 50%, #1976d2 100%)',
+        }}
+      >
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-4">
-            <img src={Tricad} alt="Logo" className="w-[140px] md:w-[180px]" />
+            <img
+              src={Tricad}
+              alt="Logo"
+              className="hidden md:block w-[140px] md:w-[180px]"
+            />
             <div>
               <h2 className="text-xl md:text-2xl font-bold">
                 RFMS Related Tests
@@ -727,7 +737,23 @@ const RFMSForm = ({ blockId, existingData }: RFMSFormProps) => {
         <button
           onClick={handleSubmit}
           disabled={submitting}
-          className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-300 transition-all flex items-center justify-center gap-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full py-3.5 font-bold rounded-2xl transition-all flex items-center justify-center gap-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{
+            background: submitting
+              ? '#90a4ae'
+              : 'linear-gradient(135deg, #0d47a1 0%, #1565c0 100%)',
+            color: '#fff',
+          }}
+          onMouseEnter={(e) => {
+            if (!submitting)
+              e.currentTarget.style.background =
+                'linear-gradient(135deg, #0a3880 0%, #0d47a1 100%)';
+          }}
+          onMouseLeave={(e) => {
+            if (!submitting)
+              e.currentTarget.style.background =
+                'linear-gradient(135deg, #0d47a1 0%, #1565c0 100%)';
+          }}
         >
           {submitting ? (
             <>
@@ -738,6 +764,12 @@ const RFMSForm = ({ blockId, existingData }: RFMSFormProps) => {
             <>
               <CheckCircle size={24} />
               Submit RFMS Checklist
+              <span
+                className="ml-1 text-xs px-2 py-0.5 rounded-full font-medium"
+                style={{ background: 'rgba(255,255,255,0.2)' }}
+              >
+                {completedCount}/{items.length}
+              </span>
             </>
           )}
         </button>
