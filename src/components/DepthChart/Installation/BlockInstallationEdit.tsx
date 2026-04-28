@@ -82,6 +82,8 @@ const BlockInstallationEdit = () => {
 
   // Form state - Basic Information
   const [stateCode, setStateCode] = useState<string>('');
+  const [stateName, setStateName] = useState<string>('');
+  const [districtName, setDistrictName] = useState<string>('');
   const [districtCode, setDistrictCode] = useState<string>('');
   const [blockCode, setBlockCode] = useState<string>('');
   const [blockName, setBlockName] = useState<string>('');
@@ -135,7 +137,9 @@ const BlockInstallationEdit = () => {
 
           // Set basic information
           setStateCode(foundRecord.state_code);
+          setStateName(foundRecord.state_name);
           setDistrictCode(foundRecord.district_code);
+          setDistrictName(foundRecord.district_name);
           setBlockCode(foundRecord.block_code);
           setBlockName(foundRecord.block_name);
           setBlockLatitude(foundRecord.block_latitude);
@@ -763,43 +767,33 @@ const BlockInstallationEdit = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    State Code
+                    State 
                   </label>
                   <input
                     type="text"
-                    value={stateCode}
-                    onChange={(e) => setStateCode(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter state code"
+                    value={stateName}
+                    onChange={(e) => setStateName(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-not-allowed bg-gray-100"
+                    placeholder="Enter state name"
+                    readOnly
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    District Code
+                    District 
                   </label>
                   <input
                     type="text"
-                    value={districtCode}
-                    onChange={(e) => setDistrictCode(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter district code"
+                    value={districtName}
+                    onChange={(e) => setDistrictName(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-not-allowed bg-gray-100"
+                    placeholder="Enter district name"
+                    readOnly
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Block Code
-                  </label>
-                  <input
-                    type="text"
-                    value={blockCode}
-                    onChange={(e) => setBlockCode(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter block code"
-                  />
-                </div>
-
+               
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Block Name
@@ -808,8 +802,9 @@ const BlockInstallationEdit = () => {
                     type="text"
                     value={blockName}
                     onChange={(e) => setBlockName(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-not-allowed bg-gray-100"
                     placeholder="Enter block name"
+                    readOnly
                   />
                 </div>
 
@@ -821,8 +816,9 @@ const BlockInstallationEdit = () => {
                     type="text"
                     value={blockLatitude}
                     onChange={(e) => setBlockLatitude(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-not-allowed bg-gray-100"
                     placeholder="Enter latitude"
+                    readOnly
                   />
                 </div>
 
@@ -834,8 +830,9 @@ const BlockInstallationEdit = () => {
                     type="text"
                     value={blockLongitude}
                     onChange={(e) => setBlockLongitude(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-not-allowed bg-gray-100"
                     placeholder="Enter longitude"
+                    readOnly
                   />
                 </div>
               </div>

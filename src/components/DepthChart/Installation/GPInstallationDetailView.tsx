@@ -2,12 +2,9 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import { hasViewOnlyAccess } from "../../../utils/accessControl";
 import { 
-  ArrowLeft, 
   MapPin, 
-  Building2, 
   Zap, 
   Phone, 
   Check, 
@@ -19,7 +16,6 @@ import {
   AlertCircle,
   Server,
   Cable,
-  Users,
   Settings
 } from "lucide-react";
 import { ErrorPage, LoadingPage } from "../../hooks/useActivities";

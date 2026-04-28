@@ -2,13 +2,9 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import { hasViewOnlyAccess } from "../../../utils/accessControl";
 import { 
-  ArrowLeft, 
   MapPin, 
-  Building2, 
-  Zap, 
   Phone, 
   Check, 
   X, 
@@ -19,7 +15,6 @@ import {
   AlertCircle,
   Server,
   Cable,
-  Users,
   Settings
 } from "lucide-react";
 import { ErrorPage, LoadingPage } from "../../hooks/useActivities";
@@ -53,6 +48,7 @@ interface BlockInstallationDetail {
   state_name?: string;
   district_name?: string;
   username: string;
+  user_contact: string;
 }
 
 const BASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -486,9 +482,19 @@ const BlockInstallationDetailView = () => {
                 {detail.ip_mpls_router && (
                   <EquipmentDetails equipmentData={detail.ip_mpls_router} title="IP MPLS Router" />
                 )}
-                {detail.rfms && (
+                {detail.rfms != "[]" ? (
                   <EquipmentDetails equipmentData={detail.rfms} title="RFMS" />
-                )}
+                ) : 
+                  (
+                   <div className="mb-4">
+                   <h4 className="font-medium text-gray-700 mb-2">RFMS</h4>
+                  
+                  <div className="text-center py-8 text-gray-400  bg-gray-50 rounded-lg">
+                    <Server className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No RFMS available</p>
+                  </div>
+                  </div>)
+                }
                 <EquipmentDetails equipmentData={detail.RFMS_FILTERS} title="RFMS Filters" />
               </div>
 
@@ -569,6 +575,7 @@ const BlockInstallationDetailView = () => {
                 <DataRow label="Created At" value={new Date(detail.created_at).toLocaleString()} />
                 <DataRow label="Updated At" value={new Date(detail.updated_at).toLocaleString()} />
                 <DataRow label="Username" value={detail.username} />
+                <DataRow label="Mobile Number" value={detail.user_contact} />
               </div>
             </InfoCard>
           </div>
