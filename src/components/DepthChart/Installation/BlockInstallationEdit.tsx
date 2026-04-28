@@ -29,9 +29,9 @@ interface BlockInstallationData {
   smart_rack: any;
   fdms_shelf: any;
   ip_mpls_router: any;
-  sfp_10g: string[];
-  sfp_1g: string[];
-  sfp_100g: string[];
+  sfp_10g_40: any; 
+  sfp_1g_10: any; 
+  sfp_10g_10: any;
   rfms: any;
   equipment_photo: string[];
   block_contacts: any;
@@ -51,7 +51,18 @@ interface EquipmentItem {
   type: string;
   model: string;
   serial_no: string;
+  front_photo?: string;
+  left_photo?: string;
+  right_photo?: string;
+  qr_photo?: string;
   photo: string;
+}
+
+interface RfmsItem {
+  count: string;
+  make: string;
+  photo: string;
+  serial_no: string;
 }
 
 interface ContactInfo {
@@ -62,11 +73,10 @@ interface ContactInfo {
 }
 
 interface SFPItem {
-  type: string;
   make: string;
-  model: string;
   serial_no: string;
-  port_count: string;
+  count: string;
+  photo: string;
 }
 
 const BASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -95,7 +105,7 @@ const BlockInstallationEdit = () => {
   const [smartRack, setSmartRack] = useState<SmartRackItem[]>([]);
   const [fdmsShelf, setFdmsShelf] = useState<EquipmentItem[]>([]);
   const [ipMplsRouter, setIpMplsRouter] = useState<EquipmentItem[]>([]);
-  const [rfms, setRfms] = useState<EquipmentItem[]>([]);
+  const [rfms, setRfms] = useState<RfmsItem[]>([]);
   const [sfp10g, setSfp10g] = useState<SFPItem[]>([]);
   const [sfp1g, setSfp1g] = useState<SFPItem[]>([]);
   const [sfp100g, setSfp100g] = useState<SFPItem[]>([]);
@@ -110,13 +120,27 @@ const BlockInstallationEdit = () => {
   const blockPhotoFileInput = useRef<HTMLInputElement>(null);
   const equipmentPhotoFileInput = useRef<HTMLInputElement>(null);
   const smartRackFileInput = useRef<HTMLInputElement>(null);
-  const fdmsFileInput = useRef<HTMLInputElement>(null);
+  const fdmsFrontFileInput = useRef<HTMLInputElement>(null);
+  const fdmsLeftFileInput = useRef<HTMLInputElement>(null);
+  const fdmsRightFileInput = useRef<HTMLInputElement>(null);
+  const fdmsQrFileInput = useRef<HTMLInputElement>(null);
   const routerFileInput = useRef<HTMLInputElement>(null);
+  const rfmsFileInput = useRef<HTMLInputElement>(null);
   const [smartRackPhotoIndex, setSmartRackPhotoIndex] = useState<number | null>(
     null,
   );
   const [fdmsPhotoIndex, setFdmsPhotoIndex] = useState<number | null>(null);
+  const [fdmsPhotoType, setFdmsPhotoType] = useState<
+    'front' | 'left' | 'right' | 'qr' | null
+  >(null);
   const [routerPhotoIndex, setRouterPhotoIndex] = useState<number | null>(null);
+  const [rfmsPhotoIndex, setRfmsPhotoIndex] = useState<number | null>(null);
+  const [sfp10gPhotoIndex, setSfp10gPhotoIndex] = useState<number | null>(null);
+  const [sfp1gPhotoIndex, setSfp1gPhotoIndex] = useState<number | null>(null);
+  const [sfp100gPhotoIndex, setSfp100gPhotoIndex] = useState<number | null>(null);
+  const sfp10gFileInput = useRef<HTMLInputElement>(null);
+  const sfp1gFileInput = useRef<HTMLInputElement>(null);
+  const sfp100gFileInput = useRef<HTMLInputElement>(null);
 
   const isDataUrl = (str: string): boolean => {
     return str.startsWith('data:image/');
@@ -210,27 +234,27 @@ const BlockInstallationEdit = () => {
       }
 
       // SFP Items
-      if (data.sfp_10g) {
+      if (data.sfp_10g_40) {
         const parsed =
-          typeof data.sfp_10g === 'string'
-            ? JSON.parse(data.sfp_10g)
-            : data.sfp_10g;
+          typeof data.sfp_10g_40 === 'string'
+            ? JSON.parse(data.sfp_10g_40)
+            : data.sfp_10g_40;
         setSfp10g(Array.isArray(parsed) ? parsed : [parsed]);
       }
 
-      if (data.sfp_1g) {
+      if (data.sfp_1g_10) {
         const parsed =
-          typeof data.sfp_1g === 'string'
-            ? JSON.parse(data.sfp_1g)
-            : data.sfp_1g;
+          typeof data.sfp_1g_10 === 'string'
+            ? JSON.parse(data.sfp_1g_10)
+            : data.sfp_1g_10;
         setSfp1g(Array.isArray(parsed) ? parsed : [parsed]);
       }
 
-      if (data.sfp_100g) {
+      if (data.sfp_10g_10) {
         const parsed =
-          typeof data.sfp_100g === 'string'
-            ? JSON.parse(data.sfp_100g)
-            : data.sfp_100g;
+          typeof data.sfp_10g_10 === 'string'
+            ? JSON.parse(data.sfp_10g_10)
+            : data.sfp_10g_10;
         setSfp100g(Array.isArray(parsed) ? parsed : [parsed]);
       }
 
@@ -353,6 +377,30 @@ const BlockInstallationEdit = () => {
         return results;
       };
 
+      const processFdmsPhotos = async (items: any[]) => {
+        const results = [];
+        for (const item of items) {
+          if (!item.make && !item.type && !item.model) continue;
+
+          const newItem = { ...item };
+          const photoFields = [
+            'front_photo',
+            'left_photo',
+            'right_photo',
+            'qr_photo',
+          ] as const;
+
+          for (const field of photoFields) {
+            if (newItem[field] && isDataUrl(newItem[field])) {
+              const uploadedUrls = await uploadImagesToServer([newItem[field]]);
+              newItem[field] = uploadedUrls[0] || '';
+            }
+          }
+          results.push(newItem);
+        }
+        return results;
+      };
+
       const processSmartRackPhotos = async () => {
         const results = [];
         for (const item of smartRack) {
@@ -368,9 +416,25 @@ const BlockInstallationEdit = () => {
         return results;
       };
 
+      const processRfmsPhotos = async (items: RfmsItem[]) => {
+        const results = [];
+        for (const item of items) {
+          if (!item.make) continue;
+
+          const newItem = { ...item };
+          if (item.photo && isDataUrl(item.photo)) {
+            const uploadedUrls = await uploadImagesToServer([item.photo]);
+            newItem.photo = uploadedUrls[0] || '';
+          }
+          results.push(newItem);
+        }
+        return results;
+      };
+
       const finalSmartRack = await processSmartRackPhotos();
-      const finalFdmsShelf = await processEquipmentPhotos(fdmsShelf);
+      const finalFdmsShelf = await processFdmsPhotos(fdmsShelf);
       const finalIpMplsRouter = await processEquipmentPhotos(ipMplsRouter);
+      const finalRfms = await processRfmsPhotos(rfms);
 
       const updatePayload = {
         id: parseInt(id || '0'),
@@ -384,11 +448,11 @@ const BlockInstallationEdit = () => {
         smart_rack: finalSmartRack,
         fdms_shelf: finalFdmsShelf,
         ip_mpls_router: finalIpMplsRouter,
-        rfms: rfms.filter((item) => item.make || item.type || item.model),
-        sfp_10g: sfp10g.filter((item) => item.type || item.make || item.model),
-        sfp_1g: sfp1g.filter((item) => item.type || item.make || item.model),
-        sfp_100g: sfp100g.filter(
-          (item) => item.type || item.make || item.model,
+        rfms: finalRfms,
+        sfp_10g_40: sfp10g.filter((item) =>  item.make ),
+        sfp_1g_10: sfp1g.filter((item) =>  item.make ),
+        sfp_10g_10: sfp100g.filter(
+          (item) =>  item.make ,
         ),
         equipment_photo: finalEquipmentPhotos,
         block_contacts: blockContacts.filter(
@@ -500,13 +564,27 @@ const BlockInstallationEdit = () => {
   };
 
   const addEquipmentItem = (type: 'fdms' | 'router' | 'rfms') => {
-    const newItem = { make: '', type: '', model: '', serial_no: '', photo: '' };
     if (type === 'fdms') {
-      setFdmsShelf([...fdmsShelf, newItem]);
+      setFdmsShelf([
+        ...fdmsShelf,
+        {
+          make: '',
+          type: '',
+          model: '',
+          serial_no: '',
+          front_photo: '',
+          left_photo: '',
+          right_photo: '',
+          qr_photo: '',
+        } as any,
+      ]);
     } else if (type === 'router') {
-      setIpMplsRouter([...ipMplsRouter, newItem]);
+      setIpMplsRouter([
+        ...ipMplsRouter,
+        { make: '', type: '', model: '', serial_no: '', photo: '' },
+      ]);
     } else if (type === 'rfms') {
-      setRfms([...rfms, newItem]);
+      setRfms([...rfms, { count: '', make: '', photo: '', serial_no: '' }]);
     }
   };
 
@@ -525,11 +603,10 @@ const BlockInstallationEdit = () => {
 
   const addSFPItem = (type: '10g' | '1g' | '100g') => {
     const newItem = {
-      type: '',
       make: '',
-      model: '',
       serial_no: '',
-      port_count: '',
+      count: '',
+      photo: '',
     };
     if (type === '10g') {
       setSfp10g([...sfp10g, newItem]);
@@ -626,13 +703,21 @@ const BlockInstallationEdit = () => {
     event.target.value = '';
   };
 
-  const triggerFdmsPhotoUpload = (index: number) => {
+  const triggerFdmsPhotoUpload = (
+    index: number,
+    photoType: 'front' | 'left' | 'right' | 'qr',
+  ) => {
     setFdmsPhotoIndex(index);
-    fdmsFileInput.current?.click();
+    setFdmsPhotoType(photoType);
+    if (photoType === 'front') fdmsFrontFileInput.current?.click();
+    else if (photoType === 'left') fdmsLeftFileInput.current?.click();
+    else if (photoType === 'right') fdmsRightFileInput.current?.click();
+    else if (photoType === 'qr') fdmsQrFileInput.current?.click();
   };
 
   const handleFdmsPhotoUpload = (
     event: React.ChangeEvent<HTMLInputElement>,
+    photoType: 'front' | 'left' | 'right' | 'qr',
   ) => {
     const files = event.target.files;
     if (!files || fdmsPhotoIndex === null) return;
@@ -642,13 +727,37 @@ const BlockInstallationEdit = () => {
     reader.onload = (e) => {
       const dataUrl = e.target?.result as string;
       const updated = [...fdmsShelf];
-      updated[fdmsPhotoIndex] = { ...updated[fdmsPhotoIndex], photo: dataUrl };
+      const photoField = `${photoType}_photo` as keyof EquipmentItem;
+      updated[fdmsPhotoIndex] = {
+        ...updated[fdmsPhotoIndex],
+        [photoField]: dataUrl,
+      };
       setFdmsShelf(updated);
       setFdmsPhotoIndex(null);
+      setFdmsPhotoType(null);
     };
     reader.readAsDataURL(file);
     event.target.value = '';
   };
+
+  const triggerRfmsPhotoUpload = (index: number) => {
+    setRfmsPhotoIndex(index);
+    rfmsFileInput.current?.click();
+  };
+  const  triggerSfp10gPhotoUpload = (index: number) => {
+    setSfp10gPhotoIndex(index);
+    sfp10gFileInput.current?.click();
+  };
+  const triggerSfp1gPhotoUpload = (index: number) => { 
+    setSfp1gPhotoIndex(index);
+    sfp1gFileInput.current?.click();
+  };
+  const triggerSfp100gPhotoUpload = (index: number) => {
+    setSfp100gPhotoIndex(index);
+    sfp100gFileInput.current?.click();
+  }
+
+ 
 
   const triggerRouterPhotoUpload = (index: number) => {
     setRouterPhotoIndex(index);
@@ -672,6 +781,65 @@ const BlockInstallationEdit = () => {
       };
       setIpMplsRouter(updated);
       setRouterPhotoIndex(null);
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  };
+  const handleRfmsPhotoUpload = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = event.target.files;
+    if (!files || rfmsPhotoIndex === null) return;
+
+    const file = files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      const updated = [...rfms];
+      updated[rfmsPhotoIndex] = {
+        ...updated[rfmsPhotoIndex],
+        photo: dataUrl,
+      };
+      setRfms(updated);
+      setRfmsPhotoIndex(null);
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  };
+  
+   const handleSFPPhotoUpload = ( event: React.ChangeEvent<HTMLInputElement>, type: '10g' | '1g' | '100g') => {
+    const files = event.target.files;
+    if (!files) return;
+
+    const file = files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      if (type === '10g' && sfp10gPhotoIndex !== null) {
+        const updated = [...sfp10g];
+        updated[sfp10gPhotoIndex] = {
+          ...updated[sfp10gPhotoIndex],
+          photo: dataUrl,
+        };
+        setSfp10g(updated);
+        setSfp10gPhotoIndex(null);
+      } else if (type === '1g' && sfp1gPhotoIndex !== null) {
+        const updated = [...sfp1g];
+        updated[sfp1gPhotoIndex] = {
+          ...updated[sfp1gPhotoIndex],
+          photo: dataUrl,
+        };
+        setSfp1g(updated);
+        setSfp1gPhotoIndex(null);
+      } else if (type === '100g' && sfp100gPhotoIndex !== null) {
+        const updated = [...sfp100g];
+        updated[sfp100gPhotoIndex] = {
+          ...updated[sfp100gPhotoIndex],
+          photo: dataUrl,
+        };
+        setSfp100g(updated);
+        setSfp100gPhotoIndex(null);
+      }
     };
     reader.readAsDataURL(file);
     event.target.value = '';
@@ -721,7 +889,7 @@ const BlockInstallationEdit = () => {
       <ToastContainer />
 
       <div className="container mx-auto px-1">
-        <Header activeTab ="installation" BackBut={true} />
+        <Header activeTab="installation" BackBut={true} />
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 mt-3">
           <div className="p-6 border-b border-gray-200">
@@ -767,7 +935,7 @@ const BlockInstallationEdit = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    State 
+                    State
                   </label>
                   <input
                     type="text"
@@ -781,7 +949,7 @@ const BlockInstallationEdit = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    District 
+                    District
                   </label>
                   <input
                     type="text"
@@ -793,7 +961,6 @@ const BlockInstallationEdit = () => {
                   />
                 </div>
 
-               
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Block Name
@@ -1282,48 +1449,66 @@ const BlockInstallationEdit = () => {
                         </div>
 
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Photo
+                          <label className="block text-sm font-medium text-gray-700 mb-3">
+                            Photos
                           </label>
-                          {item.photo ? (
-                            <div className="relative mb-2">
-                              <img
-                                src={
-                                  isDataUrl(item.photo)
-                                    ? item.photo
-                                    : `${ImgbaseUrl}/${item.photo}`
-                                }
-                                alt="FDMS Shelf"
-                                className="h-20 w-auto rounded-md border border-gray-200 object-cover"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src =
-                                    item.photo;
-                                }}
-                              />
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleEquipmentChange(
-                                    'fdms',
-                                    index,
-                                    'photo',
-                                    '',
-                                  )
-                                }
-                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </div>
-                          ) : null}
-                          <button
-                            type="button"
-                            onClick={() => triggerFdmsPhotoUpload(index)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2"
-                          >
-                            <Upload className="h-4 w-4" />
-                            {item.photo ? 'Change Photo' : 'Upload Photo'}
-                          </button>
+                          <div className="grid grid-cols-2 gap-3">
+                            {(['front', 'left', 'right', 'qr'] as const).map(
+                              (photoType) => {
+                                const photoField =
+                                  `${photoType}_photo` as keyof EquipmentItem;
+                                const photoValue = item[photoField] as string;
+                                return (
+                                  <div key={photoType}>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
+                                      {photoType} Photo
+                                    </label>
+                                    {photoValue ? (
+                                      <div className="relative mb-1">
+                                        <img
+                                          src={
+                                            isDataUrl(photoValue)
+                                              ? photoValue
+                                              : `${ImgbaseUrl}/${photoValue}`
+                                          }
+                                          alt={`${photoType} photo`}
+                                          className="h-16 w-auto rounded-md border border-gray-200 object-cover"
+                                          onError={(e) => {
+                                            (e.target as HTMLImageElement).src =
+                                              photoValue;
+                                          }}
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handleEquipmentChange(
+                                              'fdms',
+                                              index,
+                                              photoField,
+                                              '',
+                                            )
+                                          }
+                                          className="absolute top-0 right-0 p-0.5 bg-red-500 text-white rounded-full hover:bg-red-600"
+                                        >
+                                          <X className="h-2 w-2" />
+                                        </button>
+                                      </div>
+                                    ) : null}
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        triggerFdmsPhotoUpload(index, photoType)
+                                      }
+                                      className="w-full px-2 py-1 border border-gray-300 rounded-md text-xs text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-1"
+                                    >
+                                      <Upload className="h-3 w-3" />
+                                      {photoValue ? 'Change' : 'Upload'}
+                                    </button>
+                                  </div>
+                                );
+                              },
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1502,11 +1687,150 @@ const BlockInstallationEdit = () => {
               )}
             </div>
 
+             {/* RFMS Section */}
+              <div className="border-t border-gray-200 pt-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    RFMS Equipment
+                  </h3>
+                  <button
+                    onClick={() => addEquipmentItem('rfms')}
+                    className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Item
+                  </button>
+                </div>
+
+                {rfms.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                    <p>No RFMS items configured.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {rfms.map((item, index) => (
+                      <div
+                        key={index}
+                        className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="font-medium text-gray-700">
+                            RFMS Item {index + 1}
+                          </span>
+                          <button
+                            onClick={() => {
+                              setRfms(rfms.filter((_, i) => i !== index));
+                            }}
+                            className="p-1 text-red-500 hover:bg-red-50 rounded"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Count
+                            </label>
+                            <input
+                              type="text"
+                              value={item.count}
+                              onChange={(e) => {
+                                const updated = [...rfms];
+                                updated[index] = { ...updated[index], count: e.target.value };
+                                setRfms(updated);
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Enter count"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Make
+                            </label>
+                            <input
+                              type="text"
+                              value={item.make}
+                              onChange={(e) => {
+                                const updated = [...rfms];
+                                updated[index] = { ...updated[index], make: e.target.value };
+                                setRfms(updated);
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Enter make"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Serial Number
+                            </label>
+                            <input
+                              type="text"
+                              value={item.serial_no}
+                              onChange={(e) => {
+                                const updated = [...rfms];
+                                updated[index] = { ...updated[index], serial_no: e.target.value };
+                                setRfms(updated);
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Enter serial number"
+                            />
+                          </div>
+
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Photo
+                            </label>
+                            {item.photo ? (
+                              <div className="relative mb-2">
+                                <img
+                                  src={
+                                    isDataUrl(item.photo)
+                                      ? item.photo
+                                      : `${ImgbaseUrl}/${item.photo}`
+                                  }
+                                  alt="RFMS"
+                                  className="h-20 w-auto rounded-md border border-gray-200 object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = item.photo;
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...rfms];
+                                    updated[index] = { ...updated[index], photo: '' };
+                                    setRfms(updated);
+                                  }}
+                                  className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ) : null}
+                            <button
+                              type="button"
+                              onClick={() => triggerRfmsPhotoUpload(index)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2"
+                            >
+                              <Upload className="h-4 w-4" />
+                              {item.photo ? 'Change Photo' : 'Upload Photo'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
             {/* SFP 10G Section */}
             <div className="border-t border-gray-200 pt-8">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">
-                  SFP 10G Components
+                  SFP 10G/40 Components
                 </h3>
                 <button
                   onClick={() => addSFPItem('10g')}
@@ -1539,25 +1863,25 @@ const BlockInstallationEdit = () => {
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Type
+                             Count
                           </label>
                           <input
                             type="text"
-                            value={item.type}
+                            value={item.count}
                             onChange={(e) =>
                               handleSFPChange(
                                 '10g',
                                 index,
-                                'type',
+                                'count',
                                 e.target.value,
                               )
                             }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Enter type"
+                            placeholder="Enter port count"
                           />
                         </div>
 
@@ -1581,25 +1905,6 @@ const BlockInstallationEdit = () => {
                           />
                         </div>
 
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Model
-                          </label>
-                          <input
-                            type="text"
-                            value={item.model}
-                            onChange={(e) =>
-                              handleSFPChange(
-                                '10g',
-                                index,
-                                'model',
-                                e.target.value,
-                              )
-                            }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Enter model"
-                          />
-                        </div>
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1620,19 +1925,104 @@ const BlockInstallationEdit = () => {
                             placeholder="Enter serial number"
                           />
                         </div>
+                         <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Photo
+                            </label>
+                            {item.photo ? (
+                              <div className="relative mb-2">
+                                <img
+                                  src={
+                                    isDataUrl(item.photo)
+                                      ? item.photo
+                                      : `${ImgbaseUrl}/${item.photo}`
+                                  }
+                                  alt="SFP 10G/40"
+                                  className="h-20 w-auto rounded-md border border-gray-200 object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = item.photo;
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...sfp10g];
+                                    updated[index] = { ...updated[index], photo: '' };
+                                    setSfp10g(updated);
+                                  }}
+                                  className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ) : null}
+                            <button
+                              type="button"
+                              onClick={() => triggerSfp10gPhotoUpload(index)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2"
+                            >
+                              <Upload className="h-4 w-4" />
+                              {item.photo ? 'Change Photo' : 'Upload Photo'}
+                            </button>
+                          </div>
+                      </div>
+                       
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+              {/* SFP 1G/10 Section */}
+            <div className="border-t border-gray-200 pt-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  SFP 1G/10 Components
+                </h3>
+                <button
+                  onClick={() => addSFPItem('1g')}
+                  className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Item
+                </button>
+              </div>
+
+              {sfp1g.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                  <p>No SFP 1G/10 items configured.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {sfp1g.map((item, index) => (
+                    <div
+                      key={index}
+                      className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="font-medium text-gray-700">
+                          SFP 1G/10 Item {index + 1}
+                        </span>
+                        <button
+                          onClick={() => removeSFPItem('1g', index)}
+                          className="p-1 text-red-500 hover:bg-red-50 rounded"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Port Count
+                             Count
                           </label>
                           <input
                             type="text"
-                            value={item.port_count}
+                            value={item.count}
                             onChange={(e) =>
                               handleSFPChange(
-                                '10g',
+                                '1g',
                                 index,
-                                'port_count',
+                                'count',
                                 e.target.value,
                               )
                             }
@@ -1640,7 +2030,235 @@ const BlockInstallationEdit = () => {
                             placeholder="Enter port count"
                           />
                         </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Make
+                          </label>
+                          <input
+                            type="text"
+                            value={item.make}
+                            onChange={(e) =>
+                              handleSFPChange(
+                                '1g',
+                                index,
+                                'make',
+                                e.target.value,
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter make"
+                          />
+                        </div>
+
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Serial Number
+                          </label>
+                          <input
+                            type="text"
+                            value={item.serial_no}
+                            onChange={(e) =>
+                              handleSFPChange(
+                                '1g',
+                                index,
+                                'serial_no',
+                                e.target.value,
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter serial number"
+                          />
+                        </div>
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Photo
+                            </label>
+                            {item.photo ? (
+                              <div className="relative mb-2">
+                                <img
+                                  src={
+                                    isDataUrl(item.photo)
+                                      ? item.photo
+                                      : `${ImgbaseUrl}/${item.photo}`
+                                  }
+                                  alt="SFP 1G/10"
+                                  className="h-20 w-auto rounded-md border border-gray-200 object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = item.photo;
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...sfp1g];
+                                    updated[index] = { ...updated[index], photo: '' };
+                                    setSfp1g(updated);
+                                  }}
+                                  className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ) : null}
+                            <button
+                              type="button"
+                              onClick={() => triggerSfp1gPhotoUpload(index)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2"
+                            >
+                              <Upload className="h-4 w-4" />
+                              {item.photo ? 'Change Photo' : 'Upload Photo'}
+                            </button>
+                          </div>
                       </div>
+                       
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+             {/* SFP 1G/10 Section */}
+            <div className="border-t border-gray-200 pt-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  SFP 10G/10 Components
+                </h3>
+                <button
+                  onClick={() => addSFPItem('100g')}
+                  className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Item
+                </button>
+              </div>
+
+              {sfp100g.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                  <p>No SFP 10G/10 items configured.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {sfp100g.map((item, index) => (
+                    <div
+                      key={index}
+                      className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="font-medium text-gray-700">
+                          SFP 10G/10 Item {index + 1}
+                        </span>
+                        <button
+                          onClick={() => removeSFPItem('100g', index)}
+                          className="p-1 text-red-500 hover:bg-red-50 rounded"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                             Count
+                          </label>
+                          <input
+                            type="text"
+                            value={item.count}
+                            onChange={(e) =>
+                              handleSFPChange(
+                                '100g',
+                                index,
+                                'count',
+                                e.target.value,
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter port count"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Make
+                          </label>
+                          <input
+                            type="text"
+                            value={item.make}
+                            onChange={(e) =>
+                              handleSFPChange(
+                                '100g',
+                                index,
+                                'make',
+                                e.target.value,
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter make"
+                          />
+                        </div>
+
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Serial Number
+                          </label>
+                          <input
+                            type="text"
+                            value={item.serial_no}
+                            onChange={(e) =>
+                              handleSFPChange(
+                                '100g',
+                                index,
+                                'serial_no',
+                                e.target.value,
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter serial number"
+                          />
+                        </div>
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Photo
+                            </label>
+                            {item.photo ? (
+                              <div className="relative mb-2">
+                                <img
+                                  src={
+                                    isDataUrl(item.photo)
+                                      ? item.photo
+                                      : `${ImgbaseUrl}/${item.photo}`
+                                  }
+                                  alt="SFP 10G/10"
+                                  className="h-20 w-auto rounded-md border border-gray-200 object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = item.photo;
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...sfp100g];
+                                    updated[index] = { ...updated[index], photo: '' };
+                                    setSfp100g(updated);
+                                  }}
+                                  className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ) : null}
+                            <button
+                              type="button"
+                              onClick={() => triggerSfp100gPhotoUpload(index)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2"
+                            >
+                              <Upload className="h-4 w-4" />
+                              {item.photo ? 'Change Photo' : 'Upload Photo'}
+                            </button>
+                          </div>
+                      </div>
+                       
                     </div>
                   ))}
                 </div>
@@ -1678,8 +2296,29 @@ const BlockInstallationEdit = () => {
               />
               <input
                 type="file"
-                ref={fdmsFileInput}
-                onChange={handleFdmsPhotoUpload}
+                ref={fdmsFrontFileInput}
+                onChange={(e) => handleFdmsPhotoUpload(e, 'front')}
+                accept="image/*"
+                className="hidden"
+              />
+              <input
+                type="file"
+                ref={fdmsLeftFileInput}
+                onChange={(e) => handleFdmsPhotoUpload(e, 'left')}
+                accept="image/*"
+                className="hidden"
+              />
+              <input
+                type="file"
+                ref={fdmsRightFileInput}
+                onChange={(e) => handleFdmsPhotoUpload(e, 'right')}
+                accept="image/*"
+                className="hidden"
+              />
+              <input
+                type="file"
+                ref={fdmsQrFileInput}
+                onChange={(e) => handleFdmsPhotoUpload(e, 'qr')}
                 accept="image/*"
                 className="hidden"
               />
@@ -1687,6 +2326,27 @@ const BlockInstallationEdit = () => {
                 type="file"
                 ref={routerFileInput}
                 onChange={handleRouterPhotoUpload}
+                accept="image/*"
+                className="hidden"
+              />
+              <input
+                type="file"
+                ref={sfp100gFileInput}
+                onChange={(e) => handleSFPPhotoUpload(e, '100g')}
+                accept="image/*"
+                className="hidden"
+              />  
+              <input
+                type="file"
+                ref={sfp1gFileInput}
+                onChange={(e) => handleSFPPhotoUpload(e, '1g')}
+                accept="image/*"
+                className="hidden"
+              />
+              <input 
+                type="file"
+                ref={sfp10gFileInput}
+                onChange={(e) => handleSFPPhotoUpload(e, '10g')}
                 accept="image/*"
                 className="hidden"
               />
