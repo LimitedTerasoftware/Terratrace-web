@@ -49,6 +49,7 @@ interface BlockInstallationDetail {
   district_name?: string;
   username: string;
   user_contact: string;
+  electrical_wiring_photo:string;
 }
 
 const BASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -468,6 +469,14 @@ const BlockInstallationDetailView = () => {
               {detail.block_photos && detail.block_photos.length > 0 && (
                 <MultiImageDisplay photos={detail.block_photos} title="Block Photos" />
               )}
+               {detail.electrical_wiring_photo && (
+
+
+                <MultiImageDisplay photos={detail.electrical_wiring_photo} title="Electrical Wiring" />
+
+
+               )}
+             
             </InfoCard>
 
             {/* Equipment Information */}
