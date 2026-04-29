@@ -15,6 +15,7 @@ import {
   Image as ImageIcon,
 } from 'lucide-react';
 import { Header } from '../../Breadcrumbs/Header';
+import { set } from 'date-fns';
 
 interface GPInstallationData {
   id: number;
@@ -30,8 +31,9 @@ interface GPInstallationData {
   smart_rack: string;
   fdms_shelf: string;
   ip_mpls_router: string;
-  sfp_10g: string;
-  sfp_1g: string;
+  sfp_10g_40: any;
+  sfp_1g_10: any;
+  sfp_10g_10: any;
   power_system_with_mppt: string;
   power_system_with_out_mppt: string;
   mppt_solar_1kw: string;
@@ -60,18 +62,27 @@ interface EquipmentItem {
   model: string;
   serial_no: string;
   photo: string;
+  front_photo?: string;
+  left_photo?: string;
+  right_photo?: string;
+  qr_photo?: string;
 }
 
 interface PowerSystemItem {
-  type: string;
   make: string;
-  model: string;
-  capacity: string;
-  voltage: string;
   photo: string;
   serial_no: string;
+  available?: boolean;
+  battery_sno?: string;
+  solar_pannel_sno?: string;
+  ups_sno?: string;
 }
-
+interface earthpitItem {
+  capacity: string;
+  latitude: string;
+  longitude: string;
+  photo: string;
+}
 interface ContactInfo {
   name: string;
   phone: string;
@@ -80,11 +91,10 @@ interface ContactInfo {
 }
 
 interface SFPItem {
-  type: string;
   make: string;
-  model: string;
   serial_no: string;
-  port_count: string;
+  count: string;
+  photo: string;
 }
 
 const BASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -102,9 +112,31 @@ const GPInstallationEdit = () => {
   const equipmentPhotoFileInput = useRef<HTMLInputElement>(null);
   const smartRackFileInput = useRef<HTMLInputElement>(null);
   const powerSystemFileInput = useRef<HTMLInputElement>(null);
+  const fdmsFrontFileInput = useRef<HTMLInputElement>(null);
+  const fdmsLeftFileInput = useRef<HTMLInputElement>(null);
+  const fdmsRightFileInput = useRef<HTMLInputElement>(null);
+  const fdmsQrFileInput = useRef<HTMLInputElement>(null);
+  const [sfp10gPhotoIndex, setSfp10gPhotoIndex] = useState<number | null>(null);
+  const [sfp1gPhotoIndex, setSfp1gPhotoIndex] = useState<number | null>(null);
+  const [sfp100gPhotoIndex, setSfp100gPhotoIndex] = useState<number | null>(
+    null,
+  );
+  const sfp10gFileInput = useRef<HTMLInputElement>(null);
+  const sfp1gFileInput = useRef<HTMLInputElement>(null);
+  const sfp100gFileInput = useRef<HTMLInputElement>(null);
+  const routerFileInput = useRef<HTMLInputElement>(null);
+  const earthpitFileInput = useRef<HTMLInputElement>(null);
+  
+  const [routerPhotoIndex, setRouterPhotoIndex] = useState<number | null>(null);
+  const [earthpitPhotoIndex, setEarthpitPhotoIndex] = useState<number | null>(null);
+  
   const [smartRackPhotoIndex, setSmartRackPhotoIndex] = useState<number | null>(
     null,
   );
+  const [fdmsPhotoIndex, setFdmsPhotoIndex] = useState<number | null>(null);
+  const [fdmsPhotoType, setFdmsPhotoType] = useState<
+      'front' | 'left' | 'right' | 'qr' | null
+    >(null);
   const [powerSystemPhotoIndex, setPowerSystemPhotoIndex] = useState<{
     type: string;
     index: number;
@@ -112,8 +144,11 @@ const GPInstallationEdit = () => {
 
   // Form state - Basic Information
   const [stateCode, setStateCode] = useState<string>('');
+  const [stateName, setStateName] = useState<string>('');
+  const [districtName, setDistrictName] = useState<string>('');
   const [districtCode, setDistrictCode] = useState<string>('');
   const [blockCode, setBlockCode] = useState<string>('');
+  const [blockName, setBlockName] = useState<string>('');
   const [gpCode, setGpCode] = useState<string>('');
   const [gpName, setGpName] = useState<string>('');
   const [gpLatitude, setGpLatitude] = useState<string>('');
@@ -123,9 +158,10 @@ const GPInstallationEdit = () => {
   // Equipment State
   const [smartRack, setSmartRack] = useState<SmartRackItem[]>([]);
   const [fdmsShelf, setFdmsShelf] = useState<EquipmentItem[]>([]);
-  const [ipMplsRouter, setIpMplsRouter] = useState<EquipmentItem[]>([]);
+  const [ipMplsRouter, setIpMplsRouter] = useState<SmartRackItem[]>([]);
   const [sfp10g, setSfp10g] = useState<SFPItem[]>([]);
   const [sfp1g, setSfp1g] = useState<SFPItem[]>([]);
+  const [sfp100g, setSfp100g] = useState<SFPItem[]>([]);
   const [equipmentPhotos, setEquipmentPhotos] = useState<string[]>([]);
 
   // Power Systems
@@ -137,7 +173,7 @@ const GPInstallationEdit = () => {
   >([]);
   const [mpptSolar1kw, setMpptSolar1kw] = useState<PowerSystemItem[]>([]);
   const [electricityMeter, setElectricityMeter] = useState<EquipmentItem[]>([]);
-  const [earthpit, setEarthpit] = useState<EquipmentItem[]>([]);
+  const [earthpit, setEarthpit] = useState<earthpitItem[]>([]);
 
   // Contact Information
   const [gpContact, setGpContact] = useState<ContactInfo>({
@@ -171,8 +207,11 @@ const GPInstallationEdit = () => {
 
           // Set basic information
           setStateCode(foundRecord.state_code);
+          setStateName(foundRecord.state_name);
+          setDistrictName(foundRecord.district_name);
           setDistrictCode(foundRecord.district_code);
           setBlockCode(foundRecord.block_code);
+          setBlockName(foundRecord.block_name);
           setGpCode(foundRecord.gp_code);
           setGpName(foundRecord.gp_name);
           setGpLatitude(foundRecord.gp_latitude);
@@ -231,15 +270,29 @@ const GPInstallationEdit = () => {
         setIpMplsRouter(Array.isArray(parsed) ? parsed : [parsed]);
       }
 
-      // SFP Items
-      if (data.sfp_10g) {
-        const parsed = JSON.parse(data.sfp_10g);
+       // SFP Items
+      if (data.sfp_10g_40) {
+        const parsed =
+          typeof data.sfp_10g_40 === 'string'
+            ? JSON.parse(data.sfp_10g_40)
+            : data.sfp_10g_40;
         setSfp10g(Array.isArray(parsed) ? parsed : [parsed]);
       }
 
-      if (data.sfp_1g) {
-        const parsed = JSON.parse(data.sfp_1g);
+      if (data.sfp_1g_10) {
+        const parsed =
+          typeof data.sfp_1g_10 === 'string'
+            ? JSON.parse(data.sfp_1g_10)
+            : data.sfp_1g_10;
         setSfp1g(Array.isArray(parsed) ? parsed : [parsed]);
+      }
+
+      if (data.sfp_10g_10) {
+        const parsed =
+          typeof data.sfp_10g_10 === 'string'
+            ? JSON.parse(data.sfp_10g_10)
+            : data.sfp_10g_10;
+        setSfp100g(Array.isArray(parsed) ? parsed : [parsed]);
       }
 
       // Power Systems
@@ -332,7 +385,7 @@ const GPInstallationEdit = () => {
       const processEquipmentPhotos = async (items: PowerSystemItem[]) => {
         const results = [];
         for (const item of items) {
-          if (!item.make && !item.type && !item.model) continue;
+          if (!item.make) continue;
 
           const newItem = { ...item };
           if (item.photo && isDataUrl(item.photo)) {
@@ -344,9 +397,9 @@ const GPInstallationEdit = () => {
         return results;
       };
 
-      const processSmartRackPhotos = async () => {
+      const processSmartRackPhotos = async (items: SmartRackItem[]) => {
         const results = [];
-        for (const item of smartRack) {
+        for (const item of items) {
           if (!item.make && !item.type && !item.serial_no) continue;
 
           const newItem = { ...item };
@@ -358,14 +411,71 @@ const GPInstallationEdit = () => {
         }
         return results;
       };
+        const processFdmsPhotos = async (items: any[]) => {
+        const results = [];
+        for (const item of items) {
+          if (!item.make && !item.type && !item.model) continue;
 
-      const finalSmartRack = await processSmartRackPhotos();
+          const newItem = { ...item };
+          const photoFields = [
+            'front_photo',
+            'left_photo',
+            'right_photo',
+            'qr_photo',
+          ] as const;
+
+          for (const field of photoFields) {
+            if (newItem[field] && isDataUrl(newItem[field])) {
+              const uploadedUrls = await uploadImagesToServer([newItem[field]]);
+              newItem[field] = uploadedUrls[0] || '';
+            }
+          }
+          results.push(newItem);
+        }
+        return results;
+      };
+      const processSFPPhotos = async (items: SFPItem[]) => {
+        const results = [];
+        for (const item of items) {
+          if (!item.make) continue;
+
+          const newItem = { ...item };
+          if (item.photo && isDataUrl(item.photo)) {
+            const uploadedUrls = await uploadImagesToServer([item.photo]);
+            newItem.photo = uploadedUrls[0] || '';
+          }
+          results.push(newItem);
+        }
+        return results;
+      };
+        const ProcessEarthpitPhoto = async (items: earthpitItem[]) => {
+        const results = [];
+        for (const item of items) {
+          if (!item.capacity) continue;
+           const newItem = { ...item };
+          if (item.photo && isDataUrl(item.photo)) {
+            const uploadedUrls = await uploadImagesToServer([item.photo]);
+            newItem.photo = uploadedUrls[0] || '';
+          }
+          results.push(newItem);
+        }
+        return results;
+      };
+
+      const finalSmartRack = await processSmartRackPhotos(smartRack);
+      const finalFdmsShelf = await processFdmsPhotos(fdmsShelf);
+      const finalSFP10G = await processSFPPhotos(sfp10g);
+      const finalSFP1G = await processSFPPhotos(sfp1g);
+      const finalSFP100G = await processSFPPhotos(sfp100g);
+
       const finalPowerSystemWithMppt =
         await processEquipmentPhotos(powerSystemWithMppt);
       const finalPowerSystemWithoutMppt = await processEquipmentPhotos(
         powerSystemWithoutMppt,
       );
       const finalMpptSolar1kw = await processEquipmentPhotos(mpptSolar1kw);
+      const finalIpMplsRouter = await processSmartRackPhotos(ipMplsRouter);
+      const finalEarthpit = await ProcessEarthpitPhoto(earthpit);
 
       const updatePayload = {
         id: parseInt(id || '0'),
@@ -378,14 +488,11 @@ const GPInstallationEdit = () => {
         gp_longitude: gpLongitude,
         gp_photos: finalGpPhotos,
         smart_rack: finalSmartRack,
-        fdms_shelf: fdmsShelf.filter(
-          (item) => item.make || item.type || item.model,
-        ),
-        ip_mpls_router: ipMplsRouter.filter(
-          (item) => item.make || item.type || item.model,
-        ),
-        sfp_10g: sfp10g.filter((item) => item.type || item.make || item.model),
-        sfp_1g: sfp1g.filter((item) => item.type || item.make || item.model),
+        fdms_shelf: finalFdmsShelf,
+        ip_mpls_router: finalIpMplsRouter,
+        sfp_10g_40: finalSFP10G,
+        sfp_1g_10: finalSFP1G,
+        sfp_10g_10: finalSFP100G,        
         power_system_with_mppt: finalPowerSystemWithMppt,
         power_system_with_out_mppt: finalPowerSystemWithoutMppt,
         mppt_solar_1kw: finalMpptSolar1kw,
@@ -393,9 +500,7 @@ const GPInstallationEdit = () => {
         electricity_meter: electricityMeter.filter(
           (item) => item.make || item.type || item.model,
         ),
-        earthpit: earthpit.filter(
-          (item) => item.make || item.type || item.model,
-        ),
+        earthpit: finalEarthpit,
         gp_contact: gpContact.name || gpContact.phone ? gpContact : null,
         key_person: keyPerson.name || keyPerson.phone ? keyPerson : null,
       };
@@ -442,7 +547,7 @@ const GPInstallationEdit = () => {
   const handleEquipmentChange = (
     type: 'fdms' | 'router' | 'electricity' | 'earthpit',
     index: number,
-    field: keyof EquipmentItem,
+    field: keyof EquipmentItem | keyof earthpitItem,
     value: string,
   ) => {
     if (type === 'fdms') {
@@ -468,7 +573,7 @@ const GPInstallationEdit = () => {
     type: 'with_mppt' | 'without_mppt' | 'solar_1kw',
     index: number,
     field: keyof PowerSystemItem,
-    value: string,
+    value: string | boolean,
   ) => {
     if (type === 'with_mppt') {
       const updated = [...powerSystemWithMppt];
@@ -486,7 +591,7 @@ const GPInstallationEdit = () => {
   };
 
   const handleSFPChange = (
-    type: '10g' | '1g',
+    type: '10g' | '1g' | '100g',
     index: number,
     field: keyof SFPItem,
     value: string,
@@ -499,6 +604,10 @@ const GPInstallationEdit = () => {
       const updated = [...sfp1g];
       updated[index] = { ...updated[index], [field]: value };
       setSfp1g(updated);
+    } else if (type === '100g') {
+      const updated = [...sfp100g];
+      updated[index] = { ...updated[index], [field]: value };
+      setSfp100g(updated);
     }
   };
 
@@ -525,19 +634,36 @@ const GPInstallationEdit = () => {
   const removeSmartRackItem = (index: number) => {
     setSmartRack(smartRack.filter((_, i) => i !== index));
   };
+  
 
   const addEquipmentItem = (
     type: 'fdms' | 'router' | 'electricity' | 'earthpit',
   ) => {
+
     const newItem = { make: '', type: '', model: '', serial_no: '', photo: '' };
     if (type === 'fdms') {
-      setFdmsShelf([...fdmsShelf, newItem]);
+      setFdmsShelf([
+        ...fdmsShelf,
+        {
+          make: '',
+          type: '',
+          model: '',
+          serial_no: '',
+          front_photo: '',
+          left_photo: '',
+          right_photo: '',
+          qr_photo: '',
+        } as any,
+      ]);
+      // setFdmsShelf([...fdmsShelf, newItem]);
     } else if (type === 'router') {
-      setIpMplsRouter([...ipMplsRouter, newItem]);
-    } else if (type === 'electricity') {
+      setIpMplsRouter([
+        ...ipMplsRouter,
+        { make: '', type: '', serial_no: '', photo: '' },
+      ]);    } else if (type === 'electricity') {
       setElectricityMeter([...electricityMeter, newItem]);
     } else if (type === 'earthpit') {
-      setEarthpit([...earthpit, newItem]);
+      setEarthpit([...earthpit, { capacity: '', latitude: '', longitude: '', photo: '' }]);
     }
   };
 
@@ -560,13 +686,14 @@ const GPInstallationEdit = () => {
     type: 'with_mppt' | 'without_mppt' | 'solar_1kw',
   ) => {
     const newItem = {
-      type: '',
+     
       make: '',
-      model: '',
-      capacity: '',
-      voltage: '',
       photo: '',
       serial_no: '',
+      available: false,
+      battery_sno: '',
+      solar_pannel_sno: '',
+      ups_sno: '',
     };
     if (type === 'with_mppt') {
       setPowerSystemWithMppt([...powerSystemWithMppt, newItem]);
@@ -592,26 +719,29 @@ const GPInstallationEdit = () => {
     }
   };
 
-  const addSFPItem = (type: '10g' | '1g') => {
+  const addSFPItem = (type: '10g' | '1g' | '100g') => {
     const newItem = {
-      type: '',
       make: '',
-      model: '',
       serial_no: '',
-      port_count: '',
+      count: '',
+      photo: '',
     };
-    if (type === '10g') {
+     if (type === '10g') {
       setSfp10g([...sfp10g, newItem]);
     } else if (type === '1g') {
       setSfp1g([...sfp1g, newItem]);
+    } else if (type === '100g') {
+      setSfp100g([...sfp100g, newItem]);
     }
   };
 
-  const removeSFPItem = (type: '10g' | '1g', index: number) => {
+  const removeSFPItem = (type: '10g' | '1g' | '100g', index: number) => {
     if (type === '10g') {
       setSfp10g(sfp10g.filter((_, i) => i !== index));
     } else if (type === '1g') {
       setSfp1g(sfp1g.filter((_, i) => i !== index));
+    } else if (type === '100g') {
+      setSfp100g(sfp100g.filter((_, i) => i !== index));
     }
   };
 
@@ -652,7 +782,10 @@ const GPInstallationEdit = () => {
   const triggerEquipmentPhotoUpload = () => {
     equipmentPhotoFileInput.current?.click();
   };
-
+  const triggerEarthpitPhotoUpload = (index: number) => {
+    setEarthpitPhotoIndex(index);
+    earthpitFileInput.current?.click();
+  };
   const triggerSmartRackPhotoUpload = (index: number) => {
     setSmartRackPhotoIndex(index);
     smartRackFileInput.current?.click();
@@ -685,6 +818,140 @@ const GPInstallationEdit = () => {
     event.target.value = '';
   };
 
+    const triggerFdmsPhotoUpload = (
+    index: number,
+    photoType: 'front' | 'left' | 'right' | 'qr',
+  ) => {
+    setFdmsPhotoIndex(index);
+    setFdmsPhotoType(photoType);
+    if (photoType === 'front') fdmsFrontFileInput.current?.click();
+    else if (photoType === 'left') fdmsLeftFileInput.current?.click();
+    else if (photoType === 'right') fdmsRightFileInput.current?.click();
+    else if (photoType === 'qr') fdmsQrFileInput.current?.click();
+  };
+   const handleFdmsPhotoUpload = (
+      event: React.ChangeEvent<HTMLInputElement>,
+      photoType: 'front' | 'left' | 'right' | 'qr',
+    ) => {
+      const files = event.target.files;
+      if (!files || fdmsPhotoIndex === null) return;
+  
+      const file = files[0];
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        const updated = [...fdmsShelf];
+        const photoField = `${photoType}_photo` as keyof EquipmentItem;
+        updated[fdmsPhotoIndex] = {
+          ...updated[fdmsPhotoIndex],
+          [photoField]: dataUrl,
+        };
+        setFdmsShelf(updated);
+        setFdmsPhotoIndex(null);
+        setFdmsPhotoType(null);
+      };
+      reader.readAsDataURL(file);
+      event.target.value = '';
+    };
+
+  const triggerSfp10gPhotoUpload = (index: number) => {
+    setSfp10gPhotoIndex(index);
+    sfp10gFileInput.current?.click();
+  };
+  const triggerSfp1gPhotoUpload = (index: number) => {
+    setSfp1gPhotoIndex(index);
+    sfp1gFileInput.current?.click();
+  };
+  const triggerSfp100gPhotoUpload = (index: number) => {
+    setSfp100gPhotoIndex(index);
+    sfp100gFileInput.current?.click();
+  };
+   const triggerRouterPhotoUpload = (index: number) => {
+    setRouterPhotoIndex(index);
+    routerFileInput.current?.click();
+  };
+    const handleRouterPhotoUpload = (
+      event: React.ChangeEvent<HTMLInputElement>,
+    ) => {
+      const files = event.target.files;
+      if (!files || routerPhotoIndex === null) return;
+  
+      const file = files[0];
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        const updated = [...ipMplsRouter];
+        updated[routerPhotoIndex] = {
+          ...updated[routerPhotoIndex],
+          photo: dataUrl,
+        };
+        setIpMplsRouter(updated);
+        setRouterPhotoIndex(null);
+      };
+      reader.readAsDataURL(file);
+      event.target.value = '';
+    };
+
+      const handleEarthpitPhotoUpload = (
+      event: React.ChangeEvent<HTMLInputElement>,
+    ) => {
+      const files = event.target.files;
+      if (!files || earthpitPhotoIndex === null) return;
+      const file = files[0];
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        const updated = [...earthpit];
+        updated[earthpitPhotoIndex] = {
+          ...updated[earthpitPhotoIndex],
+          photo: dataUrl,
+        };
+        setEarthpit(updated);
+        setEarthpitPhotoIndex(null);
+      };
+      reader.readAsDataURL(file);
+      event.target.value = '';
+    };
+    const handleSFPPhotoUpload = (
+      event: React.ChangeEvent<HTMLInputElement>,
+      type: '10g' | '1g' | '100g',
+    ) => {
+      const files = event.target.files;
+      if (!files) return;
+  
+      const file = files[0];
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        if (type === '10g' && sfp10gPhotoIndex !== null) {
+          const updated = [...sfp10g];
+          updated[sfp10gPhotoIndex] = {
+            ...updated[sfp10gPhotoIndex],
+            photo: dataUrl,
+          };
+          setSfp10g(updated);
+          setSfp10gPhotoIndex(null);
+        } else if (type === '1g' && sfp1gPhotoIndex !== null) {
+          const updated = [...sfp1g];
+          updated[sfp1gPhotoIndex] = {
+            ...updated[sfp1gPhotoIndex],
+            photo: dataUrl,
+          };
+          setSfp1g(updated);
+          setSfp1gPhotoIndex(null);
+        } else if (type === '100g' && sfp100gPhotoIndex !== null) {
+          const updated = [...sfp100g];
+          updated[sfp100gPhotoIndex] = {
+            ...updated[sfp100gPhotoIndex],
+            photo: dataUrl,
+          };
+          setSfp100g(updated);
+          setSfp100gPhotoIndex(null);
+        }
+      };
+      reader.readAsDataURL(file);
+      event.target.value = '';
+    };
   const handlePowerSystemPhotoUpload = (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -848,56 +1115,45 @@ const GPInstallationEdit = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    State Code
+                    State 
                   </label>
                   <input
                     type="text"
-                    value={stateCode}
-                    onChange={(e) => setStateCode(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter state code"
+                    value={stateName}
+                    onChange={(e) => setStateName(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-not-allowed bg-gray-100"
+                    placeholder="Enter state name"
+                    readOnly
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    District Code
+                    District
                   </label>
                   <input
                     type="text"
-                    value={districtCode}
-                    onChange={(e) => setDistrictCode(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter district code"
+                    value={districtName}
+                    onChange={(e) => setDistrictName(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-not-allowed bg-gray-100"
+                    placeholder="Enter district name"
+                    readOnly
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Block Code
+                    Block Name
                   </label>
                   <input
                     type="text"
-                    value={blockCode}
-                    onChange={(e) => setBlockCode(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter block code"
+                    value={blockName}
+                    onChange={(e) => setBlockName(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-not-allowed bg-gray-100"
+                    placeholder="Enter block name"
+                    readOnly
                   />
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    GP Code
-                  </label>
-                  <input
-                    type="text"
-                    value={gpCode}
-                    onChange={(e) => setGpCode(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter GP code"
-                  />
-                </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     GP Name
@@ -906,8 +1162,9 @@ const GPInstallationEdit = () => {
                     type="text"
                     value={gpName}
                     onChange={(e) => setGpName(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-not-allowed bg-gray-100"
                     placeholder="Enter GP name"
+                    readOnly
                   />
                 </div>
 
@@ -919,8 +1176,9 @@ const GPInstallationEdit = () => {
                     type="text"
                     value={gpLatitude}
                     onChange={(e) => setGpLatitude(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-not-allowed bg-gray-100"
                     placeholder="Enter latitude"
+                    readOnly
                   />
                 </div>
 
@@ -932,70 +1190,14 @@ const GPInstallationEdit = () => {
                     type="text"
                     value={gpLongitude}
                     onChange={(e) => setGpLongitude(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-not-allowed bg-gray-100"
                     placeholder="Enter longitude"
+                    readOnly
                   />
                 </div>
               </div>
             </div>
-
-            {/* GP Photos Section */}
-            <div className="border-t border-gray-200 pt-8">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  GP Photos
-                </h3>
-                <button
-                  onClick={triggerGpPhotoUpload}
-                  className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Photo
-                </button>
-              </div>
-              <input
-                type="file"
-                ref={gpPhotoFileInput}
-                onChange={handleFileUpload('gp')}
-                accept="image/*"
-                multiple
-                className="hidden"
-              />
-
-              {gpPhotos.length === 0 ? (
-                <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                  <ImageIcon className="h-8 w-8 mx-auto mb-2" />
-                  <p>No GP photos added. Click "Add Photo" to add images.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {gpPhotos.map((photo, index) => (
-                    <div key={index} className="relative group">
-                      <div className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
-                        <img
-                          src={
-                            isDataUrl(photo) ? photo : `${ImgbaseUrl}/${photo}`
-                          }
-                          alt={`GP Photo ${index + 1}`}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = photo;
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handlePhotoRemove('gp', index)}
-                          className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
+            
             {/* Contact Information */}
             <div className="border-t border-gray-200 pt-8">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -1149,6 +1351,64 @@ const GPInstallationEdit = () => {
               </div>
             </div>
 
+            {/* GP Photos Section */}
+            <div className="border-t border-gray-200 pt-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  GP Photos
+                </h3>
+                <button
+                  onClick={triggerGpPhotoUpload}
+                  className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Photo
+                </button>
+              </div>
+              <input
+                type="file"
+                ref={gpPhotoFileInput}
+                onChange={handleFileUpload('gp')}
+                accept="image/*"
+                multiple
+                className="hidden"
+              />
+
+              {gpPhotos.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                  <ImageIcon className="h-8 w-8 mx-auto mb-2" />
+                  <p>No GP photos added. Click "Add Photo" to add images.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {gpPhotos.map((photo, index) => (
+                    <div key={index} className="relative group">
+                      <div className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                        <img
+                          src={
+                            isDataUrl(photo) ? photo : `${ImgbaseUrl}/${photo}`
+                          }
+                          alt={`GP Photo ${index + 1}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = photo;
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handlePhotoRemove('gp', index)}
+                          className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+
             {/* Smart Rack Section */}
             <div className="border-t border-gray-200 pt-8">
               <div className="flex items-center justify-between mb-4">
@@ -1291,6 +1551,788 @@ const GPInstallationEdit = () => {
               )}
             </div>
 
+            {/* FDMS Shelf Section */}
+            <div className="border-t border-gray-200 pt-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  FDMS Shelf Equipment
+                </h3>
+                <button
+                  onClick={() => addEquipmentItem('fdms')}
+                  className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Item
+                </button>
+              </div>
+
+              {fdmsShelf.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                  <p>No FDMS shelf items configured.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {fdmsShelf.map((item, index) => (
+                    <div
+                      key={index}
+                      className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="font-medium text-gray-700">
+                          FDMS Shelf Item {index + 1}
+                        </span>
+                        <button
+                          onClick={() => removeEquipmentItem('fdms', index)}
+                          className="p-1 text-red-500 hover:bg-red-50 rounded"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Make
+                          </label>
+                          <input
+                            type="text"
+                            value={item.make}
+                            onChange={(e) =>
+                              handleEquipmentChange(
+                                'fdms',
+                                index,
+                                'make',
+                                e.target.value,
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter make"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Type
+                          </label>
+                          <input
+                            type="text"
+                            value={item.type}
+                            onChange={(e) =>
+                              handleEquipmentChange(
+                                'fdms',
+                                index,
+                                'type',
+                                e.target.value,
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter type"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Model
+                          </label>
+                          <input
+                            type="text"
+                            value={item.model}
+                            onChange={(e) =>
+                              handleEquipmentChange(
+                                'fdms',
+                                index,
+                                'model',
+                                e.target.value,
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter model"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Serial Number
+                          </label>
+                          <input
+                            type="text"
+                            value={item.serial_no}
+                            onChange={(e) =>
+                              handleEquipmentChange(
+                                'fdms',
+                                index,
+                                'serial_no',
+                                e.target.value,
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter serial number"
+                          />
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-3">
+                            Photos
+                          </label>
+                          <div className="grid grid-cols-2 gap-3">
+                            {(['front', 'left', 'right', 'qr'] as const).map(
+                              (photoType) => {
+                                const photoField =
+                                  `${photoType}_photo` as keyof EquipmentItem;
+                                const photoValue = item[photoField] as string;
+                                return (
+                                  <div key={photoType}>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
+                                      {photoType} Photo
+                                    </label>
+                                    {photoValue ? (
+                                      <div className="relative mb-1">
+                                        <img
+                                          src={
+                                            isDataUrl(photoValue)
+                                              ? photoValue
+                                              : `${ImgbaseUrl}/${photoValue}`
+                                          }
+                                          alt={`${photoType} photo`}
+                                          className="h-16 w-auto rounded-md border border-gray-200 object-cover"
+                                          onError={(e) => {
+                                            (e.target as HTMLImageElement).src =
+                                              photoValue;
+                                          }}
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handleEquipmentChange(
+                                              'fdms',
+                                              index,
+                                              photoField,
+                                              '',
+                                            )
+                                          }
+                                          className="absolute top-0 right-0 p-0.5 bg-red-500 text-white rounded-full hover:bg-red-600"
+                                        >
+                                          <X className="h-2 w-2" />
+                                        </button>
+                                      </div>
+                                    ) : null}
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        triggerFdmsPhotoUpload(index, photoType)
+                                      }
+                                      className="w-full px-2 py-1 border border-gray-300 rounded-md text-xs text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-1"
+                                    >
+                                      <Upload className="h-3 w-3" />
+                                      {photoValue ? 'Change' : 'Upload'}
+                                    </button>
+                                  </div>
+                                );
+                              },
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+              {/* IP MPLS Router Section */}
+              <div className="border-t border-gray-200 pt-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    IP MPLS Router Equipment
+                  </h3>
+                  <button
+                    onClick={() => addEquipmentItem('router')}
+                    className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Item
+                  </button>
+                </div>
+  
+                {ipMplsRouter.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                    <p>No IP MPLS router items configured.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {ipMplsRouter.map((item, index) => (
+                      <div
+                        key={index}
+                        className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="font-medium text-gray-700">
+                            Router Item {index + 1}
+                          </span>
+                          <button
+                            onClick={() => removeEquipmentItem('router', index)}
+                            className="p-1 text-red-500 hover:bg-red-50 rounded"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+  
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Make
+                            </label>
+                            <input
+                              type="text"
+                              value={item.make}
+                              onChange={(e) =>
+                                handleEquipmentChange(
+                                  'router',
+                                  index,
+                                  'make',
+                                  e.target.value,
+                                )
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Enter make"
+                            />
+                          </div>
+  
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Type
+                            </label>
+                            <input
+                              type="text"
+                              value={item.type}
+                              onChange={(e) =>
+                                handleEquipmentChange(
+                                  'router',
+                                  index,
+                                  'type',
+                                  e.target.value,
+                                )
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Enter type"
+                            />
+                          </div>
+  
+                        
+  
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Serial Number
+                            </label>
+                            <input
+                              type="text"
+                              value={item.serial_no}
+                              onChange={(e) =>
+                                handleEquipmentChange(
+                                  'router',
+                                  index,
+                                  'serial_no',
+                                  e.target.value,
+                                )
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Enter serial number"
+                            />
+                          </div>
+  
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Photo
+                            </label>
+                            {item.photo ? (
+                              <div className="relative mb-2">
+                                <img
+                                  src={
+                                    isDataUrl(item.photo)
+                                      ? item.photo
+                                      : `${ImgbaseUrl}/${item.photo}`
+                                  }
+                                  alt="IP MPLS Router"
+                                  className="h-20 w-auto rounded-md border border-gray-200 object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src =
+                                      item.photo;
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleEquipmentChange(
+                                      'router',
+                                      index,
+                                      'photo',
+                                      '',
+                                    )
+                                  }
+                                  className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ) : null}
+                            <button
+                              type="button"
+                              onClick={() => triggerRouterPhotoUpload(index)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2"
+                            >
+                              <Upload className="h-4 w-4" />
+                              {item.photo ? 'Change Photo' : 'Upload Photo'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* SFP 10G Section */}
+              <div className="border-t border-gray-200 pt-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    SFP 10G/40 Components
+                  </h3>
+                  <button
+                    onClick={() => addSFPItem('10g')}
+                    className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Item
+                  </button>
+                </div>
+  
+                {sfp10g.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                    <p>No SFP 10G items configured.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {sfp10g.map((item, index) => (
+                      <div
+                        key={index}
+                        className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="font-medium text-gray-700">
+                            SFP 10G Item {index + 1}
+                          </span>
+                          <button
+                            onClick={() => removeSFPItem('10g', index)}
+                            className="p-1 text-red-500 hover:bg-red-50 rounded"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Count
+                            </label>
+                            <input
+                              type="text"
+                              value={item.count}
+                              onChange={(e) =>
+                                handleSFPChange(
+                                  '10g',
+                                  index,
+                                  'count',
+                                  e.target.value,
+                                )
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Enter port count"
+                            />
+                          </div>
+  
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Make
+                            </label>
+                            <input
+                              type="text"
+                              value={item.make}
+                              onChange={(e) =>
+                                handleSFPChange(
+                                  '10g',
+                                  index,
+                                  'make',
+                                  e.target.value,
+                                )
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Enter make"
+                            />
+                          </div>
+  
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Serial Number
+                            </label>
+                            <input
+                              type="text"
+                              value={item.serial_no}
+                              onChange={(e) =>
+                                handleSFPChange(
+                                  '10g',
+                                  index,
+                                  'serial_no',
+                                  e.target.value,
+                                )
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Enter serial number"
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Photo
+                            </label>
+                            {item.photo ? (
+                              <div className="relative mb-2">
+                                <img
+                                  src={
+                                    isDataUrl(item.photo)
+                                      ? item.photo
+                                      : `${ImgbaseUrl}/${item.photo}`
+                                  }
+                                  alt="SFP 10G/40"
+                                  className="h-20 w-auto rounded-md border border-gray-200 object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src =
+                                      item.photo;
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...sfp10g];
+                                    updated[index] = {
+                                      ...updated[index],
+                                      photo: '',
+                                    };
+                                    setSfp10g(updated);
+                                  }}
+                                  className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ) : null}
+                            <button
+                              type="button"
+                              onClick={() => triggerSfp10gPhotoUpload(index)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2"
+                            >
+                              <Upload className="h-4 w-4" />
+                              {item.photo ? 'Change Photo' : 'Upload Photo'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* SFP 1G/10 Section */}
+              <div className="border-t border-gray-200 pt-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    SFP 1G/10 Components
+                  </h3>
+                  <button
+                    onClick={() => addSFPItem('1g')}
+                    className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Item
+                  </button>
+                </div>
+  
+                {sfp1g.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                    <p>No SFP 1G/10 items configured.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {sfp1g.map((item, index) => (
+                      <div
+                        key={index}
+                        className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="font-medium text-gray-700">
+                            SFP 1G/10 Item {index + 1}
+                          </span>
+                          <button
+                            onClick={() => removeSFPItem('1g', index)}
+                            className="p-1 text-red-500 hover:bg-red-50 rounded"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Count
+                            </label>
+                            <input
+                              type="text"
+                              value={item.count}
+                              onChange={(e) =>
+                                handleSFPChange(
+                                  '1g',
+                                  index,
+                                  'count',
+                                  e.target.value,
+                                )
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Enter port count"
+                            />
+                          </div>
+  
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Make
+                            </label>
+                            <input
+                              type="text"
+                              value={item.make}
+                              onChange={(e) =>
+                                handleSFPChange(
+                                  '1g',
+                                  index,
+                                  'make',
+                                  e.target.value,
+                                )
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Enter make"
+                            />
+                          </div>
+  
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Serial Number
+                            </label>
+                            <input
+                              type="text"
+                              value={item.serial_no}
+                              onChange={(e) =>
+                                handleSFPChange(
+                                  '1g',
+                                  index,
+                                  'serial_no',
+                                  e.target.value,
+                                )
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Enter serial number"
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Photo
+                            </label>
+                            {item.photo ? (
+                              <div className="relative mb-2">
+                                <img
+                                  src={
+                                    isDataUrl(item.photo)
+                                      ? item.photo
+                                      : `${ImgbaseUrl}/${item.photo}`
+                                  }
+                                  alt="SFP 1G/10"
+                                  className="h-20 w-auto rounded-md border border-gray-200 object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src =
+                                      item.photo;
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...sfp1g];
+                                    updated[index] = {
+                                      ...updated[index],
+                                      photo: '',
+                                    };
+                                    setSfp1g(updated);
+                                  }}
+                                  className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ) : null}
+                            <button
+                              type="button"
+                              onClick={() => triggerSfp1gPhotoUpload(index)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2"
+                            >
+                              <Upload className="h-4 w-4" />
+                              {item.photo ? 'Change Photo' : 'Upload Photo'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* SFP 1G/10 Section */}
+              <div className="border-t border-gray-200 pt-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    SFP 10G/10 Components
+                  </h3>
+                  <button
+                    onClick={() => addSFPItem('100g')}
+                    className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Item
+                  </button>
+                </div>
+  
+                {sfp100g.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                    <p>No SFP 10G/10 items configured.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {sfp100g.map((item, index) => (
+                      <div
+                        key={index}
+                        className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="font-medium text-gray-700">
+                            SFP 10G/10 Item {index + 1}
+                          </span>
+                          <button
+                            onClick={() => removeSFPItem('100g', index)}
+                            className="p-1 text-red-500 hover:bg-red-50 rounded"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Count
+                            </label>
+                            <input
+                              type="text"
+                              value={item.count}
+                              onChange={(e) =>
+                                handleSFPChange(
+                                  '100g',
+                                  index,
+                                  'count',
+                                  e.target.value,
+                                )
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Enter port count"
+                            />
+                          </div>
+  
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Make
+                            </label>
+                            <input
+                              type="text"
+                              value={item.make}
+                              onChange={(e) =>
+                                handleSFPChange(
+                                  '100g',
+                                  index,
+                                  'make',
+                                  e.target.value,
+                                )
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Enter make"
+                            />
+                          </div>
+  
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Serial Number
+                            </label>
+                            <input
+                              type="text"
+                              value={item.serial_no}
+                              onChange={(e) =>
+                                handleSFPChange(
+                                  '100g',
+                                  index,
+                                  'serial_no',
+                                  e.target.value,
+                                )
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Enter serial number"
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Photo
+                            </label>
+                            {item.photo ? (
+                              <div className="relative mb-2">
+                                <img
+                                  src={
+                                    isDataUrl(item.photo)
+                                      ? item.photo
+                                      : `${ImgbaseUrl}/${item.photo}`
+                                  }
+                                  alt="SFP 10G/10"
+                                  className="h-20 w-auto rounded-md border border-gray-200 object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src =
+                                      item.photo;
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...sfp100g];
+                                    updated[index] = {
+                                      ...updated[index],
+                                      photo: '',
+                                    };
+                                    setSfp100g(updated);
+                                  }}
+                                  className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ) : null}
+                            <button
+                              type="button"
+                              onClick={() => triggerSfp100gPhotoUpload(index)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2"
+                            >
+                              <Upload className="h-4 w-4" />
+                              {item.photo ? 'Change Photo' : 'Upload Photo'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            
+
             {/* Power System with MPPT Section */}
             <div className="border-t border-gray-200 pt-8">
               <div className="flex items-center justify-between mb-4">
@@ -1334,17 +2376,17 @@ const GPInstallationEdit = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Type
+                            Available
                           </label>
                           <input
-                            type="text"
-                            value={item.type}
+                            type="checkbox"
+                            checked={item.available || false}
                             onChange={(e) =>
                               handlePowerSystemChange(
                                 'with_mppt',
                                 index,
-                                'type',
-                                e.target.value,
+                                'available',
+                                e.target.checked,
                               )
                             }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1374,61 +2416,61 @@ const GPInstallationEdit = () => {
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Model
+                            Battery Serial Number
                           </label>
                           <input
                             type="text"
-                            value={item.model}
+                            value={item.battery_sno}
                             onChange={(e) =>
                               handlePowerSystemChange(
                                 'with_mppt',
                                 index,
-                                'model',
+                                'battery_sno',
                                 e.target.value,
                               )
                             }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Enter model"
+                            placeholder="Enter battery serial number"
                           />
                         </div>
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Capacity
+                            Solar Panel Serial Number
                           </label>
                           <input
                             type="text"
-                            value={item.capacity}
+                            value={item.solar_pannel_sno}
                             onChange={(e) =>
                               handlePowerSystemChange(
                                 'with_mppt',
                                 index,
-                                'capacity',
+                                'solar_pannel_sno',
                                 e.target.value,
                               )
                             }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Enter capacity"
+                            placeholder="Enter solar panel serial number"
                           />
                         </div>
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Voltage
+                            ups serial number
                           </label>
                           <input
                             type="text"
-                            value={item.voltage}
+                            value={item.ups_sno}
                             onChange={(e) =>
                               handlePowerSystemChange(
                                 'with_mppt',
                                 index,
-                                'voltage',
+                                'ups_sno',
                                 e.target.value,
                               )
                             }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Enter voltage"
+                            placeholder="Enter ups serial number"
                           />
                         </div>
 
@@ -1504,6 +2546,570 @@ const GPInstallationEdit = () => {
                 </div>
               )}
             </div>
+              {/* Power System with Out MPPT Section */}
+            <div className="border-t border-gray-200 pt-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Power System with out MPPT
+                </h3>
+                <button
+                  onClick={() => addPowerSystemItem('without_mppt')}
+                  className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Item
+                </button>
+              </div>
+
+              {powerSystemWithoutMppt.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                  <p>No power system without MPPT configured.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {powerSystemWithoutMppt.map((item, index) => (
+                    <div
+                      key={index}
+                      className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="font-medium text-gray-700">
+                          Power System Item {index + 1}
+                        </span>
+                        <button
+                          onClick={() =>
+                            removePowerSystemItem('without_mppt', index)
+                          }
+                          className="p-1 text-red-500 hover:bg-red-50 rounded"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Available
+                          </label>
+                          <input
+                            type="checkbox"
+                            checked={item.available || false}
+                            onChange={(e) =>
+                              handlePowerSystemChange(
+                                'without_mppt',
+                                index,
+                                'available',
+                                e.target.checked,
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter type"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Make
+                          </label>
+                          <input
+                            type="text"
+                            value={item.make}
+                            onChange={(e) =>
+                              handlePowerSystemChange(
+                                'without_mppt',
+                                index,
+                                'make',
+                                e.target.value,
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter make"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Battery Serial Number
+                          </label>
+                          <input
+                            type="text"
+                            value={item.battery_sno}
+                            onChange={(e) =>
+                              handlePowerSystemChange(
+                                'without_mppt',
+                                index,
+                                'battery_sno',
+                                e.target.value,
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter battery serial number"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Solar Panel Serial Number
+                          </label>
+                          <input
+                            type="text"
+                            value={item.solar_pannel_sno}
+                            onChange={(e) =>
+                              handlePowerSystemChange(
+                                'without_mppt',
+                                index,
+                                'solar_pannel_sno',
+                                e.target.value,
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter solar panel serial number"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            ups serial number
+                          </label>
+                          <input
+                            type="text"
+                            value={item.ups_sno}
+                            onChange={(e) =>
+                              handlePowerSystemChange(
+                                'without_mppt',
+                                index,
+                                'ups_sno',
+                                e.target.value,
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter ups serial number"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Serial Number
+                          </label>
+                          <input
+                            type="text"
+                            value={item.serial_no}
+                            onChange={(e) =>
+                              handlePowerSystemChange(
+                                'without_mppt',
+                                index,
+                                'serial_no',
+                                e.target.value,
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter serial number"
+                          />
+                        </div>
+
+                        <div className="md:col-span-2 lg:col-span-3">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Photo
+                          </label>
+                          {item.photo ? (
+                            <div className="relative mb-2">
+                              <img
+                                src={
+                                  isDataUrl(item.photo)
+                                    ? item.photo
+                                    : `${ImgbaseUrl}/${item.photo}`
+                                }
+                                alt="Power System"
+                                className="h-20 w-auto rounded-md border border-gray-200 object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src =
+                                    item.photo;
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handlePowerSystemChange(
+                                    'without_mppt',
+                                    index,
+                                    'photo',
+                                    '',
+                                  )
+                                }
+                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              triggerPowerSystemPhotoUpload('without_mppt', index)
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2"
+                          >
+                            <Upload className="h-4 w-4" />
+                            {item.photo ? 'Change Photo' : 'Upload Photo'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+               {/* mppt_solar_1kw */}
+            <div className="border-t border-gray-200 pt-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Mppt Solar 1KW
+                </h3>
+                <button
+                  onClick={() => addPowerSystemItem('solar_1kw')}
+                  className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Item
+                </button>
+              </div>
+
+              {mpptSolar1kw.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                  <p>No mppt solar 1kw configured.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {mpptSolar1kw.map((item, index) => (
+                    <div
+                      key={index}
+                      className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="font-medium text-gray-700">
+                          Power System Item {index + 1}
+                        </span>
+                        <button
+                          onClick={() =>
+                            removePowerSystemItem('solar_1kw', index)
+                          }
+                          className="p-1 text-red-500 hover:bg-red-50 rounded"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                       
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Make
+                          </label>
+                          <input
+                            type="text"
+                            value={item.make}
+                            onChange={(e) =>
+                              handlePowerSystemChange(
+                                'solar_1kw',
+                                index,
+                                'make',
+                                e.target.value,
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter make"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Battery Serial Number
+                          </label>
+                          <input
+                            type="text"
+                            value={item.battery_sno}
+                            onChange={(e) =>
+                              handlePowerSystemChange(
+                                'solar_1kw',
+                                index,
+                                'battery_sno',
+                                e.target.value,
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter battery serial number"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Solar Panel Serial Number
+                          </label>
+                          <input
+                            type="text"
+                            value={item.solar_pannel_sno}
+                            onChange={(e) =>
+                              handlePowerSystemChange(
+                                'solar_1kw',
+                                index,
+                                'solar_pannel_sno',
+                                e.target.value,
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter solar panel serial number"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            ups serial number
+                          </label>
+                          <input
+                            type="text"
+                            value={item.ups_sno}
+                            onChange={(e) =>
+                              handlePowerSystemChange(
+                                'solar_1kw',
+                                index,
+                                'ups_sno',
+                                e.target.value,
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter ups serial number"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Serial Number
+                          </label>
+                          <input
+                            type="text"
+                            value={item.serial_no}
+                            onChange={(e) =>
+                              handlePowerSystemChange(
+                                'solar_1kw',
+                                index,
+                                'serial_no',
+                                e.target.value,
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter serial number"
+                          />
+                        </div>
+
+                        <div className="md:col-span-2 lg:col-span-3">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Photo
+                          </label>
+                          {item.photo ? (
+                            <div className="relative mb-2">
+                              <img
+                                src={
+                                  isDataUrl(item.photo)
+                                    ? item.photo
+                                    : `${ImgbaseUrl}/${item.photo}`
+                                }
+                                alt="Power System"
+                                className="h-20 w-auto rounded-md border border-gray-200 object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src =
+                                    item.photo;
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handlePowerSystemChange(
+                                    'solar_1kw',
+                                    index,
+                                    'photo',
+                                    '',
+                                  )
+                                }
+                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              triggerPowerSystemPhotoUpload('solar_1kw', index)
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2"
+                          >
+                            <Upload className="h-4 w-4" />
+                            {item.photo ? 'Change Photo' : 'Upload Photo'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            {/* Earthpit */}
+            <div className="border-t border-gray-200 pt-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Earthpit
+                </h3>
+                <button
+                  onClick={() => addEquipmentItem('earthpit')}
+                  className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Item
+                </button>
+              </div>
+
+              {earthpit.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                  <p>No earthpit items configured.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {earthpit.map((item, index) => (
+                    <div
+                      key={index}
+                      className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="font-medium text-gray-700">
+                          Earthpit Item {index + 1}
+                        </span>
+                        <button
+                          onClick={() =>
+                            removeEquipmentItem('earthpit', index)
+                          }
+                          className="p-1 text-red-500 hover:bg-red-50 rounded"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                       
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            capacity
+                          </label>
+                          <input
+                            type="text"
+                            value={item.capacity}
+                            onChange={(e) =>
+                              handleEquipmentChange(
+                                'earthpit',
+                                index,
+                                'capacity',
+                                e.target.value,
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter capacity"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Latitude
+                          </label>
+                          <input
+                            type="text"
+                            value={item.latitude}
+                            onChange={(e) =>
+                              handleEquipmentChange(
+                                'earthpit',
+                                index,
+                                'latitude',
+                                e.target.value,
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter latitude"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Longitude
+                          </label>
+                          <input
+                            type="text"
+                            value={item.longitude}
+                            onChange={(e) =>
+                              handleEquipmentChange(
+                                'earthpit',
+                                index,
+                                'longitude',
+                                e.target.value,
+                              )
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter longitude"
+                          />
+                        </div>
+
+                        
+
+                        <div className="md:col-span-2 lg:col-span-3">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Photo
+                          </label>
+                          {item.photo ? (
+                            <div className="relative mb-2">
+                              <img
+                                src={
+                                  isDataUrl(item.photo)
+                                    ? item.photo
+                                    : `${ImgbaseUrl}/${item.photo}`
+                                }
+                                alt="Earthpit"
+                                className="h-20 w-auto rounded-md border border-gray-200 object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src =
+                                    item.photo;
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleEquipmentChange(
+                                    'earthpit',
+                                    index,
+                                    'photo',
+                                    '',
+                                  )
+                                }
+                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              triggerEarthpitPhotoUpload(index)
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2"
+                          >
+                            <Upload className="h-4 w-4" />
+                            {item.photo ? 'Change Photo' : 'Upload Photo'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Equipment Photos Section */}
             <div className="border-t border-gray-200 pt-8">
@@ -1538,6 +3144,69 @@ const GPInstallationEdit = () => {
                 type="file"
                 ref={powerSystemFileInput}
                 onChange={handlePowerSystemPhotoUpload}
+                accept="image/*"
+                className="hidden"
+              />
+               <input
+                type="file"
+                ref={fdmsFrontFileInput}
+                onChange={(e) => handleFdmsPhotoUpload(e, 'front')}
+                accept="image/*"
+                className="hidden"
+              />
+              <input
+                type="file"
+                ref={fdmsLeftFileInput}
+                onChange={(e) => handleFdmsPhotoUpload(e, 'left')}
+                accept="image/*"
+                className="hidden"
+              />
+              <input
+                type="file"
+                ref={fdmsRightFileInput}
+                onChange={(e) => handleFdmsPhotoUpload(e, 'right')}
+                accept="image/*"
+                className="hidden"
+              />
+              <input
+                type="file"
+                ref={fdmsQrFileInput}
+                onChange={(e) => handleFdmsPhotoUpload(e, 'qr')}
+                accept="image/*"
+                className="hidden"
+              />
+               <input
+                type="file"
+                ref={sfp100gFileInput}
+                onChange={(e) => handleSFPPhotoUpload(e, '100g')}
+                accept="image/*"
+                className="hidden"
+              />
+              <input
+                type="file"
+                ref={sfp1gFileInput}
+                onChange={(e) => handleSFPPhotoUpload(e, '1g')}
+                accept="image/*"
+                className="hidden"
+              />
+              <input
+                type="file"
+                ref={sfp10gFileInput}
+                onChange={(e) => handleSFPPhotoUpload(e, '10g')}
+                accept="image/*"
+                className="hidden"
+              />
+                <input
+                type="file"
+                ref={routerFileInput}
+                onChange={handleRouterPhotoUpload}
+                accept="image/*"
+                className="hidden"
+              />
+                <input
+                type="file"
+                ref={earthpitFileInput}
+                onChange={handleEarthpitPhotoUpload}
                 accept="image/*"
                 className="hidden"
               />
