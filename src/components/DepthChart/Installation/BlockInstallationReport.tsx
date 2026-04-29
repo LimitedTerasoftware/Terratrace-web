@@ -46,6 +46,8 @@ interface BlockInstallationReportProps {
     globalsearch: string;
     excel: boolean;
     filtersReady: boolean;
+    selectedStatus: string | null;
+
   };
   Onexcel: () => void;
 }
@@ -60,7 +62,6 @@ const BlockInstallationReport: React.FC<BlockInstallationReportProps> = ({ Data,
   const [data, setData] = useState<BlockInstallationData[]>([]);
   const [selectedRows, setSelectedRows] = useState<BlockInstallationData[]>([]);
   const [toggleCleared, setToggleCleared] = useState(false);
-  const [selectedInstallation, setSelectedInstallation] = useState<BlockInstallationData | null>(null);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -74,7 +75,9 @@ const BlockInstallationReport: React.FC<BlockInstallationReportProps> = ({ Data,
         if (Data.selectedBlock) params.block_code = Data.selectedBlock;
         if (Data.fromdate) params.from_date = Data.fromdate;
         if (Data.todate) params.to_date = Data.todate;
-        
+        if (Data.selectedStatus) params.status = Data.selectedStatus;
+        if (Data.globalsearch) params.search = Data.globalsearch;
+
         const response = await axios.get<{ status: boolean; data: BlockInstallationData[] }>(
           `${BASEURL}/get-block-installation`,
           { params }
@@ -97,7 +100,7 @@ const BlockInstallationReport: React.FC<BlockInstallationReportProps> = ({ Data,
     
     if (!Data.filtersReady) return;
     fetchInstallationData();
-  }, [Data.selectedState, Data.selectedDistrict, Data.selectedBlock, Data.fromdate, Data.todate, Data.filtersReady]);
+  }, [Data.selectedState, Data.selectedDistrict, Data.selectedBlock, Data.fromdate, Data.todate, Data.filtersReady, Data.globalsearch, Data.selectedStatus]);
 
   const filteredData = useMemo(() => {
     if (!Data.globalsearch.trim()) return data;

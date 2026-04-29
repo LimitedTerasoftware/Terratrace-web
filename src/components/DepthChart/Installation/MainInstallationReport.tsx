@@ -12,6 +12,7 @@ interface MainInstallationReportProps {
     globalsearch: string;
     excel: boolean;
     filtersReady: boolean;
+    selectedStatus: string | null;
   };
   Onexcel: () => void;
   activeTab: 'GP_INSTALLATION' | 'BLOCK_INSTALLATION';

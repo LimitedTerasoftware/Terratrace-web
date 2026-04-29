@@ -276,6 +276,7 @@ export interface Activity {
   start_duct: string;
   end_duct: string;
   order_index: number;
+  depth_capture_type?: string;
 }
 
 export interface ApiResponseMachine {

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, act } from 'react';
 import { X, Save, Loader2, Plus, Trash2 } from 'lucide-react';
 import { Activity, StartDuct, EndDuct } from '../../types/survey';
+import { sub } from 'date-fns';
 
 interface EditModalProps {
   activity: Activity | null;
@@ -105,6 +106,9 @@ export function EditModal({
       if (activity.eventType === 'DUCT') {
         submitData.start_duct = JSON.stringify(startDuctData);
         submitData.end_duct = JSON.stringify(endDuctData);
+      }else if(activity.eventType === 'DEPTH'){
+        submitData.depth_capture_type = 'MANUAL';
+
       }
 
       const response = await fetch(`${baseUrl}/update-event/${activity.id}`, {

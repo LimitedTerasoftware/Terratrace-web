@@ -79,6 +79,8 @@ const getEventSpecificFields = () => {
     },
 
     { key: 'eventType', label: 'Event Type', type: 'text', required: true },
+    {key:'workType', label:'Work Type', type:'text', required:true},
+    {key:'cableType', label:'Cable Type', type:'text', required:true},
     {
       key: 'dgps_accuracy',
       label: 'DGPS Accuracy',
@@ -583,7 +585,17 @@ export function AddConstModal({
                       <option value="Hdd">HDD</option>
                       <option value="OpenTrench">OpenTrench</option>
                     </select>
-                  ) : (
+                  ) : key === 'workType' ? (
+                    <select
+                      value={(formData[key] as string) || ''}
+                      onChange={(e) => handleChange(key, e.target.value)}
+                      className="w-full px-3 py-2 border rounded-lg"
+                    >
+                      <option value="">Select Work Type</option>
+                      <option value="New Construction">New Construction</option>
+                      <option value="Rectification">Rectification</option>
+                    </select>
+                  ): (
                     <input
                       type={type}
                       value={(formData[key] as string | number) || ''}

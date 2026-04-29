@@ -51,6 +51,7 @@ interface GPInstallationReportProps {
     globalsearch: string;
     excel: boolean;
     filtersReady: boolean;
+    selectedStatus: string | null;
   };
   Onexcel: () => void;
 }
@@ -68,7 +69,6 @@ const GPInstallationReport: React.FC<GPInstallationReportProps> = ({ Data, Onexc
   const [data, setData] = useState<GPInstallationData[]>([]);
   const [selectedRows, setSelectedRows] = useState<GPInstallationData[]>([]);
   const [toggleCleared, setToggleCleared] = useState(false);
-  const [selectedInstallation, setSelectedInstallation] = useState<GPInstallationData | null>(null);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -82,6 +82,8 @@ const GPInstallationReport: React.FC<GPInstallationReportProps> = ({ Data, Onexc
         if (Data.selectedBlock) params.block_code = Data.selectedBlock;
         if (Data.fromdate) params.from_date = Data.fromdate;
         if (Data.todate) params.to_date = Data.todate;
+        if (Data.selectedStatus) params.status = Data.selectedStatus;
+        if (Data.globalsearch) params.search = Data.globalsearch;
         
         const response = await axios.get<{ status: boolean; data: GPInstallationData[] }>(
           `${BASEURL}/get-gp-installation`,
@@ -105,7 +107,7 @@ const GPInstallationReport: React.FC<GPInstallationReportProps> = ({ Data, Onexc
     
     if (!Data.filtersReady) return;
     fetchInstallationData();
-  }, [Data.selectedState, Data.selectedDistrict, Data.selectedBlock, Data.fromdate, Data.todate, Data.filtersReady]);
+  }, [Data.selectedState, Data.selectedDistrict, Data.selectedBlock, Data.fromdate, Data.todate, Data.filtersReady, Data.globalsearch, Data.selectedStatus]);
 
   const filteredData = useMemo(() => {
     if (!Data.globalsearch.trim()) return data;
