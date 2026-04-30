@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, X, CheckCircle } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import {
   getStateData,
   getDistrictData,
@@ -10,10 +10,10 @@ import {
 import { Block, District, StateData } from '../../types/survey';
 import RFMSForm from './forms/RFMSForm';
 import BlockRouterForm from './forms/BlockRouterForm';
-import FDMSForm from './forms/FDMSForm';
 import { RouterData } from '../../types/block-router-checklist';
+import BlockRackForm from './forms/BlockRack';
 
-type FormType = 'RFMS' | 'Block Router' | 'FDMS';
+type FormType = 'RFMS' | 'Block Router' | 'Block Rack';
 
 interface BlockCreateResponse {
   status: boolean;
@@ -38,6 +38,7 @@ const BlockRouterChecklist = () => {
   const [loadingRfms, setLoadingRfms] = useState(false);
   const [rfmsData, setRfmsData] = useState<RouterData | null>(null);
   const [routerData, setRouterData] = useState<RouterData | null>(null);
+  const [blockrackData, setBlockRackData] = useState<RouterData | null>(null);
 
   useEffect(() => {
     const fetchStates = async () => {
@@ -143,7 +144,7 @@ const BlockRouterChecklist = () => {
     if (
       selectedFormType === 'RFMS' ||
       selectedFormType === 'Block Router' ||
-      selectedFormType === 'FDMS'
+      selectedFormType === 'Block Rack'
     ) {
       try {
         const blockName =
@@ -187,7 +188,7 @@ const BlockRouterChecklist = () => {
     setShowModal(false);
   };
 
-  const formTypes: FormType[] = ['RFMS', 'Block Router', 'FDMS'];
+  const formTypes: FormType[] = ['RFMS', 'Block Router', 'Block Rack'];
 
   const renderForm = () => {
     switch (selectedFormType) {
@@ -197,8 +198,8 @@ const BlockRouterChecklist = () => {
         return (
           <BlockRouterForm blockId={selectedBlock} existingData={routerData} />
         );
-      case 'FDMS':
-        return <FDMSForm />;
+      case 'Block Rack':
+        return <BlockRackForm  blockId={selectedBlock} existingData={blockrackData}/>;
       default:
         return null;
     }
