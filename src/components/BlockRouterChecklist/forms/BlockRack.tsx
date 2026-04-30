@@ -576,29 +576,31 @@ const BlockRackForm = ({ blockId, existingData }: BlockRackFormProps) => {
       <div className="flex gap-2 mb-4">
         <button
           onClick={() => setActiveTab('A')}
-          className={`flex-1 py-3 px-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
+          className={`flex-1 py-2 md:py-3 px-2 md:px-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-1 md:gap-2 text-sm md:text-base ${
             activeTab === 'A'
               ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
               : 'bg-white text-gray-600 hover:bg-blue-50 border-2 border-gray-200'
           }`}
         >
-          <Shield className="w-4 h-4" />
-          Part A: Infrastructure
-          <span className="text-xs px-2 py-0.5 rounded-full bg-white/20">
+          <Shield className="w-4 h-4 flex-shrink-0" />
+          <span className="hidden xs:inline">Part A:</span>
+          <span className="truncate">Infrastructure</span>
+          <span className="text-xs px-1 md:px-2 py-0.5 rounded-full bg-white/20 flex-shrink-0">
             {partACompleted}/{partAItems.length}
           </span>
         </button>
         <button
           onClick={() => setActiveTab('B')}
-          className={`flex-1 py-3 px-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
+          className={`flex-1 py-2 md:py-3 px-2 md:px-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-1 md:gap-2 text-sm md:text-base ${
             activeTab === 'B'
               ? 'bg-green-600 text-white shadow-lg shadow-green-200'
               : 'bg-white text-gray-600 hover:bg-green-50 border-2 border-gray-200'
           }`}
         >
-          <Server className="w-4 h-4" />
-          Part B: Functional
-          <span className="text-xs px-2 py-0.5 rounded-full bg-white/20">
+          <Server className="w-4 h-4 flex-shrink-0" />
+          <span className="hidden xs:inline">Part B:</span>
+          <span className="truncate">Functional</span>
+          <span className="text-xs px-1 md:px-2 py-0.5 rounded-full bg-white/20 flex-shrink-0">
             {partBCompleted}/{partBItems.length}
           </span>
         </button>
@@ -671,9 +673,7 @@ const BlockRackForm = ({ blockId, existingData }: BlockRackFormProps) => {
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
                       Test Procedure / Reference
                     </p>
-                    <p className="text-sm text-gray-700 ">
-                      {item.procedure}
-                    </p>
+                    <p className="text-sm text-gray-700 ">{item.procedure}</p>
                   </div>
 
                   {/* Compliance */}
