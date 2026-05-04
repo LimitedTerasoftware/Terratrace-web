@@ -163,19 +163,19 @@ export function UpdateConstModal({
     if (surveyData && isOpen) {
       setFormData({
         id: surveyData.id,
-        user_id: surveyData.user_id || '',
+        user_id: surveyData.user_id || null,
         company_id: surveyData.company_id || null,
-        state_id: surveyData.state_id || '',
-        district_id: surveyData.district_id || '',
-        block_id: surveyData.block_id || '',
+        state_id: surveyData.state_id || null,
+        district_id: surveyData.district_id || null,
+        block_id: surveyData.block_id || null,
         gp_id: surveyData.gp_id || 0,
-        startLocation: surveyData.startLocation?.toString() || '',
-        endLocation: surveyData.endLocation?.toString() || '',
-        construction_type: surveyData.construction_type || '',
-        machine_id: (surveyData as any).machine_id || '',
-        workType: surveyData.workType || '',
-        cableType: surveyData.cableType || '',
-        created_at: surveyData.created_at || '',
+        startLocation: surveyData.startLocation?.toString() || null,
+        endLocation: surveyData.endLocation?.toString() || null,
+        construction_type: surveyData.construction_type || null,
+        machine_id: (surveyData as any).machine_id || null,
+        workType: surveyData.workType || null,
+        cableType: surveyData.cableType || null,
+        created_at: surveyData.created_at || null,
       });
       setSelectedState(surveyData.state_id?.toString() || null);
       setSelectedDistrict(surveyData.district_id?.toString() || null);
