@@ -578,8 +578,8 @@ const BlockRackForm = ({ blockId, existingData }: BlockRackFormProps) => {
           onClick={() => setActiveTab('A')}
           className={`flex-1 py-2 md:py-3 px-2 md:px-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-1 md:gap-2 text-sm md:text-base ${
             activeTab === 'A'
-              ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
-              : 'bg-white text-gray-600 hover:bg-blue-50 border-2 border-gray-200'
+              ? 'bg-green-600 text-white shadow-lg shadow-green-200'
+              : 'bg-white text-gray-600 hover:bg-green-50 border-2 border-gray-200'
           }`}
         >
           <Shield className="w-4 h-4 flex-shrink-0" />

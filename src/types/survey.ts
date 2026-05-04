@@ -486,6 +486,23 @@ export interface UGConstructionSurveyData {
   total_distance: string | null;
   workType: string | null;
   cableType: string | null;
+  machine_id: number | null;
+}
+export interface UpdateSurveyPayload {
+  id: number;
+  user_id: number;
+  company_id: number | null;
+  state_id: number;
+  district_id: number;
+  block_id: number;
+  gp_id: number;
+  startLocation: number;
+  endLocation: number;
+  construction_type: string;
+  machine_id: number;
+  created_at: string;
+  workType: string | null;
+  cableType: string | null;
 }
 
 // MachineWork Chart

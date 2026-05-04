@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Search, User, Eye, X } from 'lucide-react';
+import { Search, User, Eye, X, PenIcon, View } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UGConstructionSurveyData } from '../../types/survey';
@@ -7,6 +7,7 @@ import moment from 'moment';
 import * as XLSX from 'xlsx';
 import DataTable, { TableColumn } from 'react-data-table-component';
 import { AddConstModal } from './AddConstModal';
+import { UpdateConstModal } from './UpdateConstModal';
 
 interface ReportProps {
   Data: {
@@ -49,6 +50,9 @@ const Report: React.FC<ReportProps> = ({
   const [toggleCleared, setToggleCleared] = useState(false);
   const [selectedSurvey, setSelectedSurvey] =
     useState<UGConstructionSurveyData | null>(null);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [surveyToUpdate, setSurveyToUpdate] =
+    useState<UGConstructionSurveyData | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -60,8 +64,8 @@ const Report: React.FC<ReportProps> = ({
         if (Data.selectedState) params.state_id = Data.selectedState;
         if (Data.selectedDistrict) params.district_id = Data.selectedDistrict;
         if (Data.selectedBlock) params.block_id = Data.selectedBlock;
-        if(Data.connectionStart) params.start = Data.connectionStart;
-        if(Data.connectionEnd)  params.end = Data.connectionEnd;
+        if (Data.connectionStart) params.start = Data.connectionStart;
+        if (Data.connectionEnd) params.end = Data.connectionEnd;
         if (Data.fromdate) params.from_date = Data.fromdate;
         if (Data.todate) params.to_date = Data.todate;
         if (Data.selectedStatus !== null) params.status = Data.selectedStatus;
@@ -109,6 +113,11 @@ const Report: React.FC<ReportProps> = ({
     check: boolean,
   ) => {
     navigate('/construction-details', { state: { row, multipreview: check } });
+  };
+  const handleUpdate = (id: number) => {
+    const survey = data.find((item) => item.id === id) || null;
+    setSurveyToUpdate(survey);
+    setIsUpdateModalOpen(true);
   };
 
   const filteredData = useMemo(() => {
@@ -181,12 +190,12 @@ const Report: React.FC<ReportProps> = ({
       },
     },
   };
-const linkColumn: TableColumn<UGConstructionSurveyData> = {
-  name: 'Link Name',
-  selector: () => Data?.selectedConnection || '-',
-  wrap:true,
-  sortable: true,
-};
+  const linkColumn: TableColumn<UGConstructionSurveyData> = {
+    name: 'Link Name',
+    selector: () => Data?.selectedConnection || '-',
+    wrap: true,
+    sortable: true,
+  };
 
   const columns: TableColumn<UGConstructionSurveyData>[] = [
     {
@@ -246,7 +255,7 @@ const linkColumn: TableColumn<UGConstructionSurveyData> = {
       selector: (row) => row.cableType || '-',
       sortable: true,
       wrap: true,
-        minWidth: '120px',
+      minWidth: '120px',
       cell: (row) => (
         <span title={row.cableType || '-'}>{row.cableType || '-'}</span>
       ),
@@ -269,8 +278,8 @@ const linkColumn: TableColumn<UGConstructionSurveyData> = {
       wrap: true,
       cell: (row) => <span title={row.end_lgd_name}>{row.end_lgd_name}</span>,
     },
-   ...(Data?.selectedConnection ? [linkColumn] : []),
-   {
+    ...(Data?.selectedConnection ? [linkColumn] : []),
+    {
       name: 'Distance (m)',
       selector: (row) => row.total_distance || '0.00',
       sortable: true,
@@ -340,17 +349,24 @@ const linkColumn: TableColumn<UGConstructionSurveyData> = {
       cell: (row) => (
         <div className="flex space-x-2">
           <button
+            onClick={() => handleView(row, false)}
+            className="px-1 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100 outline-none"
+          >
+            <View className="w-4 h-4" />
+          </button>
+          <button
             onClick={() => setSelectedSurvey(row)}
-            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            className="p-1 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
             title="View Details"
           >
             <Eye className="w-4 h-4" />
           </button>
           <button
-            onClick={() => handleView(row, false)}
-            className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100 outline-none"
+            onClick={() => handleUpdate(row.id)}
+            className="p-1 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+            title="Update"
           >
-            View
+            <PenIcon className="w-4 h-4" />
           </button>
         </div>
       ),
@@ -660,6 +676,49 @@ const linkColumn: TableColumn<UGConstructionSurveyData> = {
           OnModal();
         }}
         baseUrl={TraceBASEURL}
+      />
+      <UpdateConstModal
+        isOpen={isUpdateModalOpen}
+        onClose={() => setIsUpdateModalOpen(false)}
+        onSuccess={() => {
+          setIsUpdateModalOpen(false);
+          if (Data.filtersReady) {
+            const fetchSurveyData = async () => {
+              try {
+                setLoading(true);
+                const params: any = {};
+                if (Data.selectedState) params.state_id = Data.selectedState;
+                if (Data.selectedDistrict)
+                  params.district_id = Data.selectedDistrict;
+                if (Data.selectedBlock) params.block_id = Data.selectedBlock;
+                if (Data.connectionStart) params.start = Data.connectionStart;
+                if (Data.connectionEnd) params.end = Data.connectionEnd;
+                if (Data.fromdate) params.from_date = Data.fromdate;
+                if (Data.todate) params.to_date = Data.todate;
+                if (Data.selectedStatus !== null)
+                  params.status = Data.selectedStatus;
+                if (Data.globalsearch.trim())
+                  params.search = Data.globalsearch.trim();
+
+                const response = await axios.get<{
+                  status: boolean;
+                  data: UGConstructionSurveyData[];
+                }>(`${TraceBASEURL}/get-survey-data`, { params });
+
+                if (response.data.status) {
+                  setData(response.data.data);
+                  OnData(response.data.data);
+                }
+              } catch (error) {
+                console.error('Error fetching survey data', error);
+              } finally {
+                setLoading(false);
+              }
+            };
+            fetchSurveyData();
+          }
+        }}
+        surveyData={surveyToUpdate}
       />
     </div>
   );

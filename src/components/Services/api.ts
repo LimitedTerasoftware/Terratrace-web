@@ -4,6 +4,8 @@ import {
   APIResponseLiveMachine,
   LiveMachines,
   MachineDataApiResponse,
+  UGConstructionSurveyData,
+  UpdateSurveyPayload,
 } from '../../types/survey';
 import {
   ApiResponse,
@@ -760,4 +762,14 @@ export const getBlocksChecklist = async (filters: {
     console.error('Error fetching blocks checklist:', error);
     throw error;
   }
+};
+export const updateSurvey = async (payload: UpdateSurveyPayload) => {
+  const response = await axios.post(
+    `${TraceBASEURL}/survey/update`,
+    payload,
+    {
+      headers: { 'Content-Type': 'application/json' },
+    },
+  );
+  return response.data;
 };
