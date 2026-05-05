@@ -8,7 +8,7 @@ import { StatusSplit } from '../Chat/StatusSplit';
 export function InstallationSections() {
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            {/* <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <MetricCard title="TOTAL GP / BLOCKS" value="14,280" subtitle="Global" color="border-l-blue-600" />
 
                 <MetricCard title="INSTALLED" value="9,842" percentage="68.9%" color="border-l-green-600" />
@@ -44,7 +44,7 @@ export function InstallationSections() {
                     <p className="text-sm opacity-80">/ day</p>
                     <p className="text-xs opacity-70 mt-2">Currently at 98.4</p>
                 </div>
-            </div>
+            </div> */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-8">
                 <InstallationFunnel />
                 <DailyTrend />
