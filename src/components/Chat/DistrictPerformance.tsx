@@ -15,7 +15,7 @@ export function DistrictPerformance() {
 
   return (
     <div className="space-y-6 mt-8">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
         <div className="lg:col-span-2 space-y-4">
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -68,7 +68,7 @@ export function DistrictPerformance() {
         
         </div>
 
-        <div className="bg-gradient-to-b from-teal-600 to-teal-700 rounded-lg p-6 shadow-sm text-white min-h-64 flex flex-col">
+        {/* <div className="bg-gradient-to-b from-teal-600 to-teal-700 rounded-lg p-6 shadow-sm text-white min-h-64 flex flex-col">
           <h3 className="text-xs font-semibold uppercase tracking-wide mb-6">INSTALLATION HEATMAP</h3>
           <div className="flex-1 flex items-center justify-center">
             <div className="bg-white bg-opacity-20 rounded px-4 py-2 text-sm text-center">
@@ -95,7 +95,7 @@ export function DistrictPerformance() {
               ))}
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );

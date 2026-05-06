@@ -100,6 +100,8 @@ function Eventreport() {
     'BLOWING',
     'ROUTEFEATURE',
     'DUCT',
+    'OFCBLOWING',
+    'OFC',
   ];
   const getData = async () => {
     try {
@@ -182,6 +184,8 @@ function Eventreport() {
         return row.holdLatlong;
       case 'BLOWING':
         return row.blowingLatLong;
+      case 'OFCBLOWING':
+        return row.blowingLatLong;
       case 'ROUTEFEATURE':
         return row.routeFeatureLatLong;
       default:
@@ -261,7 +265,7 @@ function Eventreport() {
       eventType: string;
       id: number;
       survey_id: number;
-      index_id: number ;
+      index_id: number;
     } => m !== null,
   );
 
@@ -281,6 +285,7 @@ function Eventreport() {
     ROADCROSSING: 'crossingPhotos',
     HOLDSURVEY: 'holdPhotos',
     BLOWING: 'blowingPhotos',
+    OFCBLOWING: 'blowingPhotos',
     ROUTEFEATURE: 'routeFeaturePhotos',
   };
 
@@ -397,6 +402,51 @@ function Eventreport() {
               type: 'image',
               url: `${baseUrl}${imgUrl}`,
               label: `End Duct ${idx + 1} Image`,
+            });
+          }
+        });
+      }
+    });
+
+    // Add start OFC images
+    const parseOFCData = (data: any): any[] => {
+      if (!data) return [];
+      if (Array.isArray(data)) return data;
+      if (typeof data === 'string' && data !== 'null') {
+        try {
+          const parsed = JSON.parse(data);
+          return Array.isArray(parsed) ? parsed : [parsed];
+        } catch {
+          return [];
+        }
+      }
+      return [data];
+    };
+    const startOFCData = parseOFCData(row.start_ofc);
+    startOFCData.forEach((ofc: any) => {
+      if (ofc.images && Array.isArray(ofc.images)) {
+        ofc.images.forEach((imgUrl: string) => {
+          if (imgUrl) {
+            mediaItems.push({
+              type: 'image',
+              url: `${baseUrl}${imgUrl}`,
+              label: 'Start OFC Image',
+            });
+          }
+        });
+      }
+    });
+
+    // Add end OFC images
+    const endOFCData = parseOFCData(row.end_ofc);
+    endOFCData.forEach((ofc: any) => {
+      if (ofc.images && Array.isArray(ofc.images)) {
+        ofc.images.forEach((imgUrl: string) => {
+          if (imgUrl) {
+            mediaItems.push({
+              type: 'image',
+              url: `${baseUrl}${imgUrl}`,
+              label: 'End OFC Image',
             });
           }
         });
@@ -937,6 +987,98 @@ function Eventreport() {
       sortable: true,
     },
     {
+      name: 'Start OFC',
+      cell: (row) => {
+        const parseOFCData = (data: any): any[] => {
+          if (!data) return [];
+          if (Array.isArray(data)) return data;
+          if (typeof data === 'string' && data !== 'null') {
+            try {
+              const parsed = JSON.parse(data);
+              return Array.isArray(parsed) ? parsed : [parsed];
+            } catch {
+              return [];
+            }
+          }
+          return [data];
+        };
+        const startOFCData = parseOFCData(row.start_ofc);
+        if (!startOFCData || startOFCData.length === 0)
+          return <span className="text-gray-400">-</span>;
+        return (
+          <div className="text-xs">
+            {startOFCData.map((ofc, idx) => (
+              <div key={idx} className="mb-1">
+                <span className="font-medium">
+                  Drum: {ofc.drum_number || '-'}
+                </span>
+                <span className="ml-2 text-gray-500">
+                  | Meter: {ofc.meter || '-'}
+                </span>
+                <span className="ml-2 text-gray-500">
+                  | Type: {ofc.cable_type || '-'}
+                </span>
+                {ofc.images &&
+                  Array.isArray(ofc.images) &&
+                  ofc.images.length > 0 && (
+                    <span className="ml-2 text-blue-600">
+                      ({ofc.images.length} img)
+                    </span>
+                  )}
+              </div>
+            ))}
+          </div>
+        );
+      },
+      sortable: true,
+    },
+    {
+      name: 'End OFC',
+      cell: (row) => {
+        const parseOFCData = (data: any): any[] => {
+          if (!data) return [];
+          if (Array.isArray(data)) return data;
+          if (typeof data === 'string' && data !== 'null') {
+            try {
+              const parsed = JSON.parse(data);
+              return Array.isArray(parsed) ? parsed : [parsed];
+            } catch {
+              return [];
+            }
+          }
+          return [data];
+        };
+        const endOFCData = parseOFCData(row.end_ofc);
+        if (!endOFCData || endOFCData.length === 0)
+          return <span className="text-gray-400">-</span>;
+        return (
+          <div className="text-xs">
+            {endOFCData.map((ofc, idx) => (
+              <div key={idx} className="mb-1">
+                <span className="font-medium">
+                  Drum: {ofc.drum_number || '-'}
+                </span>
+                <span className="ml-2 text-gray-500">
+                  | Meter: {ofc.meter || '-'}
+                </span>
+                <span className="ml-2 text-gray-500">
+                  | Type: {ofc.cable_type || '-'}
+                </span>
+                {ofc.images &&
+                  Array.isArray(ofc.images) &&
+                  ofc.images.length > 0 && (
+                    <span className="ml-2 text-blue-600">
+                      ({ofc.images.length} img)
+                    </span>
+                  )}
+              </div>
+            ))}
+          </div>
+        );
+      },
+      sortable: true,
+    },
+    {
       name: 'Status',
       selector: (row) => row.status,
       sortable: true,
@@ -1066,6 +1208,14 @@ function Eventreport() {
       'Offset',
       'Vehicle Image',
       'End Pit Doc',
+      'Start OFC Drum',
+      'Start OFC Meter',
+      'Start OFC Cable Type',
+      'Start OFC Images',
+      'End OFC Drum',
+      'End OFC Meter',
+      'End OFC Cable Type',
+      'End OFC Images',
       'Authorised Person',
       'Contractor Details',
       'Vehicle Serial No',
@@ -1091,6 +1241,57 @@ function Eventreport() {
       const downloadUrl = item.endPitDoc
         ? `=HYPERLINK("${baseUrl}${item.endPitDoc}", "EndpicDoc")`
         : '-';
+
+      // Parse OFC data helper
+      const parseOFCData = (data: any): any[] => {
+        if (!data) return [];
+        if (Array.isArray(data)) return data;
+        if (typeof data === 'string' && data !== 'null') {
+          try {
+            const parsed = JSON.parse(data);
+            return Array.isArray(parsed) ? parsed : [parsed];
+          } catch {
+            return [];
+          }
+        }
+        return [data];
+      };
+
+      // Start OFC data
+      const startOFCData = parseOFCData(item.start_ofc);
+      const startOFCDrum =
+        startOFCData.length > 0 ? startOFCData[0].drum_number || '-' : '-';
+      const startOFCMeter =
+        startOFCData.length > 0 ? startOFCData[0].meter || '-' : '-';
+      const startOFCCableType =
+        startOFCData.length > 0 ? startOFCData[0].cable_type || '-' : '-';
+      const startOFCImages =
+        startOFCData.length > 0 && startOFCData[0].images
+          ? startOFCData[0].images
+              .map(
+                (url: string, i: number) =>
+                  `=HYPERLINK("${baseUrl}${url}", "Start_OFC_Img_${i + 1}")`,
+              )
+              .join(', ')
+          : '-';
+
+      // End OFC data
+      const endOFCData = parseOFCData(item.end_ofc);
+      const endOFCDrum =
+        endOFCData.length > 0 ? endOFCData[0].drum_number || '-' : '-';
+      const endOFCMeter =
+        endOFCData.length > 0 ? endOFCData[0].meter || '-' : '-';
+      const endOFCCableType =
+        endOFCData.length > 0 ? endOFCData[0].cable_type || '-' : '-';
+      const endOFCImages =
+        endOFCData.length > 0 && endOFCData[0].images
+          ? endOFCData[0].images
+              .map(
+                (url: string, i: number) =>
+                  `=HYPERLINK("${baseUrl}${url}", "End_OFC_Img_${i + 1}")`,
+              )
+              .join(', ')
+          : '-';
       // Get Image Links
       const photoField = eventPhotoFields[item.eventType];
       const rawPhotoData = photoField ? (item as any)[photoField] : null;
@@ -1191,6 +1392,14 @@ function Eventreport() {
         item.offset,
         VehicalImg,
         downloadUrl,
+        startOFCDrum,
+        startOFCMeter,
+        startOFCCableType,
+        startOFCImages,
+        endOFCDrum,
+        endOFCMeter,
+        endOFCCableType,
+        endOFCImages,
         item.authorised_person,
         item.contractor_details,
         item.vehicleserialno,

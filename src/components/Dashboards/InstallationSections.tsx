@@ -45,8 +45,8 @@ export function InstallationSections() {
                     <p className="text-xs opacity-70 mt-2">Currently at 98.4</p>
                 </div>
             </div> */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-8">
-                <InstallationFunnel />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* <InstallationFunnel /> */}
                 <DailyTrend />
                 <StatusSplit />
             </div>

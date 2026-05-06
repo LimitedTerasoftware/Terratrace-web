@@ -33,6 +33,8 @@ const EVENT_TYPES = {
   ENDSURVEY: { color: '#10B981', icon: '🎯', label: 'End Survey' },
   HOLDSURVEY: { color: '#a93226', icon: '⏸️', label: 'Hold Survey'},
   BLOWING: { color: '#663300', icon:'💨',label: 'Blowing Survey' },
+  OFCBLOWING: { color: '#0EA5E9', icon: '🧵', label: 'OFC Blowing' },
+
 };
 
 const baseUrl = import.meta.env.VITE_Image_URL;
@@ -59,7 +61,9 @@ const InfoWindow: React.FC<{
     ROADCROSSING: 'crossingPhotos',
     ENDSURVEY:'endPointPhoto',
     HOLDSURVEY:'holdPhotos',
-    BLOWING:"blowingPhotos"
+    BLOWING:"blowingPhotos",
+    OFCBLOWING:"blowingPhotos",
+
   };
   const getLatLongForEvent = (row: Activity) => {
           switch (row.eventType) {
@@ -78,6 +82,7 @@ const InfoWindow: React.FC<{
               case "ROADCROSSING": return row.crossingLatlong;
               case 'HOLDSURVEY':return row.holdLatlong;
               case "BLOWING":return row.blowingLatLong;
+              case 'OFCBLOWING':return row.blowingLatLong;
               default: return null;
           }
       };
@@ -441,19 +446,7 @@ useEffect(() => {
   Object.keys(groupedBySurvey).forEach((surveyId) => {
     const surveyPoints = groupedBySurvey[surveyId];
 
-    // Sort survey-wise
-    // const sortedData = [...surveyPoints].sort((a, b) => {
-    //   const eventA = eventData.find(e => e.id === a.id);
-    //   const eventB = eventData.find(e => e.id === b.id);
-
-    //   if (eventA?.created_at && eventB?.created_at) {
-    //     return (
-    //       new Date(eventA.created_at).getTime() -
-    //       new Date(eventB.created_at).getTime()
-    //     );
-    //   }
-    //   return 0;
-    // });
+   
   const sortedData = [...surveyPoints].sort((a, b) => {
     return a.index_id || a.id - b.index_id || b.id;
   });
@@ -494,45 +487,6 @@ useEffect(() => {
 }, [map, data, visibleEventTypes, showPolylines, eventData]);
 
 
-// const surveyDistances = useMemo(() => {
-//   if (!data.length || !window.google) return {};
-//   const grouped: any = {};
-
-//   // Group by survey_id
-//   data.forEach(point => {
-//     if (!grouped[point.survey_id]) {
-//       grouped[point.survey_id] = [];
-//     }
-//     grouped[point.survey_id].push(point);
-//   });
-
-//   const result: any = {};
-
-//   Object.keys(grouped).forEach((surveyId) => {
-//     const points = grouped[surveyId]
-//       .map((p:any) => new google.maps.LatLng(p.lat, p.lng));
-
-//     let distance = 0;
-
-//     for (let i = 0; i < points.length - 1; i++) {
-//       distance += google.maps.geometry.spherical.computeDistanceBetween(
-//         points[i],
-//         points[i + 1]
-//       );
-//     }
-
-//     result[surveyId] = distance; // in meters
-//   });
-
-//   return result;
-// }, [data]);
-
-// const totalDistance = useMemo(() => {
-//   return Object.values(surveyDistances).reduce(
-//     (sum: number, dist: any) => sum + dist,
-//     0
-//   );
-// }, [surveyDistances]);
 
   // Toggle event type visibility
   const toggleEventType = (eventType: string) => {
