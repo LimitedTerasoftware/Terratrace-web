@@ -16,7 +16,8 @@ import {
   AlertCircle,
   Server,
   Cable,
-  Settings
+  Settings,
+  Image
 } from "lucide-react";
 import { ErrorPage, LoadingPage } from "../../hooks/useActivities";
 import { Header } from "../../Breadcrumbs/Header";
@@ -240,6 +241,16 @@ const GPInstallationDetailView = () => {
       <span className="text-sm text-gray-900 font-semibold">{value || 'N/A'}</span>
     </div>
   );
+    const NoData = ({label,value}:{label:string;value:string}) =>(
+       <div className="mb-4">
+          <h4 className="font-medium text-gray-700 mb-2">{label}</h4>
+        
+        <div className="text-center py-8 text-gray-400  bg-gray-50 rounded-lg">
+          <Server className="h-8 w-8 mx-auto mb-2 opacity-50" />
+          <p className="text-sm">{value}</p>
+        </div>
+        </div>
+    );
 
   const EquipmentDetails = ({ equipmentData, title, excludeFields = [] }: { 
   equipmentData: string | any; 
@@ -469,42 +480,73 @@ const GPInstallationDetailView = () => {
                 <DataRow label="Longitude" value={detail.gp_longitude} />
               </div>
               
-              {detail.gp_photos && (
+              {detail.gp_photos != '[]' ? (
                 <MultiImageDisplay photos={detail.gp_photos} title="GP Photos" />
+              ):(
+                <NoData label="GP Photos" value = "GP Photos Not Available"/>
+
               )}
             </InfoCard>
 
             {/* Equipment Information */}
             <InfoCard title="Equipment Information" icon={Server}>
               <div className="space-y-4">
-                {detail.smart_rack && (
+                {detail.smart_rack != '[]' ? (
                   <EquipmentDetails equipmentData={detail.smart_rack} title="Smart Rack" excludeFields={['type']} />
+                ):(
+                    <NoData label="Smart Rack" value = "Smart Rack Not Available"/>
+
                 )}
-                {detail.fdms_shelf && (
+                {detail.fdms_shelf != '[]' ? (
                   <EquipmentDetails equipmentData={detail.fdms_shelf} title="FDMS Shelf" excludeFields={['count']}/>
+                ):(
+                   <NoData label="Smart Rack" value = "Smart Rack Not Available"/>
+
                 )}
-                {detail.ip_mpls_router && (
+                {detail.ip_mpls_router ? (
                   <EquipmentDetails equipmentData={detail.ip_mpls_router} title="IP MPLS Router" />
+                ):(
+                  <NoData label="IP MPLS Router" value = "IP MPLS Router Not Available"/>
+
                 )}
+                {detail.RFMS_FILTERS != "[]" ? (
                 <EquipmentDetails equipmentData={detail.RFMS_FILTERS} title="RFMS Filters" />
+
+                ):(
+                  <NoData label="RFMS Filters" value = "RFMS Filters Not Available"/>
+
+                )}
               </div>
 
-              {detail.equipment_photo && (
+              {detail.equipment_photo != "[]"  ? (
                 <MultiImageDisplay photos={detail.equipment_photo} title="Electrical wiring photo" />
+              ):(
+                  <NoData label="Electrical wiring photo" value = "Electrical wiring photo Not Available"/>
+
               )}
             </InfoCard>
 
             {/* Network Components */}
             <InfoCard title="Network Components" icon={Cable}>
               <div className="space-y-4">
-                {detail.sfp_10g_40 && (
+                {detail.sfp_10g_40  != '[]' ?  (
                   <EquipmentDetails equipmentData={detail.sfp_10g_40} title="SFP 10G/40" />
+                ):(
+                    <NoData label="SFP 10G/40" value = "SFP 10G/40 Not Available"/>
+
                 )}
-                {detail.sfp_1g_10 && (
+                {detail.sfp_1g_10 != '[]' ? (
                   <EquipmentDetails equipmentData={detail.sfp_1g_10} title="SFP 1G/10" />
+               
+                ):(
+                   <NoData label="SFP 1G/10" value = "SFP 1G/10 Not Available"/>
+
                 )}
-                {detail.sfp_10g_10 && (
+                {detail.sfp_10g_10 != '[]' ?  (
                   <EquipmentDetails equipmentData={detail.sfp_10g_10} title="SFP 10G/10" />
+                ):(
+                  <NoData label="SFP 10G/10" value = "SFP 10G/10 Not Available"/>
+
                 )}
                 {!detail.sfp_10g_40 && !detail.sfp_1g_10 && !detail.sfp_10g_10 && (
                   <div className="text-center py-8 text-gray-400">
@@ -518,20 +560,35 @@ const GPInstallationDetailView = () => {
             {/* Power Systems */}
             <InfoCard title="Power Systems" icon={Zap}>
               <div className="space-y-4">
-                {detail.power_system_with_mppt && (
+                {detail.power_system_with_mppt ? (
                   <EquipmentDetails equipmentData={detail.power_system_with_mppt} title="Power System with MPPT" />
+                ):(
+                  <NoData label="Power System with MPPT" value = "Power System with MPPT Not Available"/>
+
                 )}
-                {detail.power_system_with_out_mppt && (
+                {detail.power_system_with_out_mppt ? (
                   <EquipmentDetails equipmentData={detail.power_system_with_out_mppt} title="Power System without MPPT" />
+                ):(
+                  <NoData label="Power System without MPPT" value = "Power System without MPPT Not Available"/>
+
                 )}
-                {detail.mppt_solar_1kw && (
+                {detail.mppt_solar_1kw ? (
                   <EquipmentDetails equipmentData={detail.mppt_solar_1kw} title="MPPT Solar 1KW" />
+                ):(
+                  <NoData label="MPPT Solar 1KW" value = "MPPT Solar 1KW Not Available"/>
+
                 )}
-                {detail.electricity_meter && (
+                {detail.electricity_meter ? (
                   <EquipmentDetails equipmentData={detail.electricity_meter} title="Electricity Meter" />
+                ):(
+                <NoData label="Electricity Meter" value = "Electricity Meter Not Available"/>
+
                 )}
-                {detail.earthpit && (
+                {detail.earthpit ? (
                   <EquipmentDetails equipmentData={detail.earthpit} title="Earth Pit" />
+                ):(
+                  <NoData label="Earth Pit" value = "Earth Pit Not Available"/>
+
                 )}
                 {!detail.power_system_with_mppt && !detail.power_system_with_out_mppt && 
                  !detail.mppt_solar_1kw && !detail.electricity_meter && !detail.earthpit && (

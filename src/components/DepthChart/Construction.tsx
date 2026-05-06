@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { StateData, District, Block } from '../../types/survey';
 import Report from './UGConst';
 import ConstructionStatsPanel from './ConstructionStatsPanel';
-import { SheetIcon, Construction, EyeIcon, PlusCircleIcon } from 'lucide-react';
+import { SheetIcon, Construction, EyeIcon, PlusCircleIcon, Globe2Icon } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { UGConstructionSurveyData } from '../../types/survey';
 import axios from 'axios';
@@ -36,6 +36,7 @@ function ConstructionPage() {
   const [todate, setToDate] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'UG'>('UG');
   const [excel, setExcel] = useState<boolean>(false);
+  const [kml,setkml]=useState<boolean>(false);
   const [preview, setPreview] = useState<boolean>(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [filtersReady, setFiltersReady] = useState(false);
@@ -51,6 +52,7 @@ function ConstructionPage() {
   // New state for stats panel
   const [surveyData, setSurveyData] = useState<UGConstructionSurveyData[]>([]);
   const [loadingStats, setLoadingStats] = useState<boolean>(false);
+  const [worktype,setworktype]=useState<string>("");
 
   const statusMap: Record<number, string> = {
     1: 'Accepted',
@@ -214,6 +216,7 @@ function ConstructionPage() {
     const from_date = searchParams.get('from_date') || '';
     const to_date = searchParams.get('to_date') || '';
     const search = searchParams.get('search') || '';
+    const worktype = searchParams.get('worktype') || '';
 
     setSelectedState(state_id);
     setSelectedDistrict(district_id);
@@ -222,6 +225,7 @@ function ConstructionPage() {
     setFromDate(from_date);
     setToDate(to_date);
     setGlobalSearch(search);
+    setworktype(worktype);
     setFiltersReady(true);
   }, []);
 
@@ -231,6 +235,7 @@ function ConstructionPage() {
     newBlock: string | null,
     newLink:string|null,
     status: number | null,
+    worktype:string|"",
     from_date: string | null,
     to_date: string | null,
     search: string | null,
@@ -241,6 +246,7 @@ function ConstructionPage() {
     if (newBlock) params.block_id = newBlock;
     if(newLink) params.link=newLink;
     if (status) params.status = String(status);
+    if(worktype) params.worktype = worktype;
     if (from_date) params.from_date = from_date;
     if (to_date) params.to_date = to_date;
     if (search) params.search = search;
@@ -271,6 +277,7 @@ function ConstructionPage() {
       null,
       null,
       selectedStatus,
+      worktype,
       fromdate,
       todate,
       globalsearch,
@@ -287,6 +294,7 @@ function ConstructionPage() {
       null,
       null,
       selectedStatus,
+      worktype,
       fromdate,
       todate,
       globalsearch,
@@ -303,6 +311,7 @@ function ConstructionPage() {
       value || null,
       null,
       selectedStatus,
+      worktype,
       fromdate,
       todate,
       globalsearch,
@@ -316,6 +325,7 @@ function ConstructionPage() {
       selectedBlock,
       selectedConnection,
       selectedStatus,
+      worktype,
       fromdate,
       todate,
       globalsearch,
@@ -332,11 +342,28 @@ function ConstructionPage() {
       selectedBlock,
       selectedConnection,
       statusValue,
+      worktype,
       fromdate,
       todate,
       globalsearch,
     );
   };
+  const handleworkChange = (value:string) =>{
+    setworktype(value);
+    handleFilterChange(
+      selectedState,
+      selectedDistrict,
+      selectedBlock,
+      selectedConnection,
+      selectedStatus,
+       value,
+      fromdate,
+      todate,
+      globalsearch,
+    );
+
+
+  }
 
   const handleFromDateChange = (value: string) => {
     setFromDate(value);
@@ -346,6 +373,7 @@ function ConstructionPage() {
       selectedBlock,
       selectedConnection,
       selectedStatus,
+      worktype,
       value,
       todate,
       globalsearch,
@@ -360,6 +388,7 @@ function ConstructionPage() {
       selectedBlock,
       selectedConnection,
       selectedStatus,
+      worktype,
       fromdate,
       value,
       globalsearch,
@@ -374,6 +403,7 @@ function ConstructionPage() {
       selectedBlock,
       selectedConnection,
       selectedStatus,
+      worktype,
       fromdate,
       todate,
       value,
@@ -664,6 +694,8 @@ function ConstructionPage() {
               </div>
             </div>
 
+          
+
             {/* Date Filters */}
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
               <input
@@ -690,6 +722,32 @@ function ConstructionPage() {
 
           {/* Second Row - Search and Excel Export */}
           <div className="flex flex-wrap items-center gap-3">
+               <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+              <select
+                value={worktype !== '' ? worktype : ''}
+                onChange={(e) => handleworkChange(e.target.value)}
+                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              >
+                 <option value="">All Work Type</option>
+                 <option value="New Construction">New Construction</option>
+                  <option value="Rectification">Rectification</option>
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                <svg
+                  className="w-4 h-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </div>
+            </div>
             {/* Search Bar */}
             <div className="relative w-80">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -723,6 +781,13 @@ function ConstructionPage() {
             >
               <SheetIcon className="h-4 w-4 text-green-600" />
               Excel
+            </button>
+            <button onClick={()=>setkml(true)}
+              className="flex items-center gap-2 flex-none h-10 px-4 py-2 text-sm font-medium text-yellow-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap"
+
+             >
+               <Globe2Icon className="h-4 w-4" />
+                    KML
             </button>
             <button
               onClick={() => setPreview(true)}
@@ -759,10 +824,12 @@ function ConstructionPage() {
               selectedDistrict,
               selectedBlock,
               selectedStatus,
+              worktype,
               fromdate,
               todate,
               globalsearch,
               excel,
+              kml,
               filtersReady,
               preview,
               isAddModalOpen,
@@ -772,6 +839,7 @@ function ConstructionPage() {
             }}
             Onexcel={() => setExcel(false)}
             OnPreview={() => setPreview(false)}
+            OnKml={()=>setkml(false)}
             OnModal={() => setIsAddModalOpen(false)}
             OnData={(data:UGConstructionSurveyData[])=> setSurveyData(data)}
           />

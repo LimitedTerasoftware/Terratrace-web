@@ -15,10 +15,12 @@ interface ReportProps {
     selectedDistrict: string | null;
     selectedBlock: string | null;
     selectedStatus: number | null;
+    worktype:string;
     fromdate: string;
     todate: string;
     globalsearch: string;
     excel: boolean;
+    kml: boolean;
     filtersReady: boolean;
     preview: boolean;
     isAddModalOpen: boolean;
@@ -28,6 +30,7 @@ interface ReportProps {
   };
   Onexcel: () => void;
   OnPreview: () => void;
+  OnKml: () => void;
   OnModal: () => void;
   OnData: (data: UGConstructionSurveyData[]) => void;
 }
@@ -38,6 +41,7 @@ const Report: React.FC<ReportProps> = ({
   Data,
   Onexcel,
   OnPreview,
+  OnKml,
   OnModal,
   OnData,
 }) => {
@@ -54,6 +58,7 @@ const Report: React.FC<ReportProps> = ({
   const [surveyToUpdate, setSurveyToUpdate] =
     useState<UGConstructionSurveyData | null>(null);
   const navigate = useNavigate();
+  const [kmlLoading, setKmlLoading] = useState(false);
 
   useEffect(() => {
     const fetchSurveyData = async () => {
@@ -69,6 +74,7 @@ const Report: React.FC<ReportProps> = ({
         if (Data.fromdate) params.from_date = Data.fromdate;
         if (Data.todate) params.to_date = Data.todate;
         if (Data.selectedStatus !== null) params.status = Data.selectedStatus;
+        if(Data.worktype !== "") params.worktype = Data.worktype;
         if (Data.globalsearch.trim()) params.search = Data.globalsearch.trim();
 
         const response = await axios.get<{
@@ -104,6 +110,7 @@ const Report: React.FC<ReportProps> = ({
     Data.todate,
     Data.filtersReady,
     Data.selectedStatus,
+    Data.worktype,
     Data.globalsearch,
     Data.isAddModalOpen,
   ]);
@@ -451,6 +458,196 @@ const Report: React.FC<ReportProps> = ({
     }
   }, [Data.preview]);
 
+  useEffect(() => {
+    if (!Data.kml) return;
+    if (selectedRows.length === 0) {
+      alert('Please select at least one row to kml the data.');
+      OnKml();
+      return;
+    }
+    handleGenerateKML();
+  }, [Data.kml]);
+
+  const handleGenerateKML = async () => {
+    if (selectedRows.length === 0) {
+      alert('No rows selected');
+      return;
+    }
+
+    const selectedEventTypes = [
+      'STARTSURVEY',
+      'DEPTH',
+      'ROADCROSSING',
+      'FPOI',
+      'JOINTCHAMBER',
+      'MANHOLES',
+      'ROUTEINDICATOR',
+      'LANDMARK',
+      'FIBERTURN',
+      'KILOMETERSTONE',
+      'STARTPIT',
+      'ENDPIT',
+      'ENDSURVEY',
+      'HOLDSURVEY',
+      'BLOWING',
+      'ROUTEFEATURE',
+      'DUCT',
+    ];
+    const blueIcon =
+      'http://maps.google.com/mapfiles/kml/paddle/blu-circle.png';
+
+    let allPlacemarks = '';
+    setKmlLoading(true);
+
+    try {
+      const surveyIds = selectedRows.map((row) => row.id).join(',');
+      const resp = await axios.get(`${TraceBASEURL}/construction-forms`, {
+        params: { survey_ids: surveyIds },
+      });
+
+      if (resp.status !== 200 && resp.status !== 201) {
+        throw new Error('Failed to fetch survey data');
+      }
+
+      const activities = resp.data?.data.filter((data:any) =>data.status == 0) || [];
+
+      if (activities.length === 0) {
+        alert('No survey data found for selected rows');
+        setKmlLoading(false);
+        OnKml();
+        return;
+      }
+
+      const getLatLongForEvent = (row: any) => {
+        switch (row.eventType) {
+          case 'FPOI':
+            return row.fpoiLatLong;
+          case 'DEPTH':
+            return row.depthLatlong;
+          case 'JOINTCHAMBER':
+            return row.jointChamberLatLong;
+          case 'MANHOLES':
+            return row.manholeLatLong;
+          case 'LANDMARK':
+            return row.landmarkLatLong;
+          case 'KILOMETERSTONE':
+            return row.kilometerstoneLatLong;
+          case 'FIBERTURN':
+            return row.fiberTurnLatLong;
+          case 'ROUTEINDICATOR':
+            return row.routeIndicatorLatLong;
+          case 'STARTPIT':
+            return row.startPitLatlong;
+          case 'ENDPIT':
+            return row.endPitLatlong;
+          case 'STARTSURVEY':
+            return row.startPointCoordinates;
+          case 'ENDSURVEY':
+            return row.endPointCoordinates;
+          case 'ROADCROSSING':
+            return row.crossingLatlong;
+          case 'HOLDSURVEY':
+            return row.holdLatlong;
+          case 'BLOWING':
+            return row.blowingLatLong;
+          case 'ROUTEFEATURE':
+            return row.routeFeatureLatLong;
+          default:
+            return null;
+        }
+      };
+
+      const roundCoord = (value: string | number) => {
+        return parseFloat(Number(value).toFixed(5));
+      };
+
+      activities.forEach((activity: any) => {
+        const eventType = activity.eventType;
+        if (!selectedEventTypes.includes(eventType)) return;
+
+        const latLongStr = getLatLongForEvent(activity);
+        if (!latLongStr) return;
+
+        const [latStr, lngStr] = latLongStr.split(',');
+        const lat = parseFloat(latStr?.trim());
+        const lng = parseFloat(lngStr?.trim());
+
+        if (isNaN(lat) || isNaN(lng)) return;
+
+        const name = activity.survey_id || activity.id || 'Unknown';
+        const latLong = `${lat},${lng},0`;
+
+        if (eventType === 'STARTSURVEY' || eventType === 'ENDSURVEY') {
+          allPlacemarks += `
+          <Placemark>
+            <name>Line ${name}</name>
+            <Style>
+              <LineStyle>
+                <color>ff0000ff</color>
+                <width>3</width>
+              </LineStyle>
+            </Style>
+            <LineString>
+              <tessellate>1</tessellate>
+              <coordinates>${latLong}</coordinates>
+            </LineString>
+          </Placemark>
+        `;
+        } else {
+          allPlacemarks += `
+          <Placemark>
+            <name>${eventType || 'UNKNOWN'}</name>
+            <description>
+              Survey ID: ${activity.survey_id || 'N/A'}<br/>
+              ID: ${activity.id || 'N/A'}<br/>
+              Area Type: ${activity.area_type || 'N/A'}<br/>
+              Depth: ${activity.depthMeters || 'N/A'}<br/>
+            </description>
+            <Style>
+              <IconStyle>
+                <scale>1.1</scale>
+                <Icon><href>${blueIcon}</href></Icon>
+              </IconStyle>
+            </Style>
+            <Point>
+              <coordinates>${lng},${lat},0</coordinates>
+            </Point>
+          </Placemark>
+        `;
+        }
+      });
+    } catch (err) {
+      console.error('Error fetching survey data:', err);
+      alert('Failed to generate KML');
+    }
+
+    setKmlLoading(false);
+
+    if (!allPlacemarks) {
+      alert('No valid coordinates found for KML generation');
+      OnKml();
+      return;
+    }
+
+    const kmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+    <kml xmlns="http://www.opengis.net/kml/2.2">
+      <Document>
+        ${allPlacemarks}
+      </Document>
+    </kml>`;
+
+    const blob = new Blob([kmlContent], {
+      type: 'application/vnd.google-earth.kml+xml',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${selectedRows[0]?.block_name || 'UGConst'}_GroundSurvey.kml`;
+    a.click();
+    URL.revokeObjectURL(url);
+    OnKml();
+  };
+
   if (error) {
     return (
       <div
@@ -464,7 +661,7 @@ const Report: React.FC<ReportProps> = ({
 
   return (
     <div className="min-h-screen">
-      {loading && (
+      {(loading || kmlLoading) && (
         <div className="absolute inset-0 bg-white bg-opacity-70 flex justify-center items-center z-50">
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
         </div>
@@ -697,6 +894,7 @@ const Report: React.FC<ReportProps> = ({
                 if (Data.todate) params.to_date = Data.todate;
                 if (Data.selectedStatus !== null)
                   params.status = Data.selectedStatus;
+                if(Data.worktype !== "") params.worktype = Data.worktype;
                 if (Data.globalsearch.trim())
                   params.search = Data.globalsearch.trim();
 

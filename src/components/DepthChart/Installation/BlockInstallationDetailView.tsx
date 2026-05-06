@@ -15,10 +15,12 @@ import {
   AlertCircle,
   Server,
   Cable,
-  Settings
+  Settings,
+  Blocks
 } from "lucide-react";
 import { ErrorPage, LoadingPage } from "../../hooks/useActivities";
 import { Header } from "../../Breadcrumbs/Header";
+import { Label } from "recharts";
 
 interface BlockInstallationDetail {
   id: number;
@@ -240,6 +242,16 @@ const BlockInstallationDetailView = () => {
       <span className="text-sm text-gray-600 font-medium">{label}</span>
       <span className="text-sm text-gray-900 font-semibold">{value || 'N/A'}</span>
     </div>
+  );
+  const NoData = ({label,value}:{label:string;value:string}) =>(
+     <div className="mb-4 mt-4">
+        <h4 className="font-medium text-gray-700 mb-2">{label}</h4>
+      
+      <div className="text-center py-8 text-gray-400  bg-gray-50 rounded-lg">
+        <Server className="h-8 w-8 mx-auto mb-2 opacity-50" />
+        <p className="text-sm">{value}</p>
+      </div>
+      </div>
   );
 
   const EquipmentDetails = ({ equipmentData, title, excludeFields = [] }: { 
@@ -466,14 +478,20 @@ const BlockInstallationDetailView = () => {
                 <DataRow label="Longitude" value={detail.block_longitude} />
               </div>
               
-              {detail.block_photos && detail.block_photos.length > 0 && (
+              {detail.block_photos && detail.block_photos.length > 0 ? (
                 <MultiImageDisplay photos={detail.block_photos} title="Block Photos" />
-              )}
-               {detail.electrical_wiring_photo && (
+              ): (
+                <NoData label="Block Photos" value = "Block Photos Not Available"/>
+              )
+                }
+               {detail.electrical_wiring_photo ? (
 
 
                 <MultiImageDisplay photos={detail.electrical_wiring_photo} title="Electrical Wiring" />
 
+
+               ):(
+                  <NoData label="Electrical Wiring Photos" value = "Electrical Wiring Photos Not Available"/>
 
                )}
              
@@ -482,47 +500,69 @@ const BlockInstallationDetailView = () => {
             {/* Equipment Information */}
             <InfoCard title="Equipment Information" icon={Server}>
               <div className="space-y-4">
-                {detail.smart_rack && (
+                {detail.smart_rack != '[]'?(
                   <EquipmentDetails equipmentData={detail.smart_rack} title="Smart Rack" excludeFields={['type']} />
+                ):(
+                  <NoData label="Smart Rack" value = "Smart Rack Not Available"/>
+
                 )}
-                {detail.fdms_shelf && (
+                {detail.fdms_shelf != '[]' ? (
                   <EquipmentDetails equipmentData={detail.fdms_shelf} title="FDMS Shelf" excludeFields={['count']} />
+                ):(
+                  <NoData label="FDMS Shelf" value = " FDMS Shelf Not Available"/>
+
                 )}
-                {detail.ip_mpls_router && (
+                {detail.ip_mpls_router ? (
                   <EquipmentDetails equipmentData={detail.ip_mpls_router} title="IP MPLS Router" />
+                ):(
+                  <NoData label="IP MPLS Router" value = " IP MPLS Router Not Available"/>
+
                 )}
                 {detail.rfms != "[]" ? (
                   <EquipmentDetails equipmentData={detail.rfms} title="RFMS" />
                 ) : 
                   (
-                   <div className="mb-4">
-                   <h4 className="font-medium text-gray-700 mb-2">RFMS</h4>
-                  
-                  <div className="text-center py-8 text-gray-400  bg-gray-50 rounded-lg">
-                    <Server className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No RFMS available</p>
-                  </div>
-                  </div>)
+                  <NoData label="RFMS" value = "RFMS Not Available"/>
+
+                  )
                 }
-                <EquipmentDetails equipmentData={detail.RFMS_FILTERS} title="RFMS Filters" />
+                {detail.RFMS_FILTERS != "[]" ? (
+                    <EquipmentDetails equipmentData={detail.RFMS_FILTERS} title="RFMS Filters" />
+
+                ):(
+                  <NoData label="RFMS Filters" value = "RFMS Filters Not Available"/>
+
+                )}
               </div>
 
-              {detail.equipment_photo && detail.equipment_photo.length > 0 && (
+              {detail.equipment_photo && detail.equipment_photo.length > 0 ? (
                 <MultiImageDisplay photos={detail.equipment_photo} title="Equipment Photos" />
+              ):(
+                  <NoData label="Equipment Photos" value = "Equipment Photos Not Available"/>
+
               )}
             </InfoCard>
 
             {/* Network Components */}
             <InfoCard title="Network Components" icon={Cable}>
               <div className="space-y-4">
-                {detail.sfp_10g_40 && (
+                {detail.sfp_10g_40 != '[]' ? (
                   <EquipmentDetails equipmentData={detail.sfp_10g_40} title="SFP 10G/40" />
+                ):(
+                  <NoData label="SFP 10G/40" value = "SFP 10G/40 Not Available"/>
+
                 )}
-                {detail.sfp_1g_10 && (
+                {detail.sfp_1g_10 != '[]' ? (
                   <EquipmentDetails equipmentData={detail.sfp_1g_10} title="SFP 1G/10" />
+                ):(
+                  <NoData label="SFP 1G/10" value = "SFP 1G/10 Not Available"/>
+
                 )}
-                {detail.sfp_10g_10 && (
+                {detail.sfp_10g_10 != '[]'? (
                   <EquipmentDetails equipmentData={detail.sfp_10g_10} title="SFP 10G/10" />
+                ):(
+                  <NoData label="SFP 10G/10" value = "SFP 10G/10 Not Available"/>
+
                 )}
                 {!detail.sfp_10g_40 && !detail.sfp_1g_10 && !detail.sfp_10g_10 && (
                   <div className="text-center py-8 text-gray-400">
@@ -536,11 +576,17 @@ const BlockInstallationDetailView = () => {
             {/* Fiber & Splicing */}
             <InfoCard title="Fiber & Splicing" icon={Cable}>
               <div className="space-y-4">
-                {detail.fiber_entry && (
+                {detail.fiber_entry != '[]' ? (
                   <MultiImageDisplay photos={detail.fiber_entry} title="Fiber Entry" />
+                ):(
+                  <NoData label="Fiber Entry" value = "Fiber Entry Not Available"/>
+
                 )}
-                {detail.splicing_photo && detail.splicing_photo.length > 0 && (
+                {detail.splicing_photo && detail.splicing_photo != '[]' ? (
                   <MultiImageDisplay photos={detail.splicing_photo} title="Splicing Photos" />
+                ):(
+                  <NoData label="Splicing Photos" value = "Splicing Photos Not Available"/>
+
                 )}
                 {!detail.fiber_entry && (!detail.splicing_photo || detail.splicing_photo.length === 0) && (
                   <div className="text-center py-8 text-gray-400">
