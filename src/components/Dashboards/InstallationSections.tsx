@@ -9,15 +9,18 @@ interface InstallationSectionsProps {
   fromDate?: string | null;
   toDate?: string | null;
   statsData?: any;
-   activeTab?: 'GP_INSTALLATION' | 'BLOCK_INSTALLATION';
-
+  activeTab?: 'GP_INSTALLATION' | 'BLOCK_INSTALLATION';
+  trendData?: any;
+  loadingTrend?: boolean;
 }
 
 export function InstallationSections({
   fromDate,
   toDate,
   statsData,
-  activeTab
+  activeTab,
+  trendData,
+  loadingTrend,
 }: InstallationSectionsProps) {
   return (
     <div className="space-y-6">
@@ -58,10 +61,17 @@ export function InstallationSections({
                     <p className="text-xs opacity-70 mt-2">Currently at 98.4</p>
                 </div>
             </div> */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* <InstallationFunnel /> */}
-        <DailyTrend />
-        <StatusSplit statsData={statsData} activeTab={activeTab} />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
+          <DailyTrend
+            trendData={trendData}
+            loading={loadingTrend}
+            activeTab={activeTab}
+          />
+        </div>
+        <div className="lg:col-span-1">
+          <StatusSplit statsData={statsData} activeTab={activeTab} />
+        </div>
       </div>
     </div>
   );

@@ -33,7 +33,7 @@ export function StatusSplit({ statsData ,activeTab = 'GP_INSTALLATION'}: StatusS
         STATUS SPLIT
       </h3>
 
-      <div className="relative w-40 h-40 mb-8">
+      <div className="relative w-40 h-55 mb-8">
         <svg
           viewBox="0 0 100 100"
           className="w-full h-full transform -rotate-90"

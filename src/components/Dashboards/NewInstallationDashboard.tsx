@@ -41,6 +41,8 @@ function NewInstallationDashboard() {
   const [loadingStatsPanel, setLoadingStatsPanel] = useState<boolean>(false);
   const [summaryData, setSummaryData] = useState<any>(null);
   const [loadingSummary, setLoadingSummary] = useState<boolean>(false);
+  const [trendData, setTrendData] = useState<any>(null);
+  const [loadingTrend, setLoadingTrend] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
@@ -198,9 +200,33 @@ function NewInstallationDashboard() {
     }
   };
 
+  const fetchTrendData = async () => {
+    try {
+      setLoadingTrend(true);
+      const params = new URLSearchParams();
+      const { from_date, to_date } = getDateRange();
+      if (from_date) params.append('from', from_date);
+      if (to_date) params.append('to', to_date);
+      const queryString = params.toString();
+      const url = `${TraceBASEURL}/get-installation-trend${queryString ? `?${queryString}` : ''}`;
+      const response = await axios.get<{ status: boolean; data: any }>(url);
+      if (response.data.status) {
+        setTrendData(response.data.data);
+      } else {
+        setTrendData(null);
+      }
+    } catch (error) {
+      console.error('Error fetching installation trend:', error);
+      setTrendData(null);
+    } finally {
+      setLoadingTrend(false);
+    }
+  };
+
   useEffect(() => {
     fetchStatsData();
     fetchSummaryData();
+    fetchTrendData();
   }, [
     activeTab,
     selectedStateCode,
@@ -387,6 +413,8 @@ function NewInstallationDashboard() {
                 toDate={getDateRange().to_date}
                 statsData={statsData}
                 activeTab={activeTab}
+                trendData={trendData}
+                loadingTrend={loadingTrend}
               />
               <DistrictPerformance
                 summaryData={summaryData}
