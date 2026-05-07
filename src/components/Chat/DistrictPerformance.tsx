@@ -5,13 +5,30 @@ interface DistrictPerformanceProps {
   summaryData?: any;
   loadingSummary?: boolean;
   activeTab?: 'GP_INSTALLATION' | 'BLOCK_INSTALLATION';
+  currentPage?: number;
+  rowsPerPage?: number;
+  totalRows?: number;
+  onPageChange?: (page: number) => void;
+  onRowsPerPageChange?: (newRowsPerPage: number, newPage: number) => void;
+  selectedStateCode?: string;
+  selectedDistrictCode?: string;
+  fromDate?: string | null;
+  toDate?: string | null;
 }
 
 export function DistrictPerformance({
   summaryData,
   loadingSummary,
   activeTab = 'GP_INSTALLATION',
-
+  currentPage = 1,
+  rowsPerPage = 10,
+  totalRows = 0,
+  onPageChange,
+  onRowsPerPageChange,
+  selectedStateCode,
+  selectedDistrictCode,
+  fromDate,
+  toDate,
 }: DistrictPerformanceProps) {
   const navigate = useNavigate();
   const isGP = activeTab === 'GP_INSTALLATION';
@@ -43,10 +60,10 @@ export function DistrictPerformance({
       sortable: true,
       cell: (row: any) => (
         <span className="text-gray-600">
-      {isGP
-        ? `${row.total_gps} / ${row.installed}`
-        : `${row.total_blocks} / ${row.installed}`}
-    </span>
+          {isGP
+            ? `${row.total_gps} / ${row.installed}`
+            : `${row.total_blocks} / ${row.installed}`}
+        </span>
       ),
     },
     {
@@ -102,48 +119,29 @@ export function DistrictPerformance({
         );
       },
     },
-    {
-      name: 'EXCEPTIONS',
-      selector: (row: any) => getExceptions(row),
-      sortable: true,
-      cell: (row: any) => {
-        const exceptions = getExceptions(row);
-        return (
-          <span
-            className={`font-semibold ${
-              exceptions > 50
-                ? 'text-red-600'
-                : exceptions > 20
-                  ? 'text-orange-600'
-                  : 'text-green-600'
-            }`}
-          >
-            {exceptions}
-          </span>
-        );
-      },
-    },
+    // {
+    //   name: 'EXCEPTIONS',
+    //   selector: (row: any) => getExceptions(row),
+    //   sortable: true,
+    //   cell: (row: any) => {
+    //     const exceptions = getExceptions(row);
+    //     return (
+    //       <span
+    //         className={`font-semibold ${
+    //           exceptions > 50
+    //             ? 'text-red-600'
+    //             : exceptions > 20
+    //               ? 'text-orange-600'
+    //               : 'text-green-600'
+    //         }`}
+    //       >
+    //         {exceptions}
+    //       </span>
+    //     );
+    //   },
+    // },
   ];
-//  const handlePageChange = (page: number) => {
-//     setCurrentPage(page);
-//   };
 
-//   const handleRowsPerPageChange = (newRowsPerPage: number, newPage: number) => {
-//     setRowsPerPage(newRowsPerPage);
-//     setCurrentPage(newPage);
-//   };
-
-  if (loadingSummary) {
-    return (
-      <div className="space-y-6 mt-8">
-        <div className="bg-white rounded-lg shadow-sm p-8">
-          <div className="flex justify-center items-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
   return (
     <div className="space-y-6 mt-8">
       <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
@@ -155,7 +153,17 @@ export function DistrictPerformance({
               </h3>
               <button
                 className="text-sm text-blue-600 font-medium hover:text-blue-700"
-                onClick={() => navigate('/installation')}
+                onClick={() => {
+                  const params = new URLSearchParams();
+                  params.append('tab', activeTab);
+                  if (selectedStateCode)
+                    params.append('state_code', selectedStateCode);
+                  if (selectedDistrictCode)
+                    params.append('district_code', selectedDistrictCode);
+                  if (fromDate) params.append('from_date', fromDate);
+                  if (toDate) params.append('to_date', toDate);
+                  navigate(`/installation?${params.toString()}`);
+                }}
               >
                 View All Districts ({summaryData?.totalDistricts || 0})
               </button>
@@ -167,6 +175,11 @@ export function DistrictPerformance({
                 data={districts}
                 pagination
                 paginationServer
+                paginationTotalRows={totalRows}
+                paginationDefaultPage={currentPage}
+                paginationPerPage={rowsPerPage}
+                onChangePage={onPageChange}
+                onChangeRowsPerPage={onRowsPerPageChange}
                 highlightOnHover
                 responsive
                 noDataComponent={

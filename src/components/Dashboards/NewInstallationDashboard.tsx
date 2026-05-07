@@ -21,7 +21,7 @@ function NewInstallationDashboard() {
   const [selectedState, setSelectedState] = useState<string>('');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('');
   const [selectedBlock, setSelectedBlock] = useState<string>('');
-  const [selectedPeriod, setSelectedPeriod] = useState<string>('30');
+  const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
   const [selectedStateCode, setSelectedStateCode] = useState<string | ''>('');
   const [selectedDistrictCode, setSelectedDistrictCode] = useState<string | ''>(
     '',
@@ -43,6 +43,35 @@ function NewInstallationDashboard() {
   const [loadingSummary, setLoadingSummary] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  const getDateRange = () => {
+    const today = new Date();
+    const toDate = today.toISOString().split('T')[0];
+    let fromDate: string | null = null;
+
+    switch (selectedPeriod) {
+      case 'today':
+        fromDate = toDate;
+        break;
+      case 'yesterday':
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        fromDate = yesterday.toISOString().split('T')[0];
+        return { from_date: fromDate, to_date: fromDate };
+      case '7':
+      case '15':
+      case '30':
+        const daysAgo = new Date(today);
+        daysAgo.setDate(daysAgo.getDate() - parseInt(selectedPeriod));
+        fromDate = daysAgo.toISOString().split('T')[0];
+        break;
+      case 'all':
+        return { from_date: null, to_date: null };
+      default:
+        fromDate = toDate;
+    }
+    return { from_date: fromDate, to_date: toDate };
+  };
 
   useEffect(() => {
     fetchStates();
@@ -111,6 +140,10 @@ function NewInstallationDashboard() {
         params.append('district_code', selectedDistrictCode);
       if (selectedBlock) params.append('block_code', selectedBlockCode);
 
+      const { from_date, to_date } = getDateRange();
+      if (from_date) params.append('from_date', from_date);
+      if (to_date) params.append('to_date', to_date);
+
       const queryString = params.toString();
       const urlSuffix = queryString ? `?${queryString}` : '';
 
@@ -142,6 +175,9 @@ function NewInstallationDashboard() {
       };
       if (selectedStateCode) params.state_code = selectedStateCode;
 
+      const { from_date, to_date } = getDateRange();
+      if (from_date) params.from_date = from_date;
+      if (to_date) params.to_date = to_date;
       const response =
         activeTab === 'GP_INSTALLATION'
           ? await getGPSummary(params)
@@ -151,7 +187,6 @@ function NewInstallationDashboard() {
         setSummaryData(response);
         setRowsPerPage(response.limit);
         setCurrentPage(response.page);
-
       } else {
         setSummaryData(null);
       }
@@ -166,13 +201,21 @@ function NewInstallationDashboard() {
   useEffect(() => {
     fetchStatsData();
     fetchSummaryData();
-  }, [activeTab, selectedStateCode, selectedDistrict, selectedBlockCode]);
+  }, [
+    activeTab,
+    selectedStateCode,
+    selectedDistrict,
+    selectedBlockCode,
+    currentPage,
+    rowsPerPage,
+    selectedPeriod,
+  ]);
 
   const handleReset = () => {
     setSelectedState('');
     setSelectedDistrict('');
     setSelectedBlock('');
-    setSelectedPeriod('30');
+    setSelectedPeriod('all');
   };
 
   return (
@@ -330,20 +373,37 @@ function NewInstallationDashboard() {
                   <button className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm font-medium hover:bg-gray-200">Evidence: Any</button>
               </div> */}
           </div>
-         
+
           <div className="flex-1 overflow-auto">
             <div className="px-6 max-w-full">
-               <InstallationStatsPanel
-                  statsData={statsData}
-                  statsLoading={loadingStatsPanel}
-                  activeTab={activeTab}
-                  isLoading={loadingStatsPanel}
-                />
-              <InstallationSections />
+              <InstallationStatsPanel
+                statsData={statsData}
+                statsLoading={loadingStatsPanel}
+                activeTab={activeTab}
+                isLoading={loadingStatsPanel}
+              />
+              <InstallationSections
+                fromDate={getDateRange().from_date}
+                toDate={getDateRange().to_date}
+                statsData={statsData}
+                activeTab={activeTab}
+              />
               <DistrictPerformance
                 summaryData={summaryData}
                 loadingSummary={loadingSummary}
                 activeTab={activeTab}
+                currentPage={currentPage}
+                rowsPerPage={rowsPerPage}
+                totalRows={summaryData?.totalDistricts || 0}
+                onPageChange={(page) => setCurrentPage(page)}
+                onRowsPerPageChange={(newRowsPerPage, newPage) => {
+                  setRowsPerPage(newRowsPerPage);
+                  setCurrentPage(newPage);
+                }}
+                selectedStateCode={selectedStateCode}
+                selectedDistrictCode={selectedDistrictCode}
+                fromDate={getDateRange().from_date}
+                toDate={getDateRange().to_date}
               />
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-8">
@@ -427,7 +487,7 @@ function NewInstallationDashboard() {
                   </div>
                 </div>
               </div>
-              <CriticalSites />
+              {/* <CriticalSites /> */}
               <ActivityFeed />
             </div>
           </div>

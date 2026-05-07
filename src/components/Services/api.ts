@@ -793,6 +793,8 @@ export const getBlockSummary = async (params: {
   limit?: number;
   state_code?: string;
   district_code?: string;
+   from_date?:string;
+  to_date?:string;
 }): Promise<DistrictSummaryResponse> => {
   try {
     const queryParams = new URLSearchParams();
@@ -801,6 +803,11 @@ export const getBlockSummary = async (params: {
     if (params.state_code) queryParams.append('state_code', params.state_code);
     if (params.district_code)
       queryParams.append('district_code', params.district_code);
+   if (params.from_date)
+      queryParams.append('from_date', params.from_date);
+    
+   if (params.to_date)
+      queryParams.append('to_date', params.to_date);
 
     const queryString = queryParams.toString();
     const url = queryString
@@ -823,6 +830,9 @@ export const getGPSummary = async (params: {
   limit?: number;
   state_code?: string;
   district_code?: string;
+  from_date?:string;
+  to_date?:string;
+
 }): Promise<DistrictSummaryResponse> => {
   try {
     const queryParams = new URLSearchParams();
@@ -831,6 +841,11 @@ export const getGPSummary = async (params: {
     if (params.state_code) queryParams.append('state_code', params.state_code);
     if (params.district_code)
       queryParams.append('district_code', params.district_code);
+    if (params.from_date)
+      queryParams.append('from_date', params.from_date);
+    
+   if (params.to_date)
+      queryParams.append('to_date', params.to_date);
 
     const queryString = queryParams.toString();
     const url = queryString

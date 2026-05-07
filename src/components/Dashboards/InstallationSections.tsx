@@ -5,10 +5,23 @@ import { InstallationFunnel } from '../Chat/InstallationFunnel';
 import { DailyTrend } from '../Chat/DailyTrend';
 import { StatusSplit } from '../Chat/StatusSplit';
 
-export function InstallationSections() {
-    return (
-        <div className="space-y-6">
-            {/* <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+interface InstallationSectionsProps {
+  fromDate?: string | null;
+  toDate?: string | null;
+  statsData?: any;
+   activeTab?: 'GP_INSTALLATION' | 'BLOCK_INSTALLATION';
+
+}
+
+export function InstallationSections({
+  fromDate,
+  toDate,
+  statsData,
+  activeTab
+}: InstallationSectionsProps) {
+  return (
+    <div className="space-y-6">
+      {/* <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <MetricCard title="TOTAL GP / BLOCKS" value="14,280" subtitle="Global" color="border-l-blue-600" />
 
                 <MetricCard title="INSTALLED" value="9,842" percentage="68.9%" color="border-l-green-600" />
@@ -45,11 +58,11 @@ export function InstallationSections() {
                     <p className="text-xs opacity-70 mt-2">Currently at 98.4</p>
                 </div>
             </div> */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* <InstallationFunnel /> */}
-                <DailyTrend />
-                <StatusSplit />
-            </div>
-        </div>
-    );
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* <InstallationFunnel /> */}
+        <DailyTrend />
+        <StatusSplit statsData={statsData} activeTab={activeTab} />
+      </div>
+    </div>
+  );
 }

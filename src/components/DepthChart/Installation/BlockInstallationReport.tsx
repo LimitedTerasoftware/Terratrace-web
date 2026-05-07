@@ -329,6 +329,13 @@ const BlockInstallationReport: React.FC<BlockInstallationReportProps> = ({ Data,
       maxWidth: "140px",
       cell: (row) => row.created_at ? moment(row.created_at).format("DD/MM/YYYY") : 'N/A',
     },
+     {
+          name: "Updated",
+          selector: row => row.updated_at || '',
+          sortable: true,
+          maxWidth: "140px",
+          cell: (row) => row.updated_at ? moment(row.updated_at).format("DD/MM/YYYY") : 'N/A',
+        },
     {
       name: 'Actions',
       cell: (row) => (
