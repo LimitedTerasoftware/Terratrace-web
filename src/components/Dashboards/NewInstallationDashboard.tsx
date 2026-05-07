@@ -6,7 +6,13 @@ import { DistrictPerformance } from '../Chat/DistrictPerformance';
 import { CriticalSites } from '../Chat/CriticalSites';
 import { ActivityFeed } from '../Chat/ActivityFeed';
 import InstallationStatsPanel from '../DepthChart/Installation/InstallationStatsPanel';
-import { getStateData, getDistrictData, getBlockData } from '../Services/api';
+import {
+  getStateData,
+  getDistrictData,
+  getBlockData,
+  getBlockSummary,
+  getGPSummary,
+} from '../Services/api';
 import { Block, District, StateData } from '../../types/survey';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -16,15 +22,11 @@ function NewInstallationDashboard() {
   const [selectedDistrict, setSelectedDistrict] = useState<string>('');
   const [selectedBlock, setSelectedBlock] = useState<string>('');
   const [selectedPeriod, setSelectedPeriod] = useState<string>('30');
- const [selectedStateCode, setSelectedStateCode] = useState<string | ''>(
+  const [selectedStateCode, setSelectedStateCode] = useState<string | ''>('');
+  const [selectedDistrictCode, setSelectedDistrictCode] = useState<string | ''>(
     '',
   );
-    const [selectedDistrictCode, setSelectedDistrictCode] = useState<
-    string | ''
-  >('');
-   const [selectedBlockCode, setSelectedBlockCode] = useState<string | ''>(
-    '',
-  );
+  const [selectedBlockCode, setSelectedBlockCode] = useState<string | ''>('');
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -37,6 +39,10 @@ function NewInstallationDashboard() {
   >('GP_INSTALLATION');
   const [statsData, setStatsData] = useState<any>(null);
   const [loadingStatsPanel, setLoadingStatsPanel] = useState<boolean>(false);
+  const [summaryData, setSummaryData] = useState<any>(null);
+  const [loadingSummary, setLoadingSummary] = useState<boolean>(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   useEffect(() => {
     fetchStates();
@@ -101,7 +107,8 @@ function NewInstallationDashboard() {
       setLoadingStatsPanel(true);
       const params = new URLSearchParams();
       if (selectedState) params.append('state_code', selectedStateCode);
-      if (selectedDistrict) params.append('district_code', selectedDistrictCode);
+      if (selectedDistrict)
+        params.append('district_code', selectedDistrictCode);
       if (selectedBlock) params.append('block_code', selectedBlockCode);
 
       const queryString = params.toString();
@@ -126,8 +133,39 @@ function NewInstallationDashboard() {
     }
   };
 
+  const fetchSummaryData = async () => {
+    try {
+      setLoadingSummary(true);
+      const params: any = {
+        page: currentPage,
+        limit: rowsPerPage,
+      };
+      if (selectedStateCode) params.state_code = selectedStateCode;
+
+      const response =
+        activeTab === 'GP_INSTALLATION'
+          ? await getGPSummary(params)
+          : await getBlockSummary(params);
+
+      if (response.status) {
+        setSummaryData(response);
+        setRowsPerPage(response.limit);
+        setCurrentPage(response.page);
+
+      } else {
+        setSummaryData(null);
+      }
+    } catch (error) {
+      console.error('Error fetching summary data:', error);
+      setSummaryData(null);
+    } finally {
+      setLoadingSummary(false);
+    }
+  };
+
   useEffect(() => {
     fetchStatsData();
+    fetchSummaryData();
   }, [activeTab, selectedStateCode, selectedDistrict, selectedBlockCode]);
 
   const handleReset = () => {
@@ -186,10 +224,15 @@ function NewInstallationDashboard() {
               <select
                 className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 value={selectedState}
-                onChange={(e) => {setSelectedState(e.target.value);
-                    const selectedState = states.find((s) => s.state_id.toString() === e.target.value);
+                onChange={(e) => {
+                  setSelectedState(e.target.value);
+                  const selectedState = states.find(
+                    (s) => s.state_id.toString() === e.target.value,
+                  );
 
-                    setSelectedStateCode(selectedState ? selectedState?.state_code : '')
+                  setSelectedStateCode(
+                    selectedState ? selectedState?.state_code : '',
+                  );
                 }}
                 disabled={loadingStates}
               >
@@ -204,11 +247,14 @@ function NewInstallationDashboard() {
               <select
                 className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 value={selectedDistrict}
-                onChange={(e) =>{ setSelectedDistrict(e.target.value)
-                    const District = districts.find(
-                      (d) => d.district_id.toString() === e.target.value,
-                    );
-                    setSelectedDistrictCode(District ? District.district_code :'')
+                onChange={(e) => {
+                  setSelectedDistrict(e.target.value);
+                  const District = districts.find(
+                    (d) => d.district_id.toString() === e.target.value,
+                  );
+                  setSelectedDistrictCode(
+                    District ? District.district_code : '',
+                  );
                 }}
                 disabled={loadingDistricts || !selectedState}
               >
@@ -226,10 +272,12 @@ function NewInstallationDashboard() {
               <select
                 className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 value={selectedBlock}
-                onChange={(e) => {setSelectedBlock(e.target.value)
-                      const Block = blocks.find((b) => b.block_id.toString() === e.target.value);
-                       setSelectedBlockCode(Block ? Block.block_code : '')
-
+                onChange={(e) => {
+                  setSelectedBlock(e.target.value);
+                  const Block = blocks.find(
+                    (b) => b.block_id.toString() === e.target.value,
+                  );
+                  setSelectedBlockCode(Block ? Block.block_code : '');
                 }}
                 disabled={loadingBlocks || !selectedDistrict}
               >
@@ -240,8 +288,6 @@ function NewInstallationDashboard() {
                   </option>
                 ))}
               </select>
-
-             
 
               <select
                 className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -284,16 +330,21 @@ function NewInstallationDashboard() {
                   <button className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm font-medium hover:bg-gray-200">Evidence: Any</button>
               </div> */}
           </div>
-          <InstallationStatsPanel
-            statsData={statsData}
-            statsLoading={loadingStatsPanel}
-            activeTab={activeTab}
-            isLoading={loadingStatsPanel}
-          />
+         
           <div className="flex-1 overflow-auto">
-            <div className="p-6 max-w-full">
+            <div className="px-6 max-w-full">
+               <InstallationStatsPanel
+                  statsData={statsData}
+                  statsLoading={loadingStatsPanel}
+                  activeTab={activeTab}
+                  isLoading={loadingStatsPanel}
+                />
               <InstallationSections />
-              <DistrictPerformance />
+              <DistrictPerformance
+                summaryData={summaryData}
+                loadingSummary={loadingSummary}
+                activeTab={activeTab}
+              />
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-8">
                 <div className="bg-white rounded-lg p-4 shadow-sm">

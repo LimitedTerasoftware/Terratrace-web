@@ -1,101 +1,183 @@
-import { MapPin, TrendingDown } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import DataTable from 'react-data-table-component';
 
-export function DistrictPerformance() {
-  const districts = [
-    { name: 'Amravati', gp: '840 / 712', block: '14 / 12', completion: 84, exceptions: 12 },
-    { name: 'Nagpur', gp: '712 / 680', block: '12 / 12', completion: 95, exceptions: 0 },
-    { name: 'Pune', gp: '1,200 / 720', block: '24 / 14', completion: 60, exceptions: 45 },
-    { name: 'Nashik', gp: '980 / 410', block: '18 / 6', completion: 41, exceptions: 82 },
+interface DistrictPerformanceProps {
+  summaryData?: any;
+  loadingSummary?: boolean;
+  activeTab?: 'GP_INSTALLATION' | 'BLOCK_INSTALLATION';
+}
+
+export function DistrictPerformance({
+  summaryData,
+  loadingSummary,
+  activeTab = 'GP_INSTALLATION',
+
+}: DistrictPerformanceProps) {
+  const navigate = useNavigate();
+  const isGP = activeTab === 'GP_INSTALLATION';
+
+  const getCompletionPercentage = (item: any) => {
+    const total = isGP ? item.total_gps : item.total_blocks;
+    if (!total || total === 0) return 0;
+    return Math.round((item.installed / total) * 100);
+  };
+
+  const getExceptions = (item: any) => {
+    return (item.REJECT || 0) + (item.PENDING || 0);
+  };
+
+  const districts = summaryData?.data || [];
+
+  const columns = [
+    {
+      name: 'DISTRICT',
+      selector: (row: any) => row.District,
+      sortable: true,
+      cell: (row: any) => (
+        <span className="font-semibold text-gray-900">{row.District}</span>
+      ),
+    },
+    {
+      name: isGP ? 'GP (TOTAL/INST)' : 'BLOCK (TOTAL/INST)',
+      selector: (row: any) => (isGP ? row.total_gps : row.total_blocks),
+      sortable: true,
+      cell: (row: any) => (
+        <span className="text-gray-600">
+      {isGP
+        ? `${row.total_gps} / ${row.installed}`
+        : `${row.total_blocks} / ${row.installed}`}
+    </span>
+      ),
+    },
+    {
+      name: 'ACCEPT',
+      selector: (row: any) => row.ACCEPT,
+      sortable: true,
+      cell: (row: any) => (
+        <span className="text-green-600 font-semibold">{row.ACCEPT || 0}</span>
+      ),
+    },
+    {
+      name: 'REJECT',
+      selector: (row: any) => row.REJECT,
+      sortable: true,
+      cell: (row: any) => (
+        <span className="text-red-600 font-semibold">{row.REJECT || 0}</span>
+      ),
+    },
+    {
+      name: 'PENDING',
+      selector: (row: any) => row.PENDING,
+      sortable: true,
+      cell: (row: any) => (
+        <span className="text-yellow-600 font-semibold">
+          {row.PENDING || 0}
+        </span>
+      ),
+    },
+    {
+      name: 'COMPLETION %',
+      selector: (row: any) => getCompletionPercentage(row),
+      sortable: true,
+      cell: (row: any) => {
+        const completion = getCompletionPercentage(row);
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-24 bg-gray-200 rounded-full h-1.5 overflow-hidden">
+              <div
+                className={`h-full ${
+                  completion >= 80
+                    ? 'bg-green-500'
+                    : completion >= 60
+                      ? 'bg-yellow-500'
+                      : completion >= 40
+                        ? 'bg-orange-500'
+                        : 'bg-red-500'
+                }`}
+                style={{ width: `${completion}%` }}
+              />
+            </div>
+            <span className="font-semibold text-gray-900">{completion}%</span>
+          </div>
+        );
+      },
+    },
+    {
+      name: 'EXCEPTIONS',
+      selector: (row: any) => getExceptions(row),
+      sortable: true,
+      cell: (row: any) => {
+        const exceptions = getExceptions(row);
+        return (
+          <span
+            className={`font-semibold ${
+              exceptions > 50
+                ? 'text-red-600'
+                : exceptions > 20
+                  ? 'text-orange-600'
+                  : 'text-green-600'
+            }`}
+          >
+            {exceptions}
+          </span>
+        );
+      },
+    },
   ];
+//  const handlePageChange = (page: number) => {
+//     setCurrentPage(page);
+//   };
 
-  const topLaggingDistricts = [
-    { name: 'Gadhchiroli', percentage: 24 },
-    { name: 'Nandurbar', percentage: 31 },
-  ];
+//   const handleRowsPerPageChange = (newRowsPerPage: number, newPage: number) => {
+//     setRowsPerPage(newRowsPerPage);
+//     setCurrentPage(newPage);
+//   };
 
+  if (loadingSummary) {
+    return (
+      <div className="space-y-6 mt-8">
+        <div className="bg-white rounded-lg shadow-sm p-8">
+          <div className="flex justify-center items-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="space-y-6 mt-8">
       <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
         <div className="lg:col-span-2 space-y-4">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">DISTRICT PERFORMANCE PERFORMANCE</h3>
-              <button className="text-sm text-blue-600 font-medium hover:text-blue-700">View All Districts</button>
+              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
+                DISTRICT {isGP ? 'GP' : 'BLOCK'} PERFORMANCE
+              </h3>
+              <button
+                className="text-sm text-blue-600 font-medium hover:text-blue-700"
+                onClick={() => navigate('/installation')}
+              >
+                View All Districts ({summaryData?.totalDistricts || 0})
+              </button>
             </div>
 
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-6 py-3 text-left font-semibold text-gray-700">DISTRICT</th>
-                    <th className="px-6 py-3 text-left font-semibold text-gray-700">GP (TOTAL/INST)</th>
-                    <th className="px-6 py-3 text-left font-semibold text-gray-700">BLOCK (TOTAL/INST)</th>
-                    <th className="px-6 py-3 text-left font-semibold text-gray-700">COMPLETION %</th>
-                    <th className="px-6 py-3 text-left font-semibold text-gray-700">EXCEPTIONS</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {districts.map((district, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50 transition">
-                      <td className="px-6 py-4 font-semibold text-gray-900">{district.name}</td>
-                      <td className="px-6 py-4 text-gray-600">{district.gp}</td>
-                      <td className="px-6 py-4 text-gray-600">{district.block}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-24 bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                            <div className={`h-full ${
-                              district.completion >= 80 ? 'bg-green-500' :
-                              district.completion >= 60 ? 'bg-yellow-500' :
-                              district.completion >= 40 ? 'bg-orange-500' :
-                              'bg-red-500'
-                            }`} style={{ width: `${district.completion}%` }} />
-                          </div>
-                          <span className="font-semibold text-gray-900">{district.completion}%</span>
-                        </div>
-                      </td>
-                      <td className={`px-6 py-4 font-semibold ${
-                        district.exceptions > 50 ? 'text-red-600' :
-                        district.exceptions > 20 ? 'text-orange-600' :
-                        'text-green-600'
-                      }`}>{district.exceptions}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-        
-        </div>
-
-        {/* <div className="bg-gradient-to-b from-teal-600 to-teal-700 rounded-lg p-6 shadow-sm text-white min-h-64 flex flex-col">
-          <h3 className="text-xs font-semibold uppercase tracking-wide mb-6">INSTALLATION HEATMAP</h3>
-          <div className="flex-1 flex items-center justify-center">
-            <div className="bg-white bg-opacity-20 rounded px-4 py-2 text-sm text-center">
-              Interactive Map: Click to Filter Districts
-            </div>
-          </div>
-
-          <div className="mt-6 pt-6 border-t border-white border-opacity-20">
-            <h4 className="text-xs font-semibold uppercase tracking-wide mb-3 flex items-center gap-2">
-              <TrendingDown size={16} />
-              TOP 5 LAGGING DISTRICTS
-            </h4>
-            <div className="space-y-2">
-              {topLaggingDistricts.map((district, idx) => (
-                <div key={idx} className="flex items-center justify-between">
-                  <span className="text-sm">{district.name}</span>
-                  <div className="flex items-center gap-2 flex-1 ml-4">
-                    <div className="flex-1 bg-white bg-opacity-20 rounded-full h-1 overflow-hidden">
-                      <div className="h-full bg-red-500" style={{ width: `${district.percentage}%` }} />
-                    </div>
-                    <span className="text-sm font-semibold">{district.percentage}%</span>
+              <DataTable
+                columns={columns}
+                data={districts}
+                pagination
+                paginationServer
+                highlightOnHover
+                responsive
+                noDataComponent={
+                  <div className="px-6 py-8 text-center text-gray-500">
+                    No data available
                   </div>
-                </div>
-              ))}
+                }
+              />
             </div>
           </div>
-        </div> */}
+        </div>
       </div>
     </div>
   );

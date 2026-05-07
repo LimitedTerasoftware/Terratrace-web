@@ -16,7 +16,10 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { Activity, ApiResponseMachine, FilterState } from '../../types/survey';
 import { EditPayload } from '../../types/aerial-survey';
-import { BlockChecklistResponse, RouterData } from '../../types/block-router-checklist';
+import {
+  BlockChecklistResponse,
+  RouterData,
+} from '../../types/block-router-checklist';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const BASEURL = import.meta.env.VITE_API_BASE;
@@ -726,8 +729,6 @@ export const getBlockRouterData = async (
   }
 };
 
-
-
 export const getBlocksChecklist = async (filters: {
   state_id?: string;
   district_id?: string;
@@ -764,12 +765,85 @@ export const getBlocksChecklist = async (filters: {
   }
 };
 export const updateSurvey = async (payload: UpdateSurveyPayload) => {
-  const response = await axios.post(
-    `${TraceBASEURL}/survey/update`,
-    payload,
-    {
-      headers: { 'Content-Type': 'application/json' },
-    },
-  );
+  const response = await axios.post(`${TraceBASEURL}/survey/update`, payload, {
+    headers: { 'Content-Type': 'application/json' },
+  });
   return response.data;
+};
+
+export interface DistrictSummaryResponse {
+  status: boolean;
+  page: number;
+  limit: number;
+  totalDistricts: number;
+  totalPages: number;
+  data: Array<{
+    District: string;
+    total_blocks?: number;
+    total_gps?: number;
+    installed: number;
+    ACCEPT: number;
+    REJECT: number;
+    PENDING: number;
+  }>;
+}
+
+export const getBlockSummary = async (params: {
+  page?: number;
+  limit?: number;
+  state_code?: string;
+  district_code?: string;
+}): Promise<DistrictSummaryResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.append('page', params.page.toString());
+    if (params.limit) queryParams.append('limit', params.limit.toString());
+    if (params.state_code) queryParams.append('state_code', params.state_code);
+    if (params.district_code)
+      queryParams.append('district_code', params.district_code);
+
+    const queryString = queryParams.toString();
+    const url = queryString
+      ? `${TraceBASEURL}/get-block-summary?${queryString}`
+      : `${TraceBASEURL}/get-block-summary`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('Failed to fetch block summary');
+    }
+    return response.json();
+  } catch (error) {
+    console.error('Error fetching block summary:', error);
+    throw error;
+  }
+};
+
+export const getGPSummary = async (params: {
+  page?: number;
+  limit?: number;
+  state_code?: string;
+  district_code?: string;
+}): Promise<DistrictSummaryResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.append('page', params.page.toString());
+    if (params.limit) queryParams.append('limit', params.limit.toString());
+    if (params.state_code) queryParams.append('state_code', params.state_code);
+    if (params.district_code)
+      queryParams.append('district_code', params.district_code);
+
+    const queryString = queryParams.toString();
+    const url = queryString
+      ? `${TraceBASEURL}/get-gp-summary?${queryString}`
+      : `${TraceBASEURL}/get-gp-summary`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('Failed to fetch GP summary');
+    }
+    return response.json();
+  } catch (error) {
+    console.error('Error fetching GP summary:', error);
+    throw error;
+  }
 };
