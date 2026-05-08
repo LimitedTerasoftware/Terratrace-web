@@ -52,6 +52,7 @@ interface BlockInstallationDetail {
   username: string;
   user_contact: string;
   electrical_wiring_photo:string;
+  FWDM_Filter?:string;
 }
 
 const BASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -526,11 +527,11 @@ const BlockInstallationDetailView = () => {
 
                   )
                 }
-                {detail.RFMS_FILTERS != "[]" ? (
-                    <EquipmentDetails equipmentData={detail.RFMS_FILTERS} title="RFMS Filters" />
+                {detail.FWDM_Filter != "[]" ? (
+                    <EquipmentDetails equipmentData={detail.FWDM_Filter} title="FWDM Filters" />
 
                 ):(
-                  <NoData label="RFMS Filters" value = "RFMS Filters Not Available"/>
+                  <NoData label="FWDM Filters" value = "FWDM Filters Not Available"/>
 
                 )}
               </div>

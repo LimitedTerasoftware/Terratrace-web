@@ -41,6 +41,7 @@ interface BlockInstallationData {
   created_at: string;
   updated_at: string;
   electrical_wiring_photo: any;
+  FWDM_Filter:string;
 
 }
 
@@ -111,6 +112,7 @@ const BlockInstallationEdit = () => {
   const [fdmsShelf, setFdmsShelf] = useState<EquipmentItem[]>([]);
   const [ipMplsRouter, setIpMplsRouter] = useState<EquipmentItem[]>([]);
   const [rfms, setRfms] = useState<RfmsItem[]>([]);
+  const[fwdm,setfwdm]=useState<RfmsItem[]>([]);
   const [sfp10g, setSfp10g] = useState<SFPItem[]>([]);
   const [sfp1g, setSfp1g] = useState<SFPItem[]>([]);
   const [sfp100g, setSfp100g] = useState<SFPItem[]>([]);
@@ -137,6 +139,7 @@ const BlockInstallationEdit = () => {
   const fdmsQrFileInput = useRef<HTMLInputElement>(null);
   const routerFileInput = useRef<HTMLInputElement>(null);
   const rfmsFileInput = useRef<HTMLInputElement>(null);
+  const fwdmFileInput =useRef<HTMLInputElement>(null);
   const fiberEntryFileInput = useRef<HTMLInputElement>(null);
   const splicingFileInput = useRef<HTMLInputElement>(null);
   const [smartRackPhotoIndex, setSmartRackPhotoIndex] = useState<number | null>(
@@ -148,6 +151,7 @@ const BlockInstallationEdit = () => {
   >(null);
   const [routerPhotoIndex, setRouterPhotoIndex] = useState<number | null>(null);
   const [rfmsPhotoIndex, setRfmsPhotoIndex] = useState<number | null>(null);
+  const [fwdmPhotoIndex,setFwdmPhotoIndex] = useState<number | null>(null);
   const [sfp10gPhotoIndex, setSfp10gPhotoIndex] = useState<number | null>(null);
   const [sfp1gPhotoIndex, setSfp1gPhotoIndex] = useState<number | null>(null);
   const [sfp100gPhotoIndex, setSfp100gPhotoIndex] = useState<number | null>(
@@ -246,6 +250,11 @@ const BlockInstallationEdit = () => {
         const parsed =
           typeof data.rfms === 'string' ? JSON.parse(data.rfms) : data.rfms;
         setRfms(Array.isArray(parsed) ? parsed : [parsed]);
+      }
+      if(data.FWDM_Filter){
+        const parsed = typeof data.FWDM_Filter === 'string' ? JSON.parse(data.FWDM_Filter) :data.FWDM_Filter;
+        setfwdm(Array.isArray(parsed) ? parsed :[parsed]);
+
       }
 
       // Fiber Entry Photos
@@ -495,6 +504,7 @@ const BlockInstallationEdit = () => {
       const finalSFP10G = await processSFPPhotos(sfp10g);
       const finalSFP1G = await processSFPPhotos(sfp1g);
       const finalSFP100G = await processSFPPhotos(sfp100g);
+      const finalfwdm = await processRfmsPhotos(fwdm);
       
 
       // Process Fiber Entry and Splicing Photos
@@ -529,6 +539,7 @@ const BlockInstallationEdit = () => {
         fdms_shelf: finalFdmsShelf,
         ip_mpls_router: finalIpMplsRouter,
         rfms: finalRfms,
+        FWDM_Filter:finalfwdm,
         fiber_entry: finalFiberEntry,
         splicing_photo: finalSplicing,
         sfp_10g_40: finalSFP10G,
@@ -582,7 +593,7 @@ const BlockInstallationEdit = () => {
   };
 
   const handleEquipmentChange = (
-    type: 'fdms' | 'router' | 'rfms',
+    type: 'fdms' | 'router' | 'rfms' | 'fwdm',
     index: number,
     field: keyof EquipmentItem,
     value: string,
@@ -599,6 +610,10 @@ const BlockInstallationEdit = () => {
       const updated = [...rfms];
       updated[index] = { ...updated[index], [field]: value };
       setRfms(updated);
+    }else if(type === 'fwdm'){
+      const updated = [...fwdm];
+      updated[index] = { ...updated[index], [field]: value };
+      setfwdm(updated);
     }
   };
 
@@ -672,7 +687,7 @@ const BlockInstallationEdit = () => {
     setSmartRack(smartRack.filter((_, i) => i !== index));
   };
 
-  const addEquipmentItem = (type: 'fdms' | 'router' | 'rfms') => {
+  const addEquipmentItem = (type: 'fdms' | 'router' | 'rfms' | 'fwdm') => {
     if (type === 'fdms') {
       setFdmsShelf([
         ...fdmsShelf,
@@ -694,11 +709,13 @@ const BlockInstallationEdit = () => {
       ]);
     } else if (type === 'rfms') {
       setRfms([...rfms, { count: '', make: '', photo: '', serial_no: '' }]);
+    }else if (type === 'fwdm') {
+      setRfms([...fwdm, { count: '', make: '', photo: '', serial_no: '' }]);
     }
   };
 
   const removeEquipmentItem = (
-    type: 'fdms' | 'router' | 'rfms',
+    type: 'fdms' | 'router' | 'rfms' | 'fwdm',
     index: number,
   ) => {
     if (type === 'fdms') {
@@ -707,6 +724,8 @@ const BlockInstallationEdit = () => {
       setIpMplsRouter(ipMplsRouter.filter((_, i) => i !== index));
     } else if (type === 'rfms') {
       setRfms(rfms.filter((_, i) => i !== index));
+    }else if (type === 'fwdm') {
+      setRfms(fwdm.filter((_, i) => i !== index));
     }
   };
 
@@ -856,6 +875,10 @@ const BlockInstallationEdit = () => {
     setRfmsPhotoIndex(index);
     rfmsFileInput.current?.click();
   };
+   const triggerFwdmPhotoUpload = (index: number) => {
+    setFwdmPhotoIndex(index);
+    fwdmFileInput.current?.click();
+  };
   const triggerSfp10gPhotoUpload = (index: number) => {
     setSfp10gPhotoIndex(index);
     sfp10gFileInput.current?.click();
@@ -912,6 +935,27 @@ const BlockInstallationEdit = () => {
       };
       setRfms(updated);
       setRfmsPhotoIndex(null);
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  };
+    const handleFWDMPhotoUpload = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = event.target.files;
+    if (!files || fwdmPhotoIndex === null) return;
+
+    const file = files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      const updated = [...fwdm];
+      updated[fwdmPhotoIndex] = {
+        ...updated[fwdmPhotoIndex],
+        photo: dataUrl,
+      };
+    setfwdm(updated);
+      setFdmsPhotoIndex(null);
     };
     reader.readAsDataURL(file);
     event.target.value = '';
@@ -1992,6 +2036,157 @@ const BlockInstallationEdit = () => {
                 </div>
               )}
             </div>
+              {/* FWDM Section */}
+            <div className="border-t border-gray-200 pt-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  FWDM Filter
+                </h3>
+                <button
+                  onClick={() => addEquipmentItem('fwdm')}
+                  className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Item
+                </button>
+              </div>
+
+              {fwdm.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                  <p>No FWDM items configured.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {fwdm.map((item, index) => (
+                    <div
+                      key={index}
+                      className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="font-medium text-gray-700">
+                          FWDM Item {index + 1}
+                        </span>
+                        <button
+                          onClick={() => {
+                            setfwdm(fwdm.filter((_, i) => i !== index));
+                          }}
+                          className="p-1 text-red-500 hover:bg-red-50 rounded"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Count
+                          </label>
+                          <input
+                            type="text"
+                            value={item.count}
+                            onChange={(e) => {
+                              const updated = [...fwdm];
+                              updated[index] = {
+                                ...updated[index],
+                                count: e.target.value,
+                              };
+                              setfwdm(updated);
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter count"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Make
+                          </label>
+                          <input
+                            type="text"
+                            value={item.make}
+                            onChange={(e) => {
+                              const updated = [...fwdm];
+                              updated[index] = {
+                                ...updated[index],
+                                make: e.target.value,
+                              };
+                              setfwdm(updated);
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter make"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Serial Number
+                          </label>
+                          <input
+                            type="text"
+                            value={item.serial_no}
+                            onChange={(e) => {
+                              const updated = [...fwdm];
+                              updated[index] = {
+                                ...updated[index],
+                                serial_no: e.target.value,
+                              };
+                              setfwdm(updated);
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter serial number"
+                          />
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Photo
+                          </label>
+                          {item.photo ? (
+                            <div className="relative mb-2">
+                              <img
+                                src={
+                                  isDataUrl(item.photo)
+                                    ? item.photo
+                                    : `${ImgbaseUrl}/${item.photo}`
+                                }
+                                alt="RFMS"
+                                className="h-20 w-auto rounded-md border border-gray-200 object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src =
+                                    item.photo;
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = [...fwdm];
+                                  updated[index] = {
+                                    ...updated[index],
+                                    photo: '',
+                                  };
+                                  setfwdm(updated);
+                                }}
+                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => triggerFwdmPhotoUpload(index)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2"
+                          >
+                            <Upload className="h-4 w-4" />
+                            {item.photo ? 'Change Photo' : 'Upload Photo'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* SFP 10G Section */}
             <div className="border-t border-gray-200 pt-8">
@@ -2666,6 +2861,13 @@ const BlockInstallationEdit = () => {
                 type="file"
                 ref={rfmsFileInput}
                 onChange={handleRfmsPhotoUpload}
+                accept="image/*"
+                className="hidden"
+              />
+              <input
+                type="file"
+                ref={fwdmFileInput}
+                onChange={handleFWDMPhotoUpload}
                 accept="image/*"
                 className="hidden"
               />

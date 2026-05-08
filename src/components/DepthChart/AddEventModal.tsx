@@ -58,6 +58,8 @@ const getEventSpecificFields = (eventType: string) => {
     { key: 'dgps_accuracy', label: 'DGPS Accuracy', type: 'text', required: false },
     { key: 'dgps_siv', label: 'DGPS SIV', type: 'text', required: false },
     { key: 'executionModality', label: 'Execution Modality', type: 'text', required: false },
+    { key: 'created_at', label: 'Created At', type: 'text', required: false },
+
 
   ];
 
@@ -306,6 +308,8 @@ export function AddEventModal({ isOpen,Data,onClose, onSuccess, baseUrl }: AddEv
         eventType,
         ...formData,
       };
+      payload["created_at"]=formatForApi(formData.created_at as string) as string;
+             
 
       const imageFieldsWithFiles = Object.entries(imageFields).filter(
         ([_, state]) => state.files.length > 0
@@ -354,7 +358,27 @@ export function AddEventModal({ isOpen,Data,onClose, onSuccess, baseUrl }: AddEv
       if (ref) ref.value = '';
     });
   };
+const formatForInput = (value: string) => {
+  if (!value) return '';
+  return value.replace(' ', 'T').slice(0, 16);
+};
+const formatForApi = (value: string) => {
+  if (!value) return '';
 
+  if (value.includes('Z')) {
+    const d = new Date(value);
+
+    const pad = (n: number) => String(n).padStart(2, '0');
+
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  }
+
+  if (value.includes('T')) {
+    return value.replace('T', ' ') + ':00';
+  }
+
+  return value;
+};
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -384,6 +408,7 @@ export function AddEventModal({ isOpen,Data,onClose, onSuccess, baseUrl }: AddEv
                     start_lgd: Data?.startLocation || "",
                     end_lgd: Data?.endLocation || "",
                     survey_id: Data?.id || "",
+                    created_at:formatForInput(Data?.created_at) || "",
                 }));
                 setErrors({});
               }}
@@ -444,7 +469,20 @@ export function AddEventModal({ isOpen,Data,onClose, onSuccess, baseUrl }: AddEv
                       disabled={isLoading}
                       placeholder={key.includes('Photos') || key.includes('Photo') ? '["image1.jpg", "image2.jpg"]' : ''}
                     />
-                  ) : (
+                  ) :
+                   key === 'created_at' ? (
+                  <input
+                  type="datetime-local"
+                  value={formData[key] ? formatForInput(formData[key] as string) : ''}
+                  onChange={(e) =>
+                    handleChange(key, e.target.value)
+                  }
+                  className={`w-full px-3 py-2 border rounded-lg ${
+                    errors[key] ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  disabled={isLoading}
+                />):
+                   (
                     <input
                       type={type}
                       value={(formData[key] as string | number) || ''}
