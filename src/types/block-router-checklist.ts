@@ -57,3 +57,46 @@ export interface RouterData {
   >;
   message?: string;
 }
+export interface InfrastructureItem {
+  Image: string;
+  remarks: string;
+  compliance: string;
+}
+
+export interface RackData {
+  id: number;
+  block_id: number;
+
+  infrastructure_T1: InfrastructureItem | null;
+  infrastructure_T2: InfrastructureItem | null;
+  infrastructure_T3: InfrastructureItem | null;
+  infrastructure_T4: InfrastructureItem | null;
+  infrastructure_T5: InfrastructureItem | null;
+  infrastructure_T6: InfrastructureItem | null;
+  infrastructure_T7: InfrastructureItem | null;
+  infrastructure_T8: InfrastructureItem | null;
+  infrastructure_T9: InfrastructureItem | null;
+  infrastructure_T10: InfrastructureItem | null;
+
+  functional_T1: InfrastructureItem | null;
+  functional_T2: InfrastructureItem | null;
+  functional_T3: InfrastructureItem | null;
+  functional_T4: InfrastructureItem | null;
+  functional_T5: InfrastructureItem | null;
+  functional_T6:InfrastructureItem | null;
+
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RackPercentage {
+  infrastructure: string;
+  functional: string;
+  overall: string;
+}
+
+export interface RackResponse {
+  status: boolean;
+  data: RackData;
+  percentage: RackPercentage;
+}

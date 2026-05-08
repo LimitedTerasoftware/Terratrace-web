@@ -15,7 +15,7 @@ import {
   Shield,
 } from 'lucide-react';
 import Tricad from '../../../images/logo/Tricad.png';
-import { RouterData } from '../../../types/block-router-checklist';
+import { RackData, RouterData } from '../../../types/block-router-checklist';
 
 const BASEURL = import.meta.env.VITE_API_BASE;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -69,10 +69,15 @@ interface BlockRackItem {
   iconBg: string;
   iconColor: string;
 }
+interface RackTestItem {
+  Image: string;
+  remarks: string;
+  compliance: string;
+}
 
 interface BlockRackFormProps {
   blockId: string;
-  existingData?: RouterData | null;
+  existingData?: RackData | null;
 }
 
 const blockRackTests: Omit<
@@ -242,6 +247,31 @@ const blockRackTests: Omit<
   },
 ];
 
+// Maps component test IDs to API field names
+const TEST_ID_TO_API_KEY: Record<string, string> = {
+  A1:  'infrastructure_T1',
+  A2:  'infrastructure_T2',
+  A3:  'infrastructure_T3',
+  A4:  'infrastructure_T4',
+  A5:  'infrastructure_T5',
+  A6:  'infrastructure_T6',
+  A7:  'infrastructure_T7',
+  A8:  'infrastructure_T8',
+  A9:  'infrastructure_T9',
+  A10: 'infrastructure_T10',
+  B1:  'functional_T1',
+  B2:  'functional_T2',
+  B3:  'functional_T3',
+  B4:  'functional_T4',
+  B5:  'functional_T5',
+  B6:  'functional_T6',
+};
+
+// Reverse map for loading existing data
+const API_KEY_TO_TEST_ID: Record<string, string> = Object.fromEntries(
+  Object.entries(TEST_ID_TO_API_KEY).map(([k, v]) => [v, k])
+);
+
 const BlockRackForm = ({ blockId, existingData }: BlockRackFormProps) => {
   const [items, setItems] = useState<BlockRackItem[]>(
     blockRackTests.map((tc) => ({
@@ -257,56 +287,54 @@ const BlockRackForm = ({ blockId, existingData }: BlockRackFormProps) => {
   const [activeTab, setActiveTab] = useState<'A' | 'B'>('A');
 
   useEffect(() => {
-    if (existingData?.tests) {
-      const updatedItems = blockRackTests.map((tc) => {
-        const testData = existingData.tests?.[tc.id];
-        if (testData) {
-          const urls = parseImageUrls(testData.Image);
-          const existingImages: UploadedFile[] = [];
-          const existingDocs: UploadedFile[] = [];
+  if (!existingData) return;
 
-          urls.forEach((url, idx) => {
-            if (isImageUrl(url)) {
-              existingImages.push({
-                id: `existing-img-${idx}`,
-                preview: getFullImageUrl(url),
-                url: url,
-                isDocument: false,
-              });
-            } else {
-              existingDocs.push({
-                id: `existing-doc-${idx}`,
-                preview: getFullImageUrl(url),
-                url: url,
-                isDocument: true,
-              });
-            }
+  const updatedItems = blockRackTests.map((tc) => {
+    const apiKey = TEST_ID_TO_API_KEY[tc.id]; // e.g. 'infrastructure_T1'
+    const testData = existingData[apiKey as keyof RackData] as RackTestItem | null;
+
+    if (testData) {
+      const urls = parseImageUrls(testData.Image);
+      const existingImages: UploadedFile[] = [];
+      const existingDocs: UploadedFile[] = [];
+
+      urls.forEach((url, idx) => {
+        if (isImageUrl(url)) {
+          existingImages.push({
+            id: `existing-img-${tc.id}-${idx}`,
+            preview: getFullImageUrl(url),
+            url,
+            isDocument: false,
           });
-
-          return {
-            ...tc,
-            compliance:
-              testData.compliance === 'Yes' || testData.compliance === 'Y'
-                ? 'Yes'
-                : testData.compliance === 'No' || testData.compliance === 'N'
-                  ? 'No'
-                  : '',
-            remarks: testData.remarks || '',
-            images: existingImages,
-            documents: existingDocs,
-          };
+        } else {
+          existingDocs.push({
+            id: `existing-doc-${tc.id}-${idx}`,
+            preview: getFullImageUrl(url),
+            url,
+            isDocument: true,
+          });
         }
-        return {
-          ...tc,
-          compliance: '',
-          remarks: '',
-          images: [],
-          documents: [],
-        };
       });
-      setItems(updatedItems);
+
+      return {
+        ...tc,
+        compliance:
+          testData.compliance === 'Yes' || testData.compliance === 'Y'
+            ? 'Yes'
+            : testData.compliance === 'No' || testData.compliance === 'N'
+              ? 'No'
+              : '',
+        remarks: testData.remarks || '',
+        images: existingImages,
+        documents: existingDocs,
+      };
     }
-  }, [existingData]);
+
+    return { ...tc, compliance: '', remarks: '', images: [], documents: [] };
+  });
+
+  setItems(updatedItems);
+}, [existingData]);
 
   const handleComplianceChange = (id: string, value: string) => {
     setItems((prev) =>
@@ -399,84 +427,78 @@ const BlockRackForm = ({ blockId, existingData }: BlockRackFormProps) => {
     }
   };
 
-  const handleSubmit = async () => {
-    setSubmitting(true);
-    try {
-      const completedItems = items.filter((item) => item.compliance !== '');
+ const handleSubmit = async () => {
+  setSubmitting(true);
+  try {
+    const completedItems = items.filter((item) => item.compliance !== '');
 
-      if (completedItems.length === 0) {
-        alert('Please complete at least one test case before submitting');
-        setSubmitting(false);
-        return;
-      }
+    if (completedItems.length === 0) {
+      alert('Please complete at least one test case before submitting');
+      setSubmitting(false);
+      return;
+    }
 
-      const rackData: Record<
-        string,
-        { compliance: string; remarks: string; Image: string }
-      > = {};
+    // Build payload using API keys (infrastructure_T1, functional_T1, etc.)
+    const payload: Record<string, unknown> = {
+      block_id: parseInt(blockId),
+    };
 
-      for (const item of completedItems) {
-        const uploadedUrls: string[] = [];
+    for (const item of completedItems) {
+      const apiKey = TEST_ID_TO_API_KEY[item.id]; // ← maps A1 → infrastructure_T1
 
-        const newImages = item.images.filter((img) => img.file);
-        const existingImageUrls = item.images
-          .filter((img) => img.url)
-          .map((img) => stripBaseUrl(img.url as string));
+      const existingImageUrls = item.images
+        .filter((img) => img.url)
+        .map((img) => stripBaseUrl(img.url!));
 
-        const newDocs = item.documents.filter((doc) => doc.file);
-        const existingDocUrls = item.documents
-          .filter((doc) => doc.url)
-          .map((doc) => stripBaseUrl(doc.url as string));
+      const existingDocUrls = item.documents
+        .filter((doc) => doc.url)
+        .map((doc) => stripBaseUrl(doc.url!));
 
-        if (newImages.length > 0) {
-          const files = newImages.map((img) => img.file as File);
-          const uploadedImgUrls = await uploadImages(files);
-          uploadedUrls.push(...uploadedImgUrls);
-        }
+      const newImages = item.images.filter((img) => img.file);
+      const newDocs   = item.documents.filter((doc) => doc.file);
 
-        if (newDocs.length > 0) {
-          const files = newDocs.map((doc) => doc.file as File);
-          const uploadedDocs = await uploadDocs(files);
-          uploadedUrls.push(...uploadedDocs);
-        }
+      const uploadedImgUrls = newImages.length > 0
+        ? await uploadImages(newImages.map((img) => img.file!))
+        : [];
 
-        const allUrls = [
-          ...existingImageUrls,
-          ...existingDocUrls,
-          ...uploadedUrls,
-        ];
+      const uploadedDocUrls = newDocs.length > 0
+        ? await uploadDocs(newDocs.map((doc) => doc.file!))
+        : [];
 
-        rackData[item.id] = {
-          compliance: item.compliance,
-          remarks: item.remarks,
-          Image: allUrls.length > 0 ? `[${allUrls.join(',')}]` : '[]',
-        };
-      }
+      const allUrls = [
+        ...existingImageUrls,
+        ...existingDocUrls,
+        ...uploadedImgUrls,
+        ...uploadedDocUrls,
+      ];
 
-      const payload = {
-        block_id: parseInt(blockId),
-        ...rackData,
+      payload[apiKey] = {
+        compliance: item.compliance === 'Yes' ? 'Y' : 'N',
+        remarks: item.remarks,
+        Image: allUrls.length > 0 ? `[${allUrls.join(',')}]` : '[]',
       };
+    }
 
-      const response = await fetch(`${TraceBASEURL}/upload-block-rack-data`, {
+    const response = await fetch(
+      `${TraceBASEURL}/upload-smartrack-data`, 
+      {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-      });
+      }
+    );
 
-      if (!response.ok) throw new Error('Failed to submit Block Rack data');
+    if (!response.ok) throw new Error('Failed to submit');
 
-      const result = await response.json();
-      console.log('Block Rack Submit Result:', result);
-      alert('Block Rack Checklist submitted successfully!');
-      window.location.reload();
-    } catch (error) {
-      console.error('Error submitting Block Rack:', error);
-      alert('Failed to submit Block Rack checklist. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+    alert('Block Rack Checklist submitted successfully!');
+     window.location.reload();
+  } catch (error) {
+    console.error('Submit error:', error);
+    alert('Failed to submit. Please try again.');
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   const partAItems = items.filter((item) => item.part === 'A');
   const partBItems = items.filter((item) => item.part === 'B');

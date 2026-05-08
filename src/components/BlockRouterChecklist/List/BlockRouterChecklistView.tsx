@@ -13,14 +13,14 @@ import {
   Building2,
   AlertCircle,
 } from 'lucide-react';
-import { getRFMSData, getBlockRouterData } from '../../Services/api';
+import { getRFMSData, getBlockRouterData, getBlockRackData } from '../../Services/api';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { RouterData } from '../../../types/block-router-checklist';
+import { RackData, RouterData } from '../../../types/block-router-checklist';
 import MediaCarousel from '../../DepthChart/MediaCarousel';
 
 const ImgbaseUrl = import.meta.env.VITE_Image_URL;
 
-type FormType = 'RFMS' | 'BlockRouter' | 'FDMS';
+type FormType = 'RFMS' | 'BlockRouter' | 'BlockRack';
 
 interface TestItem {
   id: string;
@@ -31,7 +31,24 @@ interface TestItem {
   remarks: string;
   images: string[];
 }
-
+const RACK_TEST_ID_TO_API_KEY: Record<string, keyof RackData> = {
+  A1:  'infrastructure_T1',
+  A2:  'infrastructure_T2',
+  A3:  'infrastructure_T3',
+  A4:  'infrastructure_T4',
+  A5:  'infrastructure_T5',
+  A6:  'infrastructure_T6',
+  A7:  'infrastructure_T7',
+  A8:  'infrastructure_T8',
+  A9:  'infrastructure_T9',
+  A10: 'infrastructure_T10',
+  B1:  'functional_T1',
+  B2:  'functional_T2',
+  B3:  'functional_T3',
+  B4:  'functional_T4',
+  B5:  'functional_T5',
+  B6:  'functional_T6',
+};
 const BlockRouterChecklistView = () => {
   const { blockId } = useParams<{ blockId: string }>();
   const navigate = useNavigate();
@@ -47,6 +64,7 @@ const BlockRouterChecklistView = () => {
   const [loadingData, setLoadingData] = useState(false);
   const [rfmsData, setRfmsData] = useState<RouterData | null>(null);
   const [routerData, setRouterData] = useState<RouterData | null>(null);
+  const[rackData,setRackData]=useState<RackData | null>(null);
   const [carouselOpen, setCarouselOpen] = useState(false);
   const [carouselItems, setCarouselItems] = useState<string[]>([]);
   const [carouselIndex, setCarouselIndex] = useState(0);
@@ -74,9 +92,10 @@ const BlockRouterChecklistView = () => {
 
     setLoadingData(true);
     try {
-      const [rfms, blockRouter] = await Promise.all([
+      const [rfms, blockRouter,blockRack] = await Promise.all([
         getRFMSData(blockId).catch(() => null),
         getBlockRouterData(blockId).catch(() => null),
+        getBlockRackData(blockId).catch(()=>null),
       ]);
 
       if (rfms?.status && rfms?.tests) {
@@ -85,6 +104,9 @@ const BlockRouterChecklistView = () => {
 
       if (blockRouter?.status && blockRouter?.tests) {
         setRouterData(blockRouter);
+      }
+      if(blockRack?.status && blockRack?.data){
+        setRackData(blockRack.data)
       }
     } catch (error) {
       console.error('Error fetching form data:', error);
@@ -269,29 +291,26 @@ const BlockRouterChecklistView = () => {
     },
   ];
 
-  const fdmsTestCases = [
-    {
-      id: 'T1',
-      testCaseNo: '1',
-      description: 'FDMS system installation status',
-      procedure: 'Check if the FDMS system is installed at the designated location as per the project requirements'
-    },
-    { id: 'T2', testCaseNo: '2', description: 'Power connection verification',
-      procedure: 'Check if FDMS system is properly connected to power source and is powered on'
-     },
-    { id: 'T3', testCaseNo: '3', description: 'Network connectivity check' ,
-      procedure: 'Verify that the FDMS system is connected to the network and can communicate with other devices as required'
-    },
-    { id: 'T4', testCaseNo: '4', description: 'Database configuration' ,
-      procedure: 'Check if the database is properly configured and accessible by the FDMS system'
-    },
-    { id: 'T5', testCaseNo: '5', description: 'Fiber management system setup',
-      procedure: 'Verify that the fiber management system is set up correctly and can manage fiber connections as intended'
-     },
-    { id: 'T6', testCaseNo: '6', description: 'Documentation verification',
-      procedure: 'Check if all necessary documentation for the FDMS system is available and properly organized'
-     },
-  ];
+ const RackTestCases = [
+  // Part A: Infrastructure
+  { id: 'A1', testCaseNo: '1', part: 'A', description: 'Location Alignment and Rigidity (LAR)', procedure: 'As per approved Layout plan - Layout plan to be submitted.' },
+  { id: 'A2', testCaseNo: '2', part: 'A', description: 'LI-Bty, HUPS', procedure: 'ATC to be submitted.' },
+  { id: 'A3', testCaseNo: '3', part: 'A', description: 'Check of Firefighting Equipment', procedure: 'Physical verification for availability of fire fighting equipment.' },
+  { id: 'A4', testCaseNo: '4', part: 'A', description: 'Illumination and Power outlets', procedure: 'Should be adequate.' },
+  { id: 'A5', testCaseNo: '5', part: 'A', description: 'Check of Earthing system', procedure: 'As per Inspection & QA (T&D) Circle E.I. No 1-001. Earth measurement < 0.5 ohm.' },
+  { id: 'A6', testCaseNo: '6', part: 'A', description: 'QA / FTR certification of all equipment', procedure: 'TSEC Certificate and IC/RR to be submitted.' },
+  { id: 'A7', testCaseNo: '7', part: 'A', description: 'Check of Documentation', procedure: 'User manual, System Administration manual, product specification, Installation and O&M Manual.' },
+  { id: 'A8', testCaseNo: '8', part: 'A', description: 'Voltage drop test', procedure: 'Should be less than 1 volt (in case of DC supply).' },
+  { id: 'A9', testCaseNo: '9', part: 'A', description: 'Cabling, Labelling & Sign Writing', procedure: 'Physical check of terminal blocks, controls, switches, indicators.' },
+  { id: 'A10', testCaseNo: '10', part: 'A', description: 'Check of power supply', procedure: 'Equipment at GP shall be AC operated; at Block, all equipment shall be DC operated.' },
+  // Part B: Functional
+  { id: 'B1', testCaseNo: '1', part: 'B', description: 'Physical Check: Dimensioning, Surface finishing, Power supply, Smart meter provision', procedure: 'As per BoM / TSEC (addl. 20% space). Power switch inside RACK. Smart meter provision as required.' },
+  { id: 'B2', testCaseNo: '2', part: 'B', description: 'Check earthing for the Rack', procedure: 'All enclosure panels are single walled boltable from inside with Earthing on all flat parts.' },
+  { id: 'B3', testCaseNo: '3', part: 'B', description: 'Check for Cooling / Fan (N+1)', procedure: '3 fans above 25°C, 2 more above 35°C, standby above 60°C or fan failure. Self-starting axial fans 5+1.' },
+  { id: 'B4', testCaseNo: '4', part: 'B', description: 'Access Control and Monitoring System (IP/SNMP/Web browser)', procedure: 'Electromagnetic lock, 9-digit keypad, remote password reset, IR camera snapshots stored 15 days at NOC.' },
+  { id: 'B5', testCaseNo: '5', part: 'B', description: 'Check of SNMP traps (IP/SNMP/Web Browser control and monitoring)', procedure: 'SNMP traps for temperature, humidity, water logging, fan fail, fire detection, door open. Battery monitoring.' },
+  { id: 'B6', testCaseNo: '6', part: 'B', description: 'Check for Grouting bolts & RCC Plinth (outside building only)', procedure: 'Install rack on RCC plinth min 2 feet height with 2 pipes for power and OFC (external installation only).' },
+];
 
   const getTestCases = (): typeof rfmsTestCases => {
     switch (selectedFormType) {
@@ -299,8 +318,8 @@ const BlockRouterChecklistView = () => {
         return rfmsTestCases;
       case 'BlockRouter':
         return blockRouterTestCases;
-      case 'FDMS':
-        return fdmsTestCases;
+      case 'BlockRack':
+        return RackTestCases;
       default:
         return [];
     }
@@ -312,17 +331,23 @@ const BlockRouterChecklistView = () => {
         return rfmsData;
       case 'BlockRouter':
         return routerData;
+        case 'BlockRack':
+          return rackData;
       default:
         return null;
     }
   };
 
-  const getTestItems = (): TestItem[] => {
-    const testCases = getTestCases();
-    const data = getFormData();
+ const getTestItems = (): TestItem[] => {
+  const testCases = getTestCases();
 
-    return testCases.map((tc) => {
-      const testData = data?.tests?.[tc.id];
+  if (selectedFormType === 'BlockRack') {
+    return RackTestCases.map((tc) => {
+      const apiKey = RACK_TEST_ID_TO_API_KEY[tc.id];
+      const testData = rackData
+        ? (rackData[apiKey] as { Image: string; compliance: string; remarks: string } | null)
+        : null;
+
       const images = testData?.Image ? parseImageUrls(testData.Image) : [];
 
       return {
@@ -335,7 +360,25 @@ const BlockRouterChecklistView = () => {
         images,
       };
     });
-  };
+  }
+
+  // RFMS and BlockRouter use tests object
+  const data = getFormData() as RouterData | null;
+  return testCases.map((tc) => {
+    const testData = data?.tests?.[tc.id];
+    const images = testData?.Image ? parseImageUrls(testData.Image) : [];
+
+    return {
+      id: tc.id,
+      testCaseNo: tc.testCaseNo,
+      description: tc.description,
+      procedure: tc.procedure,
+      compliance: testData?.compliance || '',
+      remarks: testData?.remarks || '',
+      images,
+    };
+  });
+};
 
   const formTypes: {
     type: FormType;
@@ -353,8 +396,8 @@ const BlockRouterChecklistView = () => {
       icon: <Wifi className="w-4 h-4" />,
     },
     {
-      type: 'FDMS',
-      label: 'FDMS',
+      type: 'BlockRack',
+      label: 'Block Rack',
       icon: <FileText className="w-4 h-4" />,
     },
   ];
@@ -365,7 +408,7 @@ const BlockRouterChecklistView = () => {
   ).length;
   const totalCount = testItems.length;
 
-  if (loadingData && !rfmsData && !routerData) {
+  if (loadingData && !rfmsData && !routerData && !rackData) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
@@ -456,163 +499,340 @@ const BlockRouterChecklistView = () => {
             </p>
           </div>
         ) : (
-          <div className="grid gap-3">
-            {testItems.map((item, index) => {
-              const isCompleted =
-                item.compliance === 'Yes' || item.compliance === 'Y';
-              const hasData = item.compliance !== '';
+         selectedFormType === 'BlockRack' ? (
+            // Grouped view with Part A / Part B headers
+            (['A', 'B'] as const).map((part) => {
+              const partItems = testItems.filter((item) => item.id.startsWith(part));
+              const partLabel = part === 'A' ? 'Part A: Infrastructure Tests' : 'Part B: Functional Tests';
 
               return (
-                <div
-                  key={item.id}
-                  className={`group bg-white rounded-xl shadow-sm border transition-all hover:shadow-md ${
-                    !hasData
-                      ? 'border-gray-100 opacity-60'
-                      : isCompleted
-                        ? 'border-emerald-100 hover:border-emerald-200'
-                        : 'border-red-100 hover:border-red-200'
-                  }`}
-                >
-                  <div className="p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 mt-0.5">
+                <div key={part} className="mb-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className={`px-3 py-1 rounded-full text-xs font-bold text-white ${part === 'A' ? 'bg-blue-500' : 'bg-emerald-500'}`}>
+                      {partLabel}
+                    </div>
+                    <div className="flex-1 h-px bg-gray-200" />
+                    <span className="text-xs text-gray-400">
+                      {partItems.filter(i => i.compliance === 'Yes' || i.compliance === 'Y').length}/{partItems.length} passed
+                    </span>
+                  </div>
+
+                  <div className="grid gap-3">
+                    {partItems.map((item) => {
+                      /* ── same card JSX as your existing map() ── */
+                      const isCompleted = item.compliance === 'Yes' || item.compliance === 'Y';
+                      const hasData = item.compliance !== '';
+                      return (
                         <div
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
-                            !hasData
-                              ? 'bg-gray-100 text-gray-400'
-                              : isCompleted
-                                ? 'bg-emerald-100 text-emerald-700'
-                                : 'bg-red-100 text-red-700'
+                          key={item.id}
+                          className={`group bg-white rounded-xl shadow-sm border transition-all hover:shadow-md ${
+                            !hasData ? 'border-gray-100 opacity-60'
+                              : isCompleted ? 'border-emerald-100 hover:border-emerald-200'
+                              : 'border-red-100 hover:border-red-200'
                           }`}
                         >
-                          {item.testCaseNo}
+ <div className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 mt-0.5">
+                          <div
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
+                              !hasData
+                                ? 'bg-gray-100 text-gray-400'
+                                : isCompleted
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : 'bg-red-100 text-red-700'
+                            }`}
+                          >
+                            {item.testCaseNo}
+                          </div>
                         </div>
-                      </div>
 
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-800 mb-2 leading-relaxed">
-                          {item.description}
-                        </p>
-                        {item.procedure && (
-                          <p className="text-xs text-gray-500 mt-1 mb-1">
-                            <b>Procedure:</b> {item.procedure}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-800 mb-2 leading-relaxed">
+                            {item.description}
                           </p>
-                        )}
-
-                        <div className="flex flex-wrap items-center gap-2">
-                          {hasData ? (
-                            <span
-                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                isCompleted
-                                  ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-                                  : 'bg-red-50 text-red-700 ring-1 ring-red-200'
-                              }`}
-                            >
-                              {isCompleted ? (
-                                <CheckCircle className="w-3 h-3" />
-                              ) : (
-                                <XCircle className="w-3 h-3" />
-                              )}
-                              {isCompleted ? 'Compliance Status (Yes)' : 'Compliance Status (No)'}
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-50 text-gray-400 ring-1 ring-gray-200">
-                              <AlertCircle className="w-3 h-3" />
-                              Pending
-                            </span>
+                          {item.procedure && (
+                            <p className="text-xs text-gray-500 mt-1 mb-1">
+                              <b>Procedure:</b> {item.procedure}
+                            </p>
                           )}
 
-                         
-
-                          {item.images.length > 0 && (
-                            <button
-                              onClick={() => openCarousel(item.images, 0)}
-                              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-orange-600 ring-1 ring-orange-200 hover:bg-orange-100 transition-colors"
-                            >
-                              <Image className="w-3 h-3" />
-                              {item.images.length} Media
-                            </button>
-                          )}
-
-                        </div>
-                         {item.remarks && (
-                            <span className="text-xs text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full">
-                             <b>Remarks:</b> {item.remarks}
-                            </span>
-                          )}
-
-                        {item.images.length > 0 && (
-                          <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
-                            {item.images.slice(0, 5).map((img, idx) => {
-                              const isVideo = isVideoUrl(img);
-                              return (
-                                <button
-                                  key={idx}
-                                  onClick={() => openCarousel(item.images, idx)}
-                                  className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border border-gray-200 hover:border-blue-400 hover:shadow-sm transition-all relative group/image"
-                                >
-                                  {isVideo ? (
-                                    <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                                      <Video className="w-4 h-4 text-gray-400" />
-                                    </div>
-                                  ) : (
-                                    <img
-                                      src={getFullImageUrl(img)}
-                                      alt={`Media ${idx + 1}`}
-                                      className="w-full h-full object-cover"
-                                      onError={(e) => {
-                                        (
-                                          e.currentTarget as HTMLImageElement
-                                        ).style.display = 'none';
-                                      }}
-                                    />
-                                  )}
-                                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/image:opacity-100 transition-opacity flex items-center justify-center">
-                                    {isVideo ? (
-                                      <Video className="w-3 h-3 text-white" />
-                                    ) : (
-                                      <Image className="w-3 h-3 text-white" />
-                                    )}
-                                  </div>
-                                </button>
-                              );
-                            })}
-                            {item.images.length > 5 && (
-                              <button
-                                onClick={() => openCarousel(item.images, 5)}
-                                className="flex-shrink-0 w-12 h-12 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+                          <div className="flex flex-wrap items-center gap-2">
+                            {hasData ? (
+                              <span
+                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  isCompleted
+                                    ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                                    : 'bg-red-50 text-red-700 ring-1 ring-red-200'
+                                }`}
                               >
-                                +{item.images.length - 5}
+                                {isCompleted ? (
+                                  <CheckCircle className="w-3 h-3" />
+                                ) : (
+                                  <XCircle className="w-3 h-3" />
+                                )}
+                                {isCompleted ? 'Compliance Status (Yes)' : 'Compliance Status (No)'}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-50 text-gray-400 ring-1 ring-gray-200">
+                                <AlertCircle className="w-3 h-3" />
+                                Pending
+                              </span>
+                            )}
+
+                          
+
+                            {item.images.length > 0 && (
+                              <button
+                                onClick={() => openCarousel(item.images, 0)}
+                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-orange-600 ring-1 ring-orange-200 hover:bg-orange-100 transition-colors"
+                              >
+                                <Image className="w-3 h-3" />
+                                {item.images.length} Media
                               </button>
                             )}
-                          </div>
-                        )}
-                      </div>
 
-                      <div className="flex-shrink-0">
-                        <div
-                          className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                            !hasData
-                              ? 'bg-gray-100'
-                              : isCompleted
-                                ? 'bg-emerald-100'
-                                : 'bg-red-100'
-                          }`}
-                        >
-                          {hasData &&
-                            (isCompleted ? (
-                              <CheckCircle className="w-4 h-4 text-emerald-600" />
-                            ) : (
-                              <XCircle className="w-4 h-4 text-red-600" />
-                            ))}
+                          </div>
+                          {item.remarks && (
+                              <span className="text-xs text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full">
+                              <b>Remarks:</b> {item.remarks}
+                              </span>
+                            )}
+
+                          {item.images.length > 0 && (
+                            <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
+                              {item.images.slice(0, 5).map((img, idx) => {
+                                const isVideo = isVideoUrl(img);
+                                return (
+                                  <button
+                                    key={idx}
+                                    onClick={() => openCarousel(item.images, idx)}
+                                    className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border border-gray-200 hover:border-blue-400 hover:shadow-sm transition-all relative group/image"
+                                  >
+                                    {isVideo ? (
+                                      <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                                        <Video className="w-4 h-4 text-gray-400" />
+                                      </div>
+                                    ) : (
+                                      <img
+                                        src={getFullImageUrl(img)}
+                                        alt={`Media ${idx + 1}`}
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                          (
+                                            e.currentTarget as HTMLImageElement
+                                          ).style.display = 'none';
+                                        }}
+                                      />
+                                    )}
+                                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/image:opacity-100 transition-opacity flex items-center justify-center">
+                                      {isVideo ? (
+                                        <Video className="w-3 h-3 text-white" />
+                                      ) : (
+                                        <Image className="w-3 h-3 text-white" />
+                                      )}
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                              {item.images.length > 5 && (
+                                <button
+                                  onClick={() => openCarousel(item.images, 5)}
+                                  className="flex-shrink-0 w-12 h-12 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+                                >
+                                  +{item.images.length - 5}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex-shrink-0">
+                          <div
+                            className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                              !hasData
+                                ? 'bg-gray-100'
+                                : isCompleted
+                                  ? 'bg-emerald-100'
+                                  : 'bg-red-100'
+                            }`}
+                          >
+                            {hasData &&
+                              (isCompleted ? (
+                                <CheckCircle className="w-4 h-4 text-emerald-600" />
+                              ) : (
+                                <XCircle className="w-4 h-4 text-red-600" />
+                              ))}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
+                      );
+                    })}
+                  </div>
                 </div>
               );
-            })}
+            })
+            ) : (
+        <div className="grid gap-3">
+              {testItems.map((item, index) => {
+                const isCompleted =
+                  item.compliance === 'Yes' || item.compliance === 'Y';
+                const hasData = item.compliance !== '';
+
+                return (
+                  <div
+                    key={item.id}
+                    className={`group bg-white rounded-xl shadow-sm border transition-all hover:shadow-md ${
+                      !hasData
+                        ? 'border-gray-100 opacity-60'
+                        : isCompleted
+                          ? 'border-emerald-100 hover:border-emerald-200'
+                          : 'border-red-100 hover:border-red-200'
+                    }`}
+                  >
+                    <div className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 mt-0.5">
+                          <div
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
+                              !hasData
+                                ? 'bg-gray-100 text-gray-400'
+                                : isCompleted
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : 'bg-red-100 text-red-700'
+                            }`}
+                          >
+                            {item.testCaseNo}
+                          </div>
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-800 mb-2 leading-relaxed">
+                            {item.description}
+                          </p>
+                          {item.procedure && (
+                            <p className="text-xs text-gray-500 mt-1 mb-1">
+                              <b>Procedure:</b> {item.procedure}
+                            </p>
+                          )}
+
+                          <div className="flex flex-wrap items-center gap-2">
+                            {hasData ? (
+                              <span
+                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  isCompleted
+                                    ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                                    : 'bg-red-50 text-red-700 ring-1 ring-red-200'
+                                }`}
+                              >
+                                {isCompleted ? (
+                                  <CheckCircle className="w-3 h-3" />
+                                ) : (
+                                  <XCircle className="w-3 h-3" />
+                                )}
+                                {isCompleted ? 'Compliance Status (Yes)' : 'Compliance Status (No)'}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-50 text-gray-400 ring-1 ring-gray-200">
+                                <AlertCircle className="w-3 h-3" />
+                                Pending
+                              </span>
+                            )}
+
+                          
+
+                            {item.images.length > 0 && (
+                              <button
+                                onClick={() => openCarousel(item.images, 0)}
+                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-orange-600 ring-1 ring-orange-200 hover:bg-orange-100 transition-colors"
+                              >
+                                <Image className="w-3 h-3" />
+                                {item.images.length} Media
+                              </button>
+                            )}
+
+                          </div>
+                          {item.remarks && (
+                              <span className="text-xs text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full">
+                              <b>Remarks:</b> {item.remarks}
+                              </span>
+                            )}
+
+                          {item.images.length > 0 && (
+                            <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
+                              {item.images.slice(0, 5).map((img, idx) => {
+                                const isVideo = isVideoUrl(img);
+                                return (
+                                  <button
+                                    key={idx}
+                                    onClick={() => openCarousel(item.images, idx)}
+                                    className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border border-gray-200 hover:border-blue-400 hover:shadow-sm transition-all relative group/image"
+                                  >
+                                    {isVideo ? (
+                                      <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                                        <Video className="w-4 h-4 text-gray-400" />
+                                      </div>
+                                    ) : (
+                                      <img
+                                        src={getFullImageUrl(img)}
+                                        alt={`Media ${idx + 1}`}
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                          (
+                                            e.currentTarget as HTMLImageElement
+                                          ).style.display = 'none';
+                                        }}
+                                      />
+                                    )}
+                                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/image:opacity-100 transition-opacity flex items-center justify-center">
+                                      {isVideo ? (
+                                        <Video className="w-3 h-3 text-white" />
+                                      ) : (
+                                        <Image className="w-3 h-3 text-white" />
+                                      )}
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                              {item.images.length > 5 && (
+                                <button
+                                  onClick={() => openCarousel(item.images, 5)}
+                                  className="flex-shrink-0 w-12 h-12 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+                                >
+                                  +{item.images.length - 5}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex-shrink-0">
+                          <div
+                            className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                              !hasData
+                                ? 'bg-gray-100'
+                                : isCompleted
+                                  ? 'bg-emerald-100'
+                                  : 'bg-red-100'
+                            }`}
+                          >
+                            {hasData &&
+                              (isCompleted ? (
+                                <CheckCircle className="w-4 h-4 text-emerald-600" />
+                              ) : (
+                                <XCircle className="w-4 h-4 text-red-600" />
+                              ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
           </div>
+        )
         )}
       </div>
 

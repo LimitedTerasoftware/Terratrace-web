@@ -18,7 +18,7 @@ import { Activity, ApiResponseMachine, FilterState } from '../../types/survey';
 import { EditPayload } from '../../types/aerial-survey';
 import {
   BlockChecklistResponse,
-  RouterData,
+  RouterData,RackResponse,
 } from '../../types/block-router-checklist';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -728,7 +728,15 @@ export const getBlockRouterData = async (
     throw error;
   }
 };
+export const getBlockRackData = async(blockId:string,):Promise<RackResponse>=>{
+  try {
+   const resp = await axios.get(`${TraceBASEURL}/get-smartrack-data/${blockId}`,);
+   return resp.data;
+  } catch (error) {
+    throw error;
+  }
 
+}
 export const getBlocksChecklist = async (filters: {
   state_id?: string;
   district_id?: string;

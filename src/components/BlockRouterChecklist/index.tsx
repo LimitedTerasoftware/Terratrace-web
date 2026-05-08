@@ -6,11 +6,12 @@ import {
   getBlockData,
   getRFMSData,
   getBlockRouterData,
+  getBlockRackData,
 } from '../Services/api';
 import { Block, District, StateData } from '../../types/survey';
 import RFMSForm from './forms/RFMSForm';
 import BlockRouterForm from './forms/BlockRouterForm';
-import { RouterData } from '../../types/block-router-checklist';
+import { RackData, RackResponse, RouterData } from '../../types/block-router-checklist';
 import BlockRackForm from './forms/BlockRack';
 
 type FormType = 'RFMS' | 'Block Router' | 'Block Rack';
@@ -38,7 +39,7 @@ const BlockRouterChecklist = () => {
   const [loadingRfms, setLoadingRfms] = useState(false);
   const [rfmsData, setRfmsData] = useState<RouterData | null>(null);
   const [routerData, setRouterData] = useState<RouterData | null>(null);
-  const [blockrackData, setBlockRackData] = useState<RouterData | null>(null);
+  const [blockrackData, setBlockRackData] = useState<RackData | null>(null);
 
   useEffect(() => {
     const fetchStates = async () => {
@@ -126,6 +127,21 @@ const BlockRouterChecklist = () => {
     }
   };
  
+  const fetchBlockRack = async(blockId:string)=>{
+    try {
+      const data = await getBlockRackData(blockId);
+      if(data.status && data.data){
+        setBlockRackData(data?.data);
+      }else{
+        setBlockRackData(null);
+      }
+      
+    } catch (error) {
+      setBlockRackData(null);
+
+    }
+
+  }
   const handleFormTypeChange = (formType: FormType) => {
     setSelectedFormType(formType);
   };
@@ -183,6 +199,9 @@ const BlockRouterChecklist = () => {
 
     if (selectedFormType === 'Block Router') {
       await fetchRouterData(selectedBlock);
+    }
+    if(selectedFormType === 'Block Rack'){
+      await fetchBlockRack(selectedBlock);
     }
 
     setShowModal(false);
