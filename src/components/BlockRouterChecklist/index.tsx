@@ -212,7 +212,7 @@ const BlockRouterChecklist = () => {
   const renderForm = () => {
     switch (selectedFormType) {
       case 'RFMS':
-        return <RFMSForm blockId={selectedBlock} existingData={rfmsData} />;
+        return <RFMSForm blockId={selectedBlock} blockName ={selectedBlockName} existingData={rfmsData} />;
       case 'Block Router':
         return (
           <BlockRouterForm blockId={selectedBlock} existingData={routerData} />

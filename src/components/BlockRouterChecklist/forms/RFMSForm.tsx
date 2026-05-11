@@ -14,7 +14,12 @@ import {
   Printer,
 } from 'lucide-react';
 import Tricad from '../../../images/logo/Tricad.png';
+import TricadIcon from '../../../images/logo/favicon.png';
 import { RouterData } from '../../../types/block-router-checklist';
+import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 const BASEURL = import.meta.env.VITE_API_BASE;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -71,6 +76,7 @@ interface RFMSItem {
 interface RFMSFormProps {
   blockId: string;
   existingData?: RouterData | null;
+  blockName: string;
 }
 
 const rfmsTestCases = [
@@ -158,7 +164,7 @@ const rfmsTestCases = [
   },
 ];
 
-const RFMSForm = ({ blockId, existingData }: RFMSFormProps) => {
+const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
   const [items, setItems] = useState<RFMSItem[]>(
     rfmsTestCases.map((tc) => ({
       ...tc,
@@ -336,35 +342,91 @@ const RFMSForm = ({ blockId, existingData }: RFMSFormProps) => {
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
 
-  /** Convert a File or a remote URL to a base64 data-URL string */
-  const toBase64 = (source: File | string): Promise<string> => {
-    if (source instanceof File) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(source);
+  const toBase64 = async (source: File | string): Promise<string> => {
+    try {
+      // Local uploaded file
+      if (source instanceof File) {
+        return await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+
+          reader.readAsDataURL(source);
+        });
+      }
+
+      // Remote file
+      const response = await fetch(source, {
+        mode: 'cors',
+        credentials: 'omit',
+        cache: 'no-cache',
       });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch: ${source}`);
+      }
+
+      const blob = await response.blob();
+
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+
+        reader.readAsDataURL(blob);
+      });
+    } catch (err) {
+      console.error('Base64 conversion failed:', source, err);
+
+      // IMPORTANT:
+      // return original URL instead of empty string
+      return typeof source === 'string' ? source : '';
     }
-    // Remote URL — fetch and convert
-    return fetch(source)
-      .then((r) => r.blob())
-      .then(
-        (blob) =>
-          new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          }),
-      )
-      .catch(() => ''); // graceful fallback for CORS-blocked URLs
   };
+
+  const renderPdfToImages = async (source: File | string): Promise<string[]> => {
+    const arrayBuffer =
+      source instanceof File
+        ? await source.arrayBuffer()
+        : await fetch(source, {
+          mode: 'cors',
+          credentials: 'omit',
+          cache: 'no-cache',
+        }).then((res) => {
+          if (!res.ok) throw new Error(`Failed to fetch PDF: ${source}`);
+          return res.arrayBuffer();
+        });
+
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const pages: string[] = [];
+
+    for (let pageNo = 1; pageNo <= pdf.numPages; pageNo += 1) {
+      const page = await pdf.getPage(pageNo);
+      const viewport = page.getViewport({ scale: 1.6 });
+
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+
+      if (!context) continue;
+
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+
+      await page.render({ canvasContext: context, viewport, canvas, }).promise;
+
+      pages.push(canvas.toDataURL('image/png'));
+    }
+
+    return pages;
+  };
+
 
   const getDocMeta = (doc: UploadedFile): { ext: string; label: string; color: string; bg: string; icon: string } => {
     const name = doc.file?.name ?? doc.url?.split('/').pop() ?? '';
     const ext = name.split('.').pop()?.toLowerCase() ?? '';
-    if (ext === 'pdf')  return { ext: 'PDF',  label: name, color: '#dc2626', bg: '#fef2f2', icon: '📄' };
+    if (ext === 'pdf') return { ext: 'PDF', label: name, color: '#dc2626', bg: '#fef2f2', icon: '📄' };
     if (ext === 'doc' || ext === 'docx') return { ext: 'WORD', label: name, color: '#2563eb', bg: '#eff6ff', icon: '📝' };
     if (ext === 'xls' || ext === 'xlsx') return { ext: 'EXCEL', label: name, color: '#16a34a', bg: '#f0fdf4', icon: '📊' };
     return { ext: ext.toUpperCase() || 'FILE', label: name, color: '#7c3aed', bg: '#f5f3ff', icon: '📎' };
@@ -394,20 +456,38 @@ const RFMSForm = ({ blockId, existingData }: RFMSFormProps) => {
     // ── Convert logo to base64 so it survives the new window ──
     let logoBase64 = '';
     try {
-      logoBase64 = await toBase64(Tricad as unknown as string);
+      logoBase64 = await toBase64(TricadIcon as unknown as string);
     } catch (_) { /* skip */ }
+
+    const attachmentPages: string[] = [];
 
     // ── Build per-item HTML with base64-embedded PDFs ──
     const itemsHtml = await Promise.all(
       items.map(async (item) => {
         // Images → base64
         const imagesHtml = await Promise.all(
-          item.images.map(async (img) => {
+          item.images.map(async (img, index) => {
             let src = img.preview;
+
             try {
               src = img.file ? await toBase64(img.file) : await toBase64(img.preview);
-            } catch (_) { /* use original url */ }
-            return `<div class="image-thumb"><img src="${src}" alt="Attachment" /></div>`;
+            } catch (_) {
+              // use original url
+            }
+
+            const label =
+              img.file?.name ||
+              img.url?.split('/').pop() ||
+              `${item.testCaseNo}-image-${index + 1}`;
+
+            attachmentPages.push(`
+              <div class="attachment-page image-attachment-page">
+                <div class="attachment-label">${item.testCaseNo} - ${label}</div>
+                <img src="${src}" alt="${label}" />
+              </div>
+            `);
+
+            return `<div class="image-thumb"><img src="${src}" alt="Attachment" crossorigin="anonymous"/></div>`;
           }),
         );
 
@@ -418,29 +498,42 @@ const RFMSForm = ({ blockId, existingData }: RFMSFormProps) => {
             const size = formatFileSize(doc.file?.size);
 
             if (meta.ext === 'PDF') {
-              // Embed PDF inline so it prints on its own page break
-              let pdfSrc = '';
+              let pdfPages: string[] = [];
+
               try {
-                pdfSrc = doc.file
-                  ? await toBase64(doc.file)
-                  : doc.preview
-                    ? await toBase64(doc.preview)
-                    : '';
-              } catch (_) { /* skip */ }
+                const source = doc.file || doc.preview;
+                if (source) pdfPages = await renderPdfToImages(source);
+              } catch (err) {
+                console.error('PDF render failed:', doc, err);
+              }
+
+              if (pdfPages.length > 0) {
+                pdfPages.forEach((src, index) => {
+                  attachmentPages.push(`
+                  <div class="attachment-page pdf-attachment-page">
+                    <div class="attachment-label">${item.testCaseNo} - ${meta.label} - Page ${index + 1}</div>
+                    <img src="${src}" alt="${meta.label} page ${index + 1}" />
+                  </div>
+                `);
+                });
+              }
+
 
               return `
-                <div class="doc-card pdf-card">
+                <div class="doc-card compact-doc-card">
                   <div class="doc-card-meta">
                     <span class="doc-ext-badge" style="background:${meta.bg};color:${meta.color};">${meta.icon} ${meta.ext}</span>
                     <span class="doc-filename">${meta.label}</span>
                     ${size ? `<span class="doc-size">${size}</span>` : ''}
                   </div>
-                  ${pdfSrc ? `
-                  <div class="pdf-embed-wrap">
-                    <embed src="${pdfSrc}" type="application/pdf" class="pdf-embed" />
-                  </div>` : `<p class="doc-unavail">PDF preview unavailable (cross-origin restriction)</p>`}
+                  <div class="doc-card-info" style="border-left:3px solid ${meta.color};">
+                    <p style="color:${meta.color};font-weight:600;margin-bottom:4px;">PDF Document</p>
+                    <p style="color:#64748b;font-size:8pt;">Full PDF content is included in the attachment appendix.</p>
+                  </div>
                 </div>`;
             }
+
+
 
             // Word / Excel / other — rich metadata card
             return `
@@ -461,8 +554,8 @@ const RFMSForm = ({ blockId, existingData }: RFMSFormProps) => {
 
         const complianceBadgeClass =
           item.compliance === 'Yes' ? 'badge-yes'
-          : item.compliance === 'No' ? 'badge-no'
-          : 'badge-pending';
+            : item.compliance === 'No' ? 'badge-no'
+              : 'badge-pending';
 
         return `
           <div class="test-card">
@@ -492,10 +585,10 @@ const RFMSForm = ({ blockId, existingData }: RFMSFormProps) => {
     );
 
     const completedCount = items.filter((i) => i.compliance !== '').length;
-    const yesCount      = items.filter((i) => i.compliance === 'Yes').length;
-    const noCount       = items.filter((i) => i.compliance === 'No').length;
-    const pendingCount  = items.length - completedCount;
-    const progress      = Math.round((completedCount / items.length) * 100);
+    const yesCount = items.filter((i) => i.compliance === 'Yes').length;
+    const noCount = items.filter((i) => i.compliance === 'No').length;
+    const pendingCount = items.length - completedCount;
+    const progress = Math.round((completedCount / items.length) * 100);
 
     const fullHtml = `<!DOCTYPE html>
 <html lang="en">
@@ -584,11 +677,64 @@ const RFMSForm = ({ blockId, existingData }: RFMSFormProps) => {
     }
     .doc-filename { font-size:9pt; color:#1e293b; font-weight:500; flex:1; word-break:break-all; }
     .doc-size     { font-size:8pt; color:#94a3b8; white-space:nowrap; }
+    
+        .test-card {
+      border:1px solid #e2e8f0;
+      border-radius:10px;
+      margin-bottom:16px;
+      overflow:hidden;
+      break-inside:auto;
+      page-break-inside:auto;
+    }
 
-    /* PDF embed */
-    .pdf-embed-wrap { width:100%; background:#f1f5f9; }
-    .pdf-embed { width:100%; height:600px; border:none; display:block; }
-    .doc-unavail { padding:12px; font-size:9pt; color:#94a3b8; font-style:italic; }
+    .test-card-header,
+    .procedure-box,
+    .remarks-box,
+    .images-section,
+    .compact-doc-card {
+      break-inside:avoid;
+      page-break-inside:avoid;
+    }
+
+    .doc-card {
+      border:1px solid #e2e8f0;
+      border-radius:8px;
+      overflow:hidden;
+      margin-bottom:10px;
+    }
+      .attachment-page {
+  page-break-before: always;
+  break-before: page;
+  page-break-inside: avoid;
+  break-inside: avoid;
+  height: 245mm;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.attachment-label {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  font-size: 8.5pt;
+  font-weight: 700;
+  color: #1e293b;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  word-break: break-word;
+}
+
+.attachment-page img {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: #fff;
+}
 
     /* Word/Excel info card */
     .doc-card-info { padding:10px 14px; background:#fff; }
@@ -609,7 +755,7 @@ const RFMSForm = ({ blockId, existingData }: RFMSFormProps) => {
   <div class="report-header">
     ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" />` : '<div></div>'}
     <div class="report-header-title">
-      <h1>RFMS Related Tests</h1>
+      <h1>RFMS Related Tests - ${blockName}</h1>
       <p>Remote Fiber Monitoring System — Compliance Checklist Report</p>
       <p style="font-size:8pt;color:#94a3b8;margin-top:2px;">Generated: ${new Date().toLocaleString()}</p>
     </div>
@@ -643,9 +789,11 @@ const RFMSForm = ({ blockId, existingData }: RFMSFormProps) => {
 
   <!-- Footer -->
   <div class="report-footer">
-    <span>RFMS Compliance Checklist — Block ID: ${blockId}</span>
+    <span>RFMS Compliance Checklist — Block Name: ${blockName}</span>
     <span>Confidential — Internal Use Only</span>
   </div>
+  ${attachmentPages.length > 0 ? attachmentPages.join('') : ''}
+
 </body>
 </html>`;
 
@@ -708,7 +856,7 @@ const RFMSForm = ({ blockId, existingData }: RFMSFormProps) => {
           <div className="flex items-center gap-4">
             <img src={Tricad} alt="Logo" className="hidden md:block w-[140px] md:w-[180px]" />
             <div>
-              <h2 className="text-xl md:text-2xl font-bold">RFMS Related Tests</h2>
+              <h2 className="text-xl md:text-2xl font-bold">RFMS Related Tests - {blockName}</h2>
               <p className="text-blue-100 text-sm">Remote Fiber Monitoring System Compliance</p>
             </div>
           </div>
@@ -754,13 +902,12 @@ const RFMSForm = ({ blockId, existingData }: RFMSFormProps) => {
                   <p className="text-sm md:text-base font-medium text-gray-800">{item.description}</p>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                        isCompleted
-                          ? item.compliance === 'Yes'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-red-100 text-red-700'
-                          : 'bg-gray-100 text-gray-500'
-                      }`}
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isCompleted
+                        ? item.compliance === 'Yes'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-red-100 text-red-700'
+                        : 'bg-gray-100 text-gray-500'
+                        }`}
                     >
                       {isCompleted ? item.compliance : 'Pending'}
                     </span>
@@ -784,22 +931,20 @@ const RFMSForm = ({ blockId, existingData }: RFMSFormProps) => {
                     <div className="flex flex-wrap gap-3">
                       <button
                         onClick={() => handleComplianceChange(item.id, 'Yes')}
-                        className={`flex-1 min-w-[120px] py-3 px-4 rounded-xl border-2 font-semibold transition-all ${
-                          item.compliance === 'Yes'
-                            ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-200'
-                            : 'bg-white border-gray-200 text-gray-600 hover:border-green-300 hover:bg-green-50'
-                        }`}
+                        className={`flex-1 min-w-[120px] py-3 px-4 rounded-xl border-2 font-semibold transition-all ${item.compliance === 'Yes'
+                          ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-200'
+                          : 'bg-white border-gray-200 text-gray-600 hover:border-green-300 hover:bg-green-50'
+                          }`}
                       >
                         <CheckCircle className={`w-5 h-5 mx-auto mb-1 ${item.compliance === 'Yes' ? '' : 'text-gray-400'}`} />
                         Yes
                       </button>
                       <button
                         onClick={() => handleComplianceChange(item.id, 'No')}
-                        className={`flex-1 min-w-[120px] py-3 px-4 rounded-xl border-2 font-semibold transition-all ${
-                          item.compliance === 'No'
-                            ? 'bg-red-500 border-red-500 text-white shadow-lg shadow-red-200'
-                            : 'bg-white border-gray-200 text-gray-600 hover:border-red-300 hover:bg-red-50'
-                        }`}
+                        className={`flex-1 min-w-[120px] py-3 px-4 rounded-xl border-2 font-semibold transition-all ${item.compliance === 'No'
+                          ? 'bg-red-500 border-red-500 text-white shadow-lg shadow-red-200'
+                          : 'bg-white border-gray-200 text-gray-600 hover:border-red-300 hover:bg-red-50'
+                          }`}
                       >
                         <X className={`w-5 h-5 mx-auto mb-1 ${item.compliance === 'No' ? '' : 'text-gray-400'}`} />
                         No
@@ -922,7 +1067,7 @@ const RFMSForm = ({ blockId, existingData }: RFMSFormProps) => {
           ) : (
             <>
               <CheckCircle size={24} />
-              Submit RFMS Checklist
+              Submit & Print RFMS Checklist
               <span className="ml-1 text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(255,255,255,0.2)' }}>
                 {completedCount}/{items.length}
               </span>
@@ -973,9 +1118,9 @@ const RFMSForm = ({ blockId, existingData }: RFMSFormProps) => {
           <div className="p-6 md:p-10 max-w-5xl mx-auto">
             {/* Header */}
             <div className="flex items-center justify-between pb-6 mb-8 border-b-4 border-blue-700">
-              <img src={Tricad} alt="Logo" className="h-14" />
+              <img src={TricadIcon} alt="Logo" className="h-14" />
               <div className="text-right">
-                <h1 className="text-2xl font-bold text-blue-900">RFMS Related Tests</h1>
+                <h1 className="text-2xl font-bold text-blue-900">RFMS Related Tests - {blockName}</h1>
                 <p className="text-gray-500 text-sm">Remote Fiber Monitoring System — Compliance Checklist</p>
                 <p className="text-gray-400 text-xs mt-1">{new Date().toLocaleString()}</p>
               </div>
@@ -1018,13 +1163,12 @@ const RFMSForm = ({ blockId, existingData }: RFMSFormProps) => {
                     </span>
                     <p className="text-sm text-gray-700 flex-1 leading-relaxed">{item.description}</p>
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ml-2 ${
-                        item.compliance === 'Yes'
-                          ? 'bg-green-100 text-green-800 border border-green-200'
-                          : item.compliance === 'No'
-                            ? 'bg-red-100 text-red-800 border border-red-200'
-                            : 'bg-gray-100 text-gray-500 border border-gray-200'
-                      }`}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ml-2 ${item.compliance === 'Yes'
+                        ? 'bg-green-100 text-green-800 border border-green-200'
+                        : item.compliance === 'No'
+                          ? 'bg-red-100 text-red-800 border border-red-200'
+                          : 'bg-gray-100 text-gray-500 border border-gray-200'
+                        }`}
                     >
                       {item.compliance || 'Pending'}
                     </span>
@@ -1121,7 +1265,7 @@ const RFMSForm = ({ blockId, existingData }: RFMSFormProps) => {
 
             {/* Footer */}
             <div className="mt-6 pt-4 border-t border-gray-100 flex justify-between text-xs text-gray-400">
-              <span>RFMS Compliance Checklist — Block ID: {blockId}</span>
+              <span>RFMS Compliance Checklist — Block Name: {blockName}</span>
               <span>Confidential — Internal Use Only</span>
             </div>
           </div>
