@@ -17,6 +17,7 @@ import { getRFMSData, getBlockRouterData, getBlockRackData } from '../../Service
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { RackData, RouterData } from '../../../types/block-router-checklist';
 import MediaCarousel from '../../DepthChart/MediaCarousel';
+import { ExternalLink } from 'lucide-react';
 
 const ImgbaseUrl = import.meta.env.VITE_Image_URL;
 
@@ -30,7 +31,9 @@ interface TestItem {
   compliance: string;
   remarks: string;
   images: string[];
+  documents: string[];
 }
+
 const RACK_TEST_ID_TO_API_KEY: Record<string, keyof RackData> = {
   A1:  'infrastructure_T1',
   A2:  'infrastructure_T2',
@@ -139,6 +142,34 @@ const BlockRouterChecklistView = () => {
     const videoExtensions = ['.mp4', '.mov', '.avi', '.webm'];
     return videoExtensions.some((ext) => url.toLowerCase().includes(ext));
   };
+  const getFileExt = (url: string): string => {
+  const cleanUrl = url.split('?')[0].split('#')[0];
+  return cleanUrl.split('.').pop()?.toLowerCase() || '';
+};
+
+const isImageUrl = (url: string): boolean => {
+  const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
+  return imageExtensions.includes(getFileExt(url));
+};
+
+const isDocumentUrl = (url: string): boolean => {
+  const documentExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx'];
+  return documentExtensions.includes(getFileExt(url));
+};
+
+const getFileName = (url: string): string => {
+  return url.split('/').pop()?.split('?')[0] || 'Document';
+};
+
+const splitAttachments = (urls: string[]) => ({
+  images: urls.filter((url) => isImageUrl(url) || isVideoUrl(url)),
+  documents: urls.filter((url) => isDocumentUrl(url)),
+});
+
+const openDocument = (url: string) => {
+  window.open(getFullImageUrl(url), '_blank', 'noopener,noreferrer');
+};
+
 
   const openCarousel = (images: string[], startIndex: number = 0) => {
     setCarouselItems(images.map((img) => getFullImageUrl(img)));
@@ -348,7 +379,12 @@ const BlockRouterChecklistView = () => {
         ? (rackData[apiKey] as { Image: string; compliance: string; remarks: string } | null)
         : null;
 
-      const images = testData?.Image ? parseImageUrls(testData.Image) : [];
+      const attachments = testData?.Image ? parseImageUrls(testData.Image) : [];
+     const { images, documents } = splitAttachments(attachments);
+
+      
+
+      // const images = testData?.Image ? parseImageUrls(testData.Image) : [];
 
       return {
         id: tc.id,
@@ -358,6 +394,7 @@ const BlockRouterChecklistView = () => {
         compliance: testData?.compliance || '',
         remarks: testData?.remarks || '',
         images,
+         documents,
       };
     });
   }
@@ -366,7 +403,9 @@ const BlockRouterChecklistView = () => {
   const data = getFormData() as RouterData | null;
   return testCases.map((tc) => {
     const testData = data?.tests?.[tc.id];
-    const images = testData?.Image ? parseImageUrls(testData.Image) : [];
+    // const images = testData?.Image ? parseImageUrls(testData.Image) : [];
+      const attachments = testData?.Image ? parseImageUrls(testData.Image) : [];
+     const { images, documents } = splitAttachments(attachments);
 
     return {
       id: tc.id,
@@ -376,6 +415,7 @@ const BlockRouterChecklistView = () => {
       compliance: testData?.compliance || '',
       remarks: testData?.remarks || '',
       images,
+       documents,
     };
   });
 };
@@ -418,6 +458,36 @@ const BlockRouterChecklistView = () => {
       </div>
     );
   }
+  const renderDocuments = (item: TestItem) => {
+  if (item.documents.length === 0) return null;
+
+  return (
+    <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+      {item.documents.map((doc, idx) => {
+        const ext = getFileExt(doc).toUpperCase();
+        const name = getFileName(doc);
+
+        return (
+          <button
+            key={idx}
+            onClick={() => openDocument(doc)}
+            className="flex-shrink-0 min-w-[160px] max-w-[220px] rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-left hover:bg-purple-100 hover:border-purple-300 transition-all"
+          >
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-purple-600 flex-shrink-0" />
+              <span className="text-[10px] font-bold text-purple-700 bg-white px-1.5 py-0.5 rounded">
+                {ext || 'FILE'}
+              </span>
+              <ExternalLink className="w-3 h-3 text-purple-500 ml-auto flex-shrink-0" />
+            </div>
+            <p className="text-xs text-purple-900 mt-1 truncate">{name}</p>
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -531,8 +601,8 @@ const BlockRouterChecklistView = () => {
                               : 'border-red-100 hover:border-red-200'
                           }`}
                         >
- <div className="p-4">
-                      <div className="flex items-start gap-3">
+                      <div className="p-4">
+                       <div className="flex items-start gap-3">
                         <div className="flex-shrink-0 mt-0.5">
                           <div
                             className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
@@ -591,6 +661,17 @@ const BlockRouterChecklistView = () => {
                                 {item.images.length} Media
                               </button>
                             )}
+                            {item.documents.length > 0 && (
+                          <button
+                            onClick={() => openDocument(item.documents[0])}
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-600 ring-1 ring-purple-200 hover:bg-purple-100 transition-colors"
+                          >
+                            <FileText className="w-3 h-3" />
+                            {item.documents.length} Documents
+                          </button>
+                        )}
+                            
+                            
 
                           </div>
                           {item.remarks && (
@@ -645,6 +726,10 @@ const BlockRouterChecklistView = () => {
                               )}
                             </div>
                           )}
+                           {renderDocuments(item)}
+                       
+
+
                         </div>
 
                         <div className="flex-shrink-0">
@@ -752,6 +837,17 @@ const BlockRouterChecklistView = () => {
                                 {item.images.length} Media
                               </button>
                             )}
+                          {item.documents.length > 0 && (
+                          <button
+                            onClick={() => openDocument(item.documents[0])}
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-600 ring-1 ring-purple-200 hover:bg-purple-100 transition-colors"
+                          >
+                            <FileText className="w-3 h-3" />
+                            {item.documents.length} Documents
+                          </button>
+                        )}
+                         
+
 
                           </div>
                           {item.remarks && (
@@ -806,6 +902,10 @@ const BlockRouterChecklistView = () => {
                               )}
                             </div>
                           )}
+                          {renderDocuments(item)}
+                      
+
+
                         </div>
 
                         <div className="flex-shrink-0">
