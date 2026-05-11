@@ -11,7 +11,11 @@ import {
 import { Block, District, StateData } from '../../types/survey';
 import RFMSForm from './forms/RFMSForm';
 import BlockRouterForm from './forms/BlockRouterForm';
-import { RackData, RackResponse, RouterData } from '../../types/block-router-checklist';
+import {
+  RackData,
+  RackResponse,
+  RouterData,
+} from '../../types/block-router-checklist';
 import BlockRackForm from './forms/BlockRack';
 
 type FormType = 'RFMS' | 'Block Router' | 'Block Rack';
@@ -126,22 +130,19 @@ const BlockRouterChecklist = () => {
       setLoadingRfms(false);
     }
   };
- 
-  const fetchBlockRack = async(blockId:string)=>{
+
+  const fetchBlockRack = async (blockId: string) => {
     try {
       const data = await getBlockRackData(blockId);
-      if(data.status && data.data){
+      if (data.status && data.data) {
         setBlockRackData(data?.data);
-      }else{
+      } else {
         setBlockRackData(null);
       }
-      
     } catch (error) {
       setBlockRackData(null);
-
     }
-
-  }
+  };
   const handleFormTypeChange = (formType: FormType) => {
     setSelectedFormType(formType);
   };
@@ -200,7 +201,7 @@ const BlockRouterChecklist = () => {
     if (selectedFormType === 'Block Router') {
       await fetchRouterData(selectedBlock);
     }
-    if(selectedFormType === 'Block Rack'){
+    if (selectedFormType === 'Block Rack') {
       await fetchBlockRack(selectedBlock);
     }
 
@@ -212,13 +213,32 @@ const BlockRouterChecklist = () => {
   const renderForm = () => {
     switch (selectedFormType) {
       case 'RFMS':
-        return <RFMSForm blockId={selectedBlock} blockName ={selectedBlockName} existingData={rfmsData} />;
+        return (
+          <RFMSForm
+            blockId={selectedBlock}
+            blockName={selectedBlockName}
+            existingData={rfmsData}
+            onBack={() => setShowModal(true)}
+          />
+        );
       case 'Block Router':
         return (
-          <BlockRouterForm blockId={selectedBlock} existingData={routerData} />
+          <BlockRouterForm
+            blockId={selectedBlock}
+            blockName={selectedBlockName}
+            existingData={routerData}
+            onBack={() => setShowModal(true)}
+          />
         );
       case 'Block Rack':
-        return <BlockRackForm  blockId={selectedBlock} existingData={blockrackData}/>;
+        return (
+          <BlockRackForm
+            blockId={selectedBlock}
+            blockName={selectedBlockName}
+            existingData={blockrackData}
+            onBack={() => setShowModal(true)}
+          />
+        );
       default:
         return null;
     }

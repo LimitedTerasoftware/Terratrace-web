@@ -12,6 +12,7 @@ import {
   ClipboardCheck,
   Loader2,
   Printer,
+  ArrowLeft,
 } from 'lucide-react';
 import Tricad from '../../../images/logo/Tricad.png';
 import TricadIcon from '../../../images/logo/favicon.png';
@@ -77,6 +78,7 @@ interface RFMSFormProps {
   blockId: string;
   existingData?: RouterData | null;
   blockName: string;
+  onBack: () => void;
 }
 
 const rfmsTestCases = [
@@ -94,7 +96,8 @@ const rfmsTestCases = [
     testCaseNo: 'T2',
     description:
       'The OTDR module is required of 1650 nm (used for dark and live monitoring both) and dynamic range should be 40 dB or higher. Pulse width selectable between 6ns and 20μs and better. Event dead zone: = <1 Meter. Attenuation dead zone: 4 Meters; Optical distance accuracy: ±(0.75 + 0.0025% x distance + sampling resolution).',
-    procedure: 'Physical Check as well as on EMS/SNOC. 1650nm demo as per data sheet.',
+    procedure:
+      'Physical Check as well as on EMS/SNOC. 1650nm demo as per data sheet.',
     iconBg: 'bg-green-100',
     iconColor: 'text-green-600',
   },
@@ -156,7 +159,8 @@ const rfmsTestCases = [
   {
     id: 'T9',
     testCaseNo: 'T9',
-    description: 'Simulate fibre deterioration scenario using variable optical attenuator.',
+    description:
+      'Simulate fibre deterioration scenario using variable optical attenuator.',
     procedure:
       'Check location and distance of the fault as detected by RFMS. How does it compare with the actual Distance.',
     iconBg: 'bg-cyan-100',
@@ -164,7 +168,12 @@ const rfmsTestCases = [
   },
 ];
 
-const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
+const RFMSForm = ({
+  blockId,
+  existingData,
+  blockName,
+  onBack,
+}: RFMSFormProps) => {
   const [items, setItems] = useState<RFMSItem[]>(
     rfmsTestCases.map((tc) => ({
       ...tc,
@@ -219,7 +228,13 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
             documents: existingDocs,
           };
         }
-        return { ...tc, compliance: '', remarks: '', images: [], documents: [] };
+        return {
+          ...tc,
+          compliance: '',
+          remarks: '',
+          images: [],
+          documents: [],
+        };
       });
       setItems(updatedItems);
     }
@@ -228,10 +243,16 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
   // ─── Handlers ──────────────────────────────────────────────────────────────
 
   const handleComplianceChange = (id: string, value: string) =>
-    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, compliance: value } : item)));
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, compliance: value } : item,
+      ),
+    );
 
   const handleRemarksChange = (id: string, value: string) =>
-    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, remarks: value } : item)));
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, remarks: value } : item)),
+    );
 
   const handleFileUpload = (
     id: string,
@@ -247,12 +268,18 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
     }));
     setItems((prev) =>
       prev.map((item) =>
-        item.id === id ? { ...item, [type]: [...item[type], ...newFiles] } : item,
+        item.id === id
+          ? { ...item, [type]: [...item[type], ...newFiles] }
+          : item,
       ),
     );
   };
 
-  const removeFile = (itemId: string, type: 'images' | 'documents', fileId: string) => {
+  const removeFile = (
+    itemId: string,
+    type: 'images' | 'documents',
+    fileId: string,
+  ) => {
     setItems((prev) =>
       prev.map((item) => {
         if (item.id === itemId) {
@@ -268,7 +295,10 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
   const uploadImages = async (files: File[]): Promise<string[]> => {
     const formData = new FormData();
     files.forEach((file) => formData.append('images[]', file));
-    const response = await fetch(`${BASEURL}/upload-image`, { method: 'POST', body: formData });
+    const response = await fetch(`${BASEURL}/upload-image`, {
+      method: 'POST',
+      body: formData,
+    });
     if (!response.ok) throw new Error('Upload failed');
     const data = await response.json();
     return data.data?.images || [];
@@ -277,7 +307,10 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
   const uploadDocs = async (files: File[]): Promise<string[]> => {
     const formData = new FormData();
     files.forEach((file) => formData.append('docs[]', file));
-    const response = await fetch(`${BASEURL}/upload-image`, { method: 'POST', body: formData });
+    const response = await fetch(`${BASEURL}/upload-image`, {
+      method: 'POST',
+      body: formData,
+    });
     if (!response.ok) throw new Error('Upload failed');
     const data = await response.json();
     return data.data?.docs || [];
@@ -290,22 +323,37 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
       return false;
     }
     try {
-      const rfmsData: Record<string, { compliance: string; remarks: string; Image: string }> = {};
+      const rfmsData: Record<
+        string,
+        { compliance: string; remarks: string; Image: string }
+      > = {};
       for (const item of completedItems) {
         const uploadedUrls: string[] = [];
         const newImages = item.images.filter((img) => img.file);
-        const existingImageUrls = item.images.filter((img) => img.url).map((img) => stripBaseUrl(img.url as string));
+        const existingImageUrls = item.images
+          .filter((img) => img.url)
+          .map((img) => stripBaseUrl(img.url as string));
         const newDocs = item.documents.filter((doc) => doc.file);
-        const existingDocUrls = item.documents.filter((doc) => doc.url).map((doc) => stripBaseUrl(doc.url as string));
+        const existingDocUrls = item.documents
+          .filter((doc) => doc.url)
+          .map((doc) => stripBaseUrl(doc.url as string));
         if (newImages.length > 0) {
-          const uploadedImgUrls = await uploadImages(newImages.map((img) => img.file as File));
+          const uploadedImgUrls = await uploadImages(
+            newImages.map((img) => img.file as File),
+          );
           uploadedUrls.push(...uploadedImgUrls);
         }
         if (newDocs.length > 0) {
-          const uploadedDocUrls = await uploadDocs(newDocs.map((doc) => doc.file as File));
+          const uploadedDocUrls = await uploadDocs(
+            newDocs.map((doc) => doc.file as File),
+          );
           uploadedUrls.push(...uploadedDocUrls);
         }
-        const allUrls = [...existingImageUrls, ...existingDocUrls, ...uploadedUrls];
+        const allUrls = [
+          ...existingImageUrls,
+          ...existingDocUrls,
+          ...uploadedUrls,
+        ];
         rfmsData[item.id] = {
           compliance: item.compliance,
           remarks: item.remarks,
@@ -386,18 +434,20 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
     }
   };
 
-  const renderPdfToImages = async (source: File | string): Promise<string[]> => {
+  const renderPdfToImages = async (
+    source: File | string,
+  ): Promise<string[]> => {
     const arrayBuffer =
       source instanceof File
         ? await source.arrayBuffer()
         : await fetch(source, {
-          mode: 'cors',
-          credentials: 'omit',
-          cache: 'no-cache',
-        }).then((res) => {
-          if (!res.ok) throw new Error(`Failed to fetch PDF: ${source}`);
-          return res.arrayBuffer();
-        });
+            mode: 'cors',
+            credentials: 'omit',
+            cache: 'no-cache',
+          }).then((res) => {
+            if (!res.ok) throw new Error(`Failed to fetch PDF: ${source}`);
+            return res.arrayBuffer();
+          });
 
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const pages: string[] = [];
@@ -414,7 +464,7 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
       canvas.width = Math.floor(viewport.width);
       canvas.height = Math.floor(viewport.height);
 
-      await page.render({ canvasContext: context, viewport, canvas, }).promise;
+      await page.render({ canvasContext: context, viewport, canvas }).promise;
 
       pages.push(canvas.toDataURL('image/png'));
     }
@@ -422,14 +472,48 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
     return pages;
   };
 
-
-  const getDocMeta = (doc: UploadedFile): { ext: string; label: string; color: string; bg: string; icon: string } => {
+  const getDocMeta = (
+    doc: UploadedFile,
+  ): {
+    ext: string;
+    label: string;
+    color: string;
+    bg: string;
+    icon: string;
+  } => {
     const name = doc.file?.name ?? doc.url?.split('/').pop() ?? '';
     const ext = name.split('.').pop()?.toLowerCase() ?? '';
-    if (ext === 'pdf') return { ext: 'PDF', label: name, color: '#dc2626', bg: '#fef2f2', icon: '📄' };
-    if (ext === 'doc' || ext === 'docx') return { ext: 'WORD', label: name, color: '#2563eb', bg: '#eff6ff', icon: '📝' };
-    if (ext === 'xls' || ext === 'xlsx') return { ext: 'EXCEL', label: name, color: '#16a34a', bg: '#f0fdf4', icon: '📊' };
-    return { ext: ext.toUpperCase() || 'FILE', label: name, color: '#7c3aed', bg: '#f5f3ff', icon: '📎' };
+    if (ext === 'pdf')
+      return {
+        ext: 'PDF',
+        label: name,
+        color: '#dc2626',
+        bg: '#fef2f2',
+        icon: '📄',
+      };
+    if (ext === 'doc' || ext === 'docx')
+      return {
+        ext: 'WORD',
+        label: name,
+        color: '#2563eb',
+        bg: '#eff6ff',
+        icon: '📝',
+      };
+    if (ext === 'xls' || ext === 'xlsx')
+      return {
+        ext: 'EXCEL',
+        label: name,
+        color: '#16a34a',
+        bg: '#f0fdf4',
+        icon: '📊',
+      };
+    return {
+      ext: ext.toUpperCase() || 'FILE',
+      label: name,
+      color: '#7c3aed',
+      bg: '#f5f3ff',
+      icon: '📎',
+    };
   };
 
   const formatFileSize = (bytes?: number): string => {
@@ -448,7 +532,8 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
     }
 
     // Show a loading placeholder immediately so the window doesn't look blank
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>RFMS Report</title>
+    printWindow.document
+      .write(`<!DOCTYPE html><html><head><title>RFMS Report</title>
       <style>body{display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#64748b;font-size:15pt;}</style>
       </head><body>⏳ Preparing report, please wait…</body></html>`);
     printWindow.document.close();
@@ -457,7 +542,9 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
     let logoBase64 = '';
     try {
       logoBase64 = await toBase64(TricadIcon as unknown as string);
-    } catch (_) { /* skip */ }
+    } catch (_) {
+      /* skip */
+    }
 
     const attachmentPages: string[] = [];
 
@@ -470,7 +557,9 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
             let src = img.preview;
 
             try {
-              src = img.file ? await toBase64(img.file) : await toBase64(img.preview);
+              src = img.file
+                ? await toBase64(img.file)
+                : await toBase64(img.preview);
             } catch (_) {
               // use original url
             }
@@ -518,7 +607,6 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
                 });
               }
 
-
               return `
                 <div class="doc-card compact-doc-card">
                   <div class="doc-card-meta">
@@ -532,8 +620,6 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
                   </div>
                 </div>`;
             }
-
-
 
             // Word / Excel / other — rich metadata card
             return `
@@ -553,8 +639,10 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
         );
 
         const complianceBadgeClass =
-          item.compliance === 'Yes' ? 'badge-yes'
-            : item.compliance === 'No' ? 'badge-no'
+          item.compliance === 'Yes'
+            ? 'badge-yes'
+            : item.compliance === 'No'
+              ? 'badge-no'
               : 'badge-pending';
 
         return `
@@ -568,17 +656,25 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
               <div class="procedure-box"><strong>Procedure: </strong>${item.procedure}</div>
               ${item.remarks ? `<div class="remarks-box"><strong>Remarks: </strong>${item.remarks}</div>` : ''}
 
-              ${imagesHtml.length > 0 ? `
+              ${
+                imagesHtml.length > 0
+                  ? `
               <div class="images-section">
                 <div class="section-title blue-bar">Images (${imagesHtml.length})</div>
                 <div class="images-grid">${imagesHtml.join('')}</div>
-              </div>` : ''}
+              </div>`
+                  : ''
+              }
 
-              ${docsHtml.length > 0 ? `
+              ${
+                docsHtml.length > 0
+                  ? `
               <div class="docs-section">
                 <div class="section-title purple-bar">Documents (${docsHtml.length})</div>
                 ${docsHtml.join('')}
-              </div>` : ''}
+              </div>`
+                  : ''
+              }
             </div>
           </div>`;
       }),
@@ -850,14 +946,32 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
       {/* ── Header ── */}
       <div
         className="rounded-2xl p-4 md:p-6 mb-4 text-white shadow-lg"
-        style={{ background: 'linear-gradient(135deg, #0d47a1 0%, #1565c0 50%, #1976d2 100%)' }}
+        style={{
+          background:
+            'linear-gradient(135deg, #0d47a1 0%, #1565c0 50%, #1976d2 100%)',
+        }}
       >
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-4">
-            <img src={Tricad} alt="Logo" className="hidden md:block w-[140px] md:w-[180px]" />
+            <button
+              onClick={onBack}
+              className="flex items-center gap-1.5 text-white/80 hover:text-white transition-colors bg-white/10 hover:bg-white/20 rounded-lg px-3 py-1.5 text-sm"
+            >
+              <ArrowLeft size={16} />
+              Back
+            </button>
+            <img
+              src={Tricad}
+              alt="Logo"
+              className="hidden md:block w-[140px] md:w-[180px]"
+            />
             <div>
-              <h2 className="text-xl md:text-2xl font-bold">RFMS Related Tests - {blockName}</h2>
-              <p className="text-blue-100 text-sm">Remote Fiber Monitoring System Compliance</p>
+              <h2 className="text-xl md:text-2xl font-bold">
+                RFMS Related Tests - {blockName}
+              </h2>
+              <p className="text-blue-100 text-sm">
+                Remote Fiber Monitoring System Compliance
+              </p>
             </div>
           </div>
           <div className="bg-white/20 p-2 rounded-xl">
@@ -868,7 +982,9 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
         <div className="mt-4">
           <div className="flex justify-between text-sm mb-1">
             <span>Progress</span>
-            <span>{completedCount} / {items.length} Tests Completed ({progress}%)</span>
+            <span>
+              {completedCount} / {items.length} Tests Completed ({progress}%)
+            </span>
           </div>
           <div className="h-3 bg-white/30 rounded-full overflow-hidden">
             <div
@@ -895,68 +1011,97 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
                 onClick={() => setExpandedId(isExpanded ? null : item.id)}
                 className="w-full p-4 flex items-center gap-3 text-left hover:bg-gray-50 transition-colors"
               >
-                <div className={`${tcInfo?.iconBg || 'bg-blue-100'} p-2 md:p-3 rounded-xl ${tcInfo?.iconColor || 'text-blue-600'}`}>
+                <div
+                  className={`${tcInfo?.iconBg || 'bg-blue-100'} p-2 md:p-3 rounded-xl ${tcInfo?.iconColor || 'text-blue-600'}`}
+                >
                   <span className="text-lg font-bold">{item.testCaseNo}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm md:text-base font-medium text-gray-800">{item.description}</p>
+                  <p className="text-sm md:text-base font-medium text-gray-800">
+                    {item.description}
+                  </p>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isCompleted
-                        ? item.compliance === 'Yes'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-red-100 text-red-700'
-                        : 'bg-gray-100 text-gray-500'
-                        }`}
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                        isCompleted
+                          ? item.compliance === 'Yes'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-red-100 text-red-700'
+                          : 'bg-gray-100 text-gray-500'
+                      }`}
                     >
                       {isCompleted ? item.compliance : 'Pending'}
                     </span>
-                    <span className="text-xs text-gray-400 hidden sm:inline">{tcInfo?.procedure}</span>
+                    <span className="text-xs text-gray-400 hidden sm:inline">
+                      {tcInfo?.procedure}
+                    </span>
                   </div>
                 </div>
-                <div className={`p-2 rounded-full ${isCompleted ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
-                  {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                <div
+                  className={`p-2 rounded-full ${isCompleted ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}
+                >
+                  {isExpanded ? (
+                    <ChevronUp size={20} />
+                  ) : (
+                    <ChevronDown size={20} />
+                  )}
                 </div>
               </button>
 
               {isExpanded && (
                 <div className="px-4 pb-4 space-y-4 border-t border-gray-100 pt-4">
-                  <div className={`p-3 rounded-lg ${tcInfo?.iconBg || 'bg-blue-50'}`}>
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Test Procedure</p>
+                  <div
+                    className={`p-3 rounded-lg ${tcInfo?.iconBg || 'bg-blue-50'}`}
+                  >
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                      Test Procedure
+                    </p>
                     <p className="text-sm text-gray-700">{item.procedure}</p>
                   </div>
 
                   <div>
-                    <p className="text-sm font-semibold text-gray-700 mb-3">Compliance Status</p>
+                    <p className="text-sm font-semibold text-gray-700 mb-3">
+                      Compliance Status
+                    </p>
                     <div className="flex flex-wrap gap-3">
                       <button
                         onClick={() => handleComplianceChange(item.id, 'Yes')}
-                        className={`flex-1 min-w-[120px] py-3 px-4 rounded-xl border-2 font-semibold transition-all ${item.compliance === 'Yes'
-                          ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-200'
-                          : 'bg-white border-gray-200 text-gray-600 hover:border-green-300 hover:bg-green-50'
-                          }`}
+                        className={`flex-1 min-w-[120px] py-3 px-4 rounded-xl border-2 font-semibold transition-all ${
+                          item.compliance === 'Yes'
+                            ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-200'
+                            : 'bg-white border-gray-200 text-gray-600 hover:border-green-300 hover:bg-green-50'
+                        }`}
                       >
-                        <CheckCircle className={`w-5 h-5 mx-auto mb-1 ${item.compliance === 'Yes' ? '' : 'text-gray-400'}`} />
+                        <CheckCircle
+                          className={`w-5 h-5 mx-auto mb-1 ${item.compliance === 'Yes' ? '' : 'text-gray-400'}`}
+                        />
                         Yes
                       </button>
                       <button
                         onClick={() => handleComplianceChange(item.id, 'No')}
-                        className={`flex-1 min-w-[120px] py-3 px-4 rounded-xl border-2 font-semibold transition-all ${item.compliance === 'No'
-                          ? 'bg-red-500 border-red-500 text-white shadow-lg shadow-red-200'
-                          : 'bg-white border-gray-200 text-gray-600 hover:border-red-300 hover:bg-red-50'
-                          }`}
+                        className={`flex-1 min-w-[120px] py-3 px-4 rounded-xl border-2 font-semibold transition-all ${
+                          item.compliance === 'No'
+                            ? 'bg-red-500 border-red-500 text-white shadow-lg shadow-red-200'
+                            : 'bg-white border-gray-200 text-gray-600 hover:border-red-300 hover:bg-red-50'
+                        }`}
                       >
-                        <X className={`w-5 h-5 mx-auto mb-1 ${item.compliance === 'No' ? '' : 'text-gray-400'}`} />
+                        <X
+                          className={`w-5 h-5 mx-auto mb-1 ${item.compliance === 'No' ? '' : 'text-gray-400'}`}
+                        />
                         No
                       </button>
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-sm font-semibold text-gray-700 block mb-2">Remarks / Notes</label>
+                    <label className="text-sm font-semibold text-gray-700 block mb-2">
+                      Remarks / Notes
+                    </label>
                     <textarea
                       value={item.remarks}
-                      onChange={(e) => handleRemarksChange(item.id, e.target.value)}
+                      onChange={(e) =>
+                        handleRemarksChange(item.id, e.target.value)
+                      }
                       placeholder="Add any additional notes or remarks..."
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
                       rows={3}
@@ -974,23 +1119,38 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
                           type="file"
                           accept="image/*"
                           multiple
-                          onChange={(e) => handleFileUpload(item.id, 'images', e)}
+                          onChange={(e) =>
+                            handleFileUpload(item.id, 'images', e)
+                          }
                           className="hidden"
                           id={`images-${item.id}`}
                         />
-                        <label htmlFor={`images-${item.id}`} className="cursor-pointer">
+                        <label
+                          htmlFor={`images-${item.id}`}
+                          className="cursor-pointer"
+                        >
                           <Camera className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-                          <p className="text-sm text-blue-600 font-medium">Tap to upload images</p>
-                          <p className="text-xs text-blue-400 mt-1">JPG, PNG, GIF supported</p>
+                          <p className="text-sm text-blue-600 font-medium">
+                            Tap to upload images
+                          </p>
+                          <p className="text-xs text-blue-400 mt-1">
+                            JPG, PNG, GIF supported
+                          </p>
                         </label>
                       </div>
                       {item.images.length > 0 && (
                         <div className="grid grid-cols-3 gap-2">
                           {item.images.map((img) => (
                             <div key={img.id} className="relative group">
-                              <img src={img.preview} alt="Preview" className="w-full aspect-square object-cover rounded-lg border-2 border-gray-200" />
+                              <img
+                                src={img.preview}
+                                alt="Preview"
+                                className="w-full aspect-square object-cover rounded-lg border-2 border-gray-200"
+                              />
                               <button
-                                onClick={() => removeFile(item.id, 'images', img.id)}
+                                onClick={() =>
+                                  removeFile(item.id, 'images', img.id)
+                                }
                                 className="absolute bottom-1 left-1 right-1 bg-red-500 text-white text-xs py-1 rounded-md flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
                               >
                                 <Trash2 size={12} /> Remove
@@ -1011,31 +1171,58 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
                           type="file"
                           accept=".pdf,.doc,.docx,.xls,.xlsx"
                           multiple
-                          onChange={(e) => handleFileUpload(item.id, 'documents', e)}
+                          onChange={(e) =>
+                            handleFileUpload(item.id, 'documents', e)
+                          }
                           className="hidden"
                           id={`docs-${item.id}`}
                         />
-                        <label htmlFor={`docs-${item.id}`} className="cursor-pointer">
+                        <label
+                          htmlFor={`docs-${item.id}`}
+                          className="cursor-pointer"
+                        >
                           <Upload className="w-8 h-8 text-purple-400 mx-auto mb-2" />
-                          <p className="text-sm text-purple-600 font-medium">Tap to upload documents</p>
-                          <p className="text-xs text-purple-400 mt-1">PDF, Word, Excel supported</p>
+                          <p className="text-sm text-purple-600 font-medium">
+                            Tap to upload documents
+                          </p>
+                          <p className="text-xs text-purple-400 mt-1">
+                            PDF, Word, Excel supported
+                          </p>
                         </label>
                       </div>
                       {item.documents.length > 0 && (
                         <div className="space-y-2 max-h-32 overflow-y-auto">
                           {item.documents.map((doc) => (
-                            <div key={doc.id} className="flex items-center justify-between bg-purple-50 px-3 py-2 rounded-lg border border-purple-100">
+                            <div
+                              key={doc.id}
+                              className="flex items-center justify-between bg-purple-50 px-3 py-2 rounded-lg border border-purple-100"
+                            >
                               <div className="flex items-center gap-2 min-w-0">
-                                <FileText size={16} className="text-purple-500 flex-shrink-0" />
+                                <FileText
+                                  size={16}
+                                  className="text-purple-500 flex-shrink-0"
+                                />
                                 {doc.url ? (
-                                  <a href={doc.preview} target="_blank" rel="noopener noreferrer" className="text-xs text-purple-700 hover:text-purple-900 truncate underline">
+                                  <a
+                                    href={doc.preview}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-purple-700 hover:text-purple-900 truncate underline"
+                                  >
                                     {doc.url.split('/').pop()}
                                   </a>
                                 ) : (
-                                  <span className="text-xs text-gray-700 truncate">{doc.file?.name}</span>
+                                  <span className="text-xs text-gray-700 truncate">
+                                    {doc.file?.name}
+                                  </span>
                                 )}
                               </div>
-                              <button onClick={() => removeFile(item.id, 'documents', doc.id)} className="text-red-500 hover:text-red-700 flex-shrink-0 p-1">
+                              <button
+                                onClick={() =>
+                                  removeFile(item.id, 'documents', doc.id)
+                                }
+                                className="text-red-500 hover:text-red-700 flex-shrink-0 p-1"
+                              >
                                 <Trash2 size={14} />
                               </button>
                             </div>
@@ -1058,17 +1245,24 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
           disabled={submitting}
           className="flex-1 py-3.5 font-bold rounded-2xl transition-all flex items-center justify-center gap-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
           style={{
-            background: submitting ? '#90a4ae' : 'linear-gradient(135deg, #0d47a1 0%, #1565c0 100%)',
+            background: submitting
+              ? '#90a4ae'
+              : 'linear-gradient(135deg, #0d47a1 0%, #1565c0 100%)',
             color: '#fff',
           }}
         >
           {submitting ? (
-            <><Loader2 size={24} className="animate-spin" /> Submitting...</>
+            <>
+              <Loader2 size={24} className="animate-spin" /> Submitting...
+            </>
           ) : (
             <>
               <CheckCircle size={24} />
-              Submit & Print RFMS Checklist
-              <span className="ml-1 text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(255,255,255,0.2)' }}>
+              Submit RFMS Checklist
+              <span
+                className="ml-1 text-xs px-2 py-0.5 rounded-full font-medium"
+                style={{ background: 'rgba(255,255,255,0.2)' }}
+              >
                 {completedCount}/{items.length}
               </span>
             </>
@@ -1081,9 +1275,13 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
           className="px-6 py-3.5 font-bold rounded-2xl transition-all flex items-center justify-center gap-2 text-base bg-white border-2 border-blue-200 text-blue-700 hover:bg-blue-50 shadow disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {preparing ? (
-            <><Loader2 size={18} className="animate-spin" /> Preparing…</>
+            <>
+              <Loader2 size={18} className="animate-spin" /> Preparing…
+            </>
           ) : (
-            <><Printer size={18} /> Print</>
+            <>
+              <Printer size={18} /> Print
+            </>
           )}
         </button>
       </div>
@@ -1102,7 +1300,11 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
                 disabled={preparing}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
               >
-                {preparing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+                {preparing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Printer className="w-4 h-4" />
+                )}
                 {preparing ? 'Preparing…' : 'Print'}
               </button>
               <button
@@ -1120,22 +1322,53 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
             <div className="flex items-center justify-between pb-6 mb-8 border-b-4 border-blue-700">
               <img src={TricadIcon} alt="Logo" className="h-14" />
               <div className="text-right">
-                <h1 className="text-2xl font-bold text-blue-900">RFMS Related Tests - {blockName}</h1>
-                <p className="text-gray-500 text-sm">Remote Fiber Monitoring System — Compliance Checklist</p>
-                <p className="text-gray-400 text-xs mt-1">{new Date().toLocaleString()}</p>
+                <h1 className="text-2xl font-bold text-blue-900">
+                  RFMS Related Tests - {blockName}
+                </h1>
+                <p className="text-gray-500 text-sm">
+                  Remote Fiber Monitoring System — Compliance Checklist
+                </p>
+                <p className="text-gray-400 text-xs mt-1">
+                  {new Date().toLocaleString()}
+                </p>
               </div>
             </div>
 
             {/* Summary chips */}
             <div className="grid grid-cols-4 gap-4 mb-8">
               {[
-                { label: 'Total', value: items.length, bg: 'bg-blue-50', color: 'text-blue-700' },
-                { label: 'Compliant', value: yesCount, bg: 'bg-green-50', color: 'text-green-700' },
-                { label: 'Non-Compliant', value: noCount, bg: 'bg-red-50', color: 'text-red-700' },
-                { label: 'Pending', value: pendingCount, bg: 'bg-gray-50', color: 'text-gray-500' },
+                {
+                  label: 'Total',
+                  value: items.length,
+                  bg: 'bg-blue-50',
+                  color: 'text-blue-700',
+                },
+                {
+                  label: 'Compliant',
+                  value: yesCount,
+                  bg: 'bg-green-50',
+                  color: 'text-green-700',
+                },
+                {
+                  label: 'Non-Compliant',
+                  value: noCount,
+                  bg: 'bg-red-50',
+                  color: 'text-red-700',
+                },
+                {
+                  label: 'Pending',
+                  value: pendingCount,
+                  bg: 'bg-gray-50',
+                  color: 'text-gray-500',
+                },
               ].map((chip) => (
-                <div key={chip.label} className={`${chip.bg} rounded-xl p-4 text-center border border-gray-100`}>
-                  <div className={`text-3xl font-bold ${chip.color}`}>{chip.value}</div>
+                <div
+                  key={chip.label}
+                  className={`${chip.bg} rounded-xl p-4 text-center border border-gray-100`}
+                >
+                  <div className={`text-3xl font-bold ${chip.color}`}>
+                    {chip.value}
+                  </div>
                   <div className="text-xs text-gray-500 mt-1">{chip.label}</div>
                 </div>
               ))}
@@ -1145,30 +1378,41 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
             <div className="bg-gray-50 rounded-xl p-4 mb-8 border">
               <div className="flex justify-between text-sm text-gray-600 mb-2">
                 <span className="font-medium">Completion Progress</span>
-                <span>{completedCount}/{items.length} ({progress}%)</span>
+                <span>
+                  {completedCount}/{items.length} ({progress}%)
+                </span>
               </div>
               <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-blue-500 to-green-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
+                <div
+                  className="h-full bg-gradient-to-r from-blue-500 to-green-500 rounded-full transition-all"
+                  style={{ width: `${progress}%` }}
+                />
               </div>
             </div>
 
             {/* Test items */}
             <div className="space-y-5">
               {items.map((item) => (
-                <div key={item.id} className="border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                <div
+                  key={item.id}
+                  className="border border-gray-200 rounded-2xl overflow-hidden shadow-sm"
+                >
                   {/* Card header */}
                   <div className="flex items-start gap-3 p-4 bg-gray-50 border-b">
                     <span className="bg-blue-100 text-blue-800 font-bold px-3 py-1.5 rounded-lg text-base whitespace-nowrap">
                       {item.testCaseNo}
                     </span>
-                    <p className="text-sm text-gray-700 flex-1 leading-relaxed">{item.description}</p>
+                    <p className="text-sm text-gray-700 flex-1 leading-relaxed">
+                      {item.description}
+                    </p>
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ml-2 ${item.compliance === 'Yes'
-                        ? 'bg-green-100 text-green-800 border border-green-200'
-                        : item.compliance === 'No'
-                          ? 'bg-red-100 text-red-800 border border-red-200'
-                          : 'bg-gray-100 text-gray-500 border border-gray-200'
-                        }`}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ml-2 ${
+                        item.compliance === 'Yes'
+                          ? 'bg-green-100 text-green-800 border border-green-200'
+                          : item.compliance === 'No'
+                            ? 'bg-red-100 text-red-800 border border-red-200'
+                            : 'bg-gray-100 text-gray-500 border border-gray-200'
+                      }`}
                     >
                       {item.compliance || 'Pending'}
                     </span>
@@ -1177,11 +1421,13 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
                   {/* Card body */}
                   <div className="p-4 space-y-3">
                     <div className="bg-sky-50 border border-sky-100 rounded-lg px-4 py-2.5 text-sm text-sky-900">
-                      <span className="font-semibold">Procedure: </span>{item.procedure}
+                      <span className="font-semibold">Procedure: </span>
+                      {item.procedure}
                     </div>
                     {item.remarks && (
                       <div className="bg-amber-50 border border-amber-100 rounded-lg px-4 py-2.5 text-sm text-amber-900">
-                        <span className="font-semibold">Remarks: </span>{item.remarks}
+                        <span className="font-semibold">Remarks: </span>
+                        {item.remarks}
                       </div>
                     )}
 
@@ -1194,8 +1440,15 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
                         </p>
                         <div className="grid grid-cols-4 gap-2">
                           {item.images.map((img) => (
-                            <div key={img.id} className="rounded-lg overflow-hidden border aspect-video">
-                              <img src={img.preview} alt="Attachment" className="w-full h-full object-cover" />
+                            <div
+                              key={img.id}
+                              className="rounded-lg overflow-hidden border aspect-video"
+                            >
+                              <img
+                                src={img.preview}
+                                alt="Attachment"
+                                className="w-full h-full object-cover"
+                              />
                             </div>
                           ))}
                         </div>
@@ -1214,30 +1467,68 @@ const RFMSForm = ({ blockId, existingData, blockName }: RFMSFormProps) => {
                             const meta = getDocMeta(doc);
                             const size = formatFileSize(doc.file?.size);
                             return (
-                              <div key={doc.id} className="border rounded-xl overflow-hidden" style={{ borderColor: meta.color + '40' }}>
+                              <div
+                                key={doc.id}
+                                className="border rounded-xl overflow-hidden"
+                                style={{ borderColor: meta.color + '40' }}
+                              >
                                 {/* Meta bar */}
-                                <div className="flex items-center gap-3 px-3 py-2.5 bg-gray-50 border-b" style={{ borderColor: meta.color + '30' }}>
-                                  <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: meta.bg, color: meta.color }}>
+                                <div
+                                  className="flex items-center gap-3 px-3 py-2.5 bg-gray-50 border-b"
+                                  style={{ borderColor: meta.color + '30' }}
+                                >
+                                  <span
+                                    className="text-xs font-bold px-2 py-0.5 rounded"
+                                    style={{
+                                      background: meta.bg,
+                                      color: meta.color,
+                                    }}
+                                  >
                                     {meta.icon} {meta.ext}
                                   </span>
-                                  <span className="text-xs font-medium text-gray-700 flex-1 truncate">{meta.label}</span>
-                                  {size && <span className="text-xs text-gray-400 flex-shrink-0">{size}</span>}
+                                  <span className="text-xs font-medium text-gray-700 flex-1 truncate">
+                                    {meta.label}
+                                  </span>
+                                  {size && (
+                                    <span className="text-xs text-gray-400 flex-shrink-0">
+                                      {size}
+                                    </span>
+                                  )}
                                   {doc.preview && (
-                                    <a href={doc.preview} target="_blank" rel="noopener noreferrer"
-                                      className="text-xs font-medium underline flex-shrink-0" style={{ color: meta.color }}>
+                                    <a
+                                      href={doc.preview}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-xs font-medium underline flex-shrink-0"
+                                      style={{ color: meta.color }}
+                                    >
                                       Open ↗
                                     </a>
                                   )}
                                 </div>
                                 {/* Info body */}
-                                <div className="px-3 py-2.5" style={{ borderLeft: `3px solid ${meta.color}` }}>
+                                <div
+                                  className="px-3 py-2.5"
+                                  style={{
+                                    borderLeft: `3px solid ${meta.color}`,
+                                  }}
+                                >
                                   {meta.ext === 'PDF' ? (
-                                    <p className="text-xs text-gray-500">PDF document — will be embedded inline in the printed report.</p>
+                                    <p className="text-xs text-gray-500">
+                                      PDF document — will be embedded inline in
+                                      the printed report.
+                                    </p>
                                   ) : (
-                                    <p className="text-xs text-gray-500">{meta.ext} file — shown as attachment card in printed report (file type cannot be rendered inline).</p>
+                                    <p className="text-xs text-gray-500">
+                                      {meta.ext} file — shown as attachment card
+                                      in printed report (file type cannot be
+                                      rendered inline).
+                                    </p>
                                   )}
                                   {doc.url && (
-                                    <p className="text-xs text-gray-400 mt-1 truncate">📎 {doc.preview}</p>
+                                    <p className="text-xs text-gray-400 mt-1 truncate">
+                                      📎 {doc.preview}
+                                    </p>
                                   )}
                                 </div>
                               </div>
