@@ -12,3 +12,8 @@ interface ImportMetaEnv {
     readonly env: ImportMetaEnv;
   }
   
+  declare module '*.mjs?url' {
+  const src: string;
+  export default src;
+}
+  
