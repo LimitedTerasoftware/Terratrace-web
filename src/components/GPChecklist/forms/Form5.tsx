@@ -7,10 +7,13 @@ import {
   Upload,
   X,
   FileText,
+  Printer,
+  Loader2,
 } from 'lucide-react';
 import { FormData, GeoTaggedImage } from '../../../types/gp-checklist';
 import ImageCapture from './ImageCapture';
 import { useState, useEffect } from 'react';
+import { addImageAttachment, buildPrintPage } from './printUtils';
 
 interface Form5Props {
   data: FormData['form5'] | undefined;
@@ -30,6 +33,7 @@ export default function Form5({ data, onChange }: Form5Props) {
   const [IEimages, setIEImages] = useState<GeoTaggedImage[]>(
     data?.IEimages || [],
   );
+  const [preparing, setPreparing] = useState(false);
 
   useEffect(() => {
     if (data) {
@@ -102,6 +106,103 @@ export default function Form5({ data, onChange }: Form5Props) {
     </>
   );
 
+  const triggerPrint = async () => {
+    const printWindow = window.open('', '_blank', 'width=1200,height=900');
+    if (!printWindow) {
+      alert('Pop-up blocked. Please allow pop-ups for this site to print.');
+      return;
+    }
+    printWindow.document
+      .write(`<!DOCTYPE html><html><head><title>GP Checklist - Form 5</title>
+    <style>body{display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#64748b;font-size:15pt;}</style>
+    </head><body>⏳ Preparing report, please wait…</body></html>`);
+    printWindow.document.close();
+
+    const sections: string[] = [];
+    const attachmentPages: string[] = [];
+    const addSection = (title: string, content: string) => {
+      sections.push(
+        `<div class="section-card"><div class="section-header">${title}</div><div class="section-body">${content}</div></div>`,
+      );
+    };
+    const addField = (label: string, value: string | undefined) =>
+      `<div class="field-row"><span class="field-label">${label}</span><span class="field-value">${value || '—'}</span></div>`;
+    const addImages = async (
+      images: GeoTaggedImage[],
+      label: string,
+    ): Promise<string> => {
+      if (!images.length) return '';
+      const imgs = await Promise.all(
+        images.map((img) => addImageAttachment(img, label, attachmentPages)),
+      );
+      return `<div class="images-grid">${imgs.join('')}</div>`;
+    };
+
+    addSection(
+      'Photo Verification',
+      `
+      ${addField('Photos Geo-tagged (5 Angles)', data?.photosGeoTagged)}
+      ${data?.photosGeoTagged === 'yes' && photosAngleImages.length > 0 ? `<div class="subsection-title">Angle Photos</div>${await addImages(photosAngleImages, 'Angle Photos')}` : ''}
+      ${addField('Video Uploaded', data?.videoUploaded)}
+      ${
+        data?.videoUploaded === 'yes' && data?.videoUploadedFile
+          ? typeof data.videoUploadedFile === 'string'
+            ? `<div class="file-info">🎥 <a href="${data.videoUploadedFile}" target="_blank">View Video</a></div>`
+            : `<div class="file-info">🎥 ${(data.videoUploadedFile as File).name}</div>`
+          : ''
+      }
+    `,
+    );
+    const abdHtml =
+      data?.abdUpdated === 'yes'
+        ? data?.abdPDF
+          ? typeof data.abdPDF === 'string'
+            ? `<div class="file-info">📄 <a href="${data.abdPDF}" target="_blank">View ABD PDF</a></div>`
+            : `<div class="file-info">📄 ${(data.abdPDF as File).name}</div>`
+          : '<div class="text-value">ABD Updated</div>'
+        : addField('ABD Updated', data?.abdUpdated);
+    addSection(
+      'Digital Documentation',
+      `
+      ${abdHtml}
+      ${addField('GIS Entry Completed', data?.gisEntryCompleted)}
+      ${data?.gisEntryCompleted === 'yes' && GISImgages.length > 0 ? `<div class="subsection-title">GIS Images</div>${await addImages(GISImgages, 'GIS Entry')}` : ''}
+    `,
+    );
+    addSection(
+      'Independent Engineer Verification',
+      `
+      ${addField('IE Verification', data?.ieVerification)}
+      ${data?.ieVerification === 'yes' && IEimages.length > 0 ? `<div class="subsection-title">IE Images</div>${await addImages(IEimages, 'IE Verification')}` : ''}
+    `,
+    );
+
+    const content = buildPrintPage(
+      'GP Checklist — GIS Mapping',
+      'Form 5 — GIS Mapping & Digital Documentation',
+      sections.join(''),
+      attachmentPages,
+    );
+    printWindow.document.open();
+    printWindow.document.write(content);
+    printWindow.document.close();
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.focus();
+        printWindow.print();
+      }, 800);
+    };
+  };
+
+  const handlePrint = async () => {
+    setPreparing(true);
+    try {
+      await triggerPrint();
+    } finally {
+      setPreparing(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -109,6 +210,20 @@ export default function Form5({ data, onChange }: Form5Props) {
           <Globe className="w-6 h-6 text-teal-600" />
         </div>
         <h2 className="text-2xl font-semibold text-gray-900">GIS Mapping</h2>
+        <div className="ml-auto">
+          <button
+            onClick={handlePrint}
+            disabled={preparing}
+            className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-teal-200 text-teal-700 rounded-lg hover:bg-teal-50 transition-colors text-sm font-medium disabled:opacity-50"
+          >
+            {preparing ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Printer size={16} />
+            )}
+            {preparing ? 'Preparing…' : 'Print'}
+          </button>
+        </div>
       </div>
 
       <div className="bg-gradient-to-br from-gray-50 to-teal-50 border border-teal-200 rounded-xl p-6 space-y-6">

@@ -8,6 +8,8 @@ import {
   CheckSquare,
   Server,
   X,
+  Printer,
+  Loader2,
 } from 'lucide-react';
 import { FormData, GeoTaggedImage } from '../../../types/gp-checklist';
 import {
@@ -19,6 +21,7 @@ import { StateData, District, Block } from '../../../types/survey';
 import axios from 'axios';
 import ImageCapture from './ImageCapture';
 import MediaCarousel from '../../DepthChart/MediaCarousel';
+import { addImageAttachment, buildPrintPage } from './printUtils';
 
 interface Form1Props {
   data: FormData['form1'] | undefined;
@@ -84,6 +87,7 @@ export default function Form1({
   const [buildingImages, setBuildingImages] = useState<GeoTaggedImage[]>([]);
   const [qrCodeImages, setQrCodeImages] = useState<GeoTaggedImage[]>([]);
   const [smartRackImages, setSmartRackImages] = useState<GeoTaggedImage[]>([]);
+  const [preparing, setPreparing] = useState(false);
   const [dataLoadedFromParent, setDataLoadedFromParent] = useState(false);
 
   useEffect(() => {
@@ -407,6 +411,154 @@ export default function Form1({
     onChange({ ...data, [fieldName]: updated });
   };
 
+  const triggerPrint = async () => {
+    const printWindow = window.open('', '_blank', 'width=1200,height=900');
+    if (!printWindow) {
+      alert('Pop-up blocked. Please allow pop-ups for this site to print.');
+      return;
+    }
+    printWindow.document
+      .write(`<!DOCTYPE html><html><head><title>GP Checklist - Form 1</title>
+    <style>body{display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#64748b;font-size:15pt;}</style>
+    </head><body>⏳ Preparing report, please wait…</body></html>`);
+    printWindow.document.close();
+
+    const sections: string[] = [];
+    const attachmentPages: string[] = [];
+
+    const addField = (label: string, value: string | undefined) =>
+      `<div class="field-row"><span class="field-label">${label}</span><span class="field-value">${value || '—'}</span></div>`;
+
+    const addSection = (title: string, content: string) => {
+      sections.push(
+        `<div class="section-card"><div class="section-header">${title}</div><div class="section-body">${content}</div></div>`,
+      );
+    };
+
+    const addImages = async (
+      images: GeoTaggedImage[],
+      label: string,
+    ): Promise<string> => {
+      if (!images.length) return '';
+      const imgs = await Promise.all(
+        images.map(async (img) =>
+          addImageAttachment(img, label, attachmentPages),
+        ),
+      );
+      return `<div class="images-grid">${imgs.join('')}</div>`;
+    };
+
+    // Location Details
+    const stateName =
+      states.find((s) => s.state_id == selectedState)?.state_name ||
+      selectedState;
+    const districtName =
+      districts.find((d) => d.district_id == selectedDistrict)?.district_name ||
+      selectedDistrict;
+    const blockName =
+      blocks.find((b) => b.block_id == selectedBlock)?.block_name ||
+      selectedBlock;
+    const gpName = Gps.find((g) => g.id == selectedGP)?.name || selectedGP;
+
+    addSection(
+      'Location Details',
+      `
+      ${addField('State', stateName)}
+      ${addField('District', districtName)}
+      ${addField('Block', blockName)}
+      ${addField('GP', gpName)}
+    `,
+    );
+
+    // GPS Location
+    addSection(
+      'GP Location Verification',
+      `
+      ${addField('Latitude', latitude)}
+      ${addField('Longitude', longitude)}
+      ${siteImages.length > 0 ? `<div class="subsection-title">Site Images (${siteImages.length})</div>${await addImages(siteImages, 'Site Image')}` : ''}
+    `,
+    );
+
+    // Building
+    addSection(
+      'GP Building Availability',
+      `
+      ${addField('Building Type', data?.building_type)}
+      ${buildingImages.length > 0 ? `<div class="subsection-title">Building Images (${buildingImages.length})</div>${await addImages(buildingImages, 'Building Image')}` : ''}
+    `,
+    );
+
+    // QR Code Images
+    addSection(
+      'QR Code Images',
+      qrCodeImages.length > 0
+        ? await addImages(qrCodeImages, 'QR Code')
+        : '<div class="text-value">No QR code images captured</div>',
+    );
+
+    // OTDR Report
+    const otdrHtml = data?.otdrReport
+      ? typeof data.otdrReport === 'string'
+        ? `<div class="file-info">📄 <a href="${data.otdrReport}" target="_blank">View OTDR Report PDF</a></div>`
+        : `<div class="file-info">📄 ${(data.otdrReport as File).name}</div>`
+      : '<div class="text-value">Not uploaded</div>';
+    addSection('OTDR Report', otdrHtml);
+
+    // Geo-tagged Photo
+    addSection(
+      'Geo-tagged Site Photo',
+      `
+      ${addField('Geo-tagged Photo Uploaded', data?.geoTaggedPhoto)}
+      ${geotaggedSiteImages.length > 0 ? `<div class="subsection-title">Geo-tagged Images (${geotaggedSiteImages.length})</div>${await addImages(geotaggedSiteImages, 'Geo-tagged')}` : ''}
+    `,
+    );
+
+    // Site Board
+    const siteBoardHtml =
+      (data?.siteBoardInstalled === 'no' ||
+        data?.siteBoardInstalled === 'na') &&
+      data?.siteBoardRemark
+        ? `${addField('Site Board Installed', data?.siteBoardInstalled)}<div class="remark-box"><strong>Remark: </strong>${data.siteBoardRemark}</div>`
+        : addField('Site Board Installed', data?.siteBoardInstalled);
+    addSection('Site Board', siteBoardHtml);
+
+    // Smart Rack
+    addSection(
+      'Smart Rack',
+      `
+      ${addField('Smart Rack Installed', data?.smartRackInstalled)}
+      ${smartRackImages.length > 0 ? `<div class="subsection-title">Smart Rack Photos (${smartRackImages.length})</div>${await addImages(smartRackImages, 'Smart Rack')}` : ''}
+    `,
+    );
+
+    const content = buildPrintPage(
+      'GP Checklist — General Site Verification',
+      'Form 1 — Site Information & Verification',
+      sections.join(''),
+      attachmentPages,
+    );
+
+    printWindow.document.open();
+    printWindow.document.write(content);
+    printWindow.document.close();
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.focus();
+        printWindow.print();
+      }, 800);
+    };
+  };
+
+  const handlePrint = async () => {
+    setPreparing(true);
+    try {
+      await triggerPrint();
+    } finally {
+      setPreparing(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -416,6 +568,20 @@ export default function Form1({
         <h2 className="text-2xl font-semibold text-gray-900">
           General Site Verification
         </h2>
+        <div className="ml-auto">
+          <button
+            onClick={handlePrint}
+            disabled={preparing}
+            className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-blue-200 text-blue-700 rounded-lg hover:bg-blue-50 transition-colors text-sm font-medium disabled:opacity-50"
+          >
+            {preparing ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Printer size={16} />
+            )}
+            {preparing ? 'Preparing…' : 'Print'}
+          </button>
+        </div>
       </div>
 
       <div className="bg-gradient-to-br from-gray-50 to-blue-50 border border-blue-200 rounded-xl p-6 space-y-6">

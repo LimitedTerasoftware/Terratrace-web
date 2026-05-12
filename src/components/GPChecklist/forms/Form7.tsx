@@ -5,10 +5,13 @@ import {
   PenTool,
   Upload,
   X,
+  Printer,
+  Loader2,
 } from 'lucide-react';
 import { FormData, GeoTaggedImage } from '../../../types/gp-checklist';
 import ImageCapture from './ImageCapture';
 import { useState, useEffect } from 'react';
+import { addImageAttachment, buildPrintPage } from './printUtils';
 
 interface Form7Props {
   data: FormData['form7'] | undefined;
@@ -37,6 +40,7 @@ export default function Form7({ data, onChange }: Form7Props) {
   const [qrTagImages, setQrTagImages] = useState<GeoTaggedImage[]>(
     data?.qrTagImage || [],
   );
+  const [preparing, setPreparing] = useState(false);
 
   useEffect(() => {
     if (data) {
@@ -127,6 +131,93 @@ export default function Form7({ data, onChange }: Form7Props) {
     </>
   );
 
+  const triggerPrint = async () => {
+    const printWindow = window.open('', '_blank', 'width=1200,height=900');
+    if (!printWindow) {
+      alert('Pop-up blocked. Please allow pop-ups for this site to print.');
+      return;
+    }
+    printWindow.document
+      .write(`<!DOCTYPE html><html><head><title>GP Checklist - Form 7</title>
+    <style>body{display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#64748b;font-size:15pt;}</style>
+    </head><body>⏳ Preparing report, please wait…</body></html>`);
+    printWindow.document.close();
+
+    const sections: string[] = [];
+    const attachmentPages: string[] = [];
+    const addSection = (title: string, content: string) => {
+      sections.push(
+        `<div class="section-card"><div class="section-header">${title}</div><div class="section-body">${content}</div></div>`,
+      );
+    };
+    const addField = (label: string, value: string | undefined) =>
+      `<div class="field-row"><span class="field-label">${label}</span><span class="field-value">${value || '—'}</span></div>`;
+    const addImages = async (
+      images: GeoTaggedImage[],
+      label: string,
+    ): Promise<string> => {
+      if (!images.length) return '';
+      const imgs = await Promise.all(
+        images.map((img) => addImageAttachment(img, label, attachmentPages)),
+      );
+      return `<div class="images-grid">${imgs.join('')}</div>`;
+    };
+
+    addSection(
+      'PAT Completion',
+      `
+      ${addField('PAT Completed', data?.patCompleted)}
+      ${data?.patCompleted === 'yes' && patImgages.length > 0 ? `<div class="subsection-title">PAT Proof Images</div>${await addImages(patImgages, 'PAT Proof')}` : ''}
+    `,
+    );
+    addSection(
+      'FAT Approval',
+      `
+      ${addField('FAT Approved', data?.fatApproved)}
+      ${data?.fatApproved === 'yes' && fatApprovalProof.length > 0 ? `<div class="subsection-title">FAT Approval Images</div>${await addImages(fatApprovalProof, 'FAT Approval')}` : ''}
+    `,
+    );
+    addSection(
+      'QR Tag Verification',
+      `
+      ${addField('QR Tag Verified', data?.qrTagVerified)}
+      ${data?.qrTagVerified === 'yes' && qrTagImages.length > 0 ? `<div class="subsection-title">QR Tag Images</div>${await addImages(qrTagImages, 'QR Tag')}` : ''}
+    `,
+    );
+    addSection(
+      'HOTO Memo',
+      `
+      ${addField('HOTO Signed', data?.hotoSigned)}
+      ${data?.hotoSigned === 'yes' && hotoSignatureImage.length > 0 ? `<div class="subsection-title">HOTO Signature Images</div>${await addImages(hotoSignatureImage, 'HOTO Signature')}` : ''}
+    `,
+    );
+
+    const content = buildPrintPage(
+      'GP Checklist — Final Acceptance',
+      'Form 7 — Final Acceptance & Handover',
+      sections.join(''),
+      attachmentPages,
+    );
+    printWindow.document.open();
+    printWindow.document.write(content);
+    printWindow.document.close();
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.focus();
+        printWindow.print();
+      }, 800);
+    };
+  };
+
+  const handlePrint = async () => {
+    setPreparing(true);
+    try {
+      await triggerPrint();
+    } finally {
+      setPreparing(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -136,6 +227,20 @@ export default function Form7({ data, onChange }: Form7Props) {
         <h2 className="text-2xl font-semibold text-gray-900">
           Final Acceptance
         </h2>
+        <div className="ml-auto">
+          <button
+            onClick={handlePrint}
+            disabled={preparing}
+            className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-emerald-200 text-emerald-700 rounded-lg hover:bg-emerald-50 transition-colors text-sm font-medium disabled:opacity-50"
+          >
+            {preparing ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Printer size={16} />
+            )}
+            {preparing ? 'Preparing…' : 'Print'}
+          </button>
+        </div>
       </div>
 
       <div className="bg-gradient-to-br from-gray-50 to-blue-50 border border-blue-200 rounded-xl p-6 space-y-6">

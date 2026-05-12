@@ -878,6 +878,8 @@ export interface Remark {
   remarks: string;
   created_at: string;
   updated_at: string;
+  name:string;
+  survey_id:number;
 }
 
 export interface RemarksHistoryResponse {
@@ -895,6 +897,7 @@ export const getRemarksHistory = async (params: {
   to_date?: string;
   type?: string;
   user_id?:string;
+  survey_id?:string
 }): Promise<RemarksHistoryResponse> => {
   try {
     const queryParams = new URLSearchParams();
@@ -905,6 +908,7 @@ export const getRemarksHistory = async (params: {
     if (params.to_date) queryParams.append('to_date', params.to_date);
     if (params.type) queryParams.append('type', params.type);
     if (params.user_id) queryParams.append('user_id', params.user_id);
+    if (params.survey_id) queryParams.append('survey_id', params.survey_id);
 
 
     const queryString = queryParams.toString();

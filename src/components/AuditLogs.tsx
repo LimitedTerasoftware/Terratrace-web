@@ -36,6 +36,7 @@ function AuditLogs() {
   const [globalsearch, setGlobalSearch] = useState<string>('');
   const [Users, setUsers] = useState<UsersData[]>([]);
   const[selectedUser,setSelectedUser]=useState<string>('');
+  const [survey_id,setsurvey_id]=useState<string>('');
 
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -82,6 +83,7 @@ function AuditLogs() {
         to_date: todate || undefined,
         type: selectedType || undefined,
         user_id:selectedUser || undefined,
+        survey_id:survey_id || undefined,
       });
 
       if (response.status) {
@@ -113,11 +115,14 @@ function AuditLogs() {
     const to_date = searchParams.get('to_date') || '';
     const type = searchParams.get('type') || '';
     const search = searchParams.get('search') || '';
+    const survey_id = searchParams.get('survey_id') || '';
     setFromDate(from_date);
     setToDate(to_date);
     setSelectedType(type);
     setGlobalSearch(search);
+    setsurvey_id(survey_id);
     setFiltersReady(true);
+
   }, []);
 
   useEffect(() => {
@@ -134,6 +139,7 @@ function AuditLogs() {
     currentPage,
     rowsPerPage,
     selectedUser,
+    survey_id
   ]);
 useEffect(()=>{
     fetchusers();
@@ -211,12 +217,31 @@ useEffect(()=>{
         </span>
       ),
     },
+     {
+      name: 'Name',
+      selector: (row) => row.name,
+      cell: (row) => (
+        <span className="text-sm font-medium text-gray-900">
+          {row.name}
+        </span>
+      ),
+    },
+
     {
       name: 'Type',
       selector: (row) => row.type,
       cell: (row) => (
         <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
           {formatType(row.type)}
+        </span>
+      ),
+    },
+     {
+      name: 'Survey Id',
+      selector: (row) => row.survey_id,
+      cell: (row) => (
+        <span className="text-sm font-medium text-gray-900">
+          {row.survey_id}
         </span>
       ),
     },

@@ -6,10 +6,13 @@ import {
   Upload,
   X,
   FileText,
+  Printer,
+  Loader2,
 } from 'lucide-react';
 import { FormData, GeoTaggedImage } from '../../../types/gp-checklist';
 import { useState, useEffect } from 'react';
 import ImageCapture from './ImageCapture';
+import { addImageAttachment, buildPrintPage } from './printUtils';
 
 interface Form6Props {
   data: FormData['form6'] | undefined;
@@ -29,6 +32,7 @@ export default function Form6({ data, onChange }: Form6Props) {
   const [siteLabelBoardImages, setSiteLabelBoardImages] = useState<
     GeoTaggedImage[]
   >(data?.siteLabelBoardImage || []);
+  const [preparing, setPreparing] = useState(false);
 
   useEffect(() => {
     if (data) {
@@ -97,6 +101,98 @@ export default function Form6({ data, onChange }: Form6Props) {
     </>
   );
 
+  const triggerPrint = async () => {
+    const printWindow = window.open('', '_blank', 'width=1200,height=900');
+    if (!printWindow) {
+      alert('Pop-up blocked. Please allow pop-ups for this site to print.');
+      return;
+    }
+    printWindow.document
+      .write(`<!DOCTYPE html><html><head><title>GP Checklist - Form 6</title>
+    <style>body{display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#64748b;font-size:15pt;}</style>
+    </head><body>⏳ Preparing report, please wait…</body></html>`);
+    printWindow.document.close();
+
+    const sections: string[] = [];
+    const attachmentPages: string[] = [];
+    const addSection = (title: string, content: string) => {
+      sections.push(
+        `<div class="section-card"><div class="section-header">${title}</div><div class="section-body">${content}</div></div>`,
+      );
+    };
+    const addField = (label: string, value: string | undefined) =>
+      `<div class="field-row"><span class="field-label">${label}</span><span class="field-value">${value || '—'}</span></div>`;
+    const addImages = async (
+      images: GeoTaggedImage[],
+      label: string,
+    ): Promise<string> => {
+      if (!images.length) return '';
+      const imgs = await Promise.all(
+        images.map((img) => addImageAttachment(img, label, attachmentPages)),
+      );
+      return `<div class="images-grid">${imgs.join('')}</div>`;
+    };
+
+    addSection(
+      'Site Cleanliness',
+      `
+      ${addField('Site Clean Status', data?.siteClean)}
+      ${materialImages.length > 0 ? `<div class="subsection-title">Site Images</div>${await addImages(materialImages, 'Site Clean')}` : ''}
+    `,
+    );
+    const materialsHtml =
+      data?.materialsApproved === 'yes'
+        ? data?.verificationProof
+          ? typeof data.verificationProof === 'string'
+            ? `<div class="file-info">📄 <a href="${data.verificationProof}" target="_blank">View Verification Proof</a></div>`
+            : `<div class="file-info">📄 ${(data.verificationProof as File).name}</div>`
+          : '<div class="text-value">Materials Approved</div>'
+        : addField('Materials Approved', data?.materialsApproved);
+    addSection('Materials Verification', materialsHtml);
+
+    const socialHtml =
+      data?.socialAudit === 'yes'
+        ? data?.socialAuditVideo
+          ? typeof data.socialAuditVideo === 'string'
+            ? `<div class="file-info">🎥 <a href="${data.socialAuditVideo}" target="_blank">View Social Audit Video</a></div>`
+            : `<div class="file-info">🎥 ${(data.socialAuditVideo as File).name}</div>`
+          : '<div class="text-value">Social Audit Completed</div>'
+        : addField('Social Audit', data?.socialAudit);
+    addSection('Social Audit', socialHtml);
+    addSection(
+      'Site Label Board',
+      `
+      ${addField('Site Label Board Installed', data?.siteLabelBoard)}
+      ${data?.siteLabelBoard === 'yes' && siteLabelBoardImages.length > 0 ? `<div class="subsection-title">Images</div>${await addImages(siteLabelBoardImages, 'Site Label Board')}` : ''}
+    `,
+    );
+
+    const content = buildPrintPage(
+      'GP Checklist — Safe Quality Verification',
+      'Form 6 — Safety, Quality & Social Audit Verification',
+      sections.join(''),
+      attachmentPages,
+    );
+    printWindow.document.open();
+    printWindow.document.write(content);
+    printWindow.document.close();
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.focus();
+        printWindow.print();
+      }, 800);
+    };
+  };
+
+  const handlePrint = async () => {
+    setPreparing(true);
+    try {
+      await triggerPrint();
+    } finally {
+      setPreparing(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -106,6 +202,20 @@ export default function Form6({ data, onChange }: Form6Props) {
         <h2 className="text-2xl font-semibold text-gray-900">
           Safe Quality Verification
         </h2>
+        <div className="ml-auto">
+          <button
+            onClick={handlePrint}
+            disabled={preparing}
+            className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-indigo-200 text-indigo-700 rounded-lg hover:bg-indigo-50 transition-colors text-sm font-medium disabled:opacity-50"
+          >
+            {preparing ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Printer size={16} />
+            )}
+            {preparing ? 'Preparing…' : 'Print'}
+          </button>
+        </div>
       </div>
 
       <div className="bg-gradient-to-br from-gray-50 to-green-50 border border-green-200 rounded-xl p-6 space-y-6">
