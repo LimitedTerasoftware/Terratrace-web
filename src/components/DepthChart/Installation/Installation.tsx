@@ -768,7 +768,7 @@ function InstallationPage() {
 
             <Link
              target='_blank'
-              to="/audit-logs"
+              to= {activeTab === 'GP_INSTALLATION' ? `/audit-logs?type=gp_installation` : `/audit-logs?type=block_installation` }
               className="flex-none h-10 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-blue-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
             >
               <svg

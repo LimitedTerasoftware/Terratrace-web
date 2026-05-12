@@ -894,6 +894,7 @@ export const getRemarksHistory = async (params: {
   from_date?: string;
   to_date?: string;
   type?: string;
+  user_id?:string;
 }): Promise<RemarksHistoryResponse> => {
   try {
     const queryParams = new URLSearchParams();
@@ -903,6 +904,8 @@ export const getRemarksHistory = async (params: {
     if (params.from_date) queryParams.append('from_date', params.from_date);
     if (params.to_date) queryParams.append('to_date', params.to_date);
     if (params.type) queryParams.append('type', params.type);
+    if (params.user_id) queryParams.append('user_id', params.user_id);
+
 
     const queryString = queryParams.toString();
     const url = queryString

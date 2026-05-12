@@ -3,12 +3,25 @@ import { MessageSquareText, Search, ChevronDown } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { getRemarksHistory, Remark } from './Services/api';
 import DataTable, { TableColumn } from 'react-data-table-component';
+import axios from 'axios';
 
 const typeOptions = [
   { value: '', label: 'All Types' },
   { value: 'gp_installation', label: 'GP Installation' },
   { value: 'block_installation', label: 'Block Installation' },
+  {value:'survey',label:'Survey'},
+  {value:'construction',label:'Construction'}
 ];
+interface UsersData {
+  user_id:number;
+  uname: string;
+  email: string;
+  version: string;
+  is_active: string;
+  company_id: string;
+  machine_id: string;
+}
+const BASEURL = import.meta.env.VITE_API_BASE;
 
 function AuditLogs() {
   const [data, setData] = useState<Remark[]>([]);
@@ -21,6 +34,8 @@ function AuditLogs() {
   const [todate, setToDate] = useState<string>('');
   const [selectedType, setSelectedType] = useState<string>('');
   const [globalsearch, setGlobalSearch] = useState<string>('');
+  const [Users, setUsers] = useState<UsersData[]>([]);
+  const[selectedUser,setSelectedUser]=useState<string>('');
 
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -66,6 +81,7 @@ function AuditLogs() {
         from_date: fromdate || undefined,
         to_date: todate || undefined,
         type: selectedType || undefined,
+        user_id:selectedUser || undefined,
       });
 
       if (response.status) {
@@ -81,6 +97,14 @@ function AuditLogs() {
       setTotal(0);
     } finally {
       setLoading(false);
+    }
+  };
+  const fetchusers = async () => {
+    try {
+      const response = await axios.get(`${BASEURL}/allusers`);
+      setUsers(response.data.data);
+    } catch (err: any) {
+      console.log(err.message || 'Failed to fetch data');
     }
   };
 
@@ -99,6 +123,7 @@ function AuditLogs() {
   useEffect(() => {
     if (filtersReady) {
       fetchRemarksHistory();
+    
     }
   }, [
     filtersReady,
@@ -108,19 +133,24 @@ function AuditLogs() {
     globalsearch,
     currentPage,
     rowsPerPage,
+    selectedUser,
   ]);
-
+useEffect(()=>{
+    fetchusers();
+},[]);
   const handleFilterChange = (
     from_date: string | null,
     to_date: string | null,
     type: string | null,
     search: string | null,
+    user:string,
   ) => {
     const params: Record<string, string> = {};
     if (from_date) params.from_date = from_date;
     if (to_date) params.to_date = to_date;
     if (type) params.type = type;
     if (search) params.search = search;
+    if(user) params.user_id = user;
     setSearchParams(params);
   };
 
@@ -130,26 +160,32 @@ function AuditLogs() {
     setSelectedType('');
     setGlobalSearch('');
     setSearchParams({});
+    setSelectedUser('');
   };
 
   const handleFromDateChange = (value: string) => {
     setFromDate(value);
-    handleFilterChange(value, todate, selectedType, globalsearch);
+    handleFilterChange(value, todate, selectedType, globalsearch,selectedUser);
   };
 
   const handleToDateChange = (value: string) => {
     setToDate(value);
-    handleFilterChange(fromdate, value, selectedType, globalsearch);
+    handleFilterChange(fromdate, value, selectedType, globalsearch,selectedUser);
   };
 
   const handleTypeChange = (value: string) => {
     setSelectedType(value);
-    handleFilterChange(fromdate, todate, value, globalsearch);
+    handleFilterChange(fromdate, todate, value, globalsearch,selectedUser);
   };
+  const handleuser=(value:string)=>{
+    setSelectedUser(value);
+    handleFilterChange(fromdate, todate, selectedType, globalsearch,value)
+
+  }
 
   const handleSearchChange = (value: string) => {
     setGlobalSearch(value);
-    handleFilterChange(fromdate, todate, selectedType, value);
+    handleFilterChange(fromdate, todate, selectedType, value,selectedUser);
   };
 
   const formatType = (type: string) => {
@@ -275,6 +311,24 @@ function AuditLogs() {
                 <ChevronDown className="w-4 h-4 text-gray-400" />
               </div>
             </div>
+             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-40">
+              <select
+                value={selectedUser}
+                onChange={(e) => handleuser(e.target.value)}
+                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none"
+              >
+                <option value=''>Select User</option>
+                {Users.map((option) => (
+                  <option key={option.user_id} value={option.user_id}>
+                    {option.uname}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                <ChevronDown className="w-4 h-4 text-gray-400" />
+              </div>
+            </div>
+
 
             <button
               onClick={clearFilters}
