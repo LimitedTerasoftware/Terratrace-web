@@ -89,7 +89,7 @@ import GPChecklistView from './components/GPChecklist/View';
 import BlockRouterChecklist from './components/BlockRouterChecklist';
 import BlockRouterChecklistView from './components/BlockRouterChecklist/List/BlockRouterChecklistView';
 import BlockChecklistList from './components/BlockRouterChecklist/List';
-//import AuditLogs from './components/AuditLogs';
+import AuditLogs from './components/AuditLogs';
 
 function App() {
   const [loading, setLoading] = useState<boolean>(true);
@@ -168,7 +168,6 @@ function App() {
                 </>
               }
             />
-          
 
             <Route
               path="/privacy"
@@ -496,29 +495,6 @@ function App() {
                 }
               />
 
-              {/*<Route
-      path="/route-planning/reports"
-      element={
-        <>
-          <DefaultLayout>
-            <PageTitle title="Route Reports" />
-            <RouteReports />
-          </DefaultLayout>
-        </>
-      }
-    />
-    
-    <Route
-      path="/route-planning/audit-logs"
-      element={
-        <>
-          <DefaultLayout>
-            <PageTitle title="Route Audit Logs" />
-            <AuditLogs />
-          </DefaultLayout>
-        </>
-      }
-    />*/}
 
               <Route
                 path="/settings"
@@ -948,6 +924,17 @@ function App() {
                 }
               />
 
+              <Route
+                path="/audit-logs"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Audit Logs" />
+                      <AuditLogs />
+                    </DefaultLayout>
+                  </>
+                }
+              />
               <Route
                 path="*"
                 element={

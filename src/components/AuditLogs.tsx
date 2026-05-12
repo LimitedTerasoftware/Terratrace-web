@@ -1,446 +1,325 @@
-// src/components/Audit-Logs/index.tsx
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { MessageSquareText, Search, ChevronDown } from 'lucide-react';
+import { useSearchParams, Link } from 'react-router-dom';
+import { getRemarksHistory, Remark } from './Services/api';
+import DataTable, { TableColumn } from 'react-data-table-component';
 
-interface AuditLog {
-  id: number;
-  timestamp: string;
-  user: string;
-  action: string;
-  entity: string;
-  entityId: string;
-  details: string;
-  ipAddress: string;
-}
+const typeOptions = [
+  { value: '', label: 'All Types' },
+  { value: 'gp_installation', label: 'GP Installation' },
+  { value: 'block_installation', label: 'Block Installation' },
+];
 
-const AuditLogs: React.FC = () => {
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [filteredLogs, setFilteredLogs] = useState<AuditLog[]>([]);
-  const [dateRange, setDateRange] = useState<{ start: string; end: string }>({
-    start: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0],
-    end: new Date().toISOString().split('T')[0],
-  });
-  const [actionFilter, setActionFilter] = useState<string>('all');
-  const [userFilter, setUserFilter] = useState<string>('all');
-  const [entityFilter, setEntityFilter] = useState<string>('all');
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [itemsPerPage] = useState<number>(10);
+function AuditLogs() {
+  const [data, setData] = useState<Remark[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [total, setTotal] = useState(0);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [filtersReady, setFiltersReady] = useState(false);
 
-  // Mock data for action types
-  const actionTypes = [
-    { id: 'all', name: 'All Actions' },
-    { id: 'create', name: 'Create' },
-    { id: 'update', name: 'Update' },
-    { id: 'delete', name: 'Delete' },
-    { id: 'view', name: 'View' },
-    { id: 'export', name: 'Export' },
-    { id: 'approve', name: 'Approve' },
-    { id: 'reject', name: 'Reject' },
-  ];
-  
-  // Mock data for users
-  const users = [
-    { id: 'all', name: 'All Users' },
-    { id: 'john.doe', name: 'John Doe' },
-    { id: 'jane.smith', name: 'Jane Smith' },
-    { id: 'admin', name: 'Admin User' },
-    { id: 'manager1', name: 'Route Manager' },
-    { id: 'support', name: 'Support Team' },
-  ];
-  
-  // Mock data for entities
-  const entities = [
-    { id: 'all', name: 'All Entities' },
-    { id: 'route', name: 'Route' },
-    { id: 'user', name: 'User' },
-    { id: 'vehicle', name: 'Vehicle' },
-    { id: 'report', name: 'Report' },
-    { id: 'setting', name: 'System Setting' },
-  ];
+  const [fromdate, setFromDate] = useState<string>('');
+  const [todate, setToDate] = useState<string>('');
+  const [selectedType, setSelectedType] = useState<string>('');
+  const [globalsearch, setGlobalSearch] = useState<string>('');
 
-  // Mock data
-  useEffect(() => {
-    // Simulate API call
-    setLoading(true);
-    setTimeout(() => {
-      const mockLogs: AuditLog[] = Array.from({ length: 50 }, (_, i) => {
-        const date = new Date();
-        date.setDate(date.getDate() - Math.floor(Math.random() * 14)); // Random date within last 14 days
-        date.setHours(Math.floor(Math.random() * 24), Math.floor(Math.random() * 60), Math.floor(Math.random() * 60));
-        
-        const actionOptions = ['create', 'update', 'delete', 'view', 'export', 'approve', 'reject'];
-        const userOptions = ['john.doe', 'jane.smith', 'admin', 'manager1', 'support'];
-        const entityOptions = ['route', 'user', 'vehicle', 'report', 'setting'];
-        
-        const action = actionOptions[Math.floor(Math.random() * actionOptions.length)];
-        const user = userOptions[Math.floor(Math.random() * userOptions.length)];
-        const entity = entityOptions[Math.floor(Math.random() * entityOptions.length)];
-        
-        let details = '';
-        switch (action) {
-          case 'create':
-            details = `Created new ${entity}`;
-            break;
-          case 'update':
-            details = `Updated ${entity} properties`;
-            break;
-          case 'delete':
-            details = `Deleted ${entity}`;
-            break;
-          case 'view':
-            details = `Viewed ${entity} details`;
-            break;
-          case 'export':
-            details = `Exported ${entity} data`;
-            break;
-          case 'approve':
-            details = `Approved ${entity} changes`;
-            break;
-          case 'reject':
-            details = `Rejected ${entity} changes`;
-            break;
-          default:
-            details = `Action performed on ${entity}`;
-        }
-        
-        return {
-          id: i + 1,
-          timestamp: date.toISOString(),
-          user,
-          action,
-          entity,
-          entityId: `${entity}-${Math.floor(Math.random() * 1000) + 1}`,
-          details,
-          ipAddress: `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-        };
-      }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      
-      setLogs(mockLogs);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  const Header = () => {
+    return (
+      <header className="bg-white shadow-sm border-b border-gray-200 px-7 py-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-blue-400">
+              <MessageSquareText className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">
+                Remarks History
+              </h1>
+              <p className="text-sm text-gray-600">
+                View and manage all remarks
+              </p>
+            </div>
+          </div>
+          <nav>
+            <ol className="flex items-center gap-2">
+              <li>
+                <Link className="font-medium" to="/dashboard">
+                  Dashboard /
+                </Link>
+              </li>
+              <li className="font-medium text-primary">Remarks History</li>
+            </ol>
+          </nav>
+        </div>
+      </header>
+    );
+  };
+
+  const fetchRemarksHistory = async () => {
+    try {
+      setLoading(true);
+      const response = await getRemarksHistory({
+        offset: (currentPage - 1) * rowsPerPage,
+        limit: rowsPerPage,
+        from_date: fromdate || undefined,
+        to_date: todate || undefined,
+        type: selectedType || undefined,
+      });
+
+      if (response.status) {
+        setData(response.data || []);
+        setTotal(response.total || 0);
+      } else {
+        setData([]);
+        setTotal(0);
+      }
+    } catch (error) {
+      console.error('Error fetching remarks history:', error);
+      setData([]);
+      setTotal(0);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
+  };
+
+  useEffect(() => {
+    const from_date = searchParams.get('from_date') || '';
+    const to_date = searchParams.get('to_date') || '';
+    const type = searchParams.get('type') || '';
+    const search = searchParams.get('search') || '';
+    setFromDate(from_date);
+    setToDate(to_date);
+    setSelectedType(type);
+    setGlobalSearch(search);
+    setFiltersReady(true);
   }, []);
 
-  // Filter logs based on filters and search
   useEffect(() => {
-    let filtered = [...logs];
-    
-    // Filter by date range
-    filtered = filtered.filter(log => {
-      const logDate = new Date(log.timestamp).toISOString().split('T')[0];
-      return logDate >= dateRange.start && logDate <= dateRange.end;
-    });
-    
-    // Filter by action
-    if (actionFilter !== 'all') {
-      filtered = filtered.filter(log => log.action === actionFilter);
+    if (filtersReady) {
+      fetchRemarksHistory();
     }
-    
-    // Filter by user
-    if (userFilter !== 'all') {
-      filtered = filtered.filter(log => log.user === userFilter);
-    }
-    
-    // Filter by entity
-    if (entityFilter !== 'all') {
-      filtered = filtered.filter(log => log.entity === entityFilter);
-    }
-    
-    // Filter by search term
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(log => 
-        log.user.toLowerCase().includes(term) ||
-        log.action.toLowerCase().includes(term) || 
-        log.entity.toLowerCase().includes(term) ||
-        log.entityId.toLowerCase().includes(term) ||
-        log.details.toLowerCase().includes(term)
-      );
-    }
-    
-    setFilteredLogs(filtered);
-    setCurrentPage(1); // Reset to first page when filters change
-  }, [logs, dateRange, actionFilter, userFilter, entityFilter, searchTerm]);
+  }, [
+    filtersReady,
+    fromdate,
+    todate,
+    selectedType,
+    globalsearch,
+    currentPage,
+    rowsPerPage,
+  ]);
 
-  // Get paginated logs
-  const paginatedLogs = filteredLogs.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  // Calculate total pages
-  const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
-
-  // Function to format date string
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString();
+  const handleFilterChange = (
+    from_date: string | null,
+    to_date: string | null,
+    type: string | null,
+    search: string | null,
+  ) => {
+    const params: Record<string, string> = {};
+    if (from_date) params.from_date = from_date;
+    if (to_date) params.to_date = to_date;
+    if (type) params.type = type;
+    if (search) params.search = search;
+    setSearchParams(params);
   };
 
-  // Function to get action badge color
-  const getActionBadgeClass = (action: string) => {
-    switch (action) {
-      case 'create':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      case 'update':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-      case 'delete':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-      case 'view':
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-      case 'export':
-        return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300';
-      case 'approve':
-        return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300';
-      case 'reject':
-        return 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300';
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-    }
+  const clearFilters = () => {
+    setFromDate('');
+    setToDate('');
+    setSelectedType('');
+    setGlobalSearch('');
+    setSearchParams({});
   };
 
-  // Export logs as CSV
-  const exportCSV = () => {
-    alert('Exporting logs as CSV...');
-    // Actual implementation would create a CSV file and trigger download
+  const handleFromDateChange = (value: string) => {
+    setFromDate(value);
+    handleFilterChange(value, todate, selectedType, globalsearch);
+  };
+
+  const handleToDateChange = (value: string) => {
+    setToDate(value);
+    handleFilterChange(fromdate, value, selectedType, globalsearch);
+  };
+
+  const handleTypeChange = (value: string) => {
+    setSelectedType(value);
+    handleFilterChange(fromdate, todate, value, globalsearch);
+  };
+
+  const handleSearchChange = (value: string) => {
+    setGlobalSearch(value);
+    handleFilterChange(fromdate, todate, selectedType, value);
+  };
+
+  const formatType = (type: string) => {
+    return type
+      .split('_')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  const columns: TableColumn<Remark>[] = [
+    {
+      name: 'Sl.No',
+      selector: (_row, index = 0) =>
+        (currentPage - 1) * rowsPerPage + index + 1,
+      width: '70px',
+    },
+    {
+      name: 'User Name',
+      selector: (row) => row.user_name,
+      cell: (row) => (
+        <span className="text-sm font-medium text-gray-900">
+          {row.user_name}
+        </span>
+      ),
+    },
+    {
+      name: 'Type',
+      selector: (row) => row.type,
+      cell: (row) => (
+        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+          {formatType(row.type)}
+        </span>
+      ),
+    },
+    {
+      name: 'Remarks',
+      selector: (row) => row.remarks,
+      cell: (row) => (
+        <span className="text-sm text-gray-600">{row.remarks}</span>
+      ),
+    },
+    {
+      name: 'Created At',
+      selector: (row) => row.created_at,
+      cell: (row) => (
+        <span className="text-sm text-gray-600">
+          {new Date(row.created_at).toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+        </span>
+      ),
+    },
+    {
+      name: 'Updated At',
+      selector: (row) => row.updated_at,
+      cell: (row) => (
+        <span className="text-sm text-gray-600">
+          {new Date(row.updated_at).toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+        </span>
+      ),
+    },
+  ];
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleRowsPerPageChange = (newRowsPerPage: number, newPage: number) => {
+    setRowsPerPage(newRowsPerPage);
+    setCurrentPage(newPage);
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      <div className="sm:flex sm:items-center sm:justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-          Route Audit Logs
-        </h1>
-        <div className="mt-4 sm:mt-0">
-          <button 
-            type="button" 
-            onClick={exportCSV}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Export Logs
-          </button>
-        </div>
-      </div>
-      
-      {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Date Range
-            </label>
-            <div className="flex space-x-2">
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
               <input
                 type="date"
-                value={dateRange.start}
-                onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-              />
-              <span className="self-center">to</span>
-              <input
-                type="date"
-                value={dateRange.end}
-                onChange={(e) => setDateRange({...dateRange, end: e.target.value})}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                value={fromdate}
+                onChange={(e) => handleFromDateChange(e.target.value)}
+                className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none"
+                placeholder="From Date"
               />
             </div>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Action
-            </label>
-            <select
-              value={actionFilter}
-              onChange={(e) => setActionFilter(e.target.value)}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+
+            <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+              <input
+                type="date"
+                value={todate}
+                onChange={(e) => handleToDateChange(e.target.value)}
+                className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none"
+                placeholder="To Date"
+              />
+            </div>
+
+            <div className="relative flex-1 min-w-0 sm:flex-none sm:w-40">
+              <select
+                value={selectedType}
+                onChange={(e) => handleTypeChange(e.target.value)}
+                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none"
+              >
+                {typeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                <ChevronDown className="w-4 h-4 text-gray-400" />
+              </div>
+            </div>
+
+            <button
+              onClick={clearFilters}
+              className="flex-none h-10 px-4 py-2 text-sm font-medium text-red-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap flex items-center gap-2"
             >
-              {actionTypes.map(action => (
-                <option key={action.id} value={action.id}>{action.name}</option>
-              ))}
-            </select>
+              <span className="text-red-500 font-medium text-sm">✕</span>
+              <span>Clear Filters</span>
+            </button>
+              <div className="flex items-center text-sm text-gray-500 ml-auto">
+              <span>Total Records: {total}</span>
+            </div>
           </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              User
-            </label>
-            <select
-              value={userFilter}
-              onChange={(e) => setUserFilter(e.target.value)}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-            >
-              {users.map(user => (
-                <option key={user.id} value={user.id}>{user.name}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Entity
-            </label>
-            <select
-              value={entityFilter}
-              onChange={(e) => setEntityFilter(e.target.value)}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-            >
-              {entities.map(entity => (
-                <option key={entity.id} value={entity.id}>{entity.name}</option>
-              ))}
-            </select>
-          </div>
+
+      
         </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Search
-          </label>
-          <input
-            type="text"
-            placeholder="Search logs..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+
+        <div className="p-4">
+          <DataTable
+            columns={columns}
+            data={data}
+            pagination
+            paginationServer
+            paginationTotalRows={total}
+            paginationPerPage={rowsPerPage}
+            paginationRowsPerPageOptions={[10, 25, 50, 100]}
+            onChangePage={handlePageChange}
+            onChangeRowsPerPage={handleRowsPerPageChange}
+            highlightOnHover
+            pointerOnHover
+            progressPending={loading}
+            progressComponent={
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            }
+            noDataComponent={
+              <div className="p-6 text-center text-gray-500">
+                No remarks found
+              </div>
+            }
           />
         </div>
       </div>
-      
-      {/* Logs Table */}
-      <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-700">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Timestamp
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  User
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Action
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Entity
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Entity ID
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Details
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  IP Address
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {loading ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                    Loading audit logs...
-                  </td>
-                </tr>
-              ) : paginatedLogs.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                    No logs found matching your criteria.
-                  </td>
-                </tr>
-              ) : (
-                paginatedLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {formatDate(log.timestamp)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {log.user}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getActionBadgeClass(log.action)}`}>
-                        {log.action.charAt(0).toUpperCase() + log.action.slice(1)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {log.entity.charAt(0).toUpperCase() + log.entity.slice(1)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {log.entityId}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                      {log.details}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {log.ipAddress}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        
-        {/* Pagination */}
-        {!loading && totalPages > 1 && (
-          <div className="bg-white dark:bg-gray-800 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 sm:px-6">
-            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm text-gray-700 dark:text-gray-400">
-                  Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
-                  <span className="font-medium">
-                    {Math.min(currentPage * itemsPerPage, filteredLogs.length)}
-                  </span>{' '}
-                  of <span className="font-medium">{filteredLogs.length}</span> results
-                </p>
-              </div>
-              <div>
-                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                  <button
-                    onClick={() => setCurrentPage(currentPage > 1 ? currentPage - 1 : 1)}
-                    disabled={currentPage === 1}
-                    className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium ${
-                      currentPage === 1
-                        ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-                        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    Previous
-                  </button>
-                  
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`relative inline-flex items-center px-4 py-2 border ${
-                        currentPage === page
-                          ? 'z-10 bg-blue-50 dark:bg-blue-900 border-blue-500 dark:border-blue-600 text-blue-600 dark:text-blue-200'
-                          : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
-                      } text-sm font-medium`}
-                    >
-                      {page}
-                    </button>
-                  ))}
-                  
-                  <button
-                    onClick={() => setCurrentPage(currentPage < totalPages ? currentPage + 1 : totalPages)}
-                    disabled={currentPage === totalPages}
-                    className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium ${
-                      currentPage === totalPages
-                        ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-                        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    Next
-                  </button>
-                </nav>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   );
-};
+}
 
 export default AuditLogs;

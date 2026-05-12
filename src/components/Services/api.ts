@@ -18,7 +18,8 @@ import { Activity, ApiResponseMachine, FilterState } from '../../types/survey';
 import { EditPayload } from '../../types/aerial-survey';
 import {
   BlockChecklistResponse,
-  RouterData,RackResponse,
+  RouterData,
+  RackResponse,
 } from '../../types/block-router-checklist';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -728,15 +729,18 @@ export const getBlockRouterData = async (
     throw error;
   }
 };
-export const getBlockRackData = async(blockId:string,):Promise<RackResponse>=>{
+export const getBlockRackData = async (
+  blockId: string,
+): Promise<RackResponse> => {
   try {
-   const resp = await axios.get(`${TraceBASEURL}/get-smartrack-data/${blockId}`,);
-   return resp.data;
+    const resp = await axios.get(
+      `${TraceBASEURL}/get-smartrack-data/${blockId}`,
+    );
+    return resp.data;
   } catch (error) {
     throw error;
   }
-
-}
+};
 export const getBlocksChecklist = async (filters: {
   state_id?: string;
   district_id?: string;
@@ -801,8 +805,8 @@ export const getBlockSummary = async (params: {
   limit?: number;
   state_code?: string;
   district_code?: string;
-   from_date?:string;
-  to_date?:string;
+  from_date?: string;
+  to_date?: string;
 }): Promise<DistrictSummaryResponse> => {
   try {
     const queryParams = new URLSearchParams();
@@ -811,11 +815,9 @@ export const getBlockSummary = async (params: {
     if (params.state_code) queryParams.append('state_code', params.state_code);
     if (params.district_code)
       queryParams.append('district_code', params.district_code);
-   if (params.from_date)
-      queryParams.append('from_date', params.from_date);
-    
-   if (params.to_date)
-      queryParams.append('to_date', params.to_date);
+    if (params.from_date) queryParams.append('from_date', params.from_date);
+
+    if (params.to_date) queryParams.append('to_date', params.to_date);
 
     const queryString = queryParams.toString();
     const url = queryString
@@ -838,9 +840,8 @@ export const getGPSummary = async (params: {
   limit?: number;
   state_code?: string;
   district_code?: string;
-  from_date?:string;
-  to_date?:string;
-
+  from_date?: string;
+  to_date?: string;
 }): Promise<DistrictSummaryResponse> => {
   try {
     const queryParams = new URLSearchParams();
@@ -849,11 +850,9 @@ export const getGPSummary = async (params: {
     if (params.state_code) queryParams.append('state_code', params.state_code);
     if (params.district_code)
       queryParams.append('district_code', params.district_code);
-    if (params.from_date)
-      queryParams.append('from_date', params.from_date);
-    
-   if (params.to_date)
-      queryParams.append('to_date', params.to_date);
+    if (params.from_date) queryParams.append('from_date', params.from_date);
+
+    if (params.to_date) queryParams.append('to_date', params.to_date);
 
     const queryString = queryParams.toString();
     const url = queryString
@@ -867,6 +866,56 @@ export const getGPSummary = async (params: {
     return response.json();
   } catch (error) {
     console.error('Error fetching GP summary:', error);
+    throw error;
+  }
+};
+
+export interface Remark {
+  id: number;
+  user_id: number;
+  user_name: string;
+  type: string;
+  remarks: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RemarksHistoryResponse {
+  status: boolean;
+  total: number;
+  limit: number;
+  offset: number;
+  data: Remark[];
+}
+
+export const getRemarksHistory = async (params: {
+  offset?: number;
+  limit?: number;
+  from_date?: string;
+  to_date?: string;
+  type?: string;
+}): Promise<RemarksHistoryResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
+    if (params.offset !== undefined)
+      queryParams.append('offset', params.offset.toString());
+    if (params.limit) queryParams.append('limit', params.limit.toString());
+    if (params.from_date) queryParams.append('from_date', params.from_date);
+    if (params.to_date) queryParams.append('to_date', params.to_date);
+    if (params.type) queryParams.append('type', params.type);
+
+    const queryString = queryParams.toString();
+    const url = queryString
+      ? `${TraceBASEURL}/get-remarks-history?${queryString}`
+      : `${TraceBASEURL}/get-remarks-history`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+  } catch (error) {
+    console.error('Error fetching remarks history:', error);
     throw error;
   }
 };

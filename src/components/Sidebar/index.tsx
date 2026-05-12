@@ -769,6 +769,24 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                   </NavLink>
                                 </li>
                               )}
+                              <li>
+                                <NavLink
+                                  to="/installation-gp-checklist-list"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <ListOrdered
+                                    size={16}
+                                    className="min-w-[16px] flex-shrink-0 opacity-80"
+                                  />
+                                  <span
+                                    className={`${isOpen ? 'block' : 'hidden'} truncate`}
+                                  >
+                                    GP Checklist Data
+                                  </span>
+                                </NavLink>
+                              </li>
                               {(!viewOnly || adminUser) && (
                                 <li>
                                   <NavLink
@@ -790,24 +808,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                   </NavLink>
                                 </li>
                               )}
-                              <li>
-                                <NavLink
-                                  to="/installation-gp-checklist-list"
-                                  className={({ isActive }) =>
-                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
-                                  }
-                                >
-                                  <ListOrdered
-                                    size={16}
-                                    className="min-w-[16px] flex-shrink-0 opacity-80"
-                                  />
-                                  <span
-                                    className={`${isOpen ? 'block' : 'hidden'} truncate`}
-                                  >
-                                    GP Checklist List
-                                  </span>
-                                </NavLink>
-                              </li>
+
                               <li>
                                 <NavLink
                                   to="/installation-block-checklist-list"
@@ -822,7 +823,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                   <span
                                     className={`${isOpen ? 'block' : 'hidden'} truncate`}
                                   >
-                                    Block Checklist List
+                                    Block Checklist Data
                                   </span>
                                 </NavLink>
                               </li>
@@ -832,6 +833,32 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                       );
                     }}
                   </SidebarLinkGroup>
+                )}
+
+                {/* Logs */}
+                {(!viewOnly || adminUser) && (
+                  <li>
+                    <NavLink
+                      to="/audit-logs"
+                      className={`
+                        flex items-center py-2 ${isOpen ? 'px-3 gap-4' : 'px-2 gap-0'} rounded-lg 
+                        transition-colors duration-200 text-bodydark1 
+                        ${
+                          pathname.includes('audit-logs')
+                            ? 'bg-graydark dark:bg-meta-4'
+                            : 'hover:bg-graydark dark:hover:bg-meta-4'
+                        }
+                        ${!isOpen ? 'w-[44px] justify-center' : ''}
+                      `}
+                    >
+                      <div className="min-w-[20px] flex justify-center">
+                        <SquareActivityIcon className="w-5 h-5" />
+                      </div>
+                      {isOpen && (
+                        <span className="whitespace-nowrap">Logs</span>
+                      )}
+                    </NavLink>
+                  </li>
                 )}
 
                 {/* Block Assignment */}
