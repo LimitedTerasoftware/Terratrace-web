@@ -1,3 +1,8 @@
+import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+
 export const toBase64 = async (source: File | string): Promise<string> => {
   try {
     if (source instanceof File) {
@@ -39,7 +44,7 @@ export const addImageAttachment = async (
 ): Promise<string> => {
   let src = img.watermarkedPreview || img.preview;
   try {
-    src = img.file ? await toBase64(img.file) : await toBase64(src);
+    src =  await toBase64(src);
   } catch {
     /* ignore */
   }
@@ -110,37 +115,8 @@ export const createPrintStyles = (): string => `
   .signature-label { font-size: 8.5pt; color: #64748b; }
   .report-footer { margin-top: 18px; padding-top: 10px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 8pt; color: #94a3b8; }
   .subsection-title { font-size: 10pt; font-weight: 600; color: #374151; margin: 12px 0 8px; padding: 6px 10px; background: #f1f5f9; border-radius: 6px; }
-  .attachment-page {
-    page-break-before: always;
-    break-before: page;
-    page-break-inside: avoid;
-    break-inside: avoid;
-    height: 245mm;
-    border: 1px solid #e2e8f0;
-    background: #fff;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  .attachment-label {
-    flex: 0 0 auto;
-    padding: 7px 10px;
-    font-size: 8.5pt;
-    font-weight: 700;
-    color: #1e293b;
-    border-bottom: 1px solid #e2e8f0;
-    background: #f8fafc;
-    word-break: break-word;
-  }
-  .attachment-page img {
-    flex: 1 1 auto;
-    min-height: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    display: block;
-    background: #fff;
-  }
+ 
+
   .appendix-header {
     page-break-before: always;
     break-before: page;
@@ -150,6 +126,49 @@ export const createPrintStyles = (): string => `
     color: #0d47a1;
     text-align: center;
   }
+    .document-message {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #475569;
+  font-size: 11pt;
+  padding: 20px;
+}
+  .attachment-page {
+  page-break-before: always;
+  break-before: page;
+  page-break-inside: avoid;
+  break-inside: avoid;
+  height: 235mm;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.attachment-label {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  font-size: 8.5pt;
+  font-weight: 700;
+  color: #1e293b;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.attachment-page img {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+
 `;
 
 export const buildPrintPage = (
@@ -161,9 +180,10 @@ export const buildPrintPage = (
 ): string => {
   const now = new Date().toLocaleString();
   const attachments =
-    attachmentPages && attachmentPages.length > 0
-      ? `<div class="appendix-header">Photo Appendix</div>${attachmentPages.join('')}`
-      : '';
+  attachmentPages && attachmentPages.length > 0
+    ? attachmentPages.join('')
+    : '';
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -195,4 +215,66 @@ export const buildPrintPage = (
   ${attachments}
 </body>
 </html>`;
+};
+
+export const renderPdfToImages = async (
+  source: File | string,
+): Promise<string[]> => {
+  const arrayBuffer =
+    source instanceof File
+      ? await source.arrayBuffer()
+      : await fetch(source, {
+          mode: 'cors',
+          credentials: 'omit',
+          cache: 'no-cache',
+        }).then((res) => {
+          if (!res.ok) throw new Error(`Failed to fetch PDF: ${source}`);
+          return res.arrayBuffer();
+        });
+
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const pages: string[] = [];
+
+  for (let pageNo = 1; pageNo <= pdf.numPages; pageNo += 1) {
+    const page = await pdf.getPage(pageNo);
+    const viewport = page.getViewport({ scale: 1.6 });
+
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+
+    if (!context) continue;
+
+    canvas.width = Math.floor(viewport.width);
+    canvas.height = Math.floor(viewport.height);
+
+    await page.render({ canvasContext: context, viewport,canvas }).promise;
+
+    pages.push(canvas.toDataURL('image/png'));
+  }
+
+  return pages;
+};
+export const addPdfAttachment = async (
+  source: File | string,
+  label: string,
+  attachmentPages: string[],
+): Promise<string> => {
+  try {
+    const pages = await renderPdfToImages(source);
+
+    pages.forEach((src, index) => {
+      attachmentPages.push(`
+        <div class="attachment-page">
+          <div class="attachment-label">${label} - Page ${index + 1}</div>
+          <img src="${src}" alt="${label} page ${index + 1}" />
+        </div>
+      `);
+    });
+
+    return `<div class="file-info">PDF attached: ${label} (${pages.length} pages)</div>`;
+  } catch (err) {
+    console.error('PDF render failed:', err);
+
+    return `<div class="file-info">PDF attached: ${label} - preview unavailable</div>`;
+  }
 };

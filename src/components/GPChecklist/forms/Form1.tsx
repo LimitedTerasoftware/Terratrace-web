@@ -21,7 +21,7 @@ import { StateData, District, Block } from '../../../types/survey';
 import axios from 'axios';
 import ImageCapture from './ImageCapture';
 import MediaCarousel from '../../DepthChart/MediaCarousel';
-import { addImageAttachment, buildPrintPage } from './printUtils';
+import { addImageAttachment, buildPrintPage ,addPdfAttachment} from './printUtils';
 
 interface Form1Props {
   data: FormData['form1'] | undefined;
@@ -498,14 +498,12 @@ export default function Form1({
     );
 
     // OTDR Report
-    const otdrHtml = data?.otdrReport
-      ? typeof data.otdrReport === 'string'
-        ? `<div class="file-info">📄 <a href="${data.otdrReport}" target="_blank">View OTDR Report PDF</a></div>`
-        : `<div class="file-info">📄 ${(data.otdrReport as File).name}</div>`
+        const otdrHtml = data?.otdrReport
+      ? await addPdfAttachment(data.otdrReport, 'OTDR Report PDF', attachmentPages)
       : '<div class="text-value">Not uploaded</div>';
-    addSection('OTDR Report', otdrHtml);
 
-    // Geo-tagged Photo
+     addSection('OTDR Report', otdrHtml);
+      // Geo-tagged Photo
     addSection(
       'Geo-tagged Site Photo',
       `

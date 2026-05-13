@@ -12,7 +12,11 @@ import {
 import { FormData, GeoTaggedImage } from '../../../types/gp-checklist';
 import { useState, useEffect } from 'react';
 import ImageCapture from './ImageCapture';
-import { addImageAttachment, buildPrintPage } from './printUtils';
+import {
+  addImageAttachment,
+  buildPrintPage,
+  addPdfAttachment,
+} from './printUtils';
 
 interface Form6Props {
   data: FormData['form6'] | undefined;
@@ -33,6 +37,8 @@ export default function Form6({ data, onChange }: Form6Props) {
     GeoTaggedImage[]
   >(data?.siteLabelBoardImage || []);
   const [preparing, setPreparing] = useState(false);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (data) {
@@ -143,9 +149,11 @@ export default function Form6({ data, onChange }: Form6Props) {
     const materialsHtml =
       data?.materialsApproved === 'yes'
         ? data?.verificationProof
-          ? typeof data.verificationProof === 'string'
-            ? `<div class="file-info">📄 <a href="${data.verificationProof}" target="_blank">View Verification Proof</a></div>`
-            : `<div class="file-info">📄 ${(data.verificationProof as File).name}</div>`
+          ? await addPdfAttachment(
+              data.verificationProof,
+              'Verification Proof',
+              attachmentPages,
+            )
           : '<div class="text-value">Materials Approved</div>'
         : addField('Materials Approved', data?.materialsApproved);
     addSection('Materials Verification', materialsHtml);
@@ -298,14 +306,15 @@ export default function Form6({ data, onChange }: Form6Props) {
                         <p className="text-sm font-medium text-gray-900">
                           Existing Verification Proof
                         </p>
-                        <a
-                          href={data.verificationProof}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          onClick={() => {
+                            setPdfUrl(data.verificationProof as string);
+                            setIsPdfModalOpen(true);
+                          }}
                           className="text-xs text-blue-600 hover:underline"
                         >
                           View PDF
-                        </a>
+                        </button>
                       </div>
                     </div>
                     <button
@@ -500,6 +509,32 @@ export default function Form6({ data, onChange }: Form6Props) {
           </>
         )}
       </div>
+      {isPdfModalOpen && pdfUrl && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4"
+          onClick={() => setIsPdfModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center p-4 border-b">
+              <h3 className="text-lg font-semibold">Verification Proof</h3>
+              <button
+                onClick={() => setIsPdfModalOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <iframe
+              src={pdfUrl}
+              className="w-full h-[80vh]"
+              title="Verification Proof"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
