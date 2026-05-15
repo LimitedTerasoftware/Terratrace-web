@@ -117,6 +117,8 @@ function SmartInventory() {
   const [placemarkCategories, setPlacemarkCategories] = useState<
     PlacemarkCategory[]
   >([]);
+  const [Shapload,setShapload]=useState<boolean>(false);
+
 
   // ==============================================
   // API DATA STATE (Left Sidebar)
@@ -1536,11 +1538,78 @@ function SmartInventory() {
     }
   }, []);
 
-  // Download Functions (keeping existing implementation)
-  const downloadShapefile = async () => {
-    // Implementation remains the same as original...
-    // (truncated for brevity, but should be copied from original file)
+ const downloadShapefile = async () => {
+    try {
+      setShapload(true)
+      const shapefileData: any = {
+        parsed_data: {
+          points: [],
+          polylines: []
+        }
+      };
+      
+      // Add physical survey data grouped by event type
+      if (rawPhysicalSurveyData && rawPhysicalSurveyData.data) {
+        // Group physical survey points by event type
+        const groupedByEventType: Record<string, any[]> = {};
+        
+        Object.entries(rawPhysicalSurveyData.data).forEach(([blockId, points]: [string, any]) => {
+          if (Array.isArray(points)) {
+            points.forEach((point: any) => {
+              // Skip LIVELOCATION events
+              if (point.event_type === 'LIVELOCATION') {
+                return;
+              }
+              
+              if (!groupedByEventType[point.event_type]) {
+                groupedByEventType[point.event_type] = [];
+              }
+              
+              // Add block_id to the point data
+              groupedByEventType[point.event_type].push({
+                ...point,
+                block_id: blockId
+              });
+            });
+          }
+        });
+
+        // Add grouped data to shapefile structure
+        Object.entries(groupedByEventType).forEach(([eventType, points]) => {
+          shapefileData.parsed_data[eventType] = points;
+        });
+      }
+
+      // Send request to shapefile download API
+      const response = await axios.post(`${BASEURL}/download-shape`, shapefileData, {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        responseType: 'blob' // Important for file download
+      });
+
+      if (response.status === 200) {
+        // Create download link
+        const blob = new Blob([response.data], { type: 'application/zip' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'shapefile.zip';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        showNotification('success', 'Shapefile downloaded successfully');
+      }
+    } catch (error) {
+      console.error('Failed to download shapefile:', error);
+      showNotification('error', 'Failed to download shapefile');
+    }finally{
+      setShapload(false)
+    }
   };
+
 
   const downloadExcel = () => {
     // Excel download functionality to be implemented

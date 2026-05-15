@@ -710,7 +710,7 @@ const BlockInstallationEdit = () => {
     } else if (type === 'rfms') {
       setRfms([...rfms, { count: '', make: '', photo: '', serial_no: '' }]);
     }else if (type === 'fwdm') {
-      setRfms([...fwdm, { count: '', make: '', photo: '', serial_no: '' }]);
+      setfwdm([...fwdm, { count: '', make: '', photo: '', serial_no: '' }]);
     }
   };
 
@@ -725,7 +725,7 @@ const BlockInstallationEdit = () => {
     } else if (type === 'rfms') {
       setRfms(rfms.filter((_, i) => i !== index));
     }else if (type === 'fwdm') {
-      setRfms(fwdm.filter((_, i) => i !== index));
+      setfwdm(fwdm.filter((_, i) => i !== index));
     }
   };
 
