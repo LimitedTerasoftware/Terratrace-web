@@ -416,7 +416,7 @@ const BlockInstallationEdit = () => {
       const processEquipmentPhotos = async (items: EquipmentItem[]) => {
         const results = [];
         for (const item of items) {
-          if (!item.make && !item.type && !item.model) continue;
+        // if (!item.make && !item.type && !item.model) continue;
 
           const newItem = { ...item };
           if (item.photo && isDataUrl(item.photo)) {
@@ -431,7 +431,7 @@ const BlockInstallationEdit = () => {
       const processFdmsPhotos = async (items: any[]) => {
         const results = [];
         for (const item of items) {
-          if (!item.make && !item.type && !item.model) continue;
+          // if (!item.make && !item.type && !item.model) continue;
 
           const newItem = { ...item };
           const photoFields = [
@@ -455,7 +455,7 @@ const BlockInstallationEdit = () => {
       const processSmartRackPhotos = async () => {
         const results = [];
         for (const item of smartRack) {
-          if (!item.make && !item.type && !item.serial_no) continue;
+          //if (!item.make && !item.type && !item.serial_no) continue;
 
           const newItem = { ...item };
           if (item.photo && isDataUrl(item.photo)) {
@@ -470,7 +470,7 @@ const BlockInstallationEdit = () => {
       const processRfmsPhotos = async (items: RfmsItem[]) => {
         const results = [];
         for (const item of items) {
-          if (!item.make) continue;
+          // if (!item.make) continue;
 
           const newItem = { ...item };
           if (item.photo && isDataUrl(item.photo)) {
@@ -484,7 +484,7 @@ const BlockInstallationEdit = () => {
       const processSFPPhotos = async (items: SFPItem[]) => {
         const results = [];
         for (const item of items) {
-          if (!item.make) continue;
+          // if (!item.make) continue;
 
           const newItem = { ...item };
           if (item.photo && isDataUrl(item.photo)) {
@@ -561,9 +561,9 @@ const BlockInstallationEdit = () => {
 
       if (response.data.status) {
         toast.success('Block installation updated successfully!');
-        // setTimeout(() => {
-        //   navigate(`/installation/block-detail/${id}`);
-        // }, 1500);
+        setTimeout(() => {
+          navigate(`/installation/block-detail/${id}`);
+        }, 1500);
       } else {
         toast.error('Failed to update block installation');
       }
