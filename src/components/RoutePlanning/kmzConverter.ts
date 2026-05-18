@@ -69,10 +69,10 @@ export const convertKMZToStandardFormat = (kmzData: KMZResponse): ConvertedKMZDa
   // Convert lines to connections
   const convertedConnections: Connection[] = kmzData.lines.map((line, index) => {
     // Extract start and end node names from properties with fallbacks
-    const startNode = line.properties?.start_node || 
+    const startNode = line.properties?.start_node || line.properties?.Start_Node ||
                      line.properties?.start || 
                      `Start_${index + 1}`;
-    const endNode = line.properties?.end_node || 
+    const endNode = line.properties?.end_node || line.properties?.End_Node ||
                    line.properties?.end || 
                    `End_${index + 1}`;
     
@@ -91,19 +91,23 @@ export const convertKMZToStandardFormat = (kmzData: KMZResponse): ConvertedKMZDa
       length = parseFloat(line.properties.seg_length) / 1000;
     } else if (line.properties?.length) {
       length = parseFloat(line.properties.length);
+    }else if(line.properties?.Seg_Length) {
+      length = parseFloat(line.properties.Seg_Length) / 1000;
+    }else if(line.properties?.LEN) {
+      length = parseFloat(line.properties.LEN)/ 1000;
     }
 
     // Determine if connection is existing based on status or type
     const existing = line.properties?.status === 'Accepted' || 
                     line.properties?.status === 'Existing' ||
-                    line.type === 'Incremental Cable' || 
+                    line.type || line.properties?.Type === 'Incremental Cable' || 
                     line.properties?.type === 'Incremental Cable' || 
                     line.properties?.asset_type === 'Incremental Cable';
 
     // Generate color based on type or status
     let color = '#FF0000'; // Default red
     if (line.type === 'Incremental Cable' || 
-        line.properties?.type === 'Incremental Cable' || 
+        line.properties?.type || line.properties?.Type === 'Incremental Cable' || 
         line.properties?.asset_type === 'Incremental Cable') {
       color = existing ? '#00AA00' : '#FF0000'; // Green for existing, red for new
     }

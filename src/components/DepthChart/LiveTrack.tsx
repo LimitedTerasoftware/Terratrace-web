@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Wrapper } from '@googlemaps/react-wrapper';
 import { Satellite, RefreshCw } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -115,6 +115,13 @@ function LiveTrack() {
   };
 
   useEffect(() => {
+    if (!selectedBlock) {
+      setKmlData(null);
+      setConstructionPathData(null);
+      setLoadingKML(false);
+      return;
+    }
+
     fetchKMLData();
   }, [selectedState, selectedDistrict, selectedBlock, Machine]);
 
@@ -226,9 +233,9 @@ function LiveTrack() {
       });
   }, [activities]);
 
-  const handleMarkerClick = (activity: LiveMachines) => {
+  const handleMarkerClick = useCallback((activity: LiveMachines) => {
     setSelectedActivity(activity);
-  };
+  }, []);
 
   const render = (status: any) => {
     if (status === 'LOADING') {

@@ -748,7 +748,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                   </span>
                                 </NavLink>
                               </li>
-                              {(!viewOnly || adminUser) && (
+                             
                                 <li>
                                   <NavLink
                                     to="/gp-checklist"
@@ -768,7 +768,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                     </span>
                                   </NavLink>
                                 </li>
-                              )}
+                            
                               <li>
                                 <NavLink
                                   to="/installation-gp-checklist-list"
@@ -787,7 +787,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                   </span>
                                 </NavLink>
                               </li>
-                              {(!viewOnly || adminUser) && (
                                 <li>
                                   <NavLink
                                     to="/block-router-checklist"
@@ -807,7 +806,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                     </span>
                                   </NavLink>
                                 </li>
-                              )}
+                               
 
                               <li>
                                 <NavLink
@@ -827,6 +826,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                   </span>
                                 </NavLink>
                               </li>
+                            
                             </ul>
                           </div>
                         </React.Fragment>
@@ -835,8 +835,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                   </SidebarLinkGroup>
                 )}
 
-                {/* Logs */}
-                {(!viewOnly || adminUser) && (
+               
                   <li>
                     <NavLink
                       to="/audit-logs"
@@ -859,7 +858,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                       )}
                     </NavLink>
                   </li>
-                )}
+             
 
                 {/* Block Assignment */}
                 {(!viewOnly || adminUser) && (

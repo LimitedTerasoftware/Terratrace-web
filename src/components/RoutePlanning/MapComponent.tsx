@@ -1048,11 +1048,11 @@ useEffect(() => {
 
     setLocalData((prev: GlobalData) => ({
       ...prev,
-      mainPointName: apiGPSResponse.points[0].properties?.blk_name || apiGPSResponse.points[0].properties?.name || '',
-      dt_code: apiGPSResponse.points[0].properties?.dt_code || '',
-      dt_name: apiGPSResponse.points[0].properties?.dt_name || '',
-      st_code: apiGPSResponse.points[0].properties?.st_code || '',
-      st_name: apiGPSResponse.points[0].properties?.st_name || '',
+      mainPointName: apiGPSResponse.points[0].properties?.blk_name || apiGPSResponse.points[0].properties?.name || apiGPSResponse.points[0].properties?.Blk_Name ||  '',
+      dt_code: apiGPSResponse.points[0].properties?.dt_code || apiGPSResponse.points[0].properties?.Dt_Code || '',
+      dt_name: apiGPSResponse.points[0].properties?.dt_name || apiGPSResponse.points[0].properties?.Dt_Name || '',
+      st_code: apiGPSResponse.points[0].properties?.st_code || apiGPSResponse.points[0].properties?.St_Code || '',
+      st_name: apiGPSResponse.points[0].properties?.st_name || apiGPSResponse.points[0].properties?.St_Name || '',
       loop: newLoopEntries,
     }));
     
@@ -3059,7 +3059,7 @@ useEffect(() => {
       // Clear new connections after successful save
       setNewConnections([]);
     } else {
-      throw new Error(result?.message || result?.error || 'Save failed');
+      throw new Error(result?.details || result?.error || 'Save failed');
     }
 
   } catch (error) {
