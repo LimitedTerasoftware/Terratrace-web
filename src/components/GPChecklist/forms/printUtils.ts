@@ -115,6 +115,23 @@ export const createPrintStyles = (): string => `
   .signature-label { font-size: 8.5pt; color: #64748b; }
   .report-footer { margin-top: 18px; padding-top: 10px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 8pt; color: #94a3b8; }
   .subsection-title { font-size: 10pt; font-weight: 600; color: #374151; margin: 12px 0 8px; padding: 6px 10px; background: #f1f5f9; border-radius: 6px; }
+  .checklist-items-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .checklist-item-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .checklist-item-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+    font-size: 9.5pt;
+    color: #1e293b;
+  }
  
 
   .appendix-header {

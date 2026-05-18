@@ -12,12 +12,17 @@ import {
   MapPin,
   Building2,
   AlertCircle,
+  ExternalLink,
+  Printer,
 } from 'lucide-react';
 import { getRFMSData, getBlockRouterData, getBlockRackData } from '../../Services/api';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { RackData, RouterData } from '../../../types/block-router-checklist';
 import MediaCarousel from '../../DepthChart/MediaCarousel';
-import { ExternalLink } from 'lucide-react';
+import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 const ImgbaseUrl = import.meta.env.VITE_Image_URL;
 
@@ -71,6 +76,7 @@ const BlockRouterChecklistView = () => {
   const [carouselOpen, setCarouselOpen] = useState(false);
   const [carouselItems, setCarouselItems] = useState<string[]>([]);
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const [preparing, setPreparing] = useState(false);
 
   const [selectedFormType, setSelectedFormType] = useState<FormType>('RFMS');
 
@@ -458,35 +464,472 @@ const openDocument = (url: string) => {
       </div>
     );
   }
-  const renderDocuments = (item: TestItem) => {
-  if (item.documents.length === 0) return null;
+  const escapeHtml = (value: string | number | null | undefined): string =>
+    String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
 
-  return (
-    <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-      {item.documents.map((doc, idx) => {
-        const ext = getFileExt(doc).toUpperCase();
-        const name = getFileName(doc);
+  const toBase64 = async (source: string): Promise<string> => {
+    try {
+      const response = await fetch(source, {
+        mode: 'cors',
+        credentials: 'omit',
+        cache: 'no-cache',
+      });
+      if (!response.ok) throw new Error(`Failed to fetch: ${source}`);
+      const blob = await response.blob();
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (error) {
+      console.error('Base64 conversion failed:', source, error);
+      return source;
+    }
+  };
 
-        return (
-          <button
-            key={idx}
-            onClick={() => openDocument(doc)}
-            className="flex-shrink-0 min-w-[160px] max-w-[220px] rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-left hover:bg-purple-100 hover:border-purple-300 transition-all"
-          >
-            <div className="flex items-center gap-2">
-              <FileText className="w-4 h-4 text-purple-600 flex-shrink-0" />
-              <span className="text-[10px] font-bold text-purple-700 bg-white px-1.5 py-0.5 rounded">
-                {ext || 'FILE'}
-              </span>
-              <ExternalLink className="w-3 h-3 text-purple-500 ml-auto flex-shrink-0" />
+  const renderPdfToImages = async (source: string): Promise<string[]> => {
+    const fullUrl = getFullImageUrl(source);
+    const arrayBuffer = await fetch(fullUrl, {
+      mode: 'cors',
+      credentials: 'omit',
+      cache: 'no-cache',
+    }).then((response) => {
+      if (!response.ok) throw new Error(`Failed to fetch PDF: ${fullUrl}`);
+      return response.arrayBuffer();
+    });
+
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const pages: string[] = [];
+
+    for (let pageNo = 1; pageNo <= pdf.numPages; pageNo += 1) {
+      const page = await pdf.getPage(pageNo);
+      const viewport = page.getViewport({ scale: 1.6 });
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      if (!context) continue;
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+      await page.render({ canvasContext: context, viewport, canvas }).promise;
+      pages.push(canvas.toDataURL('image/png'));
+    }
+
+    return pages;
+  };
+
+  const buildDocumentCardHtml = async (
+    doc: string,
+    item: TestItem,
+    attachmentPages: string[],
+  ): Promise<string> => {
+    const ext = getFileExt(doc).toUpperCase() || 'FILE';
+    const name = getFileName(doc);
+    const label = `${item.testCaseNo} - ${name}`;
+
+    if (ext === 'PDF') {
+      try {
+        const pdfPages = await renderPdfToImages(doc);
+        pdfPages.forEach((src, index) => {
+          attachmentPages.push(`
+            <div class="attachment-page">
+              <div class="attachment-label">${escapeHtml(label)} - Page ${index + 1}</div>
+              <img src="${src}" alt="${escapeHtml(label)} page ${index + 1}" />
             </div>
-            <p className="text-xs text-purple-900 mt-1 truncate">{name}</p>
-          </button>
+          `);
+        });
+        return `<div class="doc-card pdf-doc"><strong>PDF:</strong> ${escapeHtml(name)} <span>${pdfPages.length} page(s) included in attachments</span></div>`;
+      } catch (error) {
+        console.error('PDF render failed:', doc, error);
+        return `<div class="doc-card pdf-doc"><strong>PDF:</strong> ${escapeHtml(name)} <span>Preview unavailable</span></div>`;
+      }
+    }
+
+    return `<div class="doc-card"><strong>${escapeHtml(ext)}:</strong> ${escapeHtml(name)} <span>Attached file</span></div>`;
+  };
+
+  const buildImageThumbHtml = async (
+    image: string,
+    item: TestItem,
+    index: number,
+    attachmentPages: string[],
+  ): Promise<string> => {
+    const fullUrl = getFullImageUrl(image);
+    const src = await toBase64(fullUrl);
+    const label = `${item.testCaseNo} - ${getFileName(image) || `Image ${index + 1}`}`;
+
+    attachmentPages.push(`
+      <div class="attachment-page">
+        <div class="attachment-label">${escapeHtml(label)}</div>
+        <img src="${src}" alt="${escapeHtml(label)}" />
+      </div>
+    `);
+
+    return `<div class="image-thumb"><img src="${src}" alt="${escapeHtml(label)}" /></div>`;
+  };
+
+  const buildPrintStyles = (): string => `
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #1e293b; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    @page { size: A4; margin: 14mm 16mm 18mm 16mm; }
+    .report-header { display:flex; justify-content:space-between; gap:16px; padding-bottom:14px; border-bottom:3px solid #1565c0; margin-bottom:18px; }
+    .report-title h1 { font-size:17pt; color:#0d47a1; margin-bottom:4px; }
+    .report-title p { font-size:9pt; color:#64748b; margin-top:2px; }
+    .summary-bar { display:flex; gap:10px; margin-bottom:18px; }
+    .summary-chip { flex:1; border:1px solid #e2e8f0; border-radius:8px; padding:9px 10px; text-align:center; background:#f8fafc; }
+    .chip-value { font-size:17pt; font-weight:700; color:#1d4ed8; line-height:1; }
+    .chip-label { font-size:8pt; color:#64748b; margin-top:3px; }
+    .test-card { border:1px solid #e2e8f0; border-radius:10px; margin-bottom:14px; overflow:hidden; break-inside:auto; page-break-inside:auto; }
+    .test-card-header { display:flex; align-items:flex-start; gap:10px; padding:11px 13px; background:#f8fafc; border-bottom:1px solid #e2e8f0; break-inside:avoid; page-break-inside:avoid; }
+    .test-badge { font-size:10pt; font-weight:700; color:#1d4ed8; background:#dbeafe; padding:4px 9px; border-radius:6px; white-space:nowrap; }
+    .test-description { flex:1; font-size:9pt; line-height:1.42; color:#1e293b; }
+    .compliance-badge { padding:4px 10px; border-radius:99px; font-size:8.5pt; font-weight:700; white-space:nowrap; border:1px solid #cbd5e1; background:#f1f5f9; color:#64748b; }
+    .badge-yes { background:#dcfce7; color:#166534; border-color:#86efac; }
+    .badge-no { background:#fee2e2; color:#991b1b; border-color:#fca5a5; }
+    .test-card-body { padding:11px 13px; }
+    .procedure-box { background:#f0f9ff; border:1px solid #bae6fd; border-radius:6px; padding:7px 10px; margin-bottom:8px; font-size:8.8pt; color:#0c4a6e; break-inside:avoid; page-break-inside:avoid; }
+    .remarks-box { background:#fffbeb; border:1px solid #fde68a; border-radius:6px; padding:7px 10px; margin-bottom:8px; font-size:8.8pt; color:#78350f; break-inside:avoid; page-break-inside:avoid; }
+    .section-title { font-size:8.8pt; font-weight:700; color:#475569; margin:9px 0 7px; }
+    .images-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+    .image-thumb { border:1px solid #e2e8f0; border-radius:6px; overflow:hidden; aspect-ratio:4/3; }
+    .image-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+    .doc-card { border:1px solid #e2e8f0; border-radius:7px; padding:8px 10px; margin-bottom:7px; font-size:8.8pt; color:#334155; background:#fafafa; break-inside:avoid; page-break-inside:avoid; }
+    .doc-card strong { color:#7c3aed; }
+    .pdf-doc strong { color:#dc2626; }
+    .doc-card span { color:#64748b; margin-left:8px; }
+    .video-note { background:#fff7ed; border:1px solid #fed7aa; border-radius:6px; padding:8px 10px; font-size:8.8pt; color:#9a3412; }
+    .signature-section { margin-top:26px; padding-top:16px; border-top:2px solid #e2e8f0; page-break-inside:avoid; }
+    .signature-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; }
+    .signature-block { text-align:center; }
+    .signature-line { border-bottom:1px solid #94a3b8; margin-bottom:6px; height:38px; }
+    .signature-label { font-size:8.5pt; color:#64748b; }
+    .report-footer { margin-top:16px; padding-top:10px; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; font-size:8pt; color:#94a3b8; }
+    .attachment-page { page-break-before:always; break-before:page; page-break-inside:avoid; break-inside:avoid; height:235mm; border:1px solid #e2e8f0; background:#fff; display:flex; flex-direction:column; overflow:hidden; }
+    .attachment-label { flex:0 0 auto; padding:7px 10px; font-size:8.5pt; font-weight:700; color:#1e293b; border-bottom:1px solid #e2e8f0; background:#f8fafc; word-break:break-word; }
+    .attachment-page img { flex:1 1 auto; min-height:0; width:100%; height:100%; object-fit:contain; display:block; background:#fff; }
+  `;
+
+  const triggerPrint = async () => {
+    if (testItems.length === 0 || testItems.every((item) => item.compliance === '')) {
+      alert(`No checklist data found for ${selectedFormType} in this block.`);
+      return;
+    }
+
+    const printWindow = window.open('', '_blank', 'width=1200,height=900');
+    if (!printWindow) {
+      alert('Pop-up blocked. Please allow pop-ups for this site to print.');
+      return;
+    }
+
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Preparing Report</title><style>body{display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#64748b;font-size:15pt;}</style></head><body>Preparing report, please wait...</body></html>`);
+    printWindow.document.close();
+
+    const attachmentPages: string[] = [];
+    const itemsHtml = await Promise.all(
+      testItems.map(async (item) => {
+        const imagesHtml = await Promise.all(
+          item.images.map((image, index) => buildImageThumbHtml(image, item, index, attachmentPages)),
         );
-      })}
-    </div>
-  );
-};
+        const docsHtml = await Promise.all(
+          item.documents.map((doc) => buildDocumentCardHtml(doc, item, attachmentPages)),
+        );
+        const complianceClass =
+          item.compliance === 'Yes' || item.compliance === 'Y'
+            ? 'badge-yes'
+            : item.compliance === 'No' || item.compliance === 'N'
+              ? 'badge-no'
+              : '';
+
+        return `
+          <div class="test-card">
+            <div class="test-card-header">
+              <span class="test-badge">${escapeHtml(item.testCaseNo)}</span>
+              <span class="test-description">${escapeHtml(item.description)}</span>
+              <span class="compliance-badge ${complianceClass}">${escapeHtml(item.compliance || 'Pending')}</span>
+            </div>
+            <div class="test-card-body">
+              ${item.procedure ? `<div class="procedure-box"><strong>Procedure: </strong>${escapeHtml(item.procedure)}</div>` : ''}
+              ${item.remarks ? `<div class="remarks-box"><strong>Remarks: </strong>${escapeHtml(item.remarks)}</div>` : ''}
+              ${imagesHtml.length > 0 ? `<div class="section-title">Images / Videos (${item.images.length})</div><div class="images-grid">${imagesHtml.join('')}</div>` : ''}
+              ${docsHtml.length > 0 ? `<div class="section-title">Documents (${item.documents.length})</div>${docsHtml.join('')}` : ''}
+              ${item.images.some((image) => isVideoUrl(image)) ? `<div class="video-note">Video file(s) are attached and can be viewed from the checklist screen.</div>` : ''}
+            </div>
+          </div>`;
+      }),
+    );
+
+    const formLabel = formTypes.find((form) => form.type === selectedFormType)?.label ?? selectedFormType;
+    const completed = testItems.filter((item) => item.compliance === 'Yes' || item.compliance === 'Y').length;
+    const failed = testItems.filter((item) => item.compliance === 'No' || item.compliance === 'N').length;
+    const pending = testItems.length - completed - failed;
+    const generatedAt = new Date().toLocaleString();
+    const fullHtml = `<!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <title>${escapeHtml(formLabel)} Checklist Report</title>
+        <style>${buildPrintStyles()}</style>
+      </head>
+      <body>
+        <div class="report-header">
+          <div class="report-title">
+            <h1>${escapeHtml(formLabel)} Checklist</h1>
+            <p>Block Checklist Report</p>
+            <p>Generated: ${escapeHtml(generatedAt)}</p>
+          </div>
+          <div class="report-title" style="text-align:right;">
+            <p><strong>Block:</strong> ${escapeHtml(blockInfo?.block_name || block_id || blockId || '')}</p>
+            <p><strong>District:</strong> ${escapeHtml(blockInfo?.district_name || district_id || '')}</p>
+            <p><strong>State:</strong> ${escapeHtml(blockInfo?.state_name || state_id || '')}</p>
+          </div>
+        </div>
+
+        <div class="summary-bar">
+          <div class="summary-chip"><div class="chip-value">${testItems.length}</div><div class="chip-label">Total Tests</div></div>
+          <div class="summary-chip"><div class="chip-value">${completed}</div><div class="chip-label">Compliant</div></div>
+          <div class="summary-chip"><div class="chip-value">${failed}</div><div class="chip-label">Non-Compliant</div></div>
+          <div class="summary-chip"><div class="chip-value">${pending}</div><div class="chip-label">Pending</div></div>
+        </div>
+
+        ${itemsHtml.join('')}
+
+        <div class="signature-section">
+          <div class="signature-grid">
+            <div class="signature-block"><div class="signature-line"></div><div class="signature-label">Prepared By</div></div>
+            <div class="signature-block"><div class="signature-line"></div><div class="signature-label">Reviewed By</div></div>
+            <div class="signature-block"><div class="signature-line"></div><div class="signature-label">Approved By</div></div>
+          </div>
+        </div>
+        <div class="report-footer">
+          <span>${escapeHtml(formLabel)} Checklist - Block ID: ${escapeHtml(blockId)}</span>
+          <span>Confidential - Internal Use Only</span>
+        </div>
+        ${attachmentPages.join('')}
+      </body>
+      </html>`;
+
+    printWindow.document.open();
+    printWindow.document.write(fullHtml);
+    printWindow.document.close();
+
+    const images = Array.from(printWindow.document.images);
+    await Promise.all(
+      images.map(
+        (image) =>
+          new Promise<void>((resolve) => {
+            if (image.complete) return resolve();
+            image.onload = () => resolve();
+            image.onerror = () => resolve();
+          }),
+      ),
+    );
+
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+    }, 300);
+  };
+
+  const handlePrint = async () => {
+    setPreparing(true);
+    try {
+      await triggerPrint();
+    } finally {
+      setPreparing(false);
+    }
+  };
+
+  const renderDocuments = (item: TestItem) => {
+    if (item.documents.length === 0) return null;
+
+    return (
+      <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+        {item.documents.map((doc, idx) => {
+          const ext = getFileExt(doc).toUpperCase();
+          const name = getFileName(doc);
+
+          return (
+            <button
+              key={idx}
+              onClick={() => openDocument(doc)}
+              className="flex-shrink-0 min-w-[160px] max-w-[220px] rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-left hover:bg-purple-100 hover:border-purple-300 transition-all"
+            >
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                <span className="text-[10px] font-bold text-purple-700 bg-white px-1.5 py-0.5 rounded">
+                  {ext || 'FILE'}
+                </span>
+                <ExternalLink className="w-3 h-3 text-purple-500 ml-auto flex-shrink-0" />
+              </div>
+              <p className="text-xs text-purple-900 mt-1 truncate">{name}</p>
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderTestCard = (item: TestItem) => {
+    const isCompleted = item.compliance === 'Yes' || item.compliance === 'Y';
+    const hasData = item.compliance !== '';
+
+    return (
+      <div
+        key={item.id}
+        className={`group bg-white rounded-xl shadow-sm border transition-all hover:shadow-md ${
+          !hasData
+            ? 'border-gray-100 opacity-60'
+            : isCompleted
+              ? 'border-emerald-100 hover:border-emerald-200'
+              : 'border-red-100 hover:border-red-200'
+        }`}
+      >
+        <div className="p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 mt-0.5">
+              <div
+                className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
+                  !hasData
+                    ? 'bg-gray-100 text-gray-400'
+                    : isCompleted
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-red-100 text-red-700'
+                }`}
+              >
+                {item.testCaseNo}
+              </div>
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-800 mb-2 leading-relaxed">
+                {item.description}
+              </p>
+              {item.procedure && (
+                <p className="text-xs text-gray-500 mt-1 mb-1">
+                  <b>Procedure:</b> {item.procedure}
+                </p>
+              )}
+
+              <div className="flex flex-wrap items-center gap-2">
+                {hasData ? (
+                  <span
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      isCompleted
+                        ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                        : 'bg-red-50 text-red-700 ring-1 ring-red-200'
+                    }`}
+                  >
+                    {isCompleted ? (
+                      <CheckCircle className="w-3 h-3" />
+                    ) : (
+                      <XCircle className="w-3 h-3" />
+                    )}
+                    {isCompleted ? 'Compliance Status (Yes)' : 'Compliance Status (No)'}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-50 text-gray-400 ring-1 ring-gray-200">
+                    <AlertCircle className="w-3 h-3" />
+                    Pending
+                  </span>
+                )}
+
+                {item.images.length > 0 && (
+                  <button
+                    onClick={() => openCarousel(item.images, 0)}
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-orange-600 ring-1 ring-orange-200 hover:bg-orange-100 transition-colors"
+                  >
+                    <Image className="w-3 h-3" />
+                    {item.images.length} Media
+                  </button>
+                )}
+
+                {item.documents.length > 0 && (
+                  <button
+                    onClick={() => openDocument(item.documents[0])}
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-600 ring-1 ring-purple-200 hover:bg-purple-100 transition-colors"
+                  >
+                    <FileText className="w-3 h-3" />
+                    {item.documents.length} Documents
+                  </button>
+                )}
+              </div>
+
+              {item.remarks && (
+                <span className="text-xs text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full">
+                  <b>Remarks:</b> {item.remarks}
+                </span>
+              )}
+
+              {item.images.length > 0 && (
+                <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
+                  {item.images.slice(0, 5).map((img, idx) => {
+                    const isVideo = isVideoUrl(img);
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => openCarousel(item.images, idx)}
+                        className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border border-gray-200 hover:border-blue-400 hover:shadow-sm transition-all relative group/image"
+                      >
+                        {isVideo ? (
+                          <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                            <Video className="w-4 h-4 text-gray-400" />
+                          </div>
+                        ) : (
+                          <img
+                            src={getFullImageUrl(img)}
+                            alt={`Media ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        )}
+                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/image:opacity-100 transition-opacity flex items-center justify-center">
+                          {isVideo ? (
+                            <Video className="w-3 h-3 text-white" />
+                          ) : (
+                            <Image className="w-3 h-3 text-white" />
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                  {item.images.length > 5 && (
+                    <button
+                      onClick={() => openCarousel(item.images, 5)}
+                      className="flex-shrink-0 w-12 h-12 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+                    >
+                      +{item.images.length - 5}
+                    </button>
+                  )}
+                </div>
+              )}
+              {renderDocuments(item)}
+            </div>
+
+            <div className="flex-shrink-0">
+              <div
+                className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                  !hasData ? 'bg-gray-100' : isCompleted ? 'bg-emerald-100' : 'bg-red-100'
+                }`}
+              >
+                {hasData &&
+                  (isCompleted ? (
+                    <CheckCircle className="w-4 h-4 text-emerald-600" />
+                  ) : (
+                    <XCircle className="w-4 h-4 text-red-600" />
+                  ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
 
   return (
@@ -520,7 +963,7 @@ const openDocument = (url: string) => {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <div className="text-right">
+              <div className="text-right hidden sm:block">
                 <div className="text-xs text-gray-500 mb-1">
                   {completedCount}/{totalCount} Passed
                 </div>
@@ -533,6 +976,14 @@ const openDocument = (url: string) => {
                   />
                 </div>
               </div>
+              <button
+                onClick={handlePrint}
+                disabled={preparing || loadingData || testItems.every((item) => item.compliance === '')}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-blue-200 bg-white text-blue-700 text-sm font-medium hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {preparing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+                <span>{preparing ? 'Preparing...' : 'Print'}</span>
+              </button>
             </div>
           </div>
 
@@ -568,371 +1019,34 @@ const openDocument = (url: string) => {
               No checklist data found for {selectedFormType} in this block.
             </p>
           </div>
-        ) : (
-         selectedFormType === 'BlockRack' ? (
-            // Grouped view with Part A / Part B headers
-            (['A', 'B'] as const).map((part) => {
-              const partItems = testItems.filter((item) => item.id.startsWith(part));
-              const partLabel = part === 'A' ? 'Part A: Infrastructure Tests' : 'Part B: Functional Tests';
+        ) : selectedFormType === 'BlockRack' ? (
+          (['A', 'B'] as const).map((part) => {
+            const partItems = testItems.filter((item) => item.id.startsWith(part));
+            const partLabel =
+              part === 'A' ? 'Part A: Infrastructure Tests' : 'Part B: Functional Tests';
 
-              return (
-                <div key={part} className="mb-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className={`px-3 py-1 rounded-full text-xs font-bold text-white ${part === 'A' ? 'bg-blue-500' : 'bg-emerald-500'}`}>
-                      {partLabel}
-                    </div>
-                    <div className="flex-1 h-px bg-gray-200" />
-                    <span className="text-xs text-gray-400">
-                      {partItems.filter(i => i.compliance === 'Yes' || i.compliance === 'Y').length}/{partItems.length} passed
-                    </span>
-                  </div>
-
-                  <div className="grid gap-3">
-                    {partItems.map((item) => {
-                      /* ── same card JSX as your existing map() ── */
-                      const isCompleted = item.compliance === 'Yes' || item.compliance === 'Y';
-                      const hasData = item.compliance !== '';
-                      return (
-                        <div
-                          key={item.id}
-                          className={`group bg-white rounded-xl shadow-sm border transition-all hover:shadow-md ${
-                            !hasData ? 'border-gray-100 opacity-60'
-                              : isCompleted ? 'border-emerald-100 hover:border-emerald-200'
-                              : 'border-red-100 hover:border-red-200'
-                          }`}
-                        >
-                      <div className="p-4">
-                       <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 mt-0.5">
-                          <div
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
-                              !hasData
-                                ? 'bg-gray-100 text-gray-400'
-                                : isCompleted
-                                  ? 'bg-emerald-100 text-emerald-700'
-                                  : 'bg-red-100 text-red-700'
-                            }`}
-                          >
-                            {item.testCaseNo}
-                          </div>
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-800 mb-2 leading-relaxed">
-                            {item.description}
-                          </p>
-                          {item.procedure && (
-                            <p className="text-xs text-gray-500 mt-1 mb-1">
-                              <b>Procedure:</b> {item.procedure}
-                            </p>
-                          )}
-
-                          <div className="flex flex-wrap items-center gap-2">
-                            {hasData ? (
-                              <span
-                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                  isCompleted
-                                    ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-                                    : 'bg-red-50 text-red-700 ring-1 ring-red-200'
-                                }`}
-                              >
-                                {isCompleted ? (
-                                  <CheckCircle className="w-3 h-3" />
-                                ) : (
-                                  <XCircle className="w-3 h-3" />
-                                )}
-                                {isCompleted ? 'Compliance Status (Yes)' : 'Compliance Status (No)'}
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-50 text-gray-400 ring-1 ring-gray-200">
-                                <AlertCircle className="w-3 h-3" />
-                                Pending
-                              </span>
-                            )}
-
-                          
-
-                            {item.images.length > 0 && (
-                              <button
-                                onClick={() => openCarousel(item.images, 0)}
-                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-orange-600 ring-1 ring-orange-200 hover:bg-orange-100 transition-colors"
-                              >
-                                <Image className="w-3 h-3" />
-                                {item.images.length} Media
-                              </button>
-                            )}
-                            {item.documents.length > 0 && (
-                          <button
-                            onClick={() => openDocument(item.documents[0])}
-                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-600 ring-1 ring-purple-200 hover:bg-purple-100 transition-colors"
-                          >
-                            <FileText className="w-3 h-3" />
-                            {item.documents.length} Documents
-                          </button>
-                        )}
-                            
-                            
-
-                          </div>
-                          {item.remarks && (
-                              <span className="text-xs text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full">
-                              <b>Remarks:</b> {item.remarks}
-                              </span>
-                            )}
-
-                          {item.images.length > 0 && (
-                            <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
-                              {item.images.slice(0, 5).map((img, idx) => {
-                                const isVideo = isVideoUrl(img);
-                                return (
-                                  <button
-                                    key={idx}
-                                    onClick={() => openCarousel(item.images, idx)}
-                                    className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border border-gray-200 hover:border-blue-400 hover:shadow-sm transition-all relative group/image"
-                                  >
-                                    {isVideo ? (
-                                      <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                                        <Video className="w-4 h-4 text-gray-400" />
-                                      </div>
-                                    ) : (
-                                      <img
-                                        src={getFullImageUrl(img)}
-                                        alt={`Media ${idx + 1}`}
-                                        className="w-full h-full object-cover"
-                                        onError={(e) => {
-                                          (
-                                            e.currentTarget as HTMLImageElement
-                                          ).style.display = 'none';
-                                        }}
-                                      />
-                                    )}
-                                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/image:opacity-100 transition-opacity flex items-center justify-center">
-                                      {isVideo ? (
-                                        <Video className="w-3 h-3 text-white" />
-                                      ) : (
-                                        <Image className="w-3 h-3 text-white" />
-                                      )}
-                                    </div>
-                                  </button>
-                                );
-                              })}
-                              {item.images.length > 5 && (
-                                <button
-                                  onClick={() => openCarousel(item.images, 5)}
-                                  className="flex-shrink-0 w-12 h-12 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors"
-                                >
-                                  +{item.images.length - 5}
-                                </button>
-                              )}
-                            </div>
-                          )}
-                           {renderDocuments(item)}
-                       
-
-
-                        </div>
-
-                        <div className="flex-shrink-0">
-                          <div
-                            className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                              !hasData
-                                ? 'bg-gray-100'
-                                : isCompleted
-                                  ? 'bg-emerald-100'
-                                  : 'bg-red-100'
-                            }`}
-                          >
-                            {hasData &&
-                              (isCompleted ? (
-                                <CheckCircle className="w-4 h-4 text-emerald-600" />
-                              ) : (
-                                <XCircle className="w-4 h-4 text-red-600" />
-                              ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })
-            ) : (
-        <div className="grid gap-3">
-              {testItems.map((item, index) => {
-                const isCompleted =
-                  item.compliance === 'Yes' || item.compliance === 'Y';
-                const hasData = item.compliance !== '';
-
-                return (
+            return (
+              <div key={part} className="mb-4">
+                <div className="flex items-center gap-2 mb-3">
                   <div
-                    key={item.id}
-                    className={`group bg-white rounded-xl shadow-sm border transition-all hover:shadow-md ${
-                      !hasData
-                        ? 'border-gray-100 opacity-60'
-                        : isCompleted
-                          ? 'border-emerald-100 hover:border-emerald-200'
-                          : 'border-red-100 hover:border-red-200'
+                    className={`px-3 py-1 rounded-full text-xs font-bold text-white ${
+                      part === 'A' ? 'bg-blue-500' : 'bg-emerald-500'
                     }`}
                   >
-                    <div className="p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 mt-0.5">
-                          <div
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
-                              !hasData
-                                ? 'bg-gray-100 text-gray-400'
-                                : isCompleted
-                                  ? 'bg-emerald-100 text-emerald-700'
-                                  : 'bg-red-100 text-red-700'
-                            }`}
-                          >
-                            {item.testCaseNo}
-                          </div>
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-800 mb-2 leading-relaxed">
-                            {item.description}
-                          </p>
-                          {item.procedure && (
-                            <p className="text-xs text-gray-500 mt-1 mb-1">
-                              <b>Procedure:</b> {item.procedure}
-                            </p>
-                          )}
-
-                          <div className="flex flex-wrap items-center gap-2">
-                            {hasData ? (
-                              <span
-                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                  isCompleted
-                                    ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-                                    : 'bg-red-50 text-red-700 ring-1 ring-red-200'
-                                }`}
-                              >
-                                {isCompleted ? (
-                                  <CheckCircle className="w-3 h-3" />
-                                ) : (
-                                  <XCircle className="w-3 h-3" />
-                                )}
-                                {isCompleted ? 'Compliance Status (Yes)' : 'Compliance Status (No)'}
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-50 text-gray-400 ring-1 ring-gray-200">
-                                <AlertCircle className="w-3 h-3" />
-                                Pending
-                              </span>
-                            )}
-
-                          
-
-                            {item.images.length > 0 && (
-                              <button
-                                onClick={() => openCarousel(item.images, 0)}
-                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-orange-600 ring-1 ring-orange-200 hover:bg-orange-100 transition-colors"
-                              >
-                                <Image className="w-3 h-3" />
-                                {item.images.length} Media
-                              </button>
-                            )}
-                          {item.documents.length > 0 && (
-                          <button
-                            onClick={() => openDocument(item.documents[0])}
-                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-600 ring-1 ring-purple-200 hover:bg-purple-100 transition-colors"
-                          >
-                            <FileText className="w-3 h-3" />
-                            {item.documents.length} Documents
-                          </button>
-                        )}
-                         
-
-
-                          </div>
-                          {item.remarks && (
-                              <span className="text-xs text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full">
-                              <b>Remarks:</b> {item.remarks}
-                              </span>
-                            )}
-
-                          {item.images.length > 0 && (
-                            <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
-                              {item.images.slice(0, 5).map((img, idx) => {
-                                const isVideo = isVideoUrl(img);
-                                return (
-                                  <button
-                                    key={idx}
-                                    onClick={() => openCarousel(item.images, idx)}
-                                    className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border border-gray-200 hover:border-blue-400 hover:shadow-sm transition-all relative group/image"
-                                  >
-                                    {isVideo ? (
-                                      <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                                        <Video className="w-4 h-4 text-gray-400" />
-                                      </div>
-                                    ) : (
-                                      <img
-                                        src={getFullImageUrl(img)}
-                                        alt={`Media ${idx + 1}`}
-                                        className="w-full h-full object-cover"
-                                        onError={(e) => {
-                                          (
-                                            e.currentTarget as HTMLImageElement
-                                          ).style.display = 'none';
-                                        }}
-                                      />
-                                    )}
-                                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/image:opacity-100 transition-opacity flex items-center justify-center">
-                                      {isVideo ? (
-                                        <Video className="w-3 h-3 text-white" />
-                                      ) : (
-                                        <Image className="w-3 h-3 text-white" />
-                                      )}
-                                    </div>
-                                  </button>
-                                );
-                              })}
-                              {item.images.length > 5 && (
-                                <button
-                                  onClick={() => openCarousel(item.images, 5)}
-                                  className="flex-shrink-0 w-12 h-12 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors"
-                                >
-                                  +{item.images.length - 5}
-                                </button>
-                              )}
-                            </div>
-                          )}
-                          {renderDocuments(item)}
-                      
-
-
-                        </div>
-
-                        <div className="flex-shrink-0">
-                          <div
-                            className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                              !hasData
-                                ? 'bg-gray-100'
-                                : isCompleted
-                                  ? 'bg-emerald-100'
-                                  : 'bg-red-100'
-                            }`}
-                          >
-                            {hasData &&
-                              (isCompleted ? (
-                                <CheckCircle className="w-4 h-4 text-emerald-600" />
-                              ) : (
-                                <XCircle className="w-4 h-4 text-red-600" />
-                              ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    {partLabel}
                   </div>
-                );
-              })}
-          </div>
-        )
+                  <div className="flex-1 h-px bg-gray-200" />
+                  <span className="text-xs text-gray-400">
+                    {partItems.filter((item) => item.compliance === 'Yes' || item.compliance === 'Y').length}/
+                    {partItems.length} passed
+                  </span>
+                </div>
+                <div className="grid gap-3">{partItems.map(renderTestCard)}</div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="grid gap-3">{testItems.map(renderTestCard)}</div>
         )}
       </div>
 

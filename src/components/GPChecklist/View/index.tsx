@@ -7,10 +7,12 @@ import {
   Check,
   X,
   Loader2,
+  Printer,
 } from 'lucide-react';
 import MediaCarousel from '../../DepthChart/MediaCarousel';
 import { getChecklistPreview } from '../../Services/api';
 import { Header } from '../../Breadcrumbs/Header';
+import { addPdfAttachment, buildPrintPage, toBase64 } from '../forms/printUtils';
 
 interface ChecklistItem {
   id: number;
@@ -72,6 +74,7 @@ function GPChecklistView() {
     { type: string; url: string; label: string }[]
   >([]);
   const [carouselInitialIndex, setCarouselInitialIndex] = useState<number>(0);
+  const [preparing, setPreparing] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -260,6 +263,220 @@ function GPChecklistView() {
     </div>
   );
 
+
+  const escapeHtml = (value: string | number | null | undefined): string =>
+    String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+
+  const getFullMediaUrl = (url: string): string => {
+    if (!url) return '';
+    if (url.startsWith('http') || url.startsWith('data:')) return url;
+    return `${ImgbaseUrl}${url}`;
+  };
+
+  const getFileName = (url: string): string =>
+    url.split('/').pop()?.split('?')[0] || 'Attachment';
+
+  const isPrintableImage = (url: string): boolean => {
+    const ext = url.split('?')[0].split('#')[0].split('.').pop()?.toLowerCase();
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext || '');
+  };
+
+  const isPrintablePdf = (url: string): boolean =>
+    url.split('?')[0].split('#')[0].toLowerCase().endsWith('.pdf');
+
+  const addRemoteImageAttachment = async (
+    url: string,
+    label: string,
+    attachmentPages: string[],
+  ): Promise<string> => {
+    const fullUrl = getFullMediaUrl(url);
+    const src = await toBase64(fullUrl);
+    const safeLabel = escapeHtml(label);
+
+    attachmentPages.push(`
+      <div class="attachment-page">
+        <div class="attachment-label">${safeLabel}</div>
+        <img src="${src}" alt="${safeLabel}" />
+      </div>
+    `);
+
+    return `<div class="image-thumb"><img src="${src}" alt="${safeLabel}" /></div>`;
+  };
+
+  const addPrintableAttachment = async (
+    url: string,
+    label: string,
+    attachmentPages: string[],
+  ): Promise<string> => {
+    const fullUrl = getFullMediaUrl(url);
+    const name = getFileName(url);
+
+    if (isPrintablePdf(url)) {
+      return addPdfAttachment(fullUrl, label, attachmentPages);
+    }
+
+    if (isPrintableImage(url)) {
+      return addRemoteImageAttachment(fullUrl, label, attachmentPages);
+    }
+
+    return `<div class="file-info">Attached file: ${escapeHtml(name)}</div>`;
+  };
+
+  const addField = (label: string, value: string | number | null | undefined) =>
+    `<div class="field-row"><span class="field-label">${escapeHtml(label)}</span><span class="field-value">${escapeHtml(value || 'N/A')}</span></div>`;
+
+  const addSection = (sections: string[], title: string, content: string) => {
+    sections.push(
+      `<div class="section-card"><div class="section-header">${escapeHtml(title)}</div><div class="section-body">${content}</div></div>`,
+    );
+  };
+
+  const getStatusLabel = (status: number): string => {
+    if (status === 1) return 'With Proof';
+    if (status === 0) return 'Without Proof';
+    return 'Unknown';
+  };
+
+  const getStatusBadgeClass = (status: number): string => {
+    if (status === 1) return 'badge-yes';
+    if (status === 0) return 'badge-no';
+    return 'badge-pending';
+  };
+
+  const triggerPrint = async () => {
+    if (!main) return;
+
+    const printWindow = window.open('', '_blank', 'width=1200,height=900');
+    if (!printWindow) {
+      alert('Pop-up blocked. Please allow pop-ups for this site to print.');
+      return;
+    }
+
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>GP Checklist</title>
+      <style>body{display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#64748b;font-size:15pt;}</style>
+      </head><body>Preparing report, please wait...</body></html>`);
+    printWindow.document.close();
+
+    const sections: string[] = [];
+    const attachmentPages: string[] = [];
+
+    addSection(
+      sections,
+      'Location Details',
+      `
+        ${addField('State', main.state_name)}
+        ${addField('District', main.district_name)}
+        ${addField('Block', main.block_name)}
+        ${addField('GP Name', main.gp_name)}
+        ${addField('Building Type', main.building_type)}
+        ${addField('Latitude', main.latitude)}
+        ${addField('Longitude', main.longitude)}
+      `,
+    );
+
+    const siteImages = parseMediaUrls(main.site_images);
+    if (siteImages.length > 0) {
+      const thumbs = await Promise.all(
+        siteImages.map((url, index) =>
+          addPrintableAttachment(url, `Site Image ${index + 1}`, attachmentPages),
+        ),
+      );
+      addSection(
+        sections,
+        `Site Images (${siteImages.length})`,
+        `<div class="images-grid">${thumbs.join('')}</div>`,
+      );
+    }
+
+    const buildingImages = parseMediaUrls(main.building_images);
+    if (buildingImages.length > 0) {
+      const thumbs = await Promise.all(
+        buildingImages.map((url, index) =>
+          addPrintableAttachment(url, `Building Image ${index + 1}`, attachmentPages),
+        ),
+      );
+      addSection(
+        sections,
+        `Building Images (${buildingImages.length})`,
+        `<div class="images-grid">${thumbs.join('')}</div>`,
+      );
+    }
+
+    for (const [formType, formItems] of Object.entries(groupedItems)) {
+      const itemCards = await Promise.all(
+        formItems.map(async (item) => {
+          const urls = parseMediaUrls(item.images);
+          const attachments = await Promise.all(
+            urls.map((url, index) =>
+              addPrintableAttachment(
+                url,
+                `${formType} - ${item.item_name} - Attachment ${index + 1}`,
+                attachmentPages,
+              ),
+            ),
+          );
+
+          return `
+            <div class="checklist-item-card">
+              <div class="checklist-item-head">
+                <strong>${escapeHtml(item.item_name)}</strong>
+                <span class="${getStatusBadgeClass(item.status)}">${escapeHtml(getStatusLabel(item.status))}</span>
+              </div>
+              ${item.item_type ? `<div class="text-value"><strong>Type:</strong> ${escapeHtml(item.item_type)}</div>` : ''}
+              ${item.remark ? `<div class="remark-box"><strong>Remark:</strong> ${escapeHtml(item.remark)}</div>` : ''}
+              ${attachments.length > 0 ? `<div class="subsection-title">Attachments (${attachments.length})</div><div class="images-grid">${attachments.join('')}</div>` : ''}
+            </div>
+          `;
+        }),
+      );
+
+      addSection(sections, formType, `<div class="checklist-items-grid">${itemCards.join('')}</div>`);
+    }
+
+    const content = buildPrintPage(
+      'GP Checklist Complete Verification Report',
+      `All Forms ${main.gp_name || 'GP Checklist'}`,
+      sections.join(''),
+      attachmentPages,
+      main.block_name,
+    );
+
+    printWindow.document.open();
+    printWindow.document.write(content);
+    printWindow.document.close();
+
+    const images = Array.from(printWindow.document.images);
+    await Promise.all(
+      images.map(
+        (image) =>
+          new Promise<void>((resolve) => {
+            if (image.complete) return resolve();
+            image.onload = () => resolve();
+            image.onerror = () => resolve();
+          }),
+      ),
+    );
+
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+    }, 300);
+  };
+
+  const handlePrint = async () => {
+    setPreparing(true);
+    try {
+      await triggerPrint();
+    } finally {
+      setPreparing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -322,6 +539,24 @@ function GPChecklistView() {
         <Header activeTab="installation-gpchecklistview" BackBut={true} />
 
         <div className="container mx-auto px-4 py-6">
+          <div className="mb-6 flex items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">GP Checklist Preview</h1>
+              <p className="text-sm text-gray-500">{main?.gp_name || 'All checklist forms'}</p>
+            </div>
+            <button
+              onClick={handlePrint}
+              disabled={preparing || !main}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-blue-200 bg-white text-blue-700 text-sm font-medium hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {preparing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Printer className="w-4 h-4" />
+              )}
+              {preparing ? 'Preparing...' : 'Print All Forms'}
+            </button>
+          </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             <InfoCard title="Location Details" icon={MapPin}>
               <div className="space-y-1">
