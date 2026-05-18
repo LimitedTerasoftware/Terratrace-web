@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { act, useEffect, useState } from 'react';
 import { StateData, District, Block } from '../../types/survey';
 import Report from './UGConst';
 import ConstructionStatsPanel from './ConstructionStatsPanel';
@@ -6,6 +6,7 @@ import { SheetIcon, Construction, EyeIcon, PlusCircleIcon, Globe2Icon } from 'lu
 import { useSearchParams, Link } from 'react-router-dom';
 import { UGConstructionSurveyData } from '../../types/survey';
 import axios from 'axios';
+import Poles from './Poles';
 
 interface StatesResponse {
   success: boolean;
@@ -34,7 +35,7 @@ function ConstructionPage() {
   const [selectedStatus, setSelectedStatus] = useState<number | null>(null);
   const [fromdate, setFromDate] = useState<string>('');
   const [todate, setToDate] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'UG'>('UG');
+  const [activeTab, setActiveTab] = useState<'UG'|'Pole'>('UG');
   const [excel, setExcel] = useState<boolean>(false);
   const [kml,setkml]=useState<boolean>(false);
   const [preview, setPreview] = useState<boolean>(false);
@@ -77,10 +78,10 @@ function ConstructionPage() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-900">
-                Construction Management
+                {activeTab === 'UG' ? 'Construction' : 'Pole'} Management
               </h1>
               <p className="text-sm text-gray-600">
-                Monitor and analyze construction project data
+                Monitor and analyze {activeTab === 'UG' ? 'construction' : 'pole'} project data
               </p>
             </div>
           </div>
@@ -91,7 +92,9 @@ function ConstructionPage() {
                   Dashboard /
                 </Link>
               </li>
-              <li className="font-medium text-primary">Construction Data</li>
+              <li className="font-medium text-primary">
+                {activeTab === 'UG' ? 'Construction' : 'Pole'} Data
+              </li>
             </ol>
           </nav>
         </div>
@@ -409,7 +412,6 @@ function ConstructionPage() {
       value,
     );
   };
-
   return (
     <div className="min-h-screen bg-gray-50">
       <ConstructionHeader />
@@ -432,6 +434,19 @@ function ConstructionPage() {
                 onClick={() => setActiveTab('UG')}
               >
                 Underground Construction
+              </button>
+            </li>
+            <li>
+              <button
+                className={`inline-block p-4 rounded-t-lg outline-none ${
+                  activeTab === 'Pole' 
+                    ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
+                    : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
+                }`}
+                onClick={() => setActiveTab('Pole')}
+                
+              >
+                Pole
               </button>
             </li>
           </ul>
@@ -775,6 +790,8 @@ function ConstructionPage() {
             </div>
 
             {/* Excel Export Button */}
+            {activeTab === 'UG' && (
+              <>
             <button
               onClick={() => setExcel(true)}
               className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
@@ -803,6 +820,9 @@ function ConstructionPage() {
               <PlusCircleIcon className="h-4 w-4 text-blue-600" />
               Add New Event
             </button>
+            </>
+            )}
+
              {/* Clear Filters */}
             <button
               onClick={clearFilters}
@@ -844,6 +864,22 @@ function ConstructionPage() {
             OnData={(data:UGConstructionSurveyData[])=> setSurveyData(data)}
           />
         )}
+        {activeTab === 'Pole' && (  
+          <Poles
+          selectedState={selectedState}
+          selectedDistrict={selectedDistrict}
+          selectedBlock={selectedBlock}
+          selectedStatus={selectedStatus}
+          worktype={worktype}
+          fromdate={fromdate}
+          todate={todate}
+          globalsearch={globalsearch}
+          filtersReady={filtersReady}
+          OnData={()=> setSurveyData([])}
+
+           />
+        )}
+
       </div>
     </div>
   );
