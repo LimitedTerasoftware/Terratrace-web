@@ -401,7 +401,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                 )}
 
                 {/* Survey */}
-                {(!viewOnly || adminUser) && (
+                {(viewOnly || adminUser) && (
                   <SidebarLinkGroup
                     activeCondition={pathname.includes('survey')}
                   >

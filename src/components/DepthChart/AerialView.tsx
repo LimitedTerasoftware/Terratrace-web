@@ -184,48 +184,7 @@ function AerialView() {
       sortable: true,
       wrap: true,
     },
-    {
-      name: 'State',
-      selector: (row) => row.state_name ?? '-',
-      sortable: true,
-        wrap: true,
-    },
-    {
-      name: 'District',
-      selector: (row) => row.district_name ?? '-',
-      sortable: true,
-        wrap: true,
-    },
-    {
-      name: 'Block',
-      selector: (row) => row.block_name ?? '-',
-      sortable: true,
-        wrap: true,
-    },
-    {
-      name: 'Start GP',
-      selector: (row) => row.start_lgd_name ?? '-',
-      sortable: true,
-        wrap: true,
-    },
-    {
-      name: 'End GP',
-      selector: (row) => row.end_lgd_name ?? '-',
-      sortable: true,
-        wrap: true,
-    },
-    {
-      name: 'User Name',
-      selector: (row) => row.user_name ?? '-',
-      sortable: true,
-        wrap: true,
-    },
-    {
-      name: 'Mobile',
-      selector: (row) => row.user_mobile ?? '-',
-      sortable: true,
-        wrap: true,
-    },
+   
     {
       name: 'Status',
       cell: (row) => {

@@ -10,6 +10,7 @@ interface FiltersProps {
   selectedBlock: string;
   selectedVendor: string;
   selectedPeriod: string;
+  selectedWorkType: string;
   searchQuery: string;
   onStateChange: (state: string) => void;
   onDistrictChange: (district: string) => void;
@@ -18,6 +19,7 @@ interface FiltersProps {
   onPeriodChange: (period: string) => void;
   onSearchChange: (query: string) => void;
   onReset: () => void;
+  onWorkTypeChange: (workType: string) => void;
 }
 
 export default function Filters({
@@ -27,6 +29,7 @@ export default function Filters({
   selectedVendor,
   selectedPeriod,
   searchQuery,
+  selectedWorkType,
   onStateChange,
   onDistrictChange,
   onBlockChange,
@@ -34,6 +37,7 @@ export default function Filters({
   onPeriodChange,
   onSearchChange,
   onReset,
+  onWorkTypeChange,
 }: FiltersProps) {
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
@@ -168,6 +172,16 @@ export default function Filters({
             </option>
           ))}
         </select>
+        
+        <select
+          className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[100px]"
+          value={selectedWorkType}
+          onChange={(e) => onWorkTypeChange(e.target.value)}
+        >
+        <option value="">All Work Type</option>
+          <option value="New Construction">New Construction</option>
+          <option value="Rectification">Rectification</option>
+        </select>
 
         <select
           className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[100px]"
@@ -182,7 +196,7 @@ export default function Filters({
           <option value="all">All Time</option>
         </select>
 
-        <div className="flex-1 min-w-[100px]">
+        {/* <div className="flex-1 min-w-[100px]">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
@@ -193,7 +207,7 @@ export default function Filters({
               onChange={(e) => onSearchChange(e.target.value)}
             />
           </div>
-        </div>
+        </div> */}
 
         <button
           className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 border border-gray-300 rounded-lg"

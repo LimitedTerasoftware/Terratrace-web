@@ -60,6 +60,7 @@ export default function NewConstructionDashboard() {
   const [selectedVendor, setSelectedVendor] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
+  const [selectedworkType, setSelectedWorkType] = useState<string>('');
   const [kmTrendData, setKmTrendData] = useState<KmTrendData[]>([]);
   const [kmTrendLoading, setKmTrendLoading] = useState(true);
   const [issuesData, setIssuesData] = useState<IssueData[]>([]);
@@ -128,6 +129,7 @@ export default function NewConstructionDashboard() {
       toDate,
       searchQuery,
       selectedVendor,
+      selectedworkType,
     );
   }, [
     selectedState,
@@ -136,6 +138,7 @@ export default function NewConstructionDashboard() {
     selectedPeriod,
     searchQuery,
     selectedVendor,
+    selectedworkType,
   ]);
 
   useEffect(() => {
@@ -279,6 +282,7 @@ export default function NewConstructionDashboard() {
     toDate?: string,
     search?: string,
     firmId?: string,
+    workType?: string,
   ) => {
     try {
       setLoading(true);
@@ -290,6 +294,7 @@ export default function NewConstructionDashboard() {
         toDate,
         search,
         firmId,
+        workType,
       );
       setDashboardData(response);
       setError(null);
@@ -307,6 +312,7 @@ export default function NewConstructionDashboard() {
     setSelectedBlock('');
     setSelectedPeriod('30');
     setSearchQuery('');
+    setSelectedWorkType('');
   };
 
   return (
@@ -318,6 +324,7 @@ export default function NewConstructionDashboard() {
         selectedVendor={selectedVendor}
         selectedPeriod={selectedPeriod}
         searchQuery={searchQuery}
+        selectedWorkType={selectedworkType}
         onStateChange={setSelectedState}
         onDistrictChange={setSelectedDistrict}
         onBlockChange={setSelectedBlock}
@@ -325,6 +332,7 @@ export default function NewConstructionDashboard() {
         onPeriodChange={setSelectedPeriod}
         onSearchChange={setSearchQuery}
         onReset={handleReset}
+        onWorkTypeChange={setSelectedWorkType}
       />
       <KPICards
         Data={dashboardData}
