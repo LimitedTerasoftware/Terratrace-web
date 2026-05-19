@@ -7,6 +7,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { UGConstructionSurveyData } from '../../types/survey';
 import axios from 'axios';
 import Poles from './Poles';
+import { set } from 'date-fns';
 
 interface StatesResponse {
   success: boolean;
@@ -54,6 +55,7 @@ function ConstructionPage() {
   const [surveyData, setSurveyData] = useState<UGConstructionSurveyData[]>([]);
   const [loadingStats, setLoadingStats] = useState<boolean>(false);
   const [worktype,setworktype]=useState<string>("");
+  const [constType,setConstType]=useState<string>("");
 
   const statusMap: Record<number, string> = {
     1: 'Accepted',
@@ -220,6 +222,7 @@ function ConstructionPage() {
     const to_date = searchParams.get('to_date') || '';
     const search = searchParams.get('search') || '';
     const worktype = searchParams.get('worktype') || '';
+    const constType = searchParams.get('constType') || '';
 
     setSelectedState(state_id);
     setSelectedDistrict(district_id);
@@ -230,6 +233,7 @@ function ConstructionPage() {
     setGlobalSearch(search);
     setworktype(worktype);
     setFiltersReady(true);
+    setConstType(constType);
   }, []);
 
   const handleFilterChange = (
@@ -242,6 +246,7 @@ function ConstructionPage() {
     from_date: string | null,
     to_date: string | null,
     search: string | null,
+    constType:string|"",
   ) => {
     const params: Record<string, string> = {};
     if (newState) params.state_id = newState;
@@ -253,6 +258,7 @@ function ConstructionPage() {
     if (from_date) params.from_date = from_date;
     if (to_date) params.to_date = to_date;
     if (search) params.search = search;
+    if(constType) params.constType = constType;
     setSearchParams(params);
   };
 
@@ -266,6 +272,8 @@ function ConstructionPage() {
     setFromDate('');
     setToDate('');
     setSearchParams({});
+    setworktype("");
+    setConstType("");
   };
 
   const handleStateChange = (value: string) => {
@@ -284,6 +292,7 @@ function ConstructionPage() {
       fromdate,
       todate,
       globalsearch,
+      constType,
     );
   };
 
@@ -301,6 +310,7 @@ function ConstructionPage() {
       fromdate,
       todate,
       globalsearch,
+      constType,
     );
   };
 
@@ -318,6 +328,7 @@ function ConstructionPage() {
       fromdate,
       todate,
       globalsearch,
+      constType,
     );
   };
   const handleLinkChange = (value:string) =>{
@@ -332,6 +343,7 @@ function ConstructionPage() {
       fromdate,
       todate,
       globalsearch,
+      constType,
     );
 
   }
@@ -349,6 +361,7 @@ function ConstructionPage() {
       fromdate,
       todate,
       globalsearch,
+      constType,
     );
   };
   const handleworkChange = (value:string) =>{
@@ -363,9 +376,25 @@ function ConstructionPage() {
       fromdate,
       todate,
       globalsearch,
+      constType,
     );
 
 
+  }
+  const handleConstTypeChange = (value:string) =>{
+    setConstType(value);
+      handleFilterChange(
+      selectedState,
+      selectedDistrict,
+      selectedBlock,
+      selectedConnection,
+      selectedStatus,
+      worktype,
+      fromdate,
+      todate,
+      globalsearch,
+        value,
+      );
   }
 
   const handleFromDateChange = (value: string) => {
@@ -380,6 +409,7 @@ function ConstructionPage() {
       value,
       todate,
       globalsearch,
+      constType,
     );
   };
 
@@ -395,6 +425,7 @@ function ConstructionPage() {
       fromdate,
       value,
       globalsearch,
+      constType,
     );
   };
 
@@ -410,6 +441,7 @@ function ConstructionPage() {
       fromdate,
       todate,
       value,
+      constType,
     );
   };
   return (
@@ -753,6 +785,34 @@ function ConstructionPage() {
                 </svg>
               </div>
             </div>
+             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+              <select
+                value={constType !== '' ? constType : ''}
+                onChange={(e) => handleConstTypeChange(e.target.value)}
+                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              >
+                 <option value="">All Construction Type</option>
+                 <option value="Hdd">HDD</option>
+                  <option value="Aerial">Aerial</option>
+                    <option value="OpenTrench">OpenTrench</option>
+              </select>
+              
+              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                <svg
+                  className="w-4 h-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </div>
+            </div>
             {/* Search Bar */}
             <div className="relative w-80">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -833,6 +893,7 @@ function ConstructionPage() {
               selectedBlock,
               selectedStatus,
               worktype,
+              constType,
               fromdate,
               todate,
               globalsearch,

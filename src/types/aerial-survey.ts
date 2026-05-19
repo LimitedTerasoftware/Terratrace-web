@@ -77,3 +77,32 @@ export interface EditPayload {
   id: number;
   [key: string]: string | number;
 }
+export interface PolePreview {
+  id: number;
+  survey_id: number | null;
+  pit_id: string;
+  latitude: string;
+  longitude: string;
+  pit_images: string[];
+  muff_images: string[];
+  earthing_images: string[];
+  status: string;
+  created_at: string;
+  updated_at: string;
+  pole_images: string[];
+  muff_latitude: string | null;
+  muff_longitude: string | null;
+  earthing_latitude: string | null;
+  earthing_longitude: string | null;
+  pole_latitude: string | null;
+  pole_longitude: string | null;
+  workType: string | null;
+  construction_type: string | null;
+  start_lgd_name: string | null;
+  end_lgd_name: string | null;
+  state_name: string | null;
+  district_name: string | null;
+  block_name: string | null;
+  user_name: string | null;
+  user_mobile: string | null;
+}

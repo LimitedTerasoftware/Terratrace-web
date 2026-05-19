@@ -90,6 +90,7 @@ import BlockRouterChecklist from './components/BlockRouterChecklist';
 import BlockRouterChecklistView from './components/BlockRouterChecklist/List/BlockRouterChecklistView';
 import BlockChecklistList from './components/BlockRouterChecklist/List';
 import AuditLogs from './components/AuditLogs';
+import AerialView from './components/DepthChart/AerialView';
 
 function App() {
   const [loading, setLoading] = useState<boolean>(true);
@@ -796,6 +797,17 @@ function App() {
                     <DefaultLayout>
                       <PageTitle title="construction-details" />
                       <Eventreport />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/construction-details-aerial"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="construction-details-aerial" />
+                      <AerialView />
                     </DefaultLayout>
                   </>
                 }

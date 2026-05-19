@@ -16,6 +16,7 @@ interface ReportProps {
     selectedBlock: string | null;
     selectedStatus: number | null;
     worktype:string;
+    constType:string;
     fromdate: string;
     todate: string;
     globalsearch: string;
@@ -75,6 +76,7 @@ const Report: React.FC<ReportProps> = ({
         if (Data.todate) params.to_date = Data.todate;
         if (Data.selectedStatus !== null) params.status = Data.selectedStatus;
         if(Data.worktype !== "") params.worktype = Data.worktype;
+        if(Data.constType !== "") params.construction_type = Data.constType;
         if (Data.globalsearch.trim()) params.search = Data.globalsearch.trim();
 
         const response = await axios.get<{
@@ -111,6 +113,7 @@ const Report: React.FC<ReportProps> = ({
     Data.filtersReady,
     Data.selectedStatus,
     Data.worktype,
+    Data.constType,
     Data.globalsearch,
     Data.isAddModalOpen,
   ]);
@@ -119,7 +122,11 @@ const Report: React.FC<ReportProps> = ({
     row: UGConstructionSurveyData | any,
     check: boolean,
   ) => {
-    navigate('/construction-details', { state: { row, multipreview: check } });
+    if(row.construction_type === "Aerial"){
+      navigate('/construction-details-aerial', { state: { row, multipreview: check } });
+    } else {
+      navigate('/construction-details', { state: { row, multipreview: check } });
+    } 
   };
   const handleUpdate = (id: number) => {
     const survey = data.find((item) => item.id === id) || null;
