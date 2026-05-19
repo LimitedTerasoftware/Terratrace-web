@@ -592,10 +592,10 @@ export const machineApi = {
     districtId?: string,
   ) => {
     const params = new URLSearchParams();
-    if (blockId) params.append('block_id', blockId);
-    if (machineId) params.append('machine_id', machineId);
-    if (stateId) params.append('state_id', stateId);
-    if (districtId) params.append('district_id', districtId);
+    if (blockId) params.append('blockId', blockId);
+    if (machineId) params.append('machineId', machineId);
+    if (stateId) params.append('stateId', stateId);
+    if (districtId) params.append('districtId', districtId);
     const queryString = params.toString();
     const url = queryString
       ? `${TraceBASEURL}/api/getConstructionPath?${queryString}`

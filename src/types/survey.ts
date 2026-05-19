@@ -441,6 +441,7 @@ export interface MarkerData {
 export interface LiveMarkerData {
   position: google.maps.LatLngLiteral;
   activity: LiveMachines;
+  isLatestForMachine?: boolean;
 }
 
 export interface StateData {

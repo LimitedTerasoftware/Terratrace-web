@@ -116,7 +116,8 @@ const MachineRouteMap: React.FC<MachineRouteMapProps> = ({ machineId }) => {
         });
 
         // Sort by creation time
-        validActivities.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        // validActivities.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        validActivities.filter((data)=>data.status == 0).sort((a, b) => a.order_index || a.id - b.order_index || b.id);
         
         setActivities(validActivities);
         

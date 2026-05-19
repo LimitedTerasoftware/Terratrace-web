@@ -78,7 +78,7 @@ function LiveTrack() {
   );
   const [isAutoRefresh, setIsAutoRefresh] = useState(true);
   const [Machine, setMachine] = useState(machineId || '');
-  const [histmachineData,setHistMachineData] = useState('');
+  const [histmachineData, setHistMachineData] = useState('');
   const { activities, totalCount, isLoading, error, refetch, machineData } =
     useActivities(selectedState, selectedDistrict, selectedBlock, Machine);
 
@@ -201,36 +201,64 @@ function LiveTrack() {
   }, [selectedDistrict]);
 
   const markers: LiveMarkerData[] = useMemo(() => {
-    return activities
-      .filter((activity) => {
-         if (activity.status === 1) return false;
+    const validMarkers = activities
+      .map((activity) => {
+        if (activity.status === 1) return null;
 
         // Get the coordinate field based on event type
         const mapping =
           EVENT_TYPE_MAPPING[
             activity.eventType as keyof typeof EVENT_TYPE_MAPPING
           ];
-        if (!mapping) return false;
+        if (!mapping) return null;
 
         const coordField = mapping.coordField as keyof LiveMachines;
         const coordinates = activity[coordField] as string | null;
 
-        return coordinates && coordinates.trim() !== '';
-      })
-      .map((activity) => {
-        const mapping =
-          EVENT_TYPE_MAPPING[
-            activity.eventType as keyof typeof EVENT_TYPE_MAPPING
-          ];
-        const coordField = mapping.coordField as keyof LiveMachines;
-        const coordinates = activity[coordField] as string;
+        if (!coordinates || coordinates.trim() === '') return null;
 
         const [lat, lng] = coordinates.split(',').map(Number);
+        if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
+
         return {
           position: { lat, lng },
           activity,
         };
-      });
+      })
+      .filter((marker): marker is Omit<LiveMarkerData, 'isLatestForMachine'> =>
+        Boolean(marker),
+      );
+
+    const latestActivityByMachine = new Map<string, LiveMachines>();
+
+    validMarkers.forEach(({ activity }) => {
+      const machineKey =
+        activity.machine_id || activity.machine_registration_number;
+      const latestActivity = latestActivityByMachine.get(machineKey);
+      const activityTime = new Date(activity.created_at).getTime();
+      const latestActivityTime = latestActivity
+        ? new Date(latestActivity.created_at).getTime()
+        : Number.NEGATIVE_INFINITY;
+
+      if (
+        !latestActivity ||
+        activityTime > latestActivityTime ||
+        (activityTime === latestActivityTime && activity.id > latestActivity.id)
+      ) {
+        latestActivityByMachine.set(machineKey, activity);
+      }
+    });
+
+    return validMarkers.map((marker) => {
+      const machineKey =
+        marker.activity.machine_id ||
+        marker.activity.machine_registration_number;
+      return {
+        ...marker,
+        isLatestForMachine:
+          latestActivityByMachine.get(machineKey)?.id === marker.activity.id,
+      };
+    });
   }, [activities]);
 
   const handleMarkerClick = useCallback((activity: LiveMachines) => {
@@ -267,8 +295,8 @@ function LiveTrack() {
     setSelectedBlock(null);
   };
   const filteredMachines = Machine
-  ? machinesData.filter((m) => m.machine_id == Machine)
-  : machinesData;
+    ? machinesData.filter((m) => m.machine_id == Machine)
+    : machinesData;
   return (
     <>
       <div className="mb-4">
@@ -443,14 +471,14 @@ function LiveTrack() {
               </svg>
             </div>
           </div>
-            <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+          <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
             <select
               value={histmachineData !== '' ? histmachineData : ''}
               onChange={(e) => {
                 setHistMachineData(e.target.value !== '' ? e.target.value : '');
-                   navigate(
-                `/machine-management/machine-details/${e.target.value}`,
-              );
+                navigate(
+                  `/machine-management/machine-details/${e.target.value}`,
+                );
               }}
               className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             >
@@ -548,7 +576,7 @@ function LiveTrack() {
         <div className="p-6">
           <div className="space-y-6">
             <StatsPanel
-              activities={activities || {}}
+              activities={activities || []}
               totalCount={totalCount}
               isLoading={isLoading}
             />
