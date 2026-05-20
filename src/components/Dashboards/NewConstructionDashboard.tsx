@@ -165,6 +165,7 @@ export default function NewConstructionDashboard() {
         const params: Record<string, string> = {
           from_date: today,
           to_date: today,
+          status:'1',
         };
 
         if (selectedState) params.state_id = selectedState;
@@ -181,8 +182,12 @@ export default function NewConstructionDashboard() {
           setTodaySurveyCount(response.data.data.length);
           const surveyIds = response.data.data.map((s) => s.id);
 
-          const pathResponse = await machineApi.getConstructionPath();
-
+          const pathResponse = await machineApi.getConstructionPath(
+          selectedBlock || undefined,
+          '',
+          selectedState || undefined,
+          selectedDistrict || undefined,
+          );
 
           if (pathResponse?.data) {
           

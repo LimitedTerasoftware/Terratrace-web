@@ -45,6 +45,7 @@ export default function SurveyInventory({
         const { fromDate, toDate } = getDateRange(selectedPeriod);
         if (fromDate) params.from_date = fromDate;
         if (toDate) params.to_date = toDate;
+        params.status = '1';
 
         const response = await axios.get<{
           status: boolean;

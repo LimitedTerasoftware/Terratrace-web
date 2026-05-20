@@ -60,7 +60,7 @@ const options: ApexOptions = {
   },
   yaxis: {
     title: {
-      text: 'Total Distance (km)',
+      text: 'Average Distance Per Day (km)',
       style: {
         fontSize: '12px',
         color: '#6B7280',
@@ -82,12 +82,12 @@ export default function VendorPerformance({ data }: VendorPerformanceProps) {
 
   const categories = vendorData.map((v) => v.firm_name);
   const seriesData = vendorData.map(
-    (v) => Number((parseFloat(v.total_distance_meters)/1000).toFixed(2)) || 0,
+    (v) => Number((parseFloat(v.avg_distance_per_day)/1000).toFixed(2)) || 0,
   );
 
   const series = [
     {
-      name: 'Total Distance',
+      name: 'Average Distance per Day',
       data: seriesData,
     },
   ];

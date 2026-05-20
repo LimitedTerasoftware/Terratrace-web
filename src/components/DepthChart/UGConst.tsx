@@ -475,185 +475,220 @@ const Report: React.FC<ReportProps> = ({
     handleGenerateKML();
   }, [Data.kml]);
 
-  const handleGenerateKML = async () => {
-    if (selectedRows.length === 0) {
-      alert('No rows selected');
-      return;
+ const handleGenerateKML = async () => {
+  if (selectedRows.length === 0) {
+    alert('No rows selected');
+    return;
+  }
+
+  const selectedEventTypes = [
+    'STARTSURVEY',
+    'DEPTH',
+    'ROADCROSSING',
+    'FPOI',
+    'JOINTCHAMBER',
+    'MANHOLES',
+    'ROUTEINDICATOR',
+    'LANDMARK',
+    'FIBERTURN',
+    'KILOMETERSTONE',
+    'STARTPIT',
+    'ENDPIT',
+    'ENDSURVEY',
+    'HOLDSURVEY',
+    'BLOWING',
+    'ROUTEFEATURE',
+    'DUCT',
+  ];
+
+  const ICON_MAP: Record<string, string> = {
+    STARTSURVEY:    'http://maps.google.com/mapfiles/kml/paddle/grn-circle.png',
+    ENDSURVEY:      'http://maps.google.com/mapfiles/kml/paddle/red-circle.png',
+    DEPTH:          'http://maps.google.com/mapfiles/kml/paddle/blu-circle.png',
+    ROADCROSSING:   'http://maps.google.com/mapfiles/kml/paddle/ylw-circle.png',
+    FPOI:           'http://maps.google.com/mapfiles/kml/paddle/red-stars.png',
+    JOINTCHAMBER:   'http://maps.google.com/mapfiles/kml/paddle/purple-circle.png',
+    MANHOLES:       'http://maps.google.com/mapfiles/kml/paddle/ltblu-circle.png',
+    STARTPIT:       'http://maps.google.com/mapfiles/kml/paddle/wht-circle.png',
+    ENDPIT:         'http://maps.google.com/mapfiles/kml/paddle/wht-square.png',
+    HOLDSURVEY:     'http://maps.google.com/mapfiles/kml/paddle/orange-circle.png',
+  };
+  const defaultIcon = 'http://maps.google.com/mapfiles/kml/paddle/blu-circle.png';
+
+  let allPlacemarks = '';
+  const allCoords: { lat: number; lng: number }[] = [];
+
+  setKmlLoading(true);
+
+  try {
+    const surveyIds = selectedRows.map((row) => row.id).join(',');
+    const resp = await axios.get(`${TraceBASEURL}/construction-forms`, {
+      params: { survey_ids: surveyIds },
+    });
+
+    if (resp.status !== 200 && resp.status !== 201) {
+      throw new Error('Failed to fetch survey data');
     }
 
-    const selectedEventTypes = [
-      'STARTSURVEY',
-      'DEPTH',
-      'ROADCROSSING',
-      'FPOI',
-      'JOINTCHAMBER',
-      'MANHOLES',
-      'ROUTEINDICATOR',
-      'LANDMARK',
-      'FIBERTURN',
-      'KILOMETERSTONE',
-      'STARTPIT',
-      'ENDPIT',
-      'ENDSURVEY',
-      'HOLDSURVEY',
-      'BLOWING',
-      'ROUTEFEATURE',
-      'DUCT',
-    ];
-    const blueIcon =
-      'http://maps.google.com/mapfiles/kml/paddle/blu-circle.png';
+    const activities = resp.data?.data.filter((data: any) => data.status == 0) || [];
 
-    let allPlacemarks = '';
-    setKmlLoading(true);
-
-    try {
-      const surveyIds = selectedRows.map((row) => row.id).join(',');
-      const resp = await axios.get(`${TraceBASEURL}/construction-forms`, {
-        params: { survey_ids: surveyIds },
-      });
-
-      if (resp.status !== 200 && resp.status !== 201) {
-        throw new Error('Failed to fetch survey data');
-      }
-
-      const activities = resp.data?.data.filter((data:any) =>data.status == 0) || [];
-
-      if (activities.length === 0) {
-        alert('No survey data found for selected rows');
-        setKmlLoading(false);
-        OnKml();
-        return;
-      }
-
-      const getLatLongForEvent = (row: any) => {
-        switch (row.eventType) {
-          case 'FPOI':
-            return row.fpoiLatLong;
-          case 'DEPTH':
-            return row.depthLatlong;
-          case 'JOINTCHAMBER':
-            return row.jointChamberLatLong;
-          case 'MANHOLES':
-            return row.manholeLatLong;
-          case 'LANDMARK':
-            return row.landmarkLatLong;
-          case 'KILOMETERSTONE':
-            return row.kilometerstoneLatLong;
-          case 'FIBERTURN':
-            return row.fiberTurnLatLong;
-          case 'ROUTEINDICATOR':
-            return row.routeIndicatorLatLong;
-          case 'STARTPIT':
-            return row.startPitLatlong;
-          case 'ENDPIT':
-            return row.endPitLatlong;
-          case 'STARTSURVEY':
-            return row.startPointCoordinates;
-          case 'ENDSURVEY':
-            return row.endPointCoordinates;
-          case 'ROADCROSSING':
-            return row.crossingLatlong;
-          case 'HOLDSURVEY':
-            return row.holdLatlong;
-          case 'BLOWING':
-            return row.blowingLatLong;
-          case 'ROUTEFEATURE':
-            return row.routeFeatureLatLong;
-          default:
-            return null;
-        }
-      };
-
-      const roundCoord = (value: string | number) => {
-        return parseFloat(Number(value).toFixed(5));
-      };
-
-      activities.forEach((activity: any) => {
-        const eventType = activity.eventType;
-        if (!selectedEventTypes.includes(eventType)) return;
-
-        const latLongStr = getLatLongForEvent(activity);
-        if (!latLongStr) return;
-
-        const [latStr, lngStr] = latLongStr.split(',');
-        const lat = parseFloat(latStr?.trim());
-        const lng = parseFloat(lngStr?.trim());
-
-        if (isNaN(lat) || isNaN(lng)) return;
-
-        const name = activity.survey_id || activity.id || 'Unknown';
-        const latLong = `${lat},${lng},0`;
-
-        if (eventType === 'STARTSURVEY' || eventType === 'ENDSURVEY') {
-          allPlacemarks += `
-          <Placemark>
-            <name>Line ${name}</name>
-            <Style>
-              <LineStyle>
-                <color>ff0000ff</color>
-                <width>3</width>
-              </LineStyle>
-            </Style>
-            <LineString>
-              <tessellate>1</tessellate>
-              <coordinates>${latLong}</coordinates>
-            </LineString>
-          </Placemark>
-        `;
-        } else {
-          allPlacemarks += `
-          <Placemark>
-            <name>${eventType || 'UNKNOWN'}</name>
-            <description>
-              Survey ID: ${activity.survey_id || 'N/A'}<br/>
-              ID: ${activity.id || 'N/A'}<br/>
-              Area Type: ${activity.area_type || 'N/A'}<br/>
-              Depth: ${activity.depthMeters || 'N/A'}<br/>
-            </description>
-            <Style>
-              <IconStyle>
-                <scale>1.1</scale>
-                <Icon><href>${blueIcon}</href></Icon>
-              </IconStyle>
-            </Style>
-            <Point>
-              <coordinates>${lng},${lat},0</coordinates>
-            </Point>
-          </Placemark>
-        `;
-        }
-      });
-    } catch (err) {
-      console.error('Error fetching survey data:', err);
-      alert('Failed to generate KML');
-    }
-
-    setKmlLoading(false);
-
-    if (!allPlacemarks) {
-      alert('No valid coordinates found for KML generation');
+    if (activities.length === 0) {
+      alert('No survey data found for selected rows');
+      setKmlLoading(false);
       OnKml();
       return;
     }
 
-    const kmlContent = `<?xml version="1.0" encoding="UTF-8"?>
-    <kml xmlns="http://www.opengis.net/kml/2.2">
-      <Document>
-        ${allPlacemarks}
-      </Document>
-    </kml>`;
+    const getLatLongForEvent = (row: any): string | null => {
+      switch (row.eventType) {
+        case 'FPOI':          return row.fpoiLatLong;
+        case 'DEPTH':         return row.depthLatlong;
+        case 'JOINTCHAMBER':  return row.jointChamberLatLong;
+        case 'MANHOLES':      return row.manholeLatLong;
+        case 'LANDMARK':      return row.landmarkLatLong;
+        case 'KILOMETERSTONE':return row.kilometerstoneLatLong;
+        case 'FIBERTURN':     return row.fiberTurnLatLong;
+        case 'ROUTEINDICATOR':return row.routeIndicatorLatLong;
+        case 'STARTPIT':      return row.startPitLatlong;
+        case 'ENDPIT':        return row.endPitLatlong;
+        case 'STARTSURVEY':   return row.startPointCoordinates;
+        case 'ENDSURVEY':     return row.endPointCoordinates;
+        case 'ROADCROSSING':  return row.crossingLatlong;
+        case 'HOLDSURVEY':    return row.holdLatlong;
+        case 'BLOWING':       return row.blowingLatLong;
+        case 'ROUTEFEATURE':  return row.routeFeatureLatLong;
+        default:              return null;
+      }
+    };
 
-    const blob = new Blob([kmlContent], {
-      type: 'application/vnd.google-earth.kml+xml',
+    // ── Group activities by survey_id for polyline drawing ─────────────────
+    const surveyGroups: Record<string, { lat: number; lng: number }[]> = {};
+
+    activities.forEach((activity: any) => {
+      const eventType = activity.eventType;
+      if (!selectedEventTypes.includes(eventType)) return;
+
+      const latLongStr = getLatLongForEvent(activity);
+      if (!latLongStr) return;
+
+      const [latStr, lngStr] = latLongStr.split(',');
+      const lat = parseFloat(latStr?.trim());
+      const lng = parseFloat(lngStr?.trim());
+      if (isNaN(lat) || isNaN(lng)) return;
+
+      // Collect every valid coord for the LookAt bounding box
+      allCoords.push({ lat, lng });
+
+      const name = activity.survey_id || activity.id || 'Unknown';
+      const icon = ICON_MAP[eventType] ?? defaultIcon;
+
+      // All event types → Point placemark (fixed: no more broken single-coord LineString)
+      allPlacemarks += `
+      <Placemark>
+        <name>${eventType}</name>
+        <description><![CDATA[
+          <b>Survey ID:</b> ${activity.survey_id || 'N/A'}<br/>
+          <b>ID:</b> ${activity.id || 'N/A'}<br/>
+          <b>Area Type:</b> ${activity.area_type || 'N/A'}<br/>
+          <b>Depth:</b> ${activity.depthMeters || 'N/A'}<br/>
+          <b>Coordinates:</b> ${lat}, ${lng}
+        ]]></description>
+        <Style>
+          <IconStyle>
+            <scale>1.1</scale>
+            <Icon><href>${icon}</href></Icon>
+          </IconStyle>
+          <LabelStyle><scale>0</scale></LabelStyle>
+        </Style>
+        <Point>
+          <coordinates>${lng},${lat},0</coordinates>
+        </Point>
+      </Placemark>`;
+
+      // Collect points per survey for route polyline
+      const sid = String(activity.survey_id || activity.id);
+      if (!surveyGroups[sid]) surveyGroups[sid] = [];
+      surveyGroups[sid].push({ lat, lng });
     });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${selectedRows[0]?.block_name || 'UGConst'}_GroundSurvey.kml`;
-    a.click();
-    URL.revokeObjectURL(url);
+
+    // ── Polyline per survey_id ──────────────────────────────────────────────
+    Object.entries(surveyGroups).forEach(([sid, points]) => {
+      if (points.length < 2) return;
+      const coords = points.map(({ lat, lng }) => `${lng},${lat},0`).join('\n              ');
+      allPlacemarks += `
+      <Placemark>
+        <name>Route ${sid}</name>
+        <Style>
+          <LineStyle>
+            <color>ff0000ff</color>
+            <width>3</width>
+          </LineStyle>
+          <PolyStyle><fill>0</fill></PolyStyle>
+        </Style>
+        <LineString>
+          <tessellate>1</tessellate>
+          <coordinates>${coords}</coordinates>
+        </LineString>
+      </Placemark>`;
+    });
+
+  } catch (err) {
+    console.error('Error fetching survey data:', err);
+    alert('Failed to generate KML');
+    setKmlLoading(false);
+    return;
+  }
+
+  setKmlLoading(false);
+
+  if (!allPlacemarks || allCoords.length === 0) {
+    alert('No valid coordinates found for KML generation');
     OnKml();
-  };
+    return;
+  }
+
+  // ── Compute bounding box center + range for LookAt ─────────────────────────
+  const lats = allCoords.map((c) => c.lat);
+  const lngs = allCoords.map((c) => c.lng);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+  const centerLat = (minLat + maxLat) / 2;
+  const centerLng = (minLng + maxLng) / 2;
+
+  // Rough altitude: 1 degree ≈ 111 km; scale so all points fit in view
+  const spanDeg = Math.max(maxLat - minLat, maxLng - minLng, 0.001);
+  const altitudeMeters = Math.min(spanDeg * 111_000 * 2.5, 2_000_000);
+
+  const kmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>${selectedRows[0]?.block_name || 'UGConst'} Ground Survey</name>
+    <LookAt>
+      <longitude>${centerLng}</longitude>
+      <latitude>${centerLat}</latitude>
+      <altitude>0</altitude>
+      <heading>0</heading>
+      <tilt>0</tilt>
+      <range>${altitudeMeters}</range>
+      <altitudeMode>relativeToGround</altitudeMode>
+    </LookAt>
+    ${allPlacemarks}
+  </Document>
+</kml>`;
+
+  const blob = new Blob([kmlContent], {
+    type: 'application/vnd.google-earth.kml+xml',
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${selectedRows[0]?.block_name || 'UGConst'}_GroundSurvey.kml`;
+  a.click();
+  URL.revokeObjectURL(url);
+  OnKml();
+};
 
   if (error) {
     return (
