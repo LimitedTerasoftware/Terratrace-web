@@ -111,7 +111,7 @@ const BlockInstallationDetailView = () => {
     navigate(`/installation/block-edit/${id}`);
   };
 
-  const handleStatusUpdate = async (status: 'ACCEPT' | 'REJECT') => {
+  const handleStatusUpdate = async (status: 'ACCEPT' | 'REJECT' | 'PENDING') => {
     if (!window.confirm(`Are you sure you want to ${status.toLowerCase()} this installation?`)) return;
     
     try {
@@ -149,6 +149,7 @@ const BlockInstallationDetailView = () => {
 
   const handleAccept = () => handleStatusUpdate('ACCEPT');
   const handleReject = () => handleStatusUpdate('REJECT');
+  const handlePending = () => handleStatusUpdate('PENDING');
 
   if (loading) {
     return <LoadingPage />;
@@ -680,6 +681,14 @@ const BlockInstallationDetailView = () => {
               )}
               
               <div className="flex flex-wrap gap-4 justify-center">
+                   <ActionButton
+                      onClick={handlePending}
+                      icon={AlertCircle}
+                      label={detail.status === 'PENDING' ? 'Pending' : 'Mark as Pending'}
+                      variant="warning"
+                      loading={actionLoading === 'pending'}
+                      disabled={detail.status === 'PENDING'}
+                    />
                 {/* Accept Button */}
                 <ActionButton
                   onClick={handleAccept}

@@ -120,7 +120,7 @@ function InstallationPage() {
       if (selectedBlockCode) params.append('block_code', selectedBlockCode);
       if (fromdate) params.append('from_date', fromdate);
       if (todate) params.append('to_date', todate);
-      if (globalsearch) params.append('search', globalsearch);
+      if (globalsearch.trim()) params.append('search', globalsearch.trim());
       if (selectedStatus !== '')
         params.append('status', selectedStatus.toString());
 

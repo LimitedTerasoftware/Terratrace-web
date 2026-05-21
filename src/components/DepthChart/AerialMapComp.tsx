@@ -55,7 +55,10 @@ const InfoWindow: React.FC<{
 
   const getImages = (): string[] => {
     switch (markerType) {
-      case 'PIT':      return record.pit_images || [];
+      case 'PIT':      return [...(record.pit_images || []),
+                                ...(record.muff_images || []),
+                                ...(record.earthing_images || []),
+                                ...(record.pole_images || [])];
       case 'MUFF':     return record.muff_images || [];
       case 'EARTHING': return record.earthing_images || [];
       case 'POLE':     return record.pole_images || [];

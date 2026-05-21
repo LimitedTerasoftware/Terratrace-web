@@ -112,7 +112,7 @@ const GPInstallationDetailView = () => {
     navigate(`/installation/gp-edit/${id}`);
   };
 
-  const handleStatusUpdate = async (status: 'ACCEPT' | 'REJECT') => {
+  const handleStatusUpdate = async (status: 'ACCEPT' | 'REJECT' | 'PENDING') => {
     if (!window.confirm(`Are you sure you want to ${status.toLowerCase()} this installation?`)) return;
     
     try {
@@ -150,6 +150,7 @@ const GPInstallationDetailView = () => {
 
   const handleAccept = () => handleStatusUpdate('ACCEPT');
   const handleReject = () => handleStatusUpdate('REJECT');
+  const handlePending = () => handleStatusUpdate('PENDING');
 
   if (loading) {
     return <LoadingPage />;
@@ -690,6 +691,14 @@ const GPInstallationDetailView = () => {
               <div className="flex flex-wrap gap-4 justify-center">
                 {/* Accept Button */}
                 <ActionButton
+                  onClick={handlePending}
+                  icon={AlertCircle}
+                  label={detail.status === 'PENDING' ? 'Pending' : 'Mark as Pending'}
+                  variant="warning"
+                  loading={actionLoading === 'pending'}
+                  disabled={detail.status === 'PENDING'}
+                />
+                <ActionButton
                   onClick={handleAccept}
                   icon={Check}
                   label={detail.status === 'ACCEPT' ? 'Accepted' : 'Accept Installation'}
@@ -697,8 +706,6 @@ const GPInstallationDetailView = () => {
                   loading={actionLoading === 'accept'}
                   disabled={detail.status === 'ACCEPT'}
                 />
-                
-                {/* Reject Button */}
                 <ActionButton
                   onClick={handleReject}
                   icon={X}

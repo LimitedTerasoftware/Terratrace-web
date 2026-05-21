@@ -122,8 +122,7 @@ const Report: React.FC<ReportProps> = ({
     row: UGConstructionSurveyData | any,
     check: boolean,
   ) => {
-   
-    if(row.construction_type === "Aerial" || Data.constType === "Aerial"){
+    if(row.construction_type === "Aerial" || Data.constType === "Aerial" || check && filteredData[0]?.construction_type === "Aerial"){
       navigate('/construction-details-aerial', { state: { row, multipreview: check } });
     } else {
       navigate('/construction-details', { state: { row, multipreview: check } });

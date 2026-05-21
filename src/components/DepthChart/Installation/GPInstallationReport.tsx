@@ -5,6 +5,7 @@ import moment from 'moment';
 import * as XLSX from "xlsx";
 import DataTable, { TableColumn } from 'react-data-table-component';
 import { useNavigate } from 'react-router-dom';
+import { exportGPInstallationExcel } from './Excel';
 
 // GP Installation Data Interface
 interface GPInstallationData {
@@ -343,53 +344,11 @@ const GPInstallationReport: React.FC<GPInstallationReportProps> = ({ Data, Onexc
     },
   ];
 
-  useEffect(() => {
-    if (Data.excel === true && filteredData.length > 0) {
-      const exportExcel = async () => {
-        setLoading(true);
-        const workbook = XLSX.utils.book_new();
+useEffect(() => {
+  if (Data.excel && filteredData.length > 0)
+    exportGPInstallationExcel(filteredData, Onexcel, setLoading);
+}, [Data.excel, filteredData, Onexcel]);
 
-        const headers = [
-          "State Name", "District Name", "Block Name", "GP Name", 
-          "GP Code", "GP Latitude", "GP Longitude",
-          "Smart Rack Details", "FDMS Shelf Details", "IP MPLS Router",
-          "SFP 10G/40", "SFP 1G/10", "SFP 10G/10", "Power System MPPT", 
-          "Power System without MPPT", "Solar 1KW", "Equipment Photos", 
-          "Electricity Meter", "Status", "Earthpit Details", "GP Contact", 
-          "Key Person", "RFMS Filters", "Created At", "Updated At"
-        ];
-
-        const dataRows = filteredData.map(row => [
-          row.state_name || '', row.district_name || '', row.block_name || '', row.gp_name || '',
-          row.gp_code || '', row.gp_latitude || '', row.gp_longitude || '',
-          row.smart_rack || '', row.fdms_shelf || '', 
-          JSON.stringify(row.ip_mpls_router || {}),
-          JSON.stringify(row.sfp_10g_40 || {}), 
-          JSON.stringify(row.sfp_1g_10 || {}), 
-          JSON.stringify(row.sfp_10g_10 || {}),
-          row.power_system_with_mppt || '', 
-          row.power_system_with_out_mppt || '',
-          JSON.stringify(row.mppt_solar_1kw || {}),
-          row.equipment_photo || '', 
-          row.electricity_meter || '', 
-          row.status || 'PENDING', 
-          JSON.stringify(row.earthpit || {}),
-          row.gp_contact || '', 
-          row.key_person || '',
-          JSON.stringify(row.RFMS_FILTERS || {}),
-          row.created_at || '', 
-          row.updated_at || ''
-        ]);
-
-        const worksheet = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
-        XLSX.utils.book_append_sheet(workbook, worksheet, "GP Installation");
-        XLSX.writeFile(workbook, "GP_Installation_Data.xlsx", { compression: true });
-        Onexcel();
-        setLoading(false);
-      };
-      exportExcel();
-    }
-  }, [Data.excel, filteredData, Onexcel]);
 
   if (error) {
     return (
