@@ -106,3 +106,85 @@ export interface PolePreview {
   user_name: string | null;
   user_mobile: string | null;
 }
+
+export interface JointEnclosure {
+  jointType: string;
+  jointImages: string[];
+  endDrumMeter: string;
+  endDrumNumber: string;
+  startDrumMeter: string;
+  startDrumNumber: string;
+}
+export interface Landmark {
+  type: string;
+  images: string[];
+  description: string | null;
+}
+
+export interface PoleString {
+  id: number;
+  survey_id: number | null;
+  pit_id: string | null;
+  pole_type: string | null;
+  eventType: string;
+  latitude: number;
+  longitude: number;
+  line_type: string | null;
+  pole_material: string | null;
+  pole_owner: string | null;
+  pole_owner_description: string | null;
+  fitting_type: string | null;
+  fitting_type_new: string | null;
+  pole_height: string | null;
+  drum_number: string | null;
+  meter: string | null;
+  landmark: Landmark | null;
+  joint_enclosure: JointEnclosure | null;
+  image: string | null;
+  created_at: string;
+  updated_at: string;
+  workType: string | null;
+  construction_type: string | null;
+  start_lgd_name: string | null;
+  end_lgd_name: string | null;
+  state_name: string | null;
+  district_name: string | null;
+  block_name: string | null;
+  user_name: string | null;
+  user_mobile: string | null;
+}
+export interface PoleSurveyResponse {
+  status: boolean;
+  count: number;
+  data: PoleSurveyData[];
+}
+
+export interface PoleSurveyData {
+  id: number;
+  user_id: number;
+  company_id: number | null;
+  state_id: number;
+  district_id: number;
+  block_id: number;
+  gp_id: number;
+  startLocation: number;
+  endLocation: number;
+  cableType: string | null;
+  routeType: string | null;
+  is_active: number;
+  created_at: string;
+  updated_at: string;
+  surveyType: string;
+  construction_type: string;
+  versions: string | null;
+  machine_id: number | null;
+  total_distance: number;
+  workType: string;
+  start_lgd_name: string;
+  end_lgd_name: string;
+  state_name: string;
+  district_name: string;
+  block_name: string;
+  user_name: string;
+  user_mobile: string;
+}

@@ -1,32 +1,11 @@
 import axios from 'axios';
-import { Search, Eye, X } from 'lucide-react';
+import { Search, Eye, X, User, View } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import moment from 'moment';
 import DataTable, { TableColumn } from 'react-data-table-component';
-
-interface PoleSurveyData {
-  id: number;
-  user_id: number;
-  company_id: number | null;
-  state_id: number;
-  district_id: number;
-  block_id: number;
-  gp_id: number;
-  startLocation: number;
-  endLocation: number;
-  cableType: string | null;
-  routeType: string | null;
-  is_active: number;
-  surveyType: string;
-  construction_type: string;
-  versions: string | null;
-  machine_id: string | null;
-  total_distance: number;
-  workType: string;
-  created_at: string;
-  updated_at: string;
-}
+import { PoleSurveyData } from '../../types/aerial-survey';
+import * as XLSX from 'xlsx';
 
 interface PolesProps {
   selectedState: string | null;
@@ -38,6 +17,10 @@ interface PolesProps {
   todate: string;
   globalsearch: string;
   filtersReady: boolean;
+  excel: boolean;
+  preview: boolean;
+  Onexcel:()=>void;
+  OnPreview:()=>void;
   OnData:()=>void;
 }
 
@@ -53,7 +36,10 @@ const Poles: React.FC<PolesProps> = ({
   todate,
   globalsearch,
   filtersReady,
-  OnData,
+  excel,
+  preview,
+ OnData,
+  Onexcel,  OnPreview,
 }) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +47,11 @@ const Poles: React.FC<PolesProps> = ({
   const [selectedSurvey, setSelectedSurvey] = useState<PoleSurveyData | null>(
     null,
   );
+   const [selectedRows, setSelectedRows] = useState<PoleSurveyData[]>(
+      [],
+    );
+  const [toggleCleared, setToggleCleared] = useState(false);
+    
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -81,7 +72,7 @@ const Poles: React.FC<PolesProps> = ({
         const response = await axios.get<{
           status: boolean;
           data: PoleSurveyData[];
-        }>(`${TraceBASEURL}/get-pole-survey-list`, { params });
+        }>(`${TraceBASEURL}/get-pole-survey`, { params });
 
         if (response.data.status) {
           setData(response.data.data);
@@ -126,6 +117,12 @@ const Poles: React.FC<PolesProps> = ({
       ),
     );
   }, [globalsearch, data]);
+  const handleView = async (
+      row: PoleSurveyData | any ,
+      check: boolean,
+    ) => {
+       navigate('/construction-details-aerial', { state: { row, multipreview: check } });
+    };
 
   const getStatusBadge = () => {
     return (
@@ -178,18 +175,18 @@ const Poles: React.FC<PolesProps> = ({
       sortable: true,
     },
     {
-      name: 'State ID',
-      selector: (row) => row.state_id,
+      name: 'State',
+      selector: (row) => row.state_name,
       sortable: true,
     },
     {
-      name: 'District ID',
-      selector: (row) => row.district_id,
+      name: 'District',
+      selector: (row) => row.district_name,
       sortable: true,
     },
     {
-      name: 'Block ID',
-      selector: (row) => row.block_id,
+      name: 'Block',
+      selector: (row) => row.block_name,
       sortable: true,
     },
     {
@@ -231,18 +228,45 @@ const Poles: React.FC<PolesProps> = ({
     },
     {
       name: 'Start Location',
-      selector: (row) => row.startLocation,
+      selector: (row) => row.start_lgd_name,
       sortable: true,
     },
     {
       name: 'End Location',
-      selector: (row) => row.endLocation,
+      selector: (row) => row.end_lgd_name,
       sortable: true,
     },
     {
-      name: 'Total Distance',
+      name: 'Total Poles',
       selector: (row) => row.total_distance || '0.00',
       sortable: true,
+    },
+      {
+      name: 'Surveyor',
+      selector: (row) => row.user_name,
+      sortable: true,
+      minWidth: '160px',
+      maxWidth: '200px',
+      cell: (row) => (
+        <div className="flex items-center min-w-0 w-full">
+          <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center mr-2 flex-shrink-0">
+            <User className="w-3 h-3 text-gray-600" />
+          </div>
+          <span className="truncate min-w-0" title={row.user_name}>
+            {row.user_name}
+          </span>
+        </div>
+      ),
+    },
+    {
+      name: 'Phone',
+      selector: (row) => row.user_mobile,
+      sortable: true,
+      minWidth: '130px',
+      maxWidth: '140px',
+      cell: (row) => (
+        <span className="font-mono text-sm">{row.user_mobile}</span>
+      ),
     },
     {
       name: 'Status',
@@ -279,6 +303,12 @@ const Poles: React.FC<PolesProps> = ({
       name: 'Actions',
       cell: (row) => (
         <div className="flex space-x-2">
+            <button
+            onClick={() => handleView(row, false)}
+            className="px-1 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100 outline-none"
+          >
+            <View className="w-4 h-4" />
+          </button>
           <button
             onClick={() => setSelectedSurvey(row)}
             className="p-1 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -294,6 +324,89 @@ const Poles: React.FC<PolesProps> = ({
       maxWidth: '120px',
     },
   ];
+    useEffect(() => {
+      if (excel === true && filteredData.length > 0) {
+        const exportExcel = async () => {
+          setLoading(true);
+          const workbook = XLSX.utils.book_new();
+  
+          const headers = [
+            'Survey ID',
+            'State Name',
+            'District Name',
+            'Block Name',
+            'Start Location',
+            'End Location',
+            'Construction Type',
+            'Work Type',
+            'Cable Type',
+            'Total Poles',
+            'Surveyor Name',
+             'Surveyor Mobile',
+            'Status',
+            'Created At',
+            'Updated At',
+          ];
+  
+          const dataRows = filteredData.map((row) => [
+            row.id,
+            row.state_name,
+            row.district_name,
+            row.block_name,
+            row.start_lgd_name,
+            row.end_lgd_name,
+            row.construction_type || '-',
+            row.workType || '-',
+            row.cableType || '-',
+            row.total_distance || '0.00',
+            row.user_name,
+            row.user_mobile,
+            row.is_active === 0
+              ? 'Pending'
+              : row.is_active === 1
+                ? 'Accepted'
+                : 'Rejected',
+            row.created_at,
+            row.updated_at,
+          ]);
+  
+          const worksheet = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
+          XLSX.utils.book_append_sheet(
+            workbook,
+            worksheet,
+            'Aerial Construction',
+          );
+          XLSX.writeFile(workbook, 'Aerial_Construction.xlsx', {
+            compression: true,
+          });
+          Onexcel();
+          setLoading(false);
+        };
+        exportExcel();
+      }
+    }, [excel]);
+      useEffect(() => {
+        if (preview === true) {
+          if (selectedRows.length === 0) {
+            alert('Please select at least one row to preview the data.');
+            return;
+          }
+          const rowIds = selectedRows.map((row) => row.id);
+          handleView(rowIds, true);
+          OnPreview();
+        }
+      }, [preview]);
+      const handleRowSelected = (state: {
+          allSelected: boolean;
+          selectedCount: number;
+          selectedRows: PoleSurveyData[];
+        }) => {
+          setSelectedRows(state.selectedRows);
+        };
+    const handleClearRows = () => {
+    setToggleCleared(!toggleCleared);
+    setSelectedRows([]);
+  };
 
   if (error) {
     return (
@@ -313,8 +426,21 @@ const Poles: React.FC<PolesProps> = ({
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
         </div>
       )}
-
-      <div className="bg-white rounded-xl shadow-lg border border-gray-100">
+    <div className="bg-white rounded-xl shadow-lg border border-gray-100">
+          {/* Selection Actions */}
+          {selectedRows.length > 0 && (
+            <div className="p-4 bg-blue-50 border-b border-blue-200 flex items-center justify-between">
+              <span className="text-sm text-blue-700 font-medium">
+                {selectedRows.length} item(s) selected
+              </span>
+              <button
+                onClick={handleClearRows}
+                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+              >
+                Clear Selection
+              </button>
+            </div>
+          )}
         {filteredData.length === 0 && !loading ? (
           <div className="p-12 text-center">
             <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
@@ -344,6 +470,9 @@ const Poles: React.FC<PolesProps> = ({
               responsive
               customStyles={customStyles}
               noHeader
+              selectableRows
+              onSelectedRowsChange={handleRowSelected}
+              clearSelectedRows={toggleCleared}
               progressPending={loading}
               progressComponent={
                 <div className="flex items-center justify-center py-8">

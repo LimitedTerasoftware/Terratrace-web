@@ -118,16 +118,39 @@ const Report: React.FC<ReportProps> = ({
     Data.isAddModalOpen,
   ]);
 
-  const handleView = async (
-    row: UGConstructionSurveyData | any,
-    check: boolean,
-  ) => {
-    if(row.construction_type === "Aerial" || Data.constType === "Aerial" || check && filteredData[0]?.construction_type === "Aerial"){
-      navigate('/construction-details-aerial', { state: { row, multipreview: check } });
-    } else {
-      navigate('/construction-details', { state: { row, multipreview: check } });
-    } 
-  };
+const handleView = async (
+  row: UGConstructionSurveyData | UGConstructionSurveyData[] | number[],
+  check: boolean,
+) => {
+  const selectedRows = Array.isArray(row)
+    ? filteredData.filter((d) => row.includes((d.id) as any))
+    : [row];
+    
+
+  const hasAerial = selectedRows.some(
+    (d) => d.construction_type === "Aerial"
+  );
+
+  if (
+    hasAerial ||
+    Data.constType === "Aerial" ||
+    (check && filteredData.some((d) => d.construction_type === "Aerial"))
+  ) {
+    navigate('/pole-stringing-details-aerial', {
+      state: {
+        row,
+        multipreview: check,
+      },
+    });
+  } else {
+    navigate('/construction-details', {
+      state: {
+        row,
+        multipreview: check,
+      },
+    });
+  }
+};
   const handleUpdate = (id: number) => {
     const survey = data.find((item) => item.id === id) || null;
     setSurveyToUpdate(survey);

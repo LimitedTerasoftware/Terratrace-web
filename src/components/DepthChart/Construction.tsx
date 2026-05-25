@@ -5,9 +5,7 @@ import ConstructionStatsPanel from './ConstructionStatsPanel';
 import { SheetIcon, Construction, EyeIcon, PlusCircleIcon, Globe2Icon } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { UGConstructionSurveyData } from '../../types/survey';
-import axios from 'axios';
 import Poles from './Poles';
-import { set } from 'date-fns';
 
 interface StatesResponse {
   success: boolean;
@@ -36,7 +34,7 @@ function ConstructionPage() {
   const [selectedStatus, setSelectedStatus] = useState<number | null>(null);
   const [fromdate, setFromDate] = useState<string>('');
   const [todate, setToDate] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'UG'>('UG');
+  const [activeTab, setActiveTab] = useState<'UG'|'Pole'>('UG');
   const [excel, setExcel] = useState<boolean>(false);
   const [kml,setkml]=useState<boolean>(false);
   const [preview, setPreview] = useState<boolean>(false);
@@ -80,10 +78,12 @@ function ConstructionPage() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-900">
-                Construction Management
+                {activeTab === 'UG' ? 'Construction' : 'Aerial'} Management
+
               </h1>
               <p className="text-sm text-gray-600">
-                Monitor and analyze construction project data
+                Monitor and analyze {activeTab === 'UG' ? 'construction' : 'aerial'} project data
+
               </p>
             </div>
           </div>
@@ -95,7 +95,8 @@ function ConstructionPage() {
                 </Link>
               </li>
               <li className="font-medium text-primary">
-                Construction Data
+                {activeTab === 'UG' ? 'Construction' : 'Aerial'} Data
+
               </li>
             </ol>
           </nav>
@@ -120,6 +121,10 @@ function ConstructionPage() {
 
  useEffect(() => {
     fetchStates();
+    const params: Record<string, string> = {};
+    const tab = searchParams.get('tab') || 'UG';
+    if(tab) params.tab = tab;
+    setSearchParams(params);
   }, []);
 
   const fetchDistricts = async (stateId: string) => {
@@ -223,6 +228,8 @@ function ConstructionPage() {
     const search = searchParams.get('search') || '';
     const worktype = searchParams.get('worktype') || '';
     const constType = searchParams.get('constType') || '';
+    const tab = searchParams.get('tab') || 'UG';
+
 
     setSelectedState(state_id);
     setSelectedDistrict(district_id);
@@ -234,6 +241,7 @@ function ConstructionPage() {
     setworktype(worktype);
     setFiltersReady(true);
     setConstType(constType);
+    setActiveTab(tab === 'Pole' ? 'Pole' : 'UG');
   }, []);
 
   const handleFilterChange = (
@@ -247,6 +255,7 @@ function ConstructionPage() {
     to_date: string | null,
     search: string | null,
     constType:string|"",
+    tab?:'UG'|'Pole',
   ) => {
     const params: Record<string, string> = {};
     if (newState) params.state_id = newState;
@@ -259,6 +268,7 @@ function ConstructionPage() {
     if (to_date) params.to_date = to_date;
     if (search) params.search = search;
     if(constType) params.constType = constType;
+    if(tab) params.tab = tab;
     setSearchParams(params);
   };
 
@@ -293,6 +303,7 @@ function ConstructionPage() {
       todate,
       globalsearch,
       constType,
+
     );
   };
 
@@ -463,9 +474,29 @@ function ConstructionPage() {
                     ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
                     : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
                 }`}
-                onClick={() => setActiveTab('UG')}
+                onClick={() =>{ setActiveTab('UG');
+                      const params: Record<string, string> = {};
+                      params.tab = 'UG';
+                      setSearchParams(params);
+                }}
               >
                 Underground Construction
+              </button>
+            </li>
+                  <li>
+              <button
+                className={`inline-block p-4 rounded-t-lg outline-none ${
+                  activeTab === 'Pole' 
+                    ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
+                    : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
+                }`}
+                onClick={() =>{ setActiveTab('Pole');
+                      const params: Record<string, string> = {};
+                      params.tab = 'Pole';
+                      setSearchParams(params);
+                }}
+              >
+                Aerial Construction
               </button>
             </li>
           
@@ -755,9 +786,10 @@ function ConstructionPage() {
 
            
           </div>
-
+         
           {/* Second Row - Search and Excel Export */}
           <div className="flex flex-wrap items-center gap-3">
+          
               <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
               <select
                 value={worktype !== '' ? worktype : ''}
@@ -785,6 +817,9 @@ function ConstructionPage() {
                 </svg>
               </div>
             </div>
+        {activeTab === 'UG' && (
+
+          <>
              <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
               <select
                 value={constType !== '' ? constType : ''}
@@ -813,6 +848,8 @@ function ConstructionPage() {
                 </svg>
               </div>
             </div>
+            </>)}
+          
             {/* Search Bar */}
             <div className="relative w-80">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -848,6 +885,7 @@ function ConstructionPage() {
               <SheetIcon className="h-4 w-4 text-green-600" />
               Excel
             </button>
+             {activeTab === 'UG' && (
             <button onClick={()=>setkml(true)}
               className="flex items-center gap-2 flex-none h-10 px-4 py-2 text-sm font-medium text-yellow-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap"
 
@@ -855,13 +893,15 @@ function ConstructionPage() {
                <Globe2Icon className="h-4 w-4" />
                     KML
             </button>
+             )}
             <button
-              onClick={() => setPreview(true)}
+              onClick={() => setPreview(!preview)}
               className="flex-none h-10 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap flex items-center gap-2"
             >
               <EyeIcon className="h-4 w-4 text-blue-600" />
               Preview
             </button>
+               {activeTab === 'UG' && (
             <button
               onClick={() => setIsAddModalOpen(true)}
               className="flex-none h-10 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-blue-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
@@ -869,6 +909,7 @@ function ConstructionPage() {
               <PlusCircleIcon className="h-4 w-4 text-blue-600" />
               Add New Event
             </button>
+               )}
           
 
              {/* Clear Filters */}
@@ -913,7 +954,26 @@ function ConstructionPage() {
             OnData={(data:UGConstructionSurveyData[])=> setSurveyData(data)}
           />
         )}
-      
+        {activeTab === 'Pole' && (  
+          <Poles
+          selectedState={selectedState}
+          selectedDistrict={selectedDistrict}
+          selectedBlock={selectedBlock}
+          selectedStatus={selectedStatus}
+          worktype={worktype}
+          fromdate={fromdate}
+          todate={todate}
+          globalsearch={globalsearch}
+          filtersReady={filtersReady}
+          excel={excel}
+          preview={preview}
+          OnData={()=> setSurveyData([])}
+          Onexcel={() => setExcel(false)}
+          OnPreview={() => setPreview(false)}
+
+           />
+        )}
+
 
       </div>
     </div>

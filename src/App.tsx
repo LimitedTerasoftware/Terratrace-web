@@ -91,6 +91,7 @@ import BlockRouterChecklistView from './components/BlockRouterChecklist/List/Blo
 import BlockChecklistList from './components/BlockRouterChecklist/List';
 import AuditLogs from './components/AuditLogs';
 import AerialView from './components/DepthChart/AerialView';
+import PoleStringView from './components/DepthChart/PoleStringView';
 
 function App() {
   const [loading, setLoading] = useState<boolean>(true);
@@ -808,6 +809,17 @@ function App() {
                     <DefaultLayout>
                       <PageTitle title="construction-details-aerial" />
                       <AerialView />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/pole-stringing-details-aerial"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="pole-stringing-details-aerial" />
+                      <PoleStringView />
                     </DefaultLayout>
                   </>
                 }
