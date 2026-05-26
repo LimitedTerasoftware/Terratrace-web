@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import DataTable, { TableColumn } from 'react-data-table-component';
 import { useNavigate } from 'react-router-dom';
-import { UGConstructionSurveyData } from '../../types/survey';
+import { SurveyLinksData, UGConstructionSurveyData } from '../../types/survey';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
@@ -25,14 +25,14 @@ export default function SurveyInventory({
   selectedPeriod,
 }: SurveyInventoryProps) {
   const navigate = useNavigate();
-  const [data, setData] = useState<UGConstructionSurveyData[]>([]);
+  const [data, setData] = useState<SurveyLinksData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchSurveyData = async () => {
       try {
         const params: Record<string, string | number> = {
-          limit: 10,
+          // limit: 10,
           sort: 'created_at.desc',
         };
 
@@ -45,12 +45,11 @@ export default function SurveyInventory({
         const { fromDate, toDate } = getDateRange(selectedPeriod);
         if (fromDate) params.from_date = fromDate;
         if (toDate) params.to_date = toDate;
-        params.status = '1';
 
         const response = await axios.get<{
           status: boolean;
-          data: UGConstructionSurveyData[];
-        }>(`${TraceBASEURL}/get-survey-data`, { params });
+          data: SurveyLinksData[];
+        }>(`${TraceBASEURL}/get-link-data`, { params });
         if (response.data.status) {
           setData(response.data.data);
         }
@@ -103,11 +102,11 @@ export default function SurveyInventory({
     navigate('/construction');
   };
 
-  const handleRowClicked = (row: UGConstructionSurveyData) => {
-    navigate('/construction-details', {
-      state: { row: row.id, multipreview: true },
-    });
-  };
+  // const handleRowClicked = (row: SurveyLinksData) => {
+  //   navigate('/construction-details', {
+  //     state: { row: row.id, multipreview: true },
+  //   });
+  // };
 
   const formatDistance = (distance: string | null) => {
     if (!distance) return '0 km';
@@ -124,12 +123,8 @@ export default function SurveyInventory({
     });
   };
 
-  const columns: TableColumn<UGConstructionSurveyData>[] = [
-    {
-      name: 'Survey ID',
-      selector: (row) => row.id,
-      sortable: true,
-    },
+  const columns: TableColumn<SurveyLinksData>[] = [
+ 
     {
       name: 'State',
       selector: (row) => row.state_name,
@@ -156,74 +151,60 @@ export default function SurveyInventory({
     },
     {
       name: 'Link',
-      selector: (row) => row.start_lgd_name,
+      selector: (row) => row.start_name + ' - ' + row.end_name,
       cell: (row) => (
         <span className="text-sm text-gray-600">
-          {row.start_lgd_name} -{row.end_lgd_name}
+          {row.start_name} - {row.end_name}
         </span>
       ),
     },
 
     {
-      name: 'Construction Type',
-      selector: (row) => row.construction_type || '-',
+      name: 'Total Surveys',
+      selector: (row) => row.total_surveys || '-',
       cell: (row) => (
         <span className="text-sm text-gray-600">
-          {row.construction_type || '-'}
+          {row.total_surveys || '-'}
         </span>
       ),
     },
     {
       name: 'Distance',
-      selector: (row) => row.total_distance || 0,
+      selector: (row) => row.total_distance || '0',
       cell: (row) => (
         <span className="text-sm font-medium text-gray-900">
           {formatDistance(row.total_distance)}
         </span>
       ),
     },
-    {
-      name: 'Created',
-      selector: (row) => row.created_at,
-      cell: (row) => (
-        <span className="text-sm text-gray-600">
-          {formatDate(row.created_at)}
-        </span>
-      ),
-    },
-    {
-      name: 'User',
-      selector: (row) => row.user_name,
-      cell: (row) => (
-        <span className="text-sm text-gray-600">{row.user_name}</span>
-      ),
-    },
+   
   ];
 
-  const surveys = data.slice(0, 10);
+  // const surveys = data.slice(0, 10);
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 ">
       <div className="flex items-center justify-between p-6 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">Recent Surveys</h3>
-        <button
+        <h3 className="text-lg font-semibold text-gray-900">Survey Links</h3>
+        {/* <button
           onClick={handleViewAll}
           className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center"
         >
           View All
           <ChevronRight className="w-4 h-4 ml-1" />
-        </button>
+        </button> */}
+        <h5  className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center">Total Links: {data.length}</h5>
       </div>
       <div className="p-4">
         <DataTable
           columns={columns}
-          data={surveys}
+          data={data}
           pagination
           paginationPerPage={10}
           paginationRowsPerPageOptions={[10]}
           highlightOnHover
           pointerOnHover
-          onRowClicked={handleRowClicked}
+          // onRowClicked={handleRowClicked}
           progressPending={isLoading}
           progressComponent={
             <div className="flex items-center justify-center py-8">

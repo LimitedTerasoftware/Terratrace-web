@@ -338,6 +338,7 @@ export default function NewConstructionDashboard() {
         onSearchChange={setSearchQuery}
         onReset={handleReset}
         onWorkTypeChange={setSelectedWorkType}
+        dashboardData={dashboardData}
       />
       <KPICards
         Data={dashboardData}

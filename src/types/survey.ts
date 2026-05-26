@@ -491,6 +491,17 @@ export interface UGConstructionSurveyData {
   cableType: string | null;
   machine_id: number | null;
 }
+export interface SurveyLinksData {
+   startLocation: number; 
+     endLocation: number;
+     start_name:string;
+     end_name:string;
+     state_name:string;
+     district_name:string;
+     block_name:string;
+     total_surveys: number;
+     total_distance: string;
+}
 export interface UpdateSurveyPayload {
   id: number;
   user_id: number;
