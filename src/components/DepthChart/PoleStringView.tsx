@@ -8,11 +8,13 @@ import moment from 'moment';
 import MediaCarousel from './MediaCarousel';
 import PoleStringMapComp from './PoleStringMapComp';
 import * as XLSX from 'xlsx';
-import { ToastContainer } from 'react-toastify';
 import { PoleString} from '../../types/aerial-survey';
+import { ToastContainer, toast } from 'react-toastify';
+import { hasViewOnlyAccess, isAdminUser } from '../../utils/accessControl';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const IMGbaseUrl = import.meta.env.VITE_Image_URL;
+const BASEURL_Val = import.meta.env.VITE_API_BASE;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -89,6 +91,8 @@ function PoleStringView() {
   const [isCarouselOpen, setIsCarouselOpen] = useState<boolean>(false);
   const [carouselMedia, setCarouselMedia] = useState<MediaItem[]>([]);
   const [carouselInitialIndex, setCarouselInitialIndex] = useState<number>(0);
+  const viewOnly = hasViewOnlyAccess();
+  const AdminAcess = isAdminUser();
 
   // ── Data fetch ──────────────────────────────────────────────────────────────
 
@@ -407,6 +411,33 @@ function PoleStringView() {
       style: { whiteSpace: 'nowrap' as const },
     },
   };
+   const handleAccept = async () => {
+    try {
+      const resp = await axios.post(
+        `${BASEURL_Val}/underground-surveys/${MainData.id}/accept`,
+      );
+      if (resp.data.status === 1) {
+        toast.success('Record Accepted successfully!');
+      } else {
+        toast.error('Failed to accept record');
+      }
+    } catch (error) {
+      toast.error('Error accepting record');
+    }
+  };
+  const handleReject = async () => {
+    try {
+      const response = await axios.post(
+        `${BASEURL_Val}/underground-surveys/${MainData.id}/reject`,
+      );
+      if (response.data.status === 1) {
+        toast.success('Record Rejected successfully.');
+      }
+    } catch (error) {
+      console.error('Error rejecting record:', error);
+      alert('Failed to reject record.');
+    }
+  };
 
   // Row highlight based on eventType
   const conditionalRowStyles = Object.entries(ROW_HIGHLIGHT).map(([eventType, bg]) => ({
@@ -516,6 +547,26 @@ function PoleStringView() {
             customStyles={customStyles}
             conditionalRowStyles={conditionalRowStyles}
           />
+        </div>
+      )}
+        {!viewOnly && activeTab === 'view' && (
+        <div className="mt-6 flex gap-4 justify-center">
+          <button
+            className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded"
+            onClick={() => {
+              handleAccept();
+            }}
+          >
+            Accept
+          </button>
+          <button
+            className="bg-yellow-500 hover:bg-red-600 text-white py-2 px-4 rounded"
+            onClick={() => {
+              handleReject();
+            }}
+          >
+            Reject
+          </button>
         </div>
       )}
 
