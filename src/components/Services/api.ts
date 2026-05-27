@@ -497,6 +497,7 @@ export const machineApi = {
 
   getMachineLinkStats: async (
     machineId: number,
+    firmid?: string,
     stateId?: string,
     districtId?: string,
     blockId?: string,
@@ -504,12 +505,13 @@ export const machineApi = {
     toDate?: string,
   ): Promise<MachineLinkStatsResponse> => {
     const params = new URLSearchParams({
-      machine_id: machineId.toString(),
+      machine_id: machineId?.toString() || '',
       state_id: stateId?.toString() || '',
       district_id: districtId?.toString() || '',
       block_id: blockId?.toString() || '',
       from_date: fromDate || '',
       to_date: toDate || '',
+      firm_id: firmid || '',
     });
 
     const response = await fetch(
@@ -622,6 +624,11 @@ export const machineApi = {
     firmId?: string,
   ): Promise<{
     status: boolean;
+    summary: {
+      total_km: string;
+      total_days: string;
+      average_km_per_day: string;
+    };
     data: Array<{ date: string; daily_km: string; cumulative_km: string }>;
   }> => {
     const params = new URLSearchParams();

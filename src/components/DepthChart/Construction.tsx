@@ -78,11 +78,11 @@ function ConstructionPage() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-900">
-                {activeTab === 'UG' ? 'Construction' : 'Aerial'} Management
+                {activeTab === 'UG' ? 'Construction' : 'New Pole Construction'} Management
 
               </h1>
               <p className="text-sm text-gray-600">
-                Monitor and analyze {activeTab === 'UG' ? 'construction' : 'aerial'} project data
+                Monitor and analyze {activeTab === 'UG' ? 'construction' : 'new pole construction'} project data
 
               </p>
             </div>
@@ -95,7 +95,7 @@ function ConstructionPage() {
                 </Link>
               </li>
               <li className="font-medium text-primary">
-                {activeTab === 'UG' ? 'Construction' : 'Aerial'} Data
+                {activeTab === 'UG' ? 'Construction' : 'New Pole Construction'} Data
 
               </li>
             </ol>
@@ -480,7 +480,7 @@ function ConstructionPage() {
                       setSearchParams(params);
                 }}
               >
-                Underground Construction
+                 Construction
               </button>
             </li>
                   <li>
@@ -496,7 +496,7 @@ function ConstructionPage() {
                       setSearchParams(params);
                 }}
               >
-                Aerial Construction
+                New Pole Construction
               </button>
             </li>
           

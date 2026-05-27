@@ -492,7 +492,7 @@ export interface UGConstructionSurveyData {
   machine_id: number | null;
 }
 export interface SurveyLinksData {
-   startLocation: number; 
+    startLocation: number; 
      endLocation: number;
      start_name:string;
      end_name:string;
@@ -501,7 +501,12 @@ export interface SurveyLinksData {
      block_name:string;
      total_surveys: number;
      total_distance: string;
+     firm_id: number;
+     firm_name: string;
+     authorised_person:string;
+     authorised_mobile:string;
 }
+
 export interface UpdateSurveyPayload {
   id: number;
   user_id: number;

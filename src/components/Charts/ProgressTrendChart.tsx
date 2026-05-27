@@ -6,9 +6,19 @@ interface KmTrendData {
   daily_km: string;
   cumulative_km: string;
 }
+interface KMresponse{
+  status: boolean;
+  summary: {
+        total_km: string;
+        total_days: string;
+        average_km_per_day: string
+    },
+  data: KmTrendData[];
+}
+
 
 interface ProgressTrendChartProps {
-  data?: KmTrendData[];
+  data?: KMresponse;
   isLoading?: boolean;
 }
 
@@ -17,7 +27,6 @@ export default function ProgressTrendChart({
   isLoading,
 }: ProgressTrendChartProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-
   if (isLoading) {
     return (
       <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-200/50 shadow-lg shadow-gray-200/50 p-6 backdrop-blur-sm">
@@ -41,7 +50,7 @@ export default function ProgressTrendChart({
     );
   }
 
-  if (!data || data.length === 0) {
+  if (!data || data.data.length === 0) {
     return (
       <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-200/50 shadow-lg shadow-gray-200/50 p-6 backdrop-blur-sm">
         <div className="flex items-center justify-between mb-6">
@@ -64,7 +73,7 @@ export default function ProgressTrendChart({
     );
   }
 
-  const sortedData = [...data].sort(
+  const sortedData = [...data.data].sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
   );
 
@@ -134,13 +143,13 @@ export default function ProgressTrendChart({
           <div className="text-right">
             <p className="text-xs text-gray-500 font-medium">Total</p>
             <p className="text-lg font-bold text-gray-900">
-              {totalKm.toFixed(1)} <span className="text-sm text-gray-500">km</span>
+              {data.summary.total_km} <span className="text-sm text-gray-500">km</span>
             </p>
           </div>
           <div className="text-right">
             <p className="text-xs text-gray-500 font-medium">Average</p>
             <p className="text-lg font-bold text-blue-600">
-              {averageKm.toFixed(1)} <span className="text-sm text-blue-400">km</span>
+              {data.summary.average_km_per_day} <span className="text-sm text-blue-400">km</span>
             </p>
           </div>
         </div>

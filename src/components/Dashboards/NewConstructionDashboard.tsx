@@ -26,6 +26,15 @@ interface KmTrendData {
   daily_km: string;
   cumulative_km: string;
 }
+interface KMresponse{
+  status: boolean;
+  summary: {
+        total_km: string;
+        total_days: string;
+        average_km_per_day: string
+    },
+  data: KmTrendData[];
+}
 
 interface IssuesSummary {
   total: number;
@@ -62,6 +71,7 @@ export default function NewConstructionDashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
   const [selectedworkType, setSelectedWorkType] = useState<string>('');
   const [kmTrendData, setKmTrendData] = useState<KmTrendData[]>([]);
+  const[kmTotalData, setKmTotalData] = useState<KMresponse>({ status: false, summary: { total_km: '0', total_days: '0', average_km_per_day: '0' }, data: [] });
   const [kmTrendLoading, setKmTrendLoading] = useState(true);
   const [issuesData, setIssuesData] = useState<IssueData[]>([]);
   const [issuesSummary, setIssuesSummary] = useState<IssuesSummary | null>(
@@ -233,6 +243,11 @@ export default function NewConstructionDashboard() {
         firmId,
       );
       if (response.status && response.data) {
+        setKmTotalData({
+          status: response.status,
+          summary: response.summary,
+          data: response.data,
+        });
         setKmTrendData(response.data);
       } else {
         setKmTrendData([]);
@@ -338,7 +353,6 @@ export default function NewConstructionDashboard() {
         onSearchChange={setSearchQuery}
         onReset={handleReset}
         onWorkTypeChange={setSelectedWorkType}
-        dashboardData={dashboardData}
       />
       <KPICards
         Data={dashboardData}
@@ -351,7 +365,7 @@ export default function NewConstructionDashboard() {
       <div className="px-6 pb-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <ProgressTrendChart data={kmTrendData} isLoading={kmTrendLoading} />
+            <ProgressTrendChart data={kmTotalData} isLoading={kmTrendLoading} />
             <VendorPerformance data={dashboardData} />
           </div>
 

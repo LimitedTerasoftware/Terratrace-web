@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Search, Download } from 'lucide-react';
-import { getStateData, getDistrictData, getFirms, getBlockData } from '../Services/api';
+import { getStateData, getDistrictData, getBlockData, machineApi } from '../Services/api';
 import { Block, District, StateData } from '../../types/survey';
-import { Firm } from '../../types/firm';
 import { MachineDetailsResponse } from '../../types/machine';
 
 interface FiltersProps {
@@ -21,7 +19,6 @@ interface FiltersProps {
   onSearchChange: (query: string) => void;
   onReset: () => void;
   onWorkTypeChange: (workType: string) => void;
-  dashboardData: MachineDetailsResponse | null;
 }
 
 export default function Filters({
@@ -40,12 +37,11 @@ export default function Filters({
   onSearchChange,
   onReset,
   onWorkTypeChange,
-  dashboardData,
 }: FiltersProps) {
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
-  const [vendors, setVendors] = useState<MachineDetailsResponse['data']>(dashboardData?.data || []);
+  const [vendors, setVendors] = useState<MachineDetailsResponse['data']>([]);
   const [loadingStates, setLoadingStates] = useState(false);
   const [loadingDistricts, setLoadingDistricts] = useState(false);
   const [loadingVendors, setLoadingVendors] = useState(false);
@@ -53,11 +49,9 @@ export default function Filters({
 
   useEffect(() => {
     fetchStates();
-    // fetchVendors();
+    fetchMachineDetails();
   }, []);
-  useEffect(() => {
-    setVendors(dashboardData?.data || []);
-  }, [dashboardData]);
+
 
   useEffect(() => {
     if (selectedState) {
@@ -82,6 +76,18 @@ export default function Filters({
       setLoadingStates(false);
     }
   };
+  useEffect(() => {
+    fetchMachineDetails(
+      selectedState,  
+      selectedDistrict,
+      selectedBlock,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      selectedWorkType
+    );
+  }, [selectedState, selectedDistrict, selectedBlock, selectedWorkType]);
 
   const fetchDistricts = async (stateCode: string) => {
     setLoadingDistricts(true);
@@ -109,17 +115,37 @@ export default function Filters({
       }
     };
 
-  // const fetchVendors = async () => {
-  //   setLoadingVendors(true);
-  //   try {
-  //     const data = await getFirms();
-  //     setVendors(data || []);
-  //   } catch (error) {
-  //     console.error('Error fetching vendors:', error);
-  //   } finally {
-  //     setLoadingVendors(false);
-  //   }
-  // };
+
+    const fetchMachineDetails = async (
+      stateId?: string,
+      districtId?: string,
+      blockId?: string,
+      fromDate?: string,
+      toDate?: string,
+      search?: string,
+      firmId?: string,
+      workType?: string,
+    ) => {
+      try {
+        setLoadingVendors(true);
+        const response = await machineApi.getFirmDistanceStats(
+          stateId,
+          districtId,
+          blockId,
+          fromDate,
+          toDate,
+          search,
+          firmId,
+          workType,
+        );
+        setVendors(response.data || []);
+      } catch (err) {
+        console.error('Error fetching machine details:', err);
+      } finally {
+        setLoadingVendors(false);
+      }
+    };
+  
 
   return (
     <div className="bg-white border-b border-gray-200 px-6 py-3">
@@ -169,7 +195,7 @@ export default function Filters({
           className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[100px] "
           value={selectedVendor}
           onChange={(e) => onVendorChange(e.target.value)}
-          disabled={loadingVendors || !selectedState}
+          disabled={loadingVendors}
         >
           <option value="">All Vendors</option>
           {vendors.map((vendor) => (
