@@ -140,7 +140,7 @@ export interface PoleString {
   meter: string | null;
   landmark: Landmark | null;
   joint_enclosure: JointEnclosure | null;
-  image: string | null;
+  images: [] | null;
   created_at: string;
   updated_at: string;
   workType: string | null;
@@ -152,6 +152,8 @@ export interface PoleString {
   block_name: string | null;
   user_name: string | null;
   user_mobile: string | null;
+  distance:number | null;
+  video: string | null;
 }
 export interface PoleSurveyResponse {
   status: boolean;

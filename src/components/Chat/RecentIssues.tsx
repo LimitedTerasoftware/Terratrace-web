@@ -20,12 +20,14 @@ interface RecentIssuesProps {
   data?: IssueData[];
   isLoading?: boolean;
   onView?: (issue: IssueData) => void;
+  IssueType: string;
 }
 
 export default function RecentIssues({
   data,
   isLoading,
   onView,
+  IssueType,
 }: RecentIssuesProps) {
   const navigate = useNavigate();
 
@@ -245,7 +247,7 @@ export default function RecentIssues({
     <div className="bg-white rounded-lg border border-gray-200">
       <div className="flex items-center justify-between p-4 border-b border-gray-200">
         <h3 className="text-lg font-semibold text-gray-900">Recent Issues</h3>
-        <button   onClick={() => navigate('/construction-issues')} className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center">
+        <button   onClick={() => navigate('/construction-issues',{ state: { issueType: IssueType } })} className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center">
           View All
           <ChevronRight className="w-4 h-4 ml-1" />
         </button>

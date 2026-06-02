@@ -491,7 +491,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                   <span
                                     className={`${isOpen ? 'block' : 'hidden'} truncate`}
                                   >
-                                    Survey
+                                    Survey List
                                   </span>
                                 </NavLink>
                               </li>

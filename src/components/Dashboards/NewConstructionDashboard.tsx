@@ -77,6 +77,7 @@ export default function NewConstructionDashboard() {
   const [issuesSummary, setIssuesSummary] = useState<IssuesSummary | null>(
     null,
   );
+  const[selectIssueType, setSelectedIssueType] = useState<string>('');
   const [issuesLoading, setIssuesLoading] = useState(true);
   const [todaySurveyCount, setTodaySurveyCount] = useState<number>(0);
   const [todayKm, setTodayKm] = useState<number>(0);
@@ -130,6 +131,7 @@ export default function NewConstructionDashboard() {
       fromDate,
       toDate,
       selectedVendor,
+      selectIssueType,
     );
     fetchMachineDetails(
       selectedState,
@@ -149,6 +151,7 @@ export default function NewConstructionDashboard() {
     searchQuery,
     selectedVendor,
     selectedworkType,
+    selectIssueType,
   ]);
 
   useEffect(() => {
@@ -267,6 +270,7 @@ export default function NewConstructionDashboard() {
     fromDate?: string,
     toDate?: string,
     firmId?: string,
+    issueType?: string,
   ) => {
     try {
       setIssuesLoading(true);
@@ -277,6 +281,7 @@ export default function NewConstructionDashboard() {
         fromDate,
         toDate,
         firmId,
+        issueType
       );
       if (response.status) {
         setIssuesSummary(response.summary);
@@ -345,6 +350,7 @@ export default function NewConstructionDashboard() {
         selectedPeriod={selectedPeriod}
         searchQuery={searchQuery}
         selectedWorkType={selectedworkType}
+        selectedIssueType={selectIssueType}
         onStateChange={setSelectedState}
         onDistrictChange={setSelectedDistrict}
         onBlockChange={setSelectedBlock}
@@ -353,6 +359,7 @@ export default function NewConstructionDashboard() {
         onSearchChange={setSearchQuery}
         onReset={handleReset}
         onWorkTypeChange={setSelectedWorkType}
+        onIssueTypeChange={setSelectedIssueType}
       />
       <KPICards
         Data={dashboardData}
@@ -360,6 +367,7 @@ export default function NewConstructionDashboard() {
         todaySurveyCount={todaySurveyCount}
         todayKm={todayKm}
         yesterdayKm={yesterdayKm}
+        selectIssueType={selectIssueType}
       />
 
       <div className="px-6 pb-6">
@@ -402,7 +410,7 @@ export default function NewConstructionDashboard() {
             searchQuery={searchQuery}
             selectedPeriod={selectedPeriod}
           />
-          <RecentIssues data={issuesData} isLoading={issuesLoading} />
+          <RecentIssues data={issuesData} isLoading={issuesLoading} IssueType={selectIssueType} />
         </div>
       </div>
     </div>

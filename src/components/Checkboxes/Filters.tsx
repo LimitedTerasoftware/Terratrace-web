@@ -11,6 +11,7 @@ interface FiltersProps {
   selectedPeriod: string;
   selectedWorkType: string;
   searchQuery: string;
+  selectedIssueType: string;
   onStateChange: (state: string) => void;
   onDistrictChange: (district: string) => void;
   onBlockChange: (block: string) => void;
@@ -19,6 +20,7 @@ interface FiltersProps {
   onSearchChange: (query: string) => void;
   onReset: () => void;
   onWorkTypeChange: (workType: string) => void;
+  onIssueTypeChange: (issueType: string) => void;
 }
 
 export default function Filters({
@@ -29,12 +31,14 @@ export default function Filters({
   selectedPeriod,
   searchQuery,
   selectedWorkType,
+  selectedIssueType,
   onStateChange,
   onDistrictChange,
   onBlockChange,
   onVendorChange,
   onPeriodChange,
   onSearchChange,
+  onIssueTypeChange,
   onReset,
   onWorkTypeChange,
 }: FiltersProps) {
@@ -215,6 +219,16 @@ export default function Filters({
           <option value="Rectification">Rectification</option>
         </select>
 
+         <select
+          className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[100px]"
+          value={selectedIssueType}
+          onChange={(e) => onIssueTypeChange(e.target.value)}
+        >
+        <option value="">All Issue Type</option>
+          <option value="CORDS">CORDS</option>
+          <option value="DEPTH">Depth Violation</option>
+        </select>
+        
         <select
           className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[100px]"
           value={selectedPeriod}

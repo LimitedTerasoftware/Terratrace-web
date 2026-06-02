@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import DataTable, { TableColumn } from 'react-data-table-component';
-import { Folder, SheetIcon, Image as ImageIcon } from 'lucide-react';
+import { Folder, SheetIcon, Image as ImageIcon, Video } from 'lucide-react';
 import axios from 'axios';
 import { FaArrowLeft } from 'react-icons/fa';
 import moment from 'moment';
 import MediaCarousel from './MediaCarousel';
 import PoleStringMapComp from './PoleStringMapComp';
 import * as XLSX from 'xlsx';
-import { PoleString} from '../../types/aerial-survey';
+import { PoleString } from '../../types/aerial-survey';
 import { ToastContainer, toast } from 'react-toastify';
 import { hasViewOnlyAccess, isAdminUser } from '../../utils/accessControl';
 
@@ -18,17 +18,18 @@ const BASEURL_Val = import.meta.env.VITE_API_BASE;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-
 interface MediaItem {
   type: 'image' | 'video';
   url: string;
   label: string;
 }
 
-
 // ─── Event type badge config ──────────────────────────────────────────────────
 
-export const EVENT_TYPE_CONFIG: Record<string, { label: string; bg: string; text: string; border: string }> = {
+export const EVENT_TYPE_CONFIG: Record<
+  string,
+  { label: string; bg: string; text: string; border: string }
+> = {
   POLE: {
     label: 'Pole',
     bg: 'bg-blue-100',
@@ -69,9 +70,9 @@ const getEventBadge = (eventType: string) => {
 // ─── Row highlight by eventType ───────────────────────────────────────────────
 
 const ROW_HIGHLIGHT: Record<string, string> = {
-  POLE: '#EFF6FF',              // blue-50
- 'JOINT ENCLOUSER': '#FAF5FF', // purple-50
-  LANDMARK: '#F0FDF4',          // green-50
+  POLE: '#EFF6FF', // blue-50
+  'JOINT ENCLOUSER': '#FAF5FF', // purple-50
+  LANDMARK: '#F0FDF4', // green-50
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -128,8 +129,24 @@ function PoleStringView() {
   const extractMediaFromRow = (row: PoleString): MediaItem[] => {
     const items: MediaItem[] = [];
 
-    if (row.image) {
-      items.push({ type: 'image', url: `${IMGbaseUrl}${row.image}`, label: 'Pole Image' });
+    if (row.images && row.images.length > 0) {
+      row.images.forEach((url) => {
+        if (url) {
+          items.push({
+            type: 'image',
+            url: `${IMGbaseUrl}${url}`,
+            label: 'Pole Image',
+          });
+        }
+      });
+    }
+
+    if (row.video) {
+      items.push({
+        type: 'video',
+        url: `${IMGbaseUrl}${row.video}`,
+        label: 'Video',
+      });
     }
 
     if (row.joint_enclosure?.jointImages?.length) {
@@ -187,11 +204,7 @@ function PoleStringView() {
       sortable: true,
       width: '160px',
     },
-    {
-      name: 'Pit ID',
-      selector: (row) => row.pit_id || '-',
-      sortable: true,
-    },
+  
     {
       name: 'Pole Type',
       selector: (row) => row.pole_type || '-',
@@ -210,55 +223,59 @@ function PoleStringView() {
       wrap: true,
     },
     {
+      name: 'Distance (m)',
+      selector: (row) => (row.distance ? row.distance.toFixed(2) + ' m' : '-'),
+      sortable: true,
+      wrap: true,
+    },
+    {
       name: 'Line Type',
       selector: (row) => row.line_type || '-',
       sortable: true,
-         wrap: true,
+      wrap: true,
     },
     {
       name: 'Pole Material',
       selector: (row) => row.pole_material || '-',
       sortable: true,
       wrap: true,
-        
     },
     {
       name: 'Pole Owner',
       selector: (row) => row.pole_owner || '-',
       sortable: true,
       wrap: true,
-        
     },
     {
       name: 'Fitting Type',
       selector: (row) => row.fitting_type || row.fitting_type_new || '-',
       sortable: true,
-        wrap: true,
+      wrap: true,
     },
     {
       name: 'Pole Height',
       selector: (row) => row.pole_height || '-',
       sortable: true,
-         wrap: true,
+      wrap: true,
     },
     {
       name: 'Drum Number',
       selector: (row) => row.drum_number || '-',
       sortable: true,
-       wrap: true,
+      wrap: true,
     },
     {
       name: 'Meter',
       selector: (row) => row.meter || '-',
       sortable: true,
-       wrap: true,
+      wrap: true,
     },
-       {
+    {
       name: 'Landmark Type',
       selector: (row) => row.landmark?.type || '-',
       sortable: true,
     },
-     {
+    {
       name: 'Landmark Desc',
       selector: (row) => row.landmark?.description || '-',
       sortable: true,
@@ -268,7 +285,7 @@ function PoleStringView() {
       name: 'Joint Type',
       selector: (row) => row.joint_enclosure?.jointType || '-',
       sortable: true,
-       wrap: true,
+      wrap: true,
     },
     {
       name: 'Start Drum',
@@ -288,26 +305,50 @@ function PoleStringView() {
       sortable: true,
       wrap: true,
     },
-{
+      {
       name: 'Media',
       cell: (row) => {
-        const media = extractMediaFromRow(row);
-        if (media.length === 0) return <span className="text-gray-400 text-xs">-</span>;
+        const mediaItems = extractMediaFromRow(row);
+        if (mediaItems.length === 0)
+          return <span className="text-gray-400 text-xs">-</span>;
+        const imageCount = mediaItems.filter(
+          (item) => item.type === 'image',
+        ).length;
+        const videoCount = mediaItems.filter(
+          (item) => item.type === 'video',
+        ).length;
+        const hasImages = imageCount > 0;
+        const hasVideos = videoCount > 0;
         return (
           <button
             onClick={() => openCarousel(row)}
             className="flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors cursor-pointer hover:bg-gray-100"
-            title="Click to view images"
+            title="Click to view media"
           >
-            <ImageIcon size={16} className="text-blue-600" />
-            <span className="text-xs text-blue-600 font-medium">{media.length}</span>
+            {hasImages && (
+              <div className="flex items-center gap-1">
+                <ImageIcon size={16} className="text-blue-600" />
+                <span className="text-xs text-blue-600 font-medium">
+                  {imageCount}
+                </span>
+              </div>
+            )}
+            {hasVideos && (
+              <div className="flex items-center gap-1">
+                <Video size={16} className="text-purple-600" />
+                <span className="text-xs text-purple-600 font-medium">
+                  {videoCount}
+                </span>
+              </div>
+            )}
           </button>
         );
       },
       ignoreRowClick: true,
       button: true,
-      width: '100px',
+      width: '140px',
     },
+  
     {
       name: 'Created At',
       selector: (row) => moment(row.created_at).format('DD/MM/YYYY, hh:mm A'),
@@ -324,23 +365,53 @@ function PoleStringView() {
 
   // ── Excel export ─────────────────────────────────────────────────────────────
 
-   const handleExcel = () => {
+  const handleExcel = () => {
     setLoading(true);
     const workbook = XLSX.utils.book_new();
 
     const headers = [
-      'ID', 'Survey ID', 'Event Type', 'Pit ID', 'Pole Type',
-      'Latitude', 'Longitude', 'Line Type', 'Pole Material', 'Pole Owner',
-      'Pole Owner Desc', 'Fitting Type', 'Pole Height', 'Drum Number', 'Meter',
-      'Landmark Type', 'Landmark Desc', 'Landmark Images', 'Joint Type', 'Start Drum No', 'Start Drum Meter',
-      'End Drum No', 'End Drum Meter', 'Joint Images',
-      'Work Type', 'Construction Type', 'State', 'District', 'Block',
-      'Start GP', 'End GP', 'User Name', 'Mobile', 'Image',
-      'Created At', 'Updated At',
+      'ID',
+      'Survey ID',
+      'Event Type',
+      'Pit ID',
+      'Pole Type',
+      'Latitude',
+      'Longitude',
+      'Line Type',
+      'Pole Material',
+      'Pole Owner',
+      'Pole Owner Desc',
+      'Fitting Type',
+      'Pole Height',
+      'Drum Number',
+      'Meter',
+      'Landmark Type',
+      'Landmark Desc',
+      'Landmark Images',
+      'Joint Type',
+      'Start Drum No',
+      'Start Drum Meter',
+      'End Drum No',
+      'End Drum Meter',
+      'Joint Images',
+      'Work Type',
+      'Construction Type',
+      'State',
+      'District',
+      'Block',
+      'Start GP',
+      'End GP',
+      'User Name',
+      'Mobile',
+      'Image',
+      'Created At',
+      'Updated At',
     ];
 
     const makeHyperlink = (url: string | null, label: string) =>
-      url ? `=HYPERLINK("${url.startsWith('http') ? url : IMGbaseUrl + url}", "${label}")` : '-';
+      url
+        ? `=HYPERLINK("${url.startsWith('http') ? url : IMGbaseUrl + url}", "${label}")`
+        : '-';
 
     const dataRows = poleData.map((item) => [
       item.id,
@@ -384,14 +455,20 @@ function PoleStringView() {
       item.end_lgd_name ?? '-',
       item.user_name ?? '-',
       item.user_mobile ?? '-',
-      makeHyperlink(item.image, 'Image'),
+      item.images && item.images.length > 0
+        ? item.images
+            .map((url, i) => makeHyperlink(url, `Image_${i + 1}`))
+            .join(', ')
+        : '-',
       item.created_at,
       item.updated_at,
     ]);
 
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Pole Stringing');
-    XLSX.writeFile(workbook, 'Pole_Stringing_Details.xlsx', { compression: true });
+    XLSX.writeFile(workbook, 'Pole_Stringing_Details.xlsx', {
+      compression: true,
+    });
     setLoading(false);
   };
 
@@ -411,7 +488,7 @@ function PoleStringView() {
       style: { whiteSpace: 'nowrap' as const },
     },
   };
-   const handleAccept = async () => {
+  const handleAccept = async () => {
     try {
       const resp = await axios.post(
         `${BASEURL_Val}/underground-surveys/${MainData.id}/accept`,
@@ -440,10 +517,12 @@ function PoleStringView() {
   };
 
   // Row highlight based on eventType
-  const conditionalRowStyles = Object.entries(ROW_HIGHLIGHT).map(([eventType, bg]) => ({
-    when: (row: PoleString) => row.eventType === eventType,
-    style: { backgroundColor: bg },
-  }));
+  const conditionalRowStyles = Object.entries(ROW_HIGHLIGHT).map(
+    ([eventType, bg]) => ({
+      when: (row: PoleString) => row.eventType === eventType,
+      style: { backgroundColor: bg },
+    }),
+  );
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -466,7 +545,9 @@ function PoleStringView() {
                 <Folder className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Pole Stringing</h1>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  Pole Stringing
+                </h1>
                 <p className="text-gray-600">Pole stringing details</p>
               </div>
             </div>
@@ -524,7 +605,7 @@ function PoleStringView() {
           </div>
         </div>
       </div>
-    {/* ── Error banner ── */}
+      {/* ── Error banner ── */}
       {error && (
         <div className="mx-4 mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm">
           {error}
@@ -549,7 +630,7 @@ function PoleStringView() {
           />
         </div>
       )}
-        {!viewOnly && activeTab === 'view' && (
+      {!viewOnly && activeTab === 'view' && (
         <div className="mt-6 flex gap-4 justify-center">
           <button
             className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded"

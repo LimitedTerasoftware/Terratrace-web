@@ -1,21 +1,24 @@
 import { useEffect, useState } from 'react';
 import { Download, AlertTriangle, TrendingDown, MapPin, Camera } from 'lucide-react';
 import { IssueDetailsSidebar } from '../Chat/IssueDetailsSidebar';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { machineApi } from '../Services/api';
 import Filters from '../Checkboxes/Filters';
 import RecentIssues from '../Chat/RecentIssues';
 
 function ConstructionIssues() {
+  const location = useLocation();
+  let issueType = location.state?.issueType || '';
   const [issues, setIssues] = useState<any[]>([]);
   const [filteredIssues, setFilteredIssues] = useState<any[]>([]);
   const [selectedIssue, setSelectedIssue] = useState<any | null>(null);
   const [stats, setStats] = useState<any>({
     total: 0,
-    open: 0,
-    inProgress: 0,
-    closed: 0,
+    missing: 0,
+    depth_compliance: 0,
+    invalid_coords: 0,
     critical: 0,
+    warning:0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -24,7 +27,7 @@ function ConstructionIssues() {
   const [selectedVendor, setSelectedVendor] = useState<string>('');
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedIssueType, setSelectedIssueType] = useState<string>('All');
+  const [selectedIssueType, setSelectedIssueType] = useState<string>(issueType||'');
   const [selectedSeverity, setSelectedSeverity] = useState<string>('All');
 
   const getDateRange = (period: string) => {
@@ -56,23 +59,18 @@ function ConstructionIssues() {
       fromDate,
       toDate,
       selectedVendor || undefined,
+      selectedIssueType || undefined,
     );
-  }, [selectedState, selectedDistrict, selectedPeriod, selectedVendor]);
+  }, [selectedState, selectedDistrict, selectedPeriod, selectedVendor, selectedIssueType]);
 
   useEffect(() => {
     applyFilters();
-  }, [issues, selectedIssueType, selectedSeverity, searchQuery]);
+  }, [issues, selectedSeverity, searchQuery]);
 
   const applyFilters = () => {
     let filtered = [...issues];
 
-    if (selectedIssueType !== 'All') {
-      filtered = filtered.filter(
-        (issue) => issue.issue_type === selectedIssueType,
-      );
-    }
-
-    if (selectedSeverity !== 'All') {
+   if (selectedSeverity !== 'All') {
       filtered = filtered.filter(
         (issue) => issue.severity === selectedSeverity,
       );
@@ -94,7 +92,7 @@ function ConstructionIssues() {
     }
 
     setFilteredIssues(filtered);
-    calculateStats(filtered);
+    // calculateStats(filtered);
   };
 
   const handleReset = () => {
@@ -103,7 +101,7 @@ function ConstructionIssues() {
     setSelectedVendor('');
     setSelectedPeriod('all');
     setSearchQuery('');
-    setSelectedIssueType('All');
+    setSelectedIssueType('');
     setSelectedSeverity('All');
   };
 
@@ -113,6 +111,7 @@ function ConstructionIssues() {
     fromDate?: string,
     toDate?: string,
     firmId?: string,
+    issueType?: string,
   ) => {
     try {
       setLoading(true);
@@ -123,31 +122,33 @@ function ConstructionIssues() {
         fromDate,
         toDate,
         firmId,
+        issueType,
       );
 
       if (response.status) {
         setIssues(response.data);
-        calculateStats(response.data);
+        calculateStats(response.summary);
       } else {
         setIssues([]);
-        calculateStats([]);
+        calculateStats('');
       }
     } catch (error) {
       console.error('Error fetching issues:', error);
       setIssues([]);
-      calculateStats([]);
+      calculateStats('');
     } finally {
       setLoading(false);
     }
   };
 
-  const calculateStats = (issuesList: any[]) => {
+  const calculateStats = (issuesList: any) => {
     const newStats: any = {
-      total: issuesList.length,
-      open: issuesList.filter((i) => i.status === 'OPEN').length,
-      inProgress: issuesList.filter((i) => i.status === 'IN_PROGRESS').length,
-      closed: issuesList.filter((i) => i.status === 'RESOLVED').length,
-      critical: issuesList.filter((i) => i.severity === 'HIGH').length,
+      total: issuesList.total || 0,
+      missing: issuesList.missing || 0,
+      depth_compliance: issuesList.depth_compliance || 0,
+      invalid_coords: issuesList.invalid_coords || 0,
+      warning: issuesList.warning || 0,
+      critical: issuesList.critical || 0,
     };
     setStats(newStats);
   };
@@ -204,14 +205,20 @@ function ConstructionIssues() {
           <Filters
             selectedState={selectedState}
             selectedDistrict={selectedDistrict}
+            selectedBlock={''}
             selectedVendor={selectedVendor}
             selectedPeriod={selectedPeriod}
             searchQuery={searchQuery}
+            selectedWorkType={''}
+            selectedIssueType={selectedIssueType}
             onStateChange={setSelectedState}
             onDistrictChange={setSelectedDistrict}
+            onBlockChange={() => {}}
             onVendorChange={setSelectedVendor}
             onPeriodChange={setSelectedPeriod}
             onSearchChange={setSearchQuery}
+            onWorkTypeChange={() => {}}
+            onIssueTypeChange={setSelectedIssueType}
             onReset={handleReset}
           />
 
@@ -257,33 +264,34 @@ function ConstructionIssues() {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-6">
-              <p className="text-sm text-gray-500 uppercase mb-2">Open</p>
-              <div className="flex items-baseline gap-2">
-                <p className="text-3xl font-bold text-gray-900">{stats.open}</p>
-                <span className="text-sm text-blue-600">Active</span>
-              </div>
-            </div>
 
             <div className="bg-white rounded-lg shadow p-6">
               <p className="text-sm text-gray-500 uppercase mb-2">
-                In Progress
+                Depth Compliance
               </p>
               <div className="flex items-baseline gap-2">
                 <p className="text-3xl font-bold text-gray-900">
-                  {stats.inProgress}
+                  {stats.depth_compliance}
                 </p>
-                <span className="text-sm text-purple-600">Working</span>
+                {/* <span className="text-sm text-purple-600">Compliance</span> */}
               </div>
             </div>
 
             <div className="bg-white rounded-lg shadow p-6">
-              <p className="text-sm text-gray-500 uppercase mb-2">Closed</p>
+              <p className="text-sm text-gray-500 uppercase mb-2">Invalid Coordinates</p>
               <div className="flex items-baseline gap-2">
                 <p className="text-3xl font-bold text-gray-900">
-                  {stats.closed}
+                  {stats.invalid_coords}
                 </p>
-                <span className="text-sm text-gray-600">Verified</span>
+                {/* <span className="text-sm text-gray-600">Verified</span> */}
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow p-6">
+              <p className="text-sm text-gray-500 uppercase mb-2">Warnings</p>
+              <div className="flex items-baseline gap-2">
+                <p className="text-3xl font-bold text-gray-900">{stats.warning}</p>
+                  {/* <span className="text-sm text-blue-600">Active</span> */}
               </div>
             </div>
 
@@ -301,6 +309,7 @@ function ConstructionIssues() {
             data={filteredIssues}
             isLoading={loading}
             onView={(issue) => setSelectedIssue(issue)}
+            IssueType={selectedIssueType}
           />
 
         </div>

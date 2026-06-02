@@ -656,6 +656,7 @@ export const machineApi = {
     fromDate?: string,
     toDate?: string,
     firmId?: string,
+    issueType?: string,
   ): Promise<{
     status: boolean;
     summary: {
@@ -664,6 +665,7 @@ export const machineApi = {
       warning: number;
       missing: number;
       depth_compliance: string;
+      invalid_coords: number;
     };
     data: Array<{
       issue_type: string;
@@ -686,6 +688,7 @@ export const machineApi = {
     if (fromDate) params.append('from_date', fromDate);
     if (toDate) params.append('to_date', toDate);
     if (firmId) params.append('firm_id', firmId);
+    if (issueType) params.append('type', issueType);
     const queryString = params.toString();
     const url = queryString
       ? `${TraceBASEURL}/api/get-issues?${queryString}`

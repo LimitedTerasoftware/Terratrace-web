@@ -23,6 +23,7 @@ interface KPICardsProps {
   todaySurveyCount?: number;
   todayKm?: number;
   yesterdayKm?: number;
+  selectIssueType: string;
 }
 
 export default function KPICards({
@@ -31,6 +32,7 @@ export default function KPICards({
   todaySurveyCount,
   todayKm,
   yesterdayKm,
+  selectIssueType,
 }: KPICardsProps) {
   const navigate = useNavigate();
   if (!Data) {
@@ -197,7 +199,7 @@ export default function KPICards({
 
       <div
         className="bg-white rounded-lg border border-gray-200 p-4 cursor-pointer hover:shadow-md transition-shadow"
-        onClick={() => navigate('/construction-issues')}
+        onClick={() => navigate('/construction-issues',{ state: { issueType: selectIssueType } })}
       >
         <div className="flex items-start justify-between">
           <div>
