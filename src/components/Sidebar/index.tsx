@@ -581,6 +581,24 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                               </li>
                               <li>
                                 <NavLink
+                                  to="/dashboards/aerial-dashboard"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <MapPinHouse
+                                    size={16}
+                                    className="min-w-[16px] flex-shrink-0 opacity-80"
+                                  />
+                                  <span
+                                    className={`${isOpen ? 'block' : 'hidden'} truncate`}
+                                  >
+                                    Aerial Dashboard
+                                  </span>
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
                                   to="/construction"
                                   className={({ isActive }) =>
                                     `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
@@ -748,27 +766,27 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                   </span>
                                 </NavLink>
                               </li>
-                             
-                                <li>
-                                  <NavLink
-                                    to="/gp-checklist"
-                                    target="_blank"
-                                    className={({ isActive }) =>
-                                      `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
-                                    }
+
+                              <li>
+                                <NavLink
+                                  to="/gp-checklist"
+                                  target="_blank"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <CheckSquare
+                                    size={16}
+                                    className="min-w-[16px] flex-shrink-0 opacity-80"
+                                  />
+                                  <span
+                                    className={`${isOpen ? 'block' : 'hidden'} truncate`}
                                   >
-                                    <CheckSquare
-                                      size={16}
-                                      className="min-w-[16px] flex-shrink-0 opacity-80"
-                                    />
-                                    <span
-                                      className={`${isOpen ? 'block' : 'hidden'} truncate`}
-                                    >
-                                      GP Checklist
-                                    </span>
-                                  </NavLink>
-                                </li>
-                            
+                                    GP Checklist
+                                  </span>
+                                </NavLink>
+                              </li>
+
                               <li>
                                 <NavLink
                                   to="/installation-gp-checklist-list"
@@ -787,26 +805,25 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                   </span>
                                 </NavLink>
                               </li>
-                                <li>
-                                  <NavLink
-                                    to="/block-router-checklist"
-                                    target="_blank"
-                                    className={({ isActive }) =>
-                                      `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
-                                    }
+                              <li>
+                                <NavLink
+                                  to="/block-router-checklist"
+                                  target="_blank"
+                                  className={({ isActive }) =>
+                                    `group relative flex items-center gap-2.5 rounded-md px-3 py-1.5 font-medium text-bodydark2 duration-300 ease-in-out hover:text-white whitespace-nowrap text-sm ${isActive ? '!text-white bg-graydark/50' : 'hover:bg-graydark/30'}`
+                                  }
+                                >
+                                  <CheckSquare
+                                    size={16}
+                                    className="min-w-[16px] flex-shrink-0 opacity-80"
+                                  />
+                                  <span
+                                    className={`${isOpen ? 'block' : 'hidden'} truncate`}
                                   >
-                                    <CheckSquare
-                                      size={16}
-                                      className="min-w-[16px] flex-shrink-0 opacity-80"
-                                    />
-                                    <span
-                                      className={`${isOpen ? 'block' : 'hidden'} truncate`}
-                                    >
-                                      Block Checklist
-                                    </span>
-                                  </NavLink>
-                                </li>
-                               
+                                    Block Checklist
+                                  </span>
+                                </NavLink>
+                              </li>
 
                               <li>
                                 <NavLink
@@ -826,7 +843,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                   </span>
                                 </NavLink>
                               </li>
-                            
                             </ul>
                           </div>
                         </React.Fragment>
@@ -835,11 +851,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                   </SidebarLinkGroup>
                 )}
 
-               
-                  <li>
-                    <NavLink
-                      to="/audit-logs"
-                      className={`
+                <li>
+                  <NavLink
+                    to="/audit-logs"
+                    className={`
                         flex items-center py-2 ${isOpen ? 'px-3 gap-4' : 'px-2 gap-0'} rounded-lg 
                         transition-colors duration-200 text-bodydark1 
                         ${
@@ -849,16 +864,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                         }
                         ${!isOpen ? 'w-[44px] justify-center' : ''}
                       `}
-                    >
-                      <div className="min-w-[20px] flex justify-center">
-                        <SquareActivityIcon className="w-5 h-5" />
-                      </div>
-                      {isOpen && (
-                        <span className="whitespace-nowrap">Logs</span>
-                      )}
-                    </NavLink>
-                  </li>
-             
+                  >
+                    <div className="min-w-[20px] flex justify-center">
+                      <SquareActivityIcon className="w-5 h-5" />
+                    </div>
+                    {isOpen && <span className="whitespace-nowrap">Logs</span>}
+                  </NavLink>
+                </li>
 
                 {/* Block Assignment */}
                 {(!viewOnly || adminUser) && (

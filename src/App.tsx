@@ -80,6 +80,7 @@ import MachineReports from './components/MachineManagement/Reports';
 import MachineDetails from './components/MachineManagement/Reports/MachineItem';
 import MachineSurveyDashboard from './components/MachineManagement/MachineSummary';
 import NewConstructionDashboard from './components/Dashboards/NewConstructionDashboard';
+import AerialDashboard from './components/Dashboards/AerialDashboard';
 import ConstructionIssues from './components/DepthChart/ConstructionIssues';
 import ProtectedRoute, { PublicRoute } from './components/ProtectedRoute';
 import NewInstallationDashboard from './components/Dashboards/NewInstallationDashboard';
@@ -246,6 +247,18 @@ function App() {
                       <PageTitle title="Survey Dashboard" />
                       {/* <ConstructionDashboard /> */}
                       <NewConstructionDashboard />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+
+              <Route
+                path="/dashboards/aerial-dashboard"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Aerial Dashboard" />
+                      <AerialDashboard />
                     </DefaultLayout>
                   </>
                 }
@@ -496,7 +509,6 @@ function App() {
                   </>
                 }
               />
-
 
               <Route
                 path="/settings"
