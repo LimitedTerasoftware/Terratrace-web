@@ -531,9 +531,7 @@ export const machineApi = {
     toDate?: string,
     search?: string,
     firmId?: string,
-    workType?: string,  
-
-    
+    workType?: string,
   ): Promise<MachineDetailsResponse> => {
     const params = new URLSearchParams();
     if (stateId) {
@@ -894,8 +892,8 @@ export interface Remark {
   remarks: string;
   created_at: string;
   updated_at: string;
-  name:string;
-  survey_id:number;
+  name: string;
+  survey_id: number;
 }
 
 export interface RemarksHistoryResponse {
@@ -906,14 +904,115 @@ export interface RemarksHistoryResponse {
   data: Remark[];
 }
 
+export interface PoleDashboardResponse {
+  status: boolean;
+  filters: {
+    state_id: string;
+    district_id: string;
+    block_id: string;
+  };
+  data: {
+    total_poles: number;
+    new_poles: number;
+    existing_poles: number;
+    pending_poles: number;
+    accepted_poles: number;
+    rejected_poles: number;
+    total_distance_km: number;
+    completion_rate: number;
+  };
+}
+
+export const getPoleDashboard = async (params: {
+  state_id?: string;
+  district_id?: string;
+  block_id?: string;
+  from_date?: string | null;
+  to_date?: string | null;
+}): Promise<PoleDashboardResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
+    if (params.state_id) queryParams.append('state_id', params.state_id);
+    if (params.district_id)
+      queryParams.append('district_id', params.district_id);
+    if (params.block_id) queryParams.append('block_id', params.block_id);
+    if (params.from_date) queryParams.append('from_date', params.from_date);
+    if (params.to_date) queryParams.append('to_date', params.to_date);
+
+    const queryString = queryParams.toString();
+    const url = queryString
+      ? `${TraceBASEURL}/get-pole-dashboard?${queryString}`
+      : `${TraceBASEURL}/get-pole-dashboard`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+  } catch (error) {
+    console.error('Error fetching pole dashboard:', error);
+    throw error;
+  }
+};
+
+export interface AcceptedPolesResponse {
+  status: boolean;
+  total_records: number;
+  data: {
+    id: number;
+    survey_id: number;
+    pole_type: string;
+    latitude: number;
+    longitude: number;
+    distance: number;
+    created_at: string;
+    state_id: number;
+    district_id: number;
+    block_id: number;
+    startLocation: number;
+    endLocation: number;
+    is_active: number;
+    construction_type: string;
+    state_name: string;
+    district_name: string;
+    block_name: string;
+    block_code: number;
+  }[];
+}
+
+export const getAcceptedPoles = async (params: Record<string, string | number>): Promise<AcceptedPolesResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        queryParams.append(key, value.toString());
+      }
+    });
+
+    const queryString = queryParams.toString();
+    const url = queryString
+      ? `${TraceBASEURL}/get-accepted-poles?${queryString}`
+      : `${TraceBASEURL}/get-accepted-poles`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+  } catch (error) {
+    console.error('Error fetching accepted poles:', error);
+    throw error;
+  }
+};
+
 export const getRemarksHistory = async (params: {
   offset?: number;
   limit?: number;
   from_date?: string;
   to_date?: string;
   type?: string;
-  user_id?:string;
-  survey_id?:string
+  user_id?: string;
+  survey_id?: string;
 }): Promise<RemarksHistoryResponse> => {
   try {
     const queryParams = new URLSearchParams();
@@ -925,7 +1024,6 @@ export const getRemarksHistory = async (params: {
     if (params.type) queryParams.append('type', params.type);
     if (params.user_id) queryParams.append('user_id', params.user_id);
     if (params.survey_id) queryParams.append('survey_id', params.survey_id);
-
 
     const queryString = queryParams.toString();
     const url = queryString

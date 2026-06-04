@@ -330,28 +330,31 @@ function Eventreport() {
 
       addImages(depthPhotos, 'DEPTH Photo');
     }
-    // Process video
-    {
-      typeof row.videoDetails === 'string' &&
-        (() => {
-          try {
-            const parsedVideoDetails: VideoDetails = JSON.parse(
-              row.videoDetails,
-            );
-            const mainVideoUrl = parsedVideoDetails?.videoUrl
-              ? parsedVideoDetails.videoUrl.trim().replace(/(^"|"$)/g, '')
-              : null;
-            if (mainVideoUrl) {
-              mediaItems.push({
-                type: 'video',
-                url: `${baseUrl}${mainVideoUrl}`,
-                label: 'Survey Video',
-              });
-            }
-          } catch (error) {
-            console.error('Error parsing video details', error);
-          }
-        })();
+
+    if (row.video) {
+      mediaItems.push({
+        type: 'video',
+        url: `${baseUrl}${row.video}`,
+        label: 'Video',
+      });
+    }
+
+    if (typeof row.videoDetails === 'string') {
+      try {
+        const parsedVideoDetails: VideoDetails = JSON.parse(row.videoDetails);
+        const mainVideoUrl = parsedVideoDetails?.videoUrl
+          ? parsedVideoDetails.videoUrl.trim().replace(/(^"|"$)/g, '')
+          : null;
+        if (mainVideoUrl) {
+          mediaItems.push({
+            type: 'video',
+            url: `${baseUrl}${mainVideoUrl}`,
+            label: 'Survey Video',
+          });
+        }
+      } catch (error) {
+        console.error('Error parsing video details', error);
+      }
     }
 
     // Also check vehicle image

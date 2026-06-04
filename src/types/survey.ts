@@ -279,6 +279,7 @@ export interface Activity {
   depth_capture_type?: string;
   start_ofc:any;
   end_ofc:any;
+  video:string | "";
 }
 
 export interface ApiResponseMachine {

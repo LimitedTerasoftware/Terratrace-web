@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { getStateData, getDistrictData, getBlockData } from '../Services/api';
+import {
+  getStateData,
+  getDistrictData,
+  getBlockData,
+  getPoleDashboard,
+  getAcceptedPoles,
+} from '../Services/api';
+import type { AcceptedPolesResponse } from '../Services/api';
 import { Block, District, StateData } from '../../types/survey';
 import GISMap from '../Chat/GISMap';
 import ConstructionHealth from '../Charts/ConstructionHealth';
@@ -10,22 +17,12 @@ import SurveyorPerformance from '../Chat/SurveyorPerformance';
 import BottleneckAnalysis from '../Charts/BottleneckAnalysis';
 import StatsCard from '../Chat/StatsCard';
 
-const stats = [
-  { label: 'Total Poles', value: '12,450', accentColor: 'default' as const },
-  { label: 'New Poles', value: '9,870', accentColor: 'green' as const },
-  { label: 'Existing Poles', value: '450', accentColor: 'default' as const },
+type PoleDashboardData =
+  import('../Services/api').PoleDashboardResponse['data'];
 
-  { label: 'Pending Poles', value: '2,580', accentColor: 'yellow' as const },
-  { label: 'Rejected Poles', value: '430', accentColor: 'red' as const },
-  { label: 'Accepted Poles', value: '1,120', accentColor: 'default' as const },
-  {
-    label: 'Total Distance',
-    value: '342',
-    unit: 'KM',
-    accentColor: 'default' as const,
-  },
-  { label: 'Completion Rate', value: '79.3%', accentColor: 'blue' as const },
-];
+const formatNumber = (num: number) => {
+  return num.toLocaleString('en-IN');
+};
 
 export default function AerialDashboard() {
   const [selectedState, setSelectedState] = useState<string>('');
@@ -43,6 +40,58 @@ export default function AerialDashboard() {
   const [loadingStates, setLoadingStates] = useState(false);
   const [loadingDistricts, setLoadingDistricts] = useState(false);
   const [loadingBlocks, setLoadingBlocks] = useState(false);
+  const [poleData, setPoleData] = useState<PoleDashboardData | null>(null);
+  const [loadingPoleData, setLoadingPoleData] = useState(false);
+  const [acceptedPoles, setAcceptedPoles] = useState<
+    AcceptedPolesResponse['data']
+  >([]);
+  const [loadingAcceptedPoles, setLoadingAcceptedPoles] = useState(false);
+
+  const stats = poleData
+    ? [
+        {
+          label: 'Total Poles',
+          value: formatNumber(poleData.total_poles),
+          accentColor: 'default' as const,
+        },
+        {
+          label: 'New Poles',
+          value: formatNumber(poleData.new_poles),
+          accentColor: 'green' as const,
+        },
+        {
+          label: 'Existing Poles',
+          value: formatNumber(poleData.existing_poles),
+          accentColor: 'default' as const,
+        },
+        {
+          label: 'Pending Poles',
+          value: formatNumber(poleData.pending_poles),
+          accentColor: 'yellow' as const,
+        },
+        {
+          label: 'Rejected Poles',
+          value: formatNumber(poleData.rejected_poles),
+          accentColor: 'red' as const,
+        },
+        {
+          label: 'Accepted Poles',
+          value: formatNumber(poleData.accepted_poles),
+          accentColor: 'default' as const,
+        },
+        {
+          label: 'Total Distance',
+          value: formatNumber(poleData.total_distance_km),
+          unit: 'KM',
+          accentColor: 'default' as const,
+        },
+        {
+          label: 'Completion Rate',
+          value: `${poleData.completion_rate}%`,
+          accentColor: 'blue' as const,
+        },
+      ]
+    : [];
 
   useEffect(() => {
     fetchStates();
@@ -65,6 +114,39 @@ export default function AerialDashboard() {
       setSelectedBlock('');
     }
   }, [selectedDistrict]);
+
+  const getDateRange = () => {
+    const today = new Date();
+    const toDate = today.toISOString().split('T')[0];
+    let fromDate: string | null = null;
+
+    switch (selectedPeriod) {
+      case 'today':
+        fromDate = toDate;
+        break;
+      case 'yesterday':
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        fromDate = yesterday.toISOString().split('T')[0];
+        return { from_date: fromDate, to_date: fromDate };
+      case '7':
+      case '15':
+      case '30':
+        const daysAgo = new Date(today);
+        daysAgo.setDate(daysAgo.getDate() - parseInt(selectedPeriod));
+        fromDate = daysAgo.toISOString().split('T')[0];
+        break;
+      case 'all':
+        return { from_date: null, to_date: null };
+      default:
+        fromDate = toDate;
+    }
+    return { from_date: fromDate, to_date: toDate };
+  };
+
+  useEffect(() => {
+    fetchPoleDashboard();
+  }, [selectedState, selectedDistrict, selectedBlock, selectedPeriod]);
 
   const fetchStates = async () => {
     setLoadingStates(true);
@@ -99,6 +181,52 @@ export default function AerialDashboard() {
       console.error('Error fetching blocks:', error);
     } finally {
       setLoadingBlocks(false);
+    }
+  };
+
+  const fetchPoleDashboard = async () => {
+    setLoadingPoleData(true);
+    try {
+      const { from_date, to_date } = getDateRange();
+      const response = await getPoleDashboard({
+        state_id: selectedState || undefined,
+        district_id: selectedDistrict || undefined,
+        block_id: selectedBlock || undefined,
+        from_date: from_date,
+        to_date: to_date,
+      });
+      if (response.status) {
+        setPoleData(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching pole dashboard:', error);
+    } finally {
+      setLoadingPoleData(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAcceptedPoles();
+  }, [selectedState, selectedDistrict, selectedBlock, selectedPeriod]);
+
+  const fetchAcceptedPoles = async () => {
+    setLoadingAcceptedPoles(true);
+    try {
+      const params: Record<string, string | number> = {};
+      if (selectedState) params.state_id = selectedState;
+      if (selectedDistrict) params.district_id = selectedDistrict;
+      if (selectedBlock) params.block_id = selectedBlock;
+      const { from_date, to_date } = getDateRange();
+      if (from_date) params.from_date = from_date;
+      if (to_date) params.to_date = to_date;
+      const response = await getAcceptedPoles(params);
+      if (response.status) {
+        setAcceptedPoles(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching accepted poles:', error);
+    } finally {
+      setLoadingAcceptedPoles(false);
     }
   };
 
@@ -254,20 +382,31 @@ export default function AerialDashboard() {
 
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-5">
                   <div className="xl:col-span-2">
-                    <GISMap />
+                    <GISMap acceptedPoles={acceptedPoles} />
                   </div>
                   <div className="flex flex-col gap-5">
                     <ConstructionHealth
-                      percentage={79}
-                      completed={9870}
-                      pending={2580}
+                      percentage={poleData?.completion_rate ?? 0}
+                      completed={
+                        poleData
+                          ? Math.round(
+                              (poleData.total_poles *
+                                poleData.completion_rate) /
+                                100,
+                            )
+                          : 0
+                      }
+                      pending={poleData?.pending_poles ?? 0}
                     />
                     <InstallationProgress />
                   </div>
                 </div>
 
                 <div className="mb-5">
-                  <PoleTrackingTable />
+                  <PoleTrackingTable
+                    data={acceptedPoles}
+                    loading={loadingAcceptedPoles}
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
