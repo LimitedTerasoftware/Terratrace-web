@@ -38,7 +38,7 @@ type Connection = {
   name: string;
   coordinates: [number, number][]; // Array of [lng, lat]
   color?: string;
-  existing?: boolean;
+  existing?: boolean|string;
 };
 
 interface ConvertedKMZData {
@@ -106,12 +106,19 @@ export const convertKMZToStandardFormat = (kmzData: KMZResponse): ConvertedKMZDa
 
     // Generate color based on type or status
     let color = '#FF0000'; // Default red
-    if (line.type === 'Incremental Cable' || 
+
+  if(line.type === 'Offset Cable' || line.properties?.type === 'Offset Cable'){
+          color ='#DBDBDB';
+      }else if( line.type === 'Block to FPOI Cable' || line.properties?.type === 'Block to FPOI Cable'){
+         color ='#0000D1';
+    }else if(line.type=== 'Proposed Cable' || line.properties?.type === 'Proposed Cable'){
+     color = '#FF0000';
+    }
+    else if (line.type === 'Incremental Cable' || 
         line.properties?.type || line.properties?.Type === 'Incremental Cable' || 
         line.properties?.asset_type === 'Incremental Cable') {
       color = existing ? '#00AA00' : '#FF0000'; // Green for existing, red for new
     }
-
     // Ensure connection has a valid name
     const connectionName = line.name && line.name.trim() !== '' 
       ? line.name.trim() 
@@ -121,7 +128,7 @@ export const convertKMZToStandardFormat = (kmzData: KMZResponse): ConvertedKMZDa
       start: startNode,
       end: endNode,
       length: length,
-      name: connectionName,
+      name: line.properties?.name || connectionName,
       coordinates: coordinates,
       color: color,
       existing: existing,

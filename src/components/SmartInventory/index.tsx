@@ -117,8 +117,7 @@ function SmartInventory() {
   const [placemarkCategories, setPlacemarkCategories] = useState<
     PlacemarkCategory[]
   >([]);
-  const [Shapload,setShapload]=useState<boolean>(false);
-
+  const [Shapload, setShapload] = useState<boolean>(false);
 
   // ==============================================
   // API DATA STATE (Left Sidebar)
@@ -196,10 +195,13 @@ function SmartInventory() {
   );
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [currentTime, setCurrentTime] = useState<number>(0); // absolute ms in survey timeline
-  const [currentPosition, setCurrentPosition] = useState<{
-    lat: number;
-    lng: number;
-  } | undefined>(undefined);
+  const [currentPosition, setCurrentPosition] = useState<
+    | {
+        lat: number;
+        lng: number;
+      }
+    | undefined
+  >(undefined);
   const [selection, setSelection] = useState<{ start?: number; end?: number }>(
     {},
   );
@@ -517,7 +519,7 @@ function SmartInventory() {
 
           // Only set physical survey data if we have actual survey content
           if (Object.keys(combinedPhysicalSurveyData.data).length > 0) {
-            setRawPhysicalSurveyData((prevData:any) => {
+            setRawPhysicalSurveyData((prevData: any) => {
               if (prevData && prevData.data) {
                 const mergedData = { ...prevData.data };
                 Object.keys(combinedPhysicalSurveyData.data).forEach(
@@ -761,6 +763,7 @@ function SmartInventory() {
       districtId?: string;
       blockId?: string;
     },
+    dataType?: 'desktop'|'approvedKMZ',
   ) => {
     try {
       setIsLoadingDesktopPlanning(true);
@@ -768,6 +771,7 @@ function SmartInventory() {
       const stateId = hierarchyContext?.stateId || state[0];
       const districtId = hierarchyContext?.districtId || division[0];
       const blockId = hierarchyContext?.blockId || block[0];
+      const type = dataType === 'approvedKMZ' ? 'Approved KMZ' : 'Desktop';
 
       if (!stateId || !districtId || !blockId) {
         showNotification(
@@ -778,7 +782,7 @@ function SmartInventory() {
         return;
       }
 
-      const requestData = { stateId, districtId, blockId };
+      const requestData = { stateId, districtId, blockId,type };
 
       const response = await axios.post(
         `${BASEURL}/get-desktop-planning`,
@@ -1090,7 +1094,6 @@ function SmartInventory() {
       setLoding(false);
     }
   };
-
   // ==============================================
   // ENHANCED LANDMARK DETECTION LOGIC
   // ==============================================
@@ -1420,7 +1423,8 @@ function SmartInventory() {
       | 'desktop'
       | 'rectification'
       | 'joints'
-      | 'construction';
+      | 'construction'
+      | 'approvedKMZ';
     hierarchyContext?: {
       stateId?: string;
       districtId?: string;
@@ -1433,12 +1437,13 @@ function SmartInventory() {
         item.selectedDistricts,
         item.selectedBlocks,
       );
-    } else if (item.dataType === 'desktop') {
+    } else if (item.dataType === 'desktop' || item.dataType === 'approvedKMZ') {
       loadDesktopPlanningData(
         item.selectedStates,
         item.selectedDistricts,
         item.selectedBlocks,
         item.hierarchyContext,
+        item.dataType,
       );
     } else if (item.dataType === 'rectification') {
       loadRectificationData(
@@ -1458,7 +1463,7 @@ function SmartInventory() {
         item.selectedDistricts,
         item.selectedBlocks,
       );
-    }
+    } 
   };
 
   const handleRefresh = (item: {
@@ -1467,7 +1472,13 @@ function SmartInventory() {
     selectedDistricts: string[];
     selectedBlocks: string[];
     name: string;
-    dataType: 'physical' | 'desktop' | 'rectification' | 'joints' | 'construction'; // ADD rectification
+    dataType:
+      | 'physical'
+      | 'desktop'
+      | 'rectification'
+      | 'joints'
+      | 'construction'
+      | 'approvedKMZ'; // ADD rectification
     hierarchyContext?: {
       stateId?: string;
       districtId?: string;
@@ -1480,12 +1491,13 @@ function SmartInventory() {
         item.selectedDistricts,
         item.selectedBlocks,
       );
-    } else if (item.dataType === 'desktop') {
+    } else if (item.dataType === 'desktop' || item.dataType === 'approvedKMZ') {
       loadDesktopPlanningData(
         item.selectedStates,
         item.selectedDistricts,
         item.selectedBlocks,
         item.hierarchyContext,
+        item.dataType,
       );
     } else if (item.dataType === 'rectification') {
       // ADD THIS
@@ -1506,7 +1518,7 @@ function SmartInventory() {
         item.selectedDistricts,
         item.selectedBlocks,
       );
-    }
+    } 
   };
 
   // Map Handlers
@@ -1538,41 +1550,43 @@ function SmartInventory() {
     }
   }, []);
 
- const downloadShapefile = async () => {
+  const downloadShapefile = async () => {
     try {
-      setShapload(true)
+      setShapload(true);
       const shapefileData: any = {
         parsed_data: {
           points: [],
-          polylines: []
-        }
+          polylines: [],
+        },
       };
-      
+
       // Add physical survey data grouped by event type
       if (rawPhysicalSurveyData && rawPhysicalSurveyData.data) {
         // Group physical survey points by event type
         const groupedByEventType: Record<string, any[]> = {};
-        
-        Object.entries(rawPhysicalSurveyData.data).forEach(([blockId, points]: [string, any]) => {
-          if (Array.isArray(points)) {
-            points.forEach((point: any) => {
-              // Skip LIVELOCATION events
-              if (point.event_type === 'LIVELOCATION') {
-                return;
-              }
-              
-              if (!groupedByEventType[point.event_type]) {
-                groupedByEventType[point.event_type] = [];
-              }
-              
-              // Add block_id to the point data
-              groupedByEventType[point.event_type].push({
-                ...point,
-                block_id: blockId
+
+        Object.entries(rawPhysicalSurveyData.data).forEach(
+          ([blockId, points]: [string, any]) => {
+            if (Array.isArray(points)) {
+              points.forEach((point: any) => {
+                // Skip LIVELOCATION events
+                if (point.event_type === 'LIVELOCATION') {
+                  return;
+                }
+
+                if (!groupedByEventType[point.event_type]) {
+                  groupedByEventType[point.event_type] = [];
+                }
+
+                // Add block_id to the point data
+                groupedByEventType[point.event_type].push({
+                  ...point,
+                  block_id: blockId,
+                });
               });
-            });
-          }
-        });
+            }
+          },
+        );
 
         // Add grouped data to shapefile structure
         Object.entries(groupedByEventType).forEach(([eventType, points]) => {
@@ -1581,12 +1595,16 @@ function SmartInventory() {
       }
 
       // Send request to shapefile download API
-      const response = await axios.post(`${BASEURL}/download-shape`, shapefileData, {
-        headers: {
-          'Content-Type': 'application/json'
+      const response = await axios.post(
+        `${BASEURL}/download-shape`,
+        shapefileData,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          responseType: 'blob', // Important for file download
         },
-        responseType: 'blob' // Important for file download
-      });
+      );
 
       if (response.status === 200) {
         // Create download link
@@ -1599,17 +1617,16 @@ function SmartInventory() {
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
-        
+
         showNotification('success', 'Shapefile downloaded successfully');
       }
     } catch (error) {
       console.error('Failed to download shapefile:', error);
       showNotification('error', 'Failed to download shapefile');
-    }finally{
-      setShapload(false)
+    } finally {
+      setShapload(false);
     }
   };
-
 
   const downloadExcel = () => {
     // Excel download functionality to be implemented

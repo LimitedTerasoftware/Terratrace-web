@@ -122,6 +122,7 @@ interface KMLData {
 interface KMLPoint {
   id?: number;
   name: string;
+  type?: string;
   coordinates: string | number[] | any;
   lgd_code?: string;
   properties?: string | Record<string, any>;
@@ -244,6 +245,8 @@ type Connection = {
   coordinates: [number, number][];
   color?: string;
   existing?: boolean;
+  phase?: string;
+  properties?: Record<string, any>;
   
   // Extended properties for database/API integration
   id?: number;
@@ -523,6 +526,7 @@ const [loadingDistricts, setLoadingDistricts] = useState<boolean>(false);
 const [loadingBlocks, setLoadingBlocks] = useState<boolean>(false);
 const [showLocationPanel, setShowLocationPanel] = useState(false);
 const [showLocationFilters, setShowLocationFilters] = useState(true);
+const [Type, setType] = useState<string>('');
 
 
 
@@ -863,7 +867,9 @@ useEffect(() => {
                              connectionProperties.status === 'Accepted' ||
                              connectionProperties.phase === '1';
             
-            const connectionColor = isExisting ? "#00AA00" : "#FF0000";
+            const connectionColor = conn.type === 'Offset Cable' ? '#DBDBDB' : 
+                                    conn.type === 'Block to FPOI Cable' ? '#0000D1' :
+                                     isExisting ? "#00AA00" : "#FF0000";
 
             const processedConnection: ProcessedConnection = {
               start: conn.start || "Unknown_Start",
@@ -1290,7 +1296,7 @@ useEffect(() => {
           // Merge all property sources
           ...(connection.originalProperties || {}),
           ...(connection.segmentData?.properties || {}),
-          ...(connection.properties || {}),
+          ...(connection?.properties || {}),
           
           // Critical fields
           name: connection.name || baseKey,
@@ -1439,8 +1445,8 @@ useEffect(() => {
     }
     
     const isExisting = entry.segmentData?.connection?.existing !== false;
-    const polylineColor = isExisting ? "#00AA00" : "#FF0000";
-    
+    const polylineColor = entry.segmentData?.connection?.color ? entry.segmentData.connection.color : isExisting ? "#00AA00" : "#FF0000";
+
     const polyline = new window.google.maps.Polyline({
       path,
       geodesic: true,
@@ -2784,7 +2790,8 @@ useEffect(() => {
       dtCode: selectedDistrict || localData.dt_code || "",
       dtName: districts.find(d => d.district_id === selectedDistrict)?.district_name || localData.dt_name || "",
       stCode: selectedState || localData.st_code || "",
-      stName: states.find(s => s.state_id === selectedState)?.state_name || localData.st_name || ""
+      stName: states.find(s => s.state_id === selectedState)?.state_name || localData.st_name || "",
+     
     };
 
     // Collect all points
@@ -2861,7 +2868,7 @@ useEffect(() => {
         dt_name: adminCodes.dtName,
         st_code: adminCodes.stCode,
         st_name: adminCodes.stName,
-        seg_length: (connection.length * 1000).toString(),
+       seg_length: (connection.length * 1000).toString(),
         length: connection.length.toString(),
         cable_len: (connection.length * 1000).toString(),
         start_node: connection.start || "",
@@ -2918,6 +2925,7 @@ useEffect(() => {
         dt_name: adminCodes.dtName,
         st_code: adminCodes.stCode,
         st_name: adminCodes.stName,
+         type:Type,
         totalLength: totalExisting + totalProposed,
         existinglength: totalExisting,
         proposedlength: totalProposed,
@@ -3439,6 +3447,7 @@ useEffect(() => {
             </select>
           </div>
           
+          
           {isLocationValid && (
             <div className="p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">
               ✓ Location selected: {locationFilters.state_name} → {locationFilters.district_name} → {locationFilters.block_name}
@@ -3731,14 +3740,28 @@ const MapLegend = () => {
               )}
             </div>
           </div>
+           <div className="relative">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
+            <select
+              value={Type || ''}
+              onChange={(e) => setType(e.target.value)}  
+              className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:opacity-50"
+            >
+              <option value="">Select Type</option>
+              <option value="Desktop">Desktop</option>
+              <option value="Approved KMZ">Approved KMZ</option>
+            </select>
+            </div>
+
 
           {/* Clear Selection Button */}
-          {(selectedState || selectedDistrict || selectedBlock) && (
+          {(selectedState || selectedDistrict || selectedBlock || Type) && (
             <button
               onClick={() => {
                 setSelectedState(null);
                 setSelectedDistrict(null);
                 setSelectedBlock(null);
+                setType('');
                 setSearchParams({});
               }}
               className="w-full px-3 py-2 text-xs text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"

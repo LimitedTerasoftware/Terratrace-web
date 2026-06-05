@@ -48,6 +48,7 @@ interface PreviewDropdownProps {
   onRectification: () => void;
   onJoints: () => void;
   onConstruction: () => void;
+  onApprovedKMZ: () => void;
   position: { x: number; y: number };
 }
 
@@ -59,6 +60,7 @@ const PreviewDropdown: React.FC<PreviewDropdownProps> = ({
   onRectification,
   onJoints,
   onConstruction,
+  onApprovedKMZ,
   position,
 }) => {
   if (!isOpen) return null;
@@ -127,6 +129,16 @@ const PreviewDropdown: React.FC<PreviewDropdownProps> = ({
           <div className="w-3 h-3 bg-cyan-500 rounded-full"></div>
           Construction
         </button>
+        <button
+          onClick={() => {
+            onApprovedKMZ();
+            onClose();
+          }}
+          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+        >
+          <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+          Approved KMZ
+        </button>
       </div>
     </>
   );
@@ -150,7 +162,8 @@ interface GeographicSelectorProps {
       | 'desktop'
       | 'rectification'
       | 'joints'
-      | 'construction';
+      | 'construction'
+      | 'approvedKMZ';
     // Add hierarchy context for specific selections
     hierarchyContext?: {
       stateId?: string;
@@ -169,7 +182,8 @@ interface GeographicSelectorProps {
       | 'desktop'
       | 'rectification'
       | 'joints'
-      | 'construction';
+      | 'construction'
+      |'approvedKMZ';
     hierarchyContext?: {
       stateId?: string;
       districtId?: string;
@@ -192,8 +206,9 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
   isLoadingDesktopPlanning,
   isLoadingRectification,
   isLoadingJoints,
-  isLoadingConstruction,
-}) => {
+  isLoadingConstruction,}
+ 
+) => {
   const [isDistrictExpanded, setIsDistrictExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [data, setData] = useState<State[]>([]);
@@ -669,6 +684,21 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
     });
   };
 
+  const handleApprovedKMZ = () => {
+    if (!dropdownState.currentItem) return;
+
+    const selectedIds = getSelectedIds();
+    onPreview?.({
+      type: dropdownState.currentItem.type,
+      selectedStates: selectedIds.states,
+      selectedDistricts: selectedIds.districts,
+      selectedBlocks: selectedIds.blocks,
+      name: dropdownState.currentItem.name,
+      dataType: 'approvedKMZ',
+      hierarchyContext: dropdownState.currentItem.hierarchyContext,
+    });
+  };
+
   const handleRefresh = (
     type: 'state' | 'district' | 'block',
     id: string,
@@ -708,6 +738,7 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
         onRectification={handleRectification}
         onJoints={handleJoints}
         onConstruction={handleConstruction}
+        onApprovedKMZ={handleApprovedKMZ}
         position={dropdownState.position}
       />
 
@@ -747,7 +778,7 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
       isLoadingDesktopPlanning ||
       isLoadingRectification ||
       isLoadingJoints ||
-      isLoadingConstruction
+      isLoadingConstruction 
         ? 'border-gray-300 bg-blue-100'
         : 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 cursor-pointer'
     }
@@ -760,7 +791,8 @@ export const GeographicSelector: React.FC<GeographicSelectorProps> = ({
                 isLoadingDesktopPlanning ||
                 isLoadingRectification ||
                 isLoadingJoints ||
-                isLoadingConstruction ? (
+                isLoadingConstruction 
+                 ? (
                   <Loader className="h-4 w-4 animate-spin text-blue-400" />
                 ) : (
                   <RefreshCwIcon size={18} />

@@ -158,12 +158,12 @@ export default function SurveyInventory({
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(20);
-      doc.text('SURVEY REPORT', 38, 18);
+      doc.text('Trenching & Ducting Report', 38, 18);
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
       doc.setTextColor(180, 210, 255);
-      doc.text('Construction Survey Tracking System', 38, 25);
+      doc.text('Construction Tracking System', 38, 25);
 
       // Right side — invoice meta
       doc.setTextColor(255, 255, 255);
@@ -237,7 +237,7 @@ export default function SurveyInventory({
       doc.setTextColor(15, 40, 80);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
-      doc.text('Survey Link Details', 14, yPos);
+      doc.text('Construction Link Details', 14, yPos);
       doc.setDrawColor(59, 130, 246);
       doc.setLineWidth(0.5);
       doc.line(14, yPos + 1.5, 14 + 50, yPos + 1.5);
