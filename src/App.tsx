@@ -57,6 +57,7 @@ import LiveTrack from './components/DepthChart/LiveTrack';
 import Eventreport from './components/DepthChart/UGConstView';
 import Report from './components/DepthChart/UGConst';
 import Construction from './components/DepthChart/Construction';
+import AerialList from './components/DepthChart/AerialList';
 import InstallationPage from './components/DepthChart/Installation/Installation';
 import GPInstallationDetailView from './components/DepthChart/Installation/GPInstallationDetailView';
 import BlockInstallationDetailView from './components/DepthChart/Installation/BlockInstallationDetailView';
@@ -843,6 +844,17 @@ function App() {
                     <DefaultLayout>
                       <PageTitle title="construction" />
                       <Construction />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/aerial-list"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Aerial List" />
+                      <AerialList />
                     </DefaultLayout>
                   </>
                 }

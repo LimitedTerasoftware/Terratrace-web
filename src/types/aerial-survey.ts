@@ -190,3 +190,25 @@ export interface PoleSurveyData {
   user_name: string;
   user_mobile: string;
 }
+
+export interface PoleSurveyorDetails {
+ rank: number;
+ surveyor_id: number;
+surveyor_name: string;
+contact_no: string;
+poles: number;
+distance_km: number;
+completion_percentage: number;
+}
+export interface PoleSurveyorDetailsResponse {
+  status: boolean;
+  filters: {
+    state_id: number | null,
+    district_id: number | null,
+    block_id: number | null,
+    from_date: string | null,
+    to_date: string | null
+  },
+  total_surveyors: number;
+  data: PoleSurveyorDetails[];
+}

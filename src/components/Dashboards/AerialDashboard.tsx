@@ -410,7 +410,12 @@ export default function AerialDashboard() {
                 </div>
 
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-                  <SurveyorPerformance />
+                  <SurveyorPerformance
+                  state={selectedState}
+                  district={selectedDistrict}
+                  block={selectedBlock}
+                  formDate={getDateRange().from_date}
+                  toDate={getDateRange().to_date} />
                   <BottleneckAnalysis />
                 </div>
               </div>

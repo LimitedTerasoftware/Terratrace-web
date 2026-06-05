@@ -1,16 +1,22 @@
-import { act, useEffect, useState } from 'react';
-import { StateData, District, Block } from '../../types/survey';
+import { useEffect, useState } from 'react';
+import {
+  StateData,
+  District,
+  Block,
+  UGConstructionSurveyData,
+} from '../../types/survey';
 import Report from './UGConst';
+import Poles from './Poles';
 import ConstructionStatsPanel from './ConstructionStatsPanel';
 import {
   SheetIcon,
   Construction,
   EyeIcon,
-  PlusCircleIcon,
   Globe2Icon,
+  PlusCircleIcon,
 } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { UGConstructionSurveyData } from '../../types/survey';
+
 interface StatesResponse {
   success: boolean;
   data: StateData[];
@@ -24,7 +30,7 @@ type StatusOption = {
 const BASEURL = import.meta.env.VITE_API_BASE;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
-function ConstructionPage() {
+function AerialListPage() {
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -38,9 +44,8 @@ function ConstructionPage() {
   const [selectedStatus, setSelectedStatus] = useState<number | null>(null);
   const [fromdate, setFromDate] = useState<string>('');
   const [todate, setToDate] = useState<string>('');
-  const activeTab = 'UG';
   const [excel, setExcel] = useState<boolean>(false);
-  const [kml, setkml] = useState<boolean>(false);
+  const [kml, setKml] = useState<boolean>(false);
   const [preview, setPreview] = useState<boolean>(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [filtersReady, setFiltersReady] = useState(false);
@@ -52,12 +57,11 @@ function ConstructionPage() {
     null,
   );
   const [loadingConnections, setLoadingConnections] = useState(false);
-
-  // New state for stats panel
   const [surveyData, setSurveyData] = useState<UGConstructionSurveyData[]>([]);
-  const [loadingStats, setLoadingStats] = useState<boolean>(false);
-  const [worktype, setworktype] = useState<string>('');
-  const [constType, setConstType] = useState<string>('Hdd');
+  const [loadingStats] = useState<boolean>(false);
+  const [worktype, setWorktype] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<'Aerial' | 'Pole'>('Aerial');
+  const constType = 'Aerial';
 
   const statusMap: Record<number, string> = {
     1: 'Accepted',
@@ -72,7 +76,7 @@ function ConstructionPage() {
     }),
   );
 
-  const ConstructionHeader = () => {
+  const AerialHeader = () => {
     return (
       <header className="bg-white shadow-sm border-b border-gray-200 px-7 py-2">
         <div className="flex items-center justify-between">
@@ -82,12 +86,14 @@ function ConstructionPage() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-900">
-                {activeTab === 'UG' ? 'Construction' : 'New Pole Construction'}{' '}
-                Management
+                {activeTab === 'Aerial' ? 'Aerial' : 'New Pole Construction'}{' '}
+                List
               </h1>
               <p className="text-sm text-gray-600">
                 Monitor and analyze{' '}
-                {activeTab === 'UG' ? 'construction' : 'new pole construction'}{' '}
+                {activeTab === 'Aerial'
+                  ? 'aerial construction'
+                  : 'new pole construction'}{' '}
                 project data
               </p>
             </div>
@@ -100,7 +106,7 @@ function ConstructionPage() {
                 </Link>
               </li>
               <li className="font-medium text-primary">
-                {activeTab === 'UG' ? 'Construction' : 'New Pole Construction'}{' '}
+                {activeTab === 'Aerial' ? 'Aerial' : 'New Pole Construction'}{' '}
                 Data
               </li>
             </ol>
@@ -127,8 +133,6 @@ function ConstructionPage() {
   useEffect(() => {
     fetchStates();
     const params: Record<string, string> = {};
-    const tab = searchParams.get('tab') || 'UG';
-    if (tab) params.tab = tab;
     setSearchParams(params);
   }, []);
 
@@ -137,7 +141,6 @@ function ConstructionPage() {
       setDistricts([]);
       return;
     }
-
     try {
       setLoadingDistricts(true);
       const response = await fetch(
@@ -158,7 +161,6 @@ function ConstructionPage() {
     try {
       if (!selectedDistrict) return;
       setLoadingBlock(true);
-
       const response = await fetch(
         `${BASEURL}/blocksdata?district_code=${selectedDistrict}`,
       );
@@ -175,11 +177,8 @@ function ConstructionPage() {
 
   const fetchVerifiedNetworks = async () => {
     try {
-      if (!selectedBlock) {
-        return;
-      }
+      if (!selectedBlock) return;
       setLoadingConnections(true);
-
       const response = await fetch(
         `${TraceBASEURL}/get-linknames?block_id=${selectedBlock}`,
       );
@@ -227,7 +226,6 @@ function ConstructionPage() {
     const to_date = searchParams.get('to_date') || '';
     const search = searchParams.get('search') || '';
     const worktype = searchParams.get('worktype') || '';
-    const constType = searchParams.get('constType') || 'Hdd';
 
     setSelectedState(state_id);
     setSelectedDistrict(district_id);
@@ -236,9 +234,8 @@ function ConstructionPage() {
     setFromDate(from_date);
     setToDate(to_date);
     setGlobalSearch(search);
-    setworktype(worktype);
+    setWorktype(worktype);
     setFiltersReady(true);
-    setConstType(constType);
   }, []);
 
   const handleFilterChange = (
@@ -247,12 +244,10 @@ function ConstructionPage() {
     newBlock: string | null,
     newLink: string | null,
     status: number | null,
-    worktype: string | '',
+    worktype: string,
     from_date: string | null,
     to_date: string | null,
     search: string | null,
-    constType: string | '',
-    tab?: 'UG' | 'Pole',
   ) => {
     const params: Record<string, string> = {};
     if (newState) params.state_id = newState;
@@ -264,8 +259,6 @@ function ConstructionPage() {
     if (from_date) params.from_date = from_date;
     if (to_date) params.to_date = to_date;
     if (search) params.search = search;
-    if (constType) params.constType = constType;
-    if (tab) params.tab = tab;
     setSearchParams(params);
   };
 
@@ -279,8 +272,7 @@ function ConstructionPage() {
     setFromDate('');
     setToDate('');
     setSearchParams({});
-    setworktype('');
-    setConstType('');
+    setWorktype('');
   };
 
   const handleStateChange = (value: string) => {
@@ -288,7 +280,6 @@ function ConstructionPage() {
     setSelectedDistrict(null);
     setSelectedBlock(null);
     setSelectedConnection(null);
-
     handleFilterChange(
       value || null,
       null,
@@ -299,7 +290,6 @@ function ConstructionPage() {
       fromdate,
       todate,
       globalsearch,
-      constType,
     );
   };
 
@@ -317,14 +307,12 @@ function ConstructionPage() {
       fromdate,
       todate,
       globalsearch,
-      constType,
     );
   };
 
   const handleBlockChange = (value: string) => {
     setSelectedBlock(value || null);
     setSelectedConnection(null);
-
     handleFilterChange(
       selectedState,
       selectedDistrict,
@@ -335,9 +323,9 @@ function ConstructionPage() {
       fromdate,
       todate,
       globalsearch,
-      constType,
     );
   };
+
   const handleLinkChange = (value: string) => {
     setSelectedConnection(value || null);
     handleFilterChange(
@@ -350,7 +338,6 @@ function ConstructionPage() {
       fromdate,
       todate,
       globalsearch,
-      constType,
     );
   };
 
@@ -367,11 +354,11 @@ function ConstructionPage() {
       fromdate,
       todate,
       globalsearch,
-      constType,
     );
   };
-  const handleworkChange = (value: string) => {
-    setworktype(value);
+
+  const handleWorktypeChange = (value: string) => {
+    setWorktype(value);
     handleFilterChange(
       selectedState,
       selectedDistrict,
@@ -382,22 +369,6 @@ function ConstructionPage() {
       fromdate,
       todate,
       globalsearch,
-      constType,
-    );
-  };
-  const handleConstTypeChange = (value: string) => {
-    setConstType(value);
-    handleFilterChange(
-      selectedState,
-      selectedDistrict,
-      selectedBlock,
-      selectedConnection,
-      selectedStatus,
-      worktype,
-      fromdate,
-      todate,
-      globalsearch,
-      value,
     );
   };
 
@@ -413,7 +384,6 @@ function ConstructionPage() {
       value,
       todate,
       globalsearch,
-      constType,
     );
   };
 
@@ -429,7 +399,6 @@ function ConstructionPage() {
       fromdate,
       value,
       globalsearch,
-      constType,
     );
   };
 
@@ -445,45 +414,57 @@ function ConstructionPage() {
       fromdate,
       todate,
       value,
-      constType,
     );
   };
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <ConstructionHeader />
+      <AerialHeader />
 
-      {/* Stats Panel */}
       <ConstructionStatsPanel surveys={surveyData} isLoading={loadingStats} />
 
-      {/* Main Content Container */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        {/* Tabs */}
-        <div className="border-b border-gray-200 dark:border-gray-700">
+        <div className="border-b border-gray-200">
           <ul className="flex flex-wrap -mb-px text-sm font-medium text-center px-6">
             <li className="mr-2">
               <button
                 className={`inline-block p-4 rounded-t-lg outline-none ${
-                  activeTab === 'UG'
-                    ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
-                    : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
+                  activeTab === 'Aerial'
+                    ? 'text-blue-600 border-b-2 border-blue-600'
+                    : 'hover:text-gray-600 hover:border-gray-300'
                 }`}
                 onClick={() => {
+                  setActiveTab('Aerial');
                   const params: Record<string, string> = {};
-                  params.tab = 'UG';
+                  params.tab = 'Aerial';
                   setSearchParams(params);
                 }}
               >
-                Construction
+                Aerial
+              </button>
+            </li>
+            <li>
+              <button
+                className={`inline-block p-4 rounded-t-lg outline-none ${
+                  activeTab === 'Pole'
+                    ? 'text-blue-600 border-b-2 border-blue-600'
+                    : 'hover:text-gray-600 hover:border-gray-300'
+                }`}
+                onClick={() => {
+                  setActiveTab('Pole');
+                  const params: Record<string, string> = {};
+                  params.tab = 'Pole';
+                  setSearchParams(params);
+                }}
+              >
+                New Pole Construction
               </button>
             </li>
           </ul>
         </div>
 
-        {/* Search and Filters */}
         <div className="p-6 border-b border-gray-200">
-          {/* First Row - Location Filters */}
           <div className="flex flex-wrap items-center gap-3 mb-4">
-            {/* State Filter */}
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
               <select
                 value={selectedState || ''}
@@ -512,12 +493,12 @@ function ConstructionPage() {
                       stroke="currentColor"
                       strokeWidth="4"
                       fill="none"
-                    ></circle>
+                    />
                     <path
                       className="opacity-75"
                       fill="currentColor"
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
+                    />
                   </svg>
                 ) : (
                   <svg
@@ -537,7 +518,6 @@ function ConstructionPage() {
               </div>
             </div>
 
-            {/* District Filter */}
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
               <select
                 value={selectedDistrict || ''}
@@ -569,12 +549,12 @@ function ConstructionPage() {
                       stroke="currentColor"
                       strokeWidth="4"
                       fill="none"
-                    ></circle>
+                    />
                     <path
                       className="opacity-75"
                       fill="currentColor"
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
+                    />
                   </svg>
                 ) : (
                   <svg
@@ -594,7 +574,6 @@ function ConstructionPage() {
               </div>
             </div>
 
-            {/* Block Filter */}
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
               <select
                 value={selectedBlock || ''}
@@ -623,12 +602,12 @@ function ConstructionPage() {
                       stroke="currentColor"
                       strokeWidth="4"
                       fill="none"
-                    ></circle>
+                    />
                     <path
                       className="opacity-75"
                       fill="currentColor"
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
+                    />
                   </svg>
                 ) : (
                   <svg
@@ -647,7 +626,7 @@ function ConstructionPage() {
                 )}
               </div>
             </div>
-            {/* Links Filter */}
+
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-56">
               <select
                 value={selectedConnection || ''}
@@ -676,12 +655,12 @@ function ConstructionPage() {
                       stroke="currentColor"
                       strokeWidth="4"
                       fill="none"
-                    ></circle>
+                    />
                     <path
                       className="opacity-75"
                       fill="currentColor"
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
+                    />
                   </svg>
                 ) : (
                   <svg
@@ -701,7 +680,6 @@ function ConstructionPage() {
               </div>
             </div>
 
-            {/* Status Filter */}
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
               <select
                 value={selectedStatus !== null ? selectedStatus : ''}
@@ -732,7 +710,6 @@ function ConstructionPage() {
               </div>
             </div>
 
-            {/* Date Filters */}
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
               <input
                 type="date"
@@ -754,19 +731,17 @@ function ConstructionPage() {
             </div>
           </div>
 
-          {/* Second Row - Search and Excel Export */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
               <select
                 value={worktype !== '' ? worktype : ''}
-                onChange={(e) => handleworkChange(e.target.value)}
+                onChange={(e) => handleWorktypeChange(e.target.value)}
                 className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               >
                 <option value="">All Work Type</option>
                 <option value="New Construction">New Construction</option>
                 <option value="Rectification">Rectification</option>
               </select>
-
               <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
                 <svg
                   className="w-4 h-4 text-gray-400"
@@ -783,40 +758,7 @@ function ConstructionPage() {
                 </svg>
               </div>
             </div>
-            {activeTab === 'UG' && (
-              <>
-                <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-                  <select
-                    value={constType !== '' ? constType : ''}
-                    onChange={(e) => handleConstTypeChange(e.target.value)}
-                    className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  >
-                    <option value="">All Construction Type</option>
-                    <option value="Hdd">HDD</option>
-                    {/* <option value="Aerial">Aerial</option> */}
-                    <option value="OpenTrench">OpenTrench</option>
-                  </select>
 
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                    <svg
-                      className="w-4 h-4 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Search Bar */}
             <div className="relative w-80">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg
@@ -830,7 +772,7 @@ function ConstructionPage() {
                     strokeLinejoin="round"
                     strokeWidth="2"
                     d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  ></path>
+                  />
                 </svg>
               </div>
               <input
@@ -842,24 +784,22 @@ function ConstructionPage() {
               />
             </div>
 
-            {/* Excel Export Button */}
-
             <button
               onClick={() => setExcel(true)}
-              className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
+              className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap flex items-center gap-2"
             >
               <SheetIcon className="h-4 w-4 text-green-600" />
               Excel
             </button>
-            {activeTab === 'UG' && (
-              <button
-                onClick={() => setkml(true)}
-                className="flex items-center gap-2 flex-none h-10 px-4 py-2 text-sm font-medium text-yellow-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap"
-              >
-                <Globe2Icon className="h-4 w-4" />
-                KML
-              </button>
-            )}
+
+            <button
+              onClick={() => setKml(true)}
+              className="flex items-center gap-2 flex-none h-10 px-4 py-2 text-sm font-medium text-yellow-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap"
+            >
+              <Globe2Icon className="h-4 w-4" />
+              KML
+            </button>
+
             <button
               onClick={() => setPreview(!preview)}
               className="flex-none h-10 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap flex items-center gap-2"
@@ -867,31 +807,28 @@ function ConstructionPage() {
               <EyeIcon className="h-4 w-4 text-blue-600" />
               Preview
             </button>
-            {activeTab === 'UG' && (
+
+            {activeTab === 'Aerial' && (
               <button
                 onClick={() => setIsAddModalOpen(true)}
-                className="flex-none h-10 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-blue-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
+                className="flex-none h-10 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap flex items-center gap-2"
               >
                 <PlusCircleIcon className="h-4 w-4 text-blue-600" />
                 Add New Event
               </button>
             )}
 
-            {/* Clear Filters */}
             <button
               onClick={clearFilters}
-              className="flex-none h-10 px-4 py-2 text-sm font-medium text-red-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-red-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
+              className="flex-none h-10 px-4 py-2 text-sm font-medium text-red-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap flex items-center gap-2"
             >
-              <span className="text-red-500 dark:text-red-400 font-medium text-sm">
-                ✕
-              </span>
+              <span className="text-red-500 font-medium text-sm">✕</span>
               <span>Clear Filters</span>
             </button>
           </div>
         </div>
 
-        {/* Content Area */}
-        {activeTab === 'UG' && (
+        {activeTab === 'Aerial' && (
           <Report
             Data={{
               selectedState,
@@ -914,9 +851,27 @@ function ConstructionPage() {
             }}
             Onexcel={() => setExcel(false)}
             OnPreview={() => setPreview(false)}
-            OnKml={() => setkml(false)}
+            OnKml={() => setKml(false)}
             OnModal={() => setIsAddModalOpen(false)}
             OnData={(data: UGConstructionSurveyData[]) => setSurveyData(data)}
+          />
+        )}
+        {activeTab === 'Pole' && (
+          <Poles
+            selectedState={selectedState}
+            selectedDistrict={selectedDistrict}
+            selectedBlock={selectedBlock}
+            selectedStatus={selectedStatus}
+            worktype={worktype}
+            fromdate={fromdate}
+            todate={todate}
+            globalsearch={globalsearch}
+            filtersReady={filtersReady}
+            excel={excel}
+            preview={preview}
+            OnData={() => setSurveyData([])}
+            Onexcel={() => setExcel(false)}
+            OnPreview={() => setPreview(false)}
           />
         )}
       </div>
@@ -924,4 +879,4 @@ function ConstructionPage() {
   );
 }
 
-export default ConstructionPage;
+export default AerialListPage;
