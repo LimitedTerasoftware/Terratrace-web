@@ -191,7 +191,7 @@ export interface ProcessedDesktopPlanning {
   networkId?: number;
   lgdCode?: string;
   length?: string;
-  connectionType?: 'proposed' | 'incremental';
+  connectionType?: 'proposed' | 'incremental'| 'Offset Cable' | 'Block to FPOI Cable' |'existing' | 'Incremental Cable';
   rawProperties?: any;
 }
 

@@ -209,6 +209,8 @@ export const PLACEMARK_CATEGORIES: Record<
   'Desktop: N Highway Cross': { color: '#EF4444', icon: '🛤️' },
   'Desktop: Incremental Cable': { color: '#7CF10F', icon: '▓▓▓▓' },
   'Desktop: Proposed Cable': { color: '#FF2400', icon: '▒▒▒▒' },
+  'Desktop : Offset Cable':{color:'#DBDBDB',icon:'▒▒▒▒'},
+  'Desktop : Block to FPOI Cable':{color:"#0000D1",icon:"▓▓▓▓"},
   'Joint: SJC': { color: '#22D3EE', icon: '🔷' },
   'Joint: BJC': { color: '#8B5CF6', icon: '🟣' },
   // Tracking
@@ -805,6 +807,7 @@ export interface DesktopPlanningPoint {
   lgd_code: string;
   created_at: string;
   properties: string; // JSON string
+  type?:string;
 }
 
 export interface DesktopPlanningConnection {
@@ -817,7 +820,7 @@ export interface DesktopPlanningConnection {
   length: string;
   original_name: string;
   coordinates: string; // "[[lat,lng],[lat,lng],...]" format
-  type: 'proposed' | 'incremental';
+  type: 'proposed' | 'incremental' | 'existing' | 'Offset Cable' | 'Block to FPOI Cable' | 'Incremental Cable';
   color: string;
   created_at: string;
   start_latlong: string;
@@ -842,7 +845,7 @@ export interface ProcessedDesktopPlanning {
   networkId?: number;
   lgdCode?: string;
   length?: string;
-  connectionType?: 'proposed' | 'incremental';
+  connectionType?: 'proposed' | 'incremental' | 'existing' | 'Offset Cable' | 'Block to FPOI Cable' | 'Incremental Cable';
   rawProperties?: any;
 }
 
@@ -2035,6 +2038,8 @@ export function processDesktopPlanningData(
     'Desktop: N Highway Cross',
     'Desktop: Incremental Cable',
     'Desktop: Proposed Cable',
+    'Desktop : Offset Cable',
+    'Desktop : Block to FPOI Cable',
     'Desktop: SJC',
     'Desktop: BJC',
     'Desktop: LC',
@@ -2154,17 +2159,32 @@ export function processDesktopPlanningData(
         // FIXED: Determine category based on connection type from API
         // API uses "existing" for implemented cables and "proposed" for planned cables
         const connectionType = connection.type || 'proposed';
-        const category =
-          connectionType === 'existing'
-            ? 'Desktop: Incremental Cable' // Green cables - already implemented
-            : 'Desktop: Proposed Cable'; // Red cables - planned for future
+        let category;
+          switch(connectionType){
+            case "existing":
+               category = 'Desktop: Incremental Cable';
+               break;
+            case "Offset Cable":
+              category = 'Desktop : Offset Cable';
+              break;
+            case "Block to FPOI Cable":
+              category ='Desktop : Block to FPOI Cable';
+              break;
+            case "Incremental Cable":
+               category = 'Desktop: Incremental Cable';
+              break;
+            default :
+            category='Desktop: Proposed Cable';
+            break;
 
-        categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+          }
+        
+            categoryCounts[category] = (categoryCounts[category] || 0) + 1;
 
         processedPlacemarks.push({
           id: `desktop-connection-${network.id}-${connection.id}`,
           name:
-            connection.original_name || `Desktop Connection ${connection.id}`,
+          connection.original_name || `Desktop Connection ${connection.id}`,
           category,
           type: 'polyline',
           coordinates,
@@ -2172,7 +2192,9 @@ export function processDesktopPlanningData(
           connectionType: connectionType as
             | 'proposed'
             | 'incremental'
-            | 'existing',
+            | 'existing'
+            | 'Offset Cable'
+            |'Block to FPOI Cable',
           status: connection.status,
           networkId: network.id,
           rawProperties: connectionProperties,

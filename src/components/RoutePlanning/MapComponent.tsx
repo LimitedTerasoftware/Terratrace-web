@@ -1218,7 +1218,6 @@ useEffect(() => {
   if (!apiConctResponse?.connections?.length) {
     return;
   }
-
   const completePolylineHistory: Record<string, any> = {};
   let processedCount = 0;
   let skippedCount = 0;
@@ -1241,6 +1240,7 @@ useEffect(() => {
         `Duplicate route: ${baseKey} (instance #${existingKeysWithSameBase.length + 1}, key: ${uniqueKey})`
       );
     }
+  
 
     // Check if user deleted this specific connection
     const isDeleted = deletedPolylines.has(baseKey) || 
@@ -1308,8 +1308,8 @@ useEffect(() => {
           existing: connection.existing ?? false,
           status: connection.status || (connection.existing ? "Accepted" : "Proposed"),
           phase: connection.phase || (connection.existing ? "1" : "3"),
-          type: connection.type || "Incremental Cable",
-          asset_type: connection.type || "Incremental Cable",
+          type: connection.type || connection.properties?.type || "Incremental Cable",
+          asset_type: connection.type || connection.properties?.asset_type || "Incremental Cable",
           
           // IDs - CRITICAL FOR UNIQUENESS
           id: connection.id,
@@ -1392,7 +1392,6 @@ useEffect(() => {
       console.log(`Progress: ${idx + 1}/${apiConctResponse.connections.length} connections processed`);
     }
   });
-
   // Show warnings about duplicates
   if (duplicateKeyWarnings.length > 0) {
     console.warn("⚠️ DUPLICATE ROUTES DETECTED:", duplicateKeyWarnings);
@@ -2877,14 +2876,14 @@ useEffect(() => {
         status: connection.existing ? "Accepted" : "Proposed",
         phase: connection.existing ? "1" : "3",
         existing: connection.existing,
-        type: existingProps.type || "Incremental Cable",
-        asset_type: existingProps.asset_type || "Incremental Cable",
+        type: connection.type || existingProps.type  || "Incremental Cable",
+        asset_type: connection.asset_type || existingProps.asset_type || "Incremental Cable",
         created_by: existingProps.created_by || finalUserData.uname,
         modified_by: finalUserData.uname,
         user_id: existingProps.user_id || finalUserData.user_id,
         user_name: finalUserData.uname,
         user_created: connection.user_created || false,
-        coordinates: connection.coordinates || []
+        // coordinates: connection.coordinates || []
       };
     };
 
@@ -3026,7 +3025,7 @@ useEffect(() => {
       setSaveFile(false);
       return;
     }
-
+  
     let apiUrl: string;
     let requestMethod: string;
     

@@ -141,6 +141,14 @@ function SmartInventory() {
   >([]);
   const [isLoadingDesktopPlanning, setIsLoadingDesktopPlanning] =
     useState(false);
+
+ const [approvedKmzData, setapprovedKmzData] = useState<
+    ProcessedDesktopPlanning[]
+  >([]);
+  const [approvedKmzCategories, setapprovedKmzCategories] = useState<
+    PlacemarkCategory[]
+  >([]);
+  
   const [rawDesktopPlanningData, setRawDesktopPlanningData] =
     useState<any>(null);
 
@@ -797,9 +805,16 @@ function SmartInventory() {
       if (response.status === 200 || response.status === 201) {
         if (result.status && result.data.length > 0) {
           const { placemarks, categories } = processDesktopPlanningData(result);
+          if( dataType === 'approvedKMZ'){
+            setapprovedKmzData(placemarks);
+            setapprovedKmzCategories(categories);
+          }else{
+            setDesktopPlanningData(placemarks);
+            setDesktopPlanningCategories(categories);
+          }
+        
           setRawDesktopPlanningData(result);
-          setDesktopPlanningData(placemarks);
-          setDesktopPlanningCategories(categories);
+         
 
           const autoVisibleCategories = categories
             .filter((category) => category.visible)
@@ -824,8 +839,14 @@ function SmartInventory() {
             'info',
             'No desktop planning data found for selected area',
           );
-          setDesktopPlanningData([]);
-          setDesktopPlanningCategories([]);
+          if( dataType === 'approvedKMZ'){
+            setapprovedKmzCategories([]);
+            setapprovedKmzData([]);
+
+          }else{
+           setDesktopPlanningCategories([]);
+             setDesktopPlanningData([]);
+          }
           setRawDesktopPlanningData(null);
         }
       }
@@ -2262,6 +2283,7 @@ function SmartInventory() {
       ...rectificationData,
       ...JointsData,
       ...constructionData,
+      ...approvedKmzData,
     ];
     return [...externalFilePlacemarks, ...apiPlacemarks];
   }, [
@@ -2271,6 +2293,7 @@ function SmartInventory() {
     rectificationData,
     JointsData,
     constructionData,
+    approvedKmzData,
   ]);
 
   const allCategories = useMemo(() => {
@@ -2281,6 +2304,7 @@ function SmartInventory() {
       ...rectificationCategories,
       ...JointsDataCategories,
       ...constructionCategories,
+      ...approvedKmzCategories
     ];
     return [...externalFileCategories, ...apiCategories];
   }, [
@@ -2290,6 +2314,7 @@ function SmartInventory() {
     rectificationCategories,
     JointsDataCategories,
     constructionCategories,
+    approvedKmzCategories
   ]); // ADD rectificationCategories
 
   // Individual arrays for specific contexts
@@ -2300,6 +2325,7 @@ function SmartInventory() {
     ...rectificationData, // ADD THIS
     ...JointsData,
     ...constructionData,
+    ...approvedKmzData,
   ];
 
   // ==============================================
@@ -2499,6 +2525,7 @@ function SmartInventory() {
                 <div>External Files: {externalFilePlacemarks.length}</div>
                 <div>Physical Survey: {physicalSurveyData.length}</div>
                 <div>Desktop Planning: {desktopPlanningData.length}</div>
+                <div>Approved KMZ:{approvedKmzData.length}</div>
                 <div>Visible Categories: {visibleCategories.size}</div>
                 {isVideoSurveyMode && (
                   <>

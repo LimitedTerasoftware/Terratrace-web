@@ -98,11 +98,19 @@ export const convertKMZToStandardFormat = (kmzData: KMZResponse): ConvertedKMZDa
     }
 
     // Determine if connection is existing based on status or type
-    const existing = line.properties?.status === 'Accepted' || 
+    let existing = false;
+    if(line.type=== 'Proposed Cable' || line.properties?.type === 'Proposed Cable'){
+       existing = false;
+    }
+   else if(line.properties?.status === 'Accepted' || 
                     line.properties?.status === 'Existing' ||
                     line.type || line.properties?.Type === 'Incremental Cable' || 
                     line.properties?.type === 'Incremental Cable' || 
-                    line.properties?.asset_type === 'Incremental Cable';
+                    line.properties?.asset_type === 'Incremental Cable'){
+                      existing = true;
+
+                    }
+    
 
     // Generate color based on type or status
     let color = '#FF0000'; // Default red
@@ -131,7 +139,7 @@ export const convertKMZToStandardFormat = (kmzData: KMZResponse): ConvertedKMZDa
       name: line.properties?.name || connectionName,
       coordinates: coordinates,
       color: color,
-      existing: existing,
+      existing:existing,
       properties: line.properties || {}
     };
   });
