@@ -103,7 +103,12 @@ function PoleStringView() {
       setError(null);
 
       const surveyId = multipreview ? MainData : MainData.id;
-
+      // const params: any = {};
+      // if (surveyId) {
+      //   params.survey_ids = Array.isArray(surveyId)
+      //     ? surveyId.join(',')
+      //     : surveyId;
+      // }
       const resp = await axios.get(
         `${TraceBASEURL}/get-pole-stringing/${Array.isArray(surveyId) ? surveyId.join(',') : surveyId}`,
       );

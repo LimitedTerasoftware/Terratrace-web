@@ -199,6 +199,7 @@ export const PLACEMARK_CATEGORIES: Record<
 
   // Desktop Planning Categories
   'Desktop: GP': { color: '#2DD4BF', icon: '🟢' },
+  'Desktop: ROUTEINDICATOR':{ color: '#C2410C', icon: '🧭' },
   'Desktop: FPOI': { color: '#FBBF24', icon: '📷' },
   'Desktop: BHQ': { color: '#DC2626', icon: '🏛️' },
   'Desktop: Block Router': { color: '#1F2937', icon: '⚫' },
@@ -2030,6 +2031,7 @@ export function processDesktopPlanningData(
     'Desktop: GP',
     'Desktop: FPOI',
     'Desktop: BHQ',
+    'Desktop: ROUTEINDICATOR',
     'Desktop: Block Router',
     'Desktop: Bridge',
     'Desktop: Culvert',
@@ -2091,9 +2093,11 @@ export function processDesktopPlanningData(
           point.type ||
           pointProperties.asset_type ||
           'FPOI';
+           
         const category = getDesktopPlanningCategory(assetType, 'point');
         categoryCounts[category] = (categoryCounts[category] || 0) + 1;
-
+        console.log(category);
+          
         processedPlacemarks.push({
           id: `desktop-point-${network.id}-${point.id}`,
           name: point.name || `Desktop Point ${point.id}`,
@@ -2240,6 +2244,7 @@ function getDesktopPlanningCategory(
     // Point categories based on asset_type or type
     const pointMappings: Record<string, string> = {
       GP: 'Desktop: GP',
+      'PANCHYAT BHAVAN':'Desktop: GP',
       FPOI: 'Desktop: FPOI',
       BHQ: 'Desktop: BHQ',
       'BLOCK ROUTER': 'Desktop: Block Router',
@@ -2252,6 +2257,7 @@ function getDesktopPlanningCategory(
       SJC: 'Desktop: SJC',
       BJC: 'Desktop: BJC',
       LC: 'Desktop: LC',
+      RI : 'Desktop: ROUTEINDICATOR',
     };
 
     if (pointMappings[upperAssetType]) return pointMappings[upperAssetType];

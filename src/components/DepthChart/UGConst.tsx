@@ -545,7 +545,17 @@ const handleView = async (
 
   try {
     const surveyIds = selectedRows.map((row) => row.id).join(',');
-    const resp = await axios.get(`${TraceBASEURL}/construction-forms`, {
+   let  baseurl = 'construction-forms';
+   
+
+  if (
+     Data.constType === "Aerial" ||
+    ( filteredData.some((d) => d.construction_type === "Aerial"))
+  ) {
+    baseurl='get-pole-stringing';
+  
+  } 
+    const resp = await axios.get(`${TraceBASEURL}/${baseurl}`, {
       params: { survey_ids: surveyIds },
     });
 
