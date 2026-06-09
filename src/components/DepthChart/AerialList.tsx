@@ -60,7 +60,7 @@ function AerialListPage() {
   const [surveyData, setSurveyData] = useState<UGConstructionSurveyData[]>([]);
   const [loadingStats] = useState<boolean>(false);
   const [worktype, setWorktype] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'Aerial' | 'Pole'>('Aerial');
+  const [activeTab, setActiveTab] = useState<'Aerial' | 'Pole' | string>('Aerial');
   const constType = 'Aerial';
 
   const statusMap: Record<number, string> = {
@@ -132,8 +132,6 @@ function AerialListPage() {
 
   useEffect(() => {
     fetchStates();
-    const params: Record<string, string> = {};
-    setSearchParams(params);
   }, []);
 
   const fetchDistricts = async (stateId: string) => {
@@ -226,6 +224,7 @@ function AerialListPage() {
     const to_date = searchParams.get('to_date') || '';
     const search = searchParams.get('search') || '';
     const worktype = searchParams.get('worktype') || '';
+    const tab = searchParams.get('tab') || 'Aerial';
 
     setSelectedState(state_id);
     setSelectedDistrict(district_id);
@@ -236,6 +235,7 @@ function AerialListPage() {
     setGlobalSearch(search);
     setWorktype(worktype);
     setFiltersReady(true);
+    setActiveTab(tab);
   }, []);
 
   const handleFilterChange = (
@@ -248,6 +248,7 @@ function AerialListPage() {
     from_date: string | null,
     to_date: string | null,
     search: string | null,
+    tab: 'Aerial' | 'Pole' | string,
   ) => {
     const params: Record<string, string> = {};
     if (newState) params.state_id = newState;
@@ -259,6 +260,8 @@ function AerialListPage() {
     if (from_date) params.from_date = from_date;
     if (to_date) params.to_date = to_date;
     if (search) params.search = search;
+    if (tab) params.tab = tab;
+
     setSearchParams(params);
   };
 
@@ -273,8 +276,25 @@ function AerialListPage() {
     setToDate('');
     setSearchParams({});
     setWorktype('');
+    
   };
 
+ const handletabchage = (value: string) => {
+    setActiveTab(value);
+  
+    handleFilterChange(
+      selectedState,
+      selectedDistrict,
+      selectedBlock,
+      selectedConnection,
+      selectedStatus,
+      worktype,
+      fromdate,
+      todate,
+      globalsearch,
+      value
+    );
+  };
   const handleStateChange = (value: string) => {
     setSelectedState(value || null);
     setSelectedDistrict(null);
@@ -290,6 +310,7 @@ function AerialListPage() {
       fromdate,
       todate,
       globalsearch,
+      activeTab,
     );
   };
 
@@ -307,6 +328,7 @@ function AerialListPage() {
       fromdate,
       todate,
       globalsearch,
+      activeTab,
     );
   };
 
@@ -323,6 +345,7 @@ function AerialListPage() {
       fromdate,
       todate,
       globalsearch,
+      activeTab
     );
   };
 
@@ -338,6 +361,7 @@ function AerialListPage() {
       fromdate,
       todate,
       globalsearch,
+      activeTab
     );
   };
 
@@ -354,6 +378,7 @@ function AerialListPage() {
       fromdate,
       todate,
       globalsearch,
+      activeTab
     );
   };
 
@@ -369,6 +394,7 @@ function AerialListPage() {
       fromdate,
       todate,
       globalsearch,
+      activeTab
     );
   };
 
@@ -384,6 +410,7 @@ function AerialListPage() {
       value,
       todate,
       globalsearch,
+      activeTab
     );
   };
 
@@ -399,6 +426,7 @@ function AerialListPage() {
       fromdate,
       value,
       globalsearch,
+      activeTab
     );
   };
 
@@ -414,6 +442,7 @@ function AerialListPage() {
       fromdate,
       todate,
       value,
+      activeTab
     );
   };
 
@@ -434,10 +463,11 @@ function AerialListPage() {
                     : 'hover:text-gray-600 hover:border-gray-300'
                 }`}
                 onClick={() => {
-                  setActiveTab('Aerial');
-                  const params: Record<string, string> = {};
-                  params.tab = 'Aerial';
-                  setSearchParams(params);
+                  handletabchage('Aerial');
+                  // setActiveTab('Aerial');
+                  // const params: Record<string, string> = {};
+                  // params.tab = 'Aerial';
+                  // setSearchParams(params);
                 }}
               >
                 Aerial
@@ -451,10 +481,11 @@ function AerialListPage() {
                     : 'hover:text-gray-600 hover:border-gray-300'
                 }`}
                 onClick={() => {
-                  setActiveTab('Pole');
-                  const params: Record<string, string> = {};
-                  params.tab = 'Pole';
-                  setSearchParams(params);
+                  // setActiveTab('Pole');
+                  // const params: Record<string, string> = {};
+                  // params.tab = 'Pole';
+                  // setSearchParams(params);
+                   handletabchage('Pole');
                 }}
               >
                 New Pole Construction

@@ -126,10 +126,10 @@ function ConstructionPage() {
 
   useEffect(() => {
     fetchStates();
-    const params: Record<string, string> = {};
-    const tab = searchParams.get('tab') || 'UG';
-    if (tab) params.tab = tab;
-    setSearchParams(params);
+    // const params: Record<string, string> = {};
+    // const tab = searchParams.get('tab') || 'UG';
+    // if (tab) params.tab = tab;
+    // setSearchParams(params);
   }, []);
 
   const fetchDistricts = async (stateId: string) => {

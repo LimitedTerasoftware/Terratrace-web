@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { X, ChevronLeft, ChevronRight, Image as ImageIcon, Video } from 'lucide-react';
+import {
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Image as ImageIcon,
+  Video,
+} from 'lucide-react';
 
 interface MediaItem {
   type: string;
@@ -18,25 +24,34 @@ const MediaCarousel: React.FC<MediaCarouselProps> = ({
   isOpen,
   onClose,
   mediaItems,
-  initialIndex = 0
+  initialIndex = 0,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
-  useEffect(() => {
-  if (isOpen) {
-    const safeIndex =
-      initialIndex >= 0 && initialIndex < mediaItems.length
-        ? initialIndex
-        : 0;
+  const [zoom, setZoom] = useState(1);
 
-    setCurrentIndex(safeIndex);
-  }
-}, [isOpen, initialIndex, mediaItems]);
+  useEffect(() => {
+    if (isOpen) {
+      const safeIndex =
+        initialIndex >= 0 && initialIndex < mediaItems.length
+          ? initialIndex
+          : 0;
+
+      setCurrentIndex(safeIndex);
+      setZoom(1);
+    }
+  }, [isOpen, initialIndex, mediaItems]);
 
   if (!isOpen || mediaItems.length === 0) return null;
 
-
-
   const currentItem = mediaItems[currentIndex];
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    setZoom((z) => {
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      return Math.min(Math.max(z + delta, 0.25), 3);
+    });
+  };
 
   const goToPrevious = () => {
     setCurrentIndex((prev) => (prev === 0 ? mediaItems.length - 1 : prev - 1));
@@ -73,27 +88,36 @@ const MediaCarousel: React.FC<MediaCarouselProps> = ({
 
         {/* Media Container */}
         <div className="bg-black rounded-lg overflow-hidden">
-         <div className="relative" style={{ minHeight: '350px', maxHeight: '60vh' }}>
-          {currentItem?.type === 'image' ? (
-            <img
-              src={currentItem?.url}
-              alt={currentItem?.label}
-              className="w-full h-full object-contain"
-              style={{ maxHeight: '60vh' }}
-            />
-          ) : currentItem ? (
-            <video
-              src={currentItem?.url}
-              controls
-              className="w-full h-full object-contain"
-              style={{ maxHeight: '60vh' }}
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              No media available
-            </div>
-          )}
-        </div>
+          <div
+            className="relative"
+            style={{ minHeight: '350px', maxHeight: '60vh' }}
+          >
+            {currentItem?.type === 'image' ? (
+              <div
+                className="w-full h-full flex items-center justify-center overflow-auto"
+                style={{ maxHeight: '60vh' }}
+                onWheel={handleWheel}
+              >
+                <img
+                  src={currentItem?.url}
+                  alt={currentItem?.label}
+                  className="object-contain transition-transform duration-200"
+                  style={{ transform: `scale(${zoom})`, maxHeight: '60vh' }}
+                />
+              </div>
+            ) : currentItem ? (
+              <video
+                src={currentItem?.url}
+                controls
+                className="w-full h-full object-contain"
+                style={{ maxHeight: '60vh' }}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                No media available
+              </div>
+            )}
+          </div>
 
           {/* Navigation Arrows */}
           {mediaItems.length > 1 && (
