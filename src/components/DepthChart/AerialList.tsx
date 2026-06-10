@@ -822,6 +822,7 @@ function AerialListPage() {
               <SheetIcon className="h-4 w-4 text-green-600" />
               Excel
             </button>
+            {activeTab == 'Aerial' &&(
 
             <button
               onClick={() => setKml(true)}
@@ -830,6 +831,7 @@ function AerialListPage() {
               <Globe2Icon className="h-4 w-4" />
               KML
             </button>
+            )}
 
             <button
               onClick={() => setPreview(!preview)}

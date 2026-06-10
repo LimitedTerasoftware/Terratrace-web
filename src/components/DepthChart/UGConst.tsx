@@ -15,8 +15,8 @@ interface ReportProps {
     selectedDistrict: string | null;
     selectedBlock: string | null;
     selectedStatus: number | null;
-    worktype:string;
-    constType:string;
+    worktype: string;
+    constType: string;
     fromdate: string;
     todate: string;
     globalsearch: string;
@@ -75,8 +75,8 @@ const Report: React.FC<ReportProps> = ({
         if (Data.fromdate) params.from_date = Data.fromdate;
         if (Data.todate) params.to_date = Data.todate;
         if (Data.selectedStatus !== null) params.status = Data.selectedStatus;
-        if(Data.worktype !== "") params.worktype = Data.worktype;
-        if(Data.constType !== "") params.construction_type = Data.constType;
+        if (Data.worktype !== '') params.worktype = Data.worktype;
+        if (Data.constType !== '') params.construction_type = Data.constType;
         if (Data.globalsearch.trim()) params.search = Data.globalsearch.trim();
 
         const response = await axios.get<{
@@ -118,39 +118,38 @@ const Report: React.FC<ReportProps> = ({
     Data.isAddModalOpen,
   ]);
 
-const handleView = async (
-  row: UGConstructionSurveyData | UGConstructionSurveyData[] | number[],
-  check: boolean,
-) => {
-  const selectedRows = Array.isArray(row)
-    ? filteredData.filter((d) => row.includes((d.id) as any))
-    : [row];
-    
+  const handleView = async (
+    row: UGConstructionSurveyData | UGConstructionSurveyData[] | number[],
+    check: boolean,
+  ) => {
+    const selectedRows = Array.isArray(row)
+      ? filteredData.filter((d) => row.includes(d.id as any))
+      : [row];
 
-  const hasAerial = selectedRows.some(
-    (d) => d.construction_type === "Aerial"
-  );
+    const hasAerial = selectedRows.some(
+      (d) => d.construction_type === 'Aerial',
+    );
 
-  if (
-    hasAerial ||
-    Data.constType === "Aerial" ||
-    (check && filteredData.some((d) => d.construction_type === "Aerial"))
-  ) {
-    navigate('/pole-stringing-details-aerial', {
-      state: {
-        row,
-        multipreview: check,
-      },
-    });
-  } else {
-    navigate('/construction-details', {
-      state: {
-        row,
-        multipreview: check,
-      },
-    });
-  }
-};
+    if (
+      hasAerial ||
+      Data.constType === 'Aerial' ||
+      (check && filteredData.some((d) => d.construction_type === 'Aerial'))
+    ) {
+      navigate('/pole-stringing-details-aerial', {
+        state: {
+          row,
+          multipreview: check,
+        },
+      });
+    } else {
+      navigate('/construction-details', {
+        state: {
+          row,
+          multipreview: check,
+        },
+      });
+    }
+  };
   const handleUpdate = (id: number) => {
     const survey = data.find((item) => item.id === id) || null;
     setSurveyToUpdate(survey);
@@ -498,133 +497,181 @@ const handleView = async (
     handleGenerateKML();
   }, [Data.kml]);
 
- const handleGenerateKML = async () => {
-  if (selectedRows.length === 0) {
-    alert('No rows selected');
-    return;
-  }
-
-  const selectedEventTypes = [
-    'STARTSURVEY',
-    'DEPTH',
-    'ROADCROSSING',
-    'FPOI',
-    'JOINTCHAMBER',
-    'MANHOLES',
-    'ROUTEINDICATOR',
-    'LANDMARK',
-    'FIBERTURN',
-    'KILOMETERSTONE',
-    'STARTPIT',
-    'ENDPIT',
-    'ENDSURVEY',
-    'HOLDSURVEY',
-    'BLOWING',
-    'ROUTEFEATURE',
-    'DUCT',
-  ];
-
-  const ICON_MAP: Record<string, string> = {
-    STARTSURVEY:    'http://maps.google.com/mapfiles/kml/paddle/grn-circle.png',
-    ENDSURVEY:      'http://maps.google.com/mapfiles/kml/paddle/red-circle.png',
-    DEPTH:          'http://maps.google.com/mapfiles/kml/paddle/blu-circle.png',
-    ROADCROSSING:   'http://maps.google.com/mapfiles/kml/paddle/ylw-circle.png',
-    FPOI:           'http://maps.google.com/mapfiles/kml/paddle/red-stars.png',
-    JOINTCHAMBER:   'http://maps.google.com/mapfiles/kml/paddle/purple-circle.png',
-    MANHOLES:       'http://maps.google.com/mapfiles/kml/paddle/ltblu-circle.png',
-    STARTPIT:       'http://maps.google.com/mapfiles/kml/paddle/wht-circle.png',
-    ENDPIT:         'http://maps.google.com/mapfiles/kml/paddle/wht-square.png',
-    HOLDSURVEY:     'http://maps.google.com/mapfiles/kml/paddle/orange-circle.png',
-  };
-  const defaultIcon = 'http://maps.google.com/mapfiles/kml/paddle/blu-circle.png';
-
-  let allPlacemarks = '';
-  const allCoords: { lat: number; lng: number }[] = [];
-
-  setKmlLoading(true);
-
-  try {
-    const surveyIds = selectedRows.map((row) => row.id).join(',');
-   let  baseurl = 'construction-forms';
-   
-
-  if (
-     Data.constType === "Aerial" ||
-    ( filteredData.some((d) => d.construction_type === "Aerial"))
-  ) {
-    baseurl='get-pole-stringing';
-  
-  } 
-    const resp = await axios.get(`${TraceBASEURL}/${baseurl}`, {
-      params: { survey_ids: surveyIds },
-    });
-
-    if (resp.status !== 200 && resp.status !== 201) {
-      throw new Error('Failed to fetch survey data');
-    }
-
-    const activities = resp.data?.data.filter((data: any) => data.status == 0) || [];
-
-    if (activities.length === 0) {
-      alert('No survey data found for selected rows');
-      setKmlLoading(false);
-      OnKml();
+  const handleGenerateKML = async () => {
+    if (selectedRows.length === 0) {
+      alert('No rows selected');
       return;
     }
 
-    const getLatLongForEvent = (row: any): string | null => {
-      switch (row.eventType) {
-        case 'FPOI':          return row.fpoiLatLong;
-        case 'DEPTH':         return row.depthLatlong;
-        case 'JOINTCHAMBER':  return row.jointChamberLatLong;
-        case 'MANHOLES':      return row.manholeLatLong;
-        case 'LANDMARK':      return row.landmarkLatLong;
-        case 'KILOMETERSTONE':return row.kilometerstoneLatLong;
-        case 'FIBERTURN':     return row.fiberTurnLatLong;
-        case 'ROUTEINDICATOR':return row.routeIndicatorLatLong;
-        case 'STARTPIT':      return row.startPitLatlong;
-        case 'ENDPIT':        return row.endPitLatlong;
-        case 'STARTSURVEY':   return row.startPointCoordinates;
-        case 'ENDSURVEY':     return row.endPointCoordinates;
-        case 'ROADCROSSING':  return row.crossingLatlong;
-        case 'HOLDSURVEY':    return row.holdLatlong;
-        case 'BLOWING':       return row.blowingLatLong;
-        case 'ROUTEFEATURE':  return row.routeFeatureLatLong;
-        default:              return null;
-      }
+    const selectedEventTypes = [
+      'STARTSURVEY',
+      'DEPTH',
+      'ROADCROSSING',
+      'FPOI',
+      'JOINTCHAMBER',
+      'MANHOLES',
+      'ROUTEINDICATOR',
+      'LANDMARK',
+      'FIBERTURN',
+      'KILOMETERSTONE',
+      'STARTPIT',
+      'ENDPIT',
+      'ENDSURVEY',
+      'HOLDSURVEY',
+      'BLOWING',
+      'ROUTEFEATURE',
+      'DUCT',
+    ];
+
+    const UG_ICON_MAP: Record<string, string> = {
+      STARTSURVEY: 'http://maps.google.com/mapfiles/kml/paddle/grn-circle.png',
+      ENDSURVEY: 'http://maps.google.com/mapfiles/kml/paddle/red-circle.png',
+      DEPTH: 'http://maps.google.com/mapfiles/kml/paddle/blu-circle.png',
+      ROADCROSSING: 'http://maps.google.com/mapfiles/kml/paddle/ylw-circle.png',
+      FPOI: 'http://maps.google.com/mapfiles/kml/paddle/red-stars.png',
+      JOINTCHAMBER:
+        'http://maps.google.com/mapfiles/kml/paddle/purple-circle.png',
+      MANHOLES: 'http://maps.google.com/mapfiles/kml/paddle/ltblu-circle.png',
+      STARTPIT: 'http://maps.google.com/mapfiles/kml/paddle/wht-circle.png',
+      ENDPIT: 'http://maps.google.com/mapfiles/kml/paddle/wht-square.png',
+      HOLDSURVEY:
+        'http://maps.google.com/mapfiles/kml/paddle/orange-circle.png',
     };
+    const AERIAL_ICON_MAP: Record<string, string> = {
+      POLE: 'http://maps.google.com/mapfiles/kml/paddle/blu-circle.png',
+      'JOINT ENCLOUSER':
+        'http://maps.google.com/mapfiles/kml/paddle/purple-circle.png',
+      LANDMARK: 'http://maps.google.com/mapfiles/kml/paddle/grn-circle.png',
+    };
+    const AERIAL_EVENT_TYPES = ['POLE', 'JOINT ENCLOUSER', 'LANDMARK'];
+    const defaultIcon =
+      'http://maps.google.com/mapfiles/kml/paddle/blu-circle.png';
 
-    // ── Group activities by survey_id for polyline drawing ─────────────────
-    const surveyGroups: Record<string, { lat: number; lng: number }[]> = {};
+    let allPlacemarks = '';
+    const allCoords: { lat: number; lng: number }[] = [];
 
-    activities.forEach((activity: any) => {
-      const eventType = activity.eventType;
-      if (!selectedEventTypes.includes(eventType)) return;
+    setKmlLoading(true);
 
-      const latLongStr = getLatLongForEvent(activity);
-      if (!latLongStr) return;
+    let isAerial = false;
 
-      const [latStr, lngStr] = latLongStr.split(',');
-      const lat = parseFloat(latStr?.trim());
-      const lng = parseFloat(lngStr?.trim());
-      if (isNaN(lat) || isNaN(lng)) return;
+    try {
+      const surveyIds = selectedRows.map((row) => row.id).join(',');
+      let baseurl = 'construction-forms';
 
-      // Collect every valid coord for the LookAt bounding box
-      allCoords.push({ lat, lng });
+      if (
+        Data.constType === 'Aerial' ||
+        filteredData.some((d) => d.construction_type === 'Aerial')
+      ) {
+        baseurl = 'get-pole-stringing';
+        isAerial = true;
+      }
+      const resp =  await axios.get(`${TraceBASEURL}/${baseurl}`, {
+            params: { survey_ids: surveyIds },
+          });
 
-      const name = activity.survey_id || activity.id || 'Unknown';
-      const icon = ICON_MAP[eventType] ?? defaultIcon;
+      if (resp.status !== 200 && resp.status !== 201) {
+        throw new Error('Failed to fetch survey data');
+      }
 
-      // All event types → Point placemark (fixed: no more broken single-coord LineString)
-      allPlacemarks += `
+      const activities = isAerial
+        ? Object.values(resp.data?.data || {}).flat()
+        : resp.data?.data.filter((data: any) => data.status == 0) || [];
+
+      if (activities.length === 0) {
+        alert('No survey data found for selected rows');
+        setKmlLoading(false);
+        OnKml();
+        return;
+      }
+
+      const getLatLongForEvent = (row: any): string | null => {
+        if (isAerial) {
+          if (row.latitude != null && row.longitude != null) {
+            return `${row.latitude},${row.longitude}`;
+          }
+          return null;
+        }
+        switch (row.eventType) {
+          case 'FPOI':
+            return row.fpoiLatLong;
+          case 'DEPTH':
+            return row.depthLatlong;
+          case 'JOINTCHAMBER':
+            return row.jointChamberLatLong;
+          case 'MANHOLES':
+            return row.manholeLatLong;
+          case 'LANDMARK':
+            return row.landmarkLatLong;
+          case 'KILOMETERSTONE':
+            return row.kilometerstoneLatLong;
+          case 'FIBERTURN':
+            return row.fiberTurnLatLong;
+          case 'ROUTEINDICATOR':
+            return row.routeIndicatorLatLong;
+          case 'STARTPIT':
+            return row.startPitLatlong;
+          case 'ENDPIT':
+            return row.endPitLatlong;
+          case 'STARTSURVEY':
+            return row.startPointCoordinates;
+          case 'ENDSURVEY':
+            return row.endPointCoordinates;
+          case 'ROADCROSSING':
+            return row.crossingLatlong;
+          case 'HOLDSURVEY':
+            return row.holdLatlong;
+          case 'BLOWING':
+            return row.blowingLatLong;
+          case 'ROUTEFEATURE':
+            return row.routeFeatureLatLong;
+          default:
+            return null;
+        }
+      };
+
+      // ── Group activities by survey_id for polyline drawing ─────────────────
+      const surveyGroups: Record<string, { lat: number; lng: number }[]> = {};
+
+      const activeEventTypes = isAerial
+        ? AERIAL_EVENT_TYPES
+        : selectedEventTypes;
+      const iconMap = isAerial ? AERIAL_ICON_MAP : UG_ICON_MAP;
+
+      activities.forEach((activity: any) => {
+        const eventType = activity.eventType;
+        if (!activeEventTypes.includes(eventType)) return;
+
+        const latLongStr = getLatLongForEvent(activity);
+        if (!latLongStr) return;
+
+        const [latStr, lngStr] = latLongStr.split(',');
+        const lat = parseFloat(latStr?.trim());
+        const lng = parseFloat(lngStr?.trim());
+        if (isNaN(lat) || isNaN(lng)) return;
+
+        // Collect every valid coord for the LookAt bounding box
+        allCoords.push({ lat, lng });
+
+        const icon = iconMap[eventType] ?? defaultIcon;
+
+        const description = isAerial
+          ? `<b>Survey ID:</b> ${activity.survey_id || 'N/A'}<br/>
+             <b>ID:</b> ${activity.id || 'N/A'}<br/>
+             <b>Event Type:</b> ${eventType}<br/>
+             <b>Pole Type:</b> ${activity.pole_type || 'N/A'}<br/>
+             <b>Distance:</b> ${activity.distance || 'N/A'}<br/>
+             <b>Coordinates:</b> ${lat}, ${lng}`
+          : `<b>Survey ID:</b> ${activity.survey_id || 'N/A'}<br/>
+             <b>ID:</b> ${activity.id || 'N/A'}<br/>
+             <b>Area Type:</b> ${activity.area_type || 'N/A'}<br/>
+             <b>Depth:</b> ${activity.depthMeters || 'N/A'}<br/>
+             <b>Coordinates:</b> ${lat}, ${lng}`;
+
+        allPlacemarks += `
       <Placemark>
         <name>${eventType}</name>
         <description><![CDATA[
-          <b>Survey ID:</b> ${activity.survey_id || 'N/A'}<br/>
-          <b>ID:</b> ${activity.id || 'N/A'}<br/>
-          <b>Area Type:</b> ${activity.area_type || 'N/A'}<br/>
-          <b>Depth:</b> ${activity.depthMeters || 'N/A'}<br/>
-          <b>Coordinates:</b> ${lat}, ${lng}
+          ${description}
         ]]></description>
         <Style>
           <IconStyle>
@@ -638,17 +685,19 @@ const handleView = async (
         </Point>
       </Placemark>`;
 
-      // Collect points per survey for route polyline
-      const sid = String(activity.survey_id || activity.id);
-      if (!surveyGroups[sid]) surveyGroups[sid] = [];
-      surveyGroups[sid].push({ lat, lng });
-    });
+        // Collect points per survey for route polyline
+        const sid = String(activity.survey_id || activity.id);
+        if (!surveyGroups[sid]) surveyGroups[sid] = [];
+        surveyGroups[sid].push({ lat, lng });
+      });
 
-    // ── Polyline per survey_id ──────────────────────────────────────────────
-    Object.entries(surveyGroups).forEach(([sid, points]) => {
-      if (points.length < 2) return;
-      const coords = points.map(({ lat, lng }) => `${lng},${lat},0`).join('\n              ');
-      allPlacemarks += `
+      // ── Polyline per survey_id ──────────────────────────────────────────────
+      Object.entries(surveyGroups).forEach(([sid, points]) => {
+        if (points.length < 2) return;
+        const coords = points
+          .map(({ lat, lng }) => `${lng},${lat},0`)
+          .join('\n              ');
+        allPlacemarks += `
       <Placemark>
         <name>Route ${sid}</name>
         <Style>
@@ -663,41 +712,41 @@ const handleView = async (
           <coordinates>${coords}</coordinates>
         </LineString>
       </Placemark>`;
-    });
+      });
+    } catch (err) {
+      console.error('Error fetching survey data:', err);
+      alert('Failed to generate KML');
+      setKmlLoading(false);
+      return;
+    }
 
-  } catch (err) {
-    console.error('Error fetching survey data:', err);
-    alert('Failed to generate KML');
     setKmlLoading(false);
-    return;
-  }
 
-  setKmlLoading(false);
+    if (!allPlacemarks || allCoords.length === 0) {
+      alert('No valid coordinates found for KML generation');
+      OnKml();
+      return;
+    }
 
-  if (!allPlacemarks || allCoords.length === 0) {
-    alert('No valid coordinates found for KML generation');
-    OnKml();
-    return;
-  }
+    // ── Compute bounding box center + range for LookAt ─────────────────────────
+    const lats = allCoords.map((c) => c.lat);
+    const lngs = allCoords.map((c) => c.lng);
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+    const centerLat = (minLat + maxLat) / 2;
+    const centerLng = (minLng + maxLng) / 2;
 
-  // ── Compute bounding box center + range for LookAt ─────────────────────────
-  const lats = allCoords.map((c) => c.lat);
-  const lngs = allCoords.map((c) => c.lng);
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const minLng = Math.min(...lngs);
-  const maxLng = Math.max(...lngs);
-  const centerLat = (minLat + maxLat) / 2;
-  const centerLng = (minLng + maxLng) / 2;
+    // Rough altitude: 1 degree ≈ 111 km; scale so all points fit in view
+    const spanDeg = Math.max(maxLat - minLat, maxLng - minLng, 0.001);
+    const altitudeMeters = Math.min(spanDeg * 111_000 * 2.5, 2_000_000);
 
-  // Rough altitude: 1 degree ≈ 111 km; scale so all points fit in view
-  const spanDeg = Math.max(maxLat - minLat, maxLng - minLng, 0.001);
-  const altitudeMeters = Math.min(spanDeg * 111_000 * 2.5, 2_000_000);
-
-  const kmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+    const surveyLabel = isAerial ? 'Aerial Survey' : 'Ground Survey';
+    const kmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
-    <name>${selectedRows[0]?.block_name || 'UGConst'} Ground Survey</name>
+    <name>${selectedRows[0]?.block_name || 'Const'} ${surveyLabel}</name>
     <LookAt>
       <longitude>${centerLng}</longitude>
       <latitude>${centerLat}</latitude>
@@ -711,17 +760,17 @@ const handleView = async (
   </Document>
 </kml>`;
 
-  const blob = new Blob([kmlContent], {
-    type: 'application/vnd.google-earth.kml+xml',
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${selectedRows[0]?.block_name || 'UGConst'}_GroundSurvey.kml`;
-  a.click();
-  URL.revokeObjectURL(url);
-  OnKml();
-};
+    const blob = new Blob([kmlContent], {
+      type: 'application/vnd.google-earth.kml+xml',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${selectedRows[0]?.block_name || 'Const'}_${surveyLabel.replace(' ', '')}.kml`;
+    a.click();
+    URL.revokeObjectURL(url);
+    OnKml();
+  };
 
   if (error) {
     return (
@@ -969,7 +1018,7 @@ const handleView = async (
                 if (Data.todate) params.to_date = Data.todate;
                 if (Data.selectedStatus !== null)
                   params.status = Data.selectedStatus;
-                if(Data.worktype !== "") params.worktype = Data.worktype;
+                if (Data.worktype !== '') params.worktype = Data.worktype;
                 if (Data.globalsearch.trim())
                   params.search = Data.globalsearch.trim();
 

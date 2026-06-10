@@ -103,18 +103,19 @@ function PoleStringView() {
       setError(null);
 
       const surveyId = multipreview ? MainData : MainData.id;
-      // const params: any = {};
-      // if (surveyId) {
-      //   params.survey_ids = Array.isArray(surveyId)
-      //     ? surveyId.join(',')
-      //     : surveyId;
-      // }
-      const resp = await axios.get(
-        `${TraceBASEURL}/get-pole-stringing/${Array.isArray(surveyId) ? surveyId.join(',') : surveyId}`,
-      );
+      const params: any = {};
+      if (surveyId) {
+        params.survey_ids = Array.isArray(surveyId)
+          ? surveyId.join(',')
+          : surveyId;
+      }
+      const resp = await axios.get(`${TraceBASEURL}/get-pole-stringing`, {
+        params,
+      });
 
       if (resp.status === 200 || resp.status === 201) {
-        setPoleData(resp.data.data || []);
+        const raw = resp.data.data || [];
+        setPoleData(Array.isArray(raw) ? raw : Object.values(raw).flat());
       } else {
         setError('Error occurred while fetching data');
       }
@@ -209,7 +210,7 @@ function PoleStringView() {
       sortable: true,
       width: '160px',
     },
-  
+
     {
       name: 'Pole Type',
       selector: (row) => row.pole_type || '-',
@@ -310,7 +311,7 @@ function PoleStringView() {
       sortable: true,
       wrap: true,
     },
-      {
+    {
       name: 'Media',
       cell: (row) => {
         const mediaItems = extractMediaFromRow(row);
@@ -353,7 +354,7 @@ function PoleStringView() {
       button: true,
       width: '140px',
     },
-  
+
     {
       name: 'Created At',
       selector: (row) => moment(row.created_at).format('DD/MM/YYYY, hh:mm A'),
