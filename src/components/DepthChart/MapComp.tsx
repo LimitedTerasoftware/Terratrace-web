@@ -1,8 +1,20 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Eye, EyeOff, Navigation, Filter, X, ZoomIn } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Eye,
+  EyeOff,
+  Navigation,
+  Filter,
+  X,
+  ZoomIn,
+  MapPin,
+} from 'lucide-react';
 import GoogleMapsLoader from '../hooks/googleMapsLoader';
 import moment from 'moment';
 import { Activity } from '../../types/survey';
+import type {
+  ProcessedDesktopPlanning,
+  PlacemarkCategory,
+} from '../../types/kmz';
 
 interface MarkerData {
   lat: number;
@@ -14,6 +26,13 @@ interface MarkerData {
 interface MapCompProps {
   data: MarkerData[];
   eventData?: Activity[];
+  planningPlacemarks?: ProcessedDesktopPlanning[];
+  planningCategories?: PlacemarkCategory[];
+  visiblePlanningCategories?: Set<string>;
+  onPlanningCategoryVisibilityChange?: (
+    categoryId: string,
+    visible: boolean,
+  ) => void;
 }
 
 // Event type configurations
@@ -31,10 +50,9 @@ const EVENT_TYPES = {
   STARTPIT: { color: '#14B8A6', icon: '🕳️', label: 'Start Pit' },
   ENDPIT: { color: '#DC2626', icon: '🏁', label: 'End Pit' },
   ENDSURVEY: { color: '#10B981', icon: '🎯', label: 'End Survey' },
-  HOLDSURVEY: { color: '#a93226', icon: '⏸️', label: 'Hold Survey'},
-  BLOWING: { color: '#663300', icon:'💨',label: 'Blowing Survey' },
+  HOLDSURVEY: { color: '#a93226', icon: '⏸️', label: 'Hold Survey' },
+  BLOWING: { color: '#663300', icon: '💨', label: 'Blowing Survey' },
   OFCBLOWING: { color: '#0EA5E9', icon: '🧵', label: 'OFC Blowing' },
-
 };
 
 const baseUrl = import.meta.env.VITE_Image_URL;
@@ -45,86 +63,100 @@ const InfoWindow: React.FC<{
   onClose: () => void;
   onImageClick: (url: string) => void;
 }> = ({ event, onClose, onImageClick }) => {
-
   const eventPhotoFields: Record<string, keyof Activity> = {
-    FPOI: "fpoiPhotos",
-    DEPTH: "depthPhoto",
-    JOINTCHAMBER: "jointChamberPhotos",
-    MANHOLES: "manholePhotos",
-    LANDMARK: "landmarkPhotos",
-    KILOMETERSTONE: "kilometerstonePhotos",
-    FIBERTURN: "fiberTurnPhotos",
-    ROUTEINDICATOR: "routeIndicatorPhotos",
+    FPOI: 'fpoiPhotos',
+    DEPTH: 'depthPhoto',
+    JOINTCHAMBER: 'jointChamberPhotos',
+    MANHOLES: 'manholePhotos',
+    LANDMARK: 'landmarkPhotos',
+    KILOMETERSTONE: 'kilometerstonePhotos',
+    FIBERTURN: 'fiberTurnPhotos',
+    ROUTEINDICATOR: 'routeIndicatorPhotos',
     STARTPIT: 'startPitPhotos',
     ENDPIT: 'endPitPhotos',
     STARTSURVEY: 'startPointPhoto',
     ROADCROSSING: 'crossingPhotos',
-    ENDSURVEY:'endPointPhoto',
-    HOLDSURVEY:'holdPhotos',
-    BLOWING:"blowingPhotos",
-    OFCBLOWING:"blowingPhotos",
-
+    ENDSURVEY: 'endPointPhoto',
+    HOLDSURVEY: 'holdPhotos',
+    BLOWING: 'blowingPhotos',
+    OFCBLOWING: 'blowingPhotos',
   };
   const getLatLongForEvent = (row: Activity) => {
-          switch (row.eventType) {
-              case "FPOI": return row.fpoiLatLong;
-              case "DEPTH": return row.depthLatlong;
-              case "JOINTCHAMBER": return row.jointChamberLatLong;
-              case "MANHOLES": return row.manholeLatLong;
-              case "LANDMARK": return row.landmarkLatLong;
-              case "KILOMETERSTONE": return row.kilometerstoneLatLong;
-              case "FIBERTURN": return row.fiberTurnLatLong;
-              case "ROUTEINDICATOR": return row.routeIndicatorLatLong;
-              case "STARTPIT": return row.startPitLatlong;
-              case "ENDPIT": return row.endPitLatlong;
-              case "STARTSURVEY": return row.startPointCoordinates;
-              case "ENDSURVEY": return row.endPointCoordinates;
-              case "ROADCROSSING": return row.crossingLatlong;
-              case 'HOLDSURVEY':return row.holdLatlong;
-              case "BLOWING":return row.blowingLatLong;
-              case 'OFCBLOWING':return row.blowingLatLong;
-              default: return null;
-          }
-      };
-  
-
-const getEventPhotos = (event: Activity): string[] => {
-  const photos: string[] = [];
-
-  const addImages = (rawPhotoData: any) => {
-    if (typeof rawPhotoData === "string" && rawPhotoData.trim() !== "") {
-      try {
-        const parsed = JSON.parse(rawPhotoData);
-
-        if (Array.isArray(parsed)) {
-          parsed.forEach((p: string) => {
-            if (typeof p === "string" && p.trim() !== "") {
-              photos.push(p.trim());
-            }
-          });
-        } else if (typeof parsed === "string" && parsed.trim() !== "") {
-          photos.push(parsed.trim());
-        }
-      } catch {
-        // If not valid JSON, treat as raw string path
-        photos.push(rawPhotoData.trim());
-      }
+    switch (row.eventType) {
+      case 'FPOI':
+        return row.fpoiLatLong;
+      case 'DEPTH':
+        return row.depthLatlong;
+      case 'JOINTCHAMBER':
+        return row.jointChamberLatLong;
+      case 'MANHOLES':
+        return row.manholeLatLong;
+      case 'LANDMARK':
+        return row.landmarkLatLong;
+      case 'KILOMETERSTONE':
+        return row.kilometerstoneLatLong;
+      case 'FIBERTURN':
+        return row.fiberTurnLatLong;
+      case 'ROUTEINDICATOR':
+        return row.routeIndicatorLatLong;
+      case 'STARTPIT':
+        return row.startPitLatlong;
+      case 'ENDPIT':
+        return row.endPitLatlong;
+      case 'STARTSURVEY':
+        return row.startPointCoordinates;
+      case 'ENDSURVEY':
+        return row.endPointCoordinates;
+      case 'ROADCROSSING':
+        return row.crossingLatlong;
+      case 'HOLDSURVEY':
+        return row.holdLatlong;
+      case 'BLOWING':
+        return row.blowingLatLong;
+      case 'OFCBLOWING':
+        return row.blowingLatLong;
+      default:
+        return null;
     }
   };
 
-  // Main event photos
-  const photoField = eventPhotoFields[event.eventType];
-  const rawPhotoData = photoField ? event[photoField] : null;
-  addImages(rawPhotoData);
+  const getEventPhotos = (event: Activity): string[] => {
+    const photos: string[] = [];
 
-  if (event.eventType === "JOINTCHAMBER" || event.eventType === "MANHOLES") {
-    const depthPhotoField = eventPhotoFields["DEPTH"];
-    const depthPhotos = event[depthPhotoField];
-    addImages(depthPhotos);
-  }
+    const addImages = (rawPhotoData: any) => {
+      if (typeof rawPhotoData === 'string' && rawPhotoData.trim() !== '') {
+        try {
+          const parsed = JSON.parse(rawPhotoData);
 
-  return photos;
-};
+          if (Array.isArray(parsed)) {
+            parsed.forEach((p: string) => {
+              if (typeof p === 'string' && p.trim() !== '') {
+                photos.push(p.trim());
+              }
+            });
+          } else if (typeof parsed === 'string' && parsed.trim() !== '') {
+            photos.push(parsed.trim());
+          }
+        } catch {
+          // If not valid JSON, treat as raw string path
+          photos.push(rawPhotoData.trim());
+        }
+      }
+    };
+
+    // Main event photos
+    const photoField = eventPhotoFields[event.eventType];
+    const rawPhotoData = photoField ? event[photoField] : null;
+    addImages(rawPhotoData);
+
+    if (event.eventType === 'JOINTCHAMBER' || event.eventType === 'MANHOLES') {
+      const depthPhotoField = eventPhotoFields['DEPTH'];
+      const depthPhotos = event[depthPhotoField];
+      addImages(depthPhotos);
+    }
+
+    return photos;
+  };
   const photos = getEventPhotos(event);
   const eventConfig = EVENT_TYPES[event.eventType as keyof typeof EVENT_TYPES];
 
@@ -135,7 +167,9 @@ const getEventPhotos = (event: Activity): string[] => {
           <div className="flex items-center gap-2">
             <span className="text-lg">{eventConfig?.icon}</span>
             <h3 className="font-semibold text-sm">{eventConfig?.label}</h3>
-            <span className="text-xs bg-white bg-opacity-20 px-2 py-0.5 rounded">{event.survey_id}</span>
+            <span className="text-xs bg-white bg-opacity-20 px-2 py-0.5 rounded">
+              {event.survey_id}
+            </span>
           </div>
           <button
             onClick={onClose}
@@ -145,7 +179,7 @@ const getEventPhotos = (event: Activity): string[] => {
           </button>
         </div>
       </div>
-      
+
       <div className="p-4 max-h-80 overflow-y-auto">
         <div className="space-y-3">
           {event.id && (
@@ -157,10 +191,12 @@ const getEventPhotos = (event: Activity): string[] => {
           {event.machine_registration_number && (
             <div className="flex justify-between">
               <span className="text-gray-600 text-sm">Machine Id:</span>
-              <span className="font-medium text-sm">{event.machine_registration_number}</span>
+              <span className="font-medium text-sm">
+                {event.machine_registration_number}
+              </span>
             </div>
           )}
-           {event.firm_name && (
+          {event.firm_name && (
             <div className="flex justify-between">
               <span className="text-gray-600 text-sm">Firm Name:</span>
               <span className="font-medium text-sm">{event.firm_name}</span>
@@ -169,43 +205,46 @@ const getEventPhotos = (event: Activity): string[] => {
           {event.start_lgd_name && event.end_lgd_name && (
             <div className="flex justify-between">
               <span className="text-gray-600 text-sm">Link Name:</span>
-              <span className="font-medium text-sm">{event.start_lgd_name}_{event.end_lgd_name}</span>
+              <span className="font-medium text-sm">
+                {event.start_lgd_name}_{event.end_lgd_name}
+              </span>
             </div>
-            )}
-            <div className="flex justify-between">
-              <span className="text-gray-600 text-sm">Coordinates:</span>
-              <span className="font-medium text-sm">{getLatLongForEvent(event)}</span>
-            </div>
-          
-         
+          )}
+          <div className="flex justify-between">
+            <span className="text-gray-600 text-sm">Coordinates:</span>
+            <span className="font-medium text-sm">
+              {getLatLongForEvent(event)}
+            </span>
+          </div>
+
           {event.depthMeters && (
             <div className="flex justify-between">
               <span className="text-gray-600 text-sm">Depth:</span>
               <span className="font-medium text-sm">{event.depthMeters}m</span>
             </div>
           )}
-          
+
           {event.distance && (
             <div className="flex justify-between">
               <span className="text-gray-600 text-sm">Distance:</span>
               <span className="font-medium text-sm">{event.distance}</span>
             </div>
           )}
-          
+
           {event.soilType && (
             <div className="flex justify-between">
               <span className="text-gray-600 text-sm">Soil Type:</span>
               <span className="font-medium text-sm">{event.soilType}</span>
             </div>
           )}
-          
+
           {event.roadType && (
             <div className="flex justify-between">
               <span className="text-gray-600 text-sm">Road Type:</span>
               <span className="font-medium text-sm">{event.roadType}</span>
             </div>
           )}
-           {event.landmark_type && (
+          {event.landmark_type && (
             <div className="flex justify-between">
               <span className="text-gray-600 text-sm">Land Mark Type:</span>
               <span className="font-medium text-sm">{event.landmark_type}</span>
@@ -213,22 +252,27 @@ const getEventPhotos = (event: Activity): string[] => {
           )}
           {event.landmark_description && (
             <div className="flex justify-between">
-              <span className="text-gray-600 text-sm">Land Mark Description:</span>
-              <span className="font-medium text-sm">{event.landmark_description}</span>
+              <span className="text-gray-600 text-sm">
+                Land Mark Description:
+              </span>
+              <span className="font-medium text-sm">
+                {event.landmark_description}
+              </span>
             </div>
           )}
-        
-          
+
           <div className="flex justify-between">
             <span className="text-gray-600 text-sm">Created:</span>
             <span className="font-medium text-sm">
-              {moment(event.created_at).format("DD/MM/YYYY, hh:mm A")}
+              {moment(event.created_at).format('DD/MM/YYYY, hh:mm A')}
             </span>
           </div>
-          
+
           {photos.length > 0 && (
             <div className="mt-3">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Photos:</h4>
+              <h4 className="text-sm font-medium text-gray-700 mb-2">
+                Photos:
+              </h4>
               <div className="grid grid-cols-2 gap-2">
                 {photos.slice(0, 5).map((photo: string, idx: number) => (
                   <div
@@ -242,7 +286,10 @@ const getEventPhotos = (event: Activity): string[] => {
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-10 transition-all flex items-center justify-center">
-                      <ZoomIn className="text-white opacity-0 hover:opacity-100 transition-opacity" size={16} />
+                      <ZoomIn
+                        className="text-white opacity-0 hover:opacity-100 transition-opacity"
+                        size={16}
+                      />
                     </div>
                   </div>
                 ))}
@@ -254,34 +301,34 @@ const getEventPhotos = (event: Activity): string[] => {
               )}
             </div>
           )}
-         {typeof event.videoDetails === "string" && (() => {
-          try {
-            const parsedVideoDetails = JSON.parse(event.videoDetails);
+          {typeof event.videoDetails === 'string' &&
+            (() => {
+              try {
+                const parsedVideoDetails = JSON.parse(event.videoDetails);
 
-            const mainVideoUrl = parsedVideoDetails?.videoUrl
-              ? parsedVideoDetails.videoUrl.trim().replace(/(^"|"$)/g, '')
-              : null;
+                const mainVideoUrl = parsedVideoDetails?.videoUrl
+                  ? parsedVideoDetails.videoUrl.trim().replace(/(^"|"$)/g, '')
+                  : null;
 
-            if (mainVideoUrl) {
-              return (
-                <iframe
-                  width="100%"
-                  height="180"
-                  src={`${baseUrl}${mainVideoUrl}`}
-                  frameBorder="0"
-                  allow="autoplay; encrypted-media"
-                  allowFullScreen
-                  title={`Video-${event.eventType}`}
-                />
-              );
-            }
+                if (mainVideoUrl) {
+                  return (
+                    <iframe
+                      width="100%"
+                      height="180"
+                      src={`${baseUrl}${mainVideoUrl}`}
+                      frameBorder="0"
+                      allow="autoplay; encrypted-media"
+                      allowFullScreen
+                      title={`Video-${event.eventType}`}
+                    />
+                  );
+                }
 
-            return <p>No video available.</p>;
-
-          } catch (error) {
-            return <p>No video available.</p>;
-          }
-        })()}
+                return <p>No video available.</p>;
+              } catch (error) {
+                return <p>No video available.</p>;
+              }
+            })()}
         </div>
       </div>
     </div>
@@ -304,32 +351,42 @@ const ErrorComponent: React.FC<{ message: string }> = ({ message }) => (
     <div className="text-center">
       <p className="text-red-500 font-medium">Error loading Google Maps</p>
       <p className="text-sm text-gray-500 mt-1">{message}</p>
-     
     </div>
   </div>
 );
 
 // Map Component
-const MapComponent: React.FC<MapCompProps> = ({ data, eventData = [] }) => {
+const MapComponent: React.FC<MapCompProps> = ({
+  data,
+  eventData = [],
+  planningPlacemarks = [],
+  planningCategories = [],
+  visiblePlanningCategories: externalVisibleCategories,
+  onPlanningCategoryVisibilityChange,
+}) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
   const [polylines, setPolylines] = useState<google.maps.Polyline[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Activity | null>(null);
   const [visibleEventTypes, setVisibleEventTypes] = useState<Set<string>>(
-    // new Set(Object.keys(EVENT_TYPES))
-      new Set(['DEPTH', 'STARTPIT', 'ENDPIT']));
+    new Set(['DEPTH', 'STARTPIT', 'ENDPIT']),
+  );
   const [showPolylines, setShowPolylines] = useState(true);
+  const [showPlanning, setShowPlanning] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
   const filterRef = useRef<HTMLDivElement>(null);
-  
+
   // Initialize map
   useEffect(() => {
     if (!mapRef.current || map) return;
-      
+
     const mapInstance = new google.maps.Map(mapRef.current, {
-      center: data.length > 0 ? { lat: data[0].lat, lng: data[0].lng } : { lat: 20.5937, lng: 78.9629 },
+      center:
+        data.length > 0
+          ? { lat: data[0].lat, lng: data[0].lng }
+          : { lat: 20.5937, lng: 78.9629 },
       zoom: 12,
       mapTypeId: google.maps.MapTypeId.ROADMAP,
       streetViewControl: false,
@@ -338,11 +395,11 @@ const MapComponent: React.FC<MapCompProps> = ({ data, eventData = [] }) => {
       zoomControl: true,
       styles: [
         {
-          featureType: "poi",
-          elementType: "labels",
-          stylers: [{ visibility: "off" }]
-        }
-      ]
+          featureType: 'poi',
+          elementType: 'labels',
+          stylers: [{ visibility: 'off' }],
+        },
+      ],
     });
 
     setMap(mapInstance);
@@ -350,32 +407,34 @@ const MapComponent: React.FC<MapCompProps> = ({ data, eventData = [] }) => {
 
   // Create markers
   useEffect(() => {
-   
     if (!map || !data.length) {
-      markers.forEach(mark => mark.setMap(null));
+      markers.forEach((mark) => mark.setMap(null));
       setMarkers([]);
       return;
     }
     // Clear existing markers
-    markers.forEach(marker => marker.setMap(null));
-    
+    markers.forEach((marker) => marker.setMap(null));
+
     const newMarkers: google.maps.Marker[] = [];
 
-    const visibleData = data.filter(point => visibleEventTypes.has(point.eventType));
+    const visibleData = data.filter((point) =>
+      visibleEventTypes.has(point.eventType),
+    );
 
-    visibleData.forEach((point,index) => {
-      const eventConfig = EVENT_TYPES[point.eventType as keyof typeof EVENT_TYPES];
-      const eventDetails = eventData.find(e => e.id === point.id);
+    visibleData.forEach((point, index) => {
+      const eventConfig =
+        EVENT_TYPES[point.eventType as keyof typeof EVENT_TYPES];
+      const eventDetails = eventData.find((e) => e.id === point.id);
       if (!eventConfig || !visibleEventTypes.has(point.eventType)) return;
       const marker = new google.maps.Marker({
         position: { lat: point.lat, lng: point.lng },
         map: map,
         title: `${eventConfig.label} - ${point.eventType} - ID: ${eventDetails?.survey_id || '-'}`,
         label: {
-          text:  (index + 1).toString(),
+          text: (index + 1).toString(),
           color: 'black',
           fontSize: '12px',
-          fontWeight: 'bold'
+          fontWeight: 'bold',
         },
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
@@ -403,90 +462,170 @@ const MapComponent: React.FC<MapCompProps> = ({ data, eventData = [] }) => {
     // Fit map to markers
     if (newMarkers.length > 0) {
       const bounds = new google.maps.LatLngBounds();
-      newMarkers.forEach(marker => {
+      newMarkers.forEach((marker) => {
         const pos = marker.getPosition();
         if (pos) bounds.extend(pos);
       });
       map.fitBounds(bounds);
     }
-
   }, [map, data, visibleEventTypes, eventData]);
 
   // Create polylines
-useEffect(() => {
-  if (!map || !data.length || !showPolylines) {
-    polylines.forEach(polyline => polyline.setMap(null));
-    setPolylines([]);
-    return;
-  }
-
-  const hasVisibleEvents = data.some(point =>
-    visibleEventTypes.has(point.eventType)
-  );
-
-  // Clear existing polylines
-  polylines.forEach(polyline => polyline.setMap(null));
-
-  if (!hasVisibleEvents) {
-    setPolylines([]);
-    return;
-  }
-  // Group data by survey_id
-  const groupedBySurvey = data.reduce((acc: any, point: any) => {
-    if (!acc[point.survey_id]) {
-      acc[point.survey_id] = [];
+  useEffect(() => {
+    if (!map || !data.length || !showPolylines) {
+      polylines.forEach((polyline) => polyline.setMap(null));
+      setPolylines([]);
+      return;
     }
-    acc[point.survey_id].push(point);
-    return acc;
-  }, {});
 
-  const newPolylines: google.maps.Polyline[] = [];
+    const hasVisibleEvents = data.some((point) =>
+      visibleEventTypes.has(point.eventType),
+    );
 
-  // Loop each survey_id group
-  Object.keys(groupedBySurvey).forEach((surveyId) => {
-    const surveyPoints = groupedBySurvey[surveyId];
+    // Clear existing polylines
+    polylines.forEach((polyline) => polyline.setMap(null));
 
-   
-  const sortedData = [...surveyPoints].sort((a, b) => {
-    return a.index_id || a.id - b.index_id || b.id;
-  });
-    const path = sortedData
-      .filter(point => visibleEventTypes.has(point.eventType))
-      .map(point => ({ lat: point.lat, lng: point.lng }));
+    if (!hasVisibleEvents) {
+      setPolylines([]);
+      return;
+    }
+    // Group data by survey_id
+    const groupedBySurvey = data.reduce((acc: any, point: any) => {
+      if (!acc[point.survey_id]) {
+        acc[point.survey_id] = [];
+      }
+      acc[point.survey_id].push(point);
+      return acc;
+    }, {});
 
-    if (path.length > 1) {
-      const polyline = new google.maps.Polyline({
-        path,
-        geodesic: true,
-        strokeColor: '#3B82F6', 
-        strokeOpacity: 0.8,
-        strokeWeight: 3,
-        map,
-        icons: [
-          {
-            // icon: {
-            //   path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-            //   scale: 4,
-            //   fillColor: '#3B82F6',
-            //   fillOpacity: 1,
-            //   strokeColor: '#ffffff',
-            //   strokeWeight: 1,
-            // },
-            offset: '0%',
-            repeat: '10%',
-          },
-        ],
+    const newPolylines: google.maps.Polyline[] = [];
+
+    // Loop each survey_id group
+    Object.keys(groupedBySurvey).forEach((surveyId) => {
+      const surveyPoints = groupedBySurvey[surveyId];
+
+      const sortedData = [...surveyPoints].sort((a, b) => {
+        return a.index_id || a.id - b.index_id || b.id;
       });
+      const path = sortedData
+        .filter((point) => visibleEventTypes.has(point.eventType))
+        .map((point) => ({ lat: point.lat, lng: point.lng }));
 
-      newPolylines.push(polyline);
-    }
-  });
+      if (path.length > 1) {
+        const polyline = new google.maps.Polyline({
+          path,
+          geodesic: true,
+          strokeColor: '#3B82F6',
+          strokeOpacity: 0.8,
+          strokeWeight: 3,
+          map,
+          icons: [
+            {
+              // icon: {
+              //   path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+              //   scale: 4,
+              //   fillColor: '#3B82F6',
+              //   fillOpacity: 1,
+              //   strokeColor: '#ffffff',
+              //   strokeWeight: 1,
+              // },
+              offset: '0%',
+              repeat: '10%',
+            },
+          ],
+        });
 
-  setPolylines(newPolylines);
+        newPolylines.push(polyline);
+      }
+    });
 
-}, [map, data, visibleEventTypes, showPolylines, eventData]);
+    setPolylines(newPolylines);
+  }, [map, data, visibleEventTypes, showPolylines, eventData]);
 
+  // Lookup map from planningCategories for color/icon
+  const planningConfigMap = useMemo(() => {
+    const map: Record<string, { color: string; icon: string }> = {};
+    planningCategories.forEach((cat) => {
+      map[cat.id] = { color: cat.color, icon: cat.icon };
+    });
+    return map;
+  }, [planningCategories]);
 
+  // Resolve category id from placemark category name
+  const categoryIdForPlacemark = (
+    placemark: ProcessedDesktopPlanning,
+  ): string => {
+    const cat = planningCategories.find((c) => c.name === placemark.category);
+    return cat
+      ? cat.id
+      : placemark.category.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  };
+
+  const isCategoryVisible = (catId: string): boolean => {
+    if (!externalVisibleCategories) return true;
+    return externalVisibleCategories.has(catId);
+  };
+
+  // Render planning placemarks (points + polylines)
+  useEffect(() => {
+    if (!map || !showPlanning) return;
+    const planMarkers: google.maps.Marker[] = [];
+    const planPolylines: google.maps.Polyline[] = [];
+    planningPlacemarks.forEach((pm) => {
+      const catId = categoryIdForPlacemark(pm);
+      if (!isCategoryVisible(catId)) return;
+      const config = planningConfigMap[catId] || {
+        color: '#6B7280',
+        icon: '📍',
+      };
+      if (pm.type === 'point') {
+        const coord = pm.coordinates as { lat: number; lng: number };
+        const marker = new google.maps.Marker({
+          position: { lat: coord.lat, lng: coord.lng },
+          map,
+          title: pm.name,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 7,
+            fillColor: config.color,
+            fillOpacity: 0.9,
+            strokeColor: '#ffffff',
+            strokeWeight: 2,
+          },
+        });
+        marker.addListener('click', () => {
+          const infoWindow = new google.maps.InfoWindow({
+            content: `<div style="padding:4px;font-size:13px"><strong>${pm.name}</strong><br/>${pm.category}</div>`,
+          });
+          infoWindow.open(map, marker);
+        });
+        planMarkers.push(marker);
+      } else {
+        const coords = pm.coordinates as { lat: number; lng: number }[];
+        const line = new google.maps.Polyline({
+          path: coords,
+          geodesic: true,
+          strokeColor: config.color,
+          strokeOpacity: 0.7,
+          strokeWeight: 2,
+          map,
+          icons: [{ offset: '0%', repeat: '10%' }],
+        });
+        planPolylines.push(line);
+      }
+    });
+    return () => {
+      planMarkers.forEach((m) => m.setMap(null));
+      planPolylines.forEach((p) => p.setMap(null));
+    };
+  }, [
+    map,
+    planningPlacemarks,
+    planningCategories,
+    showPlanning,
+    externalVisibleCategories,
+    planningConfigMap,
+  ]);
 
   // Toggle event type visibility
   const toggleEventType = (eventType: string) => {
@@ -501,37 +640,34 @@ useEffect(() => {
 
   // Toggle all event types
   const toggleAllEventTypes = () => {
-    if (visibleEventTypes.size === Object.keys(EVENT_TYPES).length) {
-      setVisibleEventTypes(new Set());
-    } else {
+    if (visibleEventTypes.size === 0) {
       setVisibleEventTypes(new Set(Object.keys(EVENT_TYPES)));
+    } else {
+      setVisibleEventTypes(new Set());
     }
   };
 
   // Close event window
   useEffect(() => {
-  function handleClickOutside(event: MouseEvent) {
-    if (
-      showFilters &&
-      filterRef.current &&
-      !filterRef.current.contains(event.target as Node)
-    ) {
-      setShowFilters(false);
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        showFilters &&
+        filterRef.current &&
+        !filterRef.current.contains(event.target as Node)
+      ) {
+        setShowFilters(false);
+      }
     }
-  }
 
-  document.addEventListener('mousedown', handleClickOutside);
-  return () => {
-    document.removeEventListener('mousedown', handleClickOutside);
-  };
-}, [showFilters]);
-
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showFilters]);
 
   const getEventTypeCount = (eventType: string) => {
-    return data.filter(point => point.eventType === eventType).length;
+    return data.filter((point) => point.eventType === eventType).length;
   };
-
-  
 
   return (
     <div className="relative w-full h-full">
@@ -539,7 +675,7 @@ useEffect(() => {
       <div ref={mapRef} className="w-full h-full rounded-lg shadow-lg" />
 
       {/* Controls */}
-      <div   ref={filterRef} className="absolute top-2 right-10 z-10">
+      <div ref={filterRef} className="absolute top-2 right-10 z-10">
         <div className="bg-white rounded-lg shadow-lg p-2">
           <div className="flex items-center gap-2 mb-2">
             <button
@@ -552,33 +688,46 @@ useEffect(() => {
             <button
               onClick={() => setShowPolylines(!showPolylines)}
               className={`flex items-center gap-1 px-3 py-1 rounded-md transition-colors text-sm ${
-                showPolylines 
-                  ? 'bg-green-500 text-white hover:bg-green-600' 
+                showPolylines
+                  ? 'bg-green-500 text-white hover:bg-green-600'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
               <Navigation size={14} />
               Routes
             </button>
+            <button
+              onClick={() => setShowPlanning(!showPlanning)}
+              className={`flex items-center gap-1 px-3 py-1 rounded-md transition-colors text-sm ${
+                showPlanning
+                  ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              <MapPin size={14} />
+              Approved KMZ
+            </button>
           </div>
 
           {showFilters && (
             <div className="bg-gray-50 rounded-md p-3 max-h-80 overflow-y-auto">
               <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium text-sm text-gray-700">Event Types</h4>
+                <h4 className="font-medium text-sm text-gray-700">
+                  Event Types
+                </h4>
                 <button
                   onClick={toggleAllEventTypes}
                   className="text-xs text-blue-600 hover:text-blue-800"
                 >
-                  {visibleEventTypes.size === Object.keys(EVENT_TYPES).length ? 'Hide All' : 'Show All'}
+                  {visibleEventTypes.size === 0 ? 'Show All' : 'Hide All'}
                 </button>
               </div>
-              
+
               <div className="space-y-1">
                 {Object.entries(EVENT_TYPES).map(([eventType, config]) => {
                   const count = getEventTypeCount(eventType);
                   const isVisible = visibleEventTypes.has(eventType);
-                  
+
                   return (
                     <div
                       key={eventType}
@@ -590,19 +739,103 @@ useEffect(() => {
                           {isVisible ? <Eye size={14} /> : <EyeOff size={14} />}
                           <span className="text-sm">{config.icon}</span>
                         </div>
-                        <span className="text-sm font-medium">{config.label}</span>
+                        <span className="text-sm font-medium">
+                          {config.label}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-500">({count})</span>
                         <div
                           className="w-3 h-3 rounded-full border"
-                          style={{ backgroundColor: isVisible ? config.color : 'transparent' }}
+                          style={{
+                            backgroundColor: isVisible
+                              ? config.color
+                              : 'transparent',
+                          }}
                         />
                       </div>
                     </div>
                   );
                 })}
               </div>
+
+              {/* Planning Categories Section */}
+              {planningCategories.length > 0 && (
+                <div className="border-t border-gray-200 pt-2 mt-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <h4 className="font-medium text-sm text-gray-700">
+                      Approved KMZ Types
+                    </h4>
+                    <button
+                      onClick={() => {
+                        const anyVisible = planningCategories.some((c) =>
+                          externalVisibleCategories?.has(c.id),
+                        );
+                        planningCategories.forEach((c) =>
+                          onPlanningCategoryVisibilityChange?.(
+                            c.id,
+                            !anyVisible,
+                          ),
+                        );
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-800"
+                    >
+                      {planningCategories.some((c) =>
+                        externalVisibleCategories?.has(c.id),
+                      )
+                        ? 'Hide All'
+                        : 'Show All'}
+                    </button>
+                  </div>
+                  <div className="space-y-1">
+                    {planningCategories.map((cat) => {
+                      const count = cat.count;
+                      const isVisible =
+                        externalVisibleCategories?.has(cat.id) ?? true;
+                      return (
+                        <div
+                          key={cat.id}
+                          className="flex items-center justify-between p-2 rounded hover:bg-gray-100 cursor-pointer"
+                          onClick={() =>
+                            onPlanningCategoryVisibilityChange?.(
+                              cat.id,
+                              !isVisible,
+                            )
+                          }
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                              {isVisible ? (
+                                <Eye size={14} />
+                              ) : (
+                                <EyeOff size={14} />
+                              )}
+                              <span className="text-sm">{cat.icon}</span>
+                            </div>
+                            <span className="text-sm font-medium">
+                              {cat.name.replace('Desktop:', '').trim() ||
+                                cat.name}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500">
+                              ({count})
+                            </span>
+                            <div
+                              className="w-3 h-3 rounded-full border"
+                              style={{
+                                backgroundColor: isVisible
+                                  ? cat.color
+                                  : 'transparent',
+                              }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -616,9 +849,9 @@ useEffect(() => {
             {Object.entries(EVENT_TYPES).map(([eventType, config]) => {
               const count = getEventTypeCount(eventType);
               const isVisible = visibleEventTypes.has(eventType);
-              
+
               if (count === 0) return null;
-              
+
               return (
                 <div
                   key={eventType}
@@ -628,11 +861,37 @@ useEffect(() => {
                     className="w-2 h-2 rounded-full"
                     style={{ backgroundColor: config.color }}
                   />
-                  <span>{config.label} ({count})</span>
+                  <span>
+                    {config.label} ({count})
+                  </span>
                 </div>
               );
             })}
           </div>
+          {planningCategories.length > 0 && (
+            <div className="text-xs space-y-1 mt-2 pt-2 border-t border-gray-200">
+              <h4 className="font-medium text-gray-700 flex items-center gap-1">
+                <MapPin size={12} className="text-emerald-500" />
+                Approved KMZ ({planningCategories.reduce((s, c) => s + c.count, 0)})
+              </h4>
+              {planningCategories.map((cat) => {
+                const isVisible =
+                  externalVisibleCategories?.has(cat.id) ?? true;
+                return (
+                  <div
+                    key={cat.id}
+                    className={`flex justify-between ${isVisible && showPlanning ? 'opacity-100' : 'opacity-50'}`}
+                  >
+                    <span>
+                      {cat.icon}{' '}
+                      {cat.name.replace('Desktop:', '').trim() || cat.name}
+                    </span>
+                    <span>{cat.count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           {/* <hr className="my-2" />
 
           <div className="text-xs space-y-1 max-h-32 overflow-y-auto">
@@ -690,14 +949,21 @@ useEffect(() => {
 };
 
 // Main component with proper loading management
-const MapComp: React.FC<MapCompProps> = ({ data, eventData }) => {
+const MapComp: React.FC<MapCompProps> = ({
+  data,
+  eventData,
+  planningPlacemarks,
+  planningCategories,
+  visiblePlanningCategories,
+  onPlanningCategoryVisibilityChange,
+}) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
 
   useEffect(() => {
-    const apiKey =  import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-    
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
     if (!apiKey) {
       setError('Google Maps API key is not configured');
       setIsLoading(false);
@@ -705,8 +971,9 @@ const MapComp: React.FC<MapCompProps> = ({ data, eventData }) => {
     }
 
     const loader = GoogleMapsLoader.getInstance();
-    
-    loader.loadGoogleMaps(apiKey, ['places','geometry'])
+
+    loader
+      .loadGoogleMaps(apiKey, ['places', 'geometry'])
       .then(() => {
         setIsMapReady(true);
         setIsLoading(false);
@@ -729,7 +996,16 @@ const MapComp: React.FC<MapCompProps> = ({ data, eventData }) => {
     return <LoadingComponent />;
   }
 
-  return <MapComponent data={data} eventData={eventData} />;
+  return (
+    <MapComponent
+      data={data}
+      eventData={eventData}
+      planningPlacemarks={planningPlacemarks}
+      planningCategories={planningCategories}
+      visiblePlanningCategories={visiblePlanningCategories}
+      onPlanningCategoryVisibilityChange={onPlanningCategoryVisibilityChange}
+    />
+  );
 };
 
 export default MapComp;

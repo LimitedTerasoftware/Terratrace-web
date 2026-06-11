@@ -491,6 +491,7 @@ export interface UGConstructionSurveyData {
   workType: string | null;
   cableType: string | null;
   machine_id: number | null;
+  versions:string|null
 }
 export interface SurveyLinksData {
     startLocation: number; 

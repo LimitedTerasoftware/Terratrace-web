@@ -146,6 +146,9 @@ const Report: React.FC<ReportProps> = ({
         state: {
           row,
           multipreview: check,
+          selectedState: Data.selectedState,
+          selectedDistrict: Data.selectedDistrict,
+          selectedBlock: Data.selectedBlock,
         },
       });
     }
@@ -320,6 +323,11 @@ const Report: React.FC<ReportProps> = ({
       selector: (row) => row.total_distance || '0.00',
       sortable: true,
     },
+  {
+    name:"Versions",
+    selector:(row)=>row.versions || '-',
+    sortable:true,
+  },
     {
       name: 'Surveyor',
       selector: (row) => row.user_name,
@@ -565,9 +573,9 @@ const Report: React.FC<ReportProps> = ({
         baseurl = 'get-pole-stringing';
         isAerial = true;
       }
-      const resp =  await axios.get(`${TraceBASEURL}/${baseurl}`, {
-            params: { survey_ids: surveyIds },
-          });
+      const resp = await axios.get(`${TraceBASEURL}/${baseurl}`, {
+        params: { survey_ids: surveyIds },
+      });
 
       if (resp.status !== 200 && resp.status !== 201) {
         throw new Error('Failed to fetch survey data');

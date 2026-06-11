@@ -25,6 +25,12 @@ import { ToastContainer, toast } from 'react-toastify';
 import { EditModal } from './EditModal';
 import { AddEventModal } from './AddEventModal';
 import ReorderModal from './ReorderModal';
+import type {
+  DesktopPlanningApiResponse,
+  ProcessedDesktopPlanning,
+  PlacemarkCategory,
+} from '../../types/kmz';
+import { processDesktopPlanningData } from '../SmartInventory/PlaceMark';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const BASEURL_Val = import.meta.env.VITE_API_BASE;
@@ -57,6 +63,9 @@ function Eventreport() {
   const location = useLocation();
   let MainData = location.state?.row || '';
   let multipreview = location.state?.multipreview || false;
+  const selectedState = location.state?.selectedState || '';
+  const selectedDistrict = location.state?.selectedDistrict || '';
+  const selectedBlock = location.state?.selectedBlock || '';
   const [depthData, setdepthData] = useState<Activity[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<string>('');
   const [globalsearch, setGlobalSearch] = useState<string>('');
@@ -78,6 +87,67 @@ function Eventreport() {
 
   const viewOnly = hasViewOnlyAccess();
   const AdminAcess = isAdminUser();
+
+  const [planningPlacemarks, setPlanningPlacemarks] = useState<
+    ProcessedDesktopPlanning[]
+  >([]);
+  const [planningCategories, setPlanningCategories] = useState<
+    PlacemarkCategory[]
+  >([]);
+  const [visiblePlanningCategories, setVisiblePlanningCategories] = useState<
+    Set<string>
+  >(new Set());
+
+  const handlePlanningCategoryVisibilityChange = (
+    categoryId: string,
+    visible: boolean,
+  ) => {
+    setVisiblePlanningCategories((prev) => {
+      const next = new Set(prev);
+      if (visible) {
+        next.add(categoryId);
+      } else {
+        next.delete(categoryId);
+      }
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (!multipreview || !selectedState || !selectedDistrict || !selectedBlock)
+      return;
+    const fetchDesktopPlanning = async () => {
+      try {
+        const requestData = {
+          stateId: selectedState,
+          districtId: selectedDistrict,
+          blockId: selectedBlock,
+          type: 'Approved KMZ',
+        };
+        const response = await axios.post(
+          `${TraceBASEURL}/get-desktop-planning`,
+          requestData,
+          { headers: { 'Content-Type': 'application/json' } },
+        );
+        const result: DesktopPlanningApiResponse = response.data;
+        if (response.status === 200 || response.status === 201) {
+          if (result.status && result.data.length > 0) {
+            const { placemarks, categories } =
+              processDesktopPlanningData(result);
+            setPlanningPlacemarks(placemarks);
+            setPlanningCategories(categories);
+            const autoVisible = new Set(
+              categories.filter((c) => c.visible).map((c) => c.id),
+            );
+            if (autoVisible.size > 0) {
+              setVisiblePlanningCategories(autoVisible);
+            }
+          }
+        }
+      } catch {}
+    };
+    fetchDesktopPlanning();
+  }, [multipreview, selectedState, selectedDistrict, selectedBlock]);
   // New state for media carousel
   const [isCarouselOpen, setIsCarouselOpen] = useState<boolean>(false);
   const [carouselMedia, setCarouselMedia] = useState<MediaItem[]>([]);
@@ -1659,7 +1729,16 @@ function Eventreport() {
       )}
       {activeTab === 'map' && (
         <div className="h-[600px] p-4">
-          <MapComp data={markers} eventData={FilteredMainData} />
+          <MapComp
+            data={markers}
+            eventData={FilteredMainData}
+            planningPlacemarks={planningPlacemarks}
+            planningCategories={planningCategories}
+            visiblePlanningCategories={visiblePlanningCategories}
+            onPlanningCategoryVisibilityChange={
+              handlePlanningCategoryVisibilityChange
+            }
+          />
         </div>
       )}
 
