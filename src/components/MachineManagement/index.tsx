@@ -2,16 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { Machine, MachineFormData } from '../../types/machine';
 import MachineForm from './MachineForm';
 import MachineList from './MachineList';
-import { Settings, BarChart3, Truck, Plus, Cog } from 'lucide-react';
+import { Settings, BarChart3, Truck, Plus, Cog, FileDown } from 'lucide-react';
 import axios, { AxiosError } from 'axios';
 import Modal from '../hooks/ModalPopup';
-import {getMachineOptions } from '../Services/api';
+import { getMachineOptions } from '../Services/api';
 import { useLocation, Link } from 'react-router-dom';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface ModalData {
   title: string;
   message: string;
-  type: "success" | "error" | "info";
+  type: 'success' | 'error' | 'info';
 }
 interface ApiErrorResponse {
   error?: string;
@@ -21,61 +25,63 @@ interface ApiErrorResponse {
 function MachineManagement() {
   const location = useLocation();
   const [machines, setMachines] = useState<Machine[]>([]);
-  const [editingMachine, setEditingMachine] = useState<Machine | undefined>(undefined);
+  const [editingMachine, setEditingMachine] = useState<Machine | undefined>(
+    undefined,
+  );
   const [isFormExpanded, setIsFormExpanded] = useState(false);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
   const [isModalOpen, setModalOpen] = useState(false);
   const [modalData, setModalData] = useState<ModalData>({
-    title: "",
-    message: "",
-    type: "info",
+    title: '',
+    message: '',
+    type: 'info',
   });
 
   useEffect(() => {
-    getMachineOptions().then(data => {
+    getMachineOptions().then((data) => {
       setMachines(data);
     });
   }, []);
 
-
-
   const handleAddMachine = async (formData: MachineFormData) => {
     try {
-      const resp = await axios.post(`${TraceBASEURL}/create-machine`, formData, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
+      const resp = await axios.post(
+        `${TraceBASEURL}/create-machine`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      );
 
       if (resp.status === 200 || resp.status === 201) {
         setModalData({
-          title: "Success!",
-          message: "Machine added successfully.",
-          type: "success",
+          title: 'Success!',
+          message: 'Machine added successfully.',
+          type: 'success',
         });
-       
-        getMachineOptions().then(data => {
+
+        getMachineOptions().then((data) => {
           setMachines(data);
         });
       } else {
         setModalData({
-          title: "Error!",
-          message: resp.data || "Unexpected response",
-          type: "error",
+          title: 'Error!',
+          message: resp.data || 'Unexpected response',
+          type: 'error',
         });
-      
       }
     } catch (error) {
       const err = error as AxiosError;
       const errorData = err.response?.data as ApiErrorResponse;
       setModalData({
-        title: "Error!",
-        message: errorData?.error || err.message || "Unexpected response",
-        type: "error",
+        title: 'Error!',
+        message: errorData?.error || err.message || 'Unexpected response',
+        type: 'error',
       });
-    
-    }finally {
+    } finally {
       setIsFormModalOpen(false);
       setModalOpen(true);
     }
@@ -84,50 +90,49 @@ function MachineManagement() {
   const handleEditMachine = async (formData: MachineFormData) => {
     if (editingMachine) {
       try {
-        const response = await axios.put(`${TraceBASEURL}/update-machine/${editingMachine.machine_id}`, formData, {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
+        const response = await axios.put(
+          `${TraceBASEURL}/update-machine/${editingMachine.machine_id}`,
+          formData,
+          {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          },
+        );
         if (response.status === 200 || response.status === 201) {
           // setMachines(prev => prev.map(machine =>
           //   machine.machine_id === editingMachine.machine_id
           //     ? { ...machine, ...formData, updated_at: new Date() }
           //     : machine
           // ));
-          getMachineOptions().then(data => {
+          getMachineOptions().then((data) => {
             setMachines(data);
           });
           setModalData({
-            title: "Success!",
-            message: "Machine updated successfully.",
-            type: "success",
+            title: 'Success!',
+            message: 'Machine updated successfully.',
+            type: 'success',
           });
-        
         } else {
           setModalData({
-            title: "Error!",
-            message: response.data.error || "Unexpected response",
-            type: "error",
+            title: 'Error!',
+            message: response.data.error || 'Unexpected response',
+            type: 'error',
           });
-        
-        
         }
       } catch (error) {
         const err = error as AxiosError;
         const errorData = err.response?.data as ApiErrorResponse;
 
         setModalData({
-            title: "Error!",
-            message: errorData.error|| "Unexpected error occurred",
-            type: "error",
-          });
-        
-          
-      }finally {
-       setEditingMachine(undefined);
-       setIsFormModalOpen(false); 
-       setModalOpen(true);
+          title: 'Error!',
+          message: errorData.error || 'Unexpected error occurred',
+          type: 'error',
+        });
+      } finally {
+        setEditingMachine(undefined);
+        setIsFormModalOpen(false);
+        setModalOpen(true);
       }
     }
   };
@@ -137,16 +142,21 @@ function MachineManagement() {
       const resp = await axios.post(`${TraceBASEURL}/delete-machine/${id}`);
       if (resp.status === 200 || resp.status === 201) {
         setModalData({
-          title: "Success!",
-          message: "Machine Deleted successfully.",
-          type: "success",
+          title: 'Success!',
+          message: 'Machine Deleted successfully.',
+          type: 'success',
         });
         setModalOpen(true);
-        setMachines(prev => prev.filter(machine => machine.machine_id !== id));
+        setMachines((prev) =>
+          prev.filter((machine) => machine.machine_id !== id),
+        );
       }
     } catch (error) {
       const err = error as AxiosError;
-      console.error("Error deleting machine:", err.response?.data || err.message);
+      console.error(
+        'Error deleting machine:',
+        err.response?.data || err.message,
+      );
     }
   };
 
@@ -165,11 +175,87 @@ function MachineManagement() {
     setIsFormModalOpen(false);
   };
 
+  const handleExportToExcel = () => {
+    const exportData = machines.map((machine, index) => ({
+      'S.No': index + 1,
+      'Firm Name': machine.firm_name,
+      'Authorised Person':machine.authorised_person,
+      'Machine Make':machine.machine_make,
+      'Digitrack Make': machine.digitrack_make,
+      'Digitrack Model':machine.digitrack_model,
+      'Truck Make':machine.truck_make,
+      'Truck Model':machine.truck_model,
+       Capacity: machine.capacity,
+      'Registration No.': machine.registration_number,
+      Status: machine.status,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Machines');
+    const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([buf], { type: 'application/octet-stream' });
+    saveAs(blob, `Machines_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  const handleExportToPDF = () => {
+    const doc = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4',
+    });
+    doc.setFontSize(16);
+    doc.text('Machine Management Report', 14, 15);
+    doc.setFontSize(10);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 22);
+
+    const tableData = machines.map((machine, index) => [
+      index + 1,
+      machine.firm_name,
+      machine.authorised_person,
+      machine.machine_make,
+       machine.digitrack_make,
+       machine.digitrack_model,
+       machine.truck_make,
+       machine.truck_model,
+      machine.capacity,
+      machine.registration_number,
+      machine.status,
+    ]);
+
+    autoTable(doc, {
+      head: [
+        [
+          'S.No',
+          'Firm Name',
+          'Authorised Person',
+          'Machine Make',
+          'Digitrack Make',
+          'Digitrack Model',
+          'Truck Make',
+          'Truck Model',
+          'Capacity',
+          'Registration No.',
+          'Status',
+        ],
+      ],
+      body: tableData,
+      startY: 28,
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [37, 99, 235] },
+    });
+
+    doc.save(`Machines_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
   const getStatusCounts = () => {
-    return machines.reduce((acc, machine) => {
-      acc[machine.status] = (acc[machine.status] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    return machines.reduce(
+      (acc, machine) => {
+        acc[machine.status] = (acc[machine.status] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
   };
 
   const statusCounts = getStatusCounts();
@@ -183,12 +269,30 @@ function MachineManagement() {
               <Cog className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">Machine Management</h1>
-              <p className="text-sm text-gray-600">Monitor and manage equipment inventory</p>
+              <h1 className="text-xl font-bold text-gray-900">
+                Machine Management
+              </h1>
+              <p className="text-sm text-gray-600">
+                Monitor and manage equipment inventory
+              </p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-4">
+            <button
+              onClick={handleExportToExcel}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors shadow-sm"
+            >
+              <FileDown className="h-4 w-4" />
+              Excel
+            </button>
+            <button
+              onClick={handleExportToPDF}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors shadow-sm"
+            >
+              <FileDown className="h-4 w-4" />
+              PDF
+            </button>
             {/* Add New Machine Button */}
             <button
               onClick={handleAddNewMachine}
@@ -197,7 +301,7 @@ function MachineManagement() {
               <Plus className="h-4 w-4" />
               Add New Machine
             </button>
-            
+
             {/* Breadcrumb Navigation */}
             <nav>
               <ol className="flex items-center gap-2">
@@ -225,7 +329,9 @@ function MachineManagement() {
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-2xl font-bold text-gray-900">{machines.length}</div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {machines.length}
+                </div>
                 <div className="text-sm text-gray-600">Total Machines</div>
               </div>
               <div className="p-2 bg-blue-100 rounded-lg">
@@ -237,7 +343,9 @@ function MachineManagement() {
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-2xl font-bold text-green-600">{statusCounts.active || 0}</div>
+                <div className="text-2xl font-bold text-green-600">
+                  {statusCounts.active || 0}
+                </div>
                 <div className="text-sm text-gray-600">Active</div>
               </div>
               <div className="p-2 bg-green-100 rounded-lg">
@@ -251,7 +359,9 @@ function MachineManagement() {
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-2xl font-bold text-gray-600">{statusCounts.inactive || 0}</div>
+                <div className="text-2xl font-bold text-gray-600">
+                  {statusCounts.inactive || 0}
+                </div>
                 <div className="text-sm text-gray-600">Inactive</div>
               </div>
               <div className="p-2 bg-gray-100 rounded-lg">
@@ -265,7 +375,9 @@ function MachineManagement() {
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-2xl font-bold text-yellow-600">{statusCounts.maintenance || 0}</div>
+                <div className="text-2xl font-bold text-yellow-600">
+                  {statusCounts.maintenance || 0}
+                </div>
                 <div className="text-sm text-gray-600">Under Maintenance</div>
               </div>
               <div className="p-2 bg-yellow-100 rounded-lg">
@@ -316,7 +428,7 @@ function MachineManagement() {
             regids={location.state?.regids}
           />
         </div>
-        
+
         {/* Success/Error Modal */}
         <Modal
           isOpen={isModalOpen}
@@ -331,7 +443,6 @@ function MachineManagement() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
               <MachineForm
-               
                 machine={editingMachine}
                 onSubmit={editingMachine ? handleEditMachine : handleAddMachine}
                 onCancel={handleCancelEdit}

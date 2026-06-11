@@ -2,11 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Firm, FirmFormData } from '../../types/firm';
 import FirmForm from './FirmForm';
 import FirmList from './FirmList';
-import { Plus, Building2 } from 'lucide-react';
+import { Plus, Building2, FileDown } from 'lucide-react';
 import axios, { AxiosError } from 'axios';
 import Modal from '../hooks/ModalPopup';
 import { getFirms } from '../Services/api';
 import { Link } from 'react-router-dom';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface ModalData {
   title: string;
@@ -78,10 +82,10 @@ function FirmManagement() {
   const handleEditFirm = async (formData: FirmFormData) => {
     if (editingFirm) {
       try {
-          const payload = {
-        ...formData,
-        id: editingFirm.id,
-      };
+        const payload = {
+          ...formData,
+          id: editingFirm.id,
+        };
         const response = await axios.post(
           `${TraceBASEURL}/update-firm`,
           payload,
@@ -124,7 +128,6 @@ function FirmManagement() {
     }
   };
 
- 
   const handleAddNewFirm = () => {
     setEditingFirm(undefined);
     setIsFormModalOpen(true);
@@ -140,8 +143,50 @@ function FirmManagement() {
     setIsFormModalOpen(false);
   };
 
+  const handleExportToExcel = () => {
+    const exportData = firms.map((firm, index) => ({
+      'S.No': index + 1,
+      'Firm Name': firm.firm_name,
+      'Authorised Person': firm.authorised_person,
+      'Mobile Number': firm.authorised_mobile,
+    }));
 
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Firms');
+    const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([buf], { type: 'application/octet-stream' });
+    saveAs(blob, `Firms_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
 
+  const handleExportToPDF = () => {
+    const doc = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4',
+    });
+    doc.setFontSize(16);
+    doc.text('Firm Management Report', 14, 15);
+    doc.setFontSize(10);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 22);
+
+    const tableData = firms.map((firm, index) => [
+      index + 1,
+      firm.firm_name,
+      firm.authorised_person,
+      firm.authorised_mobile,
+    ]);
+
+    autoTable(doc, {
+      head: [['S.No', 'Firm Name', 'Authorised Person', 'Mobile Number']],
+      body: tableData,
+      startY: 28,
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [37, 99, 235] },
+    });
+
+    doc.save(`Firms_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
 
   const FirmHeader = () => {
     return (
@@ -162,9 +207,23 @@ function FirmManagement() {
           </div>
 
           <div className="flex items-center gap-4">
-            <div>Total Count <span className='font-bold'>{firms.length}</span>
-                 
-             </div>
+            <div>
+              Total Count <span className="font-bold">{firms.length}</span>
+            </div>
+            <button
+              onClick={handleExportToExcel}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors shadow-sm"
+            >
+              <FileDown className="h-4 w-4" />
+              Excel
+            </button>
+            <button
+              onClick={handleExportToPDF}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors shadow-sm"
+            >
+              <FileDown className="h-4 w-4" />
+              PDF
+            </button>
             <button
               onClick={handleAddNewFirm}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors shadow-sm"
@@ -175,7 +234,7 @@ function FirmManagement() {
 
             <nav>
               <ol className="flex items-center gap-2">
-               <li>
+                <li>
                   <Link className="font-medium" to="/dashboard">
                     Dashboard /
                   </Link>
@@ -194,10 +253,7 @@ function FirmManagement() {
       <FirmHeader />
       <div className="px-1">
         <div className="space-y-8">
-          <FirmList
-            firms={firms}
-            onEdit={handleStartEdit}
-          />
+          <FirmList firms={firms} onEdit={handleStartEdit} />
         </div>
 
         <Modal

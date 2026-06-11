@@ -2096,7 +2096,6 @@ export function processDesktopPlanningData(
            
         const category = getDesktopPlanningCategory(assetType, 'point');
         categoryCounts[category] = (categoryCounts[category] || 0) + 1;
-        console.log(category);
           
         processedPlacemarks.push({
           id: `desktop-point-${network.id}-${point.id}`,

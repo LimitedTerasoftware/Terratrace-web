@@ -255,7 +255,9 @@ function AerialListPage() {
     if (newDistrict) params.district_id = newDistrict;
     if (newBlock) params.block_id = newBlock;
     if (newLink) params.link = newLink;
-    if (status) params.status = String(status);
+     if (status !== null) {
+    params.status = String(status);
+  }
     if (worktype) params.worktype = worktype;
     if (from_date) params.from_date = from_date;
     if (to_date) params.to_date = to_date;

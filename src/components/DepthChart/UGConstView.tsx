@@ -31,6 +31,7 @@ import type {
   PlacemarkCategory,
 } from '../../types/kmz';
 import { processDesktopPlanningData } from '../SmartInventory/PlaceMark';
+import { point } from 'leaflet';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const BASEURL_Val = import.meta.env.VITE_API_BASE;
@@ -133,11 +134,12 @@ function Eventreport() {
         if (response.status === 200 || response.status === 201) {
           if (result.status && result.data.length > 0) {
             const { placemarks, categories } =
-              processDesktopPlanningData(result);
-            setPlanningPlacemarks(placemarks);
-            setPlanningCategories(categories);
+            processDesktopPlanningData(result);
+            setPlanningPlacemarks(placemarks.filter(point=>[ 'Desktop: GP','Desktop: FPOI','Desktop: Block Router','Desktop: Proposed Cable','Desktop : Block to FPOI Cable','Desktop : Offset Cable','Desktop: Incremental Cable'].includes(point.category)));
+            setPlanningCategories(categories.filter(c=> ['Desktop: GP','Desktop: FPOI','Desktop: Block Router','Desktop: Proposed Cable','Desktop : Block to FPOI Cable','Desktop : Offset Cable','Desktop: Incremental Cable'].includes(c.name)));
+          
             const autoVisible = new Set(
-              categories.filter((c) => c.visible).map((c) => c.id),
+              categories.filter((c) => c.visible && ['Desktop: GP','Desktop: FPOI','Desktop: Block Router','Desktop: Proposed Cable','Desktop : Block to FPOI Cable','Desktop : Offset Cable','Desktop: Incremental Cable'].includes(c.name)).map((c) => c.id),
             );
             if (autoVisible.size > 0) {
               setVisiblePlanningCategories(autoVisible);

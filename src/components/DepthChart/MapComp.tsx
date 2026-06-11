@@ -960,7 +960,6 @@ const MapComp: React.FC<MapCompProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
-
   useEffect(() => {
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 

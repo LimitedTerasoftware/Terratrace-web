@@ -229,6 +229,7 @@ function ConstructionPage() {
     const worktype = searchParams.get('worktype') || '';
     const constType = searchParams.get('constType') || 'Hdd';
 
+
     setSelectedState(state_id);
     setSelectedDistrict(district_id);
     setSelectedBlock(block_id);
@@ -259,7 +260,9 @@ function ConstructionPage() {
     if (newDistrict) params.district_id = newDistrict;
     if (newBlock) params.block_id = newBlock;
     if (newLink) params.link = newLink;
-    if (status) params.status = String(status);
+      if (status !== null) {
+      params.status = String(status);
+    }
     if (worktype) params.worktype = worktype;
     if (from_date) params.from_date = from_date;
     if (to_date) params.to_date = to_date;
@@ -300,6 +303,7 @@ function ConstructionPage() {
       todate,
       globalsearch,
       constType,
+      activeTab
     );
   };
 
@@ -318,6 +322,7 @@ function ConstructionPage() {
       todate,
       globalsearch,
       constType,
+      activeTab
     );
   };
 
@@ -336,6 +341,7 @@ function ConstructionPage() {
       todate,
       globalsearch,
       constType,
+      activeTab
     );
   };
   const handleLinkChange = (value: string) => {
@@ -351,6 +357,7 @@ function ConstructionPage() {
       todate,
       globalsearch,
       constType,
+      activeTab
     );
   };
 
@@ -368,6 +375,7 @@ function ConstructionPage() {
       todate,
       globalsearch,
       constType,
+      activeTab
     );
   };
   const handleworkChange = (value: string) => {
@@ -383,6 +391,7 @@ function ConstructionPage() {
       todate,
       globalsearch,
       constType,
+      activeTab
     );
   };
   const handleConstTypeChange = (value: string) => {
@@ -398,6 +407,7 @@ function ConstructionPage() {
       todate,
       globalsearch,
       value,
+      activeTab
     );
   };
 
@@ -414,6 +424,7 @@ function ConstructionPage() {
       todate,
       globalsearch,
       constType,
+      activeTab
     );
   };
 
@@ -430,6 +441,7 @@ function ConstructionPage() {
       value,
       globalsearch,
       constType,
+      activeTab
     );
   };
 
@@ -446,6 +458,7 @@ function ConstructionPage() {
       todate,
       value,
       constType,
+      activeTab
     );
   };
   return (
