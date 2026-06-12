@@ -1,8 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Eye, EyeOff, Filter, X, ZoomIn } from 'lucide-react';
 import GoogleMapsLoader from '../hooks/googleMapsLoader';
 import moment from 'moment';
-import type { PoleString, JointEnclosure, Landmark } from '../../types/aerial-survey';
+import type {
+  PoleString,
+  PolePreview,
+  JointEnclosure,
+  Landmark,
+} from '../../types/aerial-survey';
 
 // ─── Marker type config (keyed by eventType) ─────────────────────────────────
 
@@ -14,6 +19,7 @@ const EVENT_MARKER_CONFIG: Record<
   'JOINT ENCLOUSER': { color: '#8B5CF6', icon: '🔌', label: 'Joint Enclosure' },
   DRUM: { color: '#F59E0B', icon: '🥁', label: 'Drum' },
   LANDMARK: { color: '#10B981', icon: '📍', label: 'Landmark' },
+  PREVIEW: { color: '#EF4444', icon: '📍', label: 'Survey' },
 };
 
 const DEFAULT_MARKER = { color: '#6B7280', icon: '📌', label: 'Other' };
@@ -37,9 +43,20 @@ const InfoWindow: React.FC<{
 
   if (record.image) {
     allImages.push({
-      url: record.image.startsWith('http') ? record.image : `${baseUrl}${record.image}`,
+      url: record.image.startsWith('http')
+        ? record.image
+        : `${baseUrl}${record.image}`,
       label: 'Pole Image',
     });
+  }
+  if (record.images?.length)
+    record?.images.forEach((img, i) =>
+      allImages.push({
+        url: `${baseUrl}${img}`,
+        label: `Pole Image ${i + 1}`,
+      }),
+    );
+  {
   }
   if (je?.jointImages?.length) {
     je.jointImages.forEach((u, i) =>
@@ -64,7 +81,9 @@ const InfoWindow: React.FC<{
       {/* Header */}
       <div
         className="p-4 text-white"
-        style={{ background: `linear-gradient(135deg, ${config.color}, ${config.color}bb)` }}
+        style={{
+          background: `linear-gradient(135deg, ${config.color}, ${config.color}bb)`,
+        }}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -76,7 +95,10 @@ const InfoWindow: React.FC<{
               </span>
             )}
           </div>
-          <button onClick={onClose} className="text-white hover:text-gray-200 transition-colors">
+          <button
+            onClick={onClose}
+            className="text-white hover:text-gray-200 transition-colors"
+          >
             <X size={16} />
           </button>
         </div>
@@ -88,26 +110,46 @@ const InfoWindow: React.FC<{
           <Row label="Survey ID" value={String(record.survey_id)} />
         )}
         <Row label="Event Type" value={record.eventType} />
-        <Row label="Coordinates" value={`${record.latitude}, ${record.longitude}`} />
+        <Row
+          label="Coordinates"
+          value={`${record.latitude}, ${record.longitude}`}
+        />
 
         {/* POLE fields */}
         {record.pole_type && <Row label="Pole Type" value={record.pole_type} />}
         {record.line_type && <Row label="Line Type" value={record.line_type} />}
-        {record.pole_material && <Row label="Pole Material" value={record.pole_material} />}
-        {record.pole_owner && <Row label="Pole Owner" value={record.pole_owner} />}
-        {(record.fitting_type || record.fitting_type_new) && (
-          <Row label="Fitting Type" value={record.fitting_type ?? record.fitting_type_new ?? '-'} />
+        {record.pole_material && (
+          <Row label="Pole Material" value={record.pole_material} />
         )}
-        {record.pole_height && <Row label="Pole Height" value={record.pole_height} />}
-        {record.drum_number && <Row label="Drum Number" value={record.drum_number} />}
+        {record.pole_owner && (
+          <Row label="Pole Owner" value={record.pole_owner} />
+        )}
+        {(record.fitting_type || record.fitting_type_new) && (
+          <Row
+            label="Fitting Type"
+            value={record.fitting_type ?? record.fitting_type_new ?? '-'}
+          />
+        )}
+        {record.pole_height && (
+          <Row label="Pole Height" value={record.pole_height} />
+        )}
+        {record.drum_number && (
+          <Row label="Drum Number" value={record.drum_number} />
+        )}
         {record.meter && <Row label="Meter" value={record.meter} />}
         {record.landmark && (
           <>
             <div className="border-t pt-2 mt-2">
-              <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Landmark</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                Landmark
+              </p>
             </div>
-            {record.landmark.type && <Row label="Type" value={record.landmark.type} />}
-            {record.landmark.description && <Row label="Description" value={record.landmark.description} />}
+            {record.landmark.type && (
+              <Row label="Type" value={record.landmark.type} />
+            )}
+            {record.landmark.description && (
+              <Row label="Description" value={record.landmark.description} />
+            )}
           </>
         )}
 
@@ -115,14 +157,22 @@ const InfoWindow: React.FC<{
         {je && (
           <>
             <div className="border-t pt-2 mt-2">
-              <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Joint Enclosure</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                Joint Enclosure
+              </p>
             </div>
             {je.jointType && <Row label="Joint Type" value={je.jointType} />}
             {je.startDrumNumber && (
-              <Row label="Start Drum" value={`${je.startDrumNumber} / ${je.startDrumMeter}m`} />
+              <Row
+                label="Start Drum"
+                value={`${je.startDrumNumber} / ${je.startDrumMeter}m`}
+              />
             )}
             {je.endDrumNumber && (
-              <Row label="End Drum" value={`${je.endDrumNumber} / ${je.endDrumMeter}m`} />
+              <Row
+                label="End Drum"
+                value={`${je.endDrumNumber} / ${je.endDrumMeter}m`}
+              />
             )}
           </>
         )}
@@ -130,26 +180,40 @@ const InfoWindow: React.FC<{
         {/* Location */}
         {(record.state_name || record.district_name || record.block_name) && (
           <div className="border-t pt-2 mt-2">
-            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Location</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
+              Location
+            </p>
           </div>
         )}
         {record.state_name && <Row label="State" value={record.state_name} />}
-        {record.district_name && <Row label="District" value={record.district_name} />}
+        {record.district_name && (
+          <Row label="District" value={record.district_name} />
+        )}
         {record.block_name && <Row label="Block" value={record.block_name} />}
         {record.start_lgd_name && record.end_lgd_name && (
-          <Row label="GP Link" value={`${record.start_lgd_name} → ${record.end_lgd_name}`} />
+          <Row
+            label="GP Link"
+            value={`${record.start_lgd_name} → ${record.end_lgd_name}`}
+          />
         )}
 
         {/* User */}
         {record.user_name && <Row label="User" value={record.user_name} />}
-        {record.user_mobile && <Row label="Mobile" value={record.user_mobile} />}
+        {record.user_mobile && (
+          <Row label="Mobile" value={record.user_mobile} />
+        )}
 
-        <Row label="Created" value={moment(record.created_at).format('DD/MM/YYYY, hh:mm A')} />
+        <Row
+          label="Created"
+          value={moment(record.created_at).format('DD/MM/YYYY, hh:mm A')}
+        />
 
         {/* Photos */}
         {allImages.length > 0 && (
           <div className="mt-3">
-            <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Photos</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase mb-2">
+              Photos
+            </p>
             <div className="grid grid-cols-2 gap-2">
               {allImages.slice(0, 6).map((img, idx) => (
                 <div
@@ -169,7 +233,9 @@ const InfoWindow: React.FC<{
               ))}
             </div>
             {allImages.length > 6 && (
-              <p className="text-xs text-gray-500 mt-1">+{allImages.length - 6} more photos</p>
+              <p className="text-xs text-gray-500 mt-1">
+                +{allImages.length - 6} more photos
+              </p>
             )}
           </div>
         )}
@@ -208,28 +274,41 @@ const ErrorComponent: React.FC<{ message: string }> = ({ message }) => (
 
 // ─── Map Component ────────────────────────────────────────────────────────────
 
-interface Props { data: PoleString[] }
+interface Props {
+  data: PoleString[];
+  previewData?: PolePreview[];
+}
 
-const MapComponent: React.FC<Props> = ({ data }) => {
+const MapComponent: React.FC<Props> = ({ data, previewData }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const filterRef = useRef<HTMLDivElement>(null);
-
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [gMarkers, setGMarkers] = useState<google.maps.Marker[]>([]);
   const [gPolylines, setGPolylines] = useState<google.maps.Polyline[]>([]);
   const [showPolylines, setShowPolylines] = useState(true);
   const [selectedRecord, setSelectedRecord] = useState<PoleString | null>(null);
+  const [selectedPreview, setSelectedPreview] = useState<PolePreview | null>(
+    null,
+  );
   const [zoomImage, setZoomImage] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
-  // Derive unique event types present in data
-  const presentTypes = Array.from(new Set(data.map((d) => d.eventType)));
-  const [visibleTypes, setVisibleTypes] = useState<Set<string>>(new Set(presentTypes));
+  // Derive unique event types present in data (plus PREVIEW if previewData exists)
+  const presentTypes = useMemo(() => {
+    const types = new Set(data.map((d) => d.eventType));
+    if (previewData && previewData.length > 0) types.add('PREVIEW');
+    return Array.from(types);
+  }, [data, previewData]);
+  const [visibleTypes, setVisibleTypes] = useState<Set<string>>(
+    new Set(presentTypes),
+  );
 
   // Sync visibleTypes when data changes (new event types may appear)
   useEffect(() => {
-    setVisibleTypes(new Set(data.map((d) => d.eventType)));
-  }, [data]);
+    const types = new Set(data.map((d) => d.eventType));
+    if (previewData && previewData.length > 0) types.add('PREVIEW');
+    setVisibleTypes(types);
+  }, [data, previewData]);
 
   // Valid points only
   const validData = data.filter(
@@ -248,7 +327,10 @@ const MapComponent: React.FC<Props> = ({ data }) => {
 
     const center =
       validData.length > 0
-        ? { lat: Number(validData[0].latitude), lng: Number(validData[0].longitude) }
+        ? {
+            lat: Number(validData[0].latitude),
+            lng: Number(validData[0].longitude),
+          }
         : { lat: 20.5937, lng: 78.9629 };
 
     const mapInstance = new google.maps.Map(mapRef.current, {
@@ -260,7 +342,11 @@ const MapComponent: React.FC<Props> = ({ data }) => {
       mapTypeControl: true,
       zoomControl: true,
       styles: [
-        { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+        {
+          featureType: 'poi',
+          elementType: 'labels',
+          stylers: [{ visibility: 'off' }],
+        },
       ],
     });
 
@@ -275,16 +361,20 @@ const MapComponent: React.FC<Props> = ({ data }) => {
 
     const visible = validData.filter((r) => visibleTypes.has(r.eventType));
     const newMarkers: google.maps.Marker[] = [];
+    let idx = 0;
 
-    visible.forEach((record, index) => {
+    visible.forEach((record) => {
       const config = getMarkerConfig(record.eventType);
-
+      idx++;
       const marker = new google.maps.Marker({
-        position: { lat: Number(record.latitude), lng: Number(record.longitude) },
+        position: {
+          lat: Number(record.latitude),
+          lng: Number(record.longitude),
+        },
         map,
         title: `${config.label} — ${record.pit_id ?? record.id}`,
         label: {
-          text: (index + 1).toString(),
+          text: idx.toString(),
           color: '#ffffff',
           fontSize: '11px',
           fontWeight: 'bold',
@@ -304,6 +394,45 @@ const MapComponent: React.FC<Props> = ({ data }) => {
       newMarkers.push(marker);
     });
 
+    // Add preview data markers
+    if (previewData && visibleTypes.has('PREVIEW')) {
+      previewData.forEach((rec) => {
+        const lat = parseFloat(rec.latitude);
+        const lng = parseFloat(rec.longitude);
+        if (
+          isNaN(lat) ||
+          isNaN(lng) ||
+          Math.abs(lat) > 90 ||
+          Math.abs(lng) > 180
+        )
+          return;
+        idx++;
+        const cfg = getMarkerConfig('PREVIEW');
+        const marker = new google.maps.Marker({
+          position: { lat, lng },
+          map,
+          title: `Survey — ${rec.pit_id ?? rec.id}`,
+          label: {
+            text: idx.toString(),
+            color: '#ffffff',
+            fontSize: '11px',
+            fontWeight: 'bold',
+          },
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: cfg.color,
+            fillOpacity: 0.9,
+            strokeColor: '#ffffff',
+            strokeWeight: 2,
+          },
+          animation: google.maps.Animation.DROP,
+        });
+        marker.addListener('click', () => setSelectedPreview(rec));
+        newMarkers.push(marker);
+      });
+    }
+
     setGMarkers(newMarkers);
 
     // Fit bounds
@@ -315,7 +444,7 @@ const MapComponent: React.FC<Props> = ({ data }) => {
       });
       map.fitBounds(bounds);
     }
-  }, [map, data, visibleTypes]);
+  }, [map, data, previewData, visibleTypes]);
 
   // ── Draw polylines (one per survey_id, points sorted by id) ─────────────────
   useEffect(() => {
@@ -392,7 +521,11 @@ const MapComponent: React.FC<Props> = ({ data }) => {
   // ── Close filter panel on outside click ────────────────────────────────────
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (showFilters && filterRef.current && !filterRef.current.contains(e.target as Node)) {
+      if (
+        showFilters &&
+        filterRef.current &&
+        !filterRef.current.contains(e.target as Node)
+      ) {
         setShowFilters(false);
       }
     };
@@ -409,11 +542,14 @@ const MapComponent: React.FC<Props> = ({ data }) => {
 
   const toggleAll = () => {
     setVisibleTypes(
-      visibleTypes.size === presentTypes.length ? new Set() : new Set(presentTypes),
+      visibleTypes.size === presentTypes.length
+        ? new Set()
+        : new Set(presentTypes),
     );
   };
 
-  const getCount = (type: string) => validData.filter((r) => r.eventType === type).length;
+  const getCount = (type: string) =>
+    validData.filter((r) => r.eventType === type).length;
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -449,9 +585,16 @@ const MapComponent: React.FC<Props> = ({ data }) => {
           {showFilters && (
             <div className="bg-gray-50 rounded-md p-3 min-w-[200px]">
               <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium text-sm text-gray-700">Event Types</h4>
-                <button onClick={toggleAll} className="text-xs text-blue-600 hover:text-blue-800">
-                  {visibleTypes.size === presentTypes.length ? 'Hide All' : 'Show All'}
+                <h4 className="font-medium text-sm text-gray-700">
+                  Event Types
+                </h4>
+                <button
+                  onClick={toggleAll}
+                  className="text-xs text-blue-600 hover:text-blue-800"
+                >
+                  {visibleTypes.size === presentTypes.length
+                    ? 'Hide All'
+                    : 'Show All'}
                 </button>
               </div>
 
@@ -469,14 +612,18 @@ const MapComponent: React.FC<Props> = ({ data }) => {
                       <div className="flex items-center gap-2">
                         {isVisible ? <Eye size={14} /> : <EyeOff size={14} />}
                         <span className="text-sm">{config.icon}</span>
-                        <span className="text-sm font-medium">{config.label}</span>
+                        <span className="text-sm font-medium">
+                          {config.label}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-500">({count})</span>
                         <div
                           className="w-3 h-3 rounded-full border"
                           style={{
-                            backgroundColor: isVisible ? config.color : 'transparent',
+                            backgroundColor: isVisible
+                              ? config.color
+                              : 'transparent',
                             borderColor: config.color,
                           }}
                         />
@@ -493,7 +640,9 @@ const MapComponent: React.FC<Props> = ({ data }) => {
       {/* Legend */}
       <div className="absolute bottom-4 left-4 z-10">
         <div className="bg-white rounded-lg shadow-lg p-3">
-          <h4 className="font-medium text-sm text-gray-700 mb-2">Marker Legend</h4>
+          <h4 className="font-medium text-sm text-gray-700 mb-2">
+            Marker Legend
+          </h4>
           <div className="space-y-1 text-xs">
             {presentTypes.map((type) => {
               const config = getMarkerConfig(type);
@@ -515,12 +664,22 @@ const MapComponent: React.FC<Props> = ({ data }) => {
               );
             })}
             {/* Polyline indicator */}
-            <div className={`flex items-center gap-2 mt-1 pt-1 border-t border-gray-200 ${showPolylines ? 'opacity-100' : 'opacity-40'}`}>
+            <div
+              className={`flex items-center gap-2 mt-1 pt-1 border-t border-gray-200 ${showPolylines ? 'opacity-100' : 'opacity-40'}`}
+            >
               <svg width="20" height="10" viewBox="0 0 20 10">
-                <line x1="0" y1="5" x2="20" y2="5" stroke="#3B82F6" strokeWidth="2.5" strokeDasharray="4 2" />
+                <line
+                  x1="0"
+                  y1="5"
+                  x2="20"
+                  y2="5"
+                  stroke="#3B82F6"
+                  strokeWidth="2.5"
+                  strokeDasharray="4 2"
+                />
                 <polygon points="16,2 20,5 16,8" fill="#3B82F6" />
               </svg>
-              <span>Route line (by ID order)</span>
+              <span>Route line</span>
             </div>
           </div>
         </div>
@@ -534,6 +693,91 @@ const MapComponent: React.FC<Props> = ({ data }) => {
             onClose={() => setSelectedRecord(null)}
             onImageClick={setZoomImage}
           />
+        </div>
+      )}
+      {selectedPreview && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20">
+          <div className="bg-white rounded-lg shadow-xl max-w-sm w-80 max-h-[440px] overflow-hidden">
+            <div
+              className="p-4 text-white"
+              style={{
+                background: 'linear-gradient(135deg, #EF4444, #EF4444bb)',
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-sm">Survey</h3>
+                  <span className="text-xs bg-white bg-opacity-20 px-2 py-0.5 rounded">
+                    {selectedPreview.pit_id}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setSelectedPreview(null)}
+                  className="text-white hover:text-gray-200 transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+            <div className="p-4 max-h-80 overflow-y-auto space-y-2">
+              <Row
+                label="Survey ID"
+                value={String(selectedPreview.survey_id ?? '-')}
+              />
+              <Row label="Pit ID" value={selectedPreview.pit_id || '-'} />
+              <Row label="Status" value={selectedPreview.status || '-'} />
+              <Row
+                label="Coordinates"
+                value={`${selectedPreview.latitude}, ${selectedPreview.longitude}`}
+              />
+              {selectedPreview.workType && (
+                <Row label="Work Type" value={selectedPreview.workType} />
+              )}
+              {selectedPreview.construction_type && (
+                <Row
+                  label="Construction"
+                  value={selectedPreview.construction_type}
+                />
+              )}
+              {/* Photos */}
+              {(() => {
+                const photos = [
+                  ...(selectedPreview.pit_images || []),
+                  ...(selectedPreview.muff_images || []),
+                  ...(selectedPreview.earthing_images || []),
+                  ...(selectedPreview.pole_images || []),
+                ];
+                if (photos.length === 0) return null;
+                return (
+                  <div className="mt-3">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">
+                      Photos
+                    </h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      {photos.slice(0, 6).map((photo, idx) => (
+                        <div
+                          key={idx}
+                          className="relative aspect-square bg-gray-100 rounded-md overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => setZoomImage(`${baseUrl}${photo}`)}
+                        >
+                          <img
+                            src={`${baseUrl}${photo}`}
+                            alt={`Photo ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    {photos.length > 6 && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        +{photos.length - 6} more photos
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
         </div>
       )}
 
@@ -550,7 +794,11 @@ const MapComponent: React.FC<Props> = ({ data }) => {
             >
               <X size={20} />
             </button>
-            <img src={zoomImage} alt="Zoomed" className="max-w-full max-h-full rounded-lg" />
+            <img
+              src={zoomImage}
+              alt="Zoomed"
+              className="max-w-full max-h-full rounded-lg"
+            />
           </div>
         </div>
       )}
@@ -560,7 +808,7 @@ const MapComponent: React.FC<Props> = ({ data }) => {
 
 // ─── Main export (handles Maps SDK loading) ───────────────────────────────────
 
-const PoleStringMapComp: React.FC<Props> = ({ data }) => {
+const PoleStringMapComp: React.FC<Props> = ({ data, previewData }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
@@ -591,7 +839,7 @@ const PoleStringMapComp: React.FC<Props> = ({ data }) => {
   if (error) return <ErrorComponent message={error} />;
   if (!isMapReady) return <LoadingComponent />;
 
-  return <MapComponent data={data} />;
+  return <MapComponent data={data} previewData={previewData} />;
 };
 
 export default PoleStringMapComp;

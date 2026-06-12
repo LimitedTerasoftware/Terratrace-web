@@ -139,6 +139,9 @@ const Report: React.FC<ReportProps> = ({
         state: {
           row,
           multipreview: check,
+          selectedState: Data.selectedState,
+          selectedDistrict: Data.selectedDistrict,
+          selectedBlock: Data.selectedBlock,
         },
       });
     } else {

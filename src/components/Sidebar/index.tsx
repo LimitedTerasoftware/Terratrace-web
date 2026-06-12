@@ -576,7 +576,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                   <span
                                     className={`${isOpen ? 'block' : 'hidden'} truncate`}
                                   >
-                                    Construction Dashboard
+                                   Underground Dashboard
                                   </span>
                                 </NavLink>
                               </li>
@@ -612,7 +612,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                   <span
                                     className={`${isOpen ? 'block' : 'hidden'} truncate`}
                                   >
-                                    Construction List
+                                  Underground List
                                   </span>
                                 </NavLink>
                               </li>

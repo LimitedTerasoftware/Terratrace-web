@@ -93,17 +93,24 @@ const MediaCarousel: React.FC<MediaCarouselProps> = ({
             style={{ minHeight: '350px', maxHeight: '60vh' }}
           >
             {currentItem?.type === 'image' ? (
-              <div
-                className="w-full h-full flex items-center justify-center overflow-auto"
-                style={{ maxHeight: '60vh' }}
+            <div
+                className="w-full flex items-start justify-center overflow-auto"
+                style={{ height: '60vh', cursor: zoom > 1 ? 'grab' : 'default' }}
                 onWheel={handleWheel}
               >
                 <img
                   src={currentItem?.url}
                   alt={currentItem?.label}
                   className="object-contain transition-transform duration-200"
-                  style={{ transform: `scale(${zoom})`, maxHeight: '60vh' }}
-                />
+                  style={{
+                    transform: `scale(${zoom})`,
+                    transformOrigin: 'top center',
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    display: 'block',
+                    margin: '0 auto',
+                  }}
+                />             
               </div>
             ) : currentItem ? (
               <video

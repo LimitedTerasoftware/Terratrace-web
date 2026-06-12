@@ -8,7 +8,11 @@ import moment from 'moment';
 import MediaCarousel from './MediaCarousel';
 import PoleStringMapComp from './PoleStringMapComp';
 import * as XLSX from 'xlsx';
-import { PoleString } from '../../types/aerial-survey';
+import {
+  PoleString,
+  PoleSurveyData,
+  PolePreview,
+} from '../../types/aerial-survey';
 import { ToastContainer, toast } from 'react-toastify';
 import { hasViewOnlyAccess, isAdminUser } from '../../utils/accessControl';
 
@@ -81,8 +85,12 @@ function PoleStringView() {
   const location = useLocation();
   const MainData = location.state?.row || '';
   const multipreview = location.state?.multipreview || false;
+  const selectedState = location.state?.selectedState || '';
+  const selectedDistrict = location.state?.selectedDistrict || '';
+  const selectedBlock = location.state?.selectedBlock || '';
 
   const [poleData, setPoleData] = useState<PoleString[]>([]);
+  const [polePreviewData, setPolePreviewData] = useState<PolePreview[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'view' | 'map'>('view');
@@ -129,6 +137,43 @@ function PoleStringView() {
   useEffect(() => {
     getData();
   }, []);
+
+  useEffect(() => {
+    if (!multipreview || !selectedState || !selectedDistrict || !selectedBlock)
+      return;
+    const fetchPolesdata = async () => {
+      try {
+        const params: any = {};
+        if (selectedState) params.state_id = selectedState;
+        if (selectedDistrict) params.district_id = selectedDistrict;
+        if (selectedBlock) params.block_id = selectedBlock;
+
+        const response = await axios.get<{
+          status: boolean;
+          data: PoleSurveyData[];
+        }>(`${TraceBASEURL}/get-pole-survey`, { params });
+
+        if (response.data.status) {
+          const surveyList = response.data.data;
+          const ids = surveyList.map((item) => item.id);
+          if (ids.length > 0) {
+            const previewResp = await axios.get(
+              `${TraceBASEURL}/get-pole-preview`,
+              {
+                params: { survey_ids: ids.join(',') },
+              },
+            );
+            if (previewResp.status === 200 || previewResp.status === 201) {
+              setPolePreviewData(previewResp.data.data || []);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching pole preview:', error);
+      }
+    };
+    fetchPolesdata();
+  }, [multipreview, selectedState, selectedDistrict, selectedBlock]);
 
   // ── Media helpers ───────────────────────────────────────────────────────────
 
@@ -205,12 +250,16 @@ function PoleStringView() {
       sortable: true,
     },
     {
+      name: 'Pit Id',
+      cell: (row) => row.pit_id ?? '-',
+      sortable: true,
+    },
+    {
       name: 'Event Type',
       cell: (row) => getEventBadge(row.eventType),
       sortable: true,
       width: '160px',
     },
-
     {
       name: 'Pole Type',
       selector: (row) => row.pole_type || '-',
@@ -660,7 +709,7 @@ function PoleStringView() {
       {/* ── Map tab ── */}
       {activeTab === 'map' && (
         <div className="h-[600px] p-4">
-          <PoleStringMapComp data={poleData} />
+          <PoleStringMapComp data={poleData} previewData={polePreviewData} />
         </div>
       )}
 
