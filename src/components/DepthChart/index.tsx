@@ -15,7 +15,9 @@ const DepthDetails = eventData.filter((event: any) =>
                       event.eventType === 'STARTPIT' ||
                       event.eventType === 'ENDPIT' ||
                       (event.eventType === 'JOINTCHAMBER' && event.depthPhoto) ||
-                      (event.eventType === 'MANHOLES' && event.depthPhoto)
+                      (event.eventType === 'MANHOLES' && event.depthPhoto) ||
+                      (event.eventType === 'STARTSURVEY' ) ||
+                      (event.eventType === 'ENDSURVEY')
                     ).sort((a: any, b: any) => a.index_id || a.id - b.index_id || b.id);
 
   const [depthData,setdepthData]=useState<DepthDataPoint[]>(DepthDetails ||[]);

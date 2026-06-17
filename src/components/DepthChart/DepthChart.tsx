@@ -16,7 +16,7 @@ interface SelectedPoint {
 
 interface SurveyGroup {
   survey_id: number | null;
-  points: ChartPoint[];
+  points: (ChartPoint & { isOutlier: boolean })[];
   startDistance: number;
   endDistance: number;
   totalDistance: number;
@@ -29,6 +29,126 @@ export const DepthChart: React.FC<DepthChartProps> = ({
   minDepth = 1.65 
 }) => {
   const [selectedPoints, setSelectedPoints] = useState<SelectedPoint[]>([]);
+  const [showOutliers, setShowOutliers] = useState(false);
+
+  /**
+   * Fits a quadratic (parabola) y = a·x² + b·x + c through the DEPTH points
+   * using least-squares regression, then flags only those points whose residual
+   * exceeds 1.5 × the standard deviation of all residuals as non-aligned.
+   *
+   * This tolerates the natural small fluctuations that real depth readings have
+   * while still removing genuine outliers that break the parabolic shape.
+   * STARTPIT / ENDPIT / other anchor types are never touched.
+   */
+  const filterParabolaAlignedDepthPoints = (
+    points: (ChartPoint & { isOutlier: boolean })[]
+  ): (ChartPoint & { isOutlier: boolean })[] => {
+    const depthOnly = points.filter(p => p.eventType === 'DEPTH');
+
+    // Need at least 3 points to fit a parabola
+    if (depthOnly.length < 3) return points;
+
+    // ── Normalise x to [0, 1] to keep the regression numerically stable ──
+    const xVals = depthOnly.map(p => p.distance);
+    const xMin = Math.min(...xVals);
+    const xMax = Math.max(...xVals);
+    const xRange = xMax - xMin || 1;
+    const xs = xVals.map(x => (x - xMin) / xRange); // normalised 0..1
+    const ys = depthOnly.map(p => p.depth);
+
+    // ── Least-squares fit for y = a·x² + b·x + c ──
+    // Build normal equations: [Σx⁴ Σx³ Σx²] [a]   [Σx²y]
+    //                          [Σx³ Σx² Σx ] [b] = [Σxy ]
+    //                          [Σx² Σx  n  ] [c]   [Σy  ]
+    const n = xs.length;
+    let sx1=0, sx2=0, sx3=0, sx4=0, sy=0, sx1y=0, sx2y=0;
+    for (let i = 0; i < n; i++) {
+      const x = xs[i], y = ys[i];
+      sx1 += x; sx2 += x*x; sx3 += x*x*x; sx4 += x*x*x*x;
+      sy  += y; sx1y += x*y; sx2y += x*x*y;
+    }
+    // Solve 3×3 system via Cramer's rule
+    const A = [[sx4,sx3,sx2],[sx3,sx2,sx1],[sx2,sx1,n]];
+    const B = [sx2y, sx1y, sy];
+    const det3 = (m: number[][]): number =>
+      m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1])
+     -m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0])
+     +m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
+    const detA = det3(A);
+
+    let a = 0, b = 0, c = 0;
+    if (Math.abs(detA) > 1e-12) {
+      a = det3([[B[0],A[0][1],A[0][2]],[B[1],A[1][1],A[1][2]],[B[2],A[2][1],A[2][2]]]) / detA;
+      b = det3([[A[0][0],B[0],A[0][2]],[A[1][0],B[1],A[1][2]],[A[2][0],B[2],A[2][2]]]) / detA;
+      c = det3([[A[0][0],A[0][1],B[0]],[A[1][0],A[1][1],B[1]],[A[2][0],A[2][1],B[2]]]) / detA;
+    } else {
+      // Degenerate case — keep all points
+      return points;
+    }
+
+    // ── Compute residuals and their std-dev ──
+    const residuals = xs.map((x, i) => Math.abs(ys[i] - (a*x*x + b*x + c)));
+    const meanRes = residuals.reduce((s, r) => s + r, 0) / n;
+    const stdRes  = Math.sqrt(residuals.reduce((s, r) => s + (r - meanRes)**2, 0) / n);
+    // Threshold: points more than 1.5σ away from the fitted parabola are non-aligned
+    const threshold = meanRes + 1.5 * stdRes;
+
+    // ── Tag each DEPTH point ──
+    let depthCounter = 0;
+    return points.map(p => {
+      if (p.eventType !== 'DEPTH') return p; // anchors are never outliers
+      const isOutlier = residuals[depthCounter++] > threshold;
+      return { ...p, isOutlier };
+    });
+  };
+
+  /**
+   * Builds a smooth cubic Bézier path through an ordered set of SVG points,
+   * producing a natural parabola-like curve.
+   * Uses Catmull-Rom → cubic Bézier conversion for continuity at every joint.
+   */
+  const buildParabolaPath = (pts: Array<{ x: number; y: number }>): string => {
+    if (pts.length === 0) return '';
+    if (pts.length === 1) return `M ${pts[0].x} ${pts[0].y}`;
+    if (pts.length === 2)
+      return `M ${pts[0].x} ${pts[0].y} L ${pts[1].x} ${pts[1].y}`;
+
+    const alpha = 0.5; // tension — 0 = tight, 1 = loose
+
+    const cp = (
+      p0: { x: number; y: number },
+      p1: { x: number; y: number },
+      p2: { x: number; y: number },
+      p3: { x: number; y: number }
+    ) => {
+      // Catmull-Rom control points converted to cubic Bézier handles
+      const cp1x = p1.x + (p2.x - p0.x) * alpha / 3;
+      const cp1y = p1.y + (p2.y - p0.y) * alpha / 3;
+      const cp2x = p2.x - (p3.x - p1.x) * alpha / 3;
+      const cp2y = p2.y - (p3.y - p1.y) * alpha / 3;
+      return { cp1x, cp1y, cp2x, cp2y };
+    };
+
+    // Phantom points at both ends for smooth boundary tangents
+    const phantom0 = { x: 2 * pts[0].x - pts[1].x, y: 2 * pts[0].y - pts[1].y };
+    const phantomN = {
+      x: 2 * pts[pts.length - 1].x - pts[pts.length - 2].x,
+      y: 2 * pts[pts.length - 1].y - pts[pts.length - 2].y,
+    };
+    const extended = [phantom0, ...pts, phantomN];
+
+    let d = `M ${pts[0].x.toFixed(2)} ${pts[0].y.toFixed(2)}`;
+    for (let i = 1; i < pts.length; i++) {
+      const { cp1x, cp1y, cp2x, cp2y } = cp(
+        extended[i - 1],
+        extended[i],
+        extended[i + 1],
+        extended[i + 2]
+      );
+      d += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${pts[i].x.toFixed(2)} ${pts[i].y.toFixed(2)}`;
+    }
+    return d;
+  };
 
   const getLatLng = (point: any): { lat: number; lng: number } | null => {
     let coord: string | null | undefined = null;
@@ -139,22 +259,31 @@ export const DepthChart: React.FC<DepthChartProps> = ({
 
       // Sort survey data by distance
       surveyChartData.sort((a, b) => a.distance - b.distance);
+
+      // Tag all points with isOutlier: false initially
+      const initialTagged: (ChartPoint & { isOutlier: boolean })[] = surveyChartData.map(
+        p => ({ ...p, isOutlier: false })
+      );
+
+      // Apply parabola-alignment filter: only DEPTH points are evaluated;
+      // STARTPIT / ENDPIT / other anchors are never marked as outliers.
+      const taggedPoints = filterParabolaAlignedDepthPoints(initialTagged);
       
-      const surveyEndDistance = surveyChartData.length > 0 
-        ? surveyChartData[surveyChartData.length - 1].distance 
+      const surveyEndDistance = taggedPoints.length > 0 
+        ? taggedPoints[taggedPoints.length - 1].distance 
         : surveyStartDistance;
 
       groups.push({
         link_name: points[0].link_name,
         survey_id: surveyId,
-        points: surveyChartData,
+        points: taggedPoints,
         startDistance: surveyStartDistance,
         endDistance: surveyEndDistance,
         totalDistance: surveyCumulativeDistance,
         color: surveyColor
       });
 
-      allChartData.push(...surveyChartData);
+      allChartData.push(...taggedPoints);
       globalCumulativeDistance = surveyEndDistance + 50; // Add gap between surveys
     });
 
@@ -251,6 +380,9 @@ export const DepthChart: React.FC<DepthChartProps> = ({
   const criticalAreas = chartData.filter(point => point.isBelowMinimum);
   const belowMinimumCount = criticalAreas.length;
   const totalPoints = chartData.length;
+  const outlierCount = chartData.filter(
+    p => (p as ChartPoint & { isOutlier: boolean }).isOutlier
+  ).length;
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
@@ -279,6 +411,19 @@ export const DepthChart: React.FC<DepthChartProps> = ({
               </span>
             </div>
           )}
+          {/* {outlierCount > 0 && (
+            <button
+              onClick={() => setShowOutliers(prev => !prev)}
+              className={`flex items-center space-x-2 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                showOutliers
+                  ? 'bg-gray-200 text-gray-700 border-gray-300'
+                  : 'bg-white text-gray-500 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              <span className="w-2.5 h-2.5 rounded-full border border-dashed border-gray-400 inline-block" />
+              <span>{showOutliers ? 'Hide' : 'Show'} {outlierCount} non-aligned point{outlierCount !== 1 ? 's' : ''}</span>
+            </button>
+          )} */}
         </div>
       </div>
 
@@ -536,13 +681,28 @@ export const DepthChart: React.FC<DepthChartProps> = ({
               />
             )}
 
-            {/* Survey-specific depth lines */}
-            {surveyGroups.map((survey, index) => {
-              const pathData = survey.points.reduce((path, point, pointIndex) => {
-                const x = xScale(point.distance);
-                const y = yScale(point.depth);
-                return pointIndex === 0 ? `M ${x} ${y}` : `${path} L ${x} ${y}`;
-              }, '');
+            {/* Survey-specific depth lines — true parabola shape:
+                STARTPIT → ascending DEPTH points → peak → descending DEPTH points → ENDPIT
+                Non-aligned DEPTH points are excluded from the curve */}
+            {surveyGroups.map((survey) => {
+              // Build the ordered set of points that form the parabola:
+              //   1. STARTPIT (if present)
+              //   2. Aligned DEPTH points only (isOutlier = false)
+              //   3. ENDPIT (if present)
+              const startPit = survey.points.find(p => p.eventType === 'STARTPIT');
+              const endPit   = survey.points.find(p => p.eventType === 'ENDPIT');
+              const alignedDepths = survey.points.filter(
+                p => p.eventType === 'DEPTH' && !p.isOutlier
+              );
+
+              const curvePoints: Array<{ x: number; y: number }> = [
+                ...(startPit ? [{ x: xScale(startPit.distance), y: yScale(startPit.depth) }] : []),
+                ...alignedDepths.map(p => ({ x: xScale(p.distance), y: yScale(p.depth) })),
+                ...(endPit ? [{ x: xScale(endPit.distance), y: yScale(endPit.depth) }] : []),
+              ];
+
+              const pathData = buildParabolaPath(curvePoints);
+              if (!pathData) return null;
 
               return (
                 <path
@@ -559,49 +719,87 @@ export const DepthChart: React.FC<DepthChartProps> = ({
             })}
 
             {/* Data points */}
-            {chartData.map((point, index) => (
-              <g key={index}>
-                <circle
-                  cx={xScale(point.distance)}
-                  cy={yScale(point.depth)}
-                  r={getPointRadius(index, point.isBelowMinimum, point.eventType)}
-                  fill={getPointColor(index, point.isBelowMinimum, point.eventType, point.survey_id)}
-                  stroke="white"
-                  strokeWidth="2"
-                  className="cursor-pointer hover:opacity-80 transition-all duration-200"
-                  onClick={() => handlePointClick(point, index)}
-                >
-                  <title>
-                    Survey: {point.survey_id}
-                    Distance: {point.distance}m
-                    Depth: {point.depth}m
-                    Type: {point.eventType}
-                    {point.isBelowMinimum ? ' (Below Minimum!)' : ''}
-                    Click to select for distance measurement
-                  </title>
-                </circle>
-                {point.isBelowMinimum && (
-                  <text
-                    x={xScale(point.distance)}
-                    y={yScale(point.depth) - 12}
-                    textAnchor="middle"
-                    className="text-xs font-bold fill-red-600 pointer-events-none"
+            {chartData.map((point, index) => {
+              const taggedPoint = point as ChartPoint & { isOutlier: boolean };
+              const isOutlier = taggedPoint.isOutlier;
+              const isAnchor = point.eventType === 'STARTPIT' || point.eventType === 'ENDPIT'
+                || point.eventType === 'JOINTCHAMBER' || point.eventType === 'MANHOLES';
+
+              // Anchor points (STARTPIT, ENDPIT, etc.) are ALWAYS visible.
+              // DEPTH outliers are hidden unless showOutliers toggle is on.
+              if (!isAnchor && isOutlier && !showOutliers) return null;
+
+              return (
+                <g key={index}>
+                  {/* Dashed ring on outlier DEPTH points when revealed */}
+                  {isOutlier && showOutliers && (
+                    <circle
+                      cx={xScale(point.distance)}
+                      cy={yScale(point.depth)}
+                      r={getPointRadius(index, point.isBelowMinimum, point.eventType) + 5}
+                      fill="none"
+                      stroke="#9CA3AF"
+                      strokeWidth="1.5"
+                      strokeDasharray="3,2"
+                      opacity="0.7"
+                    />
+                  )}
+                  <circle
+                    cx={xScale(point.distance)}
+                    cy={yScale(point.depth)}
+                    r={getPointRadius(index, point.isBelowMinimum, point.eventType)}
+                    fill={isOutlier ? '#9CA3AF' : getPointColor(index, point.isBelowMinimum, point.eventType, point.survey_id)}
+                    stroke="white"
+                    strokeWidth="2"
+                    opacity={isOutlier ? 0.5 : 1}
+                    className="cursor-pointer hover:opacity-80 transition-all duration-200"
+                    onClick={() => handlePointClick(point, index)}
                   >
-                    ⚠
-                  </text>
-                )}
-                {selectedPoints.some(p => p.index === index) && (
-                  <text
-                    x={xScale(point.distance)}
-                    y={yScale(point.depth) + 20}
-                    textAnchor="middle"
-                    className="text-xs font-bold fill-gray-700 pointer-events-none"
-                  >
-                    {selectedPoints.findIndex(p => p.index === index) === 0 ? '1' : '2'}
-                  </text>
-                )}
-              </g>
-            ))}
+                    <title>
+                      Survey: {point.survey_id}
+                      Distance: {point.distance}m
+                      Depth: {point.depth}m
+                      Type: {point.eventType}
+                      {point.isBelowMinimum ? ' (Below Minimum!)' : ''}
+                      {/* {isOutlier ? ' [Not aligned — hidden from parabola curve]' : ''} */}
+                      Click to select for distance measurement
+                    </title>
+                  </circle>
+                  {point.isBelowMinimum && !isOutlier && (
+                    <text
+                      x={xScale(point.distance)}
+                      y={yScale(point.depth) - 12}
+                      textAnchor="middle"
+                      className="text-xs font-bold fill-red-600 pointer-events-none"
+                    >
+                      ⚠
+                    </text>
+                  )}
+                  {/* {isOutlier && showOutliers && (
+                    <text
+                      x={xScale(point.distance)}
+                      y={yScale(point.depth) - 14}
+                      textAnchor="middle"
+                      fontSize="10"
+                      fill="#6B7280"
+                      className="pointer-events-none"
+                    >
+                      not aligned
+                    </text>
+                  )} */}
+                  {selectedPoints.some(p => p.index === index) && (
+                    <text
+                      x={xScale(point.distance)}
+                      y={yScale(point.depth) + 20}
+                      textAnchor="middle"
+                      className="text-xs font-bold fill-gray-700 pointer-events-none"
+                    >
+                      {selectedPoints.findIndex(p => p.index === index) === 0 ? '1' : '2'}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
 
             {/* Total distance labels at the top */}
             {[0, 0.2, 0.4, 0.6, 0.8, 1].map(ratio => (
@@ -653,6 +851,13 @@ export const DepthChart: React.FC<DepthChartProps> = ({
             <div className="w-4 h-4 bg-red-500 opacity-40"></div>
             <span className="text-sm text-gray-700">Critical Areas</span>
           </div>
+          {/* <div className="flex items-center space-x-2">
+            <div className="relative w-3 h-3">
+              <div className="w-3 h-3 rounded-full bg-gray-300 opacity-50"></div>
+              <div className="absolute inset-0 rounded-full border border-dashed border-gray-400"></div>
+            </div>
+            <span className="text-sm text-gray-700">Not aligned (hidden from curve)</span>
+          </div> */}
           <div className="flex items-center space-x-2">
             <div className="w-3 h-3 bg-green-500 rounded-full"></div>
             <span className="text-sm text-gray-700">Point 1</span>

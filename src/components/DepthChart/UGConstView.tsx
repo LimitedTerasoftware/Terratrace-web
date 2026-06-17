@@ -1740,6 +1740,7 @@ function Eventreport() {
             onPlanningCategoryVisibilityChange={
               handlePlanningCategoryVisibilityChange
             }
+            onReload={()=>getData()}
           />
         </div>
       )}
