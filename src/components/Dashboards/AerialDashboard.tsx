@@ -15,7 +15,7 @@ import InstallationProgress from '../Charts/InstallationProgress';
 import PoleTrackingTable from '../Chat/PoleTrackingTable';
 import SurveyorPerformance from '../Chat/SurveyorPerformance';
 import BottleneckAnalysis from '../Charts/BottleneckAnalysis';
-import StatsCard from '../Chat/StatsCard';
+import {StatsCard} from '../Chat/StatsCard';
 
 type PoleDashboardData =
   import('../Services/api').PoleDashboardResponse['data'];

@@ -94,6 +94,7 @@ import BlockChecklistList from './components/BlockRouterChecklist/List';
 import AuditLogs from './components/AuditLogs';
 import AerialView from './components/DepthChart/AerialView';
 import PoleStringView from './components/DepthChart/PoleStringView';
+import MainDashboard from './components/Dashboards/MainDashboard';
 
 function App() {
   const [loading, setLoading] = useState<boolean>(true);
@@ -224,7 +225,8 @@ function App() {
                   <>
                     <DefaultLayout>
                       <PageTitle title="Tricad Dashboard" />
-                      <ECommerce />
+                      {/* <ECommerce /> */}
+                      <MainDashboard/>
                     </DefaultLayout>
                   </>
                 }
