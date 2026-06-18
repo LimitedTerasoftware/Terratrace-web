@@ -365,6 +365,11 @@ const MapComponent: React.FC<Props> = ({ data, previewData }) => {
 
     visible.forEach((record) => {
       const config = getMarkerConfig(record.eventType);
+      let fillColor = config.color;
+      if (record.eventType === 'POLE' && record.pole_type) {
+        fillColor =
+          record.pole_type.toLowerCase() === 'existing' ? '#3B82F6' : '#EF4444';
+      }
       idx++;
       const marker = new google.maps.Marker({
         position: {
@@ -382,7 +387,7 @@ const MapComponent: React.FC<Props> = ({ data, previewData }) => {
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
           scale: 9,
-          fillColor: config.color,
+          fillColor,
           fillOpacity: 0.9,
           strokeColor: '#ffffff',
           strokeWeight: 2,
@@ -618,15 +623,15 @@ const MapComponent: React.FC<Props> = ({ data, previewData }) => {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-500">({count})</span>
-                        <div
-                          className="w-3 h-3 rounded-full border"
-                          style={{
-                            backgroundColor: isVisible
-                              ? config.color
-                              : 'transparent',
-                            borderColor: config.color,
-                          }}
-                        />
+                          <div
+                            className="w-3 h-3 rounded-full border"
+                            style={{
+                              backgroundColor: isVisible
+                                ? config.color
+                                : 'transparent',
+                              borderColor: config.color,
+                            }}
+                          />
                       </div>
                     </div>
                   );
@@ -648,6 +653,44 @@ const MapComponent: React.FC<Props> = ({ data, previewData }) => {
               const config = getMarkerConfig(type);
               const count = getCount(type);
               const isVisible = visibleTypes.has(type);
+              if (type === 'POLE') {
+                const existingCount = validData.filter(
+                  (r) =>
+                    r.eventType === 'POLE' &&
+                    r.pole_type?.toLowerCase() === 'existing',
+                ).length;
+                const newCount = validData.filter(
+                  (r) =>
+                    r.eventType === 'POLE' &&
+                    r.pole_type?.toLowerCase() !== 'existing',
+                ).length;
+                return (
+                  <React.Fragment key={type}>
+                    <div
+                      className={`flex items-center gap-2 ${isVisible ? 'opacity-100' : 'opacity-40'}`}
+                    >
+                      <div
+                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: '#3B82F6' }}
+                      />
+                      <span>
+                        {config.icon} Pole - Existing ({existingCount})
+                      </span>
+                    </div>
+                    <div
+                      className={`flex items-center gap-2 ${isVisible ? 'opacity-100' : 'opacity-40'}`}
+                    >
+                      <div
+                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: '#EF4444' }}
+                      />
+                      <span>
+                        {config.icon} Pole - New ({newCount})
+                      </span>
+                    </div>
+                  </React.Fragment>
+                );
+              }
               return (
                 <div
                   key={type}

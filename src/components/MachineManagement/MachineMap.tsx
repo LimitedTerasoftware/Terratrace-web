@@ -242,23 +242,7 @@ export const MachineMapComponent: React.FC<MachineMapComponentProps> = ({
           ${depthInfo}
           ${criticalWarning}
           
-          <!-- Machine and Contractor Info -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 10px;">
-            <div style="background: #f8fafc; padding: 12px; border-radius: 5px;">
-              <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                <span style="color: #4f46e5; margin-right: 8px; font-size: 16px;">🔧</span>
-                <span style="color: #64748b; font-size: 12px; font-weight: 600;">Machine</span>
-              </div>
-              <div style="color: #1e293b; font-size: 14px; font-weight: 700;">${activity.machine_registration_number}</div>
-            </div>
-            <div style="background: #f8fafc; padding: 12px; border-radius: 8px;">
-              <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                <span style="color: #059669; margin-right: 8px; font-size: 16px;">🏢</span>
-                <span style="color: #64748b; font-size: 12px; font-weight: 600;">Contractor</span>
-              </div>
-              <div style="color: #1e293b; font-size: 14px; font-weight: 700;">${activity.firm_name}</div>
-            </div>
-          </div>
+       
 
           <!-- Location Info -->
           <div style="background: #fef7f0; padding: 12px; border-radius: 8px; margin-bottom: 8px;">
