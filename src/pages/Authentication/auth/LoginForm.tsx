@@ -67,7 +67,12 @@ const LoginForm: React.FC = () => {
         });
 
         // Redirect to /dashboard
-        navigate("/dashboard");
+        if(email == 'IE@terasoftware.com'){
+          navigate('/smart-inventory')
+        }else{
+           navigate("/dashboard");
+        }
+       
       } else {
         setLoading(false)
         toast.error(response.data.message || "Invalid credentials.", {

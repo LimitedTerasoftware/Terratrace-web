@@ -328,8 +328,10 @@ const MapComponent: React.FC<MapCompProps> = ({
 
   // marker instances keyed by marker data id
   const markerInstancesRef = useRef<Map<number, google.maps.Marker>>(new Map());
+  // Only fitBounds on the very first load — never on drag/undo updates
+  const initialFitDoneRef = useRef(false);
 
-  const [polylines, setPolylines] = useState<google.maps.Polyline[]>([]);
+  const polylinesRef = useRef<google.maps.Polyline[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Activity | null>(null);
   const [visibleEventTypes, setVisibleEventTypes] = useState<Set<string>>(
     new Set(['DEPTH', 'STARTPIT', 'ENDPIT']),
@@ -516,11 +518,19 @@ const MapComponent: React.FC<MapCompProps> = ({
     const incomingIds = new Set(
       data.filter(p => visibleEventTypes.has(p.eventType)).map(p => p.id),
     );
+    const markerSetChanged =
+      existingIds.size !== incomingIds.size ||
+      [...incomingIds].some(id => !existingIds.has(id));
+    if (markerSetChanged) initialFitDoneRef.current = false;
 
-    // Remove markers no longer visible
+    // Remove markers no longer visible — clear listeners to avoid memory leaks
     existingIds.forEach(id => {
       if (!incomingIds.has(id)) {
-        markerInstancesRef.current.get(id)?.setMap(null);
+        const m = markerInstancesRef.current.get(id);
+        if (m) {
+          google.maps.event.clearInstanceListeners(m);
+          m.setMap(null);
+        }
         markerInstancesRef.current.delete(id);
       }
     });
@@ -543,17 +553,18 @@ const MapComponent: React.FC<MapCompProps> = ({
           (override.lat !== point.lat || override.lng !== point.lng);
 
         if (markerInstancesRef.current.has(point.id)) {
-          // Update existing marker visibility and position
           const existing = markerInstancesRef.current.get(point.id)!;
           existing.setMap(map);
-          // Update icon to reflect moved state
+          // Sync position (handles undo restoring a position the map doesn't know about yet)
+          existing.setPosition({ lat, lng });
+          // Update icon: yellow ring = moved, white ring = original
           existing.setIcon({
             path: google.maps.SymbolPath.CIRCLE,
             scale: hasMoved ? 10 : 8,
             fillColor: eventConfig.color,
             fillOpacity: 0.9,
-            strokeColor: hasMoved ? '#ffffff' : '#ffffff',
-            strokeWeight: hasMoved ? 3 : 2,
+            strokeColor: hasMoved ? '#facc15' : '#ffffff',
+            strokeWeight: hasMoved ? 2.5 : 2,
           });
           bounds.extend({ lat, lng });
           markerCount++;
@@ -633,20 +644,42 @@ const MapComponent: React.FC<MapCompProps> = ({
         markerCount++;
       });
 
-    if (markerCount > 0) map.fitBounds(bounds);
+    // Only auto-fit once (initial load). Dragging / undo bumps renderTick but
+    // must never zoom-out the map, so we guard with a ref.
+    if (markerCount > 0 && !initialFitDoneRef.current) {
+      map.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60 });
+      // Prevent over-zooming when there is only one (or very close) markers
+      const zoomListener = google.maps.event.addListenerOnce(map, 'idle', () => {
+        if ((map.getZoom() ?? 0) > 17) map.setZoom(17);
+      });
+      initialFitDoneRef.current = true;
+    }
   // positionOverridesRef is a ref — not in deps. renderTick drives icon updates.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, data, visibleEventTypes, eventData, renderTick, recordDrag]);
 
-  // ── Polylines ─────────────────────────────────────────────────────────────
+  // Cleanup all markers when the component unmounts
   useEffect(() => {
-    polylines.forEach(p => p.setMap(null));
-    if (!map || !data.length || !showPolylines) {
-      setPolylines([]);
-      return;
-    }
+    return () => {
+      markerInstancesRef.current.forEach(m => {
+        google.maps.event.clearInstanceListeners(m);
+        m.setMap(null);
+      });
+      markerInstancesRef.current.clear();
+    };
+  }, []);
+
+  // ── Polylines ─────────────────────────────────────────────────────────────
+  // FIX: use a ref (not state) so cleanup is synchronous — no stale-state frame
+  // where old and new polylines coexist on the map.
+  const redrawPolylines = useCallback(() => {
+    // Always clean up current polylines first
+    polylinesRef.current.forEach(p => p.setMap(null));
+    polylinesRef.current = [];
+
+    if (!map || !data.length || !showPolylines) return;
     const hasVisible = data.some(p => visibleEventTypes.has(p.eventType));
-    if (!hasVisible) { setPolylines([]); return; }
+    if (!hasVisible) return;
 
     const grouped = data.reduce((acc: Record<number, MarkerData[]>, pt) => {
       if (!acc[pt.survey_id]) acc[pt.survey_id] = [];
@@ -654,7 +687,6 @@ const MapComponent: React.FC<MapCompProps> = ({
       return acc;
     }, {});
 
-    const newPolylines: google.maps.Polyline[] = [];
     Object.values(grouped).forEach(pts => {
       const sorted = [...pts].sort((a: any, b: any) => (a.index_id ?? a.id) - (b.index_id ?? b.id));
       const path = sorted
@@ -664,7 +696,7 @@ const MapComponent: React.FC<MapCompProps> = ({
           return { lat: ov?.lat ?? p.lat, lng: ov?.lng ?? p.lng };
         });
       if (path.length > 1) {
-        newPolylines.push(new google.maps.Polyline({
+        polylinesRef.current.push(new google.maps.Polyline({
           path,
           geodesic: true,
           strokeColor: '#3B82F6',
@@ -674,9 +706,17 @@ const MapComponent: React.FC<MapCompProps> = ({
         }));
       }
     });
-    setPolylines(newPolylines);
+  }, [map, data, visibleEventTypes, showPolylines]);
+
+  useEffect(() => {
+    redrawPolylines();
+    return () => {
+      polylinesRef.current.forEach(p => p.setMap(null));
+      polylinesRef.current = [];
+    };
+  // renderTick drives redraws after drag/undo; redrawPolylines covers the rest
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, data, visibleEventTypes, showPolylines, renderTick]);
+  }, [redrawPolylines, renderTick]);
 
   // ── Planning placemarks ───────────────────────────────────────────────────
   const planningConfigMap = useMemo(() => {
@@ -692,6 +732,8 @@ const MapComponent: React.FC<MapCompProps> = ({
 
   const isCategoryVisible = (catId: string) =>
     !externalVisibleCategories || externalVisibleCategories.has(catId);
+
+  const planInfoWindowRef = useRef<google.maps.InfoWindow | null>(null);
 
   useEffect(() => {
     if (!map || !showPlanning) return;
@@ -712,7 +754,12 @@ const MapComponent: React.FC<MapCompProps> = ({
           icon: { path: google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: config.color, fillOpacity: 0.9, strokeColor: '#fff', strokeWeight: 2 },
         });
         m.addListener('click', () => {
-          new google.maps.InfoWindow({ content: `<div style="padding:4px;font-size:13px"><strong>${pm.name}</strong><br/>${pm.category}</div>` }).open(map, m);
+          // FIX: close any previously open InfoWindow before opening a new one
+          planInfoWindowRef.current?.close();
+          planInfoWindowRef.current = new google.maps.InfoWindow({
+            content: `<div style="padding:4px;font-size:13px"><strong>${pm.name}</strong><br/>${pm.category}</div>`,
+          });
+          planInfoWindowRef.current.open(map, m);
         });
         planMarkers.push(m);
       } else {
@@ -756,6 +803,18 @@ const MapComponent: React.FC<MapCompProps> = ({
   }, [showFilters]);
 
   const getEventTypeCount = (et: string) => data.filter(p => p.eventType === et).length;
+
+  // Auto-close the changes panel when all changes are undone/reset
+  useEffect(() => {
+    if (changedMarkers.length === 0) setShowChangesPanel(false);
+  }, [changedMarkers.length]);
+
+  // Auto-dismiss the success state on the toolbar after 2 s
+  useEffect(() => {
+    if (submitStatus !== 'success') return;
+    const t = setTimeout(() => setSubmitStatus('idle'), 2000);
+    return () => clearTimeout(t);
+  }, [submitStatus]);
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -873,7 +932,7 @@ const MapComponent: React.FC<MapCompProps> = ({
               title="Undo last move"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
                 disabled:opacity-40 disabled:cursor-not-allowed
-                enabled:bg-gray-100 enabled:hover:bg-gray-200 text-gray-700"
+                bg-gray-100 hover:bg-gray-200 text-gray-700"
             >
               <Undo2 size={14} />
               Undo
@@ -904,7 +963,7 @@ const MapComponent: React.FC<MapCompProps> = ({
               title="Reset all markers to original positions"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium
                 disabled:opacity-40 disabled:cursor-not-allowed
-                enabled:bg-red-50 enabled:hover:bg-red-100 text-red-600 transition-colors"
+                bg-red-50 hover:bg-red-100 text-red-600 transition-colors"
             >
               <X size={14} />
               Reset all
