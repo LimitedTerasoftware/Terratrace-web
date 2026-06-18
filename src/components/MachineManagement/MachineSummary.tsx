@@ -161,11 +161,11 @@ const totalDistance = activities.reduce((sum, survey) => {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">HDD</h1>
 
-              {machineInfo && (
+              {/* {machineInfo && (
                 <p className="text-gray-600 mt-1">
                   {machineInfo.machine_registration_number} - {machineInfo.firm_name}
                 </p>
-              )}
+              )} */}
             </div>
           </div>
 
@@ -388,7 +388,7 @@ const totalDistance = activities.reduce((sum, survey) => {
                 {/* Header */}
                 <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900">
-                    {machineInfo.machine_registration_number} Information
+                    HDD Information
                 </h2>
 
                 <span className="px-3 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">
@@ -405,19 +405,19 @@ const totalDistance = activities.reduce((sum, survey) => {
                     </div>
                 </div>
 
-                <div className="bg-gray-50 p-4 rounded-lg">
+                {/* <div className="bg-gray-50 p-4 rounded-lg">
                     <div className="text-sm text-gray-500">Company</div>
                     <div className="font-semibold">
                     {machineInfo.firm_name}
                     </div>
-                </div>
+                </div> */}
 
-                <div className="bg-gray-50 p-4 rounded-lg">
+                {/* <div className="bg-gray-50 p-4 rounded-lg">
                     <div className="text-sm text-gray-500">Machine</div>
                     <div className="font-semibold">
                     {machineInfo.machine_registration_number}
                     </div>
-                </div>
+                </div> */}
                <div className="bg-gray-50 p-4 rounded-lg">
                     <div className="text-sm text-gray-500">State</div>
                     <div className="font-semibold">

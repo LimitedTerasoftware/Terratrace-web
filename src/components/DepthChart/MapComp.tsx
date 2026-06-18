@@ -21,6 +21,8 @@ import type {
   ProcessedDesktopPlanning,
   PlacemarkCategory,
 } from '../../types/kmz';
+import { hasViewOnlyAccess, isAdminUser } from '../../utils/accessControl';
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -86,7 +88,8 @@ const EVENT_TYPES = {
 const baseUrl = import.meta.env.VITE_Image_URL;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
-
+  const viewOnly = hasViewOnlyAccess();
+  const AdminAcess = isAdminUser();
 // ─── InfoWindow ───────────────────────────────────────────────────────────────
 
 const InfoWindow: React.FC<{
@@ -576,9 +579,9 @@ const MapComponent: React.FC<MapCompProps> = ({
             strokeColor: '#ffffff',
             strokeWeight: 2,
           },
-          draggable: point.eventType !== 'STARTPIT' && point.eventType !== 'ENDPIT',
+          draggable: point.eventType !== 'STARTPIT' && point.eventType !== 'ENDPIT' && AdminAcess,
           animation: google.maps.Animation.DROP,
-          cursor: (point.eventType === 'STARTPIT' || point.eventType === 'ENDPIT') ? 'not-allowed' : 'grab',
+          cursor: (point.eventType === 'STARTPIT' || point.eventType === 'ENDPIT' || !AdminAcess) ? 'pointer' : 'grab',
         });
 
         // Click → open info window
