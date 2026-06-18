@@ -488,7 +488,7 @@ const MapComponent: React.FC<MapCompProps> = ({
         throw new Error(`Server responded ${res.status}: ${errText}`);
       }
       setSubmitStatus('success');
-      // Clear history after successful save  
+      // Clear history after successful save
       undoStackRef.current = [];
       positionOverridesRef.current = new Map();
       setUndoStack([]);
@@ -576,9 +576,9 @@ const MapComponent: React.FC<MapCompProps> = ({
             strokeColor: '#ffffff',
             strokeWeight: 2,
           },
-          draggable: true, // ← enable drag
+          draggable: point.eventType !== 'STARTPIT' && point.eventType !== 'ENDPIT',
           animation: google.maps.Animation.DROP,
-          cursor: 'grab',
+          cursor: (point.eventType === 'STARTPIT' || point.eventType === 'ENDPIT') ? 'not-allowed' : 'grab',
         });
 
         // Click → open info window

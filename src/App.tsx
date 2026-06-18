@@ -225,8 +225,8 @@ function App() {
                   <>
                     <DefaultLayout>
                       <PageTitle title="Tricad Dashboard" />
-                      {/* <ECommerce /> */}
-                      <MainDashboard/>
+                      <ECommerce />
+                      {/* <MainDashboard/> */}
                     </DefaultLayout>
                   </>
                 }
