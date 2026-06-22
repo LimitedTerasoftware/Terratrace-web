@@ -638,6 +638,8 @@ function Eventreport() {
   };
 
   const columns: TableColumn<Activity>[] = [
+    {name:'ID',selector:(_row,index)=>(index !== undefined ? index + 1 : '-'),maxWidth:'1px'},
+    {name:'CORDS',selector:(row)=>row.cords|| '-'},
     { name: 'Event Id', selector: (row) => row.id || '-', sortable: true },
     {
       name: 'Survey ID',
@@ -667,6 +669,7 @@ function Eventreport() {
         const latlong = getLatLongForEvent(row);
         return latlong ? latlong.split(',')[0] : '-';
       },
+       wrap: true,
     },
     {
       name: 'Longitude',
@@ -674,6 +677,7 @@ function Eventreport() {
         const latlong = getLatLongForEvent(row);
         return latlong ? latlong.split(',')[1] : '-';
       },
+       wrap: true,
     },
     {
       name: 'Order Index',
@@ -1181,6 +1185,7 @@ function Eventreport() {
       name: 'Created At',
       selector: (row) => moment(row.created_at).format('DD/MM/YYYY, hh:mm A'),
       sortable: true,
+       wrap: true,
     },
     ...(AdminAcess
       ? [
@@ -1667,7 +1672,7 @@ function Eventreport() {
               <SheetIcon className="h-4 w-4 text-green-600" />
               Excel
             </button>
-            {multipreview === false && (
+            {(multipreview === false &&  AdminAcess) &&(
               <button
                 onClick={() => setIsAddModalOpen(true)}
                 className="flex-none h-10 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-blue-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
@@ -1676,7 +1681,7 @@ function Eventreport() {
                 Add New Event
               </button>
             )}
-            {multipreview === false && (
+            {(multipreview === false && AdminAcess) && (
               <button
                 onClick={() => setIsReorderModalOpen(true)}
                 className="flex-none h-10 px-4 py-2 text-sm font-medium text-purple-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-purple-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"

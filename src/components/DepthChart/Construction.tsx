@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { UGConstructionSurveyData } from '../../types/survey';
+import { isAdminUser } from '../../utils/accessControl';
 interface StatesResponse {
   success: boolean;
   data: StateData[];
@@ -23,6 +24,7 @@ type StatusOption = {
 
 const BASEURL = import.meta.env.VITE_API_BASE;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
+  const AdminAcess = isAdminUser();
 
 function ConstructionPage() {
   const [states, setStates] = useState<StateData[]>([]);
@@ -58,6 +60,7 @@ function ConstructionPage() {
   const [loadingStats, setLoadingStats] = useState<boolean>(false);
   const [worktype, setworktype] = useState<string>('');
   const [constType, setConstType] = useState<string>('Hdd');
+  const [cords,setcords]=useState<string>('');
 
   const statusMap: Record<number, string> = {
     1: 'Accepted',
@@ -228,8 +231,9 @@ function ConstructionPage() {
     const search = searchParams.get('search') || '';
     const worktype = searchParams.get('worktype') || '';
     const constType = searchParams.get('constType') || 'Hdd';
+    const cords = searchParams.get('cords') || '';
 
-
+    setcords(cords);
     setSelectedState(state_id);
     setSelectedDistrict(district_id);
     setSelectedBlock(block_id);
@@ -254,6 +258,7 @@ function ConstructionPage() {
     search: string | null,
     constType: string | '',
     tab?: 'UG' | 'Pole',
+    cords?:string|'',
   ) => {
     const params: Record<string, string> = {};
     if (newState) params.state_id = newState;
@@ -269,6 +274,7 @@ function ConstructionPage() {
     if (search) params.search = search;
     if (constType) params.constType = constType;
     if (tab) params.tab = tab;
+    if(cords) params.cords = cords;
     setSearchParams(params);
   };
 
@@ -284,6 +290,7 @@ function ConstructionPage() {
     setSearchParams({});
     setworktype('');
     setConstType('');
+    setcords('');
   };
 
   const handleStateChange = (value: string) => {
@@ -303,7 +310,8 @@ function ConstructionPage() {
       todate,
       globalsearch,
       constType,
-      activeTab
+      activeTab,
+      cords,
     );
   };
 
@@ -322,7 +330,8 @@ function ConstructionPage() {
       todate,
       globalsearch,
       constType,
-      activeTab
+      activeTab,
+      cords,
     );
   };
 
@@ -341,7 +350,8 @@ function ConstructionPage() {
       todate,
       globalsearch,
       constType,
-      activeTab
+      activeTab,
+      cords,
     );
   };
   const handleLinkChange = (value: string) => {
@@ -357,7 +367,8 @@ function ConstructionPage() {
       todate,
       globalsearch,
       constType,
-      activeTab
+      activeTab,
+      cords,
     );
   };
 
@@ -391,7 +402,8 @@ function ConstructionPage() {
       todate,
       globalsearch,
       constType,
-      activeTab
+      activeTab,
+      cords,
     );
   };
   const handleConstTypeChange = (value: string) => {
@@ -410,6 +422,24 @@ function ConstructionPage() {
       activeTab
     );
   };
+   const handleCordsChange = (value: string) => {
+    setcords(value);
+    handleFilterChange(
+      selectedState,
+      selectedDistrict,
+      selectedBlock,
+      selectedConnection,
+      selectedStatus,
+      worktype,
+      fromdate,
+      todate,
+      globalsearch,
+      constType,
+      activeTab,
+      value,
+    );
+  };
+
 
   const handleFromDateChange = (value: string) => {
     setFromDate(value);
@@ -424,7 +454,8 @@ function ConstructionPage() {
       todate,
       globalsearch,
       constType,
-      activeTab
+      activeTab,
+      cords,
     );
   };
 
@@ -441,7 +472,8 @@ function ConstructionPage() {
       value,
       globalsearch,
       constType,
-      activeTab
+      activeTab,
+        cords,
     );
   };
 
@@ -458,7 +490,8 @@ function ConstructionPage() {
       todate,
       value,
       constType,
-      activeTab
+      activeTab,
+        cords,
     );
   };
   return (
@@ -826,6 +859,35 @@ function ConstructionPage() {
                     </svg>
                   </div>
                 </div>
+                <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+                  <select
+                    value={cords !== '' ? cords : ''}
+                    onChange={(e) => handleCordsChange(e.target.value)}
+                    className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  >
+                    <option value="">ALL CORDS</option>
+                    <option value="true">True</option>
+                    <option value="false">False</option>
+                  </select>
+
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                    <svg
+                      className="w-4 h-4 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </div>
+                </div>
+                
+
               </>
             )}
 
@@ -880,7 +942,7 @@ function ConstructionPage() {
               <EyeIcon className="h-4 w-4 text-blue-600" />
               Preview
             </button>
-            {activeTab === 'UG' && (
+            {(activeTab === 'UG' && AdminAcess) &&(
               <button
                 onClick={() => setIsAddModalOpen(true)}
                 className="flex-none h-10 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-blue-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
@@ -913,6 +975,7 @@ function ConstructionPage() {
               selectedStatus,
               worktype,
               constType,
+              cords,
               fromdate,
               todate,
               globalsearch,

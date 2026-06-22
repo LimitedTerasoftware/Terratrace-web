@@ -280,6 +280,7 @@ export interface Activity {
   start_ofc:any;
   end_ofc:any;
   video:string | "";
+  cords?:string;
 }
 
 export interface ApiResponseMachine {

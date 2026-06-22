@@ -154,7 +154,8 @@ export interface PoleString {
   user_mobile: string | null;
   distance:number | null;
   video: string | null;
-  image:string
+  image:string;
+  road_crossing:string;
 }
 export interface PoleSurveyResponse {
   status: boolean;

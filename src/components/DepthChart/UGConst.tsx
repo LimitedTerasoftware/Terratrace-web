@@ -8,6 +8,7 @@ import * as XLSX from 'xlsx';
 import DataTable, { TableColumn } from 'react-data-table-component';
 import { AddConstModal } from './AddConstModal';
 import { UpdateConstModal } from './UpdateConstModal';
+import { isAdminUser } from '../../utils/accessControl';
 
 interface ReportProps {
   Data: {
@@ -17,6 +18,7 @@ interface ReportProps {
     selectedStatus: number | null;
     worktype: string;
     constType: string;
+    cords:string;
     fromdate: string;
     todate: string;
     globalsearch: string;
@@ -37,6 +39,7 @@ interface ReportProps {
 }
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
+  const AdminAcess = isAdminUser();
 
 const Report: React.FC<ReportProps> = ({
   Data,
@@ -78,6 +81,7 @@ const Report: React.FC<ReportProps> = ({
         if (Data.worktype !== '') params.worktype = Data.worktype;
         if (Data.constType !== '') params.construction_type = Data.constType;
         if (Data.globalsearch.trim()) params.search = Data.globalsearch.trim();
+        if(Data.cords !== '') params.coords = Data.cords;
 
         const response = await axios.get<{
           status: boolean;
@@ -116,6 +120,7 @@ const Report: React.FC<ReportProps> = ({
     Data.constType,
     Data.globalsearch,
     Data.isAddModalOpen,
+    Data.cords,
   ]);
 
   const handleView = async (
@@ -408,6 +413,7 @@ const Report: React.FC<ReportProps> = ({
           >
             <Eye className="w-4 h-4" />
           </button>
+          {AdminAcess && (
           <button
             onClick={() => handleUpdate(row.id)}
             className="p-1 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
@@ -415,6 +421,7 @@ const Report: React.FC<ReportProps> = ({
           >
             <PenIcon className="w-4 h-4" />
           </button>
+          )}
         </div>
       ),
       ignoreRowClick: true,

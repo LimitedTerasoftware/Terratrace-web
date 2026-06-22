@@ -175,6 +175,23 @@ function PoleStringView() {
     fetchPolesdata();
   }, [multipreview, selectedState, selectedDistrict, selectedBlock]);
 
+  // ── road_crossing helper ────────────────────────────────────────────────────
+
+  const parseRoadCrossing = (row: PoleString) => {
+    if (!row.road_crossing) return null;
+    try {
+      return JSON.parse(row.road_crossing) as {
+        crossingLength: string;
+        crossingPhotos: string[];
+        crossingType: string;
+        endcrossingLatlong: string;
+        startcrossingLatlong: string;
+      };
+    } catch {
+      return null;
+    }
+  };
+
   // ── Media helpers ───────────────────────────────────────────────────────────
 
   const extractMediaFromRow = (row: PoleString): MediaItem[] => {
@@ -223,6 +240,19 @@ function PoleStringView() {
       });
     }
 
+    const rc = parseRoadCrossing(row);
+    if (rc?.crossingPhotos?.length) {
+      rc.crossingPhotos.forEach((url, i) => {
+        if (url) {
+          items.push({
+            type: 'image',
+            url: url.startsWith('http') ? url : `${IMGbaseUrl}${url}`,
+            label: `Crossing Photo ${i + 1}`,
+          });
+        }
+      });
+    }
+
     return items;
   };
 
@@ -260,11 +290,22 @@ function PoleStringView() {
       sortable: true,
       width: '160px',
     },
-    {
-      name: 'Pole Type',
-      selector: (row) => row.pole_type || '-',
-      sortable: true,
+   {
+    name: 'Pole Type',
+    cell: (row) => {
+      return (
+        <span
+          className={
+            row.pole_type === 'existing'
+              ? 'text-blue-700'
+              : 'text-red-700'
+          }
+        >
+          {row.pole_type?.toUpperCase() || '-'}
+        </span>
+      );
     },
+  },
     {
       name: 'Latitude',
       selector: (row) => row.latitude,
@@ -404,6 +445,30 @@ function PoleStringView() {
       width: '140px',
     },
 
+    {
+      name: 'Crossing Type',
+      selector: (row) => parseRoadCrossing(row)?.crossingType ?? '-',
+      sortable: true,
+      wrap: true,
+    },
+    {
+      name: 'Crossing Length',
+      selector: (row) => parseRoadCrossing(row)?.crossingLength ?? '-',
+      sortable: true,
+      wrap: true,
+    },
+    {
+      name: 'Start Crossing',
+      selector: (row) => parseRoadCrossing(row)?.startcrossingLatlong ?? '-',
+      sortable: true,
+      wrap: true,
+    },
+    {
+      name: 'End Crossing',
+      selector: (row) => parseRoadCrossing(row)?.endcrossingLatlong ?? '-',
+      sortable: true,
+      wrap: true,
+    },
     {
       name: 'Created At',
       selector: (row) => moment(row.created_at).format('DD/MM/YYYY, hh:mm A'),
