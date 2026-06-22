@@ -25,7 +25,19 @@ const IE_USER_EMAIL = "ie@terasoftware.com";
 const NG_USER_EMAIL = "ng@terasoftware.com";
 
 // Admin user with full access
-const ADMIN_EMAIL = "admin@terasoftware.com";
+const ADMIN_EMAIL = ["Krishnakapil.s@terasoftware.com",
+"ravindrababu.y@terasoftware.com",
+"saipavanmudhiraj304@gmail.com",
+"jayhender.sharan@terasoftware.com",
+"prameela.b@terasoftware.com",
+"neelima.v@terasoftware.com",
+"mahesh.v@tersoftware.com",
+"srinivas.g@terasoftware.com",
+"Joydipbagchi@terasoftware.com",
+"priyachowdhury@tearsoftware.com",
+"harunkowshik@terasoftware.com",
+"Srayaseemajhi@terasoftware.com","admin@terasoftware.com",
+"aditisamanta@terasoftware.com","keshav@terasoftware.com"];
 
 // Users with installation page access
 const INSTALLATION_ACCESS_EMAILS = ["survey@terasoftware.com","wb@terasoftware.com"];
@@ -98,7 +110,7 @@ export const isNGUser = (): boolean => {
 export const isAdminUser = (): boolean => {
   const user = getUser();
   const email = user?.email?.toLowerCase();
-  return email === ADMIN_EMAIL.toLowerCase();
+  return  ADMIN_EMAIL.includes(email ?? "");
 };
 
 /**
@@ -128,7 +140,7 @@ export const canAccessConstruction = (): boolean => {
   const email = user?.email?.toLowerCase();
   
   // Admin has full access
-  if (email === ADMIN_EMAIL.toLowerCase()) return true;
+  if (ADMIN_EMAIL.includes(email ?? "")) return true;
   
   // Allow wb user, plus anyone who doesn't have InvOnly access
   return email === VIEW_ONLY_EMAILS.toLowerCase() || !SmartInvView.includes(email ?? "");
