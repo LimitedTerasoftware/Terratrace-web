@@ -281,6 +281,7 @@ export interface Activity {
   end_ofc:any;
   video:string | "";
   cords?:string;
+  deviceId?:string;
 }
 
 export interface ApiResponseMachine {
@@ -492,7 +493,10 @@ export interface UGConstructionSurveyData {
   workType: string | null;
   cableType: string | null;
   machine_id: number | null;
-  versions:string|null
+  versions:string|null;
+  admin_name:string | null;
+  admin_email:string | null;
+
 }
 export interface SurveyLinksData {
     startLocation: number; 

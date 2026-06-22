@@ -336,32 +336,37 @@ const Report: React.FC<ReportProps> = ({
     selector:(row)=>row.versions || '-',
     sortable:true,
   },
-    {
-      name: 'Surveyor',
-      selector: (row) => row.user_name,
-      sortable: true,
-      minWidth: '160px',
-      maxWidth: '200px',
-      cell: (row) => (
-        <div className="flex items-center min-w-0 w-full">
-          <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center mr-2 flex-shrink-0">
-            <User className="w-3 h-3 text-gray-600" />
-          </div>
-          <span className="truncate min-w-0" title={row.user_name}>
-            {row.user_name}
-          </span>
-        </div>
-      ),
+  {
+          name: "Surveyor",
+          cell: (row) => {
+            return (
+              <div className="flex items-center min-w-0 w-full">
+                <User className="w-3 h-3 text-gray-600 mr-1 flex-shrink-0" />
+                <div className="min-w-0">
+                  <div className=" text-sm font-medium">{row.user_name}</div>
+                  <div className=" text-xs text-gray-500">{row.user_mobile}</div>
+                </div>
+              </div>
+            ) 
+          },
+          minWidth: "150px",
+          maxWidth: "200px",
     },
     {
-      name: 'Phone',
-      selector: (row) => row.user_mobile,
-      sortable: true,
-      minWidth: '130px',
-      maxWidth: '140px',
-      cell: (row) => (
-        <span className="font-mono text-sm">{row.user_mobile}</span>
-      ),
+          name: "Updated By",
+          cell: (row) => {
+            return (
+              <div className="flex items-center min-w-0 w-full">
+                <User className="w-3 h-3 text-gray-600 mr-1 flex-shrink-0" />
+                <div className="min-w-0">
+                  <div className=" text-sm font-medium">{row.admin_name}</div>
+                  <div className=" text-xs text-gray-500">{row.admin_email}</div>
+                </div>
+              </div>
+            ) 
+          },
+          minWidth: "150px",
+          maxWidth: "200px",
     },
     {
       name: 'Status',

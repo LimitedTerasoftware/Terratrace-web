@@ -587,11 +587,32 @@ function Eventreport() {
       setIsCarouselOpen(true);
     }, 0);
   };
+  const handlePending = async()=>{
+   try {
+      const userData = JSON.parse(localStorage.getItem('userData') || '{}');
 
+      const resp = await axios.post(
+        `${BASEURL_Val}/underground-surveys/${MainData.id}/pending   `,{
+           "admin_id":userData.id
+        }
+      );
+      if (resp.data.status === 1) {
+        toast.success('Record Pending successfully!');
+      } else {
+        toast.error('Failed to accept record');
+      }
+    } catch (error) {
+      toast.error('Error accepting record');
+    }
+  }
   const handleAccept = async () => {
     try {
+      const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+
       const resp = await axios.post(
-        `${BASEURL_Val}/underground-surveys/${MainData.id}/accept`,
+        `${BASEURL_Val}/underground-surveys/${MainData.id}/accept`,{
+           "admin_id":userData.id
+        }
       );
       if (resp.data.status === 1) {
         toast.success('Record Accepted successfully!');
@@ -604,8 +625,12 @@ function Eventreport() {
   };
   const handleReject = async () => {
     try {
+        const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+
       const response = await axios.post(
-        `${BASEURL_Val}/underground-surveys/${MainData.id}/reject`,
+        `${BASEURL_Val}/underground-surveys/${MainData.id}/reject`,{
+          "admin_id":userData.id
+        }
       );
       if (response.data.status === 1) {
         toast.success('Record Rejected successfully.');
@@ -651,6 +676,11 @@ function Eventreport() {
       selector: (row) => row.machine_registration_number || '-',
       sortable: true,
       wrap: true,
+    },
+    {
+      name:"Device ID",
+      selector:(row)=>row.deviceId || '-',
+      
     },
     {
       name: 'Firm Name',
@@ -1711,6 +1741,14 @@ function Eventreport() {
       )}
       {!viewOnly && activeTab === 'details' && (
         <div className="mt-6 flex gap-4 justify-center">
+           <button
+            className="bg-orange-500 hover:bg-orange-600 text-white py-2 px-4 rounded"
+            onClick={() => {
+              handlePending();
+            }}
+          >
+            Pending
+          </button>
           <button
             className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded"
             onClick={() => {
