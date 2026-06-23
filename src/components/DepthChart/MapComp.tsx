@@ -474,13 +474,18 @@ const MapComponent: React.FC<MapCompProps> = ({
     setSubmitStatus('loading');
     setSubmitError(null);
     try {
+      const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+
       const payload = {
         changes: changedMarkers.map(m => ({
           id: m.id,
           event_type: m.eventType,
           survey_id: m.surveyId,
-          lat: m.newLat,
-          lng: m.newLng,
+          lat: m.newLat.toFixed(7),
+          lng: m.newLng.toFixed(7),
+          user_id:userData.id,
+          user_name:userData.name
+
         }))
       };
       const res = await fetch(submitApiUrl, {

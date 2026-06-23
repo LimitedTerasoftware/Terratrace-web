@@ -459,6 +459,7 @@ const Report: React.FC<ReportProps> = ({
           'Surveyor Name',
           'Surveyor Mobile',
           'Status',
+          'Updated By',
           'Created At',
           'Updated At',
         ];
@@ -481,6 +482,7 @@ const Report: React.FC<ReportProps> = ({
             : row.is_active === 1
               ? 'Accepted'
               : 'Rejected',
+          row.admin_name,
           row.created_at,
           row.updated_at,
         ]);

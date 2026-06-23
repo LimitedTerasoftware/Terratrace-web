@@ -902,7 +902,7 @@ function ConstructionPage() {
                     onChange={(e) => handleCordsChange(e.target.value)}
                     className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   >
-                    <option value="">ALL CORDS</option>
+                    <option value="">ALL CORS</option>
                     <option value="true">True</option>
                     <option value="false">False</option>
                   </select>

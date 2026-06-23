@@ -304,11 +304,16 @@ export function AddEventModal({ isOpen,Data,onClose, onSuccess, baseUrl }: AddEv
     setSuccess(false);
 
     try {
+      const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+
       const payload: { [key: string]: any } = {
         eventType,
         ...formData,
       };
       payload["created_at"]=formatForApi(formData.created_at as string) as string;
+      payload["user_id"]=userData.id;
+      payload["user_name"]=userData.name;
+      payload["type"]='web';
              
 
       const imageFieldsWithFiles = Object.entries(imageFields).filter(
