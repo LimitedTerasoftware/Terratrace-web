@@ -13,7 +13,7 @@ const VIEW_ONLY_EMAILS = ["aditisamanta@terasoftware.com","wb@terasoftware.com"]
 const DOWNLOAD_EMAILS = "nexus@terasoftware.com";
 const SmartInvViewEmail = "survey@terasoftware.com";
 const SmartInvView = ["survey@terasoftware.com"];
-const DOWNLOAD_ONLY_EMAILS = ["nexus@terasoftware.com", "admin@terasoftware.com"];
+const DOWNLOAD_ONLY_EMAILS = ["nexus@terasoftware.com"];
 
 // Restricted user who cannot access file operations (Upload KMZ/KML, Download, External Files)
 const RESTRICTED_FILE_OPS_EMAIL = "survey@terasoftware.com";
@@ -61,7 +61,7 @@ export const hasViewOnlyAccess = (): boolean => {
 export const hasDownloadAccess = (): boolean => {
   const user = getUser();
   const email = user?.email?.toLowerCase();
-  return DOWNLOAD_ONLY_EMAILS.includes(email ?? "");
+  return DOWNLOAD_ONLY_EMAILS.includes(email ?? "") || ADMIN_EMAIL.includes(user?.email ?? "");
 };
 
 export const hasInvOnlyAccess = (): boolean => {
