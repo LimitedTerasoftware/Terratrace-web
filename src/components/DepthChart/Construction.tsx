@@ -24,7 +24,7 @@ type StatusOption = {
 
 const BASEURL = import.meta.env.VITE_API_BASE;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
-  const AdminAcess = isAdminUser();
+const AdminAcess = isAdminUser();
 
 function ConstructionPage() {
   const [states, setStates] = useState<StateData[]>([]);
@@ -60,7 +60,8 @@ function ConstructionPage() {
   const [loadingStats, setLoadingStats] = useState<boolean>(false);
   const [worktype, setworktype] = useState<string>('');
   const [constType, setConstType] = useState<string>('Hdd');
-  const [cords,setcords]=useState<string>('');
+  const [cords, setcords] = useState<string>('');
+  const [page, setPage] = useState<number>(1);
 
   const statusMap: Record<number, string> = {
     1: 'Accepted',
@@ -232,6 +233,7 @@ function ConstructionPage() {
     const worktype = searchParams.get('worktype') || '';
     const constType = searchParams.get('constType') || 'Hdd';
     const cords = searchParams.get('cords') || '';
+    const pageParam = searchParams.get('page') || '1';
 
     setcords(cords);
     setSelectedState(state_id);
@@ -244,6 +246,7 @@ function ConstructionPage() {
     setworktype(worktype);
     setFiltersReady(true);
     setConstType(constType);
+    setPage(Number(pageParam));
   }, []);
 
   const handleFilterChange = (
@@ -258,14 +261,15 @@ function ConstructionPage() {
     search: string | null,
     constType: string | '',
     tab?: 'UG' | 'Pole',
-    cords?:string|'',
+    cords?: string | '',
+    page?: number,
   ) => {
     const params: Record<string, string> = {};
     if (newState) params.state_id = newState;
     if (newDistrict) params.district_id = newDistrict;
     if (newBlock) params.block_id = newBlock;
     if (newLink) params.link = newLink;
-      if (status !== null) {
+    if (status !== null) {
       params.status = String(status);
     }
     if (worktype) params.worktype = worktype;
@@ -274,8 +278,10 @@ function ConstructionPage() {
     if (search) params.search = search;
     if (constType) params.constType = constType;
     if (tab) params.tab = tab;
-    if(cords) params.cords = cords;
+    if (cords) params.cords = cords;
+    if (page && page > 1) params.page = String(page);
     setSearchParams(params);
+    if (!page) setPage(1);
   };
 
   const clearFilters = () => {
@@ -291,6 +297,7 @@ function ConstructionPage() {
     setworktype('');
     setConstType('');
     setcords('');
+    setPage(1);
   };
 
   const handleStateChange = (value: string) => {
@@ -312,6 +319,7 @@ function ConstructionPage() {
       constType,
       activeTab,
       cords,
+      page,
     );
   };
 
@@ -332,6 +340,7 @@ function ConstructionPage() {
       constType,
       activeTab,
       cords,
+      page,
     );
   };
 
@@ -352,6 +361,7 @@ function ConstructionPage() {
       constType,
       activeTab,
       cords,
+      page,
     );
   };
   const handleLinkChange = (value: string) => {
@@ -369,6 +379,7 @@ function ConstructionPage() {
       constType,
       activeTab,
       cords,
+      page,
     );
   };
 
@@ -386,7 +397,9 @@ function ConstructionPage() {
       todate,
       globalsearch,
       constType,
-      activeTab
+      activeTab,
+      cords,
+      page,
     );
   };
   const handleworkChange = (value: string) => {
@@ -404,6 +417,7 @@ function ConstructionPage() {
       constType,
       activeTab,
       cords,
+      page,
     );
   };
   const handleConstTypeChange = (value: string) => {
@@ -419,10 +433,12 @@ function ConstructionPage() {
       todate,
       globalsearch,
       value,
-      activeTab
+      activeTab,
+      cords,
+      page,
     );
   };
-   const handleCordsChange = (value: string) => {
+  const handleCordsChange = (value: string) => {
     setcords(value);
     handleFilterChange(
       selectedState,
@@ -437,9 +453,9 @@ function ConstructionPage() {
       constType,
       activeTab,
       value,
+      page,
     );
   };
-
 
   const handleFromDateChange = (value: string) => {
     setFromDate(value);
@@ -456,6 +472,7 @@ function ConstructionPage() {
       constType,
       activeTab,
       cords,
+      page,
     );
   };
 
@@ -473,7 +490,8 @@ function ConstructionPage() {
       globalsearch,
       constType,
       activeTab,
-        cords,
+      cords,
+      page,
     );
   };
 
@@ -491,7 +509,26 @@ function ConstructionPage() {
       value,
       constType,
       activeTab,
-        cords,
+      cords,
+      page,
+    );
+  };
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    handleFilterChange(
+      selectedState,
+      selectedDistrict,
+      selectedBlock,
+      selectedConnection,
+      selectedStatus,
+      worktype,
+      fromdate,
+      todate,
+      globalsearch,
+      constType,
+      activeTab,
+      cords,
+      newPage,
     );
   };
   return (
@@ -886,8 +923,6 @@ function ConstructionPage() {
                     </svg>
                   </div>
                 </div>
-                
-
               </>
             )}
 
@@ -942,7 +977,7 @@ function ConstructionPage() {
               <EyeIcon className="h-4 w-4 text-blue-600" />
               Preview
             </button>
-            {(activeTab === 'UG' && AdminAcess) &&(
+            {activeTab === 'UG' && AdminAcess && (
               <button
                 onClick={() => setIsAddModalOpen(true)}
                 className="flex-none h-10 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-blue-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
@@ -987,12 +1022,14 @@ function ConstructionPage() {
               selectedConnection,
               connectionStart: getSelectedConnectionDetails()?.startLocation,
               connectionEnd: getSelectedConnectionDetails()?.endLocation,
+              page,
             }}
             Onexcel={() => setExcel(false)}
             OnPreview={() => setPreview(false)}
             OnKml={() => setkml(false)}
             OnModal={() => setIsAddModalOpen(false)}
             OnData={(data: UGConstructionSurveyData[]) => setSurveyData(data)}
+            OnPageChange={handlePageChange}
           />
         )}
       </div>

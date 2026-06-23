@@ -9,10 +9,10 @@ export interface User {
   updated_at: string;
 }
 
-const VIEW_ONLY_EMAILS = "wb@terasoftware.com";
+const VIEW_ONLY_EMAILS = ["aditisamanta@terasoftware.com","wb@terasoftware.com"];
 const DOWNLOAD_EMAILS = "nexus@terasoftware.com";
 const SmartInvViewEmail = "survey@terasoftware.com";
-const SmartInvView = ["survey@terasoftware.com", "admin@terasoftware.com"];
+const SmartInvView = ["survey@terasoftware.com"];
 const DOWNLOAD_ONLY_EMAILS = ["nexus@terasoftware.com", "admin@terasoftware.com"];
 
 // Restricted user who cannot access file operations (Upload KMZ/KML, Download, External Files)
@@ -37,7 +37,12 @@ const ADMIN_EMAIL = ["Krishnakapil.s@terasoftware.com",
 "priyachowdhury@tearsoftware.com",
 "harunkowshik@terasoftware.com",
 "Srayaseemajhi@terasoftware.com","admin@terasoftware.com",
-"aditisamanta@terasoftware.com","keshav@terasoftware.com"];
+"keshav@terasoftware.com",
+"Mamatha.gr@terasoftware.com",
+"girish.t@terasoftware.in",
+"rajeshroy@terasoftware.com",
+"tirumalarao@terasoftware.com",
+"brahmareddy.v@terasoftware.in",];
 
 // Users with installation page access
 const INSTALLATION_ACCESS_EMAILS = ["survey@terasoftware.com","wb@terasoftware.com"];
@@ -50,7 +55,7 @@ export const getUser = (): User | null => {
 export const hasViewOnlyAccess = (): boolean => {
   const user = getUser();
   const email = user?.email?.toLowerCase();
-  return email === VIEW_ONLY_EMAILS || email === DOWNLOAD_EMAILS || email === SmartInvViewEmail;
+  return VIEW_ONLY_EMAILS.includes(email ?? "") || email === DOWNLOAD_EMAILS || email === SmartInvViewEmail;
 };
 
 export const hasDownloadAccess = (): boolean => {
@@ -62,7 +67,10 @@ export const hasDownloadAccess = (): boolean => {
 export const hasInvOnlyAccess = (): boolean => {
   const user = getUser();
   const email = user?.email?.toLowerCase();
-  return SmartInvView.includes(email ?? "");
+    return (
+    SmartInvView.includes(email ?? "") ||
+    ADMIN_EMAIL.includes(user?.email ?? "")
+  );
 };
 
 /**
@@ -109,7 +117,7 @@ export const isNGUser = (): boolean => {
  */
 export const isAdminUser = (): boolean => {
   const user = getUser();
-  const email = user?.email?.toLowerCase();
+  const email = user?.email;
   return  ADMIN_EMAIL.includes(email ?? "");
 };
 
@@ -140,8 +148,8 @@ export const canAccessConstruction = (): boolean => {
   const email = user?.email?.toLowerCase();
   
   // Admin has full access
-  if (ADMIN_EMAIL.includes(email ?? "")) return true;
+  if (ADMIN_EMAIL.includes(user?.email ?? "")) return true;
   
   // Allow wb user, plus anyone who doesn't have InvOnly access
-  return email === VIEW_ONLY_EMAILS.toLowerCase() || !SmartInvView.includes(email ?? "");
+  return  VIEW_ONLY_EMAILS.includes(email?? "") || !SmartInvView.includes(email ?? "");
 };

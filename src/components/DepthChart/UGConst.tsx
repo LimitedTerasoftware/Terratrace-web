@@ -18,7 +18,7 @@ interface ReportProps {
     selectedStatus: number | null;
     worktype: string;
     constType: string;
-    cords:string;
+    cords: string;
     fromdate: string;
     todate: string;
     globalsearch: string;
@@ -30,16 +30,18 @@ interface ReportProps {
     selectedConnection: string | null;
     connectionStart?: string;
     connectionEnd?: string;
+    page?: number;
   };
   Onexcel: () => void;
   OnPreview: () => void;
   OnKml: () => void;
   OnModal: () => void;
   OnData: (data: UGConstructionSurveyData[]) => void;
+  OnPageChange?: (page: number) => void;
 }
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
-  const AdminAcess = isAdminUser();
+const AdminAcess = isAdminUser();
 
 const Report: React.FC<ReportProps> = ({
   Data,
@@ -48,6 +50,7 @@ const Report: React.FC<ReportProps> = ({
   OnKml,
   OnModal,
   OnData,
+  OnPageChange,
 }) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +84,7 @@ const Report: React.FC<ReportProps> = ({
         if (Data.worktype !== '') params.worktype = Data.worktype;
         if (Data.constType !== '') params.construction_type = Data.constType;
         if (Data.globalsearch.trim()) params.search = Data.globalsearch.trim();
-        if(Data.cords !== '') params.coords = Data.cords;
+        if (Data.cords !== '') params.coords = Data.cords;
 
         const response = await axios.get<{
           status: boolean;
@@ -331,42 +334,42 @@ const Report: React.FC<ReportProps> = ({
       selector: (row) => row.total_distance || '0.00',
       sortable: true,
     },
-  {
-    name:"Versions",
-    selector:(row)=>row.versions || '-',
-    sortable:true,
-  },
-  {
-          name: "Surveyor",
-          cell: (row) => {
-            return (
-              <div className="flex items-center min-w-0 w-full">
-                <User className="w-3 h-3 text-gray-600 mr-1 flex-shrink-0" />
-                <div className="min-w-0">
-                  <div className=" text-sm font-medium">{row.user_name}</div>
-                  <div className=" text-xs text-gray-500">{row.user_mobile}</div>
-                </div>
-              </div>
-            ) 
-          },
-          minWidth: "150px",
-          maxWidth: "200px",
+    {
+      name: 'Versions',
+      selector: (row) => row.versions || '-',
+      sortable: true,
     },
     {
-          name: "Updated By",
-          cell: (row) => {
-            return (
-              <div className="flex items-center min-w-0 w-full">
-                <User className="w-3 h-3 text-gray-600 mr-1 flex-shrink-0" />
-                <div className="min-w-0">
-                  <div className=" text-sm font-medium">{row.admin_name}</div>
-                  <div className=" text-xs text-gray-500">{row.admin_email}</div>
-                </div>
-              </div>
-            ) 
-          },
-          minWidth: "150px",
-          maxWidth: "200px",
+      name: 'Surveyor',
+      cell: (row) => {
+        return (
+          <div className="flex items-center min-w-0 w-full">
+            <User className="w-3 h-3 text-gray-600 mr-1 flex-shrink-0" />
+            <div className="min-w-0">
+              <div className=" text-sm font-medium">{row.user_name}</div>
+              <div className=" text-xs text-gray-500">{row.user_mobile}</div>
+            </div>
+          </div>
+        );
+      },
+      minWidth: '150px',
+      maxWidth: '200px',
+    },
+    {
+      name: 'Updated By',
+      cell: (row) => {
+        return (
+          <div className="flex items-center min-w-0 w-full">
+            <User className="w-3 h-3 text-gray-600 mr-1 flex-shrink-0" />
+            <div className="min-w-0">
+              <div className=" text-sm font-medium">{row.admin_name}</div>
+              <div className=" text-xs text-gray-500">{row.admin_email}</div>
+            </div>
+          </div>
+        );
+      },
+      minWidth: '150px',
+      maxWidth: '200px',
     },
     {
       name: 'Status',
@@ -419,13 +422,13 @@ const Report: React.FC<ReportProps> = ({
             <Eye className="w-4 h-4" />
           </button>
           {AdminAcess && (
-          <button
-            onClick={() => handleUpdate(row.id)}
-            className="p-1 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-            title="Update"
-          >
-            <PenIcon className="w-4 h-4" />
-          </button>
+            <button
+              onClick={() => handleUpdate(row.id)}
+              className="p-1 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+              title="Update"
+            >
+              <PenIcon className="w-4 h-4" />
+            </button>
           )}
         </div>
       ),
@@ -862,6 +865,8 @@ const Report: React.FC<ReportProps> = ({
               selectableRows
               onSelectedRowsChange={handleRowSelected}
               clearSelectedRows={toggleCleared}
+              paginationDefaultPage={Data.page || 1}
+              onChangePage={(p) => OnPageChange?.(p)}
               progressPending={loading}
               progressComponent={
                 <div className="flex items-center justify-center py-8">

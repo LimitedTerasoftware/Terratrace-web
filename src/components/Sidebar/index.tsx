@@ -920,7 +920,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                 )}
 
                 {/* GIS Inventory - Only for InvOnly users (IE users get it at the top) */}
-                {InvOnly && (
+                {InvOnly&& ( 
                   <li>
                     <NavLink
                       to="/smart-inventory"

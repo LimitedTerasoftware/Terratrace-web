@@ -608,10 +608,33 @@ function PoleStringView() {
       style: { whiteSpace: 'nowrap' as const },
     },
   };
+    const handlePending = async()=>{
+   try {
+      const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+
+      const resp = await axios.post(
+        `${BASEURL_Val}/underground-surveys/${MainData.id}/pending   `,{
+           "admin_id":userData.id
+        }
+      );
+      if (resp.data.status === 1) {
+        toast.success('Record Pending successfully!');
+      } else {
+        toast.error('Failed to accept record');
+      }
+    } catch (error) {
+      toast.error('Error accepting record');
+    }
+  }
   const handleAccept = async () => {
     try {
+      const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+
       const resp = await axios.post(
         `${BASEURL_Val}/underground-surveys/${MainData.id}/accept`,
+        {
+           "admin_id":userData.id
+        }
       );
       if (resp.data.status === 1) {
         toast.success('Record Accepted successfully!');
@@ -624,8 +647,13 @@ function PoleStringView() {
   };
   const handleReject = async () => {
     try {
+      const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+
       const response = await axios.post(
         `${BASEURL_Val}/underground-surveys/${MainData.id}/reject`,
+        {
+          "admin_id":userData.id
+        }
       );
       if (response.data.status === 1) {
         toast.success('Record Rejected successfully.');
@@ -752,6 +780,14 @@ function PoleStringView() {
       )}
       {!viewOnly && activeTab === 'view' && (
         <div className="mt-6 flex gap-4 justify-center">
+            <button
+            className="bg-orange-500 hover:bg-orange-600 text-white py-2 px-4 rounded"
+            onClick={() => {
+              handlePending();
+            }}
+          >
+            Pending
+          </button>
           <button
             className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded"
             onClick={() => {
