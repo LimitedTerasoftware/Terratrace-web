@@ -282,6 +282,8 @@ export interface Activity {
   video:string | "";
   cords?:string;
   deviceId?:string;
+  user_id?:string;
+  user_name?:string;
 }
 
 export interface ApiResponseMachine {

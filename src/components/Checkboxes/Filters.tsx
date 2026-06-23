@@ -225,7 +225,7 @@ export default function Filters({
           onChange={(e) => onIssueTypeChange(e.target.value)}
         >
         <option value="">All Issue Type</option>
-          <option value="CORDS">CORDS</option>
+          <option value="CORDS">CORS</option>
           <option value="DEPTH">Depth Violation</option>
         </select>
         

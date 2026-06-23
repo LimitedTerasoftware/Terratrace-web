@@ -643,10 +643,14 @@ function Eventreport() {
 
   const handleStatusToggle = async (row: Activity) => {
     try {
+      const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+
       setStatusLoading(row.id);
       const newStatus = row.status === 0 ? 1 : 0;
       const resp = await axios.post(`${TraceBASEURL}/update-event/${row.id}`, {
         status: newStatus,
+        user_id:userData.id,
+        user_name:userData.name,
       });
       if (resp.status === 200 || resp.status === 201) {
         toast.success(
@@ -664,7 +668,7 @@ function Eventreport() {
 
   const columns: TableColumn<Activity>[] = [
     {name:'ID',selector:(_row,index)=>(index !== undefined ? index + 1 : '-'),maxWidth:'1px'},
-    {name:'CORDS',selector:(row)=>row.cords|| '-'},
+    {name:'CORS',selector:(row)=>row.cords|| '-'},
     { name: 'Event Id', selector: (row) => row.id || '-', sortable: true },
     {
       name: 'Survey ID',

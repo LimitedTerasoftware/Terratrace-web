@@ -101,6 +101,8 @@ export function EditModal({
     setSuccess(false);
 
     try {
+      const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+
       let submitData = { ...formData };
 
       if (activity.eventType === 'DUCT') {
@@ -110,6 +112,8 @@ export function EditModal({
         submitData.depth_capture_type = 'MANUAL';
 
       }
+        submitData.user_id=userData.id;
+         submitData.user_name=userData.name;
 
       const response = await fetch(`${baseUrl}/update-event/${activity.id}`, {
         method: 'POST',

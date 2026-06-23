@@ -237,7 +237,7 @@ const totalDistance = activities.reduce((sum, survey) => {
                 <MapPin className="w-4 h-4 inline mr-2" />
                 Route Map
               </button>
-              <button
+              {/* <button
                 onClick={() => setActiveTab('chart')}
                 className={`py-4 px-2 border-b-2 font-medium text-sm ${
                   activeTab === 'chart'
@@ -258,7 +258,7 @@ const totalDistance = activities.reduce((sum, survey) => {
               >
                 <Database className="w-4 h-4 inline mr-2" />
                 Data Table
-              </button>
+              </button> */}
             </nav>
           </div>
 

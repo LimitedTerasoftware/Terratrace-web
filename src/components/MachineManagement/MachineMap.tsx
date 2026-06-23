@@ -174,21 +174,15 @@ export const MachineMapComponent: React.FC<MachineMapComponentProps> = ({
         <div style="margin-top: 16px;">
           <h4 style="margin: 0 0 12px 0; color: #1f2937; font-size: 16px; font-weight: 600;">Depth Evidence</h4>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; max-width: 400px;">
-            ${photos.slice(0, 4).map(photo => `
               <div style="position: relative; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                <img src="${baseUrl}/${photo}"
+                <img src="${baseUrl}/${photos[0]}"
                      style="width: 120px; height: 90px; object-fit: cover; cursor: pointer; transition: transform 0.2s;"
-                     onclick="window.open('${baseUrl}/${photo}', '_blank')"
+                     onclick="window.open('${baseUrl}/${photos[0]}', '_blank')"
                      onmouseover="this.style.transform='scale(1.05)'"
                      onmouseout="this.style.transform='scale(1)'"
                      onerror="this.style.display='none'" />
               </div>
-            `).join('')}
-            ${photos.length > 4 ? `
-              <div style="display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #f3f4f6, #e5e7eb); border-radius: 8px; font-size: 14px; color: #6b7280; font-weight: 600; height: 90px; cursor: pointer;" onclick="alert('View all ${photos.length} photos')">
-                +${photos.length - 4} more
-              </div>
-            ` : ''}
+          
           </div>
         </div>
       ` : '';
