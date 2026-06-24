@@ -106,12 +106,13 @@ export default function RecentIssues({
       selector: (row) => row.location,
       cell: (row) => (
         <span
-          className="text-sm text-gray-600 max-w-[120px] truncate block"
+          className="text-sm text-gray-600 max-w-[120px]"
           title={row.location}
         >
           {row.location}
         </span>
       ),
+      wrap:true
     },
     {
       name: 'Vendor',

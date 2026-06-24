@@ -482,19 +482,15 @@ const MapComponent: React.FC<AerialMapCompProps> = ({ data }) => {
 
       {/* Zoom image modal */}
       {zoomImage && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50"
+           <div
+          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-80 z-50"
           onClick={() => setZoomImage(null)}
         >
-          <div className="relative max-w-4xl p-4">
-            <button
-              onClick={() => setZoomImage(null)}
-              className="absolute top-2 right-2 text-white hover:text-gray-300 bg-black bg-opacity-50 rounded-full p-2"
-            >
-              <X size={20} />
-            </button>
-            <img src={zoomImage} alt="Zoomed" className="max-w-full max-h-full rounded-lg" />
-          </div>
+          <img
+            src={zoomImage}
+            alt="Zoomed"
+            className="max-w-full max-h-full p-4 rounded-lg"
+          />
         </div>
       )}
     </div>

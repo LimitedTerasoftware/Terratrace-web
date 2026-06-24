@@ -27,6 +27,7 @@ import States from './components/Tables/States';
 //import Blocks from './components/Tables/Blocks';
 import Gpslist from './components/Tables/Gpslist';
 import Users from './components/Tables/Users';
+import Employees from './components/Tables/Employees';
 import AerailTables from './pages/UiElements/AerailTables';
 import SurveyTabs from './components/Tables/SurveyTabs';
 import BsnlEdit from './components/Tables/BsnlEdit';
@@ -604,6 +605,18 @@ function App() {
                     <DefaultLayout>
                       <PageTitle title="Users" />
                       <Users />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+
+              <Route
+                path="/managementlist/employees"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Employees" />
+                      <Employees />
                     </DefaultLayout>
                   </>
                 }

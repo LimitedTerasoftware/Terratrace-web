@@ -248,6 +248,7 @@ useEffect(()=>{
     {
       name: 'Remarks',
       selector: (row) => row.remarks,
+      minWidth:"350px",
       cell: (row) => (
         <span className="text-sm text-gray-600">{row.remarks}</span>
       ),

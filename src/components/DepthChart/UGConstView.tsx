@@ -684,6 +684,7 @@ function Eventreport() {
     {
       name:"Device ID",
       selector:(row)=>row.deviceId || '-',
+      wrap:true,
       
     },
     {

@@ -3,14 +3,11 @@ import axios from "axios";
 import { FaArrowLeft } from "react-icons/fa";
 import { useParams, useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import MapComponent from "./MapComponent";
 import * as XLSX from "xlsx";
-import ResponsivePagination from "./ResponsivePagination";
 import App from "../VideoPlayback/index";
 import DataTable from "react-data-table-component";
 import { hasDownloadAccess, hasViewOnlyAccess, isNGUser} from "../../utils/accessControl";
-import ImageModal from "../DepthChart/ImageUploadModal";
 import UnderGroundSurveyImageModal from "./UnderGroundSurveyImageModal";
 import AddEventModal from "./AddEventModal";
 import MediaCarousel from "./MediaCarousel";
@@ -1082,7 +1079,12 @@ const GroundDetailView: React.FC = () => {
                       try {
                         details = JSON.parse(details);
                       } catch (error) {
-                        details = {}; // In case of invalid JSON
+                        details = {
+                           companyName: "",
+                            email: "",
+                            mobile: "",
+                            name: ""
+                        }; // In case of invalid JSON
                       }
                     }
 

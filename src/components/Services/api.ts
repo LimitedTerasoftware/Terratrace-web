@@ -709,9 +709,13 @@ export const reorderSurvey = async (
   reorderedData: ReorderItem[],
 ): Promise<any> => {
   try {
+    const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+
     const resp = await axios.post(`${TraceBASEURL}/reorder-survey`, {
       survey_id: surveyId,
       reorderedData,
+      user_id:userData.id,
+      user_name:userData.name
     });
     return resp.data;
   } catch (error) {
