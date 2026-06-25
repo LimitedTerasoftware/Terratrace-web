@@ -9,7 +9,11 @@ export interface User {
   updated_at: string;
 }
 
-const VIEW_ONLY_EMAILS = ["aditisamanta@terasoftware.com","wb@terasoftware.com"];
+const VIEW_ONLY_EMAILS = ["aditisamanta@terasoftware.com","wb@terasoftware.com","priyachowdhury@tearsoftware.com",
+  "Joydipbagchi@terasoftware.com",
+  "harunkowshik@terasoftware.com",
+"Srayaseemajhi@terasoftware.com",
+];
 const DOWNLOAD_EMAILS = "nexus@terasoftware.com";
 const SmartInvViewEmail = "survey@terasoftware.com";
 const SmartInvView = ["survey@terasoftware.com"];
@@ -33,16 +37,13 @@ const ADMIN_EMAIL = ["Krishnakapil.s@terasoftware.com",
 "neelima.v@terasoftware.com",
 "mahesh.v@tersoftware.com",
 "srinivas.g@terasoftware.com",
-"Joydipbagchi@terasoftware.com",
-"priyachowdhury@tearsoftware.com",
-"harunkowshik@terasoftware.com",
-"Srayaseemajhi@terasoftware.com","admin@terasoftware.com",
 "kesava@terasoftware.com",
 "Mamatha.gr@terasoftware.com",
 "girish.t@terasoftware.in",
 "rajeshroy@terasoftware.com",
 "tirumalarao@terasoftware.com",
-"brahmareddy.v@terasoftware.in",];
+"brahmareddy.v@terasoftware.in",
+"admin@terasoftware.com",];
 
 // Users with installation page access
 const INSTALLATION_ACCESS_EMAILS = ["survey@terasoftware.com","wb@terasoftware.com"];
