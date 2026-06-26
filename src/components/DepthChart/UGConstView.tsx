@@ -10,6 +10,7 @@ import {
   Image,
   Edit2Icon,
   PlusCircleIcon,
+  LucideListOrdered,
 } from 'lucide-react';
 import axios from 'axios';
 import { FaArrowLeft } from 'react-icons/fa';
@@ -31,7 +32,6 @@ import type {
   PlacemarkCategory,
 } from '../../types/kmz';
 import { processDesktopPlanningData } from '../SmartInventory/PlaceMark';
-import { point } from 'leaflet';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const BASEURL_Val = import.meta.env.VITE_API_BASE;
@@ -85,6 +85,7 @@ function Eventreport() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
   const [statusLoading, setStatusLoading] = useState<number | null>(null);
+  const [Rearrange, setRearrange] = useState(false);
 
   const viewOnly = hasViewOnlyAccess();
   const AdminAcess = isAdminUser();
@@ -134,12 +135,50 @@ function Eventreport() {
         if (response.status === 200 || response.status === 201) {
           if (result.status && result.data.length > 0) {
             const { placemarks, categories } =
-            processDesktopPlanningData(result);
-            setPlanningPlacemarks(placemarks.filter(point=>[ 'Desktop: GP','Desktop: FPOI','Desktop: Block Router','Desktop: Proposed Cable','Desktop : Block to FPOI Cable','Desktop : Offset Cable','Desktop: Incremental Cable'].includes(point.category)));
-            setPlanningCategories(categories.filter(c=> ['Desktop: GP','Desktop: FPOI','Desktop: Block Router','Desktop: Proposed Cable','Desktop : Block to FPOI Cable','Desktop : Offset Cable','Desktop: Incremental Cable'].includes(c.name)));
-          
+              processDesktopPlanningData(result);
+            setPlanningPlacemarks(
+              placemarks.filter((point) =>
+                [
+                  'Desktop: GP',
+                  'Desktop: FPOI',
+                  'Desktop: Block Router',
+                  'Desktop: Proposed Cable',
+                  'Desktop : Block to FPOI Cable',
+                  'Desktop : Offset Cable',
+                  'Desktop: Incremental Cable',
+                ].includes(point.category),
+              ),
+            );
+            setPlanningCategories(
+              categories.filter((c) =>
+                [
+                  'Desktop: GP',
+                  'Desktop: FPOI',
+                  'Desktop: Block Router',
+                  'Desktop: Proposed Cable',
+                  'Desktop : Block to FPOI Cable',
+                  'Desktop : Offset Cable',
+                  'Desktop: Incremental Cable',
+                ].includes(c.name),
+              ),
+            );
+
             const autoVisible = new Set(
-              categories.filter((c) => c.visible && ['Desktop: GP','Desktop: FPOI','Desktop: Block Router','Desktop: Proposed Cable','Desktop : Block to FPOI Cable','Desktop : Offset Cable','Desktop: Incremental Cable'].includes(c.name)).map((c) => c.id),
+              categories
+                .filter(
+                  (c) =>
+                    c.visible &&
+                    [
+                      'Desktop: GP',
+                      'Desktop: FPOI',
+                      'Desktop: Block Router',
+                      'Desktop: Proposed Cable',
+                      'Desktop : Block to FPOI Cable',
+                      'Desktop : Offset Cable',
+                      'Desktop: Incremental Cable',
+                    ].includes(c.name),
+                )
+                .map((c) => c.id),
             );
             if (autoVisible.size > 0) {
               setVisiblePlanningCategories(autoVisible);
@@ -150,6 +189,29 @@ function Eventreport() {
     };
     fetchDesktopPlanning();
   }, [multipreview, selectedState, selectedDistrict, selectedBlock]);
+  useEffect(() => {
+    const rearrangeEvents = async () => {
+      try {
+        const surveyId = multipreview ? MainData : MainData?.id;
+        if (!surveyId) return;
+        const resp = await axios.post(`${TraceBASEURL}/snap-survey-to-road`, {
+          survey_id: String(surveyId),
+          rearrange: true,
+        });
+        if (resp.status === 200 || resp.status === 201) {
+          toast.success('Events rearranged successfully!');
+        }
+        setRearrange(false);
+        getData();
+      } catch (error) {
+        toast.error('Failed to rearrange events');
+        setRearrange(false);
+      }
+    };
+    if (Rearrange) {
+      rearrangeEvents();
+    }
+  }, [Rearrange]);
   // New state for media carousel
   const [isCarouselOpen, setIsCarouselOpen] = useState<boolean>(false);
   const [carouselMedia, setCarouselMedia] = useState<MediaItem[]>([]);
@@ -587,14 +649,15 @@ function Eventreport() {
       setIsCarouselOpen(true);
     }, 0);
   };
-  const handlePending = async()=>{
-   try {
+  const handlePending = async () => {
+    try {
       const userData = JSON.parse(localStorage.getItem('userData') || '{}');
 
       const resp = await axios.post(
-        `${BASEURL_Val}/underground-surveys/${MainData.id}/pending   `,{
-           "admin_id":userData.id
-        }
+        `${BASEURL_Val}/underground-surveys/${MainData.id}/pending   `,
+        {
+          admin_id: userData.id,
+        },
       );
       if (resp.data.status === 1) {
         toast.success('Record Pending successfully!');
@@ -604,15 +667,16 @@ function Eventreport() {
     } catch (error) {
       toast.error('Error accepting record');
     }
-  }
+  };
   const handleAccept = async () => {
     try {
       const userData = JSON.parse(localStorage.getItem('userData') || '{}');
 
       const resp = await axios.post(
-        `${BASEURL_Val}/underground-surveys/${MainData.id}/accept`,{
-           "admin_id":userData.id
-        }
+        `${BASEURL_Val}/underground-surveys/${MainData.id}/accept`,
+        {
+          admin_id: userData.id,
+        },
       );
       if (resp.data.status === 1) {
         toast.success('Record Accepted successfully!');
@@ -625,12 +689,13 @@ function Eventreport() {
   };
   const handleReject = async () => {
     try {
-        const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+      const userData = JSON.parse(localStorage.getItem('userData') || '{}');
 
       const response = await axios.post(
-        `${BASEURL_Val}/underground-surveys/${MainData.id}/reject`,{
-          "admin_id":userData.id
-        }
+        `${BASEURL_Val}/underground-surveys/${MainData.id}/reject`,
+        {
+          admin_id: userData.id,
+        },
       );
       if (response.data.status === 1) {
         toast.success('Record Rejected successfully.');
@@ -649,8 +714,8 @@ function Eventreport() {
       const newStatus = row.status === 0 ? 1 : 0;
       const resp = await axios.post(`${TraceBASEURL}/update-event/${row.id}`, {
         status: newStatus,
-        user_id:userData.id,
-        user_name:userData.name,
+        user_id: userData.id,
+        user_name: userData.name,
       });
       if (resp.status === 200 || resp.status === 201) {
         toast.success(
@@ -667,8 +732,12 @@ function Eventreport() {
   };
 
   const columns: TableColumn<Activity>[] = [
-    {name:'ID',selector:(_row,index)=>(index !== undefined ? index + 1 : '-'),maxWidth:'1px'},
-    {name:'CORS',selector:(row)=>row.cords|| '-'},
+    {
+      name: 'ID',
+      selector: (_row, index) => (index !== undefined ? index + 1 : '-'),
+      maxWidth: '1px',
+    },
+    { name: 'CORS', selector: (row) => row.cords || '-' },
     { name: 'Event Id', selector: (row) => row.id || '-', sortable: true },
     {
       name: 'Survey ID',
@@ -682,10 +751,9 @@ function Eventreport() {
       wrap: true,
     },
     {
-      name:"Device ID",
-      selector:(row)=>row.deviceId || '-',
-      wrap:true,
-      
+      name: 'DGPS ID',
+      selector: (row) => row.deviceId || '-',
+      wrap: true,
     },
     {
       name: 'Firm Name',
@@ -704,7 +772,7 @@ function Eventreport() {
         const latlong = getLatLongForEvent(row);
         return latlong ? latlong.split(',')[0] : '-';
       },
-       wrap: true,
+      wrap: true,
     },
     {
       name: 'Longitude',
@@ -712,7 +780,7 @@ function Eventreport() {
         const latlong = getLatLongForEvent(row);
         return latlong ? latlong.split(',')[1] : '-';
       },
-       wrap: true,
+      wrap: true,
     },
     {
       name: 'Order Index',
@@ -1220,7 +1288,7 @@ function Eventreport() {
       name: 'Created At',
       selector: (row) => moment(row.created_at).format('DD/MM/YYYY, hh:mm A'),
       sortable: true,
-       wrap: true,
+      wrap: true,
     },
     ...(AdminAcess
       ? [
@@ -1564,7 +1632,7 @@ function Eventreport() {
         </div>
       )}
       <ToastContainer />
-      <div className="mb-4">
+      <div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-3">
@@ -1579,7 +1647,7 @@ function Eventreport() {
               </div>
             </div>
             <button
-              className="flex items-center gap-2 text-blue-500 hover:text-blue-700 mb-6"
+              className="flex items-center gap-2 text-blue-500 hover:text-blue-700"
               onClick={() => window.history.back()}
             >
               <FaArrowLeft className="h-5 w-5" />
@@ -1588,7 +1656,7 @@ function Eventreport() {
           </div>
         </div>
       </div>
-      <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
+      <div className="border-b border-gray-200 dark:border-gray-700">
         <div className="flex flex-wrap justify-between items-center">
           <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
             <li className="mr-2">
@@ -1631,7 +1699,7 @@ function Eventreport() {
             </li>
           </ul>
 
-          <div className="flex flex-wrap items-center gap-3 mt-4">
+          <div className="flex flex-wrap items-center gap-3 mt-2">
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
               <select
                 value={selectedEvent || ''}
@@ -1707,7 +1775,7 @@ function Eventreport() {
               <SheetIcon className="h-4 w-4 text-green-600" />
               Excel
             </button>
-            {(multipreview === false &&  AdminAcess) &&(
+            {multipreview === false && AdminAcess && (
               <button
                 onClick={() => setIsAddModalOpen(true)}
                 className="flex-none h-10 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-blue-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
@@ -1716,20 +1784,29 @@ function Eventreport() {
                 Add New Event
               </button>
             )}
-            {(multipreview === false && AdminAcess) && (
-              <button
-                onClick={() => setIsReorderModalOpen(true)}
-                className="flex-none h-10 px-4 py-2 text-sm font-medium text-purple-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-purple-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
-              >
-                <Edit2Icon className="h-4 w-4 text-purple-600" />
-                Edit Order Index
-              </button>
+            {multipreview === false && AdminAcess && (
+              <>
+                <button
+                  onClick={() => setIsReorderModalOpen(true)}
+                  className="flex-none h-10 px-4 py-2 text-sm font-medium text-purple-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-purple-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
+                >
+                  <Edit2Icon className="h-4 w-4 text-purple-600" />
+                  Edit Order Index
+                </button>
+                <button
+                  onClick={() => setRearrange(true)}
+                  className="flex-none h-10 px-4 py-2 text-sm font-medium text-purple-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-purple-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
+                >
+                  <LucideListOrdered className="h-4 w-4 text-purple-600" />
+                  Rearrange Events
+                </button>
+              </>
             )}
           </div>
         </div>
       </div>
       {activeTab === 'details' && (
-        <div className=" overflow-x-auto">
+        <div className=" overflow-x-auto mt-1">
           <DataTable
             columns={columns}
             data={filteredData}
@@ -1746,7 +1823,7 @@ function Eventreport() {
       )}
       {!viewOnly && activeTab === 'details' && (
         <div className="mt-6 flex gap-4 justify-center">
-           <button
+          <button
             className="bg-orange-500 hover:bg-orange-600 text-white py-2 px-4 rounded"
             onClick={() => {
               handlePending();
@@ -1788,7 +1865,7 @@ function Eventreport() {
             onPlanningCategoryVisibilityChange={
               handlePlanningCategoryVisibilityChange
             }
-            onReload={()=>getData()}
+            onReload={() => getData()}
           />
         </div>
       )}

@@ -121,6 +121,7 @@ export interface Landmark {
   description: string | null;
 }
 
+
 export interface PoleString {
   id: number;
   survey_id: number | null;
@@ -155,7 +156,9 @@ export interface PoleString {
   distance:number | null;
   video: string | null;
   image:string;
-  road_crossing:string;
+  road_crossing:string | null;
+  version:string|null;
+  is_active:number
 }
 export interface PoleSurveyResponse {
   status: boolean;

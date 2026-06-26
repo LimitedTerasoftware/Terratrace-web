@@ -335,6 +335,24 @@ const Report: React.FC<ReportProps> = ({
       sortable: true,
     },
     {
+      name:'Firm Name',
+      selector:(row)=>row.firm_name || '-',
+      sortable:true,
+      wrap:true
+    },
+    {
+       name:'Machine Id',
+      selector:(row)=>row.machine_id || '-',
+      sortable:true,
+      wrap:true
+    },
+     {
+       name:'DGPS Id',
+      selector:(row)=>row.dgps_id || '-',
+      sortable:true,
+      wrap:true
+    },
+    {
       name: 'Versions',
       selector: (row) => row.versions || '-',
       sortable: true,
@@ -459,6 +477,10 @@ const Report: React.FC<ReportProps> = ({
           'Surveyor Name',
           'Surveyor Mobile',
           'Status',
+           'Firm Name',
+          'Machine Id',
+          'DGPS ID',
+          'Version',
           'Updated By',
           'Created At',
           'Updated At',
@@ -482,6 +504,10 @@ const Report: React.FC<ReportProps> = ({
             : row.is_active === 1
               ? 'Accepted'
               : 'Rejected',
+          row.firm_name,
+          row.machine_id,
+          row.dgps_id,
+          row.versions,
           row.admin_name,
           row.created_at,
           row.updated_at,

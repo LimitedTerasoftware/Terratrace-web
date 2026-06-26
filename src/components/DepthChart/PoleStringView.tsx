@@ -1,7 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import DataTable, { TableColumn } from 'react-data-table-component';
-import { Folder, SheetIcon, Image as ImageIcon, Video } from 'lucide-react';
+import {
+  Folder,
+  SheetIcon,
+  Image as ImageIcon,
+  Video,
+  Edit2Icon,
+} from 'lucide-react';
 import axios from 'axios';
 import { FaArrowLeft } from 'react-icons/fa';
 import moment from 'moment';
@@ -15,6 +21,8 @@ import {
 } from '../../types/aerial-survey';
 import { ToastContainer, toast } from 'react-toastify';
 import { hasViewOnlyAccess, isAdminUser } from '../../utils/accessControl';
+import { PoleStringEditModal } from './PoleStringEditModal';
+import { PoleStringImageModal } from './PoleStringImageModal';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const IMGbaseUrl = import.meta.env.VITE_Image_URL;
@@ -102,6 +110,11 @@ function PoleStringView() {
   const [carouselInitialIndex, setCarouselInitialIndex] = useState<number>(0);
   const viewOnly = hasViewOnlyAccess();
   const AdminAcess = isAdminUser();
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedRow, setSelectedRow] = useState<PoleString | null>(null);
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [imageModalRow, setImageModalRow] = useState<PoleString | null>(null);
+  const [statusLoading, setStatusLoading] = useState<number | null>(null);
 
   // ── Data fetch ──────────────────────────────────────────────────────────────
 
@@ -217,17 +230,28 @@ function PoleStringView() {
       });
     }
 
-    if (row.joint_enclosure?.jointImages?.length) {
-      row.joint_enclosure.jointImages.forEach((url, i) => {
-        if (url) {
-          items.push({
-            type: 'image',
-            url: url.startsWith('http') ? url : `${IMGbaseUrl}${url}`,
-            label: `Joint Image ${i + 1}`,
-          });
-        }
+    if (row.joint_enclosure) {
+      const jeRaw = row.joint_enclosure as Record<string, any>;
+      const imageSubFields = [
+        'jointImages',
+        'trayImages',
+        'startMeterImages',
+        'endMeterImages',
+      ];
+      imageSubFields.forEach((sub) => {
+        const urls: string[] = Array.isArray(jeRaw[sub]) ? jeRaw[sub] : [];
+        urls.forEach((url, i) => {
+          if (url) {
+            items.push({
+              type: 'image',
+              url: url.startsWith('http') ? url : `${IMGbaseUrl}${url}`,
+              label: `${sub} ${i + 1}`,
+            });
+          }
+        });
       });
     }
+
     if (row.landmark?.images?.length) {
       row.landmark.images.forEach((url, i) => {
         if (url) {
@@ -265,6 +289,31 @@ function PoleStringView() {
     setTimeout(() => setIsCarouselOpen(true), 0);
   };
 
+   const handleStatusToggle = async (row: PoleString) => {
+    try {
+      const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+
+      setStatusLoading(row.id);
+      const newStatus = row.is_active === 0 ? 1 : 0;
+      const resp = await axios.post(`${TraceBASEURL}/update-pole-stringing/${row.id}`, {
+        is_active: newStatus,
+        user_id: userData.id,
+        user_name: userData.name,
+      });
+      if (resp.status === 200 || resp.status === 201) {
+        toast.success(
+          `Status updated to ${newStatus === 0 ? 'Active' : 'Inactive'}`,
+        );
+        getData();
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error('Failed to update status');
+    } finally {
+      setStatusLoading(null);
+    }
+  };
+
   // ── Columns ─────────────────────────────────────────────────────────────────
 
   const columns: TableColumn<PoleString>[] = [
@@ -290,22 +339,20 @@ function PoleStringView() {
       sortable: true,
       width: '160px',
     },
-   {
-    name: 'Pole Type',
-    cell: (row) => {
-      return (
-        <span
-          className={
-            row.pole_type === 'existing'
-              ? 'text-blue-700'
-              : 'text-red-700'
-          }
-        >
-          {row.pole_type?.toUpperCase() || '-'}
-        </span>
-      );
+    {
+      name: 'Pole Type',
+      cell: (row) => {
+        return (
+          <span
+            className={
+              row.pole_type === 'existing' ? 'text-blue-700' : 'text-red-700'
+            }
+          >
+            {row.pole_type?.toUpperCase() || '-'}
+          </span>
+        );
+      },
     },
-  },
     {
       name: 'Latitude',
       selector: (row) => row.latitude,
@@ -469,6 +516,30 @@ function PoleStringView() {
       sortable: true,
       wrap: true,
     },
+     {
+      name: 'Status',
+      selector: (row) => row.is_active,
+      sortable: true,
+      cell: (row) => {
+        const status = row.is_active as 0 | 1;
+        const statusConfig = {
+          0: { label: 'Inactive', className: 'bg-red-100 text-red-800' },
+          1: { label: 'Active', className: 'bg-green-100 text-green-800' },
+        };
+        const config = statusConfig[status] || {
+          label: 'Unknown',
+          className: 'bg-gray-100 text-gray-800',
+        };
+
+        return (
+          <span
+            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${config.className}`}
+          >
+            {config.label}
+          </span>
+        );
+      },
+    },
     {
       name: 'Created At',
       selector: (row) => moment(row.created_at).format('DD/MM/YYYY, hh:mm A'),
@@ -481,6 +552,63 @@ function PoleStringView() {
       sortable: true,
       wrap: true,
     },
+    ...(AdminAcess
+      ? [
+          {
+            name: 'Actions',
+            cell: (row: PoleString) => (
+              <div className="flex gap-1">
+                <button
+                  onClick={() => {
+                    setImageModalRow(row);
+                    setImageModalOpen(true);
+                  }}
+                  className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 outline-none dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-800 transition-colors"
+                >
+                  <ImageIcon className="w-3 h-3" />
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedRow(row);
+                    setEditModalOpen(true);
+                  }}
+                  className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 outline-none dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-800 transition-colors"
+                >
+                  <Edit2Icon className="w-3 h-3" />
+                </button>
+                   <button
+                  onClick={() => handleStatusToggle(row)}
+                  disabled={statusLoading === row.id}
+                  className={`px-3 py-1 text-xs font-medium rounded-md outline-none transition-colors flex items-center gap-1 whitespace-nowrap ${
+                    row.is_active === 1
+                      ? 'text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 dark:bg-red-900 dark:text-red-300 dark:border-red-700 dark:hover:bg-red-800'
+                      : 'text-green-600 bg-green-50 border border-green-200 hover:bg-green-100 dark:bg-green-900 dark:text-green-300 dark:border-green-700 dark:hover:bg-green-800'
+                  }`}
+                >
+                  {statusLoading === row.id ? (
+                    <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+                  ) : row.is_active === 1 ? (
+                    <>
+                      <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                      Active
+                    </>
+                  ) : (
+                    <>
+                      <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                      Inactive
+                    </>
+                  )}
+                </button>
+              
+              </div>
+            ),
+            width: '220px',
+            ignoreRowClick: true,
+            allowOverflow: true,
+            button: true,
+          },
+        ]
+      : []),
   ];
 
   // ── Excel export ─────────────────────────────────────────────────────────────
@@ -608,14 +736,15 @@ function PoleStringView() {
       style: { whiteSpace: 'nowrap' as const },
     },
   };
-    const handlePending = async()=>{
-   try {
+  const handlePending = async () => {
+    try {
       const userData = JSON.parse(localStorage.getItem('userData') || '{}');
 
       const resp = await axios.post(
-        `${BASEURL_Val}/underground-surveys/${MainData.id}/pending   `,{
-           "admin_id":userData.id
-        }
+        `${BASEURL_Val}/underground-surveys/${MainData.id}/pending   `,
+        {
+          admin_id: userData.id,
+        },
       );
       if (resp.data.status === 1) {
         toast.success('Record Pending successfully!');
@@ -625,7 +754,7 @@ function PoleStringView() {
     } catch (error) {
       toast.error('Error accepting record');
     }
-  }
+  };
   const handleAccept = async () => {
     try {
       const userData = JSON.parse(localStorage.getItem('userData') || '{}');
@@ -633,8 +762,8 @@ function PoleStringView() {
       const resp = await axios.post(
         `${BASEURL_Val}/underground-surveys/${MainData.id}/accept`,
         {
-           "admin_id":userData.id
-        }
+          admin_id: userData.id,
+        },
       );
       if (resp.data.status === 1) {
         toast.success('Record Accepted successfully!');
@@ -652,8 +781,8 @@ function PoleStringView() {
       const response = await axios.post(
         `${BASEURL_Val}/underground-surveys/${MainData.id}/reject`,
         {
-          "admin_id":userData.id
-        }
+          admin_id: userData.id,
+        },
       );
       if (response.data.status === 1) {
         toast.success('Record Rejected successfully.');
@@ -780,7 +909,7 @@ function PoleStringView() {
       )}
       {!viewOnly && activeTab === 'view' && (
         <div className="mt-6 flex gap-4 justify-center">
-            <button
+          <button
             className="bg-orange-500 hover:bg-orange-600 text-white py-2 px-4 rounded"
             onClick={() => {
               handlePending();
@@ -827,6 +956,36 @@ function PoleStringView() {
           />
         </div>
       )}
+
+      {/* ── Image Modal ── */}
+      <PoleStringImageModal
+        row={imageModalRow}
+        isOpen={imageModalOpen}
+        onClose={() => {
+          setImageModalOpen(false);
+          setImageModalRow(null);
+        }}
+        onSuccess={() => {
+          setImageModalOpen(false);
+          setImageModalRow(null);
+          getData();
+        }}
+      />
+
+      {/* ── Edit Modal ── */}
+      <PoleStringEditModal
+        row={selectedRow}
+        isOpen={editModalOpen}
+        onClose={() => {
+          setEditModalOpen(false);
+          setSelectedRow(null);
+        }}
+        onSuccess={() => {
+          setEditModalOpen(false);
+          setSelectedRow(null);
+          getData();
+        }}
+      />
 
       {/* ── Media carousel ── */}
       <MediaCarousel

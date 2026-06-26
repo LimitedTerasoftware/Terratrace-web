@@ -498,6 +498,9 @@ export interface UGConstructionSurveyData {
   versions:string|null;
   admin_name:string | null;
   admin_email:string | null;
+  firm_name:string|null;
+  dgps_id:string|null;
+
 
 }
 export interface SurveyLinksData {
