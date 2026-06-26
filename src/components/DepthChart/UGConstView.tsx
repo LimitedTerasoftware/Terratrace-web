@@ -1897,6 +1897,8 @@ function Eventreport() {
           getData();
         }}
         baseUrl={TraceBASEURL}
+        machineId={(filteredData[0]?.machine_id ?? '')}
+
       />
 
       <ReorderModal

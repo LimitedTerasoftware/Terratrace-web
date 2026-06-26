@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, Save, Loader2, AlertCircle, Upload, Trash2 } from 'lucide-react';
-import { ImageUploadResponse, UGConstructionSurveyData } from '../../types/survey';
+import {
+  ImageUploadResponse,
+  UGConstructionSurveyData,
+} from '../../types/survey';
 import axios from 'axios';
 import { Machine } from '../../types/machine';
 import { getMachineOptions } from '../Services/api';
@@ -11,10 +14,11 @@ interface FormErrors {
 
 interface AddEventModalProps {
   isOpen: boolean;
-  Data:UGConstructionSurveyData;
+  Data: UGConstructionSurveyData;
   onClose: () => void;
   onSuccess: () => void;
   baseUrl: string;
+  machineId: string;
 }
 
 interface ImageFieldState {
@@ -23,22 +27,22 @@ interface ImageFieldState {
 }
 
 const EVENT_TYPES = [
-//   'FPOI',
+  //   'FPOI',
   'DEPTH',
-//   'JOINTCHAMBER',
-//   'MANHOLES',
-//   'LANDMARK',
-//   'KILOMETERSTONE',
-//   'FIBERTURN',
-//   'ROUTEINDICATOR',
+  //   'JOINTCHAMBER',
+  //   'MANHOLES',
+  //   'LANDMARK',
+  //   'KILOMETERSTONE',
+  //   'FIBERTURN',
+  //   'ROUTEINDICATOR',
   'STARTPIT',
   'ENDPIT',
-//   'STARTSURVEY',
-//   'ENDSURVEY',
-//   'ROADCROSSING',
-//   'HOLDSURVEY',
-//   'BLOWING',
-//   'ROUTEFEATURE',
+  //   'STARTSURVEY',
+  //   'ENDSURVEY',
+  //   'ROADCROSSING',
+  //   'HOLDSURVEY',
+  //   'BLOWING',
+  //   'ROUTEFEATURE',
 ];
 
 const getEventSpecificFields = (eventType: string) => {
@@ -50,117 +54,379 @@ const getEventSpecificFields = (eventType: string) => {
     { key: 'roadType', label: 'Road Type', type: 'text', required: false },
     { key: 'roadWidth', label: 'Road Width', type: 'text', required: false },
     { key: 'road_margin', label: 'Road Margin', type: 'text', required: false },
-    { key: 'routeBelongsTo', label: 'Route Belongs To', type: 'text', required: false },
+    {
+      key: 'routeBelongsTo',
+      label: 'Route Belongs To',
+      type: 'text',
+      required: false,
+    },
     { key: 'soilType', label: 'Soil Type', type: 'text', required: false },
-    { key: 'Roadfesibility', label: 'Roadfesibility', type: 'text', required: false },
+    {
+      key: 'Roadfesibility',
+      label: 'Roadfesibility',
+      type: 'text',
+      required: false,
+    },
     { key: 'area_type', label: 'Area Type', type: 'text', required: false },
-    { key: 'cableLaidOn', label: 'Cable Laid On', type: 'text', required: false },
-    { key: 'dgps_accuracy', label: 'DGPS Accuracy', type: 'text', required: false },
+    {
+      key: 'cableLaidOn',
+      label: 'Cable Laid On',
+      type: 'text',
+      required: false,
+    },
+    {
+      key: 'dgps_accuracy',
+      label: 'DGPS Accuracy',
+      type: 'text',
+      required: false,
+    },
     { key: 'dgps_siv', label: 'DGPS SIV', type: 'text', required: false },
-    { key: 'executionModality', label: 'Execution Modality', type: 'text', required: false },
+    {
+      key: 'executionModality',
+      label: 'Execution Modality',
+      type: 'text',
+      required: false,
+    },
     { key: 'created_at', label: 'Created At', type: 'text', required: false },
-
-
+    { key: 'video', label: 'Video', type: 'media', required: false },
   ];
 
-  const eventSpecificFieldsMap: { [key: string]: Array<{ key: string; label: string; type: string; required: boolean }> } = {
+  const eventSpecificFieldsMap: {
+    [key: string]: Array<{
+      key: string;
+      label: string;
+      type: string;
+      required: boolean;
+    }>;
+  } = {
     FPOI: [
-      { key: 'fpoiLatLong', label: 'FPOI Latitude/Longitude', type: 'text', required: true },
-      { key: 'fpoiPhotos', label: 'FPOI Photos (JSON array)', type: 'textarea', required: false },
+      {
+        key: 'fpoiLatLong',
+        label: 'FPOI Latitude/Longitude',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'fpoiPhotos',
+        label: 'FPOI Photos (JSON array)',
+        type: 'textarea',
+        required: false,
+      },
     ],
     DEPTH: [
-      { key: 'depthLatlong', label: 'Depth Latitude/Longitude', type: 'text', required: true },
-      { key: 'depthMeters', label: 'Depth (Meters)', type: 'text', required: true },
-      { key: 'depthPhoto', label: 'Depth Photos (JSON array)', type: 'textarea', required: false },
+      {
+        key: 'depthLatlong',
+        label: 'Depth Latitude/Longitude',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'depthMeters',
+        label: 'Depth (Meters)',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'depthPhoto',
+        label: 'Depth Photos (JSON array)',
+        type: 'textarea',
+        required: false,
+      },
     ],
     JOINTCHAMBER: [
-      { key: 'jointChamberLatLong', label: 'Joint Chamber Latitude/Longitude', type: 'text', required: true },
-      { key: 'jointChamberPhotos', label: 'Joint Chamber Photos (JSON array)', type: 'textarea', required: false },
+      {
+        key: 'jointChamberLatLong',
+        label: 'Joint Chamber Latitude/Longitude',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'jointChamberPhotos',
+        label: 'Joint Chamber Photos (JSON array)',
+        type: 'textarea',
+        required: false,
+      },
     ],
     MANHOLES: [
-      { key: 'manholeLatLong', label: 'Manhole Latitude/Longitude', type: 'text', required: true },
-      { key: 'manholePhotos', label: 'Manhole Photos (JSON array)', type: 'textarea', required: false },
+      {
+        key: 'manholeLatLong',
+        label: 'Manhole Latitude/Longitude',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'manholePhotos',
+        label: 'Manhole Photos (JSON array)',
+        type: 'textarea',
+        required: false,
+      },
     ],
     LANDMARK: [
-      { key: 'landmarkLatLong', label: 'Landmark Latitude/Longitude', type: 'text', required: true },
-      { key: 'landmarkPhotos', label: 'Landmark Photos (JSON array)', type: 'textarea', required: false },
-      { key: 'landmark_type', label: 'Landmark Type', type: 'text', required: false },
-      { key: 'landmark_description', label: 'Landmark Description', type: 'textarea', required: false },
+      {
+        key: 'landmarkLatLong',
+        label: 'Landmark Latitude/Longitude',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'landmarkPhotos',
+        label: 'Landmark Photos (JSON array)',
+        type: 'textarea',
+        required: false,
+      },
+      {
+        key: 'landmark_type',
+        label: 'Landmark Type',
+        type: 'text',
+        required: false,
+      },
+      {
+        key: 'landmark_description',
+        label: 'Landmark Description',
+        type: 'textarea',
+        required: false,
+      },
     ],
     KILOMETERSTONE: [
-      { key: 'kilometerstoneLatLong', label: 'Kilometerstone Latitude/Longitude', type: 'text', required: true },
-      { key: 'kilometerstonePhotos', label: 'Kilometerstone Photos (JSON array)', type: 'textarea', required: false },
+      {
+        key: 'kilometerstoneLatLong',
+        label: 'Kilometerstone Latitude/Longitude',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'kilometerstonePhotos',
+        label: 'Kilometerstone Photos (JSON array)',
+        type: 'textarea',
+        required: false,
+      },
     ],
     FIBERTURN: [
-      { key: 'fiberTurnLatLong', label: 'Fiber Turn Latitude/Longitude', type: 'text', required: true },
-      { key: 'fiberTurnPhotos', label: 'Fiber Turn Photos (JSON array)', type: 'textarea', required: false },
+      {
+        key: 'fiberTurnLatLong',
+        label: 'Fiber Turn Latitude/Longitude',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'fiberTurnPhotos',
+        label: 'Fiber Turn Photos (JSON array)',
+        type: 'textarea',
+        required: false,
+      },
     ],
     ROUTEINDICATOR: [
-      { key: 'routeIndicatorLatLong', label: 'Route Indicator Latitude/Longitude', type: 'text', required: true },
-      { key: 'routeIndicatorPhotos', label: 'Route Indicator Photos (JSON array)', type: 'textarea', required: false },
+      {
+        key: 'routeIndicatorLatLong',
+        label: 'Route Indicator Latitude/Longitude',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'routeIndicatorPhotos',
+        label: 'Route Indicator Photos (JSON array)',
+        type: 'textarea',
+        required: false,
+      },
     ],
     STARTPIT: [
-      { key: 'startPitLatlong', label: 'Start Pit Latitude/Longitude', type: 'text', required: true },
-      { key: 'startPitPhotos', label: 'Start Pit Photos (JSON array)', type: 'textarea', required: false },
-      { key: 'depthLatlong', label: 'Depth Latitude/Longitude', type: 'text', required: true },
-      { key: 'depthMeters', label: 'Depth (Meters)', type: 'text', required: true },
-      { key: 'depthPhoto', label: 'Depth Photos (JSON array)', type: 'textarea', required: false },
-
+      {
+        key: 'startPitLatlong',
+        label: 'Start Pit Latitude/Longitude',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'startPitPhotos',
+        label: 'Start Pit Photos (JSON array)',
+        type: 'textarea',
+        required: false,
+      },
+      {
+        key: 'depthLatlong',
+        label: 'Depth Latitude/Longitude',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'depthMeters',
+        label: 'Depth (Meters)',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'depthPhoto',
+        label: 'Depth Photos (JSON array)',
+        type: 'textarea',
+        required: false,
+      },
     ],
     ENDPIT: [
-      { key: 'endPitLatlong', label: 'End Pit Latitude/Longitude', type: 'text', required: true },
-      { key: 'endPitPhotos', label: 'End Pit Photos (JSON array)', type: 'textarea', required: false },
-      { key: 'depthLatlong', label: 'Depth Latitude/Longitude', type: 'text', required: true },
-      { key: 'depthMeters', label: 'Depth (Meters)', type: 'text', required: true },
-      { key: 'depthPhoto', label: 'Depth Photos (JSON array)', type: 'textarea', required: false },
-
-
+      {
+        key: 'endPitLatlong',
+        label: 'End Pit Latitude/Longitude',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'endPitPhotos',
+        label: 'End Pit Photos (JSON array)',
+        type: 'textarea',
+        required: false,
+      },
+      {
+        key: 'depthLatlong',
+        label: 'Depth Latitude/Longitude',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'depthMeters',
+        label: 'Depth (Meters)',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'depthPhoto',
+        label: 'Depth Photos (JSON array)',
+        type: 'textarea',
+        required: false,
+      },
     ],
     STARTSURVEY: [
-      { key: 'startPointCoordinates', label: 'Start Point Coordinates', type: 'text', required: true },
-      { key: 'startPointPhoto', label: 'Start Point Photo (JSON array)', type: 'textarea', required: false },
+      {
+        key: 'startPointCoordinates',
+        label: 'Start Point Coordinates',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'startPointPhoto',
+        label: 'Start Point Photo (JSON array)',
+        type: 'textarea',
+        required: false,
+      },
     ],
     ENDSURVEY: [
-      { key: 'endPointCoordinates', label: 'End Point Coordinates', type: 'text', required: true },
-      { key: 'endPointPhoto', label: 'End Point Photo (JSON array)', type: 'textarea', required: false },
+      {
+        key: 'endPointCoordinates',
+        label: 'End Point Coordinates',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'endPointPhoto',
+        label: 'End Point Photo (JSON array)',
+        type: 'textarea',
+        required: false,
+      },
     ],
     ROADCROSSING: [
-      { key: 'crossingLatlong', label: 'Crossing Latitude/Longitude', type: 'text', required: true },
-      { key: 'crossingPhotos', label: 'Crossing Photos (JSON array)', type: 'textarea', required: false },
-      { key: 'crossingType', label: 'Crossing Type', type: 'text', required: false },
-      { key: 'crossingLength', label: 'Crossing Length', type: 'text', required: false },
+      {
+        key: 'crossingLatlong',
+        label: 'Crossing Latitude/Longitude',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'crossingPhotos',
+        label: 'Crossing Photos (JSON array)',
+        type: 'textarea',
+        required: false,
+      },
+      {
+        key: 'crossingType',
+        label: 'Crossing Type',
+        type: 'text',
+        required: false,
+      },
+      {
+        key: 'crossingLength',
+        label: 'Crossing Length',
+        type: 'text',
+        required: false,
+      },
     ],
     HOLDSURVEY: [
-      { key: 'holdLatlong', label: 'Hold Survey Latitude/Longitude', type: 'text', required: true },
-      { key: 'holdPhotos', label: 'Hold Photos (JSON array)', type: 'textarea', required: false },
+      {
+        key: 'holdLatlong',
+        label: 'Hold Survey Latitude/Longitude',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'holdPhotos',
+        label: 'Hold Photos (JSON array)',
+        type: 'textarea',
+        required: false,
+      },
     ],
     BLOWING: [
-      { key: 'blowingLatLong', label: 'Blowing Latitude/Longitude', type: 'text', required: true },
-      { key: 'blowingPhotos', label: 'Blowing Photos (JSON array)', type: 'textarea', required: false },
+      {
+        key: 'blowingLatLong',
+        label: 'Blowing Latitude/Longitude',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'blowingPhotos',
+        label: 'Blowing Photos (JSON array)',
+        type: 'textarea',
+        required: false,
+      },
     ],
     ROUTEFEATURE: [
-      { key: 'routeFeatureLatLong', label: 'Route Feature Latitude/Longitude', type: 'text', required: true },
-      { key: 'routeFeaturePhotos', label: 'Route Feature Photos (JSON array)', type: 'textarea', required: false },
-      { key: 'routeFeatureType', label: 'Route Feature Type', type: 'text', required: false },
+      {
+        key: 'routeFeatureLatLong',
+        label: 'Route Feature Latitude/Longitude',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'routeFeaturePhotos',
+        label: 'Route Feature Photos (JSON array)',
+        type: 'textarea',
+        required: false,
+      },
+      {
+        key: 'routeFeatureType',
+        label: 'Route Feature Type',
+        type: 'text',
+        required: false,
+      },
     ],
   };
 
   return [...baseFields, ...(eventSpecificFieldsMap[eventType] || [])];
 };
-  const BASEURL = import.meta.env.VITE_API_BASE;
+const BASEURL = import.meta.env.VITE_API_BASE;
 
-export function AddEventModal({ isOpen,Data,onClose, onSuccess, baseUrl }: AddEventModalProps) {
-   
+export function AddEventModal({
+  isOpen,
+  Data,
+  onClose,
+  onSuccess,
+  baseUrl,
+  machineId,
+}: AddEventModalProps) {
   const [eventType, setEventType] = useState('');
-  const [formData, setFormData] = useState<{ [key: string]: string | number }>({});
+  const [formData, setFormData] = useState<{ [key: string]: string | number }>(
+    {},
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [imageFields, setImageFields] = useState<{ [key: string]: ImageFieldState }>({});
+  const [imageFields, setImageFields] = useState<{
+    [key: string]: ImageFieldState;
+  }>({});
+  const [videoFields, setVideoFields] = useState<{
+    [key: string]: ImageFieldState;
+  }>({});
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+  const videoInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   const [machines, setMachines] = useState<Machine[]>([]);
-    const GetMachineData = async () => {
+  const GetMachineData = async () => {
     try {
       const resp = await getMachineOptions();
       setMachines(resp);
@@ -168,15 +434,13 @@ export function AddEventModal({ isOpen,Data,onClose, onSuccess, baseUrl }: AddEv
       console.log(error);
     }
   };
- useEffect(()=>{
-   GetMachineData();
-  },[])
+  useEffect(() => {
+    GetMachineData();
+  }, []);
 
   if (!isOpen) return null;
-  
+
   const fields = eventType ? getEventSpecificFields(eventType) : [];
-
-
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -187,7 +451,10 @@ export function AddEventModal({ isOpen,Data,onClose, onSuccess, baseUrl }: AddEv
 
     fields.forEach(({ key, required }) => {
       const value = formData[key];
-      if (required && (!value || (typeof value === 'string' && value.trim() === ''))) {
+      if (
+        required &&
+        (!value || (typeof value === 'string' && value.trim() === ''))
+      ) {
         newErrors[key] = 'This field is required';
       }
 
@@ -267,30 +534,80 @@ export function AddEventModal({ isOpen,Data,onClose, onSuccess, baseUrl }: AddEv
     }));
   };
 
-    const uploadImages = async (files: File[]): Promise<string[]> => {
-      const formData = new FormData();
-      files.forEach(file => {
-        formData.append('images[]', file);
+  const handleVideoSelect = (fieldKey: string, files: FileList | null) => {
+    if (!files) return;
+
+    const newFiles = Array.from(files);
+    const previews = newFiles.map((file) => URL.createObjectURL(file));
+
+    setVideoFields((prev) => ({
+      ...prev,
+      [fieldKey]: {
+        files: [...(prev[fieldKey]?.files || []), ...newFiles],
+        previews: [...(prev[fieldKey]?.previews || []), ...previews],
+      },
+    }));
+  };
+
+  const handleRemoveVideo = (fieldKey: string, index: number) => {
+    setVideoFields((prev) => ({
+      ...prev,
+      [fieldKey]: {
+        files: prev[fieldKey].files.filter((_, i) => i !== index),
+        previews: prev[fieldKey].previews.filter((_, i) => i !== index),
+      },
+    }));
+  };
+
+  const uploadImages = async (files: File[]): Promise<string[]> => {
+    const formData = new FormData();
+    files.forEach((file) => {
+      formData.append('images[]', file);
+    });
+
+    try {
+      const response = await fetch(`${BASEURL}/upload-image`, {
+        method: 'POST',
+        body: formData,
       });
-  
-      try {
-        const response = await fetch(`${BASEURL}/upload-image`, {
-          method: 'POST',
-          body: formData
-        });
-  
-        if (!response.ok) {
-          throw new Error('Upload failed');
-        }
-  
-        const data: ImageUploadResponse = await response.json();
-  
-        return data.data.images || [];
-      } catch (error) {
-        console.error('Upload error:', error);
-        throw error;
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
       }
-    };
+
+      const data: ImageUploadResponse = await response.json();
+
+      return data.data.images || [];
+    } catch (error) {
+      console.error('Upload error:', error);
+      throw error;
+    }
+  };
+
+  const uploadVideos = async (files: File[]): Promise<string[]> => {
+    const formData = new FormData();
+    files.forEach((file) => {
+      formData.append('videos[]', file);
+    });
+
+    try {
+      const response = await fetch(`${BASEURL}/upload-image`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Video upload failed');
+      }
+
+      const data: ImageUploadResponse = await response.json();
+
+      return data.data.videos || [];
+    } catch (error) {
+      console.error('Video upload error:', error);
+      throw error;
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -310,14 +627,15 @@ export function AddEventModal({ isOpen,Data,onClose, onSuccess, baseUrl }: AddEv
         eventType,
         ...formData,
       };
-      payload["created_at"]=formatForApi(formData.created_at as string) as string;
-      payload["user_id"]=userData.id;
-      payload["user_name"]=userData.name;
-      payload["type"]='web';
-             
+      payload['created_at'] = formatForApi(
+        formData.created_at as string,
+      ) as string;
+      payload['user_id'] = userData.id;
+      payload['user_name'] = userData.name;
+      payload['type'] = 'web';
 
       const imageFieldsWithFiles = Object.entries(imageFields).filter(
-        ([_, state]) => state.files.length > 0
+        ([_, state]) => state.files.length > 0,
       );
 
       for (const [fieldKey, state] of imageFieldsWithFiles) {
@@ -325,7 +643,24 @@ export function AddEventModal({ isOpen,Data,onClose, onSuccess, baseUrl }: AddEv
           const uploadedPaths = await uploadImages(state.files);
           payload[fieldKey] = JSON.stringify(uploadedPaths);
         } catch (uploadError) {
-          throw new Error(`Failed to upload images for ${fieldKey}: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`);
+          throw new Error(
+            `Failed to upload images for ${fieldKey}: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`,
+          );
+        }
+      }
+
+      const videoFieldsWithFiles = Object.entries(videoFields).filter(
+        ([_, state]) => state.files.length > 0,
+      );
+
+      for (const [fieldKey, state] of videoFieldsWithFiles) {
+        try {
+          const uploadedPaths = await uploadVideos(state.files);
+          payload[fieldKey] =  (uploadedPaths[0]);
+        } catch (uploadError) {
+          throw new Error(
+            `Failed to upload video for ${fieldKey}: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`,
+          );
         }
       }
 
@@ -359,31 +694,35 @@ export function AddEventModal({ isOpen,Data,onClose, onSuccess, baseUrl }: AddEv
     setFormData({});
     setErrors({});
     setImageFields({});
+    setVideoFields({});
     Object.values(fileInputRefs.current).forEach((ref) => {
       if (ref) ref.value = '';
     });
+    Object.values(videoInputRefs.current).forEach((ref) => {
+      if (ref) ref.value = '';
+    });
   };
-const formatForInput = (value: string) => {
-  if (!value) return '';
-  return value.replace(' ', 'T').slice(0, 16);
-};
-const formatForApi = (value: string) => {
-  if (!value) return '';
+  const formatForInput = (value: string) => {
+    if (!value) return '';
+    return value.replace(' ', 'T').slice(0, 16);
+  };
+  const formatForApi = (value: string) => {
+    if (!value) return '';
 
-  if (value.includes('Z')) {
-    const d = new Date(value);
+    if (value.includes('Z')) {
+      const d = new Date(value);
 
-    const pad = (n: number) => String(n).padStart(2, '0');
+      const pad = (n: number) => String(n).padStart(2, '0');
 
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-  }
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
 
-  if (value.includes('T')) {
-    return value.replace('T', ' ') + ':00';
-  }
+    if (value.includes('T')) {
+      return value.replace('T', ' ') + ':00';
+    }
 
-  return value;
-};
+    return value;
+  };
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -410,10 +749,11 @@ const formatForApi = (value: string) => {
               onChange={(e) => {
                 setEventType(e.target.value);
                 setFormData((prev) => ({
-                    start_lgd: Data?.startLocation || "",
-                    end_lgd: Data?.endLocation || "",
-                    survey_id: Data?.id || "",
-                    created_at:formatForInput(Data?.created_at) || "",
+                  start_lgd: Data?.startLocation || '',
+                  end_lgd: Data?.endLocation || '',
+                  survey_id: Data?.id || '',
+                  machine_id: machineId,
+                  created_at: formatForInput(Data?.created_at) || '',
                 }));
                 setErrors({});
               }}
@@ -428,104 +768,139 @@ const formatForApi = (value: string) => {
               ))}
             </select>
             {errors.eventType && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.eventType}</p>
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                {errors.eventType}
+              </p>
             )}
           </div>
 
           {eventType && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {fields.filter(({key})=> !key.includes('Photos') && !key.includes('Photo')).map(({ key, label, type, required }) => (
-                <div key={key} className={type === 'textarea' ? 'md:col-span-2' : ''}>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    {label}
-                    {required && <span className="text-red-500">*</span>}
-                  </label>
-                  {key === "machine_id" ? (
-                    <select
-                        value={(formData[key] as string) || ""}
+              {fields
+                .filter(
+                  ({ key }) =>
+                    !key.includes('Photos') &&
+                    !key.includes('Photo') &&
+                    key !== 'video',
+                )
+                .map(({ key, label, type, required }) => (
+                  <div
+                    key={key}
+                    className={type === 'textarea' ? 'md:col-span-2' : ''}
+                  >
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      {label}
+                      {required && <span className="text-red-500">*</span>}
+                    </label>
+                    {key === 'machine_id' ? (
+                      <select
+                        value={(formData[key] as string) || ''}
                         onChange={(e) => handleChange(key, e.target.value)}
                         className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 
                         dark:bg-gray-700 dark:text-white ${
-                        errors[key]
-                            ? "border-red-500 dark:border-red-500"
-                            : "border-gray-300 dark:border-gray-600"
+                          errors[key]
+                            ? 'border-red-500 dark:border-red-500'
+                            : 'border-gray-300 dark:border-gray-600'
                         }`}
                         disabled={isLoading}
-                    >
+                      >
                         <option value="">Select Machine</option>
 
                         {machines.map((machine) => (
-                        <option key={machine.machine_id} value={machine.machine_id}>
+                          <option
+                            key={machine.machine_id}
+                            value={machine.machine_id}
+                          >
                             {machine.registration_number}
-                        </option>
+                          </option>
                         ))}
-                    </select>
+                      </select>
                     ) : type === 'textarea' ? (
-                  
-                    <textarea
-                      value={(formData[key] as string) || ''}
-                      onChange={(e) => handleChange(key, e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors ${
-                        errors[key]
-                          ? 'border-red-500 dark:border-red-500'
-                          : 'border-gray-300 dark:border-gray-600'
-                      }`}
-                      rows={4}
-                      disabled={isLoading}
-                      placeholder={key.includes('Photos') || key.includes('Photo') ? '["image1.jpg", "image2.jpg"]' : ''}
-                    />
-                  ) :
-                   key === 'created_at' ? (
-                  <input
-                  type="datetime-local"
-                  value={formData[key] ? formatForInput(formData[key] as string) : ''}
-                  onChange={(e) =>
-                    handleChange(key, e.target.value)
-                  }
-                  className={`w-full px-3 py-2 border rounded-lg ${
-                    errors[key] ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  disabled={isLoading}
-                />):
-                   (
-                    <input
-                      type={type}
-                      value={(formData[key] as string | number) || ''}
-                      readOnly={key === "start_lgd" || key === "end_lgd" || key === "survey_id"}
-                      onChange={(e) =>
-                        handleChange(
-                          key,
-                          type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value
-                        )
-                      }
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors 
-                        ${key === "start_lgd" || key === "end_lgd" || key === "survey_id"
-                        ? "bg-gray-100 cursor-not-allowed"
-                        : ""}
+                      <textarea
+                        value={(formData[key] as string) || ''}
+                        onChange={(e) => handleChange(key, e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors ${
+                          errors[key]
+                            ? 'border-red-500 dark:border-red-500'
+                            : 'border-gray-300 dark:border-gray-600'
+                        }`}
+                        rows={4}
+                        disabled={isLoading}
+                        placeholder={
+                          key.includes('Photos') || key.includes('Photo')
+                            ? '["image1.jpg", "image2.jpg"]'
+                            : ''
+                        }
+                      />
+                    ) : key === 'created_at' ? (
+                      <input
+                        type="datetime-local"
+                        value={
+                          formData[key]
+                            ? formatForInput(formData[key] as string)
+                            : ''
+                        }
+                        onChange={(e) => handleChange(key, e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-lg ${
+                          errors[key] ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        disabled={isLoading}
+                      />
+                    ) : (
+                      <input
+                        type={type}
+                        value={(formData[key] as string | number) || ''}
+                        readOnly={
+                          key === 'start_lgd' ||
+                          key === 'end_lgd' ||
+                          key === 'survey_id'
+                        }
+                        onChange={(e) =>
+                          handleChange(
+                            key,
+                            type === 'number'
+                              ? e.target.value === ''
+                                ? ''
+                                : Number(e.target.value)
+                              : e.target.value,
+                          )
+                        }
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors 
                         ${
-                        errors[key]
-                          ? 'border-red-500 dark:border-red-500'
-                          : 'border-gray-300 dark:border-gray-600'
-                      } `}
-                      disabled={isLoading}
-                      placeholder={
-                        key.includes('Latlong') || key.includes('Coordinates')
-                          ? '17.4303925, 78.4062873'
-                          : ''
-                      }
-                    />
-                  )}
-                  {errors[key] && (
-                    <div className="mt-1 flex items-center gap-1">
-                      <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
-                      <p className="text-sm text-red-600 dark:text-red-400">{errors[key]}</p>
-                    </div>
-                  )}
-                </div>
-              ))}
+                          key === 'start_lgd' ||
+                          key === 'end_lgd' ||
+                          key === 'survey_id'
+                            ? 'bg-gray-100 cursor-not-allowed'
+                            : ''
+                        }
+                        ${
+                          errors[key]
+                            ? 'border-red-500 dark:border-red-500'
+                            : 'border-gray-300 dark:border-gray-600'
+                        } `}
+                        disabled={isLoading}
+                        placeholder={
+                          key.includes('Latlong') || key.includes('Coordinates')
+                            ? '17.4303925, 78.4062873'
+                            : ''
+                        }
+                      />
+                    )}
+                    {errors[key] && (
+                      <div className="mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
+                        <p className="text-sm text-red-600 dark:text-red-400">
+                          {errors[key]}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
 
               {fields
-                .filter(({ key }) => key.includes('Photos') || key.includes('Photo'))
+                .filter(
+                  ({ key }) => key.includes('Photos') || key.includes('Photo'),
+                )
                 .map(({ key, label }) => (
                   <div key={`file-${key}`} className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -552,27 +927,79 @@ const formatForApi = (value: string) => {
                       Click to upload images
                     </button>
 
-                    {imageFields[key] && imageFields[key].previews.length > 0 && (
-                      <div className="mt-4 grid grid-cols-3 gap-4">
-                        {imageFields[key].previews.map((preview, index) => (
-                          <div key={index} className="relative group">
-                            <img
-                              src={preview}
-                              alt={`Preview ${index + 1}`}
-                              className="w-full h-24 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveImage(key, index)}
-                              className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-50 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                              disabled={isLoading}
-                            >
-                              <Trash2 className="w-5 h-5 text-white" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    {imageFields[key] &&
+                      imageFields[key].previews.length > 0 && (
+                        <div className="mt-4 grid grid-cols-3 gap-4">
+                          {imageFields[key].previews.map((preview, index) => (
+                            <div key={index} className="relative group">
+                              <img
+                                src={preview}
+                                alt={`Preview ${index + 1}`}
+                                className="w-full h-24 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveImage(key, index)}
+                                className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-50 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                disabled={isLoading}
+                              >
+                                <Trash2 className="w-5 h-5 text-white" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                  </div>
+                ))}
+
+              {fields
+                .filter(({ key }) => key === 'video')
+                .map(({ key, label }) => (
+                  <div key={`video-${key}`} className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      {label}
+                    </label>
+                    <input
+                      ref={(el) => {
+                        if (el) videoInputRefs.current[key] = el;
+                      }}
+                      type="file"
+                      accept="video/*"
+                      onChange={(e) => handleVideoSelect(key, e.target.files)}
+                      className="hidden"
+                      disabled={isLoading}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => videoInputRefs.current[key]?.click()}
+                      className="w-full px-4 py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 transition-colors flex items-center justify-center gap-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                      disabled={isLoading}
+                    >
+                      <Upload className="w-5 h-5" />
+                      Click to upload video
+                    </button>
+
+                    {videoFields[key] &&
+                      videoFields[key].previews.length > 0 && (
+                        <div className="mt-4 grid grid-cols-3 gap-4">
+                          {videoFields[key].previews.map((preview, index) => (
+                            <div key={index} className="relative group">
+                              <video
+                                src={preview}
+                                className="w-full h-24 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveVideo(key, index)}
+                                className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-50 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                disabled={isLoading}
+                              >
+                                <Trash2 className="w-5 h-5 text-white" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                   </div>
                 ))}
             </div>
@@ -586,7 +1013,9 @@ const formatForApi = (value: string) => {
 
           {success && (
             <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-              <p className="text-sm text-green-600 dark:text-green-400">Event created successfully!</p>
+              <p className="text-sm text-green-600 dark:text-green-400">
+                Event created successfully!
+              </p>
             </div>
           )}
         </form>

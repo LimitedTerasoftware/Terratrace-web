@@ -564,7 +564,7 @@ export interface FilterState {
 }
 export interface ImageUploadResponse {
   success: boolean;
-  data: { images?: string[] };
+  data: { images?: string[],videos?:string[] };
   message?: string;
 }
 
