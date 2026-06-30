@@ -2161,26 +2161,24 @@ export function processDesktopPlanningData(
 
         // FIXED: Determine category based on connection type from API
         // API uses "existing" for implemented cables and "proposed" for planned cables
-        const connectionType = connection.type || 'proposed';
-        let category;
-          switch(connectionType){
-            case "existing":
-               category = 'Desktop: Incremental Cable';
-               break;
-            case "Offset Cable":
-              category = 'Desktop : Offset Cable';
-              break;
-            case "Block to FPOI Cable":
-              category ='Desktop : Block to FPOI Cable';
-              break;
-            case "Incremental Cable":
-               category = 'Desktop: Incremental Cable';
-              break;
-            default :
-            category='Desktop: Proposed Cable';
-            break;
+      const connectionType = (connection.type || 'proposed').trim().toLowerCase();
 
-          }
+        let category;
+        switch (connectionType) {
+          case 'existing':
+          case 'incremental cable':
+            category = 'Desktop: Incremental Cable';
+            break;
+          case 'offset cable':
+            category = 'Desktop : Offset Cable';
+            break;
+          case 'block to fpoi cable':
+            category = 'Desktop : Block to FPOI Cable';
+            break;
+          default:
+            category = 'Desktop: Proposed Cable';
+            break;
+        }
         
             categoryCounts[category] = (categoryCounts[category] || 0) + 1;
 
