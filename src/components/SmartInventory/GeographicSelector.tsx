@@ -120,7 +120,7 @@ const PreviewDropdown: React.FC<PreviewDropdownProps> = ({
         </button>
         <button
           onClick={() => {
-            onDesktopPlanning();
+            // onDesktopPlanning();
             onConstruction();
             onClose();
           }}

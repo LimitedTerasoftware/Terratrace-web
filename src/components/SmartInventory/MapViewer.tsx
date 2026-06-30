@@ -668,8 +668,8 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
           const constructionPlacemark = placemark as any;
           if (constructionPlacemark.eventType === 'DEPTH') {
             markerIcon = {
-              path: google.maps.SymbolPath.CIRCLE,
-              scale: 8,
+              path: 'M-6,0 L0,-8 L6,0 L0,8 Z',
+              scale: 1,
               fillColor: category.color,
               fillOpacity: 0.9,
               strokeColor: '#ffffff',

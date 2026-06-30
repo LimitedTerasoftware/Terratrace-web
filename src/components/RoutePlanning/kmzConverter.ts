@@ -98,35 +98,40 @@ export const convertKMZToStandardFormat = (kmzData: KMZResponse): ConvertedKMZDa
     }
 
     // Determine if connection is existing based on status or type
-    let existing = false;
-    if(line.type=== 'Proposed Cable' || line.properties?.type === 'Proposed Cable'){
-       existing = false;
-    }
-   else if(line.properties?.status === 'Accepted' || 
-                    line.properties?.status === 'Existing' ||
-                    line.type || line.properties?.Type === 'Incremental Cable' || 
-                    line.properties?.type === 'Incremental Cable' || 
-                    line.properties?.asset_type === 'Incremental Cable'){
-                      existing = true;
+      const normalizedType = (
+        line.type ||
+        line.properties?.type ||
+        line.properties?.Type ||
+        line.properties?.asset_type ||
+        ''
+      ).trim().toLowerCase();
 
-                    }
-    
+      const normalizedStatus = (line.properties?.status || '').trim().toLowerCase();
 
-    // Generate color based on type or status
-    let color = '#FF0000'; // Default red
+      let existing = false;
+      if (normalizedType === 'proposed cable') {
+        existing = false;
+      } else if (
+        normalizedStatus === 'accepted' ||
+        normalizedStatus === 'existing' ||
+        normalizedType === 'incremental cable'
+      ) {
+        existing = true;
+      }
 
-  if(line.type === 'Offset Cable' || line.properties?.type === 'Offset Cable'){
-          color ='#DBDBDB';
-      }else if( line.type === 'Block to FPOI Cable' || line.properties?.type === 'Block to FPOI Cable'){
-         color ='#0000D1';
-    }else if(line.type=== 'Proposed Cable' || line.properties?.type === 'Proposed Cable'){
-     color = '#FF0000';
-    }
-    else if (line.type === 'Incremental Cable' || 
-        line.properties?.type || line.properties?.Type === 'Incremental Cable' || 
-        line.properties?.asset_type === 'Incremental Cable') {
-      color = existing ? '#00AA00' : '#FF0000'; // Green for existing, red for new
-    }
+      // Generate color based on type or status
+      let color = '#FF0000'; // Default red
+
+      if (normalizedType === 'offset cable') {
+        color = '#DBDBDB';
+      } else if (normalizedType === 'block to fpoi cable') {
+        color = '#0000D1';
+      } else if (normalizedType === 'proposed cable') {
+        color = '#FF0000';
+      } else if (normalizedType === 'incremental cable') {
+        color = existing ? '#00AA00' : '#FF0000'; // Green for existing, red for new
+      }
+
     // Ensure connection has a valid name
     const connectionName = line.name && line.name.trim() !== '' 
       ? line.name.trim() 
