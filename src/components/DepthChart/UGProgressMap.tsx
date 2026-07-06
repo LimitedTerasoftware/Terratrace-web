@@ -467,6 +467,16 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
                 </label>
               );
             })}
+            <div className="mt-2 border-t border-gray-200 pt-2">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input type="checkbox" checked={true} disabled />
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: '#9C27B0' }}
+                />
+                <span className="flex-1 truncate">Construction Path</span>
+              </label>
+            </div>
           </div>
         </div>
       )}
@@ -586,6 +596,9 @@ const UGProgressMap: React.FC = () => {
             new Set(
               filteredCategories
                 .filter((category) => category.visible)
+                .filter(
+                  (category) => category.name !== 'Desktop : Offset Cable',
+                )
                 .map((category) => category.id),
             ),
           );
