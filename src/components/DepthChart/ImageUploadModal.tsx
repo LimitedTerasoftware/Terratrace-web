@@ -232,7 +232,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
           url: `${ImgbaseUrl}${videoUrl}`,
           isNew: false,
           isReplaced: false,
-          fieldName: 'video',
+          fieldName: 'videoDetails',
           originalIndex: 1,
           isVideo: true,
         });
@@ -476,30 +476,66 @@ const ImageModal: React.FC<ImageModalProps> = ({
         };
 
         // Handle video field for DUCT events
-        const videoItems = images.filter((img) => img.fieldName === 'video');
-        if (videoItems.length > 0) {
-          const newVideoFiles = videoItems
+        const simpleVideoItems = images.filter(
+          (img) => img.fieldName === 'video',
+        );
+        if (simpleVideoItems.length > 0) {
+          const newFiles = simpleVideoItems
             .filter((img) => img.isNew && img.file)
             .map((img) => img.file!);
 
-          let uploadedVideoUrls: string[] = [];
-          if (newVideoFiles.length > 0) {
-            uploadedVideoUrls = await uploadImages(newVideoFiles);
+          let uploadedUrls: string[] = [];
+          if (newFiles.length > 0) {
+            uploadedUrls = await uploadImages(newFiles);
           }
 
-          let uploadedVideoIndex = 0;
-          videoItems.forEach((img) => {
+          let finalUrl = '';
+          let uploadedIdx = 0;
+          simpleVideoItems.forEach((img) => {
             if (img.isNew) {
-              if (uploadedVideoIndex < uploadedVideoUrls.length) {
-                updateData['video'] = uploadedVideoUrls[uploadedVideoIndex];
-                uploadedVideoIndex++;
+              if (uploadedIdx < uploadedUrls.length) {
+                finalUrl = uploadedUrls[uploadedIdx];
+                uploadedIdx++;
               }
             } else {
-              updateData['video'] = img.url.replace(ImgbaseUrl, '');
+              finalUrl = img.url.replace(ImgbaseUrl, '');
             }
           });
+
+          updateData['video'] = finalUrl;
         } else {
           updateData['video'] = '';
+        }
+
+        const detailsVideoItems = images.filter(
+          (img) => img.fieldName === 'videoDetails',
+        );
+        if (detailsVideoItems.length > 0) {
+          const newFiles = detailsVideoItems
+            .filter((img) => img.isNew && img.file)
+            .map((img) => img.file!);
+
+          let uploadedUrls: string[] = [];
+          if (newFiles.length > 0) {
+            uploadedUrls = await uploadImages(newFiles);
+          }
+
+          let finalUrl = '';
+          let uploadedIdx = 0;
+          detailsVideoItems.forEach((img) => {
+            if (img.isNew) {
+              if (uploadedIdx < uploadedUrls.length) {
+                finalUrl = uploadedUrls[uploadedIdx];
+                uploadedIdx++;
+              }
+            } else {
+              finalUrl = img.url.replace(ImgbaseUrl, '');
+            }
+          });
+
+          updateData['videoDetails'] = buildVideoDetails(finalUrl);
+        } else {
+          updateData['videoDetails'] = '';
         }
 
         await updatePhotos(updateData);
@@ -597,31 +633,68 @@ const ImageModal: React.FC<ImageModalProps> = ({
         }
       }
 
-      // Handle video field
-      const videoItems = images.filter((img) => img.fieldName === 'video');
-      if (videoItems.length > 0) {
-        const newVideoFiles = videoItems
+      // Handle video field (activity.video)
+      const simpleVideoItems = images.filter(
+        (img) => img.fieldName === 'video',
+      );
+      if (simpleVideoItems.length > 0) {
+        const newFiles = simpleVideoItems
           .filter((img) => img.isNew && img.file)
           .map((img) => img.file!);
 
-        let uploadedVideoUrls: string[] = [];
-        if (newVideoFiles.length > 0) {
-          uploadedVideoUrls = await uploadImages(newVideoFiles);
+        let uploadedUrls: string[] = [];
+        if (newFiles.length > 0) {
+          uploadedUrls = await uploadImages(newFiles);
         }
 
-        let uploadedVideoIndex = 0;
-        videoItems.forEach((img) => {
+        let finalUrl = '';
+        let uploadedIdx = 0;
+        simpleVideoItems.forEach((img) => {
           if (img.isNew) {
-            if (uploadedVideoIndex < uploadedVideoUrls.length) {
-              updateData['video'] = uploadedVideoUrls[uploadedVideoIndex];
-              uploadedVideoIndex++;
+            if (uploadedIdx < uploadedUrls.length) {
+              finalUrl = uploadedUrls[uploadedIdx];
+              uploadedIdx++;
             }
           } else {
-            updateData['video'] = img.url.replace(ImgbaseUrl, '');
+            finalUrl = img.url.replace(ImgbaseUrl, '');
           }
         });
+
+        updateData['video'] = finalUrl;
       } else {
         updateData['video'] = '';
+      }
+
+      // Handle videoDetails field (activity.videoDetails)
+      const detailsVideoItems = images.filter(
+        (img) => img.fieldName === 'videoDetails',
+      );
+      if (detailsVideoItems.length > 0) {
+        const newFiles = detailsVideoItems
+          .filter((img) => img.isNew && img.file)
+          .map((img) => img.file!);
+
+        let uploadedUrls: string[] = [];
+        if (newFiles.length > 0) {
+          uploadedUrls = await uploadImages(newFiles);
+        }
+
+        let finalUrl = '';
+        let uploadedIdx = 0;
+        detailsVideoItems.forEach((img) => {
+          if (img.isNew) {
+            if (uploadedIdx < uploadedUrls.length) {
+              finalUrl = uploadedUrls[uploadedIdx];
+              uploadedIdx++;
+            }
+          } else {
+            finalUrl = img.url.replace(ImgbaseUrl, '');
+          }
+        });
+
+        updateData['videoDetails'] = buildVideoDetails(finalUrl);
+      } else {
+        updateData['videoDetails'] = '';
       }
 
       // Update photos
@@ -639,6 +712,21 @@ const ImageModal: React.FC<ImageModalProps> = ({
   const isDocument = (url: string) => {
     const extension = url.split('.').pop()?.toLowerCase();
     return extension && ['pdf', 'doc', 'docx', 'txt'].includes(extension);
+  };
+
+  const buildVideoDetails = (videoUrl: string): string => {
+    let existing: Record<string, any> = {};
+    if (activity?.videoDetails) {
+      if (typeof activity.videoDetails === 'string') {
+        try {
+          existing = JSON.parse(activity.videoDetails);
+        } catch {}
+      } else if (typeof activity.videoDetails === 'object') {
+        existing = { ...(activity.videoDetails as any) };
+      }
+    }
+    existing.videoUrl = videoUrl;
+    return JSON.stringify(existing);
   };
 
   const checkIsVideo = (url: string) => {
@@ -684,7 +772,9 @@ const ImageModal: React.FC<ImageModalProps> = ({
   const secondaryImages = images.filter(
     (img) => img.fieldName === fieldMapping?.secondary,
   );
-  const videoImages = images.filter((img) => img.fieldName === 'video');
+  const videoImages = images.filter(
+    (img) => img.fieldName === 'video' || img.fieldName === 'videoDetails',
+  );
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1048,17 +1138,18 @@ const ImageModal: React.FC<ImageModalProps> = ({
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium text-gray-800">Videos</h3>
                 {videoImages.length === 0 && (
-                <label className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 cursor-pointer transition-colors">
-                  <Upload size={16} className="inline mr-2" />
-                  Add Video
-                  <input
-                    type="file"
-                    multiple
-                    accept="video/*"
-                    className="hidden"
-                    onChange={(e) => handleFileSelect(e, 'video')}
-                  />
-                </label>)}
+                  <label className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 cursor-pointer transition-colors">
+                    <Upload size={16} className="inline mr-2" />
+                    Add Video
+                    <input
+                      type="file"
+                      multiple
+                      accept="video/*"
+                      className="hidden"
+                      onChange={(e) => handleFileSelect(e, 'video')}
+                    />
+                  </label>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
