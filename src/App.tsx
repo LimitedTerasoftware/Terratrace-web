@@ -57,6 +57,7 @@ import MainIndex from './components/DepthChart/MainIndex';
 import LiveTrack from './components/DepthChart/LiveTrack';
 import Eventreport from './components/DepthChart/UGConstView';
 import Report from './components/DepthChart/UGConst';
+import UGProgressMap from './components/DepthChart/UGProgressMap';
 import Construction from './components/DepthChart/Construction';
 import AerialList from './components/DepthChart/AerialList';
 import InstallationPage from './components/DepthChart/Installation/Installation';
@@ -827,6 +828,16 @@ function App() {
                       <PageTitle title="construction-details" />
                       <Eventreport />
                     </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/construction-progress-map"
+                element={
+                  <>
+                      <PageTitle title="construction-progress-map" />
+                      <UGProgressMap />
+                    
                   </>
                 }
               />

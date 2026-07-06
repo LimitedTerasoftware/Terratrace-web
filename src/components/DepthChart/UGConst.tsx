@@ -167,6 +167,23 @@ const Report: React.FC<ReportProps> = ({
       });
     }
   };
+  const handleProgressMap = (rowIds: number[]) => {
+    const params = new URLSearchParams();
+    params.set('survey_ids', rowIds.join(','));
+    if (Data.selectedState) params.set('selectedState', Data.selectedState);
+    if (Data.selectedDistrict)
+      params.set('selectedDistrict', Data.selectedDistrict);
+    if (Data.selectedBlock) params.set('selectedBlock', Data.selectedBlock);
+
+    const url = `/construction-progress-map?${params.toString()}`;
+    const opened = window.open(url, '_blank');
+    if (opened) {
+      opened.opener = null;
+      return;
+    }
+
+    navigate(url);
+  };
   const handleUpdate = (id: number) => {
     const survey = data.find((item) => item.id === id) || null;
     setSurveyToUpdate(survey);
@@ -543,6 +560,19 @@ const Report: React.FC<ReportProps> = ({
       OnPreview();
     }
   }, [Data.preview]);
+
+  useEffect(() => {
+    if (Data.progressmap === true) {
+      if (selectedRows.length === 0) {
+        alert('Please select at least one row to view the progress map.');
+        OnProgressMap();
+        return;
+      }
+
+      handleProgressMap(selectedRows.map((row) => row.id));
+      OnProgressMap();
+    }
+  }, [Data.progressmap]);
 
   useEffect(() => {
     if (!Data.kml) return;
