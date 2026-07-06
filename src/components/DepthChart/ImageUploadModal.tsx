@@ -22,6 +22,7 @@ interface ImageItem {
   file?: File;
   fieldName: string;
   originalIndex?: number;
+  isVideo?: boolean;
 }
 
 const ImageModal: React.FC<ImageModalProps> = ({
@@ -103,6 +104,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
                 isReplaced: false,
                 fieldName: 'start_duct',
                 originalIndex: imgIdx,
+                isVideo: checkIsVideo(imgUrl),
               });
             }
           });
@@ -122,6 +124,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
                 isReplaced: false,
                 fieldName: 'end_duct',
                 originalIndex: imgIdx,
+                isVideo: checkIsVideo(imgUrl),
               });
             }
           });
@@ -146,6 +149,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
                 isReplaced: false,
                 fieldName: fieldMapping.primary as string,
                 originalIndex: index,
+                isVideo: checkIsVideo(url),
               });
             });
           }
@@ -158,6 +162,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
             isReplaced: false,
             fieldName: fieldMapping.primary as string,
             originalIndex: 0,
+            isVideo: checkIsVideo(primaryData),
           });
         }
       }
@@ -177,8 +182,60 @@ const ImageModal: React.FC<ImageModalProps> = ({
             isReplaced: false,
             fieldName: fieldMapping.secondary as string,
             originalIndex: 0,
+            isVideo: checkIsVideo(secondaryData),
           });
         }
+      }
+    }
+
+    // Load video from activity.video field
+    if (
+      activity.video &&
+      typeof activity.video === 'string' &&
+      activity.video.trim() !== '' &&
+      activity.video !== 'null'
+    ) {
+      imageItems.push({
+        id: 'video-main',
+        url: `${ImgbaseUrl}${activity.video}`,
+        isNew: false,
+        isReplaced: false,
+        fieldName: 'video',
+        originalIndex: 0,
+        isVideo: true,
+      });
+    }
+
+    // Load video from activity.videoDetails field
+    if (activity.videoDetails) {
+      let videoUrl: string | null = null;
+      if (
+        typeof activity.videoDetails === 'string' &&
+        activity.videoDetails !== 'null'
+      ) {
+        try {
+          const parsed = JSON.parse(activity.videoDetails);
+          videoUrl = parsed?.videoUrl?.trim().replace(/(^"|"$)/g, '') || null;
+        } catch {}
+      } else if (
+        typeof activity.videoDetails === 'object' &&
+        activity.videoDetails !== null
+      ) {
+        videoUrl =
+          (activity.videoDetails as any)?.videoUrl
+            ?.trim()
+            .replace(/(^"|"$)/g, '') || null;
+      }
+      if (videoUrl) {
+        imageItems.push({
+          id: 'video-details',
+          url: `${ImgbaseUrl}${videoUrl}`,
+          isNew: false,
+          isReplaced: false,
+          fieldName: 'video',
+          originalIndex: 1,
+          isVideo: true,
+        });
       }
     }
 
@@ -208,6 +265,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
           isReplaced: false,
           file,
           fieldName,
+          isVideo: file.type.startsWith('video/'),
         };
         setImages((prev) => [...prev, newImage]);
       };
@@ -234,6 +292,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
                 isNew: true,
                 isReplaced: true,
                 file,
+                isVideo: file.type.startsWith('video/'),
               }
             : img,
         ),
@@ -244,8 +303,22 @@ const ImageModal: React.FC<ImageModalProps> = ({
 
   const uploadImages = async (files: File[]): Promise<string[]> => {
     const formData = new FormData();
+    const imageFiles: File[] = [];
+    const videoFiles: File[] = [];
+
     files.forEach((file) => {
+      if (file.type.startsWith('video/')) {
+        videoFiles.push(file);
+      } else {
+        imageFiles.push(file);
+      }
+    });
+
+    imageFiles.forEach((file) => {
       formData.append('images[]', file);
+    });
+    videoFiles.forEach((file) => {
+      formData.append('videos[]', file);
     });
 
     try {
@@ -260,7 +333,21 @@ const ImageModal: React.FC<ImageModalProps> = ({
 
       const data: ImageUploadResponse = await response.json();
 
-      return data.data.images || [];
+      // Reconstruct URLs in original file order
+      const allUrls: string[] = [];
+      let imgIdx = 0;
+      let vidIdx = 0;
+      files.forEach((file) => {
+        if (file.type.startsWith('video/')) {
+          allUrls.push((data.data.videos || [])[vidIdx] || '');
+          vidIdx++;
+        } else {
+          allUrls.push((data.data.images || [])[imgIdx] || '');
+          imgIdx++;
+        }
+      });
+
+      return allUrls;
     } catch (error) {
       console.error('Upload error:', error);
       throw error;
@@ -388,6 +475,33 @@ const ImageModal: React.FC<ImageModalProps> = ({
           end_duct: JSON.stringify(updatedEndDuct),
         };
 
+        // Handle video field for DUCT events
+        const videoItems = images.filter((img) => img.fieldName === 'video');
+        if (videoItems.length > 0) {
+          const newVideoFiles = videoItems
+            .filter((img) => img.isNew && img.file)
+            .map((img) => img.file!);
+
+          let uploadedVideoUrls: string[] = [];
+          if (newVideoFiles.length > 0) {
+            uploadedVideoUrls = await uploadImages(newVideoFiles);
+          }
+
+          let uploadedVideoIndex = 0;
+          videoItems.forEach((img) => {
+            if (img.isNew) {
+              if (uploadedVideoIndex < uploadedVideoUrls.length) {
+                updateData['video'] = uploadedVideoUrls[uploadedVideoIndex];
+                uploadedVideoIndex++;
+              }
+            } else {
+              updateData['video'] = img.url.replace(ImgbaseUrl, '');
+            }
+          });
+        } else {
+          updateData['video'] = '';
+        }
+
         await updatePhotos(updateData);
         onUpdate();
         onClose();
@@ -483,6 +597,33 @@ const ImageModal: React.FC<ImageModalProps> = ({
         }
       }
 
+      // Handle video field
+      const videoItems = images.filter((img) => img.fieldName === 'video');
+      if (videoItems.length > 0) {
+        const newVideoFiles = videoItems
+          .filter((img) => img.isNew && img.file)
+          .map((img) => img.file!);
+
+        let uploadedVideoUrls: string[] = [];
+        if (newVideoFiles.length > 0) {
+          uploadedVideoUrls = await uploadImages(newVideoFiles);
+        }
+
+        let uploadedVideoIndex = 0;
+        videoItems.forEach((img) => {
+          if (img.isNew) {
+            if (uploadedVideoIndex < uploadedVideoUrls.length) {
+              updateData['video'] = uploadedVideoUrls[uploadedVideoIndex];
+              uploadedVideoIndex++;
+            }
+          } else {
+            updateData['video'] = img.url.replace(ImgbaseUrl, '');
+          }
+        });
+      } else {
+        updateData['video'] = '';
+      }
+
       // Update photos
       await updatePhotos(updateData);
       onUpdate();
@@ -498,6 +639,14 @@ const ImageModal: React.FC<ImageModalProps> = ({
   const isDocument = (url: string) => {
     const extension = url.split('.').pop()?.toLowerCase();
     return extension && ['pdf', 'doc', 'docx', 'txt'].includes(extension);
+  };
+
+  const checkIsVideo = (url: string) => {
+    if (url.startsWith('data:video/')) return true;
+    const extension = url.split('.').pop()?.toLowerCase();
+    return ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv'].includes(
+      extension || '',
+    );
   };
 
   const getFieldDisplayName = (fieldName: string) => {
@@ -535,13 +684,14 @@ const ImageModal: React.FC<ImageModalProps> = ({
   const secondaryImages = images.filter(
     (img) => img.fieldName === fieldMapping?.secondary,
   );
+  const videoImages = images.filter((img) => img.fieldName === 'video');
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg max-w-2xl max-h-[90vh] overflow-y-auto w-full">
         <div className="flex justify-between items-center p-6 border-b">
           <h2 className="text-xl font-semibold">
-            Manage Images - {activity.eventType}
+            Manage Files - {activity.eventType}
           </h2>
           <button
             onClick={onClose}
@@ -581,12 +731,21 @@ const ImageModal: React.FC<ImageModalProps> = ({
                         key={image.id}
                         className="relative group border rounded-lg overflow-hidden"
                       >
-                        <img
-                          src={image.url}
-                          alt={`Start Duct image ${index + 1}`}
-                          className="w-full h-48 object-cover cursor-pointer"
-                          onClick={() => setPreviewImage(image.url)}
-                        />
+                        {image.isVideo ? (
+                          <video
+                            src={image.url}
+                            className="w-full h-48 object-cover cursor-pointer"
+                            onClick={() => setPreviewImage(image.url)}
+                            controls
+                          />
+                        ) : (
+                          <img
+                            src={image.url}
+                            alt={`Start Duct image ${index + 1}`}
+                            className="w-full h-48 object-cover cursor-pointer"
+                            onClick={() => setPreviewImage(image.url)}
+                          />
+                        )}
                         <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                           <div className="flex space-x-2">
                             <button
@@ -643,7 +802,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
                         className="mx-auto mb-4 text-gray-400"
                       />
                       <p className="text-gray-500">
-                        No images found for Start Duct
+                        No files found for Start Duct
                       </p>
                     </div>
                   )}
@@ -676,12 +835,22 @@ const ImageModal: React.FC<ImageModalProps> = ({
                         key={image.id}
                         className="relative group border rounded-lg overflow-hidden"
                       >
-                        <img
-                          src={image.url}
-                          alt={`End Duct image ${index + 1}`}
-                          className="w-full h-48 object-cover cursor-pointer"
-                          onClick={() => setPreviewImage(image.url)}
-                        />
+                        {image.isVideo ? (
+                          <video
+                            src={image.url}
+                            title={`End Duct video ${index + 1}`}
+                            className="w-full h-48 object-cover cursor-pointer"
+                            onClick={() => setPreviewImage(image.url)}
+                            controls
+                          />
+                        ) : (
+                          <img
+                            src={image.url}
+                            alt={`End Duct image ${index + 1}`}
+                            className="w-full h-48 object-cover cursor-pointer"
+                            onClick={() => setPreviewImage(image.url)}
+                          />
+                        )}
                         <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                           <div className="flex space-x-2">
                             <button
@@ -738,7 +907,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
                         className="mx-auto mb-4 text-gray-400"
                       />
                       <p className="text-gray-500">
-                        No images found for End Duct
+                        No files found for End Duct
                       </p>
                     </div>
                   )}
@@ -793,6 +962,14 @@ const ImageModal: React.FC<ImageModalProps> = ({
                           </a>
                         </div>
                       </div>
+                    ) : image.isVideo ? (
+                      <video
+                        src={image.url}
+                        title={`${activity.eventType} video ${index + 1}`}
+                        className="w-full h-48 object-cover cursor-pointer"
+                        onClick={() => setPreviewImage(image.url)}
+                        controls
+                      />
                     ) : (
                       <img
                         src={image.url}
@@ -857,9 +1034,102 @@ const ImageModal: React.FC<ImageModalProps> = ({
                 <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
                   <Upload size={48} className="mx-auto mb-4 text-gray-400" />
                   <p className="text-gray-500">
-                    No images found for{' '}
+                    No files found for{' '}
                     {getFieldDisplayName(fieldMapping.primary as string)}
                   </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Videos Section */}
+          {!fieldMapping?.hasDuct && (
+            <div className="mb-8">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-800">Videos</h3>
+                {videoImages.length === 0 && (
+                <label className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 cursor-pointer transition-colors">
+                  <Upload size={16} className="inline mr-2" />
+                  Add Video
+                  <input
+                    type="file"
+                    multiple
+                    accept="video/*"
+                    className="hidden"
+                    onChange={(e) => handleFileSelect(e, 'video')}
+                  />
+                </label>)}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {videoImages.map((image, index) => (
+                  <div
+                    key={image.id}
+                    className="relative group border rounded-lg overflow-hidden"
+                  >
+                    <video
+                      src={image.url}
+                      title={`Video ${index + 1}`}
+                      className="w-full h-48 object-cover cursor-pointer"
+                      onClick={() => setPreviewImage(image.url)}
+                      controls
+                    />
+
+                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => setPreviewImage(image.url)}
+                          className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors"
+                          title="Preview"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <label
+                          className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+                          title="Replace"
+                        >
+                          <RefreshCw size={16} />
+                          <input
+                            type="file"
+                            accept="video/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) replaceImage(image.id, file);
+                            }}
+                          />
+                        </label>
+                        <button
+                          onClick={() => removeImage(image.id)}
+                          className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="p-2 bg-gray-50">
+                      <p className="text-xs text-gray-600 truncate">
+                        Video #{index + 1}
+                        {image.isReplaced && (
+                          <span className="text-orange-600 ml-1">
+                            (Replaced)
+                          </span>
+                        )}
+                        {image.isNew && !image.isReplaced && (
+                          <span className="text-green-600 ml-1">(New)</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {videoImages.length === 0 && (
+                <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+                  <Upload size={48} className="mx-auto mb-4 text-gray-400" />
+                  <p className="text-gray-500">No videos found</p>
                 </div>
               )}
             </div>
@@ -919,6 +1189,14 @@ const ImageModal: React.FC<ImageModalProps> = ({
                             </a>
                           </div>
                         </div>
+                      ) : image.isVideo ? (
+                        <video
+                          src={image.url}
+                          title={`${fieldMapping.secondary} video ${index + 1}`}
+                          className="w-full h-48 object-cover cursor-pointer"
+                          onClick={() => setPreviewImage(image.url)}
+                          controls
+                        />
                       ) : (
                         <img
                           src={image.url}
@@ -990,7 +1268,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
                       No{' '}
                       {fieldMapping.secondary === 'endPitDoc'
                         ? 'document'
-                        : 'images'}{' '}
+                        : 'files'}{' '}
                       found for{' '}
                       {getFieldDisplayName(fieldMapping.secondary as string)}
                     </p>
@@ -1017,17 +1295,26 @@ const ImageModal: React.FC<ImageModalProps> = ({
         </div>
       </div>
 
-      {/* Image Preview Modal */}
+      {/* Image/Video Preview Modal */}
       {previewImage && (
         <div
           className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-80 z-50"
           onClick={() => setPreviewImage(null)}
         >
-          <img
-            src={previewImage}
-            alt="Zoomed"
-            className="max-w-full max-h-full p-4 rounded-lg"
-          />
+          {checkIsVideo(previewImage) ? (
+            <video
+              src={previewImage}
+              className="max-w-full max-h-full p-4 rounded-lg"
+              controls
+              autoPlay
+            />
+          ) : (
+            <img
+              src={previewImage}
+              alt="Preview"
+              className="max-w-full max-h-full p-4 rounded-lg"
+            />
+          )}
         </div>
       )}
     </div>
