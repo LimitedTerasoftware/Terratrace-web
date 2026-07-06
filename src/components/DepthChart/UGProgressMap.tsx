@@ -23,26 +23,6 @@ const DESKTOP_PLANNING_CATEGORIES = [
   'Desktop: Incremental Cable',
 ];
 
-const EVENT_TYPES: Record<string, { color: string; label: string }> = {
-  STARTSURVEY: { color: '#10B981', label: 'Survey Start' },
-  DEPTH: { color: '#2563EB', label: 'Depth' },
-  ROADCROSSING: { color: '#F59E0B', label: 'Road Crossing' },
-  FPOI: { color: '#EF4444', label: 'FPOI' },
-  JOINTCHAMBER: { color: '#8B5CF6', label: 'Joint Chamber' },
-  MANHOLES: { color: '#06B6D4', label: 'Manholes' },
-  ROUTEINDICATOR: { color: '#84CC16', label: 'Route Indicator' },
-  LANDMARK: { color: '#F97316', label: 'Landmark' },
-  FIBERTURN: { color: '#EC4899', label: 'Fiber Turn' },
-  KILOMETERSTONE: { color: '#6B7280', label: 'Kilometer Stone' },
-  STARTPIT: { color: '#14B8A6', label: 'Start Pit' },
-  ENDPIT: { color: '#DC2626', label: 'End Pit' },
-  ENDSURVEY: { color: '#059669', label: 'End Survey' },
-  HOLDSURVEY: { color: '#A93226', label: 'Hold Survey' },
-  BLOWING: { color: '#7C2D12', label: 'Blowing Survey' },
-  OFCBLOWING: { color: '#0EA5E9', label: 'OFC Blowing' },
-  ROUTEFEATURE: { color: '#9333EA', label: 'Route Feature' },
-};
-
 interface ProgressMapLocationState {
   row?: number | number[];
   surveyIds?: number[];
@@ -207,7 +187,6 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
   onPlanningCategoryVisibilityChange,
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
-  const markerInstancesRef = useRef<google.maps.Marker[]>([]);
   const eventPolylinesRef = useRef<google.maps.Polyline[]>([]);
   const planningMarkersRef = useRef<google.maps.Marker[]>([]);
   const planningPolylinesRef = useRef<google.maps.Polyline[]>([]);
@@ -298,58 +277,13 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
   useEffect(() => {
     if (!map) return;
 
-    markerInstancesRef.current.forEach((marker) => marker.setMap(null));
-    markerInstancesRef.current = markers.map((point) => {
-      const eventConfig = EVENT_TYPES[point.eventType] ?? {
-        color: '#475569',
-        label: point.eventType,
-      };
-
-      const marker = new google.maps.Marker({
-        position: { lat: point.lat, lng: point.lng },
-        map,
-        title: `${eventConfig.label} - ${point.lat.toFixed(6)}, ${point.lng.toFixed(6)}`,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 5,
-          fillColor: eventConfig.color,
-          fillOpacity: 0.95,
-          strokeColor: '#ffffff',
-          strokeWeight: 1.5,
-        },
-      });
-
-      marker.addListener('click', () => {
-        infoWindowRef.current?.setContent(`
-          <div style="padding:6px 4px;font-size:13px;line-height:1.5">
-            <div style="font-weight:700;color:#111827">${escapeHtml(eventConfig.label)}</div>
-            <div><strong>Event Type:</strong> ${escapeHtml(point.eventType)}</div>
-            <div><strong>Latitude:</strong> ${point.lat.toFixed(7)}</div>
-            <div><strong>Longitude:</strong> ${point.lng.toFixed(7)}</div>
-          </div>
-        `);
-        infoWindowRef.current?.open(map, marker);
-      });
-
-      return marker;
-    });
-
-    return () => {
-      markerInstancesRef.current.forEach((marker) => marker.setMap(null));
-      markerInstancesRef.current = [];
-    };
-  }, [map, markers]);
-
-  useEffect(() => {
-    if (!map) return;
-
     eventPolylinesRef.current.forEach((polyline) => polyline.setMap(null));
     eventPolylinesRef.current = eventRoutePaths.map(
       (path) =>
         new google.maps.Polyline({
           path,
           geodesic: true,
-          strokeColor: '#BF40BF',
+          strokeColor: '#9C27B0',
           strokeOpacity: 0.85,
           strokeWeight: 4,
           map,
@@ -497,44 +431,12 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
   if (isLoading) return <LoadingState label="Loading map..." />;
   if (error) return <ErrorState message={error} />;
 
-  const eventCounts = markers.reduce<Record<string, number>>((acc, marker) => {
-    acc[marker.eventType] = (acc[marker.eventType] || 0) + 1;
-    return acc;
-  }, {});
-
   return (
     <div className="relative h-full w-full">
-      <div ref={mapRef} className="h-full min-h-[560px] w-full" />
-
-      <div className="absolute bottom-4 left-4 z-10 max-w-xs rounded-md border border-gray-200 bg-white p-3 shadow-lg">
-        <div className="text-sm font-semibold text-gray-800">
-          Events ({markers.length})
-        </div>
-        <div className="mt-2 max-h-44 space-y-1 overflow-auto text-xs text-gray-600">
-          {Object.entries(eventCounts).map(([eventType, count]) => {
-            const config = EVENT_TYPES[eventType] ?? {
-              color: '#475569',
-              label: eventType,
-            };
-            return (
-              <div key={eventType} className="flex items-center gap-2">
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: config.color }}
-                />
-                <span className="flex-1 truncate">{config.label}</span>
-                <span className="font-medium">{count}</span>
-              </div>
-            );
-          })}
-          {markers.length === 0 && (
-            <div className="text-gray-500">No event coordinates found.</div>
-          )}
-        </div>
-      </div>
+      <div ref={mapRef} className="h-full w-full" />
 
       {planningCategories.length > 0 && (
-        <div className="absolute right-4 top-4 z-10 max-w-xs rounded-md border border-gray-200 bg-white p-3 shadow-lg">
+        <div className="absolute right-4 top-10 z-10 max-w-xs rounded-md border border-gray-200 bg-white p-3 shadow-lg">
           <div className="text-sm font-semibold text-gray-800">
             Approved KMZ
           </div>
@@ -670,8 +572,7 @@ const UGProgressMap: React.FC = () => {
           result.status &&
           result.data.length > 0
         ) {
-          const { placemarks, categories } =
-            processDesktopPlanningData(result);
+          const { placemarks, categories } = processDesktopPlanningData(result);
           const filteredPlacemarks = placemarks.filter((point) =>
             DESKTOP_PLANNING_CATEGORIES.includes(point.category),
           );
@@ -724,17 +625,17 @@ const UGProgressMap: React.FC = () => {
   };
 
   return (
-    <div className="relative h-[calc(100vh-88px)] min-h-[560px] w-full overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm">
-      <div className="absolute left-4 top-4 z-20 max-w-md rounded-md border border-gray-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur">
+    <div className="relative h-screen w-full overflow-hidden bg-white">
+      <div className="absolute left-50 top-0 z-20 max-w-md rounded-md border border-gray-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur">
         <div className="flex items-center gap-3">
-          <button
+          {/* <button
             type="button"
             onClick={() => navigate(-1)}
             className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50"
             title="Back"
           >
             <ArrowLeft className="h-4 w-4" />
-          </button>
+          </button> */}
           <div>
             <h1 className="text-lg font-semibold text-gray-900">
               Progress Map
