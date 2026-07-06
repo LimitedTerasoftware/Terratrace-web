@@ -44,6 +44,7 @@ function ConstructionPage() {
   const [excel, setExcel] = useState<boolean>(false);
   const [kml, setkml] = useState<boolean>(false);
   const [preview, setPreview] = useState<boolean>(false);
+  const [progressmap, setProgressmap] = useState<boolean>(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [filtersReady, setFiltersReady] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -978,6 +979,14 @@ function ConstructionPage() {
               Preview
             </button>
             {activeTab === 'UG' && AdminAcess && (
+              <>
+              <button
+              onClick={() => setProgressmap(!progressmap)}
+              className="flex-none h-10 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap flex items-center gap-2"
+            >
+              <EyeIcon className="h-4 w-4 text-blue-600" />
+              Progress Map
+            </button>
               <button
                 onClick={() => setIsAddModalOpen(true)}
                 className="flex-none h-10 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-blue-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
@@ -985,6 +994,7 @@ function ConstructionPage() {
                 <PlusCircleIcon className="h-4 w-4 text-blue-600" />
                 Add New Event
               </button>
+              </>
             )}
 
             {/* Clear Filters */}
@@ -1018,6 +1028,7 @@ function ConstructionPage() {
               kml,
               filtersReady,
               preview,
+              progressmap,
               isAddModalOpen,
               selectedConnection,
               connectionStart: getSelectedConnectionDetails()?.startLocation,
@@ -1026,6 +1037,7 @@ function ConstructionPage() {
             }}
             Onexcel={() => setExcel(false)}
             OnPreview={() => setPreview(false)}
+            OnProgressMap={() => setProgressmap(false)}
             OnKml={() => setkml(false)}
             OnModal={() => setIsAddModalOpen(false)}
             OnData={(data: UGConstructionSurveyData[]) => setSurveyData(data)}

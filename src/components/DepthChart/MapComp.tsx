@@ -32,6 +32,7 @@ interface MarkerData {
   eventType: string;
   id: number;
   survey_id: number;
+  index_id: number;
 }
 
 interface MapCompProps {
@@ -582,7 +583,7 @@ const MapComponent: React.FC<MapCompProps> = ({
           map,
           title: `${eventConfig.label} — ${point.eventType} — Survey: ${point.survey_id}`,
           label: {
-            text: (index + 1).toString(),
+            text: (point.index_id).toString(),
             color: 'white',
             fontSize: '11px',
             fontWeight: 'bold',
@@ -704,7 +705,7 @@ const MapComponent: React.FC<MapCompProps> = ({
         polylinesRef.current.push(new google.maps.Polyline({
           path,
           geodesic: true,
-          strokeColor: '#3B82F6',
+          strokeColor: '#BF40BF',
           strokeOpacity: 0.8,
           strokeWeight: 3,
           map,

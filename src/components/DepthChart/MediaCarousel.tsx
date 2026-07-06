@@ -39,11 +39,13 @@ const MediaCarousel: React.FC<MediaCarouselProps> = ({
       setCurrentIndex(safeIndex);
       setZoom(1);
     }
+
   }, [isOpen, initialIndex, mediaItems]);
 
   if (!isOpen || mediaItems.length === 0) return null;
 
   const currentItem = mediaItems[currentIndex];
+
 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();

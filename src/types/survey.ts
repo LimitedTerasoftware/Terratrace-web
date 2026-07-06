@@ -281,6 +281,8 @@ export interface Activity {
   end_ofc:any;
   video:string | "";
   cords?:string;
+  cors_conn:string;
+  created_time:string;
   deviceId?:string;
   user_id?:string;
   user_name?:string;

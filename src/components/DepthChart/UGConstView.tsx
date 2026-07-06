@@ -192,11 +192,13 @@ function Eventreport() {
   useEffect(() => {
     const rearrangeEvents = async () => {
       try {
-        const surveyId = multipreview ? MainData : MainData?.id;
-        if (!surveyId) return;
+       const surveyIds = multipreview
+          ? MainData
+          : [MainData?.id];
+        if (!surveyIds || surveyIds.length === 0 || surveyIds.some((id:any) => !id)) return;
+
         const resp = await axios.post(`${TraceBASEURL}/snap-survey-to-road`, {
-          survey_id: String(surveyId),
-          rearrange: true,
+          survey_ids:surveyIds
         });
         if (resp.status === 200 || resp.status === 201) {
           toast.success('Events rearranged successfully!');
@@ -1285,6 +1287,12 @@ function Eventreport() {
       },
     },
     {
+      name: 'Created Time',
+      selector: (row) => moment(row.created_time).format('DD/MM/YYYY, hh:mm A'),
+      sortable: true,
+      wrap: true,
+    },
+    {
       name: 'Created At',
       selector: (row) => moment(row.created_at).format('DD/MM/YYYY, hh:mm A'),
       sortable: true,
@@ -1405,6 +1413,9 @@ function Eventreport() {
       'Authorised Person',
       'Contractor Details',
       'Vehicle Serial No',
+      'CORS',
+      'CORS Connection',
+      'Created Time',
       'Created At',
       'Updated At',
     ];
@@ -1589,6 +1600,9 @@ function Eventreport() {
         item.authorised_person,
         item.contractor_details,
         item.vehicleserialno,
+        item.cords,
+        item.cors_conn,
+        item.created_time,
         item.created_at,
         item.updated_at,
       ];
@@ -1785,7 +1799,7 @@ function Eventreport() {
               </button>
             )}
             {multipreview === false && AdminAcess && (
-              <>
+              
                 <button
                   onClick={() => setIsReorderModalOpen(true)}
                   className="flex-none h-10 px-4 py-2 text-sm font-medium text-purple-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-purple-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
@@ -1793,6 +1807,8 @@ function Eventreport() {
                   <Edit2Icon className="h-4 w-4 text-purple-600" />
                   Edit Order Index
                 </button>
+                )}
+             { AdminAcess && (
                 <button
                   onClick={() => setRearrange(true)}
                   className="flex-none h-10 px-4 py-2 text-sm font-medium text-purple-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-purple-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
@@ -1800,7 +1816,7 @@ function Eventreport() {
                   <LucideListOrdered className="h-4 w-4 text-purple-600" />
                   Rearrange Events
                 </button>
-              </>
+              
             )}
           </div>
         </div>

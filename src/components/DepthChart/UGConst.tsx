@@ -26,6 +26,7 @@ interface ReportProps {
     kml: boolean;
     filtersReady: boolean;
     preview: boolean;
+    progressmap: boolean;
     isAddModalOpen: boolean;
     selectedConnection: string | null;
     connectionStart?: string;
@@ -34,6 +35,7 @@ interface ReportProps {
   };
   Onexcel: () => void;
   OnPreview: () => void;
+  OnProgressMap: () => void;
   OnKml: () => void;
   OnModal: () => void;
   OnData: (data: UGConstructionSurveyData[]) => void;
@@ -47,6 +49,7 @@ const Report: React.FC<ReportProps> = ({
   Data,
   Onexcel,
   OnPreview,
+  OnProgressMap,
   OnKml,
   OnModal,
   OnData,
