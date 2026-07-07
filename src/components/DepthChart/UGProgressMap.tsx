@@ -130,7 +130,7 @@ const parseLatLong = (value: string | null | undefined) => {
 
 const buildMarkers = (events: Activity[]): ProgressMarker[] =>
   events
-    .filter((event) => event.status === 0)
+    .filter((event) => event.status === 0 && event.eventType !== 'STARTSURVEY' && event.eventType !== 'ENDSURVEY')
     .map((event) => {
       const coords = parseLatLong(getLatLongForEvent(event));
       if (!coords) return null;
@@ -208,17 +208,18 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
       {},
     );
 
-    return Object.values(grouped)
-      .map((items) =>
-        [...items]
+    return Object.entries(grouped)
+      .map(([surveyId, items]) => {
+        const path = [...items]
           .sort(
             (a, b) =>
               (a.indexId ?? Number.MAX_SAFE_INTEGER) -
                 (b.indexId ?? Number.MAX_SAFE_INTEGER) || a.id - b.id,
           )
-          .map((item) => ({ lat: item.lat, lng: item.lng })),
-      )
-      .filter((path) => path.length > 1);
+          .map((item) => ({ lat: item.lat, lng: item.lng }));
+        return { surveyId: Number(surveyId), path };
+      })
+      .filter((entry) => entry.path.length > 1);
   }, [markers]);
 
   useEffect(() => {
@@ -276,19 +277,52 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
 
   useEffect(() => {
     if (!map) return;
-
+    
     eventPolylinesRef.current.forEach((polyline) => polyline.setMap(null));
-    eventPolylinesRef.current = eventRoutePaths.map(
-      (path) =>
-        new google.maps.Polyline({
-          path,
-          geodesic: true,
-          strokeColor: '#9C27B0',
-          strokeOpacity: 0.85,
-          strokeWeight: 4,
-          map,
-        }),
-    );
+    eventPolylinesRef.current = eventRoutePaths.flatMap(({ surveyId, path }) => {
+      // outline/casing - drawn first, wider, white
+      const casing = new google.maps.Polyline({
+        path,
+        geodesic: true,
+        strokeColor: '#ffffff',
+        strokeOpacity: 1,
+        strokeWeight: 7,
+        zIndex: 998,
+        map,
+      });
+
+      // main colored line on top
+      const polyline = new google.maps.Polyline({
+        path,
+        geodesic: true,
+        strokeColor: '#9C27B0',
+        strokeOpacity: 0.95,
+        strokeWeight: 4,
+        zIndex: 999,
+        map,
+      });
+
+
+      polyline.addListener('mouseover', (e: google.maps.MapMouseEvent) => {
+        if (e.latLng) {
+          infoWindowRef.current?.setContent(`
+              <div style="padding:4px 4px;font-size:13px;line-height:1.5">
+                <div style="font-weight:700;color:#111827">Survey ID: ${surveyId}</div>
+              </div>
+            `);
+          infoWindowRef.current?.setPosition(e.latLng);
+          infoWindowRef.current?.open(map);
+        }
+      });
+
+      polyline.addListener('mouseout', () => {
+        infoWindowRef.current?.close();
+      });
+    return [casing, polyline];
+
+
+      // return polyline;
+    });
 
     return () => {
       eventPolylinesRef.current.forEach((polyline) => polyline.setMap(null));
@@ -344,7 +378,7 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
 
         marker.addListener('click', () => {
           infoWindowRef.current?.setContent(`
-            <div style="padding:6px 4px;font-size:13px;line-height:1.5">
+            <div style="padding:4px 4px;font-size:13px;line-height:1.5">
               <div style="font-weight:700;color:#111827">${escapeHtml(placemark.name)}</div>
               <div>${escapeHtml(placemark.category)}</div>
             </div>
@@ -441,32 +475,36 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
             Approved KMZ
           </div>
           <div className="mt-2 max-h-56 space-y-1 overflow-auto text-xs text-gray-600">
-            {planningCategories.map((category) => {
-              const isVisible = visiblePlanningCategories.has(category.id);
-              return (
-                <label
-                  key={category.id}
-                  className="flex cursor-pointer items-center gap-2"
-                >
-                  <input
-                    type="checkbox"
-                    checked={isVisible}
-                    onChange={(event) =>
-                      onPlanningCategoryVisibilityChange(
-                        category.id,
-                        event.target.checked,
-                      )
-                    }
-                  />
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: category.color }}
-                  />
-                  <span className="flex-1 truncate">{category.name}</span>
-                  <span className="font-medium">{category.count}</span>
-                </label>
-              );
-            })}
+            {planningCategories
+              .filter((category) => category.name !== 'Desktop : Offset Cable')
+              .map((category) => {
+                const isVisible = visiblePlanningCategories.has(category.id);
+                return (
+                  <label
+                    key={category.id}
+                    className="flex cursor-pointer items-center gap-2"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isVisible}
+                      onChange={(event) =>
+                        onPlanningCategoryVisibilityChange(
+                          category.id,
+                          event.target.checked,
+                        )
+                      }
+                    />
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: category.color }}
+                    />
+                    <span className="flex-1 truncate">
+                      {category.name.replace(/^Desktop\s*/, '')}
+                    </span>
+                    <span className="font-medium">{category.count}</span>
+                  </label>
+                );
+              })}
             <div className="mt-2 border-t border-gray-200 pt-2">
               <label className="flex cursor-pointer items-center gap-2">
                 <input type="checkbox" checked={true} disabled />
@@ -641,14 +679,6 @@ const UGProgressMap: React.FC = () => {
     <div className="relative h-screen w-full overflow-hidden bg-white">
       <div className="absolute left-50 top-0 z-20 max-w-md rounded-md border border-gray-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur">
         <div className="flex items-center gap-3">
-          {/* <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50"
-            title="Back"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </button> */}
           <div>
             <h1 className="text-lg font-semibold text-gray-900">
               Progress Map
