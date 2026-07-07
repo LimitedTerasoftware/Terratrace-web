@@ -11,6 +11,7 @@ import {
   Edit2Icon,
   PlusCircleIcon,
   LucideListOrdered,
+  Scissors,
 } from 'lucide-react';
 import axios from 'axios';
 import { FaArrowLeft } from 'react-icons/fa';
@@ -86,6 +87,9 @@ function Eventreport() {
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
   const [statusLoading, setStatusLoading] = useState<number | null>(null);
   const [Rearrange, setRearrange] = useState(false);
+  const [Split, setSplit] = useState(false);
+  const [selectedSplitIds, setSelectedSplitIds] = useState<number[]>([]);
+  const [splitLoading, setSplitLoading] = useState(false);
 
   const viewOnly = hasViewOnlyAccess();
   const AdminAcess = isAdminUser();
@@ -733,7 +737,96 @@ function Eventreport() {
     }
   };
 
+  const handleSplitCheckboxChange = (id: number, checked: boolean) => {
+    setSelectedSplitIds((prev) =>
+      checked ? [...prev, id] : prev.filter((existingId) => existingId !== id),
+    );
+  };
+
+  const handleSelectAllSplitCheckbox = (checked: boolean) => {
+    if (checked) {
+      setSelectedSplitIds(filteredData.map((row) => row.id));
+    } else {
+      setSelectedSplitIds([]);
+    }
+  };
+
+  const handleCancelSplit = () => {
+    setSplit(false);
+    setSelectedSplitIds([]);
+  };
+
+  const handleSplitEvents = async () => {
+    if (selectedSplitIds.length === 0) {
+      toast.error('Please select at least one event to split.');
+      return;
+    }
+
+    const selectedRows = filteredData.filter((row) =>
+      selectedSplitIds.includes(row.id),
+    );
+
+    const groupedBySurvey = selectedRows.reduce<Record<number, number[]>>(
+      (acc, row) => {
+        const surveyId = row.survey_id;
+        if (!acc[surveyId]) acc[surveyId] = [];
+        acc[surveyId].push(row.id);
+        return acc;
+      },
+      {},
+    );
+
+    try {
+      setSplitLoading(true);
+      await Promise.all(
+        Object.entries(groupedBySurvey).map(([surveyId, construction_form_ids]) =>
+          axios.post(`${TraceBASEURL}/split-event`, {
+            survey_id: Number(surveyId),
+            construction_form_ids,
+          }),
+        ),
+      );
+      toast.success('Events split successfully!');
+      setSplit(false);
+      setSelectedSplitIds([]);
+      getData();
+    } catch (error) {
+      console.error('Error splitting events:', error);
+      toast.error('Failed to split events');
+    } finally {
+      setSplitLoading(false);
+    }
+  };
+
   const columns: TableColumn<Activity>[] = [
+    ...(Split
+      ? [
+          {
+            name: (
+              <input
+                type="checkbox"
+                checked={
+                  filteredData.length > 0 &&
+                  selectedSplitIds.length === filteredData.length
+                }
+                onChange={(e) =>
+                  handleSelectAllSplitCheckbox(e.target.checked)
+                }
+              />
+            ),
+            cell: (row: Activity) => (
+              <input
+                type="checkbox"
+                checked={selectedSplitIds.includes(row.id)}
+                onChange={(e) =>
+                  handleSplitCheckboxChange(row.id, e.target.checked)
+                }
+              />
+            ),
+            maxWidth: '48px',
+          } as TableColumn<Activity>,
+        ]
+      : []),
     {
       name: 'ID',
       selector: (_row, index) => (index !== undefined ? index + 1 : '-'),
@@ -1799,7 +1892,7 @@ function Eventreport() {
               </button>
             )}
             {multipreview === false && AdminAcess && (
-              
+              <>
                 <button
                   onClick={() => setIsReorderModalOpen(true)}
                   className="flex-none h-10 px-4 py-2 text-sm font-medium text-purple-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-purple-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
@@ -1807,8 +1900,35 @@ function Eventreport() {
                   <Edit2Icon className="h-4 w-4 text-purple-600" />
                   Edit Order Index
                 </button>
+                  <button
+                  onClick={() =>
+                    Split ? handleCancelSplit() : setSplit(true)
+                  }
+                  className={`flex-none h-10 px-4 py-2 text-sm font-medium rounded-md border outline-none whitespace-nowrap flex items-center gap-2 ${
+                    Split
+                      ? 'text-red-600 bg-white border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-red-400 dark:border-gray-600 dark:hover:bg-gray-600'
+                      : 'text-purple-600 bg-white border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-purple-400 dark:border-gray-600 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  <Scissors className="h-4 w-4" />
+                  {Split ? 'Cancel Split' : 'Split Events'}
+                </button>
+                {Split && (
+                  <button
+                    onClick={handleSplitEvents}
+                    disabled={splitLoading || selectedSplitIds.length === 0}
+                    className="flex-none h-10 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 outline-none disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center gap-2"
+                  >
+                    <Scissors className="h-4 w-4" />
+                    {splitLoading
+                      ? 'Splitting...'
+                      : `Confirm Split (${selectedSplitIds.length})`}
+                  </button>
+                )}
+                </>
                 )}
              { AdminAcess && (
+              
                 <button
                   onClick={() => setRearrange(true)}
                   className="flex-none h-10 px-4 py-2 text-sm font-medium text-purple-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-purple-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
@@ -1816,8 +1936,7 @@ function Eventreport() {
                   <LucideListOrdered className="h-4 w-4 text-purple-600" />
                   Rearrange Events
                 </button>
-              
-            )}
+               )}
           </div>
         </div>
       </div>
