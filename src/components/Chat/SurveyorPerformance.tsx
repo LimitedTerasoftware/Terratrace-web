@@ -111,9 +111,9 @@ export default function SurveyorPerformance({
         <h2 className="text-base font-semibold text-gray-900">
           Surveyor Performance
         </h2>
-        <button className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+        {/* <button className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors">
           VIEW ALL <ExternalLink size={12} />
-        </button>
+        </button> */}
       </div>
 
       <DataTable

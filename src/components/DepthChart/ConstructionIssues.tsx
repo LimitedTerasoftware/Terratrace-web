@@ -1,5 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Download, AlertTriangle, TrendingDown, MapPin, Camera } from 'lucide-react';
+import {
+  Download,
+  AlertTriangle,
+  TrendingDown,
+  MapPin,
+  Camera,
+  FileText,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+} from 'lucide-react';
 import { IssueDetailsSidebar } from '../Chat/IssueDetailsSidebar';
 import { Link, useLocation } from 'react-router-dom';
 import { machineApi } from '../Services/api';
@@ -18,7 +28,7 @@ function ConstructionIssues() {
     depth_compliance: 0,
     invalid_coords: 0,
     critical: 0,
-    warning:0,
+    warning: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -27,7 +37,9 @@ function ConstructionIssues() {
   const [selectedVendor, setSelectedVendor] = useState<string>('');
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedIssueType, setSelectedIssueType] = useState<string>(issueType||'');
+  const [selectedIssueType, setSelectedIssueType] = useState<string>(
+    issueType || '',
+  );
   const [selectedSeverity, setSelectedSeverity] = useState<string>('All');
 
   const getDateRange = (period: string) => {
@@ -61,7 +73,13 @@ function ConstructionIssues() {
       selectedVendor || undefined,
       selectedIssueType || undefined,
     );
-  }, [selectedState, selectedDistrict, selectedPeriod, selectedVendor, selectedIssueType]);
+  }, [
+    selectedState,
+    selectedDistrict,
+    selectedPeriod,
+    selectedVendor,
+    selectedIssueType,
+  ]);
 
   useEffect(() => {
     applyFilters();
@@ -70,7 +88,7 @@ function ConstructionIssues() {
   const applyFilters = () => {
     let filtered = [...issues];
 
-   if (selectedSeverity !== 'All') {
+    if (selectedSeverity !== 'All') {
       filtered = filtered.filter(
         (issue) => issue.severity === selectedSeverity,
       );
@@ -152,7 +170,7 @@ function ConstructionIssues() {
     };
     setStats(newStats);
   };
- const getTypeIcon = (type: string) => {
+  const getTypeIcon = (type: string) => {
     switch (type) {
       case 'Depth Violation':
         return <TrendingDown className="w-4 h-4 text-gray-400" />;
@@ -253,7 +271,8 @@ function ConstructionIssues() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="bg-white rounded-lg shadow p-6">
-              <p className="text-sm text-gray-500 uppercase mb-2">
+              <p className="text-sm text-gray-500 uppercase mb-2 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-blue-500" />
                 Total Issues
               </p>
               <div className="flex items-baseline gap-2">
@@ -264,9 +283,9 @@ function ConstructionIssues() {
               </div>
             </div>
 
-
             <div className="bg-white rounded-lg shadow p-6">
-              <p className="text-sm text-gray-500 uppercase mb-2">
+              <p className="text-sm text-gray-500 uppercase mb-2 flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-green-500" />
                 Depth Compliance
               </p>
               <div className="flex items-baseline gap-2">
@@ -278,7 +297,10 @@ function ConstructionIssues() {
             </div>
 
             <div className="bg-white rounded-lg shadow p-6">
-              <p className="text-sm text-gray-500 uppercase mb-2">Invalid Coordinates</p>
+              <p className="text-sm text-gray-500 uppercase mb-2 flex items-center gap-2">
+                <XCircle className="w-4 h-4 text-red-500" />
+                Invalid Coordinates
+              </p>
               <div className="flex items-baseline gap-2">
                 <p className="text-3xl font-bold text-gray-900">
                   {stats.invalid_coords}
@@ -286,17 +308,25 @@ function ConstructionIssues() {
                 {/* <span className="text-sm text-gray-600">Verified</span> */}
               </div>
             </div>
-            
+
             <div className="bg-white rounded-lg shadow p-6">
-              <p className="text-sm text-gray-500 uppercase mb-2">Warnings</p>
+              <p className="text-sm text-gray-500 uppercase mb-2 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-yellow-500" />
+                Warnings
+              </p>
               <div className="flex items-baseline gap-2">
-                <p className="text-3xl font-bold text-gray-900">{stats.warning}</p>
-                  {/* <span className="text-sm text-blue-600">Active</span> */}
+                <p className="text-3xl font-bold text-gray-900">
+                  {stats.warning}
+                </p>
+                {/* <span className="text-sm text-blue-600">Active</span> */}
               </div>
             </div>
 
             <div className="bg-white rounded-lg shadow p-6">
-              <p className="text-sm text-gray-500 uppercase mb-2">Critical</p>
+              <p className="text-sm text-gray-500 uppercase mb-2 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-500" />
+                Critical
+              </p>
               <div className="flex items-baseline gap-2">
                 <p className="text-3xl font-bold text-gray-900">
                   {stats.critical}
@@ -311,7 +341,6 @@ function ConstructionIssues() {
             onView={(issue) => setSelectedIssue(issue)}
             IssueType={selectedIssueType}
           />
-
         </div>
       </main>
 

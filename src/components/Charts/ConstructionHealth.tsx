@@ -47,7 +47,7 @@ export default function ConstructionHealth({
               strokeDashoffset={completedOffset}
               className="transition-all duration-700"
             />
-            <g transform={`rotate(${completedPct * 3.6})`}>
+            <g transform={`rotate(${completedPct * 3.6} 70 70)`}>
               <circle
                 cx="70"
                 cy="70"
