@@ -37,6 +37,8 @@ const EVENT_TYPES = [
   //   'ROUTEINDICATOR',
   'STARTPIT',
   'ENDPIT',
+  'DUCT',
+  
   //   'STARTSURVEY',
   //   'ENDSURVEY',
   //   'ROADCROSSING',
@@ -289,6 +291,44 @@ const getEventSpecificFields = (eventType: string) => {
       {
         key: 'depthPhoto',
         label: 'Depth Photos (JSON array)',
+        type: 'textarea',
+        required: false,
+      },
+    ],
+    DUCT: [
+      {
+        key: 'start_duct_coil_number',
+        label: 'Start Duct Coil Number',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'start_duct_meter',
+        label: 'Start Duct Meter',
+        type: 'number',
+        required: true,
+      },
+      {
+        key: 'startDuctPhotos',
+        label: 'Start Duct Photos (JSON array)',
+        type: 'textarea',
+        required: false,
+      },
+      {
+        key: 'end_duct_coil_number',
+        label: 'End Duct Coil Number',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'end_duct_meter',
+        label: 'End Duct Meter',
+        type: 'number',
+        required: true,
+      },
+      {
+        key: 'endDuctPhotos',
+        label: 'End Duct Photos (JSON array)',
         type: 'textarea',
         required: false,
       },
@@ -664,6 +704,43 @@ export function AddEventModal({
         }
       }
 
+      if (eventType === 'DUCT') {
+        const startImages = payload['startDuctPhotos']
+          ? JSON.parse(payload['startDuctPhotos'] as string)
+          : [];
+        const endImages = payload['endDuctPhotos']
+          ? JSON.parse(payload['endDuctPhotos'] as string)
+          : [];
+
+        payload['start_duct'] = [
+          {
+            coil_number: formData['start_duct_coil_number'] || '',
+            meter: Number(formData['start_duct_meter']) || 0,
+            images: startImages,
+          },
+        ];
+        payload['end_duct'] = [
+          {
+            coil_number: formData['end_duct_coil_number'] || '',
+            meter: Number(formData['end_duct_meter']) || 0,
+            images: endImages,
+          },
+        ];
+
+        payload['created_time'] = formatDuctCreatedTime(
+          formData.created_at as string,
+        );
+        payload['deviceId'] = '';
+
+        delete payload['start_duct_coil_number'];
+        delete payload['start_duct_meter'];
+        delete payload['startDuctPhotos'];
+        delete payload['end_duct_coil_number'];
+        delete payload['end_duct_meter'];
+        delete payload['endDuctPhotos'];
+        delete payload['created_at'];
+      }
+
       const response = await fetch(`${baseUrl}/create-event`, {
         method: 'POST',
         headers: {
@@ -705,6 +782,28 @@ export function AddEventModal({
   const formatForInput = (value: string) => {
     if (!value) return '';
     return value.replace(' ', 'T').slice(0, 16);
+  };
+  const formatDuctCreatedTime = (value: string): string => {
+    if (!value) return '';
+
+    let datePart = value;
+    if (value.includes('T')) {
+      datePart = value.replace('T', ' ');
+    }
+
+    const [dateStr, timeStr] = datePart.split(' ');
+    if (!dateStr || !timeStr) return value;
+
+    const [year, month, day] = dateStr.split('-');
+    const [hourStr, minuteStr, secondStr = '00'] = timeStr.split(':');
+
+    let hour = parseInt(hourStr, 10);
+    const ampm = hour >= 12 ? 'pm' : 'am';
+    hour = hour % 12;
+    if (hour === 0) hour = 12;
+    const hh = String(hour).padStart(2, '0');
+
+    return `${day}-${month}-${year} ${hh}:${minuteStr}:${secondStr} ${ampm} IST`;
   };
   const formatForApi = (value: string) => {
     if (!value) return '';
