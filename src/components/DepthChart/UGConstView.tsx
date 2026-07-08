@@ -778,7 +778,7 @@ function Eventreport() {
 
     try {
       setSplitLoading(true);
-      await Promise.all(
+      const responses = await Promise.all(
         Object.entries(groupedBySurvey).map(([surveyId, construction_form_ids]) =>
           axios.post(`${TraceBASEURL}/split-event`, {
             survey_id: Number(surveyId),
@@ -786,7 +786,21 @@ function Eventreport() {
           }),
         ),
       );
-      toast.success('Events split successfully!');
+
+      const newSurveyIds = responses
+        .map((resp) => resp.data?.data?.new_survey_id)
+        .filter((id) => id !== undefined && id !== null);
+
+      if (newSurveyIds.length > 0) {
+        toast.success(
+          `Events split successfully! New Survey ID${
+            newSurveyIds.length > 1 ? 's' : ''
+          }: ${newSurveyIds.join(', ')}`,
+        );
+      } else {
+        toast.success('Events split successfully!');
+      }
+
       setSplit(false);
       setSelectedSplitIds([]);
       getData();

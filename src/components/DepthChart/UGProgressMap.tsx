@@ -368,11 +368,11 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
           title: placemark.name,
           icon: {
             path: google.maps.SymbolPath.CIRCLE,
-            scale: 4,
+            scale: 8,
             fillColor: color,
-            fillOpacity: 0.8,
+            fillOpacity: 0.9,
             strokeColor: '#ffffff',
-            strokeWeight: 1.2,
+            strokeWeight: 1.5,
           },
         });
 
