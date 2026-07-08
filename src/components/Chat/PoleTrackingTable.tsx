@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Search, SlidersHorizontal } from 'lucide-react';
 import DataTable, { TableColumn } from 'react-data-table-component';
+import { useNavigate } from 'react-router-dom';
 
 interface AcceptedPole {
   id: number;
@@ -33,6 +34,7 @@ export default function PoleTrackingTable({
   loading,
 }: PoleTrackingTableProps) {
   const [search, setSearch] = useState('');
+  const navigate = useNavigate();
 
   const filtered = data.filter(
     (r) =>
@@ -44,16 +46,26 @@ export default function PoleTrackingTable({
   );
 
   const columns: TableColumn<AcceptedPole>[] = [
-    {
+   {
       name: 'SURVEY ID',
       selector: (row) => row.survey_id,
       sortable: true,
+      width: '120px',
       cell: (row) => (
-        <span className="font-medium text-blue-600 cursor-pointer hover:underline">
+        <span
+          className="font-medium text-blue-600 cursor-pointer hover:underline"
+          onClick={() =>
+            navigate('/pole-stringing-details-aerial', {
+              state: {
+                row:row.survey_id,
+                multipreview: true,
+              },
+            })
+          }
+        >
           {row.survey_id}
         </span>
       ),
-      width: '120px',
     },
     {
       name: 'POLE TYPE',
