@@ -255,19 +255,26 @@ function AerialView() {
       toast.error('Error accepting record');
     }
   };
-  const handleReject = async () => {
-    try {
-      const response = await axios.post(
-        `${BASEURL}/underground-surveys/${MainData.id}/reject`,
-      );
-      if (response.data.status === 1) {
-        toast.success('Record Rejected successfully.');
+  
+   const handleReject = async () => {
+      try {
+        const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+  
+        const response = await axios.post(
+          `${BASEURL}/underground-surveys/${MainData.id}/reject`,
+          {
+            admin_id: userData.id,
+          },
+        );
+        if (response.data.status === 1) {
+          toast.success('Record Rejected successfully.');
+        }
+      } catch (error) {
+        console.error('Error rejecting record:', error);
+        alert('Failed to reject record.');
       }
-    } catch (error) {
-      console.error('Error rejecting record:', error);
-      alert('Failed to reject record.');
-    }
-  };
+    };
+  
 
   // ── Excel export ─────────────────────────────────────────────────────────────
 
