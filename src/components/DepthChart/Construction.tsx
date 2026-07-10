@@ -8,6 +8,7 @@ import {
   EyeIcon,
   PlusCircleIcon,
   Globe2Icon,
+  GitMerge,
 } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { UGConstructionSurveyData } from '../../types/survey';
@@ -45,6 +46,8 @@ function ConstructionPage() {
   const [kml, setkml] = useState<boolean>(false);
   const [preview, setPreview] = useState<boolean>(false);
   const [progressmap, setProgressmap] = useState<boolean>(false);
+  const [mergeSurveys, setMergeSurveys] = useState<boolean>(false);
+  const [mergeLoading, setMergeLoading] = useState<boolean>(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [filtersReady, setFiltersReady] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -987,13 +990,25 @@ function ConstructionPage() {
             </button>
             {activeTab === 'UG' && AdminAcess && (
               <>
-            
+
               <button
                 onClick={() => setIsAddModalOpen(true)}
                 className="flex-none h-10 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-blue-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
               >
                 <PlusCircleIcon className="h-4 w-4 text-blue-600" />
                 Add New Event
+              </button>
+              <button
+                onClick={() => setMergeSurveys(true)}
+                disabled={mergeLoading}
+                className="flex-none h-10 px-4 py-2 text-sm font-medium text-indigo-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-indigo-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
+              >
+                {mergeLoading ? (
+                  <span className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <GitMerge className="h-4 w-4 text-indigo-600" />
+                )}
+                {mergeLoading ? 'Merging...' : 'Merge Surveys'}
               </button>
               </>
             )}
@@ -1035,6 +1050,7 @@ function ConstructionPage() {
               connectionStart: getSelectedConnectionDetails()?.startLocation,
               connectionEnd: getSelectedConnectionDetails()?.endLocation,
               page,
+              mergeSurveys,
             }}
             Onexcel={() => setExcel(false)}
             OnPreview={() => setPreview(false)}
@@ -1043,6 +1059,8 @@ function ConstructionPage() {
             OnModal={() => setIsAddModalOpen(false)}
             OnData={(data: UGConstructionSurveyData[]) => setSurveyData(data)}
             OnPageChange={handlePageChange}
+            OnMergeSurveys={() => setMergeSurveys(false)}
+            OnMergeLoadingChange={setMergeLoading}
           />
         )}
       </div>

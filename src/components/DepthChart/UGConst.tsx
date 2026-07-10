@@ -9,6 +9,7 @@ import DataTable, { TableColumn } from 'react-data-table-component';
 import { AddConstModal } from './AddConstModal';
 import { UpdateConstModal } from './UpdateConstModal';
 import { isAdminUser } from '../../utils/accessControl';
+import { ToastContainer, toast } from 'react-toastify';
 
 interface ReportProps {
   Data: {
@@ -32,6 +33,7 @@ interface ReportProps {
     connectionStart?: string;
     connectionEnd?: string;
     page?: number;
+    mergeSurveys: boolean;
   };
   Onexcel: () => void;
   OnPreview: () => void;
@@ -40,6 +42,8 @@ interface ReportProps {
   OnModal: () => void;
   OnData: (data: UGConstructionSurveyData[]) => void;
   OnPageChange?: (page: number) => void;
+  OnMergeSurveys: () => void;
+  OnMergeLoadingChange: (loading: boolean) => void;
 }
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -54,6 +58,8 @@ const Report: React.FC<ReportProps> = ({
   OnModal,
   OnData,
   OnPageChange,
+  OnMergeSurveys,
+  OnMergeLoadingChange,
 }) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -583,6 +589,38 @@ const Report: React.FC<ReportProps> = ({
     }
     handleGenerateKML();
   }, [Data.kml]);
+
+  useEffect(() => {
+    if (!Data.mergeSurveys) return;
+    if (selectedRows.length === 0) {
+      alert('Please select at least one row to merge.');
+      OnMergeSurveys();
+      return;
+    }
+    handleMergeSurveys();
+  }, [Data.mergeSurveys]);
+
+  const handleMergeSurveys = async () => {
+    OnMergeLoadingChange(true);
+    try {
+      const surveyIds = selectedRows.map((row) => row.id);
+      const resp = await axios.post(`${TraceBASEURL}/find-connected-surveys`, {
+        survey_ids: surveyIds,
+      });
+
+      if (resp.status === 200 || resp.status === 201) {
+        toast.success('Surveys merged successfully!');
+      } else {
+        toast.error('Failed to merge surveys');
+      }
+    } catch (error) {
+      console.error('Error merging surveys:', error);
+      toast.error('Error merging surveys');
+    } finally {
+      OnMergeLoadingChange(false);
+      OnMergeSurveys();
+    }
+  };
 
   const handleGenerateKML = async () => {
     if (selectedRows.length === 0) {
@@ -1131,6 +1169,7 @@ const Report: React.FC<ReportProps> = ({
         }}
         surveyData={surveyToUpdate}
       />
+      <ToastContainer />
     </div>
   );
 };
