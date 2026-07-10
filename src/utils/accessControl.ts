@@ -10,9 +10,9 @@ export interface User {
 }
 
 const VIEW_ONLY_EMAILS = ["aditisamanta@terasoftware.com","wb@terasoftware.com","priyachowdhury@tearsoftware.com",
-  "Joydipbagchi@terasoftware.com",
+  "joydipbagchi@terasoftware.com",
   "harunkowshik@terasoftware.com",
-"Srayaseemajhi@terasoftware.com",
+"srayaseemajhi@terasoftware.com",
 ];
 const DOWNLOAD_EMAILS = "nexus@terasoftware.com";
 const SmartInvViewEmail = "survey@terasoftware.com";

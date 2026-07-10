@@ -105,6 +105,7 @@ export interface PolePreview {
   block_name: string | null;
   user_name: string | null;
   user_mobile: string | null;
+  muff_type: string | null;
 }
 
 export interface JointEnclosure {
@@ -158,7 +159,8 @@ export interface PoleString {
   image:string;
   road_crossing:string | null;
   version:string|null;
-  is_active:number
+  is_active:number;
+  muff_type:string|null;
 }
 export interface PoleSurveyResponse {
   status: boolean;

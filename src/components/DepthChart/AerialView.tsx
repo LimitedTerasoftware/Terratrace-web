@@ -1,7 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import DataTable, { TableColumn } from 'react-data-table-component';
-import { Folder, SheetIcon, Image as ImageIcon } from 'lucide-react';
+import {
+  Folder,
+  SheetIcon,
+  Image as ImageIcon,
+  Columns3,
+} from 'lucide-react';
 import axios from 'axios';
 import { FaArrowLeft } from 'react-icons/fa';
 import moment from 'moment';
@@ -54,6 +59,9 @@ function AerialView() {
   const [carouselInitialIndex, setCarouselInitialIndex] = useState<number>(0);
   const viewOnly = hasViewOnlyAccess();
   const AdminAcess = isAdminUser();
+  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
+  const [showColumnMenu, setShowColumnMenu] = useState(false);
+  const columnMenuRef = useRef<HTMLDivElement>(null);
 
   // ── Data fetch ──────────────────────────────────────────────────────────────
 
@@ -86,6 +94,20 @@ function AerialView() {
   useEffect(() => {
     getData();
   }, []);
+
+  useEffect(() => {
+    if (!showColumnMenu) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        columnMenuRef.current &&
+        !columnMenuRef.current.contains(event.target as Node)
+      ) {
+        setShowColumnMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showColumnMenu]);
 
   // ── Media helpers ───────────────────────────────────────────────────────────
 
@@ -145,7 +167,7 @@ function AerialView() {
 
   // ── Columns ─────────────────────────────────────────────────────────────────
 
-  const columns: TableColumn<PolePreview>[] = [
+  const allColumns: TableColumn<PolePreview>[] = [
     {
       name: 'ID',
       selector: (row) => row.id,
@@ -174,6 +196,11 @@ function AerialView() {
       selector: (row) => row.longitude || '-',
       sortable: true,
         wrap: true,
+    },
+    {
+      name:'Muff Type',
+      selector:(row)=>row.muff_type || '-',
+      sortable:true,
     },
    
     {
@@ -241,6 +268,23 @@ function AerialView() {
     },
   ];
 
+  const toggleableColumns = allColumns.filter(
+    (col) => typeof col.name === 'string',
+  );
+
+  const columns = allColumns.filter(
+    (col) => typeof col.name !== 'string' || !hiddenColumns.has(col.name),
+  );
+
+  const toggleColumnVisibility = (name: string) => {
+    setHiddenColumns((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
+
   const handleAccept = async () => {
     try {
       const resp = await axios.post(
@@ -288,6 +332,7 @@ function AerialView() {
       'Survey ID',
       'Latitude',
       'Longitude',
+      'Muff Type',
       'Muff Latitude',
       'Muff Longitude',
       'Earthing Latitude',
@@ -328,6 +373,7 @@ function AerialView() {
       item.survey_id ?? '-',
       item.latitude,
       item.longitude,
+      item.muff_type ?? '-',
       item.muff_latitude ?? '-',
       item.muff_longitude ?? '-',
       item.earthing_latitude ?? '-',
@@ -444,7 +490,7 @@ function AerialView() {
             </li>
           </ul>
 
-          {/* Toolbar — Excel only */}
+          {/* Toolbar — Excel + Columns */}
           <div className="flex flex-wrap items-center gap-3 mt-4">
             <button
               onClick={handleExcel}
@@ -453,6 +499,45 @@ function AerialView() {
               <SheetIcon className="h-4 w-4 text-green-600" />
               Excel
             </button>
+            <div className="relative" ref={columnMenuRef}>
+              <button
+                onClick={() => setShowColumnMenu((prev) => !prev)}
+                className="flex-none h-10 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
+              >
+                <Columns3 className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+                Columns
+              </button>
+              {showColumnMenu && (
+                <div className="absolute right-0 z-20 mt-2 w-64 max-h-80 overflow-y-auto rounded-md border border-gray-300 bg-white shadow-lg dark:bg-gray-800 dark:border-gray-600">
+                  <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 dark:border-gray-600">
+                    <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                      Toggle Columns
+                    </span>
+                    <button
+                      onClick={() => setHiddenColumns(new Set())}
+                      className="text-xs text-blue-600 hover:underline dark:text-blue-400"
+                    >
+                      Show All
+                    </button>
+                  </div>
+                  {toggleableColumns.map((col) => (
+                    <label
+                      key={col.name as string}
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer dark:text-gray-200 dark:hover:bg-gray-700"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!hiddenColumns.has(col.name as string)}
+                        onChange={() =>
+                          toggleColumnVisibility(col.name as string)
+                        }
+                      />
+                      {col.name}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
