@@ -106,7 +106,7 @@ export default function KPICards({
         <div className="flex items-start justify-between">
           <div>
             <p className="text-xs font-medium text-gray-600 uppercase">
-              Total Surveys
+              Total Links
             </p>
             <p className="text-3xl font-bold text-gray-900 mt-2">
               {Data.summary.total_links}

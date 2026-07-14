@@ -217,6 +217,7 @@ export interface MachineDetailsResponse {
     active_machines_today?: number;
     inactive_machines_today?: number;
     todays_distance?:number;
+    actual_total_machines:number;
   };
   data: MachineDataReport[];
 }

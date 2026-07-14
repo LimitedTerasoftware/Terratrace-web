@@ -274,13 +274,13 @@ export default function Dashboard() {
         ? (parseFloat(data.summary.total_distance) / 1000).toFixed(2)
         : '0',
       totalDays: data.summary.total_days || 0,
-      totalMachines: data.summary.total_machines || 0,
+      totalMachines: data.summary.actual_total_machines || 0,
       totalLinks: data.summary.total_links || 0,
       avgDistance: data.summary.avg_distance_per_day
         ? (parseFloat(data.summary.avg_distance_per_day) / 1000).toFixed(2)
         : '0',
-      activeMachines: data.summary.active_machines_today || 0,
-      inactiveMachines: data.summary.inactive_machines_today || 0,
+      activeMachines: data.summary.total_machines || 0,
+      inactiveMachines: (data.summary.actual_total_machines - data.summary.total_machines) || 0,
     };
   }, [data?.summary]);
 
@@ -407,7 +407,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 md:gap-6 mb-2 px-2 md:px-1 py-4 md:py-6 overflow-x-auto">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 md:gap-6 mb-2 px-2 md:px-1 py-4 md:py-6 overflow-x-auto">
         <StatusCard
           title="Total Machines"
           value={totals.totalMachines}
@@ -449,7 +449,7 @@ export default function Dashboard() {
           icon={Ruler}
           iconColor="text-purple-600"
           bgColor="bg-purple-50"
-        />
+        /> 
         <StatusCard
           title="Avg Distance/ Day (km)"
           value={totals.avgDistance}
@@ -457,13 +457,13 @@ export default function Dashboard() {
           iconColor="text-indigo-600"
           bgColor="bg-indigo-50"
         />
-        <StatusCard
+        {/* <StatusCard
           title="Total Days"
           value={totals.totalDays}
           icon={Calendar}
           iconColor="text-teal-600"
           bgColor="bg-teal-50"
-        />
+        /> */}
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100">
