@@ -99,7 +99,7 @@ export default function VendorPerformance({ data }: VendorPerformanceProps) {
     },
   };
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4">
+    <div className="bg-white rounded-lg border border-gray-200 p-4 h-[500px]">
       <h3 className="text-lg font-semibold text-gray-900 mb-1">
         Vendor Performance
       </h3>
@@ -108,7 +108,7 @@ export default function VendorPerformance({ data }: VendorPerformanceProps) {
           options={chartOptions}
           series={series}
           type="bar"
-          height={300}
+          height={400}
         />
       ) : (
         <div className="h-[300px] flex items-center justify-center text-gray-500">

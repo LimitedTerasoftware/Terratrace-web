@@ -261,9 +261,9 @@ function NewInstallationDashboard() {
                 </div>
 
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-8 px-6 py-3 border-r-2 border-gray-200">
+                  <div className="flex items-center gap-8 px-6 py-3">
                     <button
-                      className={`pb-2 text-sm font-semibold ${activeTab === 'GP_INSTALLATION' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-600 hover:text-gray-900'}`}
+                      className={`pb-2 text-sm font-semibold  ${activeTab === 'GP_INSTALLATION' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-600 hover:text-gray-900'}`}
                       onClick={() => setActiveTab('GP_INSTALLATION')}
                     >
                       GP Tracker
@@ -275,12 +275,12 @@ function NewInstallationDashboard() {
                       Block Tracker
                     </button>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                  {/* <div className="flex items-center gap-2 text-xs text-gray-500">
                     <span>Last Sync: Oct 24, 14:35</span>
                   </div>
                   <button className="p-2 hover:bg-gray-100 rounded-lg transition">
                     <RefreshCw size={20} className="text-gray-600" />
-                  </button>
+                  </button> */}
                 </div>
               </div>
             </div>

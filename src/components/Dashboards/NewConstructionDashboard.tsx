@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import Filters from '../Checkboxes/Filters';
 import ProgressTrendChart from '../Charts/ProgressTrendChart';
+import MachineStatusTrendChart, {
+  MachineStatusTrendData,
+} from '../Charts/MachineStatusTrendChart';
 import KPICards from '../Chat/KPICards';
 import StateProgress from '../Chat/StateProgress';
 import MapView from '../Chat/MapView';
@@ -10,12 +13,7 @@ import RecentIssues from '../Chat/RecentIssues';
 import { MachineDetailsResponse } from '../../types/machine';
 import { machineApi } from '../Services/api';
 import axios from 'axios';
-import {
-  UGConstructionSurveyData,
-  ConstructionPathResponse,
-  BlockSurvey,
-  SurveyCoordinates,
-} from '../../types/survey';
+import { UGConstructionSurveyData } from '../../types/survey';
 import { Wrapper } from '@googlemaps/react-wrapper';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -84,6 +82,19 @@ export default function NewConstructionDashboard() {
   const [yesterdayKm, setYesterdayKm] = useState<number>(0);
   const [constructionPathData, setConstructionPathData] =
     useState<unknown>(null);
+  // TODO: replace sample data with a real API call once the backend trend endpoint is available.
+  const [machineStatusTrendData] = useState<MachineStatusTrendData[]>(
+    Array.from({ length: 7 }, (_, i) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (6 - i));
+      return {
+        date: date.toISOString(),
+        active_machines: 18 + i,
+        inactive_machines: 6 - Math.min(i, 4),
+      };
+    }),
+  );
+  const [machineStatusTrendLoading] = useState(false);
 
   const getDateRange = (period: string) => {
     if (period === 'all') {
@@ -193,7 +204,6 @@ export default function NewConstructionDashboard() {
         }>(`${TraceBASEURL}/get-survey-data`, { params });
         if (response.data.status) {
           setTodaySurveyCount(response.data.data.length);
-          const surveyIds = response.data.data.map((s) => s.id);
 
           const pathResponse = await machineApi.getConstructionPath(
           selectedBlock || undefined,
@@ -202,23 +212,7 @@ export default function NewConstructionDashboard() {
           selectedDistrict || undefined,
           );
 
-          if (pathResponse?.data) {
-          
-            const filteredData: ConstructionPathResponse = {
-              ...pathResponse,
-              data: pathResponse.data
-                .map((block: BlockSurvey) => ({
-                  ...block,
-                  surveys: block.surveys.filter((s: SurveyCoordinates) =>
-                    surveyIds.includes(s.survey_id),
-                  ),
-                }))
-                .filter((block: BlockSurvey) => block.surveys.length > 0),
-            };
-            setConstructionPathData(filteredData);
-          } else {
-            setConstructionPathData(pathResponse);
-          }
+          setConstructionPathData(pathResponse);
         }
       } catch (error) {
         console.error('Error fetching today survey count', error);
@@ -377,8 +371,12 @@ export default function NewConstructionDashboard() {
             <VendorPerformance data={dashboardData} />
           </div>
 
-          <div className="lg:col-span-2 h-full">
-            <div className="h-full min-h-[500px]">
+          <div className="lg:col-span-2 space-y-6">
+             <MachineStatusTrendChart
+              data={machineStatusTrendData}
+              isLoading={machineStatusTrendLoading}
+            />
+            <div className="h-[500px]">
               <Wrapper
                 apiKey={GOOGLE_MAPS_API_KEY}
                 render={(status) => {
@@ -399,6 +397,7 @@ export default function NewConstructionDashboard() {
                 <MapView constructionPathData={constructionPathData} />
               </Wrapper>
             </div>
+           
           </div>
         </div>
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">

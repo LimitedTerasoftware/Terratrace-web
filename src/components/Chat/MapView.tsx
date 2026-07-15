@@ -69,7 +69,7 @@ function MapViewContent({ constructionPathData }: MapViewProps) {
               lng: coord[0],
             })),
             geodesic: true,
-            strokeColor: '#10b981',
+            strokeColor: '#9C27B0',
             strokeOpacity: 0.9,
             strokeWeight: 5,
           });

@@ -53,6 +53,14 @@ function ConstructionIssues() {
         toDate: today.toISOString().split('T')[0],
       };
     }
+    if (period === 'yesterday') {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      return {
+        fromDate: yesterday.toISOString().split('T')[0],
+        toDate: yesterday.toISOString().split('T')[0],
+      };
+    }
     const days = parseInt(period) || 30;
     const toDate = new Date();
     const fromDate = new Date();
