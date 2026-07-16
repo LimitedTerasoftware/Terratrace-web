@@ -11,7 +11,7 @@ interface PolesProps {
   selectedState: string | null;
   selectedDistrict: string | null;
   selectedBlock: string | null;
-  selectedStatus: number | null;
+  selectedStatus: number[];
   worktype: string;
   fromdate: string;
   todate: string;
@@ -65,7 +65,7 @@ const Poles: React.FC<PolesProps> = ({
         if (selectedBlock) params.block_id = selectedBlock;
         if (fromdate) params.from_date = fromdate;
         if (todate) params.to_date = todate;
-        if (selectedStatus !== null) params.status = selectedStatus;
+        if (selectedStatus.length > 0) params.status = selectedStatus.join(',');
         if (worktype !== '') params.worktype = worktype;
         if (globalsearch.trim()) params.search = globalsearch.trim();
 

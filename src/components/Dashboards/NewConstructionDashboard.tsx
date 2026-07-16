@@ -314,6 +314,7 @@ export default function NewConstructionDashboard() {
         search,
         firmId,
         workType,
+        'Dashboard',
       );
       setDashboardData(response);
       setError(null);

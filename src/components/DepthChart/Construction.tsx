@@ -1,4 +1,4 @@
-import { act, useEffect, useState } from 'react';
+import { act, useEffect, useRef, useState } from 'react';
 import { StateData, District, Block } from '../../types/survey';
 import Report from './UGConst';
 import ConstructionStatsPanel from './ConstructionStatsPanel';
@@ -38,7 +38,9 @@ function ConstructionPage() {
   const [loadingStates, setLoadingStates] = useState<boolean>(false);
   const [loadingDistricts, setLoadingDistricts] = useState<boolean>(false);
   const [loadingBlock, setLoadingBlock] = useState<boolean>(false);
-  const [selectedStatus, setSelectedStatus] = useState<number | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<number[]>([]);
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+  const statusDropdownRef = useRef<HTMLDivElement>(null);
   const [fromdate, setFromDate] = useState<string>('');
   const [todate, setToDate] = useState<string>('');
   const activeTab = 'UG';
@@ -243,7 +245,14 @@ function ConstructionPage() {
     setSelectedState(state_id);
     setSelectedDistrict(district_id);
     setSelectedBlock(block_id);
-    setSelectedStatus(status !== null ? Number(status) : null);
+    setSelectedStatus(
+      status !== null && status !== ''
+        ? status
+            .split(',')
+            .map(Number)
+            .filter((n) => !Number.isNaN(n))
+        : [],
+    );
     setFromDate(from_date);
     setToDate(to_date);
     setGlobalSearch(search);
@@ -258,7 +267,7 @@ function ConstructionPage() {
     newDistrict: string | null,
     newBlock: string | null,
     newLink: string | null,
-    status: number | null,
+    status: number[],
     worktype: string | '',
     from_date: string | null,
     to_date: string | null,
@@ -273,8 +282,8 @@ function ConstructionPage() {
     if (newDistrict) params.district_id = newDistrict;
     if (newBlock) params.block_id = newBlock;
     if (newLink) params.link = newLink;
-    if (status !== null) {
-      params.status = String(status);
+    if (status.length > 0) {
+      params.status = status.join(',');
     }
     if (worktype) params.worktype = worktype;
     if (from_date) params.from_date = from_date;
@@ -293,7 +302,7 @@ function ConstructionPage() {
     setSelectedDistrict(null);
     setSelectedBlock(null);
     setSelectedConnection(null);
-    setSelectedStatus(null);
+    setSelectedStatus([]);
     setGlobalSearch('');
     setFromDate('');
     setToDate('');
@@ -387,8 +396,10 @@ function ConstructionPage() {
     );
   };
 
-  const handleStatusChange = (value: string) => {
-    const statusValue = value === 'null' ? null : Number(value);
+  const handleStatusToggle = (value: number) => {
+    const statusValue = selectedStatus.includes(value)
+      ? selectedStatus.filter((s) => s !== value)
+      : [...selectedStatus, value];
     setSelectedStatus(statusValue);
     handleFilterChange(
       selectedState,
@@ -406,6 +417,19 @@ function ConstructionPage() {
       page,
     );
   };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        statusDropdownRef.current &&
+        !statusDropdownRef.current.contains(event.target as Node)
+      ) {
+        setStatusDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   const handleworkChange = (value: string) => {
     setworktype(value);
     handleFilterChange(
@@ -789,22 +813,22 @@ function ConstructionPage() {
             </div>
 
             {/* Status Filter */}
-            <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-              <select
-                value={selectedStatus !== null ? selectedStatus : ''}
-                onChange={(e) => handleStatusChange(e.target.value)}
-                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            <div
+              className="relative flex-1 min-w-0 sm:flex-none sm:w-44"
+              ref={statusDropdownRef}
+            >
+              <button
+                type="button"
+                onClick={() => setStatusDropdownOpen((prev) => !prev)}
+                className="w-full flex items-center justify-between px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               >
-                <option value="null">All Status</option>
-                {statusOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                <span className="truncate text-left">
+                  {selectedStatus.length === 0
+                    ? 'All Status'
+                    : selectedStatus.map((s) => statusMap[s]).join(', ')}
+                </span>
                 <svg
-                  className="w-4 h-4 text-gray-400"
+                  className="w-4 h-4 text-gray-400 flex-shrink-0 ml-1"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -816,7 +840,25 @@ function ConstructionPage() {
                     d="M19 9l-7 7-7-7"
                   />
                 </svg>
-              </div>
+              </button>
+              {statusDropdownOpen && (
+                <div className="absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg dark:bg-gray-700 dark:border-gray-600">
+                  {statusOptions.map((option) => (
+                    <label
+                      key={option.value}
+                      className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 dark:text-white"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedStatus.includes(option.value)}
+                        onChange={() => handleStatusToggle(option.value)}
+                        className="rounded border-gray-300"
+                      />
+                      {option.label}
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Date Filters */}
@@ -852,6 +894,10 @@ function ConstructionPage() {
                 <option value="">All Work Type</option>
                 <option value="New Construction">New Construction</option>
                 <option value="Rectification">Rectification</option>
+                <option value="OFC Blowing">OFC Blowing</option>
+                <option value="JointChamber">Joint Chamber</option>
+                <option value="Protection">Protection</option>
+
               </select>
 
               <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">

@@ -16,7 +16,7 @@ interface ReportProps {
     selectedState: string | null;
     selectedDistrict: string | null;
     selectedBlock: string | null;
-    selectedStatus: number | null;
+    selectedStatus: number[];
     worktype: string;
     constType: string;
     cords: string;
@@ -89,7 +89,8 @@ const Report: React.FC<ReportProps> = ({
         if (Data.connectionEnd) params.end = Data.connectionEnd;
         if (Data.fromdate) params.from_date = Data.fromdate;
         if (Data.todate) params.to_date = Data.todate;
-        if (Data.selectedStatus !== null) params.status = Data.selectedStatus;
+        if (Data.selectedStatus.length > 0)
+          params.status = Data.selectedStatus.join(',');
         if (Data.worktype !== '') params.worktype = Data.worktype;
         if (Data.constType !== '') params.construction_type = Data.constType;
         if (Data.globalsearch.trim()) params.search = Data.globalsearch.trim();
@@ -1143,8 +1144,8 @@ const Report: React.FC<ReportProps> = ({
                 if (Data.connectionEnd) params.end = Data.connectionEnd;
                 if (Data.fromdate) params.from_date = Data.fromdate;
                 if (Data.todate) params.to_date = Data.todate;
-                if (Data.selectedStatus !== null)
-                  params.status = Data.selectedStatus;
+                if (Data.selectedStatus.length > 0)
+                  params.status = Data.selectedStatus.join(',');
                 if (Data.worktype !== '') params.worktype = Data.worktype;
                 if (Data.globalsearch.trim())
                   params.search = Data.globalsearch.trim();

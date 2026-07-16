@@ -118,7 +118,7 @@ export default function SurveyInventory({
       const meters = parseFloat(row.total_distance || '0');
       return acc + (isNaN(meters) ? 0 : meters);
     }, 0);
-    return (total / 1000).toFixed(2);
+    return (total).toFixed(2);
   };
 
   const getTotalSurveys = () => {
@@ -214,7 +214,7 @@ export default function SurveyInventory({
       const cardData = [
         { label: 'Total Links', value: String(data.length), color: [59, 130, 246] as [number,number,number] },
         { label: 'Total Surveys', value: String(getTotalSurveys()), color: [16, 185, 129] as [number,number,number] },
-        { label: 'Total Distance', value: `${getTotalDistance()} km`, color: [245, 158, 11] as [number,number,number] },
+        { label: 'Total Distance', value: `${getTotalDistance()} mt`, color: [245, 158, 11] as [number,number,number] },
         { label: 'Report Period', value: getPeriodLabel(), color: [139, 92, 246] as [number,number,number] },
       ];
 
@@ -252,7 +252,7 @@ export default function SurveyInventory({
         row.block_name || '-',
         `(${row.start_name || ''}) TO (${row.end_name || ''})`,
         String(row.total_surveys || 0),
-        formatDistance(row.total_distance),
+        `${parseFloat(row.total_distance).toFixed(2)} mt`,
         row.firm_name || '-',
         row.authorised_person ? `${row.authorised_person}\n${row.authorised_mobile || ''}` : '-',
       ]);
@@ -353,7 +353,7 @@ export default function SurveyInventory({
       selector: (row) => row.total_distance || '0',
       cell: (row) => (
         <span className="text-sm font-medium text-emerald-700">
-          {formatDistance(row.total_distance)}
+         `{parseFloat(row.total_distance).toFixed(2)} mt`
         </span>
       ),
     },
@@ -414,7 +414,7 @@ export default function SurveyInventory({
               </div>
               <div className="flex items-center gap-1.5 bg-white/15 border border-white/20 rounded-full px-3 py-1">
                 <MapPin className="w-3 h-3 text-blue-200" />
-                <span className="text-white text-xs font-semibold">{getTotalDistance()} km</span>
+                <span className="text-white text-xs font-semibold">{getTotalDistance()} mt</span>
               </div>
               <div className="flex items-center gap-1.5 bg-white/15 border border-white/20 rounded-full px-3 py-1">
                 <Calendar className="w-3 h-3 text-blue-200" />

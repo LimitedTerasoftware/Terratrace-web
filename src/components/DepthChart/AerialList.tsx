@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   StateData,
   District,
@@ -41,7 +41,9 @@ function AerialListPage() {
   const [loadingStates, setLoadingStates] = useState<boolean>(false);
   const [loadingDistricts, setLoadingDistricts] = useState<boolean>(false);
   const [loadingBlock, setLoadingBlock] = useState<boolean>(false);
-  const [selectedStatus, setSelectedStatus] = useState<number | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<number[]>([]);
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+  const statusDropdownRef = useRef<HTMLDivElement>(null);
   const [fromdate, setFromDate] = useState<string>('');
   const [todate, setToDate] = useState<string>('');
   const [excel, setExcel] = useState<boolean>(false);
@@ -229,7 +231,14 @@ function AerialListPage() {
     setSelectedState(state_id);
     setSelectedDistrict(district_id);
     setSelectedBlock(block_id);
-    setSelectedStatus(status !== null ? Number(status) : null);
+    setSelectedStatus(
+      status !== null && status !== ''
+        ? status
+            .split(',')
+            .map(Number)
+            .filter((n) => !Number.isNaN(n))
+        : [],
+    );
     setFromDate(from_date);
     setToDate(to_date);
     setGlobalSearch(search);
@@ -243,7 +252,7 @@ function AerialListPage() {
     newDistrict: string | null,
     newBlock: string | null,
     newLink: string | null,
-    status: number | null,
+    status: number[],
     worktype: string,
     from_date: string | null,
     to_date: string | null,
@@ -255,9 +264,9 @@ function AerialListPage() {
     if (newDistrict) params.district_id = newDistrict;
     if (newBlock) params.block_id = newBlock;
     if (newLink) params.link = newLink;
-     if (status !== null) {
-    params.status = String(status);
-  }
+    if (status.length > 0) {
+      params.status = status.join(',');
+    }
     if (worktype) params.worktype = worktype;
     if (from_date) params.from_date = from_date;
     if (to_date) params.to_date = to_date;
@@ -272,7 +281,7 @@ function AerialListPage() {
     setSelectedDistrict(null);
     setSelectedBlock(null);
     setSelectedConnection(null);
-    setSelectedStatus(null);
+    setSelectedStatus([]);
     setGlobalSearch('');
     setFromDate('');
     setToDate('');
@@ -367,8 +376,10 @@ function AerialListPage() {
     );
   };
 
-  const handleStatusChange = (value: string) => {
-    const statusValue = value === 'null' ? null : Number(value);
+  const handleStatusToggle = (value: number) => {
+    const statusValue = selectedStatus.includes(value)
+      ? selectedStatus.filter((s) => s !== value)
+      : [...selectedStatus, value];
     setSelectedStatus(statusValue);
     handleFilterChange(
       selectedState,
@@ -383,6 +394,19 @@ function AerialListPage() {
       activeTab
     );
   };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        statusDropdownRef.current &&
+        !statusDropdownRef.current.contains(event.target as Node)
+      ) {
+        setStatusDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleWorktypeChange = (value: string) => {
     setWorktype(value);
@@ -713,22 +737,22 @@ function AerialListPage() {
               </div>
             </div>
 
-            <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-              <select
-                value={selectedStatus !== null ? selectedStatus : ''}
-                onChange={(e) => handleStatusChange(e.target.value)}
-                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            <div
+              className="relative flex-1 min-w-0 sm:flex-none sm:w-44"
+              ref={statusDropdownRef}
+            >
+              <button
+                type="button"
+                onClick={() => setStatusDropdownOpen((prev) => !prev)}
+                className="w-full flex items-center justify-between px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               >
-                <option value="null">All Status</option>
-                {statusOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                <span className="truncate text-left">
+                  {selectedStatus.length === 0
+                    ? 'All Status'
+                    : selectedStatus.map((s) => statusMap[s]).join(', ')}
+                </span>
                 <svg
-                  className="w-4 h-4 text-gray-400"
+                  className="w-4 h-4 text-gray-400 flex-shrink-0 ml-1"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -740,7 +764,25 @@ function AerialListPage() {
                     d="M19 9l-7 7-7-7"
                   />
                 </svg>
-              </div>
+              </button>
+              {statusDropdownOpen && (
+                <div className="absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg dark:bg-gray-700 dark:border-gray-600">
+                  {statusOptions.map((option) => (
+                    <label
+                      key={option.value}
+                      className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 dark:text-white"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedStatus.includes(option.value)}
+                        onChange={() => handleStatusToggle(option.value)}
+                        className="rounded border-gray-300"
+                      />
+                      {option.label}
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
@@ -872,6 +914,7 @@ function AerialListPage() {
               selectedStatus,
               worktype,
               constType,
+              cords: '',
               fromdate,
               todate,
               globalsearch,
@@ -879,16 +922,21 @@ function AerialListPage() {
               kml,
               filtersReady,
               preview,
+              progressmap: false,
               isAddModalOpen,
               selectedConnection,
               connectionStart: getSelectedConnectionDetails()?.startLocation,
               connectionEnd: getSelectedConnectionDetails()?.endLocation,
+              mergeSurveys: false,
             }}
             Onexcel={() => setExcel(false)}
             OnPreview={() => setPreview(false)}
+            OnProgressMap={() => {}}
             OnKml={() => setKml(false)}
             OnModal={() => setIsAddModalOpen(false)}
             OnData={(data: UGConstructionSurveyData[]) => setSurveyData(data)}
+            OnMergeSurveys={() => {}}
+            OnMergeLoadingChange={() => {}}
           />
         )}
         {activeTab === 'Pole' && (

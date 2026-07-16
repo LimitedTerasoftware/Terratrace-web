@@ -532,6 +532,7 @@ export const machineApi = {
     search?: string,
     firmId?: string,
     workType?: string,
+    Type?:string,
   ): Promise<MachineDetailsResponse> => {
     const params = new URLSearchParams();
     if (stateId) {
@@ -557,6 +558,9 @@ export const machineApi = {
     }
     if (workType) {
       params.append('workType', workType);
+    }
+    if(Type){
+        params.append('Type', Type);
     }
     const queryString = params.toString();
     const url = queryString
