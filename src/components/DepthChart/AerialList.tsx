@@ -64,6 +64,10 @@ function AerialListPage() {
   const [worktype, setWorktype] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'Aerial' | 'Pole' | string>('Aerial');
   const constType = 'Aerial';
+  const [page, setPage] = useState<number>(() => {
+    const pageParam = Number(new URLSearchParams(window.location.search).get('page'));
+    return pageParam > 0 ? pageParam : 1;
+  });
 
   const statusMap: Record<number, string> = {
     1: 'Accepted',
@@ -247,6 +251,11 @@ function AerialListPage() {
     setActiveTab(tab);
   }, []);
 
+  useEffect(() => {
+    const pageParam = Number(searchParams.get('page'));
+    setPage(pageParam > 0 ? pageParam : 1);
+  }, [searchParams]);
+
   const handleFilterChange = (
     newState: string | null,
     newDistrict: string | null,
@@ -258,6 +267,7 @@ function AerialListPage() {
     to_date: string | null,
     search: string | null,
     tab: 'Aerial' | 'Pole' | string,
+    page?: number,
   ) => {
     const params: Record<string, string> = {};
     if (newState) params.state_id = newState;
@@ -272,8 +282,27 @@ function AerialListPage() {
     if (to_date) params.to_date = to_date;
     if (search) params.search = search;
     if (tab) params.tab = tab;
+    if (page && page > 1) params.page = String(page);
 
     setSearchParams(params);
+    if (!page) setPage(1);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    handleFilterChange(
+      selectedState,
+      selectedDistrict,
+      selectedBlock,
+      selectedConnection,
+      selectedStatus,
+      worktype,
+      fromdate,
+      todate,
+      globalsearch,
+      activeTab,
+      newPage,
+    );
   };
 
   const clearFilters = () => {
@@ -287,6 +316,7 @@ function AerialListPage() {
     setToDate('');
     setSearchParams({});
     setWorktype('');
+    setPage(1);
     
   };
 
@@ -322,6 +352,7 @@ function AerialListPage() {
       todate,
       globalsearch,
       activeTab,
+      page,
     );
   };
 
@@ -340,6 +371,7 @@ function AerialListPage() {
       todate,
       globalsearch,
       activeTab,
+      page,
     );
   };
 
@@ -356,7 +388,8 @@ function AerialListPage() {
       fromdate,
       todate,
       globalsearch,
-      activeTab
+      activeTab,
+      page,
     );
   };
 
@@ -372,7 +405,8 @@ function AerialListPage() {
       fromdate,
       todate,
       globalsearch,
-      activeTab
+      activeTab,
+      page,
     );
   };
 
@@ -391,7 +425,8 @@ function AerialListPage() {
       fromdate,
       todate,
       globalsearch,
-      activeTab
+      activeTab,
+      page,
     );
   };
 
@@ -420,7 +455,8 @@ function AerialListPage() {
       fromdate,
       todate,
       globalsearch,
-      activeTab
+      activeTab,
+      page,
     );
   };
 
@@ -436,7 +472,8 @@ function AerialListPage() {
       value,
       todate,
       globalsearch,
-      activeTab
+      activeTab,
+      page,
     );
   };
 
@@ -452,7 +489,8 @@ function AerialListPage() {
       fromdate,
       value,
       globalsearch,
-      activeTab
+      activeTab,
+      page,
     );
   };
 
@@ -468,7 +506,8 @@ function AerialListPage() {
       fromdate,
       todate,
       value,
-      activeTab
+      activeTab,
+      page,
     );
   };
 
@@ -927,6 +966,7 @@ function AerialListPage() {
               selectedConnection,
               connectionStart: getSelectedConnectionDetails()?.startLocation,
               connectionEnd: getSelectedConnectionDetails()?.endLocation,
+              page,
               mergeSurveys: false,
             }}
             Onexcel={() => setExcel(false)}
@@ -935,6 +975,7 @@ function AerialListPage() {
             OnKml={() => setKml(false)}
             OnModal={() => setIsAddModalOpen(false)}
             OnData={(data: UGConstructionSurveyData[]) => setSurveyData(data)}
+            OnPageChange={handlePageChange}
             OnMergeSurveys={() => {}}
             OnMergeLoadingChange={() => {}}
           />

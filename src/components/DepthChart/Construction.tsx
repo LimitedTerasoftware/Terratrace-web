@@ -67,7 +67,10 @@ function ConstructionPage() {
   const [worktype, setworktype] = useState<string>('');
   const [constType, setConstType] = useState<string>('Hdd');
   const [cords, setcords] = useState<string>('');
-  const [page, setPage] = useState<number>(1);
+  const [page, setPage] = useState<number>(() => {
+    const pageParam = Number(new URLSearchParams(window.location.search).get('page'));
+    return pageParam > 0 ? pageParam : 1;
+  });
 
   const statusMap: Record<number, string> = {
     1: 'Accepted',
@@ -239,7 +242,6 @@ function ConstructionPage() {
     const worktype = searchParams.get('worktype') || '';
     const constType = searchParams.get('constType') || 'Hdd';
     const cords = searchParams.get('cords') || '';
-    const pageParam = searchParams.get('page') || '1';
 
     setcords(cords);
     setSelectedState(state_id);
@@ -259,8 +261,12 @@ function ConstructionPage() {
     setworktype(worktype);
     setFiltersReady(true);
     setConstType(constType);
-    setPage(Number(pageParam));
   }, []);
+
+  useEffect(() => {
+    const pageParam = Number(searchParams.get('page'));
+    setPage(pageParam > 0 ? pageParam : 1);
+  }, [searchParams]);
 
   const handleFilterChange = (
     newState: string | null,

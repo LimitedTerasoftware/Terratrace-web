@@ -502,8 +502,7 @@ export interface UGConstructionSurveyData {
   admin_email:string | null;
   firm_name:string|null;
   dgps_id:string|null;
-
-
+  ofc_distance:string|null;
 }
 export interface SurveyLinksData {
     startLocation: number; 

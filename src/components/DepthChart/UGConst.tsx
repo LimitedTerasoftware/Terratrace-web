@@ -64,10 +64,16 @@ const Report: React.FC<ReportProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<UGConstructionSurveyData[]>([]);
-  const [selectedRows, setSelectedRows] = useState<UGConstructionSurveyData[]>(
-    [],
+  const [perPage, setPerPage] = useState<number>(10);
+  const [totalRows, setTotalRows] = useState<number>(0);
+  const [initialPage] = useState<number>(Data.page || 1);
+  const [selectedMap, setSelectedMap] = useState<
+    Map<number, UGConstructionSurveyData>
+  >(new Map());
+  const selectedRows = useMemo(
+    () => Array.from(selectedMap.values()),
+    [selectedMap],
   );
-  const [toggleCleared, setToggleCleared] = useState(false);
   const [selectedSurvey, setSelectedSurvey] =
     useState<UGConstructionSurveyData | null>(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
@@ -95,23 +101,33 @@ const Report: React.FC<ReportProps> = ({
         if (Data.constType !== '') params.construction_type = Data.constType;
         if (Data.globalsearch.trim()) params.search = Data.globalsearch.trim();
         if (Data.cords !== '') params.coords = Data.cords;
+        params.page = Data.page || 1;
+        params.limit = perPage;
 
         const response = await axios.get<{
           status: boolean;
+          count: number;
+          totalCount: number;
+          totalPages: number;
+          currentPage: number;
+          pageSize: number;
           data: UGConstructionSurveyData[];
         }>(`${TraceBASEURL}/get-survey-data`, { params });
 
         if (response.data.status) {
           setData(response.data.data);
+          setTotalRows(response.data.totalCount ?? response.data.count ?? 0);
           OnData(response.data.data);
         } else {
           console.error('API returned status=false', response.data);
           setData([]);
+          setTotalRows(0);
         }
       } catch (error) {
         console.error('Error fetching survey data', error);
         setError('Failed to fetch survey data');
         setData([]);
+        setTotalRows(0);
       } finally {
         setLoading(false);
       }
@@ -134,6 +150,8 @@ const Report: React.FC<ReportProps> = ({
     Data.globalsearch,
     Data.isAddModalOpen,
     Data.cords,
+    Data.page,
+    perPage,
   ]);
 
   const handleView = async (
@@ -211,17 +229,8 @@ const Report: React.FC<ReportProps> = ({
     );
   }, [Data.globalsearch, data]);
 
-  const handleRowSelected = (state: {
-    allSelected: boolean;
-    selectedCount: number;
-    selectedRows: UGConstructionSurveyData[];
-  }) => {
-    setSelectedRows(state.selectedRows);
-  };
-
   const handleClearRows = () => {
-    setToggleCleared(!toggleCleared);
-    setSelectedRows([]);
+    setSelectedMap(new Map());
   };
 
   const getStatusBadge = () => {
@@ -275,6 +284,59 @@ const Report: React.FC<ReportProps> = ({
   };
 
   const columns: TableColumn<UGConstructionSurveyData>[] = [
+    {
+      name: (
+        <input
+          type="checkbox"
+          aria-label="Select all rows on this page"
+          checked={
+            filteredData.length > 0 &&
+            filteredData.every((row) => selectedMap.has(row.id))
+          }
+          ref={(el) => {
+            if (!el) return;
+            const someSelected = filteredData.some((row) =>
+              selectedMap.has(row.id),
+            );
+            const allSelected =
+              filteredData.length > 0 &&
+              filteredData.every((row) => selectedMap.has(row.id));
+            el.indeterminate = someSelected && !allSelected;
+          }}
+          onChange={(e) => {
+            const checked = e.target.checked;
+            setSelectedMap((prev) => {
+              const next = new Map(prev);
+              filteredData.forEach((row) => {
+                if (checked) next.set(row.id, row);
+                else next.delete(row.id);
+              });
+              return next;
+            });
+          }}
+          className="h-4 w-4 rounded border-gray-300"
+        />
+      ),
+      cell: (row) => (
+        <input
+          type="checkbox"
+          aria-label={`Select row ${row.id}`}
+          checked={selectedMap.has(row.id)}
+          onChange={(e) => {
+            const checked = e.target.checked;
+            setSelectedMap((prev) => {
+              const next = new Map(prev);
+              if (checked) next.set(row.id, row);
+              else next.delete(row.id);
+              return next;
+            });
+          }}
+          className="h-4 w-4 rounded border-gray-300"
+        />
+      ),
+      ignoreRowClick: true,
+      width: '48px',
+    },
     {
       name: 'Survey ID',
       selector: (row) => row.id,
@@ -359,6 +421,11 @@ const Report: React.FC<ReportProps> = ({
     {
       name: 'Distance (m)',
       selector: (row) => row.total_distance || '0.00',
+      sortable: true,
+    },
+    {
+      name: 'OFC Distance (m)',
+      selector: (row) => row.ofc_distance || '0.00',
       sortable: true,
     },
     {
@@ -953,7 +1020,9 @@ const Report: React.FC<ReportProps> = ({
               columns={columns}
               data={filteredData}
               pagination
-              paginationPerPage={10}
+              paginationServer
+              paginationTotalRows={totalRows}
+              paginationPerPage={perPage}
               paginationRowsPerPageOptions={[10, 25, 50, 100]}
               highlightOnHover
               pointerOnHover
@@ -962,11 +1031,12 @@ const Report: React.FC<ReportProps> = ({
               responsive
               customStyles={customStyles}
               noHeader
-              selectableRows
-              onSelectedRowsChange={handleRowSelected}
-              clearSelectedRows={toggleCleared}
-              paginationDefaultPage={Data.page || 1}
+              paginationDefaultPage={initialPage}
               onChangePage={(p) => OnPageChange?.(p)}
+              onChangeRowsPerPage={(newPerPage) => {
+                setPerPage(newPerPage);
+                OnPageChange?.(1);
+              }}
               progressPending={loading}
               progressComponent={
                 <div className="flex items-center justify-center py-8">
@@ -1149,14 +1219,21 @@ const Report: React.FC<ReportProps> = ({
                 if (Data.worktype !== '') params.worktype = Data.worktype;
                 if (Data.globalsearch.trim())
                   params.search = Data.globalsearch.trim();
+                params.page = Data.page || 1;
+                params.limit = perPage;
 
                 const response = await axios.get<{
                   status: boolean;
+                  count: number;
+                  totalCount: number;
                   data: UGConstructionSurveyData[];
                 }>(`${TraceBASEURL}/get-survey-data`, { params });
 
                 if (response.data.status) {
                   setData(response.data.data);
+                  setTotalRows(
+                    response.data.totalCount ?? response.data.count ?? 0,
+                  );
                   OnData(response.data.data);
                 }
               } catch (error) {
