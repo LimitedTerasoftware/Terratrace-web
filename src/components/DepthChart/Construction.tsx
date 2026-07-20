@@ -894,8 +894,7 @@ function ConstructionPage() {
                 <option value="">All Work Type</option>
                 <option value="New Construction">New Construction</option>
                 <option value="Rectification">Rectification</option>
-                <option value="OFC Blowing">OFC Blowing</option>
-                <option value="JointChamber">Joint Chamber</option>
+                <option value="OFC Blowing/ JointChamber">OFC Blowing / Joint Chamber</option>
                 <option value="Protection">Protection</option>
 
               </select>
