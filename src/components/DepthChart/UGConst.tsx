@@ -40,7 +40,7 @@ interface ReportProps {
   OnProgressMap: () => void;
   OnKml: () => void;
   OnModal: () => void;
-  OnData: (data: UGConstructionSurveyData[]) => void;
+  OnData: (data:any) => void;
   OnPageChange?: (page: number) => void;
   OnMergeSurveys: () => void;
   OnMergeLoadingChange: (loading: boolean) => void;
@@ -117,7 +117,7 @@ const Report: React.FC<ReportProps> = ({
         if (response.data.status) {
           setData(response.data.data);
           setTotalRows(response.data.totalCount ?? response.data.count ?? 0);
-          OnData(response.data.data);
+          OnData(response.data);
         } else {
           console.error('API returned status=false', response.data);
           setData([]);

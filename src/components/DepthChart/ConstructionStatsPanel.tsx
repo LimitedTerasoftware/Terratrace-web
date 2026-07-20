@@ -3,36 +3,36 @@ import { Construction, MapPin, Clock, CheckCircle, AlertTriangle, Users } from '
 import { UGConstructionSurveyData } from '../../types/survey';
 
 interface ConstructionStatsPanelProps {
-  surveys: UGConstructionSurveyData[];
+  surveys: any;
   isLoading: boolean;
 }
 
 const ConstructionStatsPanel: React.FC<ConstructionStatsPanelProps> = ({ surveys, isLoading }) => {
   
   const getConstructionStats = () => {
-    const totalSurveys = surveys.length;
+    const totalSurveys = surveys.totalCount;
     
     // Recent surveys (last 24 hours)
-    const recentSurveys = surveys.filter(survey =>
+    const recentSurveys = surveys.data?.filter((survey:UGConstructionSurveyData) =>
       new Date(survey.created_at) > new Date(Date.now() - 24 * 60 * 60 * 1000)
     );
     
     // Unique locations (assuming completed surveys have some completion indicator)
     // Since we don't have a status field, we'll count unique start-end location pairs
-    const uniqueRoutes = new Set(surveys.map(s => `${s.start_lgd_name}-${s.end_lgd_name}`)).size;
+    const uniqueRoutes = new Set(surveys.data?.map((s:UGConstructionSurveyData) => `${s.start_lgd_name}-${s.end_lgd_name}`)).size;
     
     // Unique surveyors
-    const uniqueSurveyors = new Set(surveys.map(s => s.user_name)).size;
+    const uniqueSurveyors = new Set(surveys.data?.map((s:UGConstructionSurveyData) => s.user_name)).size;
     
     // Active districts (districts with surveys)
-    const activeDistricts = new Set(surveys.map(s => s.district_name)).size;
+    const activeDistricts = new Set(surveys.data?.map((s:UGConstructionSurveyData) => s.district_name)).size;
     
     // Active states
-    const activeStates = new Set(surveys.map(s => s.state_name)).size;
+    const activeStates = new Set(surveys.data?.map((s:UGConstructionSurveyData) => s.state_name)).size;
     
     return {
       totalSurveys,
-      recentSurveys: recentSurveys.length,
+      recentSurveys: recentSurveys?.length,
       uniqueRoutes,
       uniqueSurveyors,
       activeDistricts,

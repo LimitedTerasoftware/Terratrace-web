@@ -397,12 +397,18 @@ export const DepthChart: React.FC<DepthChartProps> = ({
           </p>
         </div>
         <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 p-3 bg-blue-50 rounded-lg">
+            <p className="text-sm text-blue-800">
+              <span className="font-medium">Total Distance:</span> {totalDistance.toFixed(0)}m across {surveyGroups.length} surveys
+            </p>
+          </div>
           <div className="flex items-center space-x-2 text-green-600">
             <TrendingDown className="w-5 h-5" />
             <span className="text-sm font-medium">
               {totalPoints - belowMinimumCount} Above Min
             </span>
           </div>
+          
           {belowMinimumCount > 0 && (
             <div className="flex items-center space-x-2 text-red-600">
               <AlertTriangle className="w-5 h-5" />

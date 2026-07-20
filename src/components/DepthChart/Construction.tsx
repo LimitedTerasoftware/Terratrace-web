@@ -1108,7 +1108,7 @@ function ConstructionPage() {
             OnProgressMap={() => setProgressmap(false)}
             OnKml={() => setkml(false)}
             OnModal={() => setIsAddModalOpen(false)}
-            OnData={(data: UGConstructionSurveyData[]) => setSurveyData(data)}
+            OnData={(data: any) => setSurveyData(data)}
             OnPageChange={handlePageChange}
             OnMergeSurveys={() => setMergeSurveys(false)}
             OnMergeLoadingChange={setMergeLoading}
