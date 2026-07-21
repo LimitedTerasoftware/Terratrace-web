@@ -1023,7 +1023,7 @@ const Report: React.FC<ReportProps> = ({
               paginationServer
               paginationTotalRows={totalRows}
               paginationPerPage={perPage}
-              paginationRowsPerPageOptions={[10, 25, 50, 100]}
+              paginationRowsPerPageOptions={[10, 25, 50, 100,150,200,250]}
               highlightOnHover
               pointerOnHover
               striped={false}
