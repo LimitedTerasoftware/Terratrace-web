@@ -18,6 +18,14 @@ interface StatesResponse {
   data: StateData[];
 }
 
+interface ConstructionSummary {
+  totalSurveys: number;
+  acceptedSurveys: number;
+  rejectedSurveys: number;
+  totalDistanceMeters: number;
+  totalKm: number;
+}
+
 type StatusOption = {
   value: number;
   label: string;
@@ -64,6 +72,8 @@ function ConstructionPage() {
   // New state for stats panel
   const [surveyData, setSurveyData] = useState<UGConstructionSurveyData[]>([]);
   const [loadingStats, setLoadingStats] = useState<boolean>(false);
+  const [constructionSummary, setConstructionSummary] =
+    useState<ConstructionSummary | null>(null);
   const [worktype, setworktype] = useState<string>('');
   const [constType, setConstType] = useState<string>('Hdd');
   const [cords, setcords] = useState<string>('');
@@ -209,6 +219,52 @@ function ConstructionPage() {
       setLoadingConnections(false);
     }
   };
+
+  const fetchConstructionSummary = async () => {
+    try {
+      setLoadingStats(true);
+      const params: Record<string, string> = {};
+      if (selectedState) params.state_id = selectedState;
+      if (selectedDistrict) params.district_id = selectedDistrict;
+      if (selectedBlock) params.block_id = selectedBlock;
+      if (selectedStatus.length > 0) params.status = selectedStatus.join(',');
+      if (constType) params.construction_type = constType;
+      if (worktype) params.worktype = worktype;
+      if (fromdate) params.from_date = fromdate;
+      if (todate) params.to_date = todate;
+      if (globalsearch.trim()) params.search = globalsearch.trim();
+      if (cords) params.coords = cords;
+
+      const response = await fetch(
+        `${TraceBASEURL}/getConstructionSummary?${new URLSearchParams(params).toString()}`,
+      );
+      const result = await response.json();
+      setConstructionSummary(result.status ? result.summary : null);
+    } catch (error) {
+      console.error('Error fetching construction summary:', error);
+      setConstructionSummary(null);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!filtersReady || activeTab !== 'UG') return;
+    fetchConstructionSummary();
+  }, [
+    filtersReady,
+    activeTab,
+    selectedState,
+    selectedDistrict,
+    selectedBlock,
+    selectedStatus,
+    constType,
+    worktype,
+    fromdate,
+    todate,
+    globalsearch,
+    cords,
+  ]);
 
   useEffect(() => {
     fetchVerifiedNetworks();
@@ -570,7 +626,11 @@ function ConstructionPage() {
       <ConstructionHeader />
 
       {/* Stats Panel */}
-      <ConstructionStatsPanel surveys={surveyData} isLoading={loadingStats} />
+      <ConstructionStatsPanel
+        surveys={surveyData}
+        isLoading={loadingStats}
+        summary={constructionSummary}
+      />
 
       {/* Main Content Container */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">

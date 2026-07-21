@@ -2,13 +2,65 @@ import React from 'react';
 import { Construction, MapPin, Clock, CheckCircle, AlertTriangle, Users } from 'lucide-react';
 import { UGConstructionSurveyData } from '../../types/survey';
 
+interface ConstructionSummary {
+  totalSurveys: number;
+  acceptedSurveys: number;
+  rejectedSurveys: number;
+  totalDistanceMeters: number;
+  totalKm: number;
+}
+
 interface ConstructionStatsPanelProps {
   surveys: any;
   isLoading: boolean;
+  summary?: ConstructionSummary | null;
 }
 
-const ConstructionStatsPanel: React.FC<ConstructionStatsPanelProps> = ({ surveys, isLoading }) => {
-  
+const ConstructionStatsPanel: React.FC<ConstructionStatsPanelProps> = ({ surveys, isLoading, summary }) => {
+
+  const getSummaryStatsConfig = (data: ConstructionSummary) => [
+    {
+      icon: Construction,
+      label: 'Total Surveys',
+      value: data.totalSurveys,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
+      id: 'total',
+    },
+    {
+      icon: CheckCircle,
+      label: 'Accepted',
+      value: data.acceptedSurveys,
+      color: 'text-emerald-600',
+      bgColor: 'bg-emerald-50',
+      id: 'accepted',
+    },
+    {
+      icon: AlertTriangle,
+      label: 'Rejected',
+      value: data.rejectedSurveys,
+      color: 'text-red-600',
+      bgColor: 'bg-red-50',
+      id: 'rejected',
+    },
+    {
+      icon: MapPin,
+      label: 'Total Distance (mt)',
+      value: data.totalDistanceMeters?.toFixed(2) ?? '0.00',
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
+      id: 'distance',
+    },
+    {
+      icon: MapPin,
+      label: 'Total Distance (km)',
+      value: data.totalKm?.toFixed(2) ?? '0.00',
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
+      id: 'distance',
+    },
+  ];
+
   const getConstructionStats = () => {
     const totalSurveys = surveys.totalCount;
     
@@ -40,9 +92,7 @@ const ConstructionStatsPanel: React.FC<ConstructionStatsPanelProps> = ({ surveys
     };
   };
 
-  const stats = getConstructionStats();
-
-  const statsConfig = [
+  const getSurveyStatsConfig = (stats: ReturnType<typeof getConstructionStats>) => [
     {
       icon: Construction,
       label: 'Total Surveys',
@@ -93,12 +143,18 @@ const ConstructionStatsPanel: React.FC<ConstructionStatsPanelProps> = ({ surveys
     }
   ];
 
+  const statsConfig = summary
+    ? getSummaryStatsConfig(summary)
+    : getSurveyStatsConfig(getConstructionStats());
+
+  const gridColsClass = summary ? 'md:grid-cols-5' : 'md:grid-cols-6';
+
   if (isLoading) {
     return (
       <div className="bg-gray-50 border-b border-gray-200">
         <div className="px-1 py-6">
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-            {[...Array(6)].map((_, i) => (
+          <div className={`grid grid-cols-2 ${gridColsClass} gap-4`}>
+            {[...Array(summary ? 4 : 6)].map((_, i) => (
               <div key={i} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 animate-pulse">
                 <div className="flex items-center justify-between">
                   <div>
@@ -120,7 +176,7 @@ const ConstructionStatsPanel: React.FC<ConstructionStatsPanelProps> = ({ surveys
   return (
     <div className="bg-gray-50 border-b border-gray-200">
       <div className="px-1 py-6">
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+        <div className={`grid grid-cols-2 ${gridColsClass} gap-4`}>
           {statsConfig.map((stat, index) => {
             const Icon = stat.icon;
             return (
