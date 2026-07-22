@@ -1,6 +1,7 @@
 import { act, useEffect, useRef, useState } from 'react';
 import { StateData, District, Block } from '../../types/survey';
 import Report from './UGConst';
+import AcceptedLinks from './AcceptedLinks';
 import ConstructionStatsPanel from './ConstructionStatsPanel';
 import {
   SheetIcon,
@@ -24,6 +25,7 @@ interface ConstructionSummary {
   rejectedSurveys: number;
   totalDistanceMeters: number;
   totalKm: number;
+  pendingSurveys:number;
 }
 
 type StatusOption = {
@@ -51,7 +53,7 @@ function ConstructionPage() {
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const [fromdate, setFromDate] = useState<string>('');
   const [todate, setToDate] = useState<string>('');
-  const activeTab = 'UG';
+  const [activeTab, setActiveTab] = useState<'UG' | 'AcceptedLinks'>('UG');
   const [excel, setExcel] = useState<boolean>(false);
   const [kml, setkml] = useState<boolean>(false);
   const [preview, setPreview] = useState<boolean>(false);
@@ -105,12 +107,12 @@ function ConstructionPage() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-900">
-                {activeTab === 'UG' ? 'Construction' : 'New Pole Construction'}{' '}
+                {activeTab === 'UG' ? 'Construction' : 'Accepted Links'}{' '}
                 Management
               </h1>
               <p className="text-sm text-gray-600">
                 Monitor and analyze{' '}
-                {activeTab === 'UG' ? 'construction' : 'new pole construction'}{' '}
+                {activeTab === 'UG' ? 'construction' : 'accepted link'}{' '}
                 project data
               </p>
             </div>
@@ -123,7 +125,7 @@ function ConstructionPage() {
                 </Link>
               </li>
               <li className="font-medium text-primary">
-                {activeTab === 'UG' ? 'Construction' : 'New Pole Construction'}{' '}
+                {activeTab === 'UG' ? 'Construction' : 'Accepted Links'}{' '}
                 Data
               </li>
             </ol>
@@ -234,6 +236,10 @@ function ConstructionPage() {
       if (todate) params.to_date = todate;
       if (globalsearch.trim()) params.search = globalsearch.trim();
       if (cords) params.coords = cords;
+      const start = getSelectedConnectionDetails()?.startLocation;
+      const end =getSelectedConnectionDetails()?.endLocation;
+      if(start) params.start = start;
+      if(end) params.end = end;
 
       const response = await fetch(
         `${TraceBASEURL}/getConstructionSummary?${new URLSearchParams(params).toString()}`,
@@ -264,6 +270,7 @@ function ConstructionPage() {
     todate,
     globalsearch,
     cords,
+    selectedConnection,
   ]);
 
   useEffect(() => {
@@ -298,6 +305,7 @@ function ConstructionPage() {
     const worktype = searchParams.get('worktype') || '';
     const constType = searchParams.get('constType') || 'Hdd';
     const cords = searchParams.get('cords') || '';
+    const tab = searchParams.get('tab') || 'UG';
 
     setcords(cords);
     setSelectedState(state_id);
@@ -317,6 +325,7 @@ function ConstructionPage() {
     setworktype(worktype);
     setFiltersReady(true);
     setConstType(constType);
+    setActiveTab(tab === 'AcceptedLinks' ? 'AcceptedLinks' : 'UG');
   }, []);
 
   useEffect(() => {
@@ -335,7 +344,7 @@ function ConstructionPage() {
     to_date: string | null,
     search: string | null,
     constType: string | '',
-    tab?: 'UG' | 'Pole',
+    tab?: 'UG' | 'AcceptedLinks',
     cords?: string | '',
     page?: number,
   ) => {
@@ -373,6 +382,24 @@ function ConstructionPage() {
     setConstType('');
     setcords('');
     setPage(1);
+  };
+
+  const handleTabChange = (tab: 'UG' | 'AcceptedLinks') => {
+    setActiveTab(tab);
+    handleFilterChange(
+      selectedState,
+      selectedDistrict,
+      selectedBlock,
+      selectedConnection,
+      selectedStatus,
+      worktype,
+      fromdate,
+      todate,
+      globalsearch,
+      constType,
+      tab,
+      cords,
+    );
   };
 
   const handleStateChange = (value: string) => {
@@ -626,11 +653,13 @@ function ConstructionPage() {
       <ConstructionHeader />
 
       {/* Stats Panel */}
-      <ConstructionStatsPanel
-        surveys={surveyData}
-        isLoading={loadingStats}
-        summary={constructionSummary}
-      />
+      {activeTab === 'UG' && (
+        <ConstructionStatsPanel
+          surveys={surveyData}
+          isLoading={loadingStats}
+          summary={constructionSummary}
+        />
+      )}
 
       {/* Main Content Container */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -644,13 +673,21 @@ function ConstructionPage() {
                     ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
                     : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
                 }`}
-                onClick={() => {
-                  const params: Record<string, string> = {};
-                  params.tab = 'UG';
-                  setSearchParams(params);
-                }}
+                onClick={() => handleTabChange('UG')}
               >
                 Construction
+              </button>
+            </li>
+            <li className="mr-2">
+              <button
+                className={`inline-block p-4 rounded-t-lg outline-none ${
+                  activeTab === 'AcceptedLinks'
+                    ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
+                    : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'
+                }`}
+                onClick={() => handleTabChange('AcceptedLinks')}
+              >
+                Accepted Links
               </button>
             </li>
           </ul>
@@ -825,6 +862,8 @@ function ConstructionPage() {
               </div>
             </div>
             {/* Links Filter */}
+            {activeTab === 'UG' && (
+            <>
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-56">
               <select
                 value={selectedConnection || ''}
@@ -947,42 +986,44 @@ function ConstructionPage() {
                 placeholder="To Date"
               />
             </div>
+            </>
+            )}
           </div>
 
           {/* Second Row - Search and Excel Export */}
           <div className="flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-              <select
-                value={worktype !== '' ? worktype : ''}
-                onChange={(e) => handleworkChange(e.target.value)}
-                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              >
-                <option value="">All Work Type</option>
-                <option value="New Construction">New Construction</option>
-                <option value="Rectification">Rectification</option>
-                <option value="OFC Blowing/ JointChamber">OFC Blowing / Joint Chamber</option>
-                <option value="Protection">Protection</option>
-
-              </select>
-
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                <svg
-                  className="w-4 h-4 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </div>
-            </div>
             {activeTab === 'UG' && (
               <>
+                <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+                  <select
+                    value={worktype !== '' ? worktype : ''}
+                    onChange={(e) => handleworkChange(e.target.value)}
+                    className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  >
+                    <option value="">All Work Type</option>
+                    <option value="New Construction">New Construction</option>
+                    <option value="Rectification">Rectification</option>
+                    <option value="OFC Blowing/ JointChamber">OFC Blowing / Joint Chamber</option>
+                    <option value="Protection">Protection</option>
+
+                  </select>
+
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                    <svg
+                      className="w-4 h-4 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </div>
+                </div>
                 <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
                   <select
                     value={constType !== '' ? constType : ''}
@@ -1067,38 +1108,39 @@ function ConstructionPage() {
               />
             </div>
 
-            {/* Excel Export Button */}
-
-            <button
-              onClick={() => setExcel(true)}
-              className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
-            >
-              <SheetIcon className="h-4 w-4 text-green-600" />
-              Excel
-            </button>
             {activeTab === 'UG' && (
-              <button
-                onClick={() => setkml(true)}
-                className="flex items-center gap-2 flex-none h-10 px-4 py-2 text-sm font-medium text-yellow-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap"
-              >
-                <Globe2Icon className="h-4 w-4" />
-                KML
-              </button>
+              <>
+                {/* Excel Export Button */}
+                <button
+                  onClick={() => setExcel(true)}
+                  className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
+                >
+                  <SheetIcon className="h-4 w-4 text-green-600" />
+                  Excel
+                </button>
+                <button
+                  onClick={() => setkml(true)}
+                  className="flex items-center gap-2 flex-none h-10 px-4 py-2 text-sm font-medium text-yellow-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap"
+                >
+                  <Globe2Icon className="h-4 w-4" />
+                  KML
+                </button>
+                <button
+                  onClick={() => setPreview(!preview)}
+                  className="flex-none h-10 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap flex items-center gap-2"
+                >
+                  <EyeIcon className="h-4 w-4 text-blue-600" />
+                  Preview
+                </button>
+                <button
+                  onClick={() => setProgressmap(!progressmap)}
+                  className="flex-none h-10 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap flex items-center gap-2"
+                >
+                  <EyeIcon className="h-4 w-4 text-blue-600" />
+                  Progress Map
+                </button>
+              </>
             )}
-            <button
-              onClick={() => setPreview(!preview)}
-              className="flex-none h-10 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap flex items-center gap-2"
-            >
-              <EyeIcon className="h-4 w-4 text-blue-600" />
-              Preview
-            </button>
-              <button
-              onClick={() => setProgressmap(!progressmap)}
-              className="flex-none h-10 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap flex items-center gap-2"
-            >
-              <EyeIcon className="h-4 w-4 text-blue-600" />
-              Progress Map
-            </button>
             {activeTab === 'UG' && AdminAcess && (
               <>
 
@@ -1172,6 +1214,15 @@ function ConstructionPage() {
             OnPageChange={handlePageChange}
             OnMergeSurveys={() => setMergeSurveys(false)}
             OnMergeLoadingChange={setMergeLoading}
+          />
+        )}
+        {activeTab === 'AcceptedLinks' && (
+          <AcceptedLinks
+            selectedState={selectedState}
+            selectedDistrict={selectedDistrict}
+            selectedBlock={selectedBlock}
+            globalsearch={globalsearch}
+            filtersReady={filtersReady}
           />
         )}
       </div>

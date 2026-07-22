@@ -552,7 +552,12 @@ const Report: React.FC<ReportProps> = ({
   ];
 
   useEffect(() => {
-    if (Data.excel === true && filteredData.length > 0) {
+    if (Data.excel === true) {
+      if (selectedRows.length === 0) {
+        alert('Please select at least one row to export.');
+        Onexcel();
+        return;
+      }
       const exportExcel = async () => {
         setLoading(true);
         const workbook = XLSX.utils.book_new();
@@ -580,7 +585,7 @@ const Report: React.FC<ReportProps> = ({
           'Updated At',
         ];
 
-        const dataRows = filteredData.map((row) => [
+        const dataRows = selectedRows.map((row) => [
           row.id,
           row.state_name,
           row.district_name,

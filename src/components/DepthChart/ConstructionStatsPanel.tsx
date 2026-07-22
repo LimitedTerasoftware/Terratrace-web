@@ -1,5 +1,5 @@
 import React from 'react';
-import { Construction, MapPin, Clock, CheckCircle, AlertTriangle, Users } from 'lucide-react';
+import { Construction, MapPin, Clock, CheckCircle, AlertTriangle, Users, MessageCircleWarningIcon, MailWarningIcon, FileWarningIcon, CircleAlertIcon } from 'lucide-react';
 import { UGConstructionSurveyData } from '../../types/survey';
 
 interface ConstructionSummary {
@@ -8,6 +8,7 @@ interface ConstructionSummary {
   rejectedSurveys: number;
   totalDistanceMeters: number;
   totalKm: number;
+  pendingSurveys:number;
 }
 
 interface ConstructionStatsPanelProps {
@@ -36,9 +37,9 @@ const ConstructionStatsPanel: React.FC<ConstructionStatsPanelProps> = ({ surveys
       id: 'accepted',
     },
     {
-      icon: AlertTriangle,
-      label: 'Rejected',
-      value: data.rejectedSurveys,
+      icon: CircleAlertIcon,
+      label: 'Pending',
+      value: data.pendingSurveys,
       color: 'text-red-600',
       bgColor: 'bg-red-50',
       id: 'rejected',
