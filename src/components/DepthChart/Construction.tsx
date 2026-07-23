@@ -658,10 +658,10 @@ function ConstructionPage() {
       {/* Stats Panel */}
       {(activeTab === 'UG' || activeTab === 'AcceptedLinks') &&  (
         <ConstructionStatsPanel
-          surveys={surveyData}
+          surveys={activeTab === 'UG' ? surveyData :null}
           isLoading={loadingStats}
           summary={constructionSummary}
-          acceptedLinksSummary={acceptedLinksSummary}
+          acceptedLinksSummary={activeTab === 'AcceptedLinks'?acceptedLinksSummary:null}
         />
       )}
 

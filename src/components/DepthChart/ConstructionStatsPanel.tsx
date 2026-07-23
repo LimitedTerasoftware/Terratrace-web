@@ -119,25 +119,25 @@ const ConstructionStatsPanel: React.FC<ConstructionStatsPanelProps> = ({ surveys
   ];
 
   const getConstructionStats = () => {
-    const totalSurveys = surveys.totalCount;
+    const totalSurveys = surveys?.totalCount ?? 0;
     
     // Recent surveys (last 24 hours)
-    const recentSurveys = surveys.data?.filter((survey:UGConstructionSurveyData) =>
+    const recentSurveys = surveys?.data?.filter((survey:UGConstructionSurveyData) =>
       new Date(survey.created_at) > new Date(Date.now() - 24 * 60 * 60 * 1000)
     );
     
     // Unique locations (assuming completed surveys have some completion indicator)
     // Since we don't have a status field, we'll count unique start-end location pairs
-    const uniqueRoutes = new Set(surveys.data?.map((s:UGConstructionSurveyData) => `${s.start_lgd_name}-${s.end_lgd_name}`)).size;
+    const uniqueRoutes = new Set(surveys?.data?.map((s:UGConstructionSurveyData) => `${s.start_lgd_name}-${s.end_lgd_name}`)).size;
     
     // Unique surveyors
-    const uniqueSurveyors = new Set(surveys.data?.map((s:UGConstructionSurveyData) => s.user_name)).size;
+    const uniqueSurveyors = new Set(surveys?.data?.map((s:UGConstructionSurveyData) => s.user_name)).size;
     
     // Active districts (districts with surveys)
-    const activeDistricts = new Set(surveys.data?.map((s:UGConstructionSurveyData) => s.district_name)).size;
+    const activeDistricts = new Set(surveys?.data?.map((s:UGConstructionSurveyData) => s.district_name)).size;
     
     // Active states
-    const activeStates = new Set(surveys.data?.map((s:UGConstructionSurveyData) => s.state_name)).size;
+    const activeStates = new Set(surveys?.data?.map((s:UGConstructionSurveyData) => s.state_name)).size;
     
     return {
       totalSurveys,

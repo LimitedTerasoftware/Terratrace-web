@@ -21,6 +21,8 @@ interface AcceptedLinkRow {
   district_name: string;
   block_name: string;
   completion_percent: number | null;
+  ofc_distance_meters:number | null;
+  distance_diff_meters:number | null;
 }
 
 interface AcceptedLinksSummary {
@@ -97,6 +99,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
   const [totalRows, setTotalRows] = useState(0);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [savingId, setSavingId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!filtersReady) return;
@@ -172,21 +175,37 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
     setEditValue('');
   };
 
-  const saveEdit = (row: AcceptedLinkRow) => {
-    const parsed = editValue.trim() === '' ? null : Number(editValue);
-    if (editValue.trim() !== '' && Number.isNaN(parsed as number)) {
+  const saveEdit = async (row: AcceptedLinkRow) => {
+    const trimmed = editValue.trim();
+    const parsed = Number(trimmed);
+    if (trimmed === '' || Number.isNaN(parsed)) {
       toast.error('Enter a valid number for actual distance.');
       return;
     }
 
-    setData((prev) =>
-      prev.map((item) =>
-        item.id === row.id ? { ...item, actual_distance_meters: parsed } : item,
-      ),
-    );
-    setEditingId(null);
-    setEditValue('');
-    toast.success('Actual distance updated.');
+    setSavingId(row.id);
+    try {
+      await axios.post(`${TraceBASEURL}/update-link`, {
+        link_id: String(row.id),
+        actual_distance_meters: String(parsed),
+      });
+
+      setData((prev) =>
+        prev.map((item) =>
+          item.id === row.id
+            ? { ...item, actual_distance_meters: parsed }
+            : item,
+        ),
+      );
+      setEditingId(null);
+      setEditValue('');
+      toast.success('Actual distance updated.');
+    } catch (err) {
+      console.error('Error updating actual distance', err);
+      toast.error('Failed to update actual distance.');
+    } finally {
+      setSavingId(null);
+    }
   };
 
   const columns: TableColumn<AcceptedLinkRow>[] = [
@@ -226,29 +245,33 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       minWidth: '170px',
       cell: (row) => {
         if (editingId === row.id) {
+          const isSaving = savingId === row.id;
           return (
             <div className="flex items-center gap-1">
               <input
                 type="number"
                 autoFocus
                 value={editValue}
+                disabled={isSaving}
                 onChange={(e) => setEditValue(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') saveEdit(row);
                   if (e.key === 'Escape') cancelEdit();
                 }}
-                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded outline-none focus:border-blue-400"
+                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded outline-none focus:border-blue-400 disabled:opacity-50"
               />
               <button
                 onClick={() => saveEdit(row)}
-                className="p-1 text-green-600 hover:bg-green-50 rounded"
+                disabled={isSaving}
+                className="p-1 text-green-600 hover:bg-green-50 rounded disabled:opacity-50"
                 title="Save"
               >
                 <Check className="w-4 h-4" />
               </button>
               <button
                 onClick={cancelEdit}
-                className="p-1 text-gray-500 hover:bg-gray-100 rounded"
+                disabled={isSaving}
+                className="p-1 text-gray-500 hover:bg-gray-100 rounded disabled:opacity-50"
                 title="Cancel"
               >
                 <X className="w-4 h-4" />
@@ -282,9 +305,15 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
     },
     {
       name :'OFC/Blowing Distance',
-      selector:(row)=>'-',
+      selector:(row)=>row.ofc_distance_meters ?? 0,
      sortable: true,
-      cell: (row) =>'-',
+      cell: (row) =>(row.ofc_distance_meters ?? 0).toFixed(2),
+    },
+    {
+      name :'Distance Difference',
+      selector:(row)=>row.distance_diff_meters ?? 0,
+     sortable: true,
+      cell: (row) =>(row.distance_diff_meters ?? 0).toFixed(2),
     },
     {
       name :'JointChamber Count',
