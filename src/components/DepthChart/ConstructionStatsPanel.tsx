@@ -1,6 +1,7 @@
 import React from 'react';
-import { Construction, MapPin, Clock, CheckCircle, AlertTriangle, Users, MessageCircleWarningIcon, MailWarningIcon, FileWarningIcon, CircleAlertIcon } from 'lucide-react';
+import { Construction, MapPin, Clock, CheckCircle, AlertTriangle, Users, MessageCircleWarningIcon, MailWarningIcon, FileWarningIcon, CircleAlertIcon, Link2, Ruler, Cable, Percent } from 'lucide-react';
 import { UGConstructionSurveyData } from '../../types/survey';
+import type { AcceptedLinksSummary } from './AcceptedLinks';
 
 interface ConstructionSummary {
   totalSurveys: number;
@@ -15,9 +16,64 @@ interface ConstructionStatsPanelProps {
   surveys: any;
   isLoading: boolean;
   summary?: ConstructionSummary | null;
+  acceptedLinksSummary?: AcceptedLinksSummary | null;
 }
 
-const ConstructionStatsPanel: React.FC<ConstructionStatsPanelProps> = ({ surveys, isLoading, summary }) => {
+const ConstructionStatsPanel: React.FC<ConstructionStatsPanelProps> = ({ surveys, isLoading, summary, acceptedLinksSummary }) => {
+
+  const getAcceptedLinksStatsConfig = (data: AcceptedLinksSummary) => [
+    {
+      icon: Link2,
+      label: 'Total Links',
+      value: data.totalLinks,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
+      id: 'total-links',
+    },
+    {
+      icon: MapPin,
+      label: 'T&D Distance (m)',
+      value: data.totalDistanceMeters?.toFixed(2) ?? '0.00',
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
+      id: 'total-distance',
+    },
+    {
+      icon: Ruler,
+      label: 'BOQ Distance (m)',
+      value: data.actualDistanceMeters?.toFixed(2) ?? '0.00',
+      color: 'text-emerald-600',
+      bgColor: 'bg-emerald-50',
+      id: 'actual-distance',
+    },
+    {
+      icon: Cable,
+      label: 'OFC Distance (m)',
+      value: data.ofcDistanceMeters?.toFixed(2) ?? '0.00',
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-50',
+      id: 'ofc-distance',
+    },
+    {
+      icon: Users,
+      label: 'Total Survey Count',
+      value: data.totalSurveyCount,
+      color: 'text-indigo-600',
+      bgColor: 'bg-indigo-50',
+      id: 'survey-count',
+    },
+    {
+      icon: Percent,
+      label: 'Overall Completion',
+      value:
+        data.overallCompletionPercent != null
+          ? `${data.overallCompletionPercent}%`
+          : '-',
+      color: 'text-teal-600',
+      bgColor: 'bg-teal-50',
+      id: 'completion',
+    },
+  ];
 
   const getSummaryStatsConfig = (data: ConstructionSummary) => [
     {
@@ -144,18 +200,20 @@ const ConstructionStatsPanel: React.FC<ConstructionStatsPanelProps> = ({ surveys
     }
   ];
 
-  const statsConfig = summary
+  const statsConfig = acceptedLinksSummary
+    ? getAcceptedLinksStatsConfig(acceptedLinksSummary)
+    : summary
     ? getSummaryStatsConfig(summary)
     : getSurveyStatsConfig(getConstructionStats());
 
-  const gridColsClass = summary ? 'md:grid-cols-5' : 'md:grid-cols-6';
+  const gridColsClass = summary && !acceptedLinksSummary ? 'md:grid-cols-5' : 'md:grid-cols-6';
 
   if (isLoading) {
     return (
       <div className="bg-gray-50 border-b border-gray-200">
         <div className="px-1 py-6">
           <div className={`grid grid-cols-2 ${gridColsClass} gap-4`}>
-            {[...Array(summary ? 4 : 6)].map((_, i) => (
+            {[...Array(summary && !acceptedLinksSummary ? 4 : 6)].map((_, i) => (
               <div key={i} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 animate-pulse">
                 <div className="flex items-center justify-between">
                   <div>

@@ -23,13 +23,25 @@ interface AcceptedLinkRow {
   completion_percent: number | null;
 }
 
+interface AcceptedLinksSummary {
+  totalLinks: number;
+  totalDistanceMeters: number;
+  actualDistanceMeters: number;
+  ofcDistanceMeters: number;
+  totalSurveyCount: number;
+  overallCompletionPercent: number | null;
+}
+
 interface AcceptedLinksProps {
   selectedState: string | null;
   selectedDistrict: string | null;
   selectedBlock: string | null;
   globalsearch: string;
   filtersReady: boolean;
+  onSummaryChange?: (summary: AcceptedLinksSummary | null) => void;
 }
+
+export type { AcceptedLinksSummary };
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
@@ -75,6 +87,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
   selectedBlock,
   globalsearch,
   filtersReady,
+  onSummaryChange,
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -109,20 +122,24 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
           currentPage: number;
           pageSize: number;
           data: AcceptedLinkRow[];
+          summary?: AcceptedLinksSummary;
         }>(`${TraceBASEURL}/get-accepted-links`, { params });
 
         if (response.data.status) {
           setData(response.data.data);
           setTotalRows(response.data.totalCount ?? response.data.count ?? 0);
+          onSummaryChange?.(response.data.summary ?? null);
         } else {
           setData([]);
           setTotalRows(0);
+          onSummaryChange?.(null);
         }
       } catch (err) {
         console.error('Error fetching accepted links', err);
         setError('Failed to fetch accepted links');
         setData([]);
         setTotalRows(0);
+        onSummaryChange?.(null);
       } finally {
         setLoading(false);
       }
@@ -173,13 +190,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
   };
 
   const columns: TableColumn<AcceptedLinkRow>[] = [
-    {
-      name: 'Link Name',
-      selector: (row) => row.link_name,
-      sortable: true,
-      wrap: true,
-      minWidth: '220px',
-    },
+ 
     {
       name: 'State',
       selector: (row) => row.state_name,
@@ -199,13 +210,19 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       wrap: true,
     },
     {
-      name: 'Total Distance (m)',
-      selector: (row) => row.total_distance_meters ?? 0,
+      name: 'Link Name',
+      selector: (row) => row.link_name,
       sortable: true,
-      cell: (row) => (row.total_distance_meters ?? 0).toFixed(2),
+      wrap: true,
+      minWidth: '220px',
     },
     {
-      name: 'Actual Distance (m)',
+      name: 'Survey Count',
+      selector: (row) => row.survey_count,
+      sortable: true,
+    },
+     {
+      name: 'BOQ Distance (m)',
       minWidth: '170px',
       cell: (row) => {
         if (editingId === row.id) {
@@ -258,9 +275,22 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       },
     },
     {
-      name: 'Survey Count',
-      selector: (row) => row.survey_count,
+      name: 'T&D Distance (m)',
+      selector: (row) => row.total_distance_meters ?? 0,
       sortable: true,
+      cell: (row) => (row.total_distance_meters ?? 0).toFixed(2),
+    },
+    {
+      name :'OFC/Blowing Distance',
+      selector:(row)=>'-',
+     sortable: true,
+      cell: (row) =>'-',
+    },
+    {
+      name :'JointChamber Count',
+      selector:(row)=>'-',
+     sortable: true,
+      cell: (row) =>'-',
     },
     {
       name: 'Completion %',

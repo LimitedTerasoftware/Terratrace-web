@@ -2,6 +2,7 @@ import { act, useEffect, useRef, useState } from 'react';
 import { StateData, District, Block } from '../../types/survey';
 import Report from './UGConst';
 import AcceptedLinks from './AcceptedLinks';
+import type { AcceptedLinksSummary } from './AcceptedLinks';
 import ConstructionStatsPanel from './ConstructionStatsPanel';
 import {
   SheetIcon,
@@ -76,6 +77,8 @@ function ConstructionPage() {
   const [loadingStats, setLoadingStats] = useState<boolean>(false);
   const [constructionSummary, setConstructionSummary] =
     useState<ConstructionSummary | null>(null);
+  const [acceptedLinksSummary, setAcceptedLinksSummary] =
+    useState<AcceptedLinksSummary | null>(null);
   const [worktype, setworktype] = useState<string>('');
   const [constType, setConstType] = useState<string>('Hdd');
   const [cords, setcords] = useState<string>('');
@@ -653,11 +656,12 @@ function ConstructionPage() {
       <ConstructionHeader />
 
       {/* Stats Panel */}
-      {activeTab === 'UG' && (
+      {(activeTab === 'UG' || activeTab === 'AcceptedLinks') &&  (
         <ConstructionStatsPanel
           surveys={surveyData}
           isLoading={loadingStats}
           summary={constructionSummary}
+          acceptedLinksSummary={acceptedLinksSummary}
         />
       )}
 
@@ -988,10 +992,10 @@ function ConstructionPage() {
             </div>
             </>
             )}
-          </div>
+          {/* </div> */}
 
           {/* Second Row - Search and Excel Export */}
-          <div className="flex flex-wrap items-center gap-3">
+          {/* <div className="flex flex-wrap items-center gap-3"> */}
             {activeTab === 'UG' && (
               <>
                 <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
@@ -1217,13 +1221,17 @@ function ConstructionPage() {
           />
         )}
         {activeTab === 'AcceptedLinks' && (
-          <AcceptedLinks
-            selectedState={selectedState}
-            selectedDistrict={selectedDistrict}
-            selectedBlock={selectedBlock}
-            globalsearch={globalsearch}
-            filtersReady={filtersReady}
-          />
+          <>
+           
+            <AcceptedLinks
+              selectedState={selectedState}
+              selectedDistrict={selectedDistrict}
+              selectedBlock={selectedBlock}
+              globalsearch={globalsearch}
+              filtersReady={filtersReady}
+              onSummaryChange={setAcceptedLinksSummary}
+            />
+          </>
         )}
       </div>
     </div>
