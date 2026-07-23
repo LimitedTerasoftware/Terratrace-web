@@ -17,6 +17,20 @@ interface DuctEntry {
   images: string[];
 }
 
+interface OfcEntry {
+  cable_type: string;
+  drum_number: string;
+  meter: string;
+  images: string[];
+}
+
+const emptyOfcEntry: OfcEntry = {
+  cable_type: '',
+  drum_number: '',
+  meter: '',
+  images: [],
+};
+
 export function EditModal({
   activity,
   isOpen,
@@ -30,6 +44,8 @@ export function EditModal({
   const [success, setSuccess] = useState(false);
   const [startDuctData, setStartDuctData] = useState<DuctEntry[]>([]);
   const [endDuctData, setEndDuctData] = useState<DuctEntry[]>([]);
+  const [startOfcData, setStartOfcData] = useState<OfcEntry>(emptyOfcEntry);
+  const [endOfcData, setEndOfcData] = useState<OfcEntry>(emptyOfcEntry);
 
   const parseDuctData = (data: any): DuctEntry[] => {
     if (!data) return [];
@@ -44,6 +60,19 @@ export function EditModal({
     return [];
   };
 
+  const parseOfcData = (data: any): OfcEntry => {
+    if (!data) return emptyOfcEntry;
+    if (typeof data === 'object') return { ...emptyOfcEntry, ...data };
+    if (typeof data === 'string') {
+      try {
+        return { ...emptyOfcEntry, ...JSON.parse(data) };
+      } catch {
+        return emptyOfcEntry;
+      }
+    }
+    return emptyOfcEntry;
+  };
+
   useEffect(() => {
     if (activity) {
       setFormData(activity);
@@ -52,6 +81,10 @@ export function EditModal({
       if (activity.eventType === 'DUCT') {
         setStartDuctData(parseDuctData(activity.start_duct));
         setEndDuctData(parseDuctData(activity.end_duct));
+      }
+      if (activity.eventType === 'OFC') {
+        setStartOfcData(parseOfcData(activity.start_ofc));
+        setEndOfcData(parseOfcData(activity.end_ofc));
       }
     }
   }, [activity]);
@@ -88,6 +121,18 @@ export function EditModal({
     }
   };
 
+  const handleOfcChange = (
+    type: 'start' | 'end',
+    field: 'cable_type' | 'drum_number' | 'meter',
+    value: string,
+  ) => {
+    if (type === 'start') {
+      setStartOfcData((prev) => ({ ...prev, [field]: value }));
+    } else {
+      setEndOfcData((prev) => ({ ...prev, [field]: value }));
+    }
+  };
+
   if (!isOpen || !activity) return null;
 
   const handleChange = (field: keyof Activity, value: string | number) => {
@@ -111,6 +156,9 @@ export function EditModal({
       }else if(activity.eventType === 'DEPTH'){
         submitData.depth_capture_type = 'MANUAL';
 
+      }else if (activity.eventType === 'OFC') {
+        submitData.start_ofc = JSON.stringify(startOfcData);
+        submitData.end_ofc = JSON.stringify(endOfcData);
       }
         submitData.user_id=userData.id;
          submitData.user_name=userData.name;
@@ -190,6 +238,11 @@ export function EditModal({
         return { key: 'holdLatlong', label: 'Hold Survey Latitude/Longitude' };
       case 'BLOWING':
         return { key: 'blowingLatLong', label: 'Blowing Latitude/Longitude' };
+      case 'OFCBLOWING':
+        return {
+          key: 'blowingLatLong',
+          label: 'OFC Blowing Latitude/Longitude',
+        };
       case 'ROUTEFEATURE':
         return {
           key: 'routeFeatureLatLong',
@@ -433,6 +486,110 @@ export function EditModal({
                 {endDuctData.length === 0 && (
                   <p className="text-sm text-gray-500">No end duct entries</p>
                 )}
+              </div>
+            </div>
+          )}
+
+          {activity.eventType === 'OFC' && (
+            <div className="mt-6 border-t pt-6">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                OFC Details
+              </h3>
+
+              {/* Start OFC Section */}
+              <div className="mb-6">
+                <h4 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  Start OFC
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      Cable Type
+                    </label>
+                    <input
+                      type="text"
+                      value={startOfcData.cable_type}
+                      onChange={(e) =>
+                        handleOfcChange('start', 'cable_type', e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      Drum Number
+                    </label>
+                    <input
+                      type="text"
+                      value={startOfcData.drum_number}
+                      onChange={(e) =>
+                        handleOfcChange('start', 'drum_number', e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      Meter
+                    </label>
+                    <input
+                      type="text"
+                      value={startOfcData.meter}
+                      onChange={(e) =>
+                        handleOfcChange('start', 'meter', e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* End OFC Section */}
+              <div>
+                <h4 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  End OFC
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      Cable Type
+                    </label>
+                    <input
+                      type="text"
+                      value={endOfcData.cable_type}
+                      onChange={(e) =>
+                        handleOfcChange('end', 'cable_type', e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      Drum Number
+                    </label>
+                    <input
+                      type="text"
+                      value={endOfcData.drum_number}
+                      onChange={(e) =>
+                        handleOfcChange('end', 'drum_number', e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      Meter
+                    </label>
+                    <input
+                      type="text"
+                      value={endOfcData.meter}
+                      onChange={(e) =>
+                        handleOfcChange('end', 'meter', e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           )}

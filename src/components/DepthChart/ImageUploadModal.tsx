@@ -42,7 +42,12 @@ const ImageModal: React.FC<ImageModalProps> = ({
   // Event type to photo field mapping with primary and secondary fields
   const eventPhotoFields: Record<
     string,
-    { primary: keyof Activity; secondary?: keyof Activity; hasDuct?: boolean }
+    {
+      primary: keyof Activity;
+      secondary?: keyof Activity;
+      hasDuct?: boolean;
+      hasOfc?: boolean;
+    }
   > = {
     FPOI: { primary: 'fpoiPhotos' },
     DEPTH: { primary: 'depthPhoto' },
@@ -59,7 +64,9 @@ const ImageModal: React.FC<ImageModalProps> = ({
     ROADCROSSING: { primary: 'crossingPhotos' },
     HOLDSURVEY: { primary: 'holdPhotos' },
     BLOWING: { primary: 'blowingPhotos' },
+    OFCBLOWING: { primary: 'blowingPhotos' },
     DUCT: { primary: 'start_duct', hasDuct: true },
+    OFC: { primary: 'start_ofc', hasOfc: true },
   };
 
   useEffect(() => {
@@ -130,6 +137,55 @@ const ImageModal: React.FC<ImageModalProps> = ({
           });
         }
       });
+    } else if (fieldMapping.hasOfc) {
+      const parseOfcData = (data: any): any => {
+        if (!data) return {};
+        if (typeof data === 'object') return data;
+        if (typeof data === 'string') {
+          try {
+            return JSON.parse(data);
+          } catch {
+            return {};
+          }
+        }
+        return {};
+      };
+
+      // Load start OFC images
+      const startOfcData = parseOfcData(activity.start_ofc);
+      if (startOfcData.images && Array.isArray(startOfcData.images)) {
+        startOfcData.images.forEach((imgUrl: string, imgIdx: number) => {
+          if (imgUrl) {
+            imageItems.push({
+              id: `start-ofc-${imgIdx}`,
+              url: `${ImgbaseUrl}${imgUrl}`,
+              isNew: false,
+              isReplaced: false,
+              fieldName: 'start_ofc',
+              originalIndex: imgIdx,
+              isVideo: checkIsVideo(imgUrl),
+            });
+          }
+        });
+      }
+
+      // Load end OFC images
+      const endOfcData = parseOfcData(activity.end_ofc);
+      if (endOfcData.images && Array.isArray(endOfcData.images)) {
+        endOfcData.images.forEach((imgUrl: string, imgIdx: number) => {
+          if (imgUrl) {
+            imageItems.push({
+              id: `end-ofc-${imgIdx}`,
+              url: `${ImgbaseUrl}${imgUrl}`,
+              isNew: false,
+              isReplaced: false,
+              fieldName: 'end_ofc',
+              originalIndex: imgIdx,
+              isVideo: checkIsVideo(imgUrl),
+            });
+          }
+        });
+      }
     } else {
       // Load primary field images
       const primaryData = activity[fieldMapping.primary];
@@ -545,6 +601,102 @@ const ImageModal: React.FC<ImageModalProps> = ({
         return;
       }
 
+      // Handle OFC event specially
+      if (fieldMapping.hasOfc) {
+        const parseOfcData = (data: any): any => {
+          if (!data) return {};
+          if (typeof data === 'object') return data;
+          if (typeof data === 'string') {
+            try {
+              return JSON.parse(data);
+            } catch {
+              return {};
+            }
+          }
+          return {};
+        };
+
+        // Get existing OFC data (to preserve cable_type/drum_number/meter)
+        const existingStartOfc = parseOfcData(activity.start_ofc);
+        const existingEndOfc = parseOfcData(activity.end_ofc);
+
+        // Get images by OFC side
+        const startOfcImages = images.filter(
+          (img) => img.fieldName === 'start_ofc',
+        );
+        const endOfcImages = images.filter(
+          (img) => img.fieldName === 'end_ofc',
+        );
+
+        // Upload new images
+        const newStartOfcFiles = startOfcImages
+          .filter((img) => img.isNew && img.file)
+          .map((img) => img.file!);
+        const newEndOfcFiles = endOfcImages
+          .filter((img) => img.isNew && img.file)
+          .map((img) => img.file!);
+
+        let uploadedStartOfcUrls: string[] = [];
+        let uploadedEndOfcUrls: string[] = [];
+
+        if (newStartOfcFiles.length > 0) {
+          uploadedStartOfcUrls = await uploadImages(newStartOfcFiles);
+        }
+        if (newEndOfcFiles.length > 0) {
+          uploadedEndOfcUrls = await uploadImages(newEndOfcFiles);
+        }
+
+        // Build new start_ofc images list
+        const newStartOfcImages: string[] = [];
+        let uploadedIdx = 0;
+        startOfcImages.forEach((img) => {
+          if (img.isNew) {
+            if (uploadedIdx < uploadedStartOfcUrls.length) {
+              newStartOfcImages.push(uploadedStartOfcUrls[uploadedIdx]);
+              uploadedIdx++;
+            }
+          } else {
+            newStartOfcImages.push(img.url.replace(ImgbaseUrl, ''));
+          }
+        });
+
+        // Build new end_ofc images list
+        const newEndOfcImages: string[] = [];
+        uploadedIdx = 0;
+        endOfcImages.forEach((img) => {
+          if (img.isNew) {
+            if (uploadedIdx < uploadedEndOfcUrls.length) {
+              newEndOfcImages.push(uploadedEndOfcUrls[uploadedIdx]);
+              uploadedIdx++;
+            }
+          } else {
+            newEndOfcImages.push(img.url.replace(ImgbaseUrl, ''));
+          }
+        });
+
+        // Preserve existing cable_type/drum_number/meter, replace only images
+        const updatedStartOfc = {
+          ...existingStartOfc,
+          images: newStartOfcImages,
+        };
+        const updatedEndOfc = {
+          ...existingEndOfc,
+          images: newEndOfcImages,
+        };
+
+        const updateData: UpdatePhotosRequest = {
+          id: activity.id,
+          start_ofc: JSON.stringify(updatedStartOfc),
+          end_ofc: JSON.stringify(updatedEndOfc),
+        };
+
+        await updatePhotos(updateData);
+        onUpdate();
+        onClose();
+        setUploading(false);
+        return;
+      }
+
       // Group images by field
       const primaryImages = images.filter(
         (img) => img.fieldName === fieldMapping.primary,
@@ -756,6 +908,8 @@ const ImageModal: React.FC<ImageModalProps> = ({
       crossingPhotos: 'Crossing Photos',
       start_duct: 'Start Duct Images',
       end_duct: 'End Duct Images',
+      start_ofc: 'Start OFC Images',
+      end_ofc: 'End OFC Images',
     };
     return fieldNames[fieldName] || fieldName;
   };
@@ -1006,8 +1160,222 @@ const ImageModal: React.FC<ImageModalProps> = ({
             </div>
           )}
 
+          {/* OFC Event - Special handling for start_ofc and end_ofc */}
+          {fieldMapping?.hasOfc && (
+            <div className="mb-8">
+              {/* Start OFC Section */}
+              <div className="mb-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-medium text-gray-800">
+                    Start OFC
+                  </h3>
+                  <label className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer transition-colors">
+                    <Upload size={16} className="inline mr-2" />
+                    Add Images
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleFileSelect(e, 'start_ofc')}
+                    />
+                  </label>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {images
+                    .filter((img) => img.fieldName === 'start_ofc')
+                    .map((image, index) => (
+                      <div
+                        key={image.id}
+                        className="relative group border rounded-lg overflow-hidden"
+                      >
+                        {image.isVideo ? (
+                          <video
+                            src={image.url}
+                            className="w-full h-48 object-cover cursor-pointer"
+                            onClick={() => setPreviewImage(image.url)}
+                            controls
+                          />
+                        ) : (
+                          <img
+                            src={image.url}
+                            alt={`Start OFC image ${index + 1}`}
+                            className="w-full h-48 object-cover cursor-pointer"
+                            onClick={() => setPreviewImage(image.url)}
+                          />
+                        )}
+                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => setPreviewImage(image.url)}
+                              className="p-2 bg-white rounded-full hover:bg-gray-100"
+                              title="Preview"
+                            >
+                              <Eye size={16} />
+                            </button>
+                            <label
+                              className="p-2 bg-white rounded-full hover:bg-gray-100 cursor-pointer"
+                              title="Replace"
+                            >
+                              <RefreshCw size={16} />
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) replaceImage(image.id, file);
+                                }}
+                              />
+                            </label>
+                            <button
+                              onClick={() => removeImage(image.id)}
+                              className="p-2 bg-white rounded-full hover:bg-gray-100"
+                              title="Delete"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="p-2 bg-gray-50">
+                          <p className="text-xs text-gray-600">
+                            Start OFC #{index + 1}
+                            {image.isReplaced && (
+                              <span className="text-orange-600 ml-1">
+                                (Replaced)
+                              </span>
+                            )}
+                            {image.isNew && !image.isReplaced && (
+                              <span className="text-green-600 ml-1">(New)</span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  {images.filter((img) => img.fieldName === 'start_ofc')
+                    .length === 0 && (
+                    <div className="col-span-full text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+                      <Upload
+                        size={48}
+                        className="mx-auto mb-4 text-gray-400"
+                      />
+                      <p className="text-gray-500">
+                        No files found for Start OFC
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* End OFC Section */}
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-medium text-gray-800">
+                    End OFC
+                  </h3>
+                  <label className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 cursor-pointer transition-colors">
+                    <Upload size={16} className="inline mr-2" />
+                    Add Images
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleFileSelect(e, 'end_ofc')}
+                    />
+                  </label>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {images
+                    .filter((img) => img.fieldName === 'end_ofc')
+                    .map((image, index) => (
+                      <div
+                        key={image.id}
+                        className="relative group border rounded-lg overflow-hidden"
+                      >
+                        {image.isVideo ? (
+                          <video
+                            src={image.url}
+                            title={`End OFC video ${index + 1}`}
+                            className="w-full h-48 object-cover cursor-pointer"
+                            onClick={() => setPreviewImage(image.url)}
+                            controls
+                          />
+                        ) : (
+                          <img
+                            src={image.url}
+                            alt={`End OFC image ${index + 1}`}
+                            className="w-full h-48 object-cover cursor-pointer"
+                            onClick={() => setPreviewImage(image.url)}
+                          />
+                        )}
+                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => setPreviewImage(image.url)}
+                              className="p-2 bg-white rounded-full hover:bg-gray-100"
+                              title="Preview"
+                            >
+                              <Eye size={16} />
+                            </button>
+                            <label
+                              className="p-2 bg-white rounded-full hover:bg-gray-100 cursor-pointer"
+                              title="Replace"
+                            >
+                              <RefreshCw size={16} />
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) replaceImage(image.id, file);
+                                }}
+                              />
+                            </label>
+                            <button
+                              onClick={() => removeImage(image.id)}
+                              className="p-2 bg-white rounded-full hover:bg-gray-100"
+                              title="Delete"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="p-2 bg-gray-50">
+                          <p className="text-xs text-gray-600">
+                            End OFC #{index + 1}
+                            {image.isReplaced && (
+                              <span className="text-orange-600 ml-1">
+                                (Replaced)
+                              </span>
+                            )}
+                            {image.isNew && !image.isReplaced && (
+                              <span className="text-green-600 ml-1">(New)</span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  {images.filter((img) => img.fieldName === 'end_ofc')
+                    .length === 0 && (
+                    <div className="col-span-full text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+                      <Upload
+                        size={48}
+                        className="mx-auto mb-4 text-gray-400"
+                      />
+                      <p className="text-gray-500">
+                        No files found for End OFC
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Primary Field Section */}
-          {!fieldMapping?.hasDuct && fieldMapping?.primary && (
+          {!fieldMapping?.hasDuct && !fieldMapping?.hasOfc && fieldMapping?.primary && (
             <div className="mb-8">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium text-gray-800">
@@ -1133,7 +1501,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
           )}
 
           {/* Videos Section */}
-          {!fieldMapping?.hasDuct && (
+          {!fieldMapping?.hasDuct && !fieldMapping?.hasOfc && (
             <div className="mb-8">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium text-gray-800">Videos</h3>
