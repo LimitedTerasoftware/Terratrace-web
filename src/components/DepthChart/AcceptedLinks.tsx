@@ -23,6 +23,7 @@ interface AcceptedLinkRow {
   completion_percent: number | null;
   ofc_distance_meters:number | null;
   distance_diff_meters:number | null;
+  status:number;
 }
 
 interface AcceptedLinksSummary {
@@ -199,10 +200,10 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       );
       setEditingId(null);
       setEditValue('');
-      toast.success('Actual distance updated.');
+      toast.success('BOQ distance updated.');
     } catch (err) {
-      console.error('Error updating actual distance', err);
-      toast.error('Failed to update actual distance.');
+      console.error('Error updating BOQ distance', err);
+      toast.error('Failed to update BOQ distance.');
     } finally {
       setSavingId(null);
     }
@@ -328,6 +329,32 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       cell: (row) =>
         row.completion_percent != null ? `${row.completion_percent}%` : '-',
     },
+     {
+      name: 'Status',
+      selector: (row) => row.status,
+      sortable: true,
+      cell: (row) => {
+        const status = row.status as 0 | 1 | 2;
+        const statusConfig = {
+          0: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800' },
+          1: { label: 'Accepted', className: 'bg-green-100 text-green-800' },
+          2: { label: 'Rejected', className: 'bg-red-100 text-red-800' },
+        };
+        const config = statusConfig[status] || {
+          label: 'Unknown',
+          className: 'bg-gray-100 text-gray-800',
+        };
+
+        return (
+          <span
+            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${config.className}`}
+          >
+            {config.label}
+          </span>
+        );
+      },
+    },
+
     {
       name: 'Updated',
       selector: (row) => row.updated_at,

@@ -244,6 +244,44 @@ const ImageModal: React.FC<ImageModalProps> = ({
       }
     }
 
+    // Some events other than DEPTH occasionally carry a depthPhoto value too.
+    // Surface it for editing whenever it's present, regardless of event type.
+    if (
+      fieldMapping.primary !== 'depthPhoto' &&
+      fieldMapping.secondary !== 'depthPhoto' &&
+      activity.depthPhoto &&
+      typeof activity.depthPhoto === 'string' &&
+      activity.depthPhoto.trim() !== ''
+    ) {
+      const depthPhotoData = activity.depthPhoto;
+      try {
+        const urls = JSON.parse(depthPhotoData);
+        if (Array.isArray(urls)) {
+          urls.forEach((url, index) => {
+            imageItems.push({
+              id: `depthPhoto-${index}`,
+              url: `${ImgbaseUrl}${url}`,
+              isNew: false,
+              isReplaced: false,
+              fieldName: 'depthPhoto',
+              originalIndex: index,
+              isVideo: checkIsVideo(url),
+            });
+          });
+        }
+      } catch (e) {
+        imageItems.push({
+          id: 'depthPhoto-0',
+          url: `${ImgbaseUrl}${depthPhotoData}`,
+          isNew: false,
+          isReplaced: false,
+          fieldName: 'depthPhoto',
+          originalIndex: 0,
+          isVideo: checkIsVideo(depthPhotoData),
+        });
+      }
+    }
+
     // Load video from activity.video field
     if (
       activity.video &&
@@ -431,6 +469,50 @@ const ImageModal: React.FC<ImageModalProps> = ({
     }
   };
 
+  // Some events other than DEPTH occasionally carry a depthPhoto value too.
+  // Persist edits to it alongside whatever the event's own primary field is.
+  const applyExtraDepthPhoto = async (
+    updateData: UpdatePhotosRequest,
+    fieldMapping: { primary: keyof Activity },
+  ) => {
+    if (fieldMapping.primary === 'depthPhoto' || !activity?.depthPhoto) {
+      return;
+    }
+
+    const depthPhotoImages = images.filter(
+      (img) => img.fieldName === 'depthPhoto',
+    );
+
+    const newDepthPhotoFiles = depthPhotoImages
+      .filter((img) => img.isNew && img.file)
+      .map((img) => img.file!);
+
+    let uploadedDepthPhotoUrls: string[] = [];
+    if (newDepthPhotoFiles.length > 0) {
+      uploadedDepthPhotoUrls = await uploadImages(newDepthPhotoFiles);
+    }
+
+    const finalDepthPhotoUrls: string[] = [];
+    let uploadedIdx = 0;
+    depthPhotoImages.forEach((img) => {
+      if (img.isNew) {
+        if (uploadedIdx < uploadedDepthPhotoUrls.length) {
+          finalDepthPhotoUrls.push(uploadedDepthPhotoUrls[uploadedIdx]);
+          uploadedIdx++;
+        }
+      } else {
+        finalDepthPhotoUrls.push(img.url.replace(ImgbaseUrl, ''));
+      }
+    });
+
+    updateData['depthPhoto'] =
+      finalDepthPhotoUrls.length === 0
+        ? ''
+        : finalDepthPhotoUrls.length === 1
+          ? finalDepthPhotoUrls[0]
+          : JSON.stringify(finalDepthPhotoUrls);
+  };
+
   const handleSave = async () => {
     if (!activity) return;
 
@@ -594,6 +676,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
           updateData['videoDetails'] = '';
         }
 
+        await applyExtraDepthPhoto(updateData, fieldMapping);
         await updatePhotos(updateData);
         onUpdate();
         onClose();
@@ -690,6 +773,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
           end_ofc: JSON.stringify(updatedEndOfc),
         };
 
+        await applyExtraDepthPhoto(updateData, fieldMapping);
         await updatePhotos(updateData);
         onUpdate();
         onClose();
@@ -849,6 +933,8 @@ const ImageModal: React.FC<ImageModalProps> = ({
         updateData['videoDetails'] = '';
       }
 
+      await applyExtraDepthPhoto(updateData, fieldMapping);
+
       // Update photos
       await updatePhotos(updateData);
       onUpdate();
@@ -928,6 +1014,11 @@ const ImageModal: React.FC<ImageModalProps> = ({
   );
   const videoImages = images.filter(
     (img) => img.fieldName === 'video' || img.fieldName === 'videoDetails',
+  );
+  const showExtraDepthPhoto =
+    fieldMapping?.primary !== 'depthPhoto' && !!activity.depthPhoto;
+  const depthPhotoImages = images.filter(
+    (img) => img.fieldName === 'depthPhoto',
   );
 
   return (
@@ -1735,6 +1826,109 @@ const ImageModal: React.FC<ImageModalProps> = ({
                 )}
               </div>
             )}
+
+          {/* Extra Depth Photo Section - shown for non-DEPTH events that also carry a depthPhoto value */}
+          {showExtraDepthPhoto && (
+            <div className="mb-8">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-800">
+                  Depth Photo
+                </h3>
+                <label className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer transition-colors">
+                  <Upload size={16} className="inline mr-2" />
+                  Add Images
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleFileSelect(e, 'depthPhoto')}
+                  />
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {depthPhotoImages.map((image, index) => (
+                  <div
+                    key={image.id}
+                    className="relative group border rounded-lg overflow-hidden"
+                  >
+                    {image.isVideo ? (
+                      <video
+                        src={image.url}
+                        title={`Depth Photo video ${index + 1}`}
+                        className="w-full h-48 object-cover cursor-pointer"
+                        onClick={() => setPreviewImage(image.url)}
+                        controls
+                      />
+                    ) : (
+                      <img
+                        src={image.url}
+                        alt={`Depth Photo ${index + 1}`}
+                        className="w-full h-48 object-cover cursor-pointer"
+                        onClick={() => setPreviewImage(image.url)}
+                      />
+                    )}
+
+                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => setPreviewImage(image.url)}
+                          className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors"
+                          title="Preview"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <label
+                          className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+                          title="Replace"
+                        >
+                          <RefreshCw size={16} />
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) replaceImage(image.id, file);
+                            }}
+                          />
+                        </label>
+                        <button
+                          onClick={() => removeImage(image.id)}
+                          className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="p-2 bg-gray-50">
+                      <p className="text-xs text-gray-600 truncate">
+                        Depth Photo #{index + 1}
+                        {image.isReplaced && (
+                          <span className="text-orange-600 ml-1">
+                            (Replaced)
+                          </span>
+                        )}
+                        {image.isNew && !image.isReplaced && (
+                          <span className="text-green-600 ml-1">(New)</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {depthPhotoImages.length === 0 && (
+                <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+                  <Upload size={48} className="mx-auto mb-4 text-gray-400" />
+                  <p className="text-gray-500">No files found for Depth Photo</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end space-x-3 p-6 border-t bg-gray-50">
