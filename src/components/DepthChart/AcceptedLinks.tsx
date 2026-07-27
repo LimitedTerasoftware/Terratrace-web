@@ -24,6 +24,7 @@ interface AcceptedLinkRow {
   ofc_distance_meters:number | null;
   distance_diff_meters:number | null;
   status:number;
+  ofc_status:number;
 }
 
 interface AcceptedLinksSummary {
@@ -41,6 +42,8 @@ interface AcceptedLinksProps {
   selectedBlock: string | null;
   globalsearch: string;
   filtersReady: boolean;
+  tdStatus?: string;
+  ofcStatus?: string;
   onSummaryChange?: (summary: AcceptedLinksSummary | null) => void;
 }
 
@@ -90,6 +93,8 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
   selectedBlock,
   globalsearch,
   filtersReady,
+  tdStatus,
+  ofcStatus,
   onSummaryChange,
 }) => {
   const [loading, setLoading] = useState(false);
@@ -117,6 +122,8 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
         if (selectedDistrict) params.district_id = selectedDistrict;
         if (selectedBlock) params.block_id = selectedBlock;
         if (globalsearch.trim()) params.search = globalsearch.trim();
+        if (tdStatus) params.td_status = tdStatus;
+        if (ofcStatus) params.ofc_status = ofcStatus;
 
         const response = await axios.get<{
           status: boolean;
@@ -155,6 +162,8 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
     selectedDistrict,
     selectedBlock,
     globalsearch,
+    tdStatus,
+    ofcStatus,
     filtersReady,
     page,
     perPage,
@@ -162,7 +171,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
 
   useEffect(() => {
     setPage(1);
-  }, [selectedState, selectedDistrict, selectedBlock, globalsearch]);
+  }, [selectedState, selectedDistrict, selectedBlock, globalsearch, tdStatus, ofcStatus]);
 
   const startEdit = (row: AcceptedLinkRow) => {
     setEditingId(row.id);
@@ -330,7 +339,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
         row.completion_percent != null ? `${row.completion_percent}%` : '-',
     },
      {
-      name: 'Status',
+      name: 'T & D Status',
       selector: (row) => row.status,
       sortable: true,
       cell: (row) => {
@@ -354,7 +363,31 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
         );
       },
     },
+     {
+      name: 'OFC Status',
+      selector: (row) => row.ofc_status,
+      sortable: true,
+      cell: (row) => {
+        const status = row.ofc_status as 0 | 1 | 2;
+        const statusConfig = {
+          0: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800' },
+          1: { label: 'Accepted', className: 'bg-green-100 text-green-800' },
+          2: { label: 'Rejected', className: 'bg-red-100 text-red-800' },
+        };
+        const config = statusConfig[status] || {
+          label: 'Unknown',
+          className: 'bg-gray-100 text-gray-800',
+        };
 
+        return (
+          <span
+            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${config.className}`}
+          >
+            {config.label}
+          </span>
+        );
+      },
+    },
     {
       name: 'Updated',
       selector: (row) => row.updated_at,

@@ -82,6 +82,8 @@ function ConstructionPage() {
   const [worktype, setworktype] = useState<string>('');
   const [constType, setConstType] = useState<string>('Hdd');
   const [cords, setcords] = useState<string>('');
+  const [tdStatus, setTdStatus] = useState<string>('');
+  const [ofcStatus, setOfcStatus] = useState<string>('');
   const [page, setPage] = useState<number>(() => {
     const pageParam = Number(new URLSearchParams(window.location.search).get('page'));
     return pageParam > 0 ? pageParam : 1;
@@ -309,6 +311,8 @@ function ConstructionPage() {
     const constType = searchParams.get('constType') || 'Hdd';
     const cords = searchParams.get('cords') || '';
     const tab = searchParams.get('tab') || 'UG';
+    const td_status = searchParams.get('td_status') || '';
+    const ofc_status = searchParams.get('ofc_status') || '';
 
     setcords(cords);
     setSelectedState(state_id);
@@ -329,6 +333,8 @@ function ConstructionPage() {
     setFiltersReady(true);
     setConstType(constType);
     setActiveTab(tab === 'AcceptedLinks' ? 'AcceptedLinks' : 'UG');
+    setTdStatus(td_status);
+    setOfcStatus(ofc_status);
   }, []);
 
   useEffect(() => {
@@ -350,6 +356,8 @@ function ConstructionPage() {
     tab?: 'UG' | 'AcceptedLinks',
     cords?: string | '',
     page?: number,
+    tdStatus?: string,
+    ofcStatus?: string,
   ) => {
     const params: Record<string, string> = {};
     if (newState) params.state_id = newState;
@@ -367,6 +375,8 @@ function ConstructionPage() {
     if (tab) params.tab = tab;
     if (cords) params.cords = cords;
     if (page && page > 1) params.page = String(page);
+    if (tdStatus) params.td_status = tdStatus;
+    if (ofcStatus) params.ofc_status = ofcStatus;
     setSearchParams(params);
     if (!page) setPage(1);
   };
@@ -384,6 +394,8 @@ function ConstructionPage() {
     setworktype('');
     setConstType('');
     setcords('');
+    setTdStatus('');
+    setOfcStatus('');
     setPage(1);
   };
 
@@ -402,6 +414,9 @@ function ConstructionPage() {
       constType,
       tab,
       cords,
+      page,
+      tdStatus,
+      ofcStatus,
     );
   };
 
@@ -425,6 +440,8 @@ function ConstructionPage() {
       activeTab,
       cords,
       page,
+      tdStatus,
+      ofcStatus,
     );
   };
 
@@ -446,6 +463,8 @@ function ConstructionPage() {
       activeTab,
       cords,
       page,
+      tdStatus,
+      ofcStatus,
     );
   };
 
@@ -467,6 +486,8 @@ function ConstructionPage() {
       activeTab,
       cords,
       page,
+      tdStatus,
+      ofcStatus,
     );
   };
   const handleLinkChange = (value: string) => {
@@ -485,6 +506,8 @@ function ConstructionPage() {
       activeTab,
       cords,
       page,
+      tdStatus,
+      ofcStatus,
     );
   };
 
@@ -507,6 +530,8 @@ function ConstructionPage() {
       activeTab,
       cords,
       page,
+      tdStatus,
+      ofcStatus,
     );
   };
 
@@ -538,6 +563,8 @@ function ConstructionPage() {
       activeTab,
       cords,
       page,
+      tdStatus,
+      ofcStatus,
     );
   };
   const handleConstTypeChange = (value: string) => {
@@ -556,6 +583,8 @@ function ConstructionPage() {
       activeTab,
       cords,
       page,
+      tdStatus,
+      ofcStatus,
     );
   };
   const handleCordsChange = (value: string) => {
@@ -574,6 +603,50 @@ function ConstructionPage() {
       activeTab,
       value,
       page,
+      tdStatus,
+      ofcStatus,
+    );
+  };
+
+  const handleTdStatusChange = (value: string) => {
+    setTdStatus(value);
+    handleFilterChange(
+      selectedState,
+      selectedDistrict,
+      selectedBlock,
+      selectedConnection,
+      selectedStatus,
+      worktype,
+      fromdate,
+      todate,
+      globalsearch,
+      constType,
+      activeTab,
+      cords,
+      page,
+      value,
+      ofcStatus,
+    );
+  };
+
+  const handleOfcStatusChange = (value: string) => {
+    setOfcStatus(value);
+    handleFilterChange(
+      selectedState,
+      selectedDistrict,
+      selectedBlock,
+      selectedConnection,
+      selectedStatus,
+      worktype,
+      fromdate,
+      todate,
+      globalsearch,
+      constType,
+      activeTab,
+      cords,
+      page,
+      tdStatus,
+      value,
     );
   };
 
@@ -593,6 +666,8 @@ function ConstructionPage() {
       activeTab,
       cords,
       page,
+      tdStatus,
+      ofcStatus,
     );
   };
 
@@ -612,6 +687,8 @@ function ConstructionPage() {
       activeTab,
       cords,
       page,
+      tdStatus,
+      ofcStatus,
     );
   };
 
@@ -631,6 +708,8 @@ function ConstructionPage() {
       activeTab,
       cords,
       page,
+      tdStatus,
+      ofcStatus,
     );
   };
   const handlePageChange = (newPage: number) => {
@@ -649,6 +728,8 @@ function ConstructionPage() {
       activeTab,
       cords,
       newPage,
+      tdStatus,
+      ofcStatus,
     );
   };
   return (
@@ -865,6 +946,70 @@ function ConstructionPage() {
                 )}
               </div>
             </div>
+            {/* T&D and OFC Status Filters */}
+            {activeTab === 'AcceptedLinks' && (
+              <>
+                <div className="relative flex-1 min-w-0 sm:flex-none sm:w-40">
+                  <select
+                    value={tdStatus}
+                    onChange={(e) => handleTdStatusChange(e.target.value)}
+                    className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  >
+                    <option value="">All T&D Status</option>
+                    {statusOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                    <svg
+                      className="w-4 h-4 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </div>
+                </div>
+
+                <div className="relative flex-1 min-w-0 sm:flex-none sm:w-40">
+                  <select
+                    value={ofcStatus}
+                    onChange={(e) => handleOfcStatusChange(e.target.value)}
+                    className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  >
+                    <option value="">All OFC Status</option>
+                    {statusOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                    <svg
+                      className="w-4 h-4 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </>
+            )}
             {/* Links Filter */}
             {activeTab === 'UG' && (
             <>
@@ -1229,6 +1374,8 @@ function ConstructionPage() {
               selectedBlock={selectedBlock}
               globalsearch={globalsearch}
               filtersReady={filtersReady}
+              tdStatus={tdStatus}
+              ofcStatus={ofcStatus}
               onSummaryChange={setAcceptedLinksSummary}
             />
           </>
