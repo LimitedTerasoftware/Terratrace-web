@@ -313,11 +313,59 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       sortable: true,
       cell: (row) => (row.total_distance_meters ?? 0).toFixed(2),
     },
+      {
+      name: 'T & D Status',
+      selector: (row) => row.status,
+      sortable: true,
+      cell: (row) => {
+        const status = row.status as 0 | 1 ;
+        const statusConfig = {
+          0: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800' },
+          1: { label: 'Completed', className: 'bg-green-100 text-green-800' },
+        };
+        const config = statusConfig[status] || {
+          label: 'Unknown',
+          className: 'bg-gray-100 text-gray-800',
+        };
+
+        return (
+          <span
+            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${config.className}`}
+          >
+            {config.label}
+          </span>
+        );
+      },
+    },
     {
       name :'OFC/Blowing Distance',
       selector:(row)=>row.ofc_distance_meters ?? 0,
      sortable: true,
       cell: (row) =>(row.ofc_distance_meters ?? 0).toFixed(2),
+    },
+      {
+      name: 'OFC Status',
+      selector: (row) => row.ofc_status,
+      sortable: true,
+      cell: (row) => {
+        const status = row.ofc_status as 0 | 1 ;
+        const statusConfig = {
+          0: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800' },
+          1: { label: 'Completed', className: 'bg-green-100 text-green-800' },
+        };
+        const config = statusConfig[status] || {
+          label: 'Unknown',
+          className: 'bg-gray-100 text-gray-800',
+        };
+
+        return (
+          <span
+            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${config.className}`}
+          >
+            {config.label}
+          </span>
+        );
+      },
     },
     {
       name :'Distance Difference',
@@ -338,56 +386,8 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       cell: (row) =>
         row.completion_percent != null ? `${row.completion_percent}%` : '-',
     },
-     {
-      name: 'T & D Status',
-      selector: (row) => row.status,
-      sortable: true,
-      cell: (row) => {
-        const status = row.status as 0 | 1 | 2;
-        const statusConfig = {
-          0: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800' },
-          1: { label: 'Accepted', className: 'bg-green-100 text-green-800' },
-          2: { label: 'Rejected', className: 'bg-red-100 text-red-800' },
-        };
-        const config = statusConfig[status] || {
-          label: 'Unknown',
-          className: 'bg-gray-100 text-gray-800',
-        };
-
-        return (
-          <span
-            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${config.className}`}
-          >
-            {config.label}
-          </span>
-        );
-      },
-    },
-     {
-      name: 'OFC Status',
-      selector: (row) => row.ofc_status,
-      sortable: true,
-      cell: (row) => {
-        const status = row.ofc_status as 0 | 1 | 2;
-        const statusConfig = {
-          0: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800' },
-          1: { label: 'Accepted', className: 'bg-green-100 text-green-800' },
-          2: { label: 'Rejected', className: 'bg-red-100 text-red-800' },
-        };
-        const config = statusConfig[status] || {
-          label: 'Unknown',
-          className: 'bg-gray-100 text-gray-800',
-        };
-
-        return (
-          <span
-            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${config.className}`}
-          >
-            {config.label}
-          </span>
-        );
-      },
-    },
+   
+   
     {
       name: 'Updated',
       selector: (row) => row.updated_at,
