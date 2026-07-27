@@ -729,8 +729,18 @@ function Eventreport() {
         },
       );
       if (response.data.status === 1) {
-        toast.success('Record Rejected successfully.');
+        toast.success('Record Accepted successfully!');
+        try {
+          await axios.post(`${TraceBASEURL}/addlink-tracker`, {
+            survey_id: String(MainData.id),
+          });
+        } catch (linkError) {
+          console.error('Error adding link tracker:', linkError);
+        }
+      } else {
+        toast.error('Failed to accept record');
       }
+   
     } catch (error) {
       console.error('Error rejecting record:', error);
       alert('Failed to reject record.');

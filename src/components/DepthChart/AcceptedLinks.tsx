@@ -314,6 +314,13 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       cell: (row) => (row.total_distance_meters ?? 0).toFixed(2),
     },
       {
+      name: 'Completion %',
+      selector: (row) => row.completion_percent ?? 0,
+      sortable: true,
+      cell: (row) =>
+        row.completion_percent != null ? `${row.completion_percent}%` : '-',
+    },
+      {
       name: 'T & D Status',
       selector: (row) => row.status,
       sortable: true,
@@ -367,28 +374,14 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
         );
       },
     },
-    {
-      name :'Distance Difference',
-      selector:(row)=>row.distance_diff_meters ?? 0,
-     sortable: true,
-      cell: (row) =>(row.distance_diff_meters ?? 0).toFixed(2),
-    },
+ 
     {
       name :'JointChamber Count',
       selector:(row)=>'-',
      sortable: true,
       cell: (row) =>'-',
     },
-    {
-      name: 'Completion %',
-      selector: (row) => row.completion_percent ?? 0,
-      sortable: true,
-      cell: (row) =>
-        row.completion_percent != null ? `${row.completion_percent}%` : '-',
-    },
-   
-   
-    {
+   {
       name: 'Updated',
       selector: (row) => row.updated_at,
       sortable: true,

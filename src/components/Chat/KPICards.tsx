@@ -51,13 +51,13 @@ export default function KPICards({
         <div className="flex items-start justify-between">
           <div>
             <p className="text-xs font-medium text-gray-600 uppercase">
-              Total Mt Completed
+              Total KM Completed
             </p>
             <p className="text-3xl font-bold text-gray-900 mt-2">
-              {/* {(parseFloat(Data.summary.total_distance) / 1000).toFixed(2)}{' '} */}
-              {parseFloat(Data.summary.total_distance).toFixed(2)}{' '}
+              {(parseFloat(Data.summary.total_distance) / 1000).toFixed(2)}{' '}
+              {/* {parseFloat(Data.summary.total_distance).toFixed(2)}{' '} */}
 
-              <span className="text-lg font-normal text-gray-600">mt</span>
+              <span className="text-lg font-normal text-gray-600">KM</span>
             </p>
             {/* <p className="text-xs text-green-600 mt-1 flex items-center">
               <TrendingUp className="w-3 h-3 mr-1" />
@@ -74,12 +74,12 @@ export default function KPICards({
         <div className="flex items-start justify-between">
           <div>
             <p className="text-xs font-medium text-gray-600 uppercase">
-              Mt Completed Today
+              KM Completed Today
             </p>
             <p className="text-3xl font-bold text-gray-900 mt-2">
-              {/* {((Data?.summary?.todays_distance ?? 0) / 1000).toFixed(3)}{' '} */}
-               {((Data?.summary?.todays_distance ?? 0)).toFixed(2)}{' '}
-              <span className="text-lg font-normal text-gray-600">mt</span>
+              {((Data?.summary?.todays_distance ?? 0) / 1000).toFixed(3)}{' '}
+               {/* {((Data?.summary?.todays_distance ?? 0)).toFixed(2)}{' '} */}
+              <span className="text-lg font-normal text-gray-600">KM</span>
             </p>
 
             {yesterdayKm !== undefined && yesterdayKm > 0 && (
