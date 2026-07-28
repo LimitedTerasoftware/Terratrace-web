@@ -503,6 +503,10 @@ export interface UGConstructionSurveyData {
   firm_name:string|null;
   dgps_id:string|null;
   ofc_distance:string|null;
+  start_latitude:string|null;
+  start_longitude:string|null;
+  end_latitude:string|null;
+  end_longitude:string|null;
 }
 export interface SurveyLinksData {
     startLocation: number; 

@@ -106,6 +106,10 @@ export interface PolePreview {
   user_name: string | null;
   user_mobile: string | null;
   muff_type: string | null;
+  start_latitude:string|null;
+  start_longitude:string|null;
+  end_latitude:string|null;
+  end_longitude:string|null;
 }
 
 export interface JointEnclosure {

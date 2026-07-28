@@ -16,6 +16,7 @@ import { ChevronDown, Eye, EyeIcon, Loader, RotateCcw, Search, SheetIcon, TableC
 import { AerialSurveyDetails } from "../../types/aerial-survey";
 import AerialSurveyMap from "../AerialSurveyMap/AerialSurveyMap";
 import { FaArrowLeft } from "react-icons/fa";
+import moment from "moment";
 
 interface AerialSurvey {
   id: string;
@@ -39,6 +40,8 @@ interface AerialSurvey {
   updated_at: string;
   fullname: string,
   contact_no: number,
+  workType:string,
+  version:string|null,
 }
 
 interface ApiResponse {
@@ -560,6 +563,7 @@ const exporExcel = async (BlockData: AerialSurveyDetails[]) => {
       { accessorKey: "block_name", header: "Block Name" },
       { accessorKey: "startGpName", header: "Start GP Name" },
       { accessorKey: "endGpName", header: "End GP Name" },
+      { accessorKey: "workType", header: "Work Type" },
       {
         accessorKey: "fullname", 
         header: "Surveyor Name",
@@ -575,6 +579,7 @@ const exporExcel = async (BlockData: AerialSurveyDetails[]) => {
           </div>
         ),
       },
+      { accessorKey: "version", header: "Version" },
       {
         accessorKey: "is_active",
         header: "Status",
@@ -593,7 +598,14 @@ const exporExcel = async (BlockData: AerialSurveyDetails[]) => {
             </span>
           );
         }
-      }
+      },
+      {
+        accessorKey: 'created_at',
+        header: "Created At",
+        sortable: true,
+        maxWidth: '140px',
+        cell: ({row}:{row:any}) => moment(row.created_at).format('DD/MM/YYYY'),
+      },
     ],
     [selectedRowsMap]
   );

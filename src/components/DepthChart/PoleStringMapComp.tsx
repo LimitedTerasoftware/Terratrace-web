@@ -20,12 +20,71 @@ const EVENT_MARKER_CONFIG: Record<
   DRUM: { color: '#F59E0B', icon: '🥁', label: 'Drum' },
   LANDMARK: { color: '#10B981', icon: '📍', label: 'Landmark' },
   PREVIEW: { color: '#EF4444', icon: '📍', label: 'Survey' },
+  START: { color: '#22C55E', icon: '🟢', label: 'Start Point' },
+  END: { color: '#DC2626', icon: '🔴', label: 'End Point' },
 };
 
 const DEFAULT_MARKER = { color: '#6B7280', icon: '📌', label: 'Other' };
 
+// Classic teardrop map-pin outline (24x24 viewBox), tip pointing down —
+// used for the start/end markers so they read as "drop pins" on the map.
+const PIN_PATH =
+  'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z';
+
 const getMarkerConfig = (eventType: string) =>
   EVENT_MARKER_CONFIG[eventType] ?? { ...DEFAULT_MARKER, label: eventType };
+
+// Preview data (raw survey pings) can run into the thousands. Creating a
+// google.maps.Marker per point freezes the map, so above this count we draw
+// only the route polyline and hold off on individual pins until the user
+// zooms in far enough to make sense of them.
+const PREVIEW_LARGE_THRESHOLD = 500;
+const PREVIEW_DETAIL_ZOOM = 16;
+
+function sampleEvenly<T>(items: T[], maxCount: number): T[] {
+  if (items.length <= maxCount) return items;
+  const step = items.length / maxCount;
+  const sampled: T[] = [];
+  for (let i = 0; i < maxCount; i++) {
+    sampled.push(items[Math.floor(i * step)]);
+  }
+  return sampled;
+}
+
+interface EndpointPoint {
+  lat: number;
+  lng: number;
+  label: string | null;
+}
+
+// GP link start/end coordinates repeat on every preview record for that
+// link — collapse them down to one marker per unique location.
+function uniqueEndpoints(
+  records: PolePreview[] | undefined,
+  latKey: 'start_latitude' | 'end_latitude',
+  lngKey: 'start_longitude' | 'end_longitude',
+  labelKey: 'start_lgd_name' | 'end_lgd_name',
+): EndpointPoint[] {
+  if (!records) return [];
+  const seen = new Set<string>();
+  const result: EndpointPoint[] = [];
+
+  records.forEach((rec) => {
+    const latStr = rec[latKey];
+    const lngStr = rec[lngKey];
+    if (!latStr || !lngStr) return;
+    const lat = parseFloat(latStr);
+    const lng = parseFloat(lngStr);
+    if (isNaN(lat) || isNaN(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return;
+
+    const key = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    result.push({ lat, lng, label: rec[labelKey] });
+  });
+
+  return result;
+}
 
 const baseUrl = import.meta.env.VITE_Image_URL;
 
@@ -290,15 +349,35 @@ const MapComponent: React.FC<Props> = ({ data, previewData }) => {
   const [selectedPreview, setSelectedPreview] = useState<PolePreview | null>(
     null,
   );
+  const [selectedEndpoint, setSelectedEndpoint] = useState<
+    { kind: 'START' | 'END'; point: EndpointPoint } | null
+  >(null);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [gPreviewPolylines, setGPreviewPolylines] = useState<google.maps.Polyline[]>([]);
+  const [mapZoom, setMapZoom] = useState(14);
+  const [mapBounds, setMapBounds] = useState<google.maps.LatLngBounds | null>(null);
+  const hasFitBoundsRef = useRef(false);
 
-  // Derive unique event types present in data (plus PREVIEW if previewData exists)
+  // GP link start/end points — deduplicated, since every preview record on
+  // the same link repeats the same start/end coordinates.
+  const startPoints = useMemo(
+    () => uniqueEndpoints(previewData, 'start_latitude', 'start_longitude', 'start_lgd_name'),
+    [previewData],
+  );
+  const endPoints = useMemo(
+    () => uniqueEndpoints(previewData, 'end_latitude', 'end_longitude', 'end_lgd_name'),
+    [previewData],
+  );
+
+  // Derive unique event types present in data (plus PREVIEW/START/END if applicable)
   const presentTypes = useMemo(() => {
     const types = new Set(data.map((d) => d.eventType));
     if (previewData && previewData.length > 0) types.add('PREVIEW');
+    if (startPoints.length > 0) types.add('START');
+    if (endPoints.length > 0) types.add('END');
     return Array.from(types);
-  }, [data, previewData]);
+  }, [data, previewData, startPoints, endPoints]);
   const [visibleTypes, setVisibleTypes] = useState<Set<string>>(
     new Set(presentTypes),
   );
@@ -307,8 +386,10 @@ const MapComponent: React.FC<Props> = ({ data, previewData }) => {
   useEffect(() => {
     const types = new Set(data.map((d) => d.eventType));
     if (previewData && previewData.length > 0) types.add('PREVIEW');
+    if (startPoints.length > 0) types.add('START');
+    if (endPoints.length > 0) types.add('END');
     setVisibleTypes(types);
-  }, [data, previewData]);
+  }, [data, previewData, startPoints, endPoints]);
 
   // Valid points only
   const validData = data.filter(
@@ -320,6 +401,37 @@ const MapComponent: React.FC<Props> = ({ data, previewData }) => {
       Math.abs(Number(r.latitude)) <= 90 &&
       Math.abs(Number(r.longitude)) <= 180,
   );
+
+  // Valid preview points, parsed once per previewData change
+  const validPreview = useMemo(() => {
+    if (!previewData) return [];
+    return previewData
+      .map((rec) => ({ rec, lat: parseFloat(rec.latitude), lng: parseFloat(rec.longitude) }))
+      .filter(
+        ({ lat, lng }) => !isNaN(lat) && !isNaN(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180,
+      );
+  }, [previewData]);
+
+  // New dataset → allow the map to re-fit its bounds once more.
+  useEffect(() => {
+    hasFitBoundsRef.current = false;
+  }, [data, previewData]);
+
+  // Preview data can be huge (thousands of raw survey pings). Above the
+  // threshold we skip individual pins while zoomed out — the route polyline
+  // (drawn separately, see below) still shows the overall shape — and only
+  // render pins inside the current viewport once the user zooms in.
+  const previewMarkersToRender = useMemo(() => {
+    if (!visibleTypes.has('PREVIEW')) return [];
+    if (validPreview.length <= PREVIEW_LARGE_THRESHOLD) return validPreview;
+
+    if (mapZoom >= PREVIEW_DETAIL_ZOOM && mapBounds) {
+      const inView = validPreview.filter(({ lat, lng }) => mapBounds.contains({ lat, lng }));
+      return sampleEvenly(inView, PREVIEW_LARGE_THRESHOLD * 2);
+    }
+
+    return [];
+  }, [validPreview, visibleTypes, mapZoom, mapBounds]);
 
   // ── Init map ────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -350,8 +462,32 @@ const MapComponent: React.FC<Props> = ({ data, previewData }) => {
       ],
     });
 
+    mapInstance.addListener('idle', () => {
+      setMapZoom(mapInstance.getZoom() ?? 14);
+      setMapBounds(mapInstance.getBounds() ?? null);
+    });
+
     setMap(mapInstance);
   }, [data, map]);
+
+  // Fit the map to the full dataset once per load — kept separate from
+  // marker creation so pan/zoom (which recomputes previewMarkersToRender)
+  // never fights the user by re-fitting bounds.
+  useEffect(() => {
+    if (!map || hasFitBoundsRef.current) return;
+    const allPoints = [
+      ...validData.map((r) => ({ lat: Number(r.latitude), lng: Number(r.longitude) })),
+      ...validPreview.map(({ lat, lng }) => ({ lat, lng })),
+      ...startPoints.map(({ lat, lng }) => ({ lat, lng })),
+      ...endPoints.map(({ lat, lng }) => ({ lat, lng })),
+    ];
+    if (allPoints.length === 0) return;
+
+    const bounds = new google.maps.LatLngBounds();
+    allPoints.forEach((p) => bounds.extend(p));
+    map.fitBounds(bounds);
+    hasFitBoundsRef.current = true;
+  }, [map, validData, validPreview, startPoints, endPoints]);
 
   // ── Create / update markers ─────────────────────────────────────────────────
   useEffect(() => {
@@ -399,57 +535,71 @@ const MapComponent: React.FC<Props> = ({ data, previewData }) => {
       newMarkers.push(marker);
     });
 
-    // Add preview data markers
-    if (previewData && visibleTypes.has('PREVIEW')) {
-      previewData.forEach((rec) => {
-        const lat = parseFloat(rec.latitude);
-        const lng = parseFloat(rec.longitude);
-        if (
-          isNaN(lat) ||
-          isNaN(lng) ||
-          Math.abs(lat) > 90 ||
-          Math.abs(lng) > 180
-        )
-          return;
+    // Add preview data markers — capped/viewport-limited by previewMarkersToRender
+    previewMarkersToRender.forEach(({ rec, lat, lng }) => {
+      idx++;
+      const cfg = getMarkerConfig('PREVIEW');
+      const marker = new google.maps.Marker({
+        position: { lat, lng },
+        map,
+        title: `Survey — ${rec.pit_id ?? rec.id}`,
+        label: {
+          text: idx.toString(),
+          color: '#ffffff',
+          fontSize: '11px',
+          fontWeight: 'bold',
+        },
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 8,
+          fillColor: cfg.color,
+          fillOpacity: 0.9,
+          strokeColor: '#ffffff',
+          strokeWeight: 2,
+        },
+      });
+      marker.addListener('click', () => setSelectedPreview(rec));
+      newMarkers.push(marker);
+    });
+
+    // GP link start/end markers (already deduplicated in startPoints/endPoints)
+    const addEndpointMarkers = (points: EndpointPoint[], kind: 'START' | 'END') => {
+      if (!visibleTypes.has(kind)) return;
+      const cfg = getMarkerConfig(kind);
+      points.forEach((point) => {
         idx++;
-        const cfg = getMarkerConfig('PREVIEW');
         const marker = new google.maps.Marker({
-          position: { lat, lng },
+          position: { lat: point.lat, lng: point.lng },
           map,
-          title: `Survey — ${rec.pit_id ?? rec.id}`,
+          title: `${cfg.label}${point.label ? ` — ${point.label}` : ''}`,
+          icon: {
+            path: PIN_PATH,
+            fillColor: cfg.color,
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 1.5,
+            scale: 1.7,
+            anchor: new google.maps.Point(12, 22),
+            labelOrigin: new google.maps.Point(12, 9),
+          },
           label: {
-            text: idx.toString(),
+            text: kind === 'START' ? 'S' : 'E',
             color: '#ffffff',
-            fontSize: '11px',
+            fontSize: '10px',
             fontWeight: 'bold',
           },
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 8,
-            fillColor: cfg.color,
-            fillOpacity: 0.9,
-            strokeColor: '#ffffff',
-            strokeWeight: 2,
-          },
-          animation: google.maps.Animation.DROP,
+          zIndex: google.maps.Marker.MAX_ZINDEX + 1,
         });
-        marker.addListener('click', () => setSelectedPreview(rec));
+        marker.addListener('click', () => setSelectedEndpoint({ kind, point }));
         newMarkers.push(marker);
       });
-    }
+    };
+
+    addEndpointMarkers(startPoints, 'START');
+    addEndpointMarkers(endPoints, 'END');
 
     setGMarkers(newMarkers);
-
-    // Fit bounds
-    if (newMarkers.length > 0) {
-      const bounds = new google.maps.LatLngBounds();
-      newMarkers.forEach((m) => {
-        const pos = m.getPosition();
-        if (pos) bounds.extend(pos);
-      });
-      map.fitBounds(bounds);
-    }
-  }, [map, data, previewData, visibleTypes]);
+  }, [map, data, visibleTypes, previewMarkersToRender, startPoints, endPoints]);
 
   // ── Draw polylines (one per survey_id, points sorted by id) ─────────────────
   useEffect(() => {
@@ -523,6 +673,46 @@ const MapComponent: React.FC<Props> = ({ data, previewData }) => {
     setGPolylines(newPolylines);
   }, [map, data, visibleTypes, showPolylines]);
 
+  // ── Draw preview route polylines (one per survey_id, sorted by id) ─────────
+  // Drawn independently of previewMarkersToRender so the overall route stays
+  // visible even while zoomed out and individual pins are held back.
+  useEffect(() => {
+    if (!map) return;
+
+    gPreviewPolylines.forEach((p) => p.setMap(null));
+
+    if (!showPolylines || !visibleTypes.has('PREVIEW') || validPreview.length < 2) {
+      setGPreviewPolylines([]);
+      return;
+    }
+
+    const groups: Record<string, { rec: PolePreview; lat: number; lng: number }[]> = {};
+    validPreview.forEach((p) => {
+      const key = String(p.rec.survey_id ?? `no_survey_${p.rec.id}`);
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(p);
+    });
+
+    const newPreviewPolylines: google.maps.Polyline[] = [];
+    Object.values(groups).forEach((points) => {
+      const sorted = [...points].sort((a, b) => a.rec.id - b.rec.id);
+      if (sorted.length < 2) return;
+
+      const polyline = new google.maps.Polyline({
+        path: sorted.map(({ lat, lng }) => ({ lat, lng })),
+        map,
+        strokeColor: '#EF4444',
+        strokeOpacity: 0.7,
+        strokeWeight: 2,
+        geodesic: true,
+      });
+
+      newPreviewPolylines.push(polyline);
+    });
+
+    setGPreviewPolylines(newPreviewPolylines);
+  }, [map, validPreview, visibleTypes, showPolylines]);
+
   // ── Close filter panel on outside click ────────────────────────────────────
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -553,14 +743,27 @@ const MapComponent: React.FC<Props> = ({ data, previewData }) => {
     );
   };
 
-  const getCount = (type: string) =>
-    validData.filter((r) => r.eventType === type).length;
+  const getCount = (type: string) => {
+    if (type === 'PREVIEW') return validPreview.length;
+    if (type === 'START') return startPoints.length;
+    if (type === 'END') return endPoints.length;
+    return validData.filter((r) => r.eventType === type).length;
+  };
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="relative w-full h-full">
       {/* Map canvas */}
       <div ref={mapRef} className="w-full h-full rounded-lg shadow-lg" />
+
+      {/*  notice for large preview datasets */}
+      {visibleTypes.has('PREVIEW') && validPreview.length > PREVIEW_LARGE_THRESHOLD && (
+        <div className="absolute top-15 left-2 z-10 bg-white rounded-lg shadow-lg px-3 py-1.5 text-xs text-gray-700">
+          {mapZoom < PREVIEW_DETAIL_ZOOM
+            ? `Showing route line for ${validPreview.length} preview points — zoom in to see individual points`
+            : `Showing ${previewMarkersToRender.length} of ${validPreview.length} preview points in view`}
+        </div>
+      )}
 
       {/* Filter panel */}
       <div ref={filterRef} className="absolute top-2 right-10 z-10">
@@ -819,6 +1022,40 @@ const MapComponent: React.FC<Props> = ({ data, previewData }) => {
                   </div>
                 );
               })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedEndpoint && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20">
+          <div className="bg-white rounded-lg shadow-xl max-w-sm w-72 overflow-hidden">
+            <div
+              className="p-4 text-white"
+              style={{
+                background: `linear-gradient(135deg, ${getMarkerConfig(selectedEndpoint.kind).color}, ${getMarkerConfig(selectedEndpoint.kind).color}bb)`,
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-sm">
+                  {getMarkerConfig(selectedEndpoint.kind).label}
+                </h3>
+                <button
+                  onClick={() => setSelectedEndpoint(null)}
+                  className="text-white hover:text-gray-200 transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+            <div className="p-4 space-y-2">
+              {selectedEndpoint.point.label && (
+                <Row label="GP Name" value={selectedEndpoint.point.label} />
+              )}
+              <Row
+                label="Coordinates"
+                value={`${selectedEndpoint.point.lat}, ${selectedEndpoint.point.lng}`}
+              />
             </div>
           </div>
         </div>

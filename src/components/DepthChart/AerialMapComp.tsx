@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Eye, EyeOff, Filter, X, ZoomIn } from 'lucide-react';
 import GoogleMapsLoader from '../hooks/googleMapsLoader';
 import moment from 'moment';
@@ -32,6 +32,25 @@ const MARKER_TYPES = {
 } as const;
 
 type MarkerType = keyof typeof MARKER_TYPES;
+
+// Above this many visible markers we stop rendering everything at once —
+// large marker counts freeze the map by blocking the main thread while
+// Google Maps creates hundreds/thousands of overlay DOM nodes.
+const LARGE_DATASET_THRESHOLD = 500;
+// Zoom level from which we switch to "only markers inside the current viewport".
+const DETAIL_ZOOM = 16;
+
+// Evenly-spaced sample so the "main points" shown while zoomed out still
+// trace the overall shape of the route instead of clustering at the start.
+function sampleEvenly<T>(items: T[], maxCount: number): T[] {
+  if (items.length <= maxCount) return items;
+  const step = items.length / maxCount;
+  const sampled: T[] = [];
+  for (let i = 0; i < maxCount; i++) {
+    sampled.push(items[Math.floor(i * step)]);
+  }
+  return sampled;
+}
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   MUFF_DONE: { label: 'Muff Done', color: '#10B981' },
@@ -255,6 +274,9 @@ const MapComponent: React.FC<AerialMapCompProps> = ({ data }) => {
   const [visibleTypes, setVisibleTypes] = useState<Set<MarkerType>>(
     new Set(Object.keys(MARKER_TYPES) as MarkerType[]),
   );
+  const [mapZoom, setMapZoom] = useState(14);
+  const [mapBounds, setMapBounds] = useState<google.maps.LatLngBounds | null>(null);
+  const hasFitBoundsRef = useRef(false);
 
   // Build flat marker list from PolePreview records
   const buildMarkers = (records: PolePreview[]): AerialMarkerData[] => {
@@ -283,7 +305,35 @@ const MapComponent: React.FC<AerialMapCompProps> = ({ data }) => {
     return result;
   };
 
-  const allMarkers = buildMarkers(data);
+  const allMarkers = useMemo(() => buildMarkers(data), [data]);
+
+  // New dataset (e.g. filters changed upstream) → allow the map to re-fit once more.
+  useEffect(() => {
+    hasFitBoundsRef.current = false;
+  }, [data]);
+
+  const visibleMarkers = useMemo(
+    () => allMarkers.filter((m) => visibleTypes.has(m.markerType)),
+    [allMarkers, visibleTypes],
+  );
+
+  // Creating hundreds/thousands of google.maps.Marker overlays at once is
+  // what freezes the map. Below the threshold we render everything as
+  // before. Above it: zoomed out shows an evenly-spaced sample of "main
+  // points" tracing the route, zoomed in swaps to only the markers inside
+  // the current viewport, loading more detail as the user pans/zooms.
+  const markersToRender = useMemo(() => {
+    if (visibleMarkers.length <= LARGE_DATASET_THRESHOLD) return visibleMarkers;
+
+    if (mapZoom >= DETAIL_ZOOM && mapBounds) {
+      const inView = visibleMarkers.filter((m) => mapBounds.contains({ lat: m.lat, lng: m.lng }));
+      return sampleEvenly(inView, LARGE_DATASET_THRESHOLD * 2);
+    }
+
+    return sampleEvenly(visibleMarkers, LARGE_DATASET_THRESHOLD);
+  }, [visibleMarkers, mapZoom, mapBounds]);
+
+  const isSampled = markersToRender.length < visibleMarkers.length;
 
   // ── Init map ────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -306,8 +356,25 @@ const MapComponent: React.FC<AerialMapCompProps> = ({ data }) => {
       ],
     });
 
+    mapInstance.addListener('idle', () => {
+      setMapZoom(mapInstance.getZoom() ?? 14);
+      setMapBounds(mapInstance.getBounds() ?? null);
+    });
+
     setMap(mapInstance);
   }, [data, map]);
+
+  // Fit the map to the full dataset once per dataset load — separate from
+  // marker creation so panning/zooming (which recomputes markersToRender)
+  // never fights the user by re-fitting bounds.
+  useEffect(() => {
+    if (!map || hasFitBoundsRef.current || visibleMarkers.length === 0) return;
+
+    const bounds = new google.maps.LatLngBounds();
+    visibleMarkers.forEach((m) => bounds.extend({ lat: m.lat, lng: m.lng }));
+    map.fitBounds(bounds);
+    hasFitBoundsRef.current = true;
+  }, [map, visibleMarkers]);
 
   // ── Create / update markers ─────────────────────────────────────────────────
   useEffect(() => {
@@ -316,10 +383,7 @@ const MapComponent: React.FC<AerialMapCompProps> = ({ data }) => {
     // Clear old markers
     markers.forEach((m) => m.setMap(null));
 
-    const visible = allMarkers.filter((m) => visibleTypes.has(m.markerType));
-    const newMarkers: google.maps.Marker[] = [];
-
-    visible.forEach((point, index) => {
+    const newMarkers: google.maps.Marker[] = markersToRender.map((point, index) => {
       const config = MARKER_TYPES[point.markerType];
 
       const gMarker = new google.maps.Marker({
@@ -340,25 +404,14 @@ const MapComponent: React.FC<AerialMapCompProps> = ({ data }) => {
           strokeColor: '#ffffff',
           strokeWeight: 2,
         },
-        animation: google.maps.Animation.DROP,
       });
 
       gMarker.addListener('click', () => setSelectedMarker(point));
-      newMarkers.push(gMarker);
+      return gMarker;
     });
 
     setMarkers(newMarkers);
-
-    // Fit bounds
-    if (newMarkers.length > 0) {
-      const bounds = new google.maps.LatLngBounds();
-      newMarkers.forEach((m) => {
-        const pos = m.getPosition();
-        if (pos) bounds.extend(pos);
-      });
-      map.fitBounds(bounds);
-    }
-  }, [map, data, visibleTypes]);
+  }, [map, markersToRender]);
 
   // ── Close filter panel on outside click ────────────────────────────────────
   useEffect(() => {
@@ -391,6 +444,14 @@ const MapComponent: React.FC<AerialMapCompProps> = ({ data }) => {
     <div className="relative w-full h-full">
       {/* Map canvas */}
       <div ref={mapRef} className="w-full h-full rounded-lg shadow-lg" />
+
+      {/* Sampling notice for large datasets */}
+      {isSampled && (
+        <div className="absolute top-2 left-2 z-10 bg-white rounded-lg shadow-lg px-3 py-1.5 text-xs text-gray-700">
+          Showing {markersToRender.length} of {visibleMarkers.length} points
+          {mapZoom < DETAIL_ZOOM ? ' — zoom in to load more' : ' in view'}
+        </div>
+      )}
 
       {/* Filter panel */}
       <div ref={filterRef} className="absolute top-2 right-10 z-10">

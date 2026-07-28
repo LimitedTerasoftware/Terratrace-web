@@ -685,6 +685,14 @@ function Eventreport() {
       );
       if (resp.data.status === 1) {
         toast.success('Record Pending successfully!');
+           try {
+          await axios.post(`${TraceBASEURL}/addlink-tracker`, {
+            survey_id: String(MainData.id),
+          });
+        } catch (linkError) {
+          console.error('Error adding link tracker:', linkError);
+        }
+         
       } else {
         toast.error('Failed to accept record');
       }
