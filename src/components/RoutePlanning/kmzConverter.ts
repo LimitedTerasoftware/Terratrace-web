@@ -67,7 +67,15 @@ export const convertKMZToStandardFormat = (kmzData: KMZResponse): ConvertedKMZDa
   });
 
   // Convert lines to connections
-  const convertedConnections: Connection[] = kmzData.lines.map((line, index) => {
+  const KNOWN_CABLE_TYPES = [
+    'offset cable',
+    'block to fpoi cable',
+    'proposed cable',
+    'incremental cable',
+  ];
+
+  const convertedConnections: Connection[] = kmzData.lines
+    .map((line, index) => {
     // Extract start and end node names from properties with fallbacks
     const startNode = line.properties?.start_node || line.properties?.Start_Node ||
                      line.properties?.start || 
@@ -108,6 +116,10 @@ export const convertKMZToStandardFormat = (kmzData: KMZResponse): ConvertedKMZDa
 
       const normalizedStatus = (line.properties?.status || '').trim().toLowerCase();
 
+      if (!KNOWN_CABLE_TYPES.includes(normalizedType)) {
+        return null;
+      }
+
       let existing = false;
       if (normalizedType === 'proposed cable') {
         existing = false;
@@ -147,7 +159,8 @@ export const convertKMZToStandardFormat = (kmzData: KMZResponse): ConvertedKMZDa
       existing:existing,
       properties: line.properties || {}
     };
-  });
+  })
+    .filter((connection) => connection !== null) as Connection[];
 
   return {
     points: convertedPoints,

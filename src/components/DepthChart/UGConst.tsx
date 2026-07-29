@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Search, User, Eye, X, PenIcon, View } from 'lucide-react';
+import { Search, User, Eye, X, PenIcon, View, Download } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UGConstructionSurveyData } from '../../types/survey';
@@ -213,6 +213,29 @@ const Report: React.FC<ReportProps> = ({
     const survey = data.find((item) => item.id === id) || null;
     setSurveyToUpdate(survey);
     setIsUpdateModalOpen(true);
+  };
+
+  const handleDownloadMB = async (id: number) => {
+    try {
+      const response = await axios.get(`${TraceBASEURL}/download-mb/${id}`, {
+        responseType: 'blob',
+      });
+
+      const disposition = response.headers['content-disposition'];
+      let filename = `MB_Book_${id}`;
+      const match = disposition?.match(/filename="?([^"]+)"?/);
+      if (match?.[1]) filename = match[1];
+
+      const url = URL.createObjectURL(response.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading MB book', error);
+      toast.error('Failed to download MB book');
+    }
   };
 
   const filteredData = useMemo(() => {
@@ -519,7 +542,7 @@ const Report: React.FC<ReportProps> = ({
     {
       name: 'Actions',
       cell: (row) => (
-        <div className="flex space-x-2">
+        <div className="flex ">
           <button
             onClick={() => handleView(row, false)}
             className="px-1 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100 outline-none"
@@ -542,12 +565,19 @@ const Report: React.FC<ReportProps> = ({
               <PenIcon className="w-4 h-4" />
             </button>
           )}
+          <button
+            onClick={() => handleDownloadMB(row.id)}
+            className="p-1 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+            title="Download MB Book"
+          >
+            <Download className="w-4 h-4" />
+          </button>
         </div>
       ),
       ignoreRowClick: true,
       allowOverflow: true,
       button: true,
-      maxWidth: '120px',
+      maxWidth: '180px',
     },
   ];
 
@@ -561,7 +591,6 @@ const Report: React.FC<ReportProps> = ({
       const exportExcel = async () => {
         setLoading(true);
         const workbook = XLSX.utils.book_new();
-
         const headers = [
           'Survey ID',
           'State Name',
