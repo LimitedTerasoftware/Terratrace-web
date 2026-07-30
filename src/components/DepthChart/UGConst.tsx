@@ -8,6 +8,7 @@ import * as XLSX from 'xlsx';
 import DataTable, { TableColumn } from 'react-data-table-component';
 import { AddConstModal } from './AddConstModal';
 import { UpdateConstModal } from './UpdateConstModal';
+import { EditLinkModal } from './EditLinkModal';
 import { isAdminUser } from '../../utils/accessControl';
 import { ToastContainer, toast } from 'react-toastify';
 
@@ -34,6 +35,7 @@ interface ReportProps {
     connectionEnd?: string;
     page?: number;
     mergeSurveys: boolean;
+    editLink: boolean;
   };
   Onexcel: () => void;
   OnPreview: () => void;
@@ -44,6 +46,7 @@ interface ReportProps {
   OnPageChange?: (page: number) => void;
   OnMergeSurveys: () => void;
   OnMergeLoadingChange: (loading: boolean) => void;
+  OnEditLink: () => void;
 }
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -60,6 +63,7 @@ const Report: React.FC<ReportProps> = ({
   OnPageChange,
   OnMergeSurveys,
   OnMergeLoadingChange,
+  OnEditLink,
 }) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +83,7 @@ const Report: React.FC<ReportProps> = ({
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [surveyToUpdate, setSurveyToUpdate] =
     useState<UGConstructionSurveyData | null>(null);
+  const [isEditLinkModalOpen, setIsEditLinkModalOpen] = useState(false);
   const navigate = useNavigate();
   const [kmlLoading, setKmlLoading] = useState(false);
 
@@ -702,6 +707,16 @@ const Report: React.FC<ReportProps> = ({
     handleMergeSurveys();
   }, [Data.mergeSurveys]);
 
+  useEffect(() => {
+    if (!Data.editLink) return;
+    if (selectedRows.length === 0) {
+      alert('Please select at least one row to edit link.');
+      OnEditLink();
+      return;
+    }
+    setIsEditLinkModalOpen(true);
+  }, [Data.editLink]);
+
   const handleMergeSurveys = async () => {
     OnMergeLoadingChange(true);
     try {
@@ -1280,6 +1295,65 @@ const Report: React.FC<ReportProps> = ({
           }
         }}
         surveyData={surveyToUpdate}
+      />
+      <EditLinkModal
+        isOpen={isEditLinkModalOpen}
+        onClose={() => {
+          setIsEditLinkModalOpen(false);
+          OnEditLink();
+        }}
+        onSuccess={() => {
+          setIsEditLinkModalOpen(false);
+          OnEditLink();
+          handleClearRows();
+          toast.success('Link updated successfully!');
+          if (Data.filtersReady) {
+            const fetchSurveyData = async () => {
+              try {
+                setLoading(true);
+                const params: any = {};
+                if (Data.selectedState) params.state_id = Data.selectedState;
+                if (Data.selectedDistrict)
+                  params.district_id = Data.selectedDistrict;
+                if (Data.selectedBlock) params.block_id = Data.selectedBlock;
+                if (Data.connectionStart) params.start = Data.connectionStart;
+                if (Data.connectionEnd) params.end = Data.connectionEnd;
+                if (Data.fromdate) params.from_date = Data.fromdate;
+                if (Data.todate) params.to_date = Data.todate;
+                if (Data.selectedStatus.length > 0)
+                  params.status = Data.selectedStatus.join(',');
+                if (Data.worktype !== '') params.worktype = Data.worktype;
+                if (Data.globalsearch.trim())
+                  params.search = Data.globalsearch.trim();
+                params.page = Data.page || 1;
+                params.limit = perPage;
+
+                const response = await axios.get<{
+                  status: boolean;
+                  count: number;
+                  totalCount: number;
+                  data: UGConstructionSurveyData[];
+                }>(`${TraceBASEURL}/get-survey-data`, { params });
+
+                if (response.data.status) {
+                  setData(response.data.data);
+                  setTotalRows(
+                    response.data.totalCount ?? response.data.count ?? 0,
+                  );
+                  OnData(response.data.data);
+                }
+              } catch (error) {
+                console.error('Error fetching survey data', error);
+              } finally {
+                setLoading(false);
+              }
+            };
+            fetchSurveyData();
+          }
+        }}
+        blockId={Data.selectedBlock}
+        surveyIds={selectedRows.map((row) => row.id)}
+        baseUrl={TraceBASEURL}
       />
       <ToastContainer />
     </div>

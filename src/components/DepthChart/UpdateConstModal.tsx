@@ -458,8 +458,11 @@ const formatForApi = (value: string) => {
                       className="w-full px-3 py-2 border rounded-lg"
                     >
                       <option value="">Select Work Type</option>
+
                       <option value="New Construction">New Construction</option>
                       <option value="Rectification">Rectification</option>
+                      <option value="OFC Blowing/ JointChamber">OFC Blowing / Joint Chamber</option>
+                      <option value="Protection">Protection</option>
                     </select>
                   ): 
                  key === 'created_at' ? (

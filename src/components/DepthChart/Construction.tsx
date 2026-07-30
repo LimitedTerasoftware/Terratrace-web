@@ -11,6 +11,7 @@ import {
   PlusCircleIcon,
   Globe2Icon,
   GitMerge,
+  PenSquare,
 } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { UGConstructionSurveyData } from '../../types/survey';
@@ -61,6 +62,7 @@ function ConstructionPage() {
   const [progressmap, setProgressmap] = useState<boolean>(false);
   const [mergeSurveys, setMergeSurveys] = useState<boolean>(false);
   const [mergeLoading, setMergeLoading] = useState<boolean>(false);
+  const [editLink, setEditLink] = useState<boolean>(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [filtersReady, setFiltersReady] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -1312,6 +1314,13 @@ function ConstructionPage() {
                 )}
                 {mergeLoading ? 'Merging...' : 'Merge Surveys'}
               </button>
+              <button
+                onClick={() => setEditLink(true)}
+                className="flex-none h-10 px-4 py-2 text-sm font-medium text-orange-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-orange-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
+              >
+                <PenSquare className="h-4 w-4 text-orange-600" />
+                Edit Link
+              </button>
               </>
             )}
 
@@ -1353,6 +1362,7 @@ function ConstructionPage() {
               connectionEnd: getSelectedConnectionDetails()?.endLocation,
               page,
               mergeSurveys,
+              editLink,
             }}
             Onexcel={() => setExcel(false)}
             OnPreview={() => setPreview(false)}
@@ -1363,6 +1373,7 @@ function ConstructionPage() {
             OnPageChange={handlePageChange}
             OnMergeSurveys={() => setMergeSurveys(false)}
             OnMergeLoadingChange={setMergeLoading}
+            OnEditLink={() => setEditLink(false)}
           />
         )}
         {activeTab === 'AcceptedLinks' && (
