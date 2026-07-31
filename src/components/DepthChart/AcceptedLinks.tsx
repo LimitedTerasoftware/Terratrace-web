@@ -4,6 +4,7 @@ import { Search, PenIcon, Check, X } from 'lucide-react';
 import moment from 'moment';
 import DataTable, { TableColumn } from 'react-data-table-component';
 import { ToastContainer, toast } from 'react-toastify';
+import * as XLSX from 'xlsx';
 
 interface AcceptedLinkRow {
   id: number;
@@ -25,6 +26,7 @@ interface AcceptedLinkRow {
   distance_diff_meters:number | null;
   status:number;
   ofc_status:number;
+  ofc_distance_diff_meters:number;
 }
 
 interface AcceptedLinksSummary {
@@ -45,6 +47,9 @@ interface AcceptedLinksProps {
   tdStatus?: string;
   ofcStatus?: string;
   onSummaryChange?: (summary: AcceptedLinksSummary | null) => void;
+  excel?: boolean;
+  onExcel?: () => void;
+  onExcelLoadingChange?: (loading: boolean) => void;
 }
 
 export type { AcceptedLinksSummary };
@@ -96,6 +101,9 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
   tdStatus,
   ofcStatus,
   onSummaryChange,
+  excel,
+  onExcel,
+  onExcelLoadingChange,
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -217,6 +225,87 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       setSavingId(null);
     }
   };
+
+  const statusLabel = (status: number) => (status === 1 ? 'Completed' : 'Pending');
+
+  const handleExportExcel = async () => {
+    try {
+      onExcelLoadingChange?.(true);
+      const params: Record<string, string | number> = {
+        page: 1,
+        limit: totalRows > 0 ? totalRows : 10000,
+      };
+      if (selectedState) params.state_id = selectedState;
+      if (selectedDistrict) params.district_id = selectedDistrict;
+      if (selectedBlock) params.block_id = selectedBlock;
+      if (globalsearch.trim()) params.search = globalsearch.trim();
+      if (tdStatus) params.td_status = tdStatus;
+      if (ofcStatus) params.ofc_status = ofcStatus;
+
+      const response = await axios.get<{
+        status: boolean;
+        data: AcceptedLinkRow[];
+      }>(`${TraceBASEURL}/get-accepted-links`, { params });
+
+      const rows = response.data.status ? response.data.data : [];
+      if (rows.length === 0) {
+        toast.error('No data available to export.');
+        return;
+      }
+
+      const headers = [
+        'State',
+        'District',
+        'Block',
+        'Link Name',
+        'Survey Count',
+        'BOQ Distance (m)',
+        'T&D Distance (m)',
+        'Completion %',
+        'T&D Status',
+        'OFC/Blowing Distance',
+        'OFC Status',
+        'Distance Difference (m)',
+        'OFC Distance Difference (m)',
+        'Updated At',
+      ];
+
+      const dataRows = rows.map((row) => [
+        row.state_name,
+        row.district_name,
+        row.block_name,
+        row.link_name,
+        row.survey_count,
+        row.actual_distance_meters != null
+          ? row.actual_distance_meters.toFixed(2)
+          : '-',
+        (row.total_distance_meters ?? 0).toFixed(2),
+        row.completion_percent != null ? `${row.completion_percent}%` : '-',
+        statusLabel(row.status),
+        (row.ofc_distance_meters ?? 0).toFixed(2),
+        statusLabel(row.ofc_status),
+        (row.distance_diff_meters ?? 0).toFixed(2),
+        (row.ofc_distance_diff_meters ?? 0).toFixed(2),
+        moment(row.updated_at).format('DD/MM/YYYY, hh:mm A'),
+      ]);
+
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Accepted Links');
+      XLSX.writeFile(workbook, 'Accepted_Links.xlsx', { compression: true });
+    } catch (err) {
+      console.error('Error exporting accepted links', err);
+      toast.error('Failed to export data.');
+    } finally {
+      onExcelLoadingChange?.(false);
+      onExcel?.();
+    }
+  };
+
+  useEffect(() => {
+    if (!excel) return;
+    handleExportExcel();
+  }, [excel]);
 
   const columns: TableColumn<AcceptedLinkRow>[] = [
  
@@ -374,7 +463,20 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
         );
       },
     },
- 
+    {
+      name :'Distance Difference(mt)',
+      selector:(row)=>row.distance_diff_meters ?? 0,
+      sortable: true,
+      cell: (row) =>(row.distance_diff_meters ?? 0).toFixed(2) ,
+
+    },
+      {
+      name :'OFC Distance Difference(mt)',
+      selector:(row)=>row.ofc_distance_diff_meters ?? 0,
+      sortable: true,
+      cell: (row) =>(row.ofc_distance_diff_meters ?? 0).toFixed(2),
+
+    },
     {
       name :'JointChamber Count',
       selector:(row)=>'-',
@@ -427,7 +529,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
               paginationServer
               paginationTotalRows={totalRows}
               paginationPerPage={perPage}
-              paginationRowsPerPageOptions={[10, 25, 50, 100]}
+              paginationRowsPerPageOptions={[10, 25, 50, 100,150,200,250,300,400,500]}
               highlightOnHover
               pointerOnHover
               responsive

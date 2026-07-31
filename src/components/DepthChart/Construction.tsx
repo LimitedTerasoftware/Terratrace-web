@@ -12,6 +12,7 @@ import {
   Globe2Icon,
   GitMerge,
   PenSquare,
+  Loader2,
 } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { UGConstructionSurveyData } from '../../types/survey';
@@ -63,6 +64,7 @@ function ConstructionPage() {
   const [mergeSurveys, setMergeSurveys] = useState<boolean>(false);
   const [mergeLoading, setMergeLoading] = useState<boolean>(false);
   const [editLink, setEditLink] = useState<boolean>(false);
+  const [acceptedExcelLoading, setAcceptedExcelLoading] = useState<boolean>(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [filtersReady, setFiltersReady] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -1010,6 +1012,19 @@ function ConstructionPage() {
                     </svg>
                   </div>
                 </div>
+
+                <button
+                  onClick={() => setExcel(true)}
+                  disabled={acceptedExcelLoading}
+                  className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center gap-2"
+                >
+                  {acceptedExcelLoading ? (
+                    <Loader2 className="h-4 w-4 text-green-600 animate-spin" />
+                  ) : (
+                    <SheetIcon className="h-4 w-4 text-green-600" />
+                  )}
+                  {acceptedExcelLoading ? 'Exporting...' : 'Excel'}
+                </button>
               </>
             )}
             {/* Links Filter */}
@@ -1388,6 +1403,9 @@ function ConstructionPage() {
               tdStatus={tdStatus}
               ofcStatus={ofcStatus}
               onSummaryChange={setAcceptedLinksSummary}
+              excel={excel}
+              onExcel={() => setExcel(false)}
+              onExcelLoadingChange={setAcceptedExcelLoading}
             />
           </>
         )}
