@@ -42,6 +42,7 @@ interface AerialSurvey {
   contact_no: number,
   workType:string,
   version:string|null,
+
 }
 
 interface ApiResponse {
@@ -601,11 +602,13 @@ const exporExcel = async (BlockData: AerialSurveyDetails[]) => {
       },
       {
         accessorKey: 'created_at',
-        header: "Created At",
+        header: 'Created At',
         sortable: true,
         maxWidth: '140px',
-        cell: ({row}:{row:any}) => moment(row.created_at).format('DD/MM/YYYY'),
+        cell: ({ row }) =>
+          moment(row.original.created_at).format('DD/MM/YYYY, hh:mm A'),
       },
+      
     ],
     [selectedRowsMap]
   );

@@ -402,7 +402,14 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       sortable: true,
       cell: (row) => (row.total_distance_meters ?? 0).toFixed(2),
     },
-      {
+    {
+      name :'Distance Difference(mt)',
+      selector:(row)=>row.distance_diff_meters ?? 0,
+      sortable: true,
+      cell: (row) =>(row.distance_diff_meters ?? 0).toFixed(2) ,
+
+    },
+    {
       name: 'Completion %',
       selector: (row) => row.completion_percent ?? 0,
       sortable: true,
@@ -439,6 +446,20 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
      sortable: true,
       cell: (row) =>(row.ofc_distance_meters ?? 0).toFixed(2),
     },
+    {
+      name :'OFC Distance Difference(mt)',
+      selector:(row)=>row.ofc_distance_diff_meters ?? 0,
+      sortable: true,
+      cell: (row) =>(row.ofc_distance_diff_meters ?? 0).toFixed(2),
+
+    },
+   {
+      name: 'OFC Completion %',
+      selector: (row) => 0,
+      sortable: true,
+      cell: (row) =>
+        '-',
+    },
       {
       name: 'OFC Status',
       selector: (row) => row.ofc_status,
@@ -462,20 +483,6 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
           </span>
         );
       },
-    },
-    {
-      name :'Distance Difference(mt)',
-      selector:(row)=>row.distance_diff_meters ?? 0,
-      sortable: true,
-      cell: (row) =>(row.distance_diff_meters ?? 0).toFixed(2) ,
-
-    },
-      {
-      name :'OFC Distance Difference(mt)',
-      selector:(row)=>row.ofc_distance_diff_meters ?? 0,
-      sortable: true,
-      cell: (row) =>(row.ofc_distance_diff_meters ?? 0).toFixed(2),
-
     },
     {
       name :'JointChamber Count',

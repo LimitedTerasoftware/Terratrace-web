@@ -116,12 +116,12 @@ function ConstructionPage() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-900">
-                {activeTab === 'UG' ? 'Construction' : 'Accepted Links'}{' '}
+                {activeTab === 'UG' ? 'Construction' : 'T&D Links'}{' '}
                 Management
               </h1>
               <p className="text-sm text-gray-600">
                 Monitor and analyze{' '}
-                {activeTab === 'UG' ? 'construction' : 'accepted link'}{' '}
+                {activeTab === 'UG' ? 'construction' : 'T&D link'}{' '}
                 project data
               </p>
             </div>
@@ -134,7 +134,7 @@ function ConstructionPage() {
                 </Link>
               </li>
               <li className="font-medium text-primary">
-                {activeTab === 'UG' ? 'Construction' : 'Accepted Links'}{' '}
+                {activeTab === 'UG' ? 'Construction' : 'T&D Links'}{' '}
                 Data
               </li>
             </ol>
@@ -776,7 +776,7 @@ function ConstructionPage() {
                 }`}
                 onClick={() => handleTabChange('AcceptedLinks')}
               >
-                Accepted Links
+                T&D Links
               </button>
             </li>
           </ul>
