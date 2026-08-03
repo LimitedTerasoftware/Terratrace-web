@@ -286,6 +286,7 @@ const GpForm: React.FC<GpFormProps> = ({
                                     <option value="GP">GP</option>
                                     <option value="OLT">OLT</option>
                                     <option value="FPOI">FPOI</option>
+                                     <option value="VILLAGE">VILLAGE</option>
                                 </select>
                                 {errors.type && (
                                     <p className="mt-1 text-sm text-red-600">{errors.type}</p>
