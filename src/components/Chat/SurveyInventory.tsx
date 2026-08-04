@@ -7,6 +7,7 @@ import { SurveyLinksData, UGConstructionSurveyData } from '../../types/survey';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import TricadIcon from '../../images/logo/favicon.png';
+import { isIEUser } from '../../utils/accessControl';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
@@ -31,7 +32,7 @@ export default function SurveyInventory({
   const [data, setData] = useState<SurveyLinksData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-
+ const ieUser = isIEUser();
   useEffect(() => {
     const fetchSurveyData = async () => {
       setIsLoading(true);
@@ -357,17 +358,19 @@ export default function SurveyInventory({
         </span>
       ),
     },
+  ...(!ieUser
+    ? [
     {
       name: 'Firm Name',
-      selector: (row) => row.firm_name || '-',
-      cell: (row) => (
+      selector: (row:any) => row.firm_name || '-',
+      cell: (row:any) => (
         <span className="text-sm text-gray-600">{row.firm_name || '-'}</span>
       ),
     },
     {
       name: 'Authorised By',
-      selector: (row) => row.authorised_person || '-',
-      cell: (row) => (
+      selector: (row:any) => row.authorised_person || '-',
+      cell: (row:any) => (
         <div className="py-1">
           <div className="text-sm font-medium text-gray-800">{row.authorised_person || '-'}</div>
           {row.authorised_mobile && (
@@ -376,6 +379,7 @@ export default function SurveyInventory({
         </div>
       ),
     },
+  ]:[]),
   ];
 
   const vendorName =  (selectedVendor && data[0]?.firm_name) || null;
@@ -436,6 +440,7 @@ export default function SurveyInventory({
         </div>
 
         {/* PDF Download button */}
+        {!ieUser && (
         <button
           onClick={generatePDF}
           disabled={isGeneratingPDF || data.length === 0}
@@ -448,6 +453,7 @@ export default function SurveyInventory({
             }
           `}
         >
+        
           {isGeneratingPDF ? (
             <>
               <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
@@ -463,6 +469,7 @@ export default function SurveyInventory({
             </>
           )}
         </button>
+        )}
       </div>
 
       {/* ── Table ────────────────────────────────────────────────────────── */}

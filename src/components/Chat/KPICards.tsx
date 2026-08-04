@@ -50,7 +50,7 @@ export default function KPICards({
   return (
     <div
       className={`grid grid-cols-1 md:grid-cols-2 gap-4 px-6 py-6 ${
-        ieUser ? 'lg:grid-cols-4' : 'lg:grid-cols-3 xl:grid-cols-6'
+        ieUser ? 'lg:grid-cols-3' : 'lg:grid-cols-3 xl:grid-cols-6'
       }`}
     >
       <div className="bg-white rounded-lg border border-gray-200 p-4">
@@ -110,7 +110,7 @@ export default function KPICards({
           </div>
         </div>
       </div>
-
+      {!ieUser && (
       <div className="bg-white rounded-lg border border-gray-200 p-4">
         <div className="flex items-start justify-between">
           <div>
@@ -128,7 +128,7 @@ export default function KPICards({
             <FileText className="w-5 h-5 text-blue-600" />
           </div>
         </div>
-      </div>
+      </div>)}
 
       <div className="bg-white rounded-lg border border-gray-200 p-4">
         <div className="flex items-start justify-between">
@@ -139,9 +139,10 @@ export default function KPICards({
             <p className="text-3xl font-bold text-gray-900 mt-2">
               {Data.summary.active_machines_today}
             </p>
+            {!ieUser && (
             <p className="text-xs text-orange-600 mt-1">
               {Data.summary.inactive_machines_today} idle machines
-            </p>
+            </p>)}
           </div>
           <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
             <Settings className="w-5 h-5 text-blue-600" />

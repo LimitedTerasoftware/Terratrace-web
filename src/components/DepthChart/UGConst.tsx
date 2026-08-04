@@ -9,7 +9,7 @@ import DataTable, { TableColumn } from 'react-data-table-component';
 import { AddConstModal } from './AddConstModal';
 import { UpdateConstModal } from './UpdateConstModal';
 import { EditLinkModal } from './EditLinkModal';
-import { isAdminUser } from '../../utils/accessControl';
+import { isAdminUser, isIEUser } from '../../utils/accessControl';
 import { ToastContainer, toast } from 'react-toastify';
 
 interface ReportProps {
@@ -51,6 +51,7 @@ interface ReportProps {
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const AdminAcess = isAdminUser();
+const IEUser = isIEUser();
 
 const Report: React.FC<ReportProps> = ({
   Data,
@@ -456,12 +457,16 @@ const Report: React.FC<ReportProps> = ({
       selector: (row) => row.ofc_distance || '0.00',
       sortable: true,
     },
-    {
-      name:'Firm Name',
-      selector:(row)=>row.firm_name || '-',
-      sortable:true,
-      wrap:true
-    },
+    ...(IEUser
+      ? []
+      : [
+          {
+            name: 'Firm Name',
+            selector: (row: UGConstructionSurveyData) => row.firm_name || '-',
+            sortable: true,
+            wrap: true,
+          } as TableColumn<UGConstructionSurveyData>,
+        ]),
     {
        name:'Machine Id',
       selector:(row)=>row.machine_id || '-',
@@ -570,13 +575,15 @@ const Report: React.FC<ReportProps> = ({
               <PenIcon className="w-4 h-4" />
             </button>
           )}
-          <button
-            onClick={() => handleDownloadMB(row.id)}
-            className="p-1 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-            title="Download MB Book"
-          >
-            <Download className="w-4 h-4" />
-          </button>
+          {!IEUser && (
+            <button
+              onClick={() => handleDownloadMB(row.id)}
+              className="p-1 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+              title="Download MB Book"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+          )}
         </div>
       ),
       ignoreRowClick: true,

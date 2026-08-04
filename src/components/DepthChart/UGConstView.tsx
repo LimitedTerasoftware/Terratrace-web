@@ -23,7 +23,7 @@ import ImageModal from './ImageUploadModal';
 import MediaCarousel from './MediaCarousel';
 import * as XLSX from 'xlsx';
 import { getDistanceFromLatLonInMeters } from '../../utils/calculations';
-import { hasViewOnlyAccess, isAdminUser } from '../../utils/accessControl';
+import { hasViewOnlyAccess, isAdminUser, isIEUser } from '../../utils/accessControl';
 import { ToastContainer, toast } from 'react-toastify';
 import { EditModal } from './EditModal';
 import { AddEventModal } from './AddEventModal';
@@ -97,6 +97,7 @@ function Eventreport() {
 
   const viewOnly = hasViewOnlyAccess();
   const AdminAcess = isAdminUser();
+  const IEUser = isIEUser();
 
   const [planningPlacemarks, setPlanningPlacemarks] = useState<
     ProcessedDesktopPlanning[]
@@ -907,12 +908,16 @@ function Eventreport() {
       selector: (row) => row.deviceId || '-',
       wrap: true,
     },
-    {
-      name: 'Firm Name',
-      selector: (row) => row.firm_name || '-',
-      sortable: true,
-      wrap: true,
-    },
+    ...(IEUser
+      ? []
+      : [
+          {
+            name: 'Firm Name',
+            selector: (row: Activity) => row.firm_name || '-',
+            sortable: true,
+            wrap: true,
+          } as TableColumn<Activity>,
+        ]),
     {
       name: 'Event Type',
       selector: (row) => row.eventType,
@@ -1218,7 +1223,7 @@ function Eventreport() {
     {
       name: 'End Pit Doc',
       cell: (row) => {
-        if (row.endPitDoc) {
+        if (row.endPitDoc && !IEUser) {
           const downloadUrl = `${baseUrl}${row.endPitDoc}`;
           return (
             <a
@@ -1949,6 +1954,7 @@ function Eventreport() {
               </span>
               <span>Clear Filters</span>
             </button>
+            {!IEUser && (
             <button
               onClick={handleExcel}
               className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
@@ -1956,6 +1962,7 @@ function Eventreport() {
               <SheetIcon className="h-4 w-4 text-green-600" />
               Excel
             </button>
+            )}
             <div className="relative" ref={columnMenuRef}>
               <button
                 onClick={() => setShowColumnMenu((prev) => !prev)}
@@ -2077,7 +2084,7 @@ function Eventreport() {
           />
         </div>
       )}
-      {!viewOnly && activeTab === 'details' && (
+      {!viewOnly && !IEUser && activeTab === 'details' && (
         <div className="mt-6 flex gap-4 justify-center">
           <button
             className="bg-orange-500 hover:bg-orange-600 text-white py-2 px-4 rounded"

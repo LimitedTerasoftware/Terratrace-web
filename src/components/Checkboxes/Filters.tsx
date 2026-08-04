@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { getStateData, getDistrictData, getBlockData, machineApi } from '../Services/api';
 import { Block, District, StateData } from '../../types/survey';
 import { MachineDetailsResponse } from '../../types/machine';
+import { isIEUser } from '../../utils/accessControl';
 
 interface FiltersProps {
   selectedState: string;
@@ -50,7 +51,7 @@ export default function Filters({
   const [loadingDistricts, setLoadingDistricts] = useState(false);
   const [loadingVendors, setLoadingVendors] = useState(false);
   const [loadingBlock, setLoadingBlock] = useState(false);
-
+ const ieUser = isIEUser();
   useEffect(() => {
     fetchStates();
     fetchMachineDetails();
@@ -194,7 +195,7 @@ export default function Filters({
             </option>
           ))}
         </select>
-
+        {!ieUser && (
         <select
           className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[100px] "
           value={selectedVendor}
@@ -208,6 +209,7 @@ export default function Filters({
             </option>
           ))}
         </select>
+ )}
         
         <select
           className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[100px]"
@@ -218,7 +220,7 @@ export default function Filters({
           <option value="New Construction">New Construction</option>
           <option value="Rectification">Rectification</option>
         </select>
-
+        {!ieUser && (
          <select
           className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[100px]"
           value={selectedIssueType}
@@ -228,6 +230,7 @@ export default function Filters({
           <option value="CORDS">CORS</option>
           <option value="DEPTH">Depth Violation</option>
         </select>
+        )}
         
         <select
           className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[100px]"

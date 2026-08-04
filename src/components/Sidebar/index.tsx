@@ -197,7 +197,31 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                     </div>
                     {isOpen && (
                       <span className="whitespace-nowrap">
-                        Construction Dashboard
+                       Underground Dashboard
+                      </span>
+                    )}
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink
+                    to="/construction"
+                    className={`
+                      flex items-center py-2 ${isOpen ? 'px-3 gap-4' : 'px-2 gap-0'} rounded-lg
+                      transition-colors duration-200 text-bodydark1
+                      ${
+                        pathname.includes('/construction') && !pathname.includes('construction-dashboard')
+                          ? 'bg-graydark dark:bg-meta-4'
+                          : 'hover:bg-graydark dark:hover:bg-meta-4'
+                      }
+                      ${!isOpen ? 'w-[44px] justify-center' : ''}
+                    `}
+                  >
+                    <div className="min-w-[20px] flex justify-center">
+                      <ListCheckIcon className="w-5 h-5" />
+                    </div>
+                    {isOpen && (
+                      <span className="whitespace-nowrap">
+                        Underground List
                       </span>
                     )}
                   </NavLink>

@@ -370,14 +370,17 @@ export default function NewConstructionDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-2 space-y-6">
             <ProgressTrendChart data={kmTotalData} isLoading={kmTrendLoading} />
+             {!isIEUser() && (
             <VendorPerformance data={dashboardData} />
+             )}
           </div>
 
           <div className="lg:col-span-2 space-y-6">
+             {!isIEUser() && (
              <MachineStatusTrendChart
               data={machineStatusTrendData}
               isLoading={machineStatusTrendLoading}
-            />
+            />)}
             <div className="h-[500px]">
               <Wrapper
                 apiKey={GOOGLE_MAPS_API_KEY}

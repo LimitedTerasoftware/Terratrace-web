@@ -40,6 +40,25 @@ interface ProgressMarker {
   indexId: number;
 }
 
+interface IntegratedGp {
+  id: number;
+  name: string;
+  lattitude: string;
+  longitude: string;
+  type: string;
+  blk_code: string;
+  blk_name: string;
+  dt_code: string;
+  dt_name: string;
+  st_code: string;
+  st_name: string;
+  lgd_code: string;
+  remark: string | null;
+  integrated: number;
+  created_at: string;
+  updated_at: string;
+}
+
 interface UGProgressMapCompProps {
   markers: ProgressMarker[];
   planningPlacemarks: ProcessedDesktopPlanning[];
@@ -49,6 +68,7 @@ interface UGProgressMapCompProps {
     categoryId: string,
     visible: boolean,
   ) => void;
+  integratedGps: IntegratedGp[];
 }
 
 const parseSurveyIds = (value: unknown): number[] => {
@@ -179,17 +199,21 @@ const ErrorState: React.FC<{ message: string }> = ({ message }) => (
   </div>
 );
 
+const INTEGRATED_GP_COLOR = '#16A34A';
+
 const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
   markers,
   planningPlacemarks,
   planningCategories,
   visiblePlanningCategories,
   onPlanningCategoryVisibilityChange,
+  integratedGps,
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const eventPolylinesRef = useRef<google.maps.Polyline[]>([]);
   const planningMarkersRef = useRef<google.maps.Marker[]>([]);
   const planningPolylinesRef = useRef<google.maps.Polyline[]>([]);
+  const integratedGpMarkersRef = useRef<google.maps.Marker[]>([]);
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -418,6 +442,52 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
   useEffect(() => {
     if (!map) return;
 
+    integratedGpMarkersRef.current.forEach((marker) => marker.setMap(null));
+    integratedGpMarkersRef.current = integratedGps
+      .map((gp) => {
+        const lat = Number(gp.lattitude);
+        const lng = Number(gp.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+        const marker = new google.maps.Marker({
+          position: { lat, lng },
+          map,
+          title: gp.name,
+          zIndex: 1000,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 9,
+            fillColor: INTEGRATED_GP_COLOR,
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 2,
+          },
+        });
+
+        marker.addListener('click', () => {
+          infoWindowRef.current?.setContent(`
+            <div style="padding:4px 4px;font-size:13px;line-height:1.5">
+              <div style="font-weight:700;color:#111827">${escapeHtml(gp.name)}</div>
+              <div>Type: ${escapeHtml(gp.type)}</div>
+              <div style="color:${INTEGRATED_GP_COLOR};font-weight:600">Integrated GP</div>
+            </div>
+          `);
+          infoWindowRef.current?.open(map, marker);
+        });
+
+        return marker;
+      })
+      .filter((marker): marker is google.maps.Marker => marker !== null);
+
+    return () => {
+      integratedGpMarkersRef.current.forEach((marker) => marker.setMap(null));
+      integratedGpMarkersRef.current = [];
+    };
+  }, [map, integratedGps]);
+
+  useEffect(() => {
+    if (!map) return;
+
     const bounds = new google.maps.LatLngBounds();
     let points = 0;
 
@@ -450,12 +520,21 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
       );
     });
 
+    integratedGps.forEach((gp) => {
+      const lat = Number(gp.lattitude);
+      const lng = Number(gp.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      bounds.extend({ lat, lng });
+      points += 1;
+    });
+
     if (points === 0) return;
     map.fitBounds(bounds, 48);
     if (points === 1) map.setZoom(16);
   }, [
     map,
     markers,
+    integratedGps,
     planningCategories,
     planningPlacemarks,
     visiblePlanningCategories,
@@ -469,7 +548,7 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
     <div className="relative h-full w-full">
       <div ref={mapRef} className="h-full w-full" />
 
-      {planningCategories.length > 0 && (
+      {(planningCategories.length > 0 || integratedGps.length > 0) && (
         <div className="absolute right-4 top-10 z-10 max-w-xs rounded-md border border-gray-200 bg-white p-3 shadow-lg">
           <div className="text-sm font-semibold text-gray-800">
             Approved KMZ
@@ -514,6 +593,17 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
                 />
                 <span className="flex-1 truncate">Construction Path</span>
               </label>
+              {integratedGps.length > 0 && (
+                <label className="mt-1 flex cursor-pointer items-center gap-2">
+                  <input type="checkbox" checked={true} disabled />
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: INTEGRATED_GP_COLOR }}
+                  />
+                  <span className="flex-1 truncate">Integrated GP</span>
+                  <span className="font-medium">{integratedGps.length}</span>
+                </label>
+              )}
             </div>
           </div>
         </div>
@@ -554,6 +644,7 @@ const UGProgressMap: React.FC = () => {
   const [visiblePlanningCategories, setVisiblePlanningCategories] = useState<
     Set<string>
   >(new Set());
+  const [integratedGps, setIntegratedGps] = useState<IntegratedGp[]>([]);
 
   const markers = useMemo(() => buildMarkers(events), [events]);
 
@@ -660,6 +751,42 @@ const UGProgressMap: React.FC = () => {
     };
   }, [selectedBlock, selectedDistrict, selectedState]);
 
+  useEffect(() => {
+    if (!selectedBlock) {
+      setIntegratedGps([]);
+      return;
+    }
+
+    let mounted = true;
+    const fetchIntegratedGps = async () => {
+      try {
+        const response = await axios.get(`${TraceBASEURL}/getIntegratedGps`, {
+          params: { block_id: selectedBlock },
+        });
+
+        if (!mounted) return;
+        if (response.data?.status && Array.isArray(response.data.data)) {
+          setIntegratedGps(
+            response.data.data.filter(
+              (gp: IntegratedGp) => Number(gp.integrated) === 1,
+            ),
+          );
+        } else {
+          setIntegratedGps([]);
+        }
+      } catch (err) {
+        if (!mounted) return;
+        console.error('Error fetching integrated GPs', err);
+        setIntegratedGps([]);
+      }
+    };
+
+    fetchIntegratedGps();
+    return () => {
+      mounted = false;
+    };
+  }, [selectedBlock]);
+
   const handlePlanningCategoryVisibilityChange = (
     categoryId: string,
     visible: boolean,
@@ -705,6 +832,7 @@ const UGProgressMap: React.FC = () => {
           onPlanningCategoryVisibilityChange={
             handlePlanningCategoryVisibilityChange
           }
+          integratedGps={integratedGps}
         />
       )}
     </div>

@@ -1,10 +1,11 @@
 import axios from 'axios';
 import { useEffect, useState } from 'react';
-import { Search, PenIcon, Check, X } from 'lucide-react';
+import { Search, PenIcon, Check, X, Trash2 } from 'lucide-react';
 import moment from 'moment';
 import DataTable, { TableColumn } from 'react-data-table-component';
 import { ToastContainer, toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
+import { isAdminUser } from '../../utils/accessControl';
 
 interface AcceptedLinkRow {
   id: number;
@@ -114,6 +115,9 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editValue, setEditValue] = useState('');
   const [savingId, setSavingId] = useState<number | null>(null);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const adminAccess = isAdminUser();
 
   useEffect(() => {
     if (!filtersReady) return;
@@ -223,6 +227,58 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       toast.error('Failed to update BOQ distance.');
     } finally {
       setSavingId(null);
+    }
+  };
+
+  const handleStatusChange = async (
+    row: AcceptedLinkRow,
+    field: 'status' | 'ofc_status',
+    value: number,
+  ) => {
+    const newStatus = field === 'status' ? value : row.status;
+    const newOfcStatus = field === 'ofc_status' ? value : row.ofc_status;
+
+    setStatusUpdatingId(row.id);
+    try {
+      await axios.post(`${TraceBASEURL}/update-link-status`, {
+        link_id: String(row.id),
+        status: newStatus,
+        ofc_status: newOfcStatus,
+      });
+
+      setData((prev) =>
+        prev.map((item) =>
+          item.id === row.id
+            ? { ...item, status: newStatus, ofc_status: newOfcStatus }
+            : item,
+        ),
+      );
+      toast.success('Status updated.');
+    } catch (err) {
+      console.error('Error updating status', err);
+      toast.error('Failed to update status.');
+    } finally {
+      setStatusUpdatingId(null);
+    }
+  };
+
+  const handleDeleteLink = async (row: AcceptedLinkRow) => {
+    if (
+      !window.confirm(`Delete link "${row.link_name}"? This cannot be undone.`)
+    )
+      return;
+
+    setDeletingId(row.id);
+    try {
+      await axios.post(`${TraceBASEURL}/delete-link/${row.id}`);
+      setData((prev) => prev.filter((item) => item.id !== row.id));
+      setTotalRows((prev) => Math.max(0, prev - 1));
+      toast.success('Link deleted.');
+    } catch (err) {
+      console.error('Error deleting link', err);
+      toast.error('Failed to delete link.');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -343,7 +399,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       name: 'BOQ Distance (m)',
       minWidth: '170px',
       cell: (row) => {
-        if (editingId === row.id) {
+        if (adminAccess && editingId === row.id) {
           const isSaving = savingId === row.id;
           return (
             <div className="flex items-center gap-1">
@@ -385,13 +441,15 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
                 ? row.actual_distance_meters.toFixed(2)
                 : '-'}
             </span>
-            <button
-              onClick={() => startEdit(row)}
-              className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-              title="Edit actual distance"
-            >
-              <PenIcon className="w-3.5 h-3.5" />
-            </button>
+            {adminAccess && (
+              <button
+                onClick={() => startEdit(row)}
+                className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                title="Edit actual distance"
+              >
+                <PenIcon className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         );
       },
@@ -423,20 +481,38 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       cell: (row) => {
         const status = row.status as 0 | 1 ;
         const statusConfig = {
-          0: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800' },
-          1: { label: 'Completed', className: 'bg-green-100 text-green-800' },
+          0: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+          1: { label: 'Completed', className: 'bg-green-100 text-green-800 border-green-200' },
         };
         const config = statusConfig[status] || {
           label: 'Unknown',
-          className: 'bg-gray-100 text-gray-800',
+          className: 'bg-gray-100 text-gray-800 border-gray-200',
         };
 
+        if (!adminAccess) {
+          return (
+            <span
+              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${config.className}`}
+            >
+              {config.label}
+            </span>
+          );
+        }
+
+        const isUpdating = statusUpdatingId === row.id;
+
         return (
-          <span
-            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${config.className}`}
+          <select
+            value={status}
+            disabled={isUpdating}
+            onChange={(e) =>
+              handleStatusChange(row, 'status', Number(e.target.value))
+            }
+            className={`text-xs font-semibold rounded-full px-2 py-1 border outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${config.className}`}
           >
-            {config.label}
-          </span>
+            <option value={0}>Pending</option>
+            <option value={1}>Completed</option>
+          </select>
         );
       },
     },
@@ -467,20 +543,38 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       cell: (row) => {
         const status = row.ofc_status as 0 | 1 ;
         const statusConfig = {
-          0: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800' },
-          1: { label: 'Completed', className: 'bg-green-100 text-green-800' },
+          0: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+          1: { label: 'Completed', className: 'bg-green-100 text-green-800 border-green-200' },
         };
         const config = statusConfig[status] || {
           label: 'Unknown',
-          className: 'bg-gray-100 text-gray-800',
+          className: 'bg-gray-100 text-gray-800 border-gray-200',
         };
 
+        if (!adminAccess) {
+          return (
+            <span
+              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${config.className}`}
+            >
+              {config.label}
+            </span>
+          );
+        }
+
+        const isUpdating = statusUpdatingId === row.id;
+
         return (
-          <span
-            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${config.className}`}
+          <select
+            value={status}
+            disabled={isUpdating}
+            onChange={(e) =>
+              handleStatusChange(row, 'ofc_status', Number(e.target.value))
+            }
+            className={`text-xs font-semibold rounded-full px-2 py-1 border outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${config.className}`}
           >
-            {config.label}
-          </span>
+            <option value={0}>Pending</option>
+            <option value={1}>Completed</option>
+          </select>
         );
       },
     },
@@ -497,6 +591,30 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       maxWidth: '160px',
       cell: (row) => moment(row.updated_at).format('DD/MM/YYYY, hh:mm A'),
     },
+    ...(adminAccess
+      ? [
+          {
+            name: 'Actions',
+            cell: (row: AcceptedLinkRow) => {
+              const isDeleting = deletingId === row.id;
+              return (
+                <button
+                  onClick={() => handleDeleteLink(row)}
+                  disabled={isDeleting}
+                  className="p-1 text-red-600 hover:bg-red-50 rounded disabled:opacity-50"
+                  title="Delete link"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              );
+            },
+            ignoreRowClick: true,
+            allowOverflow: true,
+            button: true,
+            width: '80px',
+          } as TableColumn<AcceptedLinkRow>,
+        ]
+      : []),
   ];
 
   if (error) {

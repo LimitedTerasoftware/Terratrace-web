@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { UGConstructionSurveyData } from '../../types/survey';
-import { isAdminUser } from '../../utils/accessControl';
+import { isAdminUser, isIEUser } from '../../utils/accessControl';
 interface StatesResponse {
   success: boolean;
   data: StateData[];
@@ -39,6 +39,7 @@ type StatusOption = {
 const BASEURL = import.meta.env.VITE_API_BASE;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const AdminAcess = isAdminUser();
+const IEUser = isIEUser();
 
 function ConstructionPage() {
   const [states, setStates] = useState<StateData[]>([]);
@@ -323,12 +324,14 @@ function ConstructionPage() {
     setSelectedDistrict(district_id);
     setSelectedBlock(block_id);
     setSelectedStatus(
-      status !== null && status !== ''
-        ? status
-            .split(',')
-            .map(Number)
-            .filter((n) => !Number.isNaN(n))
-        : [],
+      IEUser
+        ? [1]
+        : status !== null && status !== ''
+          ? status
+              .split(',')
+              .map(Number)
+              .filter((n) => !Number.isNaN(n))
+          : [],
     );
     setFromDate(from_date);
     setToDate(to_date);
@@ -336,7 +339,7 @@ function ConstructionPage() {
     setworktype(worktype);
     setFiltersReady(true);
     setConstType(constType);
-    setActiveTab(tab === 'AcceptedLinks' ? 'AcceptedLinks' : 'UG');
+    setActiveTab(IEUser ? 'UG' : tab === 'AcceptedLinks' ? 'AcceptedLinks' : 'UG');
     setTdStatus(td_status);
     setOfcStatus(ofc_status);
   }, []);
@@ -390,7 +393,7 @@ function ConstructionPage() {
     setSelectedDistrict(null);
     setSelectedBlock(null);
     setSelectedConnection(null);
-    setSelectedStatus([]);
+    setSelectedStatus(IEUser ? [1] : []);
     setGlobalSearch('');
     setFromDate('');
     setToDate('');
@@ -741,7 +744,7 @@ function ConstructionPage() {
       <ConstructionHeader />
 
       {/* Stats Panel */}
-      {(activeTab === 'UG' || activeTab === 'AcceptedLinks') &&  (
+      {!IEUser && (activeTab === 'UG' || activeTab === 'AcceptedLinks') &&  (
         <ConstructionStatsPanel
           surveys={activeTab === 'UG' ? surveyData :null}
           isLoading={loadingStats}
@@ -753,6 +756,7 @@ function ConstructionPage() {
       {/* Main Content Container */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         {/* Tabs */}
+        {!IEUser && (
         <div className="border-b border-gray-200 dark:border-gray-700">
           <ul className="flex flex-wrap -mb-px text-sm font-medium text-center px-6">
             <li className="mr-2">
@@ -781,6 +785,7 @@ function ConstructionPage() {
             </li>
           </ul>
         </div>
+        )}
 
         {/* Search and Filters */}
         <div className="p-6 border-b border-gray-200">
@@ -1084,6 +1089,8 @@ function ConstructionPage() {
             </div>
 
             {/* Status Filter */}
+            {!IEUser && (
+            <>
             <div
               className="relative flex-1 min-w-0 sm:flex-none sm:w-44"
               ref={statusDropdownRef}
@@ -1154,11 +1161,13 @@ function ConstructionPage() {
             </div>
             </>
             )}
+            </>
+            )}
           {/* </div> */}
 
           {/* Second Row - Search and Excel Export */}
           {/* <div className="flex flex-wrap items-center gap-3"> */}
-            {activeTab === 'UG' && (
+            {activeTab === 'UG' && !IEUser && (
               <>
                 <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
                   <select
@@ -1249,6 +1258,7 @@ function ConstructionPage() {
             )}
 
             {/* Search Bar */}
+            {!IEUser && (
             <div className="relative w-full sm:w-80">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg
@@ -1273,8 +1283,9 @@ function ConstructionPage() {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md bg-white text-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
               />
             </div>
+            )}
 
-            {activeTab === 'UG' && (
+            {activeTab === 'UG' && !IEUser && (
               <>
                 {/* Excel Export Button */}
                 <button
