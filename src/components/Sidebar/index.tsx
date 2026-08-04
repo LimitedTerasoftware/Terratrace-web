@@ -176,28 +176,54 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                 path="/survey"
               />
             ) : ieUser ? (
-              /* IF IE USER - Show ONLY GIS Inventory */
-              <li>
-                <NavLink
-                  to="/smart-inventory"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`
-                    flex items-center py-2 ${isOpen ? 'px-3 gap-4' : 'px-2 gap-0'} rounded-lg 
-                    transition-colors duration-200 text-bodydark1 hover:bg-graydark dark:hover:bg-meta-4
-                    ${!isOpen ? 'w-[44px] justify-center' : ''}
-                  `}
-                >
-                  <img
-                    src={Smart_Inv}
-                    className="w-5 flex-shrink-0"
-                    alt="GIS Inventory"
-                  />
-                  {isOpen && (
-                    <span className="whitespace-nowrap">GIS Inventory</span>
-                  )}
-                </NavLink>
-              </li>
+              /* IF IE USER - Show Construction Dashboard + GIS Inventory */
+              <>
+                <li>
+                  <NavLink
+                    to="/dashboards/construction-dashboard"
+                    className={`
+                      flex items-center py-2 ${isOpen ? 'px-3 gap-4' : 'px-2 gap-0'} rounded-lg
+                      transition-colors duration-200 text-bodydark1
+                      ${
+                        pathname.includes('construction-dashboard')
+                          ? 'bg-graydark dark:bg-meta-4'
+                          : 'hover:bg-graydark dark:hover:bg-meta-4'
+                      }
+                      ${!isOpen ? 'w-[44px] justify-center' : ''}
+                    `}
+                  >
+                    <div className="min-w-[20px] flex justify-center">
+                      <HardHat className="w-5 h-5" />
+                    </div>
+                    {isOpen && (
+                      <span className="whitespace-nowrap">
+                        Construction Dashboard
+                      </span>
+                    )}
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink
+                    to="/smart-inventory"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`
+                      flex items-center py-2 ${isOpen ? 'px-3 gap-4' : 'px-2 gap-0'} rounded-lg
+                      transition-colors duration-200 text-bodydark1 hover:bg-graydark dark:hover:bg-meta-4
+                      ${!isOpen ? 'w-[44px] justify-center' : ''}
+                    `}
+                  >
+                    <img
+                      src={Smart_Inv}
+                      className="w-5 flex-shrink-0"
+                      alt="GIS Inventory"
+                    />
+                    {isOpen && (
+                      <span className="whitespace-nowrap">GIS Inventory</span>
+                    )}
+                  </NavLink>
+                </li>
+              </>
             ) : (
               <>
                 {/* Dashboards Menu Group */}

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { MachineDetailsResponse } from '../../types/machine';
+import { isIEUser } from '../../utils/accessControl';
 
 interface IssuesSummary {
   total: number;
@@ -35,6 +36,7 @@ export default function KPICards({
   selectIssueType,
 }: KPICardsProps) {
   const navigate = useNavigate();
+  const ieUser = isIEUser();
   if (!Data) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 px-6 py-6">
@@ -46,7 +48,11 @@ export default function KPICards({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 px-6 py-6">
+    <div
+      className={`grid grid-cols-1 md:grid-cols-2 gap-4 px-6 py-6 ${
+        ieUser ? 'lg:grid-cols-4' : 'lg:grid-cols-3 xl:grid-cols-6'
+      }`}
+    >
       <div className="bg-white rounded-lg border border-gray-200 p-4">
         <div className="flex items-start justify-between">
           <div>
@@ -143,6 +149,8 @@ export default function KPICards({
         </div>
       </div>
 
+      {!ieUser && (
+      <>
       <div className="bg-white rounded-lg border border-gray-200 p-4">
         <div className="flex items-start justify-between">
           <div>
@@ -222,6 +230,8 @@ export default function KPICards({
           </div>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

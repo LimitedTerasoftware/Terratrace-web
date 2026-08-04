@@ -43,7 +43,8 @@ const ADMIN_EMAIL = ["Krishnakapil.s@terasoftware.com",
 "rajeshroy@terasoftware.com",
 "tirumalarao@terasoftware.com",
 "brahmareddy.v@terasoftware.in",
-"admin@terasoftware.com",];
+"admin@terasoftware.com","laxminarayana.p@terasoftware.com",
+];
 
 // Users with installation page access
 const INSTALLATION_ACCESS_EMAILS = ["survey@terasoftware.com","wb@terasoftware.com"];

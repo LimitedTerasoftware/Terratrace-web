@@ -15,6 +15,7 @@ import { machineApi } from '../Services/api';
 import axios from 'axios';
 import { UGConstructionSurveyData } from '../../types/survey';
 import { Wrapper } from '@googlemaps/react-wrapper';
+import { isIEUser } from '../../utils/accessControl';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -314,7 +315,7 @@ export default function NewConstructionDashboard() {
         search,
         firmId,
         workType,
-        'Dashboard',
+        isIEUser() ? undefined : 'Dashboard',
       );
       setDashboardData(response);
       setError(null);
@@ -401,7 +402,7 @@ export default function NewConstructionDashboard() {
            
           </div>
         </div>
-        <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className={`mt-6 grid grid-cols-1 gap-6 ${isIEUser() ? '' : 'lg:grid-cols-2'}`}>
           <SurveyInventory
             selectedState={selectedState}
             selectedDistrict={selectedDistrict}
@@ -410,7 +411,9 @@ export default function NewConstructionDashboard() {
             searchQuery={searchQuery}
             selectedPeriod={selectedPeriod}
           />
-          <RecentIssues data={issuesData} isLoading={issuesLoading} IssueType={selectIssueType} />
+          {!isIEUser() && (
+            <RecentIssues data={issuesData} isLoading={issuesLoading} IssueType={selectIssueType} />
+          )}
         </div>
       </div>
     </div>

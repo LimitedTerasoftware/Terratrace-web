@@ -694,10 +694,10 @@ function Eventreport() {
         }
          
       } else {
-        toast.error('Failed to accept record');
+        toast.error('Failed to pending record');
       }
     } catch (error) {
-      toast.error('Error accepting record');
+      toast.error('Error pending record');
     }
   };
   const handleAccept = async () => {
@@ -737,7 +737,7 @@ function Eventreport() {
         },
       );
       if (response.data.status === 1) {
-        toast.success('Record Accepted successfully!');
+        toast.success('Record Rejected successfully!');
         try {
           await axios.post(`${TraceBASEURL}/addlink-tracker`, {
             survey_id: String(MainData.id),
@@ -746,7 +746,7 @@ function Eventreport() {
           console.error('Error adding link tracker:', linkError);
         }
       } else {
-        toast.error('Failed to accept record');
+        toast.error('Failed to reject record');
       }
    
     } catch (error) {

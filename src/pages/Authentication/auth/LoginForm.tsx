@@ -67,8 +67,8 @@ const LoginForm: React.FC = () => {
         });
 
         // Redirect to /dashboard
-        if(email == 'IE@terasoftware.com'){
-          navigate('/smart-inventory')
+        if(email.toLocaleLowerCase() == 'ie@terasoftware.com'){
+          navigate('/dashboards/construction-dashboard')
         }else{
            navigate("/dashboard");
         }

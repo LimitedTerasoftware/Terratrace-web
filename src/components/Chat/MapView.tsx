@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { MapPin, Plus, Minus, Navigation } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { isIEUser } from '../../utils/accessControl';
 
 interface MapViewProps {
   constructionPathData?: unknown;
@@ -27,6 +28,7 @@ interface ConstructionPathResponse {
 
 function MapViewContent({ constructionPathData }: MapViewProps) {
   const navigate = useNavigate();
+  const ieUser = isIEUser();
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [polylines, setPolylines] = useState<google.maps.Polyline[]>([]);
@@ -89,8 +91,9 @@ function MapViewContent({ constructionPathData }: MapViewProps) {
                 <p style="margin: 0; color: #4b5563; font-size: 12px;">
                   <strong>Coordinates:</strong> ${survey.coordinates.length} points
                 </p>
-                <button  id="viewDetailsBtn"style="flex:1;padding:4px 8px;background:#2563eb;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;">Construction Details</button>
-
+                ${!ieUser && `
+                  <button  id="viewDetailsBtn"style="flex:1;padding:4px 8px;background:#2563eb;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;">Construction Details</button>
+                  `}  
               </div>
             `,
           });
@@ -209,7 +212,7 @@ function MapViewContent({ constructionPathData }: MapViewProps) {
                   <span className="font-semibold">{coordinateCount}</span>
                 </div>
               </div>
-              {surveyCount > 0 && (
+              {surveyCount > 0 && !ieUser && (
                 <button
                   onClick={() => navigate('/live-track')}
                   className="mt-3 w-full px-3 py-2 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors"
