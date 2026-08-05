@@ -38,10 +38,10 @@ type StatusOption = {
 
 const BASEURL = import.meta.env.VITE_API_BASE;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
-const AdminAcess = isAdminUser();
-const IEUser = isIEUser();
 
 function ConstructionPage() {
+  const AdminAcess = isAdminUser();
+  const IEUser = isIEUser();
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -153,7 +153,16 @@ function ConstructionPage() {
       });
       if (!response.ok) throw new Error('Failed to fetch states');
       const result: StatesResponse = await response.json();
-      setStates(result.success ? result.data : []);
+      const stateData = result.success ? result.data : [];
+      setStates(
+        IEUser
+          ? stateData.filter(
+              (state:any) =>
+                String(state.state_id) === '6' ||
+                String(state.state_code) === '19',
+            )
+          : stateData,
+      );
     } catch (error) {
       console.error('Error fetching states:', error);
     } finally {
@@ -257,6 +266,9 @@ function ConstructionPage() {
 
       const response = await fetch(
         `${TraceBASEURL}/getConstructionSummary?${new URLSearchParams(params).toString()}`,
+          {
+          headers: getAuthHeaders(),
+        }
       );
       const result = await response.json();
       setConstructionSummary(result.status ? result.summary : null);

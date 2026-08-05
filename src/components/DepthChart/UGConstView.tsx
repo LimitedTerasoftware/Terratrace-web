@@ -890,28 +890,33 @@ function Eventreport() {
       selector: (_row, index) => (index !== undefined ? index + 1 : '-'),
       maxWidth: '1px',
     },
-    { name: 'CORS', selector: (row) => row.cords || '-' },
+     ...(IEUser
+      ? []
+      : [
+      { name: 'CORS', selector: (row:Activity) => row.cords || '-' },
+      ]),
     { name: 'Event Id', selector: (row) => row.id || '-', sortable: true },
     {
       name: 'Survey ID',
       selector: (row) => row.survey_id || '-',
       sortable: true,
     },
+     ...(IEUser
+      ? []
+      : [
     {
       name: 'Machine ID',
-      selector: (row) => row.machine_registration_number || '-',
+      selector: (row:Activity) => row.machine_registration_number || '-',
       sortable: true,
       wrap: true,
     },
     {
       name: 'DGPS ID',
-      selector: (row) => row.deviceId || '-',
+      selector: (row:Activity) => row.deviceId || '-',
       wrap: true,
     },
-    ...(IEUser
-      ? []
-      : [
-          {
+   
+     {
             name: 'Firm Name',
             selector: (row: Activity) => row.firm_name || '-',
             sortable: true,
@@ -939,71 +944,74 @@ function Eventreport() {
       },
       wrap: true,
     },
+     ...(IEUser
+      ? []
+      : [
     {
       name: 'Order Index',
-      selector: (row) => row.order_index?.toString() || '-',
+      selector: (row:Activity) => row.order_index?.toString() || '-',
       sortable: true,
     },
     {
       name: 'Cable Stack',
-      selector: (row) => (row.cable_stack !== 'null' && row.cable_stack) || '-',
+      selector: (row:Activity) => (row.cable_stack !== 'null' && row.cable_stack) || '-',
       sortable: true,
     },
     {
       name: 'Execution Modality',
-      selector: (row) =>
+      selector: (row:Activity) =>
         (row.executionModality !== 'null' && row.executionModality) || '-',
       sortable: true,
     },
     {
       name: 'Landmark Type',
-      selector: (row) =>
+      selector: (row:Activity ) =>
         (row.landmark_type !== 'null' && row.landmark_type) || '-',
       sortable: true,
     },
     {
       name: 'Landmark Desc',
-      selector: (row) =>
+      selector: (row:Activity) =>
         (row.landmark_description !== 'null' && row.landmark_description) ||
         '-',
       sortable: true,
     },
     {
       name: 'RouteFeature Type',
-      selector: (row) =>
+      selector: (row:Activity) =>
         (row.routeFeatureType !== 'null' && row.routeFeatureType) || '-',
       sortable: true,
     },
     {
       name: 'Route Belongs To',
-      selector: (row) =>
+      selector: (row:Activity) =>
         (row.routeBelongsTo !== 'null' && row.routeBelongsTo) || '-',
       sortable: true,
     },
     {
       name: 'Road Type',
-      selector: (row) => (row.roadType !== 'null' && row.roadType) || '-',
+      selector: (row:Activity) => (row.roadType !== 'null' && row.roadType) || '-',
       sortable: true,
     },
     {
       name: 'Soil Type',
-      selector: (row) => (row.soilType !== 'null' && row.soilType) || '-',
+      selector: (row:Activity) => (row.soilType !== 'null' && row.soilType) || '-',
       sortable: true,
     },
     {
       name: 'Area Type',
-      selector: (row) => (row.area_type !== 'null' && row.area_type) || '-',
+      selector: (row:Activity) => (row.area_type !== 'null' && row.area_type) || '-',
       sortable: true,
     },
     {
       name: 'Pole Type',
-      selector: (row) => {
+      selector: (row:Activity) => {
         const poleData = parsePoleData(row.pole_type);
         return poleData?.pole_material || '-';
       },
       sortable: true,
 
-      cell: (row) => {
+      cell: (row: Activity) => {
         const poleData = parsePoleData(row.pole_type);
         if (!poleData) return <span>-</span>;
 
@@ -1020,12 +1028,12 @@ function Eventreport() {
     },
     {
       name: 'Existing Pole',
-      selector: (row) => {
+      selector: (row: Activity) => {
         const poleData = parsePoleData(row.existing_pole);
         return poleData?.pole_material || '-';
       },
       sortable: true,
-      cell: (row) => {
+      cell: (row: Activity) => {
         const poleData = parsePoleData(row.existing_pole);
         if (!poleData) return <span className="text-gray-400">-</span>;
 
@@ -1052,12 +1060,12 @@ function Eventreport() {
     },
     {
       name: 'New Pole',
-      selector: (row) => {
+      selector: (row: Activity) => {
         const poleData = parsePoleData(row.new_pole);
         return poleData?.pole_material || '-';
       },
       sortable: true,
-      cell: (row) => {
+      cell: (row: Activity) => {
         const poleData = parsePoleData(row.new_pole);
         if (!poleData) return <span>-</span>;
 
@@ -1074,38 +1082,39 @@ function Eventreport() {
     },
     {
       name: 'Side Type',
-      selector: (row) => (row.cableLaidOn !== 'null' && row.cableLaidOn) || '-',
+      selector: (row: Activity) => (row.cableLaidOn !== 'null' && row.cableLaidOn) || '-',
       sortable: true,
     },
     {
       name: 'Crossing Type',
-      selector: (row) =>
+      selector: (row: Activity) =>
         (row.crossingType !== 'null' && row.crossingType) || '-',
       sortable: true,
     },
     {
       name: 'Crossing Length',
-      selector: (row) =>
+      selector: (row: Activity) =>
         (row.crossingLength !== 'null' && row.crossingLength) || '-',
       sortable: true,
     },
     {
       name: 'Road Width',
-      selector: (row) => (row.roadWidth !== 'null' && row.roadWidth) || '-',
+      selector: (row: Activity) => (row.roadWidth !== 'null' && row.roadWidth) || '-',
       sortable: true,
     },
     {
       name: 'Center To Margin',
-      selector: (row) => (row.road_margin !== 'null' && row.road_margin) || '-',
+      selector: (row: Activity) => (row.road_margin !== 'null' && row.road_margin) || '-',
       sortable: true,
     },
-    { name: 'Offset', selector: (row) => row.offset || '-', sortable: true },
+    { name: 'Offset', selector: (row: Activity) => row.offset || '-', sortable: true },
     {
       name: 'Route Feasible',
-      selector: (row) =>
+      selector: (row: Activity) =>
         (row.Roadfesibility !== 'null' && row.Roadfesibility) || '-',
       sortable: true,
     },
+    ]),
     {
       name: 'Depth Meters',
       selector: (row) => row.depthMeters || '-',
@@ -1116,16 +1125,20 @@ function Eventreport() {
       selector: (row) => row.distance || '-',
       sortable: true,
     },
+     ...(IEUser
+      ? []
+      : [
     {
       name: 'DGPS Accuracy',
-      selector: (row) => row.dgps_accuracy || '-',
+      selector: (row: Activity) => row.dgps_accuracy || '-',
       sortable: true,
     },
     {
       name: 'DGPS SIV',
-      selector: (row) => row.dgps_siv || '-',
+      selector: (row: Activity) => row.dgps_siv || '-',
       sortable: true,
     },
+  ]),
     {
       name: 'Media',
       cell: (row: Activity) => {
@@ -1241,9 +1254,12 @@ function Eventreport() {
       },
       sortable: true,
     },
+     ...(IEUser
+      ? []
+      : [
     {
       name: 'Start Duct',
-      cell: (row) => {
+      cell: (row: Activity) => {
         const parseDuctData = (data: any): any[] => {
           if (!data) return [];
           if (Array.isArray(data)) return data;
@@ -1285,7 +1301,7 @@ function Eventreport() {
     },
     {
       name: 'End Duct',
-      cell: (row) => {
+      cell: (row: Activity) => {
         const parseDuctData = (data: any): any[] => {
           if (!data) return [];
           if (Array.isArray(data)) return data;
@@ -1327,7 +1343,7 @@ function Eventreport() {
     },
     {
       name: 'Start OFC',
-      cell: (row) => {
+      cell: (row: Activity  ) => {
         const parseOFCData = (data: any): any[] => {
           if (!data) return [];
           if (Array.isArray(data)) return data;
@@ -1373,7 +1389,7 @@ function Eventreport() {
     },
     {
       name: 'End OFC',
-      cell: (row) => {
+      cell: (row: Activity) => {
         const parseOFCData = (data: any): any[] => {
           if (!data) return [];
           if (Array.isArray(data)) return data;
@@ -1419,9 +1435,9 @@ function Eventreport() {
     },
     {
       name: 'Status',
-      selector: (row) => row.status,
+      selector: (row: Activity) => row.status,
       sortable: true,
-      cell: (row) => {
+      cell: (row: Activity) => {
         const status = row.status as 0 | 1;
         const statusConfig = {
           0: { label: 'Active', className: 'bg-green-100 text-green-800' },
@@ -1443,13 +1459,14 @@ function Eventreport() {
     },
     {
       name: 'Created Time',
-      selector: (row) => moment(row.created_time).format('DD/MM/YYYY, hh:mm A'),
+      selector: (row: Activity) => moment(row.created_time).format('DD/MM/YYYY, hh:mm A'),
       sortable: true,
       wrap: true,
     },
+  ]),
     {
       name: 'Created At',
-      selector: (row) => moment(row.created_at).format('DD/MM/YYYY, hh:mm A'),
+      selector: (row: Activity) => moment(row.created_at).format('DD/MM/YYYY, hh:mm A'),
       sortable: true,
       wrap: true,
     },
@@ -1869,6 +1886,7 @@ function Eventreport() {
                 Map View
               </button>
             </li>
+            {!IEUser && (
             <li className="mr-2">
               <button
                 className={`inline-block p-4 rounded-t-lg outline-none ${
@@ -1882,7 +1900,7 @@ function Eventreport() {
               >
                 Depth Analysis
               </button>
-            </li>
+            </li>)}
           </ul>
 
           <div className="flex flex-wrap items-center gap-3 mt-2">

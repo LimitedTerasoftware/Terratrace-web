@@ -69,6 +69,8 @@ const LoginForm: React.FC = () => {
         // Redirect to /dashboard
         if(email.toLocaleLowerCase() == 'ie@terasoftware.com'){
           navigate('/dashboards/construction-dashboard')
+        }else if(email.toLocaleLowerCase() == 'vijaykumar.d@amilionn.com'){
+          navigate('/construction')
         }else{
            navigate("/dashboard");
         }

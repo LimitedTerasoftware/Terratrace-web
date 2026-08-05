@@ -9,7 +9,7 @@ import DataTable, { TableColumn } from 'react-data-table-component';
 import { AddConstModal } from './AddConstModal';
 import { UpdateConstModal } from './UpdateConstModal';
 import { EditLinkModal } from './EditLinkModal';
-import { isAdminUser, isIEUser } from '../../utils/accessControl';
+import { getAuthHeaders, isAdminUser, isIEUser } from '../../utils/accessControl';
 import { ToastContainer, toast } from 'react-toastify';
 
 interface ReportProps {
@@ -50,8 +50,6 @@ interface ReportProps {
 }
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
-const AdminAcess = isAdminUser();
-const IEUser = isIEUser();
 
 const Report: React.FC<ReportProps> = ({
   Data,
@@ -66,6 +64,8 @@ const Report: React.FC<ReportProps> = ({
   OnMergeLoadingChange,
   OnEditLink,
 }) => {
+  const AdminAcess = isAdminUser();
+  const IEUser = isIEUser();
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<UGConstructionSurveyData[]>([]);
@@ -118,7 +118,9 @@ const Report: React.FC<ReportProps> = ({
           currentPage: number;
           pageSize: number;
           data: UGConstructionSurveyData[];
-        }>(`${TraceBASEURL}/get-survey-data`, { params });
+        }>(`${TraceBASEURL}/get-survey-data`, {
+          headers: getAuthHeaders(),
+          params });
 
         if (response.data.status) {
           setData(response.data.data);
@@ -1283,7 +1285,9 @@ const Report: React.FC<ReportProps> = ({
                   count: number;
                   totalCount: number;
                   data: UGConstructionSurveyData[];
-                }>(`${TraceBASEURL}/get-survey-data`, { params });
+                }>(`${TraceBASEURL}/get-survey-data`, { 
+                  headers: getAuthHeaders(),
+                  params });
 
                 if (response.data.status) {
                   setData(response.data.data);
@@ -1340,7 +1344,9 @@ const Report: React.FC<ReportProps> = ({
                   count: number;
                   totalCount: number;
                   data: UGConstructionSurveyData[];
-                }>(`${TraceBASEURL}/get-survey-data`, { params });
+                }>(`${TraceBASEURL}/get-survey-data`, { 
+                  headers: getAuthHeaders(),
+                  params });
 
                 if (response.data.status) {
                   setData(response.data.data);

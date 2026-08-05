@@ -15,7 +15,7 @@ import { machineApi } from '../Services/api';
 import axios from 'axios';
 import { UGConstructionSurveyData } from '../../types/survey';
 import { Wrapper } from '@googlemaps/react-wrapper';
-import { isIEUser } from '../../utils/accessControl';
+import { isIEUser ,getAuthHeaders} from '../../utils/accessControl';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -202,7 +202,9 @@ export default function NewConstructionDashboard() {
         const response = await axios.get<{
           status: boolean;
           data: UGConstructionSurveyData[];
-        }>(`${TraceBASEURL}/get-survey-data`, { params });
+        }>(`${TraceBASEURL}/get-survey-data`, { 
+          headers: getAuthHeaders(),
+          params });
         if (response.data.status) {
           setTodaySurveyCount(response.data.data.length);
 

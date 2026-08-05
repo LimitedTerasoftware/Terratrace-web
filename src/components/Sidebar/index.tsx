@@ -16,6 +16,7 @@ import {
   isNGUser,
   canAccessConstruction,
   isAdminUser,
+  hasConstructionAccess,
 } from '../../utils/accessControl';
 import DropdownUser from './DropDownUser';
 import DarkModeSwitcher from './DarkModeSwitcher';
@@ -55,6 +56,7 @@ import {
   ListFilterIcon,
   ListOrdered,
   CheckSquare,
+  ConstructionIcon,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -71,6 +73,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   const InvOnly = hasInvOnlyAccess();
   const ieUser = isIEUser();
   const ngUser = isNGUser();
+  const constructionUser = hasConstructionAccess();
   const adminUser = isAdminUser();
   const installationAccess = hasInstallationAccess();
   const canAccessConstructionTab = canAccessConstruction();
@@ -248,7 +251,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                   </NavLink>
                 </li>
               </>
-            ) : (
+            ): constructionUser?(
+              <SideBarItem
+                icon={ConstructionImg}
+                label="Construction"
+                isOpen={isOpen}
+                isActive={!!constructionMatch}
+                path="/construction"
+              />
+            ): (
               <>
                 {/* Dashboards Menu Group */}
                 {(!viewOnly || adminUser) && (

@@ -74,7 +74,14 @@ export default function Filters({
     setLoadingStates(true);
     try {
       const data = await getStateData();
-      setStates(data || []);
+      setStates(
+        ieUser
+          ? data.filter(
+              (state:any) =>
+                String(state.state_id) === '6' ||
+                String(state.state_code) === '19',
+            )
+          : data || [],);
     } catch (error) {
       console.error('Error fetching states:', error);
     } finally {
