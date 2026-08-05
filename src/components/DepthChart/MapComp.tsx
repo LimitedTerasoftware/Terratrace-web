@@ -596,9 +596,12 @@ const MapComponent: React.FC<MapCompProps> = ({
             strokeColor: '#ffffff',
             strokeWeight: 2,
           },
-          draggable: point.eventType !== 'STARTPIT' && point.eventType !== 'ENDPIT' && AdminAcess,
+          // draggable: point.eventType !== 'STARTPIT' && point.eventType !== 'ENDPIT' && AdminAcess,
+          draggable: AdminAcess,
           animation: google.maps.Animation.DROP,
-          cursor: (point.eventType === 'STARTPIT' || point.eventType === 'ENDPIT' || !AdminAcess) ? 'pointer' : 'grab',
+          // cursor: (point.eventType === 'STARTPIT' || point.eventType === 'ENDPIT' || !AdminAcess) ? 'pointer' : 'grab',
+          cursor: (!AdminAcess) ? 'pointer' : 'grab',
+
         });
 
         // Click → open info window

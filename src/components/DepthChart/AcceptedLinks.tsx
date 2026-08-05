@@ -317,12 +317,13 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
         'Survey Count',
         'BOQ Distance (m)',
         'T&D Distance (m)',
+        'BOQ - T&D Distance Difference (m)',
         'Completion %',
         'T&D Status',
         'OFC/Blowing Distance',
+        'T&D - OFC Distance Difference (m)',
+        'OFC Completion %',
         'OFC Status',
-        'Distance Difference (m)',
-        'OFC Distance Difference (m)',
         'Updated At',
       ];
 
@@ -336,12 +337,13 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
           ? row.actual_distance_meters.toFixed(2)
           : '-',
         (row.total_distance_meters ?? 0).toFixed(2),
+        (row.distance_diff_meters ?? 0).toFixed(2),
         row.completion_percent != null ? `${row.completion_percent}%` : '-',
         statusLabel(row.status),
         (row.ofc_distance_meters ?? 0).toFixed(2),
-        statusLabel(row.ofc_status),
-        (row.distance_diff_meters ?? 0).toFixed(2),
         (row.ofc_distance_diff_meters ?? 0).toFixed(2),
+        '-',
+        statusLabel(row.ofc_status),
         moment(row.updated_at).format('DD/MM/YYYY, hh:mm A'),
       ]);
 
@@ -461,7 +463,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       cell: (row) => (row.total_distance_meters ?? 0).toFixed(2),
     },
     {
-      name :'Distance Difference(mt)',
+      name :'BOQ - T&D Distance Difference (mt)',
       selector:(row)=>row.distance_diff_meters ?? 0,
       sortable: true,
       cell: (row) =>(row.distance_diff_meters ?? 0).toFixed(2) ,
@@ -523,7 +525,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       cell: (row) =>(row.ofc_distance_meters ?? 0).toFixed(2),
     },
     {
-      name :'OFC Distance Difference(mt)',
+      name :'T&D - OFC Distance Difference(mt)',
       selector:(row)=>row.ofc_distance_diff_meters ?? 0,
       sortable: true,
       cell: (row) =>(row.ofc_distance_diff_meters ?? 0).toFixed(2),

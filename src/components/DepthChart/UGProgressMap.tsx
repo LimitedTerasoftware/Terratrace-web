@@ -201,6 +201,23 @@ const ErrorState: React.FC<{ message: string }> = ({ message }) => (
 
 const INTEGRATED_GP_COLOR = '#16A34A';
 
+const buildLabeledCircleIcon = (
+  color: string,
+  radius: number,
+  strokeWidth = 2,
+): google.maps.Icon => {
+  const diameter = radius * 2 + strokeWidth * 2;
+  const center = diameter / 2;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${diameter}" height="${diameter}"><circle cx="${center}" cy="${center}" r="${radius}" fill="${color}" stroke="#ffffff" stroke-width="${strokeWidth}"/></svg>`;
+
+  return {
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    scaledSize: new google.maps.Size(diameter, diameter),
+    anchor: new google.maps.Point(center, center),
+    labelOrigin: new google.maps.Point(center, -8),
+  };
+};
+
 const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
   markers,
   planningPlacemarks,
@@ -390,14 +407,13 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
           position: coord,
           map,
           title: placemark.name,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 8,
-            fillColor: color,
-            fillOpacity: 0.9,
-            strokeColor: '#ffffff',
-            strokeWeight: 1.5,
+          label: {
+            text: placemark.name,
+            color: '#111827',
+            fontSize: '10px',
+            fontWeight: '600',
           },
+          icon: buildLabeledCircleIcon(color, 8),
         });
 
         marker.addListener('click', () => {
@@ -454,14 +470,13 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
           map,
           title: gp.name,
           zIndex: 1000,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 9,
-            fillColor: INTEGRATED_GP_COLOR,
-            fillOpacity: 1,
-            strokeColor: '#ffffff',
-            strokeWeight: 2,
+          label: {
+            text: gp.name,
+            color: '#111827',
+            fontSize: '10px',
+            fontWeight: '600',
           },
+          icon: buildLabeledCircleIcon(INTEGRATED_GP_COLOR, 9),
         });
 
         marker.addListener('click', () => {
