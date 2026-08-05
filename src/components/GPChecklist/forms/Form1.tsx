@@ -19,6 +19,7 @@ import {
 } from '../../Services/api';
 import { StateData, District, Block } from '../../../types/survey';
 import axios from 'axios';
+import { getAuthHeaders } from '../../../utils/accessControl';
 import ImageCapture from './ImageCapture';
 import MediaCarousel from '../../DepthChart/MediaCarousel';
 import { addImageAttachment, buildPrintPage ,addPdfAttachment} from './printUtils';
@@ -29,7 +30,6 @@ interface Form1Props {
   validate?: () => boolean;
   readOnly?: boolean;
 }
-const BASEURL = import.meta.env.VITE_API_BASE;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
 export default function Form1({
@@ -235,7 +235,9 @@ export default function Form1({
   const fetchGPs = async (blockCode: string) => {
     setLoadingGPs(true);
     try {
-      const res = await axios.get(`${BASEURL}/gpdata?block_code=${blockCode}`);
+      const res = await axios.get(`${TraceBASEURL}/gpdata?block_code=${blockCode}`, {
+        headers: getAuthHeaders(),
+      });
       const data = res.data;
       const options = data.map((g: any) => ({
         id: g.id.toString(),
@@ -268,7 +270,10 @@ export default function Form1({
         getBlockData(data.districtId || '').then((res2) => {
           setBlocks(res2 || []);
           axios
-            .get(`${BASEURL}/gpdata`, { params: { block_code: data.blockId } })
+            .get(`${TraceBASEURL}/gpdata`, {
+              params: { block_code: data.blockId },
+              headers: getAuthHeaders(),
+            })
             .then((res3) => {
               const gpOptions = Array.isArray(res3.data.data)
                 ? res3.data.data.map((gp: any) => ({

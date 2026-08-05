@@ -5,7 +5,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import ResponsivePagination from '../Tables/ResponsivePagination';
 import { JointsApiResponse, JointsData, ProcessedJoints } from '../../types/survey';
-import { hasDownloadAccess } from '../../utils/accessControl';
+import { hasDownloadAccess, getAuthHeaders } from '../../utils/accessControl';
 import * as XLSX from "xlsx";
 
 interface StateData {
@@ -31,7 +31,6 @@ type StatusOption = {
 };
 
 const Joints: React.FC = () => {
-  const BASEURL = import.meta.env.VITE_API_BASE;
   const TraceBaseUrl = import.meta.env.VITE_TraceAPI_URL;
   const ImgBaseUrl = import.meta.env.VITE_Image_URL;
   const DownloadOnly = hasDownloadAccess();
@@ -131,14 +130,14 @@ const Joints: React.FC = () => {
 }, [fromdate, todate, globalsearch, page,selectedState, selectedDistrict, selectedBlock, selectedStatus, filtersReady]);
 
   useEffect(() => {
-    axios.get(`${BASEURL}/states`)
+    axios.get(`${TraceBaseUrl}/states`, { headers: getAuthHeaders() })
       .then((res) => setStates(res.data.data))
       .catch((err) => console.error(err));
   }, []);
 
   useEffect(() => {
     if (selectedState) {
-      axios.get(`${BASEURL}/districtsdata?state_code=${selectedState}`)
+      axios.get(`${TraceBaseUrl}/districtsdata?state_code=${selectedState}`, { headers: getAuthHeaders() })
         .then((res) => setDistricts(res.data))
         .catch((err) => console.error(err));
     } else {
@@ -148,7 +147,7 @@ const Joints: React.FC = () => {
   }, [selectedState]);
   useEffect(() => {
     if (selectedDistrict) {
-      axios.get(`${BASEURL}/blocksdata?district_code=${selectedDistrict}`)
+      axios.get(`${TraceBaseUrl}/blocksdata?district_code=${selectedDistrict}`, { headers: getAuthHeaders() })
         .then((res) => setBlocks(res.data))
         .catch((err) => console.error(err));
     } else {

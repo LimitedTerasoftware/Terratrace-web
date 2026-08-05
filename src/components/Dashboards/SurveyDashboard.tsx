@@ -18,6 +18,7 @@ import {
   ClipboardCheck
 } from "lucide-react";
 import DataTable, { TableColumn } from 'react-data-table-component';
+import { getAuthHeaders } from '../../utils/accessControl';
 
 // ────────────────────────────────────────────────────────────────────────────────
 // Types
@@ -172,13 +173,13 @@ export default function SurveyDashboard() {
   const [perPage, setPerPage] = useState(10);
   const [totalRows, setTotalRows] = useState(0);
 
-  const BASEURL = import.meta.env.VITE_API_BASE || 'https://api.tricadtrack.com';
+  const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
   // Fetch districts by state code
   const fetchDistricts = async () => {
     try {
       setLoadingDistricts(true);
-      const response = await fetch(`${BASEURL}/districtsdata?state_code=6`);
+      const response = await fetch(`${TraceBASEURL}/districtsdata?state_code=6`, { headers: getAuthHeaders() });
       if (!response.ok) throw new Error('Failed to fetch districts');
       const data = await response.json();
       setDistricts(data || []);

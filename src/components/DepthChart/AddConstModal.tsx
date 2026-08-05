@@ -17,6 +17,7 @@ import {
 } from '../Services/api';
 import { Machine } from '../../types/machine';
 import { Firm } from '../../types/firm';
+import { getAuthHeaders } from '../../utils/accessControl';
 
 interface FormErrors {
   [key: string]: string;
@@ -119,6 +120,7 @@ const getEventSpecificFields = () => {
   return [...baseFields];
 };
 const BASEURL = import.meta.env.VITE_API_BASE;
+const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
 export function AddConstModal({
   isOpen,
@@ -161,8 +163,9 @@ export function AddConstModal({
   const fetchGps = async (selectedBlock: string) => {
     if (!selectedBlock) return;
     try {
-      const response = await axios.get(`${BASEURL}/gpdata`, {
+      const response = await axios.get(`${TraceBASEURL}/gpdata`, {
         params: { block_code: selectedBlock },
+        headers: getAuthHeaders(),
       });
       setGp(response.data);
     } catch (err: any) {

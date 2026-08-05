@@ -13,7 +13,7 @@ import {
 } from "@tanstack/react-table";
 import { useNavigate } from 'react-router-dom';
 import ResponsivePagination from "./ResponsivePagination";
-import { hasViewOnlyAccess } from "../../utils/accessControl";
+import { hasViewOnlyAccess, getAuthHeaders } from "../../utils/accessControl";
 import { ChevronDown, Eye, RotateCcw, Search, TableCellsMerge, User } from "lucide-react";
 
 interface Hoto {
@@ -111,6 +111,7 @@ type StatusOption = {
 
 const HotoSurvey: React.FC = () => {
   const BASEURL = import.meta.env.VITE_API_BASE;
+  const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
   const location = useLocation();
   const viewOnly = hasViewOnlyAccess();
   const [data, setData] = useState<Hoto[]>([]);
@@ -322,7 +323,7 @@ const HotoSurvey: React.FC = () => {
   };
 
   useEffect(() => {
-    axios.get(`${BASEURL}/states`)
+    axios.get(`${TraceBASEURL}/states`, { headers: getAuthHeaders() })
       .then((res) => setStates(res.data.data))
       .catch((err) => console.error(err));
   }, []);
@@ -330,7 +331,7 @@ const HotoSurvey: React.FC = () => {
   // Fetch districts when state is selected
   useEffect(() => {
     if (selectedState) {
-      axios.get(`${BASEURL}/districtsdata?state_code=${selectedState}`)
+      axios.get(`${TraceBASEURL}/districtsdata?state_code=${selectedState}`, { headers: getAuthHeaders() })
         .then((res) => setDistricts(res.data))
         .catch((err) => console.error(err));
     } else {
@@ -342,7 +343,7 @@ const HotoSurvey: React.FC = () => {
   // Fetch blocks when district is selected
   useEffect(() => {
     if (selectedDistrict) {
-      axios.get(`${BASEURL}/blocksdata?district_code=${selectedDistrict}`)
+      axios.get(`${TraceBASEURL}/blocksdata?district_code=${selectedDistrict}`, { headers: getAuthHeaders() })
         .then((res) => setBlocks(res.data))
         .catch((err) => console.error(err));
     } else {

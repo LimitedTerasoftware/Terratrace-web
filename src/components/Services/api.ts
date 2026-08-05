@@ -21,9 +21,9 @@ import {
   RouterData,
   RackResponse,
 } from '../../types/block-router-checklist';
+import { getAuthHeaders } from '../../utils/accessControl';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
-const BASEURL = import.meta.env.VITE_API_BASE;
 
 export const getFirms = async (): Promise<Firm[]> => {
   try {
@@ -213,7 +213,9 @@ export const useActivities = (
 
 export const getStateData = async () => {
   try {
-    const resp = await axios.get(`${BASEURL}/states`);
+    const resp = await axios.get(`${TraceBASEURL}/states`, {
+      headers: getAuthHeaders(),
+    });
     if (resp.status === 200 || resp.status === 201) {
       return resp.data.data;
     } else {
@@ -227,7 +229,8 @@ export const getStateData = async () => {
 export const getDistrictData = async (selectedState: string | null) => {
   try {
     const resp = await axios.get(
-      `${BASEURL}/districtsdata?state_code=${selectedState}`,
+      `${TraceBASEURL}/districtsdata?state_code=${selectedState}`,
+      { headers: getAuthHeaders() },
     );
     if (resp.status === 200 || resp.status === 201) {
       return resp.data;
@@ -242,7 +245,8 @@ export const getDistrictData = async (selectedState: string | null) => {
 export const getBlockData = async (selectedDistrict: string | null) => {
   try {
     const resp = await axios.get(
-      `${BASEURL}/blocksdata?district_code=${selectedDistrict}`,
+      `${TraceBASEURL}/blocksdata?district_code=${selectedDistrict}`,
+      { headers: getAuthHeaders() },
     );
     if (resp.status === 200 || resp.status === 201) {
       return resp.data;

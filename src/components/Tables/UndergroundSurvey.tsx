@@ -14,7 +14,7 @@ import * as XLSX from "xlsx";
 import MapComponent from "./MapComponent";
 import { MediaExportService } from "../hooks/useFullscreen";
 import { CameraOffIcon, ChartBar, CheckCircle, ChevronDown, Download, Edit2, Eye, EyeIcon, FolderOpen, Globe2Icon, Loader, MapPinIcon, RotateCcw, Search, SheetIcon, SquaresExcludeIcon, TableCellsMerge, User } from "lucide-react";
-import { hasDownloadAccess, hasViewOnlyAccess } from "../../utils/accessControl";
+import { hasDownloadAccess, hasViewOnlyAccess, getAuthHeaders } from "../../utils/accessControl";
 import { FaArrowLeft } from "react-icons/fa";
 import { UnderGroundSurveyData } from "../../types/survey";
 import { BsCameraVideoFill } from "react-icons/bs";
@@ -356,7 +356,7 @@ const handleEditSave = async () => {
   // };
 
   useEffect(() => {
-    axios.get(`${BASEURL}/states`)
+    axios.get(`${TraceBASEURL}/states`, { headers: getAuthHeaders() })
       .then((res) => setStates(res.data.data))
       .catch((err) => console.error(err));
   }, []);
@@ -364,7 +364,7 @@ const handleEditSave = async () => {
   // Fetch districts when state is selected
   useEffect(() => {
   if (tempSelectedState) {
-    axios.get(`${BASEURL}/districtsdata?state_code=${tempSelectedState}`)
+    axios.get(`${TraceBASEURL}/districtsdata?state_code=${tempSelectedState}`, { headers: getAuthHeaders() })
       .then((res) => setDistricts(res.data))
       .catch((err) => console.error(err));
   } else {
@@ -375,7 +375,7 @@ const handleEditSave = async () => {
   // Fetch blocks when district is selected
   useEffect(() => {
   if (tempSelectedDistrict) {
-    axios.get(`${BASEURL}/blocksdata?district_code=${tempSelectedDistrict}`)
+    axios.get(`${TraceBASEURL}/blocksdata?district_code=${tempSelectedDistrict}`, { headers: getAuthHeaders() })
       .then((res) => setBlocks(res.data))
       .catch((err) => console.error(err));
   } else {
@@ -385,11 +385,11 @@ const handleEditSave = async () => {
 
  useEffect(() => {
   if (editingRow) {
-    const blockCode = editingRow.block_id; 
+    const blockCode = editingRow.block_id;
     if (!blockCode) return;
 
     setLoadingGPD(true);
-    axios.get(`${BASEURL}/gpdata?block_code=${blockCode}`)
+    axios.get(`${TraceBASEURL}/gpdata?block_code=${blockCode}`, { headers: getAuthHeaders() })
       .then(res => {
         const data = res.data;
         const options = data.map((g: any) => ({

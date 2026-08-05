@@ -6,6 +6,7 @@ import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { useNavigate } from 'react-router-dom';
 import moment from "moment";
+import { getAuthHeaders } from "../../utils/accessControl";
 
 
 const tabs = [
@@ -19,6 +20,7 @@ const tabs = [
 
 const ECommerce: React.FC = () => {
   const BASEURL = import.meta.env.VITE_API_BASE;
+  const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
   const navigate = useNavigate();
   const [loading,setLoading] = useState(true)
   const [selectedTab, setSelectedTab] = useState(""); // Default: Today
@@ -104,7 +106,7 @@ const ECommerce: React.FC = () => {
   useEffect(() => {
     const fetchStates = async () => {
       try {
-        const response = await axios.get(`${BASEURL}/states`);
+        const response = await axios.get(`${TraceBASEURL}/states`, { headers: getAuthHeaders() });
         if (response.data.success) {
           setStates(response.data.data); // Store state list
         }

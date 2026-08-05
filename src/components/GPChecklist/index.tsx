@@ -10,6 +10,7 @@ import Form7 from './forms/Form7';
 import type { FormData, GeoTaggedImage } from '../../types/gp-checklist';
 import Sidebar from './Sidebar';
 import axios from 'axios';
+import { getAuthHeaders } from '../../utils/accessControl';
 import {
   getStateData,
   getDistrictData,
@@ -731,7 +732,10 @@ function App() {
   useEffect(() => {
     if (selectedBlock) {
       axios
-        .get(`${BASEURL}/gpdata`, { params: { block_code: selectedBlock } })
+        .get(`${TraceBASEURL}/gpdata`, {
+          params: { block_code: selectedBlock },
+          headers: getAuthHeaders(),
+        })
         .then((res) => setGps(res.data || []))
         .catch(() => setGps([]));
       setSelectedGp('');

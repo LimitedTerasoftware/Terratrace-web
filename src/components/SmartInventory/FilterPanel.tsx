@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Search, Filter, X, ChevronUp, ChevronDown } from 'lucide-react';
 import { FilterState } from '../../types/kmz';
 import axios from 'axios';
+import { getAuthHeaders } from '../../utils/accessControl';
 
 interface FilterPanelProps {
   filters: FilterState;
@@ -31,7 +32,7 @@ interface Block {
   district_code: string;
 }
 
-const BASEURL = import.meta.env.VITE_API_BASE;
+const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
 export const FilterPanel: React.FC<FilterPanelProps> = ({
   filters,
@@ -56,14 +57,14 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
   ];
 
   useEffect(() => {
-    axios.get(`${BASEURL}/states`)
+    axios.get(`${TraceBASEURL}/states`, { headers: getAuthHeaders() })
       .then((res) => setStates(res.data.data))
       .catch((err) => console.error(err));
   }, []);
 
   useEffect(() => {
     if (filters.state) {
-      axios.get(`${BASEURL}/districtsdata?state_code=${filters.state}`)
+      axios.get(`${TraceBASEURL}/districtsdata?state_code=${filters.state}`, { headers: getAuthHeaders() })
         .then((res) => setDistricts(res.data))
         .catch((err) => console.error(err));
     } else {
@@ -74,7 +75,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
 
   useEffect(() => {
     if (filters.division) {
-      axios.get(`${BASEURL}/blocksdata?district_code=${filters.division}`)
+      axios.get(`${TraceBASEURL}/blocksdata?district_code=${filters.division}`, { headers: getAuthHeaders() })
         .then((res) => setBlocks(res.data))
         .catch((err) => console.error(err));
     } else {

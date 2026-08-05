@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { X, Save, Loader2, AlertCircle } from 'lucide-react';
 import axios from 'axios';
+import { getAuthHeaders } from '../../utils/accessControl';
 
 interface GpOption {
   id: number;
@@ -16,7 +17,7 @@ interface EditLinkModalProps {
   baseUrl: string;
 }
 
-const BASEURL = import.meta.env.VITE_API_BASE;
+const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
 export function EditLinkModal({
   isOpen,
@@ -40,8 +41,9 @@ export function EditLinkModal({
       try {
         setLoadingGps(true);
         setError(null);
-        const response = await axios.get(`${BASEURL}/gpdata`, {
+        const response = await axios.get(`${TraceBASEURL}/gpdata`, {
           params: { block_code: blockId },
+          headers: getAuthHeaders(),
         });
         setGpOptions(response.data || []);
       } catch (err) {

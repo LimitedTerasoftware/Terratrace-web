@@ -11,7 +11,7 @@ import {
 import { useNavigate, Link, useLocation, useSearchParams } from "react-router-dom";
 import * as XLSX from "xlsx";
 import ResponsivePagination from "./ResponsivePagination";
-import { hasViewOnlyAccess, hasDownloadAccess } from "../../utils/accessControl";
+import { hasViewOnlyAccess, hasDownloadAccess, getAuthHeaders } from "../../utils/accessControl";
 import { ChevronDown, Eye, EyeIcon, Loader, RotateCcw, Search, SheetIcon, TableCellsMerge, User } from "lucide-react";
 import { AerialSurveyDetails } from "../../types/aerial-survey";
 import AerialSurveyMap from "../AerialSurveyMap/AerialSurveyMap";
@@ -99,6 +99,7 @@ const getDistanceInMeters = (
 
 const AerialSurvey: React.FC = () => {
   const BASEURL = import.meta.env.VITE_API_BASE;
+  const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
   const location = useLocation();
   const viewOnly = hasViewOnlyAccess();
   const DownloadOnly = hasDownloadAccess();
@@ -328,14 +329,14 @@ const AerialSurvey: React.FC = () => {
   };
 
   useEffect(() => {
-    axios.get(`${BASEURL}/states`)
+    axios.get(`${TraceBASEURL}/states`, { headers: getAuthHeaders() })
       .then((res) => setStates(res.data.data))
       .catch((err) => console.error(err));
   }, []);
 
   useEffect(() => {
     if (tempSelectedState) {
-      axios.get(`${BASEURL}/districtsdata?state_code=${tempSelectedState}`)
+      axios.get(`${TraceBASEURL}/districtsdata?state_code=${tempSelectedState}`, { headers: getAuthHeaders() })
         .then((res) => setDistricts(res.data))
         .catch((err) => console.error(err));
     } else {
@@ -345,7 +346,7 @@ const AerialSurvey: React.FC = () => {
 
   useEffect(() => {
     if (tempSelectedDistrict) {
-      axios.get(`${BASEURL}/blocksdata?district_code=${tempSelectedDistrict}`)
+      axios.get(`${TraceBASEURL}/blocksdata?district_code=${tempSelectedDistrict}`, { headers: getAuthHeaders() })
         .then((res) => setBlocks(res.data))
         .catch((err) => console.error(err));
     } else {

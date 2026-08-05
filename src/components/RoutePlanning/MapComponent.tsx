@@ -6,6 +6,7 @@ import MapIcon from '../../images/icon/icon-Map.svg'
 import UndoIcon from '../../images/icon/undo-icon.svg'
 import { AlertCircle, CheckCircle, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
+import { getAuthHeaders } from '../../utils/accessControl';
 
 
 
@@ -314,7 +315,7 @@ interface StandardUserData {
 }
 
 
-const BASEURL = import.meta.env.VITE_API_BASE;
+const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
 // UTILITY COMPONENTS
 
@@ -1662,7 +1663,7 @@ const fetchStates = async () => {
   try {
     setLoadingStates(true);
     
-    const response = await fetch(`${BASEURL}/states`);
+    const response = await fetch(`${TraceBASEURL}/states`, { headers: getAuthHeaders() });
     if (!response.ok) throw new Error('Failed to fetch states');
     
     const result: { success: boolean; data: StateData[] } = await response.json();
@@ -1686,7 +1687,7 @@ const fetchDistricts = async (stateId: string) => {
   try {
     setLoadingDistricts(true);
     
-    const response = await fetch(`${BASEURL}/districtsdata?state_code=${stateId}`);
+    const response = await fetch(`${TraceBASEURL}/districtsdata?state_code=${stateId}`, { headers: getAuthHeaders() });
     if (!response.ok) throw new Error('Failed to fetch districts');
     
     const data = await response.json();
@@ -1710,7 +1711,7 @@ const fetchBlocks = async (districtId: string) => {
   try {
     setLoadingBlocks(true);
     
-    const response = await fetch(`${BASEURL}/blocksdata?district_code=${districtId}`);
+    const response = await fetch(`${TraceBASEURL}/blocksdata?district_code=${districtId}`, { headers: getAuthHeaders() });
     if (!response.ok) throw new Error('Failed to fetch blocks');
     
     const data = await response.json();

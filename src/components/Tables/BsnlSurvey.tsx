@@ -13,7 +13,7 @@ import {
   Row
 } from "@tanstack/react-table";
 import { useNavigate } from 'react-router-dom';
-import { hasViewOnlyAccess } from "../../utils/accessControl";
+import { hasViewOnlyAccess, getAuthHeaders } from "../../utils/accessControl";
 import { getStateData } from "../Services/api";
 import { Calendar, ChevronDown, Download, Eye, RotateCcw, Search, TableCellsMerge, User } from "lucide-react";
 
@@ -87,6 +87,7 @@ type StatusOption = {
 
 const BsnlSurvey: React.FC = () => {
   const BASEURL = import.meta.env.VITE_API_BASE;
+  const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
   const location = useLocation();
   const viewOnly = hasViewOnlyAccess();
   const [data, setData] = useState<BsnlExchange[]>([]);
@@ -304,7 +305,7 @@ const BsnlSurvey: React.FC = () => {
   // Fetch districts when state is selected
   useEffect(() => {
     if (selectedState) {
-      axios.get(`${BASEURL}/districtsdata?state_code=${selectedState}`)
+      axios.get(`${TraceBASEURL}/districtsdata?state_code=${selectedState}`, { headers: getAuthHeaders() })
         .then((res) => setDistricts(res.data))
         .catch((err) => console.error(err));
     } else {
@@ -316,7 +317,7 @@ const BsnlSurvey: React.FC = () => {
   // Fetch blocks when district is selected
   useEffect(() => {
     if (selectedDistrict) {
-      axios.get(`${BASEURL}/blocksdata?district_code=${selectedDistrict}`)
+      axios.get(`${TraceBASEURL}/blocksdata?district_code=${selectedDistrict}`, { headers: getAuthHeaders() })
         .then((res) => setBlocks(res.data))
         .catch((err) => console.error(err));
     } else {

@@ -5,6 +5,7 @@ import InstallationStatsPanel from './InstallationStatsPanel';
 import { Group, Construction } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import axios from 'axios';
+import { getAuthHeaders } from '../../../utils/accessControl';
 
 interface StatesResponse {
   success: boolean;
@@ -16,7 +17,6 @@ type StatusOption = {
   label: string;
 };
 
-const BASEURL = import.meta.env.VITE_API_BASE;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
 function InstallationPage() {
@@ -96,7 +96,9 @@ function InstallationPage() {
   const fetchStates = async () => {
     try {
       setLoadingStates(true);
-      const response = await fetch(`${BASEURL}/states`);
+      const response = await fetch(`${TraceBASEURL}/states`, {
+        headers: getAuthHeaders(),
+      });
       if (!response.ok) throw new Error('Failed to fetch states');
       const result: StatesResponse = await response.json();
       setStates(result.success ? result.data : []);
@@ -178,7 +180,8 @@ function InstallationPage() {
     try {
       setLoadingDistricts(true);
       const response = await fetch(
-        `${BASEURL}/districtsdata?state_code=${stateId}`,
+        `${TraceBASEURL}/districtsdata?state_code=${stateId}`,
+        { headers: getAuthHeaders() },
       );
       if (!response.ok) throw new Error('Failed to fetch districts');
       const data = await response.json();
@@ -197,7 +200,8 @@ function InstallationPage() {
       setLoadingBlock(true);
 
       const response = await fetch(
-        `${BASEURL}/blocksdata?district_code=${selectedDistrictId}`,
+        `${TraceBASEURL}/blocksdata?district_code=${selectedDistrictId}`,
+        { headers: getAuthHeaders() },
       );
       if (!response.ok) throw new Error('Failed to fetch blocks');
       const data = await response.json();

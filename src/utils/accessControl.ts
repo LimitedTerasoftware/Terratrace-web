@@ -54,6 +54,19 @@ export const getUser = (): User | null => {
   return user ? JSON.parse(user) as User : null;
 };
 
+/**
+ * Headers identifying the logged-in admin and their company, required by
+ * endpoints such as /states, /districtsdata, /blocksdata and /gpdata.
+ */
+export const getAuthHeaders = (): Record<string, string> => {
+  const user = getUser();
+  if (!user) return {};
+  return {
+    "x-company-id": String(user.company_id ?? ""),
+    "x-admin-id": String(user.id ?? ""),
+  };
+};
+
 export const hasViewOnlyAccess = (): boolean => {
   const user = getUser();
   const email = user?.email?.toLowerCase();

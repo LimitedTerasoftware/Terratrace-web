@@ -7,6 +7,7 @@ import "react-toastify/dist/ReactToastify.css";
 import { Header } from "../Breadcrumbs/Header";
 import { AlertCircle, Edit3, Loader2 } from "lucide-react";
 import { ErrorPage, LoadingPage } from "../hooks/useActivities";
+import { getAuthHeaders } from "../../utils/accessControl";
 
 interface BsnlExchangeEdit {
   [key: string]: string;
@@ -81,6 +82,7 @@ interface Block {
 
 function BsnlEdit() {
   const BASEURL = import.meta.env.VITE_API_BASE;
+  const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
   const { id } = useParams();
   const [data, setData] = useState<BsnlExchangeEdit | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -114,7 +116,7 @@ function BsnlEdit() {
     const fetchStates = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${BASEURL}/states`);
+        const response = await axios.get(`${TraceBASEURL}/states`, { headers: getAuthHeaders() });
         const stateData: State[] = response.data.data.map((state: any) => ({
           state_id: state.state_id,
           state_code: state.state_code,
@@ -138,7 +140,7 @@ function BsnlEdit() {
     const fetchDistricts = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${BASEURL}/districtsdata?state_id=${selectedStateId}`);
+        const response = await axios.get(`${TraceBASEURL}/districtsdata?state_id=${selectedStateId}`, { headers: getAuthHeaders() });
         const districtData = response.data.map((district: any) => ({
           id: district.district_id,
           name: district.district_name,
@@ -161,7 +163,7 @@ function BsnlEdit() {
     const fetchBlocks = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${BASEURL}/blocksdata?district_id=${selectedDistrictId}`);
+        const response = await axios.get(`${TraceBASEURL}/blocksdata?district_id=${selectedDistrictId}`, { headers: getAuthHeaders() });
         const blockData = response.data.map((block: any) => ({
           id: block.block_id,
           name: block.block_name,

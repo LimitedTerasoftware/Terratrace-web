@@ -22,6 +22,7 @@ import DataTable, { TableColumn } from 'react-data-table-component';
 import { GPChecklistData } from '../../../types/gp-checklist';
 import axios from 'axios';
 import { set } from 'date-fns';
+import { getAuthHeaders } from '../../../utils/accessControl';
 
 interface StatsData {
   total: number;
@@ -34,7 +35,6 @@ type StatusOption = {
   label: string;
 };
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
-const BASEURL = import.meta.env.VITE_API_BASE;
 const ImgbaseUrl = import.meta.env.VITE_Image_URL;
 
 function GPChecklistList() {
@@ -295,7 +295,10 @@ function GPChecklistList() {
       if (!blockId) return;
       setLoadingGP(true);
       axios
-        .get(`${BASEURL}/gpdata`, { params: { block_code: blockId } })
+        .get(`${TraceBASEURL}/gpdata`, {
+          params: { block_code: blockId },
+          headers: getAuthHeaders(),
+        })
         .then((res) => setGPs(res.data || []))
         .catch(() => setGPs([]));
       setSelectedGPId('');

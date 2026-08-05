@@ -9,6 +9,7 @@ import moment from "moment";
 import Card from '../UiElements/Card';
 import SurveyProgressChart from './SurveyProgressChart'
 import UsersDonutChart from './UsersDonutChart';
+import { getAuthHeaders } from '../../utils/accessControl';
 
 
 const tabs = [
@@ -22,6 +23,7 @@ const tabs = [
 
 const ECommerce: React.FC = () => {
   const BASEURL = import.meta.env.VITE_API_BASE;
+  const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
   const navigate = useNavigate();
   const [timeFrame, setTimeFrame] = useState<'1W' | '1M' | '3M' | '6M' | '1Y' | '5Y' | 'ALL'>('3M');
   const [loading, setLoading] = useState(true)
@@ -127,7 +129,7 @@ const ECommerce: React.FC = () => {
   useEffect(() => {
     const fetchStates = async () => {
       try {
-        const response = await axios.get(`${BASEURL}/states`);
+        const response = await axios.get(`${TraceBASEURL}/states`, { headers: getAuthHeaders() });
         if (response.data.success) {
           setStates(response.data.data); // Store state list
         }

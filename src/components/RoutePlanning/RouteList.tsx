@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { AlertCircle, AlertTriangle, CheckCircle, Eye, Trash, X, ChevronDown, RotateCcw, Search, User, Route, SheetIcon} from 'lucide-react';
 import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useAppContext } from './AppContext';
+import { getAuthHeaders } from '../../utils/accessControl';
 
 interface NetworksResponse {
   success: boolean;
@@ -68,8 +69,8 @@ const RouteList = () => {
   const location = useLocation();
   const { setPreviewKmlData } = useAppContext();
   const [searchParams, setSearchParams] = useSearchParams();
-  const BASEURL = import.meta.env.VITE_API_BASE;
   const BASEURL_Val = import.meta.env.VITE_TraceAPI_URL;
+  const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
   // Header component for Route List
   const RouteListHeader = () => {
@@ -307,7 +308,7 @@ const RouteList = () => {
   const fetchStates = async () => {
     try {
       setLoadingStates(true);
-      const response = await fetch(`${BASEURL}/states`);
+      const response = await fetch(`${TraceBASEURL}/states`, { headers: getAuthHeaders() });
       if (!response.ok) throw new Error('Failed to fetch states');
       const result: StatesResponse = await response.json();
       setStates(result.success ? result.data : []);
@@ -328,7 +329,7 @@ const RouteList = () => {
     try {
       setLoadingDistricts(true);
       
-      const response = await fetch(`${BASEURL}/districtsdata?state_code=${stateId}`);
+      const response = await fetch(`${TraceBASEURL}/districtsdata?state_code=${stateId}`, { headers: getAuthHeaders() });
       if (!response.ok) throw new Error('Failed to fetch districts');
       const data = await response.json();
       setDistricts(data || []);
@@ -350,7 +351,7 @@ const RouteList = () => {
     try {
       setLoadingBlocks(true);
       
-      const response = await fetch(`${BASEURL}/blocksdata?district_code=${districtId}`);
+      const response = await fetch(`${TraceBASEURL}/blocksdata?district_code=${districtId}`, { headers: getAuthHeaders() });
       if (!response.ok) throw new Error('Failed to fetch blocks');
       const data = await response.json();
       setBlocks(data || []);

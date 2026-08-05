@@ -3,6 +3,7 @@ import { X, Upload, Trash2, Eye } from 'lucide-react';
 import { AerialSurveyDetails, AerialPole, AerialRoadCrossing, EditType } from '../../types/aerial-survey';
 import { updateAerialData } from '../Services/api';
 import axios from 'axios';
+import { getAuthHeaders } from '../../utils/accessControl';
 
 
 
@@ -59,7 +60,7 @@ const toBackendValue = (arr: string[], isMulti: boolean) => {
   return arr[0] || ""; // pole / crossing
 };
 
-const BASE_URL = import.meta.env.VITE_API_BASE;
+const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const ImG_URL = import.meta.env.VITE_Image_URL;
 
 
@@ -100,7 +101,7 @@ export const EditModal = ({
       if (!blockCode) return;
   
       setLoadingGPD(true);
-      axios.get(`${BASE_URL}/gpdata?block_code=${blockCode}`)
+      axios.get(`${TraceBASEURL}/gpdata?block_code=${blockCode}`, { headers: getAuthHeaders() })
         .then(res => {
           const data = res.data;
           const options = data.map((g: any) => ({

@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { UGConstructionSurveyData } from '../../types/survey';
-import { isAdminUser, isIEUser } from '../../utils/accessControl';
+import { isAdminUser, isIEUser, getAuthHeaders } from '../../utils/accessControl';
 interface StatesResponse {
   success: boolean;
   data: StateData[];
@@ -148,7 +148,9 @@ function ConstructionPage() {
   const fetchStates = async () => {
     try {
       setLoadingStates(true);
-      const response = await fetch(`${BASEURL}/states`);
+      const response = await fetch(`${TraceBASEURL}/states`, {
+        headers: getAuthHeaders(),
+      });
       if (!response.ok) throw new Error('Failed to fetch states');
       const result: StatesResponse = await response.json();
       setStates(result.success ? result.data : []);
@@ -176,7 +178,8 @@ function ConstructionPage() {
     try {
       setLoadingDistricts(true);
       const response = await fetch(
-        `${BASEURL}/districtsdata?state_code=${stateId}`,
+        `${TraceBASEURL}/districtsdata?state_code=${stateId}`,
+        { headers: getAuthHeaders() },
       );
       if (!response.ok) throw new Error('Failed to fetch districts');
       const data = await response.json();
@@ -195,7 +198,8 @@ function ConstructionPage() {
       setLoadingBlock(true);
 
       const response = await fetch(
-        `${BASEURL}/blocksdata?district_code=${selectedDistrict}`,
+        `${TraceBASEURL}/blocksdata?district_code=${selectedDistrict}`,
+        { headers: getAuthHeaders() },
       );
       if (!response.ok) throw new Error('Failed to fetch blocks');
       const data = await response.json();

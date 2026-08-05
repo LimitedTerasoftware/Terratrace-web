@@ -5,6 +5,7 @@ import { useParams } from "react-router-dom";
 import { FaArrowLeft } from "react-icons/fa";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { getAuthHeaders } from "../../utils/accessControl";
 
 interface HotoEdit {
     [key: string]: string;
@@ -53,6 +54,7 @@ const hotoFields: { name: keyof HotoEdit; label: string }[] = [
 
 function HotoEdit() {
     const BASEURL = import.meta.env.VITE_API_BASE;
+    const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
     const { id } = useParams();
     const [data, setData] = useState<HotoEdit | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
@@ -86,7 +88,7 @@ function HotoEdit() {
     useEffect(() => {
         const fetchStates = async () => {
             try {
-                const response = await axios.get(`${BASEURL}/states`);
+                const response = await axios.get(`${TraceBASEURL}/states`, { headers: getAuthHeaders() });
                 setStates(response.data.data.map((state: any) => state.state_name));
             } catch (error) {
                 console.error("Failed to fetch states:", error);
@@ -94,12 +96,12 @@ function HotoEdit() {
         };
 
         fetchStates();
-    }, [BASEURL]);
+    }, [TraceBASEURL]);
 
     useEffect(() => {
         const fetchDistricts = async () => {
             try {
-                const response = await axios.get(`${BASEURL}/districtsdata?state_code=1`);
+                const response = await axios.get(`${TraceBASEURL}/districtsdata?state_code=1`, { headers: getAuthHeaders() });
                 setDistricts(response.data.map((district: any) => district.district_name));
             } catch (error) {
                 console.error("Failed to fetch districts:", error);
@@ -107,12 +109,12 @@ function HotoEdit() {
         };
 
         fetchDistricts();
-    }, [BASEURL]);
+    }, [TraceBASEURL]);
 
     useEffect(() => {
         const fetchBlocks = async () => {
             try {
-                const response = await axios.get(`${BASEURL}/blocksdata?district_code=38`);
+                const response = await axios.get(`${TraceBASEURL}/blocksdata?district_code=38`, { headers: getAuthHeaders() });
                 setBlocks(response.data.map((block: any) => block.block_name));
             } catch (error) {
                 console.error("Failed to fetch blocks:", error);
@@ -120,7 +122,7 @@ function HotoEdit() {
         };
 
         fetchBlocks();
-    }, [BASEURL]);
+    }, [TraceBASEURL]);
 
     const handleEditSave = async (e: React.FormEvent) => {
         e.preventDefault();

@@ -26,6 +26,7 @@ import moment from 'moment';
 import { useNavigate } from 'react-router-dom'; // Added for navigation
 import UserAssignmentModal from './UserAssginmentModal';
 import * as XLSX from 'xlsx';
+import { getAuthHeaders } from '../../utils/accessControl';
 
 
 // Types
@@ -296,8 +297,8 @@ const closeNotification = () => {
   setNotification(prev => ({ ...prev, show: false }));
 };
 
-  const BASEURL = import.meta.env.VITE_API_BASE;
   const TRACE_API_URL = import.meta.env.VITE_TraceAPI_URL;
+  const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
   // Navigate to GP List page - Added this function
   const handleGPListClick = (blockId: number, blockName: string) => {
@@ -350,7 +351,9 @@ useEffect(() => {
     try {
       setLoadingDistricts(true);
       // Using state_code=6 as requested
-      const response = await fetch(`${BASEURL}/districtsdata?state_code=6`);
+      const response = await fetch(`${TraceBASEURL}/districtsdata?state_code=6`, {
+        headers: getAuthHeaders(),
+      });
       if (!response.ok) throw new Error('Failed to fetch districts');
       const data = await response.json();
       setDistricts(data || []);
