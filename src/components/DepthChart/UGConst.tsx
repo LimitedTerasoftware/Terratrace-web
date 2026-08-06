@@ -450,35 +450,38 @@ const Report: React.FC<ReportProps> = ({
       cell: (row) => <span title={row.end_lgd_name}>{row.end_lgd_name}</span>,
     },
     ...(Data?.selectedConnection ? [linkColumn] : []),
+     ...(IEUser
+      ? []
+      : [
     {
       name: 'Distance (m)',
-      selector: (row) => row.total_distance || '0.00',
+      selector: (row: UGConstructionSurveyData) => row.total_distance || '0.00',
       sortable: true,
     },
     {
       name: 'OFC Distance (m)',
-      selector: (row) => row.ofc_distance || '0.00',
+      selector: (row: UGConstructionSurveyData) => row.ofc_distance || '0.00',
       sortable: true,
     },
-    ...(IEUser
-      ? []
-      : [
-          {
+   
+    {
             name: 'Firm Name',
             selector: (row: UGConstructionSurveyData) => row.firm_name || '-',
             sortable: true,
             wrap: true,
           } as TableColumn<UGConstructionSurveyData>,
-        ]),
-    {
-       name:'Machine Id',
-      selector:(row)=>row.machine_id || '-',
+      
+   
+     {
+       name:'DGPS Id',
+      selector:(row: UGConstructionSurveyData)=>row.dgps_id || '-',
       sortable:true,
       wrap:true
     },
+    ]),
      {
-       name:'DGPS Id',
-      selector:(row)=>row.dgps_id || '-',
+       name:'Machine Id',
+      selector:(row)=>row.machine_id || '-',
       sortable:true,
       wrap:true
     },
@@ -487,9 +490,12 @@ const Report: React.FC<ReportProps> = ({
       selector: (row) => row.versions || '-',
       sortable: true,
     },
+      ...(IEUser
+      ? []
+      : [
     {
       name: 'Surveyor',
-      cell: (row) => {
+      cell: (row: UGConstructionSurveyData) => {
         return (
           <div className="flex items-center min-w-0 w-full">
             <User className="w-3 h-3 text-gray-600 mr-1 flex-shrink-0" />
@@ -505,7 +511,7 @@ const Report: React.FC<ReportProps> = ({
     },
     {
       name: 'Updated By',
-      cell: (row) => {
+      cell: (row: UGConstructionSurveyData) => {
         return (
           <div className="flex items-center min-w-0 w-full">
             <User className="w-3 h-3 text-gray-600 mr-1 flex-shrink-0" />
@@ -521,9 +527,9 @@ const Report: React.FC<ReportProps> = ({
     },
     {
       name: 'Status',
-      selector: (row) => row.is_active,
+      selector: (row: UGConstructionSurveyData) => row.is_active,
       sortable: true,
-      cell: (row) => {
+      cell: (row: UGConstructionSurveyData) => {
         const status = row.is_active as 0 | 1 | 2;
         const statusConfig = {
           0: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800' },
@@ -544,6 +550,7 @@ const Report: React.FC<ReportProps> = ({
         );
       },
     },
+  ]),
 
     {
       name: 'Created',
