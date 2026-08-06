@@ -492,7 +492,7 @@ export const machineApi = {
     const url = queryString
       ? `${TraceBASEURL}/api/getMachineDetails?${queryString}`
       : `${TraceBASEURL}/api/getMachineDetails`;
-    const response = await fetch(url);
+    const response = await fetch(url, { headers: getAuthHeaders() });
     if (!response.ok) {
       throw new Error('Failed to fetch machine details');
     }
@@ -520,6 +520,7 @@ export const machineApi = {
 
     const response = await fetch(
       `${TraceBASEURL}/api/machine-link-stats?${params}`,
+      { headers: getAuthHeaders() },
     );
     if (!response.ok) {
       throw new Error('Failed to fetch machine link stats');
@@ -570,7 +571,7 @@ export const machineApi = {
     const url = queryString
       ? `${TraceBASEURL}/api/getFirmDistanceStats?${queryString}`
       : `${TraceBASEURL}/api/getFirmDistanceStats`;
-    const response = await fetch(url);
+    const response = await fetch(url, { headers: getAuthHeaders() });
     if (!response.ok) {
       throw new Error('Failed to fetch firm distance stats');
     }
@@ -592,7 +593,7 @@ export const machineApi = {
     const url = queryString
       ? `${TraceBASEURL}/api/getMachineBlockKML?${queryString}`
       : `${TraceBASEURL}/api/getMachineBlockKML`;
-    const response = await fetch(url);
+    const response = await fetch(url, { headers: getAuthHeaders() });
     if (!response.ok) {
       throw new Error('Failed to fetch machine block KML');
     }
@@ -614,7 +615,7 @@ export const machineApi = {
     const url = queryString
       ? `${TraceBASEURL}/api/getConstructionPath?${queryString}`
       : `${TraceBASEURL}/api/getConstructionPath`;
-    const response = await fetch(url);
+    const response = await fetch(url, { headers: getAuthHeaders() });
     if (!response.ok) {
       throw new Error('Failed to fetch construction path');
     }
@@ -650,7 +651,7 @@ export const machineApi = {
     const url = queryString
       ? `${TraceBASEURL}/api/km-trend?${queryString}`
       : `${TraceBASEURL}/api/km-trend`;
-    const response = await fetch(url);
+    const response = await fetch(url, { headers: getAuthHeaders() });
     if (!response.ok) {
       throw new Error('Failed to fetch km trend');
     }
@@ -701,7 +702,7 @@ export const machineApi = {
     const url = queryString
       ? `${TraceBASEURL}/api/get-issues?${queryString}`
       : `${TraceBASEURL}/api/get-issues`;
-    const response = await fetch(url);
+    const response = await fetch(url, { headers: getAuthHeaders() });
     if (!response.ok) {
       throw new Error('Failed to fetch issues');
     }

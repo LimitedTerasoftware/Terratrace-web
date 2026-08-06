@@ -7,7 +7,7 @@ import { SurveyLinksData, UGConstructionSurveyData } from '../../types/survey';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import TricadIcon from '../../images/logo/favicon.png';
-import { isIEUser } from '../../utils/accessControl';
+import { getAuthHeaders, isIEUser } from '../../utils/accessControl';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
@@ -41,7 +41,7 @@ export default function SurveyInventory({
       try {
         const params: Record<string, string | number> = {};
 
-        if (selectedState) params.state_id = selectedState;
+        if (selectedState) params.state_id = ieUser ? 6 :selectedState;
         if (selectedDistrict) params.district_id = selectedDistrict;
         if (selectedBlock) params.block_id = selectedBlock;
         if (selectedVendor) params.firm_id = selectedVendor;
@@ -55,7 +55,9 @@ export default function SurveyInventory({
         const response = await axios.get<{
           status: boolean;
           data: SurveyLinksData[];
-        }>(`${TraceBASEURL}/get-link-data`, { params });
+        }>(`${TraceBASEURL}/get-link-data`, { params ,
+          headers: getAuthHeaders()},
+        );
         if (response.data.status) {
           setData(response.data.data);
         }
@@ -75,7 +77,6 @@ export default function SurveyInventory({
     selectedPeriod,
     selectedWorkType
   ]);
-
   const getDateRange = (period?: string) => {
     if (period === 'all') return { fromDate: undefined, toDate: undefined };
     if (period === 'today') {

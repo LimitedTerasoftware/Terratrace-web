@@ -10,6 +10,7 @@ import Card from '../UiElements/Card';
 import SurveyProgressChart from './SurveyProgressChart'
 import UsersDonutChart from './UsersDonutChart';
 import { getAuthHeaders } from '../../utils/accessControl';
+import { ToastContainer } from 'react-toastify';
 
 
 const tabs = [
@@ -606,7 +607,7 @@ const ECommerce: React.FC = () => {
           </div>
         </div>
       </div>
-
+  <ToastContainer />
 
 
 

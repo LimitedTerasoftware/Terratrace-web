@@ -130,6 +130,12 @@ const getLatLongForEvent = (row: Activity) => {
   }
 };
 
+const isSameLocation = (
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+  epsilon = 0.0003,
+) => Math.abs(a.lat - b.lat) < epsilon && Math.abs(a.lng - b.lng) < epsilon;
+
 const parseLatLong = (value: string | null | undefined) => {
   if (!value || !value.includes(',')) return null;
   const [latStr, lngStr] = value.split(',');
@@ -201,6 +207,20 @@ const ErrorState: React.FC<{ message: string }> = ({ message }) => (
 
 const INTEGRATED_GP_COLOR = '#16A34A';
 
+type MarkerShape = 'circle' | 'square' | 'triangle' | 'diamond';
+
+const EVENT_POINT_STYLES: Record<
+  string,
+  { color: string; label: string; shape: MarkerShape }
+> = {
+  JOINTCHAMBER: { color: '#F97316', label: 'Joint Chamber', shape: 'square' },
+  ROUTEINDICATOR: {
+    color: '#0EA5E9',
+    label: 'Route Indicator',
+    shape: 'triangle',
+  },
+};
+
 const buildLabeledCircleIcon = (
   color: string,
   radius: number,
@@ -218,6 +238,72 @@ const buildLabeledCircleIcon = (
   };
 };
 
+const buildLabeledShapeIcon = (
+  shape: MarkerShape,
+  color: string,
+  size = 16,
+  strokeWidth = 2,
+): google.maps.Icon => {
+  const dimension = size + strokeWidth * 2;
+  const center = dimension / 2;
+  const inset = strokeWidth;
+
+  let shapeSvg: string;
+  switch (shape) {
+    case 'square':
+      shapeSvg = `<rect x="${inset}" y="${inset}" width="${size}" height="${size}" fill="${color}" stroke="#ffffff" stroke-width="${strokeWidth}"/>`;
+      break;
+    case 'diamond':
+      shapeSvg = `<polygon points="${center},${inset} ${dimension - inset},${center} ${center},${dimension - inset} ${inset},${center}" fill="${color}" stroke="#ffffff" stroke-width="${strokeWidth}"/>`;
+      break;
+    case 'triangle':
+      shapeSvg = `<polygon points="${center},${inset} ${dimension - inset},${dimension - inset} ${inset},${dimension - inset}" fill="${color}" stroke="#ffffff" stroke-width="${strokeWidth}"/>`;
+      break;
+    default:
+      shapeSvg = `<circle cx="${center}" cy="${center}" r="${size / 2}" fill="${color}" stroke="#ffffff" stroke-width="${strokeWidth}"/>`;
+  }
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${dimension}" height="${dimension}">${shapeSvg}</svg>`;
+
+  return {
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    scaledSize: new google.maps.Size(dimension, dimension),
+    anchor: new google.maps.Point(center, center),
+    labelOrigin: new google.maps.Point(center, -8),
+  };
+};
+
+const ShapeSwatch: React.FC<{ shape: MarkerShape; color: string }> = ({
+  shape,
+  color,
+}) => {
+  if (shape === 'square') {
+    return <span className="h-2.5 w-2.5 flex-none" style={{ backgroundColor: color }} />;
+  }
+  if (shape === 'diamond') {
+    return (
+      <span
+        className="h-2 w-2 flex-none rotate-45"
+        style={{ backgroundColor: color }}
+      />
+    );
+  }
+  if (shape === 'triangle') {
+    return (
+      <span
+        className="h-0 w-0 flex-none border-l-[5px] border-r-[5px] border-b-[9px] border-l-transparent border-r-transparent"
+        style={{ borderBottomColor: color }}
+      />
+    );
+  }
+  return (
+    <span
+      className="h-2 w-2 flex-none rounded-full"
+      style={{ backgroundColor: color }}
+    />
+  );
+};
+
 const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
   markers,
   planningPlacemarks,
@@ -231,6 +317,7 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
   const planningMarkersRef = useRef<google.maps.Marker[]>([]);
   const planningPolylinesRef = useRef<google.maps.Polyline[]>([]);
   const integratedGpMarkersRef = useRef<google.maps.Marker[]>([]);
+  const eventPointMarkersRef = useRef<google.maps.Marker[]>([]);
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -372,6 +459,41 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
   }, [eventRoutePaths, map]);
 
   useEffect(() => {
+    if (!map) return;
+
+    eventPointMarkersRef.current.forEach((marker) => marker.setMap(null));
+    eventPointMarkersRef.current = markers
+      .filter((marker) => EVENT_POINT_STYLES[marker.eventType])
+      .map((marker) => {
+        const style = EVENT_POINT_STYLES[marker.eventType];
+        const eventMarker = new google.maps.Marker({
+          position: { lat: marker.lat, lng: marker.lng },
+          map,
+          title: style.label,
+          zIndex: 997,
+          icon: buildLabeledShapeIcon(style.shape, style.color, 14),
+        });
+
+        eventMarker.addListener('click', () => {
+          infoWindowRef.current?.setContent(`
+            <div style="padding:4px 4px;font-size:13px;line-height:1.5">
+              <div style="font-weight:700;color:${style.color}">${escapeHtml(style.label)}</div>
+              <div>Survey ID: ${marker.surveyId}</div>
+            </div>
+          `);
+          infoWindowRef.current?.open(map, eventMarker);
+        });
+
+        return eventMarker;
+      });
+
+    return () => {
+      eventPointMarkersRef.current.forEach((marker) => marker.setMap(null));
+      eventPointMarkersRef.current = [];
+    };
+  }, [markers, map]);
+
+  useEffect(() => {
     if (!map || !mapRef.current) return;
 
     const resizeObserver = new ResizeObserver(() => {
@@ -403,6 +525,31 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
       const color = category?.color ?? '#6B7280';
       if (placemark.type === 'point') {
         const coord = placemark.coordinates as { lat: number; lng: number };
+
+        // Skip planned GP points already represented by an Integrated GP
+        // marker at (roughly) the same spot, so their labels don't overlap.
+        if (
+          placemark.category === 'Desktop: GP' &&
+          integratedGps.some((gp) => {
+            if (
+              placemark.lgdCode &&
+              gp.lgd_code &&
+              placemark.lgdCode === gp.lgd_code
+            ) {
+              return true;
+            }
+            const lat = Number(gp.lattitude);
+            const lng = Number(gp.longitude);
+            return (
+              Number.isFinite(lat) &&
+              Number.isFinite(lng) &&
+              isSameLocation(coord, { lat, lng })
+            );
+          })
+        ) {
+          return;
+        }
+
         const marker = new google.maps.Marker({
           position: coord,
           map,
@@ -453,6 +600,7 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
     planningPlacemarks,
     visiblePlanningCategories,
     visiblePlanningKey,
+    integratedGps,
   ]);
 
   useEffect(() => {
@@ -619,6 +767,24 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
                   <span className="font-medium">{integratedGps.length}</span>
                 </label>
               )}
+              {Object.entries(EVENT_POINT_STYLES).map(([eventType, style]) => {
+                const count = markers.filter(
+                  (marker) => marker.eventType === eventType,
+                ).length;
+                if (count === 0) return null;
+
+                return (
+                  <label
+                    key={eventType}
+                    className="mt-1 flex cursor-pointer items-center gap-2"
+                  >
+                    <input type="checkbox" checked={true} disabled />
+                    <ShapeSwatch shape={style.shape} color={style.color} />
+                    <span className="flex-1 truncate">{style.label}</span>
+                    <span className="font-medium">{count}</span>
+                  </label>
+                );
+              })}
             </div>
           </div>
         </div>

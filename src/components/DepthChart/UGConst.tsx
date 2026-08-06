@@ -18,7 +18,7 @@ interface ReportProps {
     selectedDistrict: string | null;
     selectedBlock: string | null;
     selectedStatus: number[];
-    worktype: string;
+    worktype: string[];
     constType: string;
     cords: string;
     fromdate: string;
@@ -95,7 +95,7 @@ const Report: React.FC<ReportProps> = ({
         setLoading(true);
         setError('');
         const params: any = {};
-        if (Data.selectedState) params.state_id = Data.selectedState;
+        if (Data.selectedState) params.state_id = IEUser ? '6' : Data.selectedState;
         if (Data.selectedDistrict) params.district_id = Data.selectedDistrict;
         if (Data.selectedBlock) params.block_id = Data.selectedBlock;
         if (Data.connectionStart) params.start = Data.connectionStart;
@@ -104,7 +104,7 @@ const Report: React.FC<ReportProps> = ({
         if (Data.todate) params.to_date = Data.todate;
         if (Data.selectedStatus.length > 0)
           params.status = Data.selectedStatus.join(',');
-        if (Data.worktype !== '') params.worktype = Data.worktype;
+        if (Data.worktype.length > 0) params.worktype = Data.worktype.join(',');
         if (Data.constType !== '') params.construction_type = Data.constType;
         if (Data.globalsearch.trim()) params.search = Data.globalsearch.trim();
         if (Data.cords !== '') params.coords = Data.cords;
@@ -1275,7 +1275,7 @@ const Report: React.FC<ReportProps> = ({
                 if (Data.todate) params.to_date = Data.todate;
                 if (Data.selectedStatus.length > 0)
                   params.status = Data.selectedStatus.join(',');
-                if (Data.worktype !== '') params.worktype = Data.worktype;
+                if (Data.worktype.length > 0) params.worktype = Data.worktype.join(',');
                 if (Data.globalsearch.trim())
                   params.search = Data.globalsearch.trim();
                 params.page = Data.page || 1;
@@ -1334,7 +1334,7 @@ const Report: React.FC<ReportProps> = ({
                 if (Data.todate) params.to_date = Data.todate;
                 if (Data.selectedStatus.length > 0)
                   params.status = Data.selectedStatus.join(',');
-                if (Data.worktype !== '') params.worktype = Data.worktype;
+                if (Data.worktype.length > 0) params.worktype = Data.worktype.join(',');
                 if (Data.globalsearch.trim())
                   params.search = Data.globalsearch.trim();
                 params.page = Data.page || 1;

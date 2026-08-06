@@ -62,7 +62,9 @@ export default function NewConstructionDashboard() {
     useState<MachineDetailsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedState, setSelectedState] = useState<string>('');
+  const [selectedState, setSelectedState] = useState<string>(() =>
+    isIEUser() ? '6' : '',
+  );
   const [selectedDistrict, setSelectedDistrict] = useState<string>('');
   const [selectedBlock, setSelectedBlock] = useState<string>('');
   const [selectedVendor, setSelectedVendor] = useState<string>('');
@@ -96,7 +98,6 @@ export default function NewConstructionDashboard() {
     }),
   );
   const [machineStatusTrendLoading] = useState(false);
-
   const getDateRange = (period: string) => {
     if (period === 'all') {
       return { fromDate: undefined, toDate: undefined };
@@ -312,7 +313,7 @@ export default function NewConstructionDashboard() {
     try {
       setLoading(true);
       const response = await machineApi.getFirmDistanceStats(
-        stateId,
+        isIEUser() ? '6' : stateId,
         districtId,
         blockId,
         fromDate,
@@ -375,18 +376,19 @@ export default function NewConstructionDashboard() {
       <div className="px-6 pb-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-2 space-y-6">
+             {!isIEUser() && (<>
             <ProgressTrendChart data={kmTotalData} isLoading={kmTrendLoading} />
-             {!isIEUser() && (
+            
             <VendorPerformance data={dashboardData} />
-             )}
+            </> )}
           </div>
 
           <div className="lg:col-span-2 space-y-6">
-             {!isIEUser() && (
+             {!isIEUser() && (<>
              <MachineStatusTrendChart
               data={machineStatusTrendData}
               isLoading={machineStatusTrendLoading}
-            />)}
+            />
             <div className="h-[500px]">
               <Wrapper
                 apiKey={GOOGLE_MAPS_API_KEY}
@@ -408,6 +410,7 @@ export default function NewConstructionDashboard() {
                 <MapView constructionPathData={constructionPathData} />
               </Wrapper>
             </div>
+           </> )}
            
           </div>
         </div>

@@ -45,7 +45,7 @@ function ConstructionPage() {
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
-  const [selectedState, setSelectedState] = useState<string | null>(null);
+  const [selectedState, setSelectedState] = useState<string | null>(()=> IEUser ? '6' : null);
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
   const [globalsearch, setGlobalSearch] = useState<string>('');
@@ -84,7 +84,9 @@ function ConstructionPage() {
     useState<ConstructionSummary | null>(null);
   const [acceptedLinksSummary, setAcceptedLinksSummary] =
     useState<AcceptedLinksSummary | null>(null);
-  const [worktype, setworktype] = useState<string>('');
+  const [worktype, setworktype] = useState<string[]>([]);
+  const [workTypeDropdownOpen, setWorkTypeDropdownOpen] = useState(false);
+  const workTypeDropdownRef = useRef<HTMLDivElement>(null);
   const [constType, setConstType] = useState<string>('Hdd');
   const [cords, setcords] = useState<string>('');
   const [tdStatus, setTdStatus] = useState<string>('');
@@ -106,6 +108,13 @@ function ConstructionPage() {
       label,
     }),
   );
+
+  const workTypeOptions = [
+    { value: 'New Construction', label: 'New Construction' },
+    { value: 'Rectification', label: 'Rectification' },
+    { value: 'OFC Blowing/ JointChamber', label: 'OFC Blowing / Joint Chamber' },
+    { value: 'Protection', label: 'Protection' },
+  ];
 
   const ConstructionHeader = () => {
     return (
@@ -154,15 +163,23 @@ function ConstructionPage() {
       if (!response.ok) throw new Error('Failed to fetch states');
       const result: StatesResponse = await response.json();
       const stateData = result.success ? result.data : [];
-      setStates(
-        IEUser
-          ? stateData.filter(
-              (state:any) =>
-                String(state.state_id) === '6' ||
-                String(state.state_code) === '19',
-            )
-          : stateData,
-      );
+
+      if (IEUser) {
+        const filtered = stateData.filter(
+          (state: any) =>
+            String(state.state_id) === '6' ||
+            String(state.state_code) === '19',
+        );
+        setStates(filtered);
+        // The actual state_id may differ from our '6' guess depending on
+        // which field matched, so align selectedState with the real value
+        // once it's known — otherwise the dropdown shows no selection.
+        if (filtered.length > 0) {
+          setSelectedState(String(filtered[0].state_id));
+        }
+      } else {
+        setStates(stateData);
+      }
     } catch (error) {
       console.error('Error fetching states:', error);
     } finally {
@@ -254,7 +271,7 @@ function ConstructionPage() {
       if (selectedBlock) params.block_id = selectedBlock;
       if (selectedStatus.length > 0) params.status = selectedStatus.join(',');
       if (constType) params.construction_type = constType;
-      if (worktype) params.worktype = worktype;
+      if (worktype.length > 0) params.worktype = worktype.join(',');
       if (fromdate) params.from_date = fromdate;
       if (todate) params.to_date = todate;
       if (globalsearch.trim()) params.search = globalsearch.trim();
@@ -328,7 +345,7 @@ function ConstructionPage() {
     const from_date = searchParams.get('from_date') || '';
     const to_date = searchParams.get('to_date') || '';
     const search = searchParams.get('search') || '';
-    const worktype = searchParams.get('worktype') || '';
+    const worktypeParam = searchParams.get('worktype') || '';
     const constType = searchParams.get('constType') || 'Hdd';
     const cords = searchParams.get('cords') || '';
     const tab = searchParams.get('tab') || 'UG';
@@ -336,7 +353,7 @@ function ConstructionPage() {
     const ofc_status = searchParams.get('ofc_status') || '';
 
     setcords(cords);
-    setSelectedState(state_id);
+    setSelectedState(state_id || (IEUser ? '6' : null));
     setSelectedDistrict(district_id);
     setSelectedBlock(block_id);
     setSelectedStatus(
@@ -352,7 +369,7 @@ function ConstructionPage() {
     setFromDate(from_date);
     setToDate(to_date);
     setGlobalSearch(search);
-    setworktype(worktype);
+    setworktype(worktypeParam ? worktypeParam.split(',').filter(Boolean) : []);
     setFiltersReady(true);
     setConstType(constType);
     setActiveTab(IEUser ? 'UG' : tab === 'AcceptedLinks' ? 'AcceptedLinks' : 'UG');
@@ -371,7 +388,7 @@ function ConstructionPage() {
     newBlock: string | null,
     newLink: string | null,
     status: number[],
-    worktype: string | '',
+    worktype: string[],
     from_date: string | null,
     to_date: string | null,
     search: string | null,
@@ -390,7 +407,7 @@ function ConstructionPage() {
     if (status.length > 0) {
       params.status = status.join(',');
     }
-    if (worktype) params.worktype = worktype;
+    if (worktype.length > 0) params.worktype = worktype.join(',');
     if (from_date) params.from_date = from_date;
     if (to_date) params.to_date = to_date;
     if (search) params.search = search;
@@ -405,7 +422,7 @@ function ConstructionPage() {
   };
 
   const clearFilters = () => {
-    setSelectedState(null);
+    setSelectedState(IEUser ? '6' : null);
     setSelectedDistrict(null);
     setSelectedBlock(null);
     setSelectedConnection(null);
@@ -414,7 +431,7 @@ function ConstructionPage() {
     setFromDate('');
     setToDate('');
     setSearchParams({});
-    setworktype('');
+    setworktype([]);
     setConstType('');
     setcords('');
     setTdStatus('');
@@ -566,19 +583,28 @@ function ConstructionPage() {
       ) {
         setStatusDropdownOpen(false);
       }
+      if (
+        workTypeDropdownRef.current &&
+        !workTypeDropdownRef.current.contains(event.target as Node)
+      ) {
+        setWorkTypeDropdownOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-  const handleworkChange = (value: string) => {
-    setworktype(value);
+  const handleWorkTypeToggle = (value: string) => {
+    const updated = worktype.includes(value)
+      ? worktype.filter((w) => w !== value)
+      : [...worktype, value];
+    setworktype(updated);
     handleFilterChange(
       selectedState,
       selectedDistrict,
       selectedBlock,
       selectedConnection,
       selectedStatus,
-      value,
+      updated,
       fromdate,
       todate,
       globalsearch,
@@ -1185,23 +1211,29 @@ function ConstructionPage() {
           {/* <div className="flex flex-wrap items-center gap-3"> */}
             {activeTab === 'UG' && !IEUser && (
               <>
-                <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-                  <select
-                    value={worktype !== '' ? worktype : ''}
-                    onChange={(e) => handleworkChange(e.target.value)}
-                    className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                <div
+                  className="relative flex-1 min-w-0 sm:flex-none sm:w-44"
+                  ref={workTypeDropdownRef}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setWorkTypeDropdownOpen((prev) => !prev)}
+                    className="w-full flex items-center justify-between px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   >
-                    <option value="">All Work Type</option>
-                    <option value="New Construction">New Construction</option>
-                    <option value="Rectification">Rectification</option>
-                    <option value="OFC Blowing/ JointChamber">OFC Blowing / Joint Chamber</option>
-                    <option value="Protection">Protection</option>
-
-                  </select>
-
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                    <span className="truncate text-left">
+                      {worktype.length === 0
+                        ? 'All Work Type'
+                        : worktype
+                            .map(
+                              (value) =>
+                                workTypeOptions.find(
+                                  (option) => option.value === value,
+                                )?.label ?? value,
+                            )
+                            .join(', ')}
+                    </span>
                     <svg
-                      className="w-4 h-4 text-gray-400"
+                      className="w-4 h-4 text-gray-400 flex-shrink-0 ml-1"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -1213,7 +1245,25 @@ function ConstructionPage() {
                         d="M19 9l-7 7-7-7"
                       />
                     </svg>
-                  </div>
+                  </button>
+                  {workTypeDropdownOpen && (
+                    <div className="absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg dark:bg-gray-700 dark:border-gray-600">
+                      {workTypeOptions.map((option) => (
+                        <label
+                          key={option.value}
+                          className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 dark:text-white"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={worktype.includes(option.value)}
+                            onChange={() => handleWorkTypeToggle(option.value)}
+                            className="rounded border-gray-300"
+                          />
+                          {option.label}
+                        </label>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
                   <select
