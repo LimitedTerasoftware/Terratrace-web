@@ -9,7 +9,7 @@ import DataTable, { TableColumn } from 'react-data-table-component';
 import { AddConstModal } from './AddConstModal';
 import { UpdateConstModal } from './UpdateConstModal';
 import { EditLinkModal } from './EditLinkModal';
-import { getAuthHeaders, isAdminUser, isIEUser } from '../../utils/accessControl';
+import { getAuthHeaders, getUser, isAdminUser, isIEUser } from '../../utils/accessControl';
 import { ToastContainer, toast } from 'react-toastify';
 
 interface ReportProps {
@@ -87,6 +87,7 @@ const Report: React.FC<ReportProps> = ({
   const [isEditLinkModalOpen, setIsEditLinkModalOpen] = useState(false);
   const navigate = useNavigate();
   const [kmlLoading, setKmlLoading] = useState(false);
+  const user = getUser();
 
   useEffect(() => {
     const fetchSurveyData = async () => {
@@ -577,7 +578,7 @@ const Report: React.FC<ReportProps> = ({
               <PenIcon className="w-4 h-4" />
             </button>
           )}
-          {!IEUser && (
+          {user?.email === 'admin@terasoftware.com' &&  (
             <button
               onClick={() => handleDownloadMB(row.id)}
               className="p-1 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"

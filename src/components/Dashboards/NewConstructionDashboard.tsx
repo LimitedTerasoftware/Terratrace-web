@@ -135,6 +135,7 @@ export default function NewConstructionDashboard() {
       fromDate,
       toDate,
       selectedVendor,
+      selectedworkType,
     );
     fetchIssues(
       selectedState,
@@ -231,6 +232,7 @@ export default function NewConstructionDashboard() {
     fromDate?: string,
     toDate?: string,
     firmId?: string,
+    workType?: string,
   ) => {
     try {
       setKmTrendLoading(true);
@@ -241,6 +243,7 @@ export default function NewConstructionDashboard() {
         fromDate,
         toDate,
         firmId,
+        workType,
       );
       if (response.status && response.data) {
         setKmTotalData({
@@ -333,9 +336,10 @@ export default function NewConstructionDashboard() {
     setSelectedDistrict('');
     setSelectedVendor('');
     setSelectedBlock('');
-    setSelectedPeriod('30');
+    setSelectedPeriod('all');
     setSearchQuery('');
     setSelectedWorkType('');
+    setSelectedIssueType('');
   };
 
   return (
@@ -413,6 +417,7 @@ export default function NewConstructionDashboard() {
             selectedDistrict={selectedDistrict}
             selectedBlock={selectedBlock}
             selectedVendor={selectedVendor}
+            selectedWorkType={selectedworkType}
             searchQuery={searchQuery}
             selectedPeriod={selectedPeriod}
           />

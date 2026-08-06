@@ -17,6 +17,7 @@ interface SurveyInventoryProps {
   selectedBlock?: string;
   selectedVendor?: string;
   searchQuery?: string;
+  selectedWorkType?: string;
   selectedPeriod?: string;
 }
 
@@ -27,6 +28,7 @@ export default function SurveyInventory({
   selectedVendor,
   searchQuery,
   selectedPeriod,
+  selectedWorkType,
 }: SurveyInventoryProps) {
   const navigate = useNavigate();
   const [data, setData] = useState<SurveyLinksData[]>([]);
@@ -44,6 +46,7 @@ export default function SurveyInventory({
         if (selectedBlock) params.block_id = selectedBlock;
         if (selectedVendor) params.firm_id = selectedVendor;
         if (searchQuery) params.search = searchQuery;
+        if (selectedWorkType) params.workType = selectedWorkType;
 
         const { fromDate, toDate } = getDateRange(selectedPeriod);
         if (fromDate) params.from_date = fromDate;
@@ -70,6 +73,7 @@ export default function SurveyInventory({
     selectedVendor,
     searchQuery,
     selectedPeriod,
+    selectedWorkType
   ]);
 
   const getDateRange = (period?: string) => {

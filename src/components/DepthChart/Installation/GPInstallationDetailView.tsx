@@ -299,6 +299,42 @@ const GPInstallationDetailView = () => {
   
   // Handle arrays
   if (Array.isArray(value)) {
+    const isImageArray = value.length > 0 && value.every(
+      (v) => typeof v === 'string' && (
+        v.includes('.jpg') ||
+        v.includes('.jpeg') ||
+        v.includes('.png') ||
+        v.includes('.gif') ||
+        (v.startsWith('http') && (v.includes('photo') || v.includes('image')))
+      )
+    );
+
+    if (isImageArray) {
+      return (
+        <div className="flex flex-wrap gap-2 mt-2 justify-end">
+          {value.map((photoUrl: string, idx: number) => (
+            <div
+              key={idx}
+              className="relative group cursor-pointer"
+              onClick={() =>
+                setZoomImage(
+                  photoUrl.startsWith('http') ? photoUrl : `${baseUrl}${photoUrl}`,
+                )
+              }
+            >
+              <div className="w-24 h-24 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                <img
+                  src={photoUrl.startsWith('http') ? photoUrl : `${baseUrl}${photoUrl}`}
+                  alt={`${key} ${idx + 1}`}
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
     return <span className="font-medium">{value.join(', ') || 'N/A'}</span>;
   }
   

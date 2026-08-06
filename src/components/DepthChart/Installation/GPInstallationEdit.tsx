@@ -70,7 +70,7 @@ interface EquipmentItem {
 
 interface PowerSystemItem {
   make: string;
-  photo: string;
+  photo: string[];
   serial_no: string;
   available?: boolean;
   battery_sno?: string;
@@ -263,6 +263,18 @@ const GPInstallationEdit = () => {
     }
   };
 
+  const normalizePowerSystemItems = (parsed: any): PowerSystemItem[] => {
+    const items = Array.isArray(parsed) ? parsed : [parsed];
+    return items.map((item) => ({
+      ...item,
+      photo: Array.isArray(item.photo)
+        ? item.photo.filter(Boolean)
+        : item.photo
+          ? [item.photo]
+          : [],
+    }));
+  };
+
   const parseAndSetEquipmentData = (data: GPInstallationData) => {
     try {
       // Smart Rack
@@ -311,17 +323,17 @@ const GPInstallationEdit = () => {
       // Power Systems
       if (data.power_system_with_mppt) {
         const parsed = JSON.parse(data.power_system_with_mppt);
-        setPowerSystemWithMppt(Array.isArray(parsed) ? parsed : [parsed]);
+        setPowerSystemWithMppt(normalizePowerSystemItems(parsed));
       }
 
       if (data.power_system_with_out_mppt) {
         const parsed = JSON.parse(data.power_system_with_out_mppt);
-        setPowerSystemWithoutMppt(Array.isArray(parsed) ? parsed : [parsed]);
+        setPowerSystemWithoutMppt(normalizePowerSystemItems(parsed));
       }
 
       if (data.mppt_solar_1kw) {
         const parsed = JSON.parse(data.mppt_solar_1kw);
-        setMpptSolar1kw(Array.isArray(parsed) ? parsed : [parsed]);
+        setMpptSolar1kw(normalizePowerSystemItems(parsed));
       }
 
       if (data.earthpit) {
@@ -404,12 +416,20 @@ const GPInstallationEdit = () => {
         for (const item of items) {
           if (!item.make) continue;
 
-          const newItem = { ...item };
-          if (item.photo && isDataUrl(item.photo)) {
-            const uploadedUrls = await uploadImagesToServer([item.photo]);
-            newItem.photo = uploadedUrls[0] || '';
-          }
-          results.push(newItem);
+          const photos = item.photo || [];
+          const newPhotoUrls = photos.filter((photo) => isDataUrl(photo));
+          const existingPhotoUrls = photos.filter(
+            (photo) => !isDataUrl(photo),
+          );
+          const uploadedUrls =
+            newPhotoUrls.length > 0
+              ? await uploadImagesToServer(newPhotoUrls)
+              : [];
+
+          results.push({
+            ...item,
+            photo: [...existingPhotoUrls, ...uploadedUrls],
+          });
         }
         return results;
       };
@@ -712,9 +732,9 @@ const GPInstallationEdit = () => {
   const addPowerSystemItem = (
     type: 'with_mppt' | 'without_mppt' | 'solar_1kw',
   ) => {
-    const newItem = {
+    const newItem: PowerSystemItem = {
       make: '',
-      photo: '',
+      photo: [],
       serial_no: '',
       available: false,
       battery_sno: '',
@@ -1041,31 +1061,74 @@ const GPInstallationEdit = () => {
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const files = event.target.files;
-    if (!files || !powerSystemPhotoIndex) return;
+    if (!files || files.length === 0 || !powerSystemPhotoIndex) return;
 
-    const file = files[0];
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result as string;
-      const { type, index } = powerSystemPhotoIndex;
+    const { type, index } = powerSystemPhotoIndex;
 
+    Promise.all(
+      Array.from(files).map(
+        (file) =>
+          new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target?.result as string);
+            reader.readAsDataURL(file);
+          }),
+      ),
+    ).then((dataUrls) => {
       if (type === 'with_mppt') {
         const updated = [...powerSystemWithMppt];
-        updated[index] = { ...updated[index], photo: dataUrl };
+        updated[index] = {
+          ...updated[index],
+          photo: [...updated[index].photo, ...dataUrls],
+        };
         setPowerSystemWithMppt(updated);
       } else if (type === 'without_mppt') {
         const updated = [...powerSystemWithoutMppt];
-        updated[index] = { ...updated[index], photo: dataUrl };
+        updated[index] = {
+          ...updated[index],
+          photo: [...updated[index].photo, ...dataUrls],
+        };
         setPowerSystemWithoutMppt(updated);
       } else if (type === 'solar_1kw') {
         const updated = [...mpptSolar1kw];
-        updated[index] = { ...updated[index], photo: dataUrl };
+        updated[index] = {
+          ...updated[index],
+          photo: [...updated[index].photo, ...dataUrls],
+        };
         setMpptSolar1kw(updated);
       }
       setPowerSystemPhotoIndex(null);
-    };
-    reader.readAsDataURL(file);
+    });
     event.target.value = '';
+  };
+
+  const handlePowerSystemPhotoRemove = (
+    type: 'with_mppt' | 'without_mppt' | 'solar_1kw',
+    itemIndex: number,
+    photoIndex: number,
+  ) => {
+    if (type === 'with_mppt') {
+      const updated = [...powerSystemWithMppt];
+      updated[itemIndex] = {
+        ...updated[itemIndex],
+        photo: updated[itemIndex].photo.filter((_, i) => i !== photoIndex),
+      };
+      setPowerSystemWithMppt(updated);
+    } else if (type === 'without_mppt') {
+      const updated = [...powerSystemWithoutMppt];
+      updated[itemIndex] = {
+        ...updated[itemIndex],
+        photo: updated[itemIndex].photo.filter((_, i) => i !== photoIndex),
+      };
+      setPowerSystemWithoutMppt(updated);
+    } else if (type === 'solar_1kw') {
+      const updated = [...mpptSolar1kw];
+      updated[itemIndex] = {
+        ...updated[itemIndex],
+        photo: updated[itemIndex].photo.filter((_, i) => i !== photoIndex),
+      };
+      setMpptSolar1kw(updated);
+    }
   };
 
   const isDataUrl = (str: string): boolean => {
@@ -2579,35 +2642,38 @@ const GPInstallationEdit = () => {
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Photo
                           </label>
-                          {item.photo ? (
-                            <div className="relative mb-2">
-                              <img
-                                src={
-                                  isDataUrl(item.photo)
-                                    ? item.photo
-                                    : `${ImgbaseUrl}/${item.photo}`
-                                }
-                                alt="Power System"
-                                className="h-20 w-auto rounded-md border border-gray-200 object-cover"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src =
-                                    item.photo;
-                                }}
-                              />
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handlePowerSystemChange(
-                                    'with_mppt',
-                                    index,
-                                    'photo',
-                                    '',
-                                  )
-                                }
-                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
+                          {item.photo.length > 0 ? (
+                            <div className="flex flex-wrap gap-2 mb-2">
+                              {item.photo.map((photo, photoIndex) => (
+                                <div key={photoIndex} className="relative">
+                                  <img
+                                    src={
+                                      isDataUrl(photo)
+                                        ? photo
+                                        : `${ImgbaseUrl}/${photo}`
+                                    }
+                                    alt="Power System"
+                                    className="h-20 w-auto rounded-md border border-gray-200 object-cover"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).src =
+                                        photo;
+                                    }}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handlePowerSystemPhotoRemove(
+                                        'with_mppt',
+                                        index,
+                                        photoIndex,
+                                      )
+                                    }
+                                    className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              ))}
                             </div>
                           ) : null}
                           <button
@@ -2618,7 +2684,7 @@ const GPInstallationEdit = () => {
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2"
                           >
                             <Upload className="h-4 w-4" />
-                            {item.photo ? 'Change Photo' : 'Upload Photo'}
+                            Add Photo
                           </button>
                         </div>
                       </div>
@@ -2792,35 +2858,38 @@ const GPInstallationEdit = () => {
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Photo
                           </label>
-                          {item.photo ? (
-                            <div className="relative mb-2">
-                              <img
-                                src={
-                                  isDataUrl(item.photo)
-                                    ? item.photo
-                                    : `${ImgbaseUrl}/${item.photo}`
-                                }
-                                alt="Power System"
-                                className="h-20 w-auto rounded-md border border-gray-200 object-cover"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src =
-                                    item.photo;
-                                }}
-                              />
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handlePowerSystemChange(
-                                    'without_mppt',
-                                    index,
-                                    'photo',
-                                    '',
-                                  )
-                                }
-                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
+                          {item.photo.length > 0 ? (
+                            <div className="flex flex-wrap gap-2 mb-2">
+                              {item.photo.map((photo, photoIndex) => (
+                                <div key={photoIndex} className="relative">
+                                  <img
+                                    src={
+                                      isDataUrl(photo)
+                                        ? photo
+                                        : `${ImgbaseUrl}/${photo}`
+                                    }
+                                    alt="Power System"
+                                    className="h-20 w-auto rounded-md border border-gray-200 object-cover"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).src =
+                                        photo;
+                                    }}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handlePowerSystemPhotoRemove(
+                                        'without_mppt',
+                                        index,
+                                        photoIndex,
+                                      )
+                                    }
+                                    className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              ))}
                             </div>
                           ) : null}
                           <button
@@ -2834,7 +2903,7 @@ const GPInstallationEdit = () => {
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2"
                           >
                             <Upload className="h-4 w-4" />
-                            {item.photo ? 'Change Photo' : 'Upload Photo'}
+                            Add Photo
                           </button>
                         </div>
                       </div>
@@ -2988,35 +3057,38 @@ const GPInstallationEdit = () => {
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Photo
                           </label>
-                          {item.photo ? (
-                            <div className="relative mb-2">
-                              <img
-                                src={
-                                  isDataUrl(item.photo)
-                                    ? item.photo
-                                    : `${ImgbaseUrl}/${item.photo}`
-                                }
-                                alt="Power System"
-                                className="h-20 w-auto rounded-md border border-gray-200 object-cover"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src =
-                                    item.photo;
-                                }}
-                              />
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handlePowerSystemChange(
-                                    'solar_1kw',
-                                    index,
-                                    'photo',
-                                    '',
-                                  )
-                                }
-                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
+                          {item.photo.length > 0 ? (
+                            <div className="flex flex-wrap gap-2 mb-2">
+                              {item.photo.map((photo, photoIndex) => (
+                                <div key={photoIndex} className="relative">
+                                  <img
+                                    src={
+                                      isDataUrl(photo)
+                                        ? photo
+                                        : `${ImgbaseUrl}/${photo}`
+                                    }
+                                    alt="Power System"
+                                    className="h-20 w-auto rounded-md border border-gray-200 object-cover"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).src =
+                                        photo;
+                                    }}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handlePowerSystemPhotoRemove(
+                                        'solar_1kw',
+                                        index,
+                                        photoIndex,
+                                      )
+                                    }
+                                    className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              ))}
                             </div>
                           ) : null}
                           <button
@@ -3027,7 +3099,7 @@ const GPInstallationEdit = () => {
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2"
                           >
                             <Upload className="h-4 w-4" />
-                            {item.photo ? 'Change Photo' : 'Upload Photo'}
+                            Add Photo
                           </button>
                         </div>
                       </div>
@@ -3367,6 +3439,7 @@ const GPInstallationEdit = () => {
                 ref={powerSystemFileInput}
                 onChange={handlePowerSystemPhotoUpload}
                 accept="image/*"
+                multiple
                 className="hidden"
               />
               <input
