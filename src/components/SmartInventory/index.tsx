@@ -1580,6 +1580,7 @@ function SmartInventory() {
           polylines: [],
         },
       };
+      
 
       // Add physical survey data grouped by event type
       if (rawPhysicalSurveyData && rawPhysicalSurveyData.data) {
@@ -1599,10 +1600,17 @@ function SmartInventory() {
                   groupedByEventType[point.event_type] = [];
                 }
 
-                // Add block_id to the point data
                 groupedByEventType[point.event_type].push({
-                  ...point,
-                  block_id: blockId,
+                  name: `${point.event_type} - Survey ${point.survey_id}`,
+                  coordinates: {
+                    longitude: Number(point.longitude),
+                    latitude: Number(point.latitude),
+                  },
+                  type: point.event_type,
+                  properties: {
+                    ...point,
+                    block_id: blockId,
+                  },
                 });
               });
             }
@@ -1612,6 +1620,46 @@ function SmartInventory() {
         // Add grouped data to shapefile structure
         Object.entries(groupedByEventType).forEach(([eventType, points]) => {
           shapefileData.parsed_data[eventType] = points;
+        });
+      }
+
+      // Add joints data
+      if (rawJointsData && rawJointsData.data && rawJointsData.data.length > 0) {
+        shapefileData.parsed_data.joints = rawJointsData.data.map((joint) => ({
+          name: joint.joint_name,
+          coordinates: {
+            longitude: Number(joint.gps_long),
+            latitude: Number(joint.gps_lat),
+          },
+          type: joint.joint_type,
+          properties: { ...joint },
+        }));
+      }
+
+      // Add desktop planning points and connections
+      if (desktopPlanningData && desktopPlanningData.length > 0) {
+        desktopPlanningData.forEach((item) => {
+          if (item.type === 'point') {
+            const coord = item.coordinates as { lat: number; lng: number };
+            shapefileData.parsed_data.points.push({
+              name: item.name,
+              coordinates: {
+                latitude: coord.lat,
+                longitude: coord.lng,
+              },
+              type: item.pointType || item.category,
+              styleUrl: item.styleUrl,
+            });
+          } else if (item.type === 'polyline') {
+            const coords = item.coordinates as { lat: number; lng: number }[];
+            shapefileData.parsed_data.polylines.push({
+              name: item.name,
+              coordinates: coords.map((c) => [c.lng, c.lat]),
+              distance: item.length,
+              type: item.connectionType || item.category,
+              styleUrl: item.styleUrl,
+            });
+          }
         });
       }
 
