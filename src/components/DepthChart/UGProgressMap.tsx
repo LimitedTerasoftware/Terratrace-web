@@ -156,7 +156,7 @@ const parseLatLong = (value: string | null | undefined) => {
 
 const buildMarkers = (events: Activity[]): ProgressMarker[] =>
   events
-    .filter((event) => event.status === 0 && event.eventType !== 'STARTSURVEY' && event.eventType !== 'ENDSURVEY' && event.eventType !== 'ROADCROSSING')
+    .filter((event) => event.status === 0 && event.eventType !== 'STARTSURVEY' && event.eventType !== 'ENDSURVEY' && event.eventType !== 'ROADCROSSING' && event.eventType !== 'FIBERTURN')
     .map((event) => {
       const coords = parseLatLong(getLatLongForEvent(event));
       if (!coords) return null;

@@ -254,7 +254,7 @@ export const MachineMapComponent: React.FC<MachineMapComponentProps> = ({
                 <span style="color: #10b981; margin-right: 8px; font-size: 14px;">🛰️</span>
                 <div>
                   <div style="color: #64748b; font-size: 12px;">GPS Accuracy</div>
-                  <div style="color: #1e293b; font-size: 14px; font-weight: 600;">${activity.dgps_accuracy} m</div>
+                  <div style="color: #1e293b; font-size: 14px; font-weight: 600;">${activity.dgps_accuracy} cm</div>
                 </div>
               </div>
             ` : ''}
