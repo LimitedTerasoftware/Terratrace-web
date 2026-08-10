@@ -216,19 +216,24 @@ export default function SurveyInventory({
       }
 
       // ── Summary cards row ──────────────────────────────────────────────
+      // Light fill + dark text (instead of solid dark fill + white text) so the
+      // cards stay legible when printed in black & white — a saturated fill
+      // desaturates to mid-grey on a mono printer and washes out white text.
       const cardW = (pageWidth - 28 - 3 * 4) / 4;
       const cardData = [
-        { label: 'Total Links', value: String(data.length), color: [59, 130, 246] as [number,number,number] },
-        { label: 'Total Surveys', value: String(getTotalSurveys()), color: [16, 185, 129] as [number,number,number] },
-        { label: 'Total Distance', value: `${getTotalDistance()} mt`, color: [245, 158, 11] as [number,number,number] },
-        { label: 'Report Period', value: getPeriodLabel(), color: [139, 92, 246] as [number,number,number] },
+        { label: 'Total Links', value: String(data.length), bg: [239, 246, 255] as [number,number,number], border: [59, 130, 246] as [number,number,number], text: [29, 78, 216] as [number,number,number] },
+        { label: 'Total Surveys', value: String(getTotalSurveys()), bg: [236, 253, 245] as [number,number,number], border: [16, 185, 129] as [number,number,number], text: [4, 120, 87] as [number,number,number] },
+        { label: 'Total Distance', value: `${getTotalDistance()} mt`, bg: [255, 251, 235] as [number,number,number], border: [245, 158, 11] as [number,number,number], text: [180, 83, 9] as [number,number,number] },
+        { label: 'Report Period', value: getPeriodLabel(), bg: [245, 243, 255] as [number,number,number], border: [139, 92, 246] as [number,number,number], text: [109, 40, 217] as [number,number,number] },
       ];
 
       cardData.forEach((card, i) => {
         const cx = 14 + i * (cardW + 4);
-        doc.setFillColor(card.color[0], card.color[1], card.color[2]);
-        doc.roundedRect(cx, yPos, cardW, 18, 2, 2, 'F');
-        doc.setTextColor(255, 255, 255);
+        doc.setFillColor(card.bg[0], card.bg[1], card.bg[2]);
+        doc.setDrawColor(card.border[0], card.border[1], card.border[2]);
+        doc.setLineWidth(0.4);
+        doc.roundedRect(cx, yPos, cardW, 18, 2, 2, 'FD');
+        doc.setTextColor(card.text[0], card.text[1], card.text[2]);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(13);
         doc.text(card.value, cx + cardW / 2, yPos + 10, { align: 'center' });

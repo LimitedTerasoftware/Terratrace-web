@@ -528,7 +528,6 @@ const MapComponent: React.FC<Props> = ({ data, previewData }) => {
           strokeColor: '#ffffff',
           strokeWeight: 2,
         },
-        animation: google.maps.Animation.DROP,
       });
 
       marker.addListener('click', () => setSelectedRecord(record));

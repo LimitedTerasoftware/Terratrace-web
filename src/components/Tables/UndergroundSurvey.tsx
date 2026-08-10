@@ -14,7 +14,7 @@ import * as XLSX from "xlsx";
 import MapComponent from "./MapComponent";
 import { MediaExportService } from "../hooks/useFullscreen";
 import { CameraOffIcon, ChartBar, CheckCircle, ChevronDown, Download, Edit2, Eye, EyeIcon, FolderOpen, Globe2Icon, Loader, MapPinIcon, RotateCcw, Search, SheetIcon, SquaresExcludeIcon, TableCellsMerge, User } from "lucide-react";
-import { hasDownloadAccess, hasViewOnlyAccess, getAuthHeaders } from "../../utils/accessControl";
+import { hasDownloadAccess, hasViewOnlyAccess, getAuthHeaders, isAdminUser } from "../../utils/accessControl";
 import { FaArrowLeft } from "react-icons/fa";
 import { UnderGroundSurveyData } from "../../types/survey";
 import { BsCameraVideoFill } from "react-icons/bs";
@@ -125,6 +125,7 @@ const UndergroundSurvey: React.FC = () => {
   const [tempGlobalSearch, setTempGlobalSearch] = useState<string>('');
 
   const navigate = useNavigate();
+  const AdminAcess = isAdminUser();
 
   const statusMap: Record<number, string> = {
     1: "Accepted",
@@ -467,12 +468,14 @@ const handleEditSave = async () => {
               title="View">
               <Eye className="w-4 h-4" />
             </button>
+            {AdminAcess && (
              <button
               onClick={() => setEditingRow(row.original)}
               className="text-blue-600 hover:text-blue-900 p-1"
               title="View">
               <Edit2 className="w-4 h-4" />
             </button>
+            )}
           </div>
 
         ),

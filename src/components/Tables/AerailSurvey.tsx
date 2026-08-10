@@ -12,9 +12,10 @@ import { useNavigate, Link, useLocation, useSearchParams } from "react-router-do
 import * as XLSX from "xlsx";
 import ResponsivePagination from "./ResponsivePagination";
 import { hasViewOnlyAccess, hasDownloadAccess, getAuthHeaders } from "../../utils/accessControl";
-import { ChevronDown, Eye, EyeIcon, Loader, RotateCcw, Search, SheetIcon, TableCellsMerge, User } from "lucide-react";
+import { ChevronDown, Eye, EyeIcon, Globe2Icon, Loader, RotateCcw, Search, SheetIcon, TableCellsMerge, User } from "lucide-react";
 import { AerialSurveyDetails } from "../../types/aerial-survey";
 import AerialSurveyMap from "../AerialSurveyMap/AerialSurveyMap";
+import { parseCoordinates } from "../../utils/map-helpers";
 import { FaArrowLeft } from "react-icons/fa";
 import moment from "moment";
 
@@ -124,6 +125,7 @@ const AerialSurvey: React.FC = () => {
   const [filtersReady, setFiltersReady] = useState(false);
   const [selectedRowsMap, setSelectedRowsMap] = useState<Record<string, AerialSurvey>>({});
   const [isExcelExporting, setisExcelExporting] = useState(false);
+  const [KmlLoader, setKmlLoader] = useState(false);
   const [tempSelectedState, setTempSelectedState] = useState<string | null>(null);
   const [tempSelectedDistrict, setTempSelectedDistrict] = useState<string | null>(null);
   const [tempSelectedBlock, setTempSelectedBlock] = useState<string | null>(null);
@@ -497,7 +499,150 @@ const exporExcel = async (BlockData: AerialSurveyDetails[]) => {
   setisExcelExporting(false);
 };
 
+const handleGenerateKML = async () => {
+  const selected = Object.values(selectedRowsMap);
+  if (selected.length === 0) {
+    alert("No rows selected");
+    return;
+  }
 
+  const startIcon = "http://maps.google.com/mapfiles/kml/paddle/grn-circle.png";
+  const endIcon = "http://maps.google.com/mapfiles/kml/paddle/red-circle.png";
+  const poleIcon = "http://maps.google.com/mapfiles/kml/paddle/ylw-circle.png";
+  const crossingIcon = "http://maps.google.com/mapfiles/kml/paddle/orange-circle.png";
+
+  let allPlacemarks = "";
+  setKmlLoader(true);
+  try {
+    for (const item of selected) {
+      try {
+        const res = await fetch(`${BASEURL}/aerial-surveys/${item.id}`);
+        const json = await res.json();
+        const survey: AerialSurveyDetails = json?.data;
+        if (!survey) continue;
+
+        const startCoords = parseCoordinates(survey.startGpCoordinates);
+        const endCoords = parseCoordinates(survey.endGpCoordinates);
+        const poles = survey.aerial_poles || [];
+        const crossings = survey.aerial_road_crossings || [];
+
+        const lineCoords: string[] = [];
+        if (startCoords) lineCoords.push(`${startCoords.lng},${startCoords.lat},0`);
+        poles.forEach((pole) => {
+          if (pole.lattitude && pole.longitude) {
+            lineCoords.push(`${pole.longitude},${pole.lattitude},0`);
+          }
+        });
+        if (endCoords) lineCoords.push(`${endCoords.lng},${endCoords.lat},0`);
+
+        if (lineCoords.length > 1) {
+          allPlacemarks += `
+        <Placemark>
+          <name>Line ${survey.id}</name>
+          <Style>
+            <LineStyle>
+              <color>ff0000ff</color>
+              <width>3</width>
+            </LineStyle>
+          </Style>
+          <LineString>
+            <tessellate>1</tessellate>
+            <coordinates>${lineCoords.join(" ")}</coordinates>
+          </LineString>
+        </Placemark>
+      `;
+        }
+
+        if (startCoords) {
+          allPlacemarks += `
+        <Placemark>
+          <name>${survey.startGpName || "Start GP"}</name>
+          <description>Start GP</description>
+          <Style><IconStyle><scale>1.1</scale><Icon><href>${startIcon}</href></Icon></IconStyle></Style>
+          <Point><coordinates>${startCoords.lng},${startCoords.lat},0</coordinates></Point>
+        </Placemark>
+      `;
+        }
+
+        if (endCoords) {
+          allPlacemarks += `
+        <Placemark>
+          <name>${survey.endGpName || "End GP"}</name>
+          <description>End GP</description>
+          <Style><IconStyle><scale>1.1</scale><Icon><href>${endIcon}</href></Icon></IconStyle></Style>
+          <Point><coordinates>${endCoords.lng},${endCoords.lat},0</coordinates></Point>
+        </Placemark>
+      `;
+        }
+
+        poles.forEach((pole) => {
+          if (!pole.lattitude || !pole.longitude) return;
+          allPlacemarks += `
+        <Placemark>
+          <name>${pole.typeOfPole || "Pole"}</name>
+          <description>
+            Pole ID: ${pole.id}<br/>
+            Height: ${pole.poleHeight}<br/>
+            Condition: ${pole.poleCondition}<br/>
+            Position: ${pole.polePosition}<br/>
+            Electricity Line Type: ${pole.electricityLineType}<br/>
+          </description>
+          <Style><IconStyle><scale>1.1</scale><Icon><href>${poleIcon}</href></Icon></IconStyle></Style>
+          <Point><coordinates>${pole.longitude},${pole.lattitude},0</coordinates></Point>
+        </Placemark>
+      `;
+        });
+
+        crossings.forEach((crossing) => {
+          if (crossing.slattitude && crossing.slongitude) {
+            allPlacemarks += `
+        <Placemark>
+          <name>${crossing.typeOfCrossing || "Road Crossing"} (Start)</name>
+          <description>
+            Crossing ID: ${crossing.id}<br/>
+            Length: ${crossing.length}<br/>
+          </description>
+          <Style><IconStyle><scale>1.1</scale><Icon><href>${crossingIcon}</href></Icon></IconStyle></Style>
+          <Point><coordinates>${crossing.slongitude},${crossing.slattitude},0</coordinates></Point>
+        </Placemark>
+      `;
+          }
+          if (crossing.elattitude && crossing.elongitude) {
+            allPlacemarks += `
+        <Placemark>
+          <name>${crossing.typeOfCrossing || "Road Crossing"} (End)</name>
+          <description>
+            Crossing ID: ${crossing.id}<br/>
+            Length: ${crossing.length}<br/>
+          </description>
+          <Style><IconStyle><scale>1.1</scale><Icon><href>${crossingIcon}</href></Icon></IconStyle></Style>
+          <Point><coordinates>${crossing.elongitude},${crossing.elattitude},0</coordinates></Point>
+        </Placemark>
+      `;
+          }
+        });
+      } catch (err) {
+        console.error(`Error fetching for ID ${item.id}`, err);
+      }
+    }
+
+    const kmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+    <kml xmlns="http://www.opengis.net/kml/2.2">
+      <Document>
+        ${allPlacemarks}
+      </Document>
+    </kml>`;
+
+    const blob = new Blob([kmlContent], { type: "application/vnd.google-earth.kml+xml" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Aerial_Survey_${new Date().toISOString().slice(0, 10)}.kml`;
+    a.click();
+  } finally {
+    setKmlLoader(false);
+  }
+};
 
   const columns = useMemo<ColumnDef<AerialSurvey>[]>(
     () => [
@@ -782,7 +927,7 @@ const exporExcel = async (BlockData: AerialSurveyDetails[]) => {
     ):(
     
       <div className="min-h-screen">
-        {isExcelExporting || PreviewLoader && (
+        {(isExcelExporting || PreviewLoader || KmlLoader) && (
           <div className="absolute inset-0 bg-white bg-opacity-70 flex justify-center items-center z-50">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
           </div>
@@ -965,6 +1110,25 @@ const exporExcel = async (BlockData: AerialSurveyDetails[]) => {
                     <>
                       <SheetIcon className="h-4 w-4 text-green-600" />
                       Excel (Block-wise Data)
+                    </>
+                  )}
+                </button>
+              )}
+              {DownloadOnly && (
+                <button
+                  onClick={handleGenerateKML}
+                  disabled={KmlLoader}
+                  className="flex-none h-10 px-4 py-2 text-sm font-medium text-yellow-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {KmlLoader ? (
+                    <>
+                      <Loader className="h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Globe2Icon className="h-4 w-4 text-yellow-600" />
+                      KML
                     </>
                   )}
                 </button>

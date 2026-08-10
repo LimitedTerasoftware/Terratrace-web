@@ -3,8 +3,7 @@ import axios from "axios";
 import { FaArrowLeft } from "react-icons/fa";
 import { useParams, useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import { hasViewOnlyAccess, isNGUser } from "../../utils/accessControl";
+import { hasViewOnlyAccess, isAdminUser, isNGUser } from "../../utils/accessControl";
 import DataTable from "react-data-table-component";
 import { Edit2, Image as ImageIcon } from "lucide-react";
 import MediaCarousel from "./MediaCarousel";
@@ -99,7 +98,7 @@ const AerialDetailView: React.FC = () => {
   const [isCarouselOpen, setIsCarouselOpen] = useState<boolean>(false);
   const [carouselMedia, setCarouselMedia] = useState<MediaItem[]>([]);
   const [carouselInitialIndex, setCarouselInitialIndex] = useState<number>(0);
-
+  const AdminAcess = isAdminUser();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -270,6 +269,7 @@ const AerialDetailView: React.FC = () => {
   };
 
   const surveyColumns = useMemo(() => [
+    ...(AdminAcess ?[
     {
   name: "Action",
   cell: () => (
@@ -284,6 +284,7 @@ const AerialDetailView: React.FC = () => {
   button: true,
   width: "120px",
 },
+  ]:[]),
 
     {
       name: "Start GP Name",
@@ -380,6 +381,7 @@ const AerialDetailView: React.FC = () => {
   ], [data]);
 
   const crossingColumns = useMemo(() => [
+     ...(AdminAcess ?[
     {
       name: "Action",
       cell: (row: AerialRoadCrossing) => (
@@ -394,6 +396,7 @@ const AerialDetailView: React.FC = () => {
       button: true,
       width: "120px",
     },
+  ]:[]),
 
     {name:"ID",
       selector:(row:AerialRoadCrossing) => row.id,
@@ -509,6 +512,7 @@ const aerialPolesWithDistance = useMemo(() => {
 
 
   const poleColumns = useMemo(() => [
+     ...(AdminAcess ?[
     {
       name: "Action",
       cell: (row: AerialPole) => (
@@ -523,7 +527,7 @@ const aerialPolesWithDistance = useMemo(() => {
       button: true,
       width: "120px",
     },
-
+  ]:[]),
     {name:"ID",
       selector:(row:AerialPole) => row.id,
       sortable:true,

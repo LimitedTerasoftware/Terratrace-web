@@ -7,7 +7,7 @@ import MapComponent from "./MapComponent";
 import * as XLSX from "xlsx";
 import App from "../VideoPlayback/index";
 import DataTable from "react-data-table-component";
-import { hasDownloadAccess, hasViewOnlyAccess, isNGUser} from "../../utils/accessControl";
+import { hasDownloadAccess, hasViewOnlyAccess, isAdminUser, isNGUser} from "../../utils/accessControl";
 import UnderGroundSurveyImageModal from "./UnderGroundSurveyImageModal";
 import AddEventModal from "./AddEventModal";
 import MediaCarousel from "./MediaCarousel";
@@ -154,6 +154,7 @@ const GroundDetailView: React.FC = () => {
   
   const { id } = useParams();
   const navigate = useNavigate();
+  const AdminAcess = isAdminUser();
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
@@ -372,6 +373,7 @@ const GroundDetailView: React.FC = () => {
 
   // Using useMemo to define columns so they update when videoSizes changes
   const columns = useMemo(() => [
+    ...(AdminAcess ? [
     {
       name:"Actions",
       cell:(row:UnderGroundSurveyData)=>(
@@ -384,7 +386,7 @@ const GroundDetailView: React.FC = () => {
       ignoreRowClick: true,
       button: true,
       width: '120px',
-    },
+    },]:[]),
     {
       name: "Event Type",
       selector: (row: UnderGroundSurveyData) => row.event_type,

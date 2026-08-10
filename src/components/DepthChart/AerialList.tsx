@@ -16,7 +16,7 @@ import {
   PlusCircleIcon,
 } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { getAuthHeaders } from '../../utils/accessControl';
+import { getAuthHeaders, isAdminUser } from '../../utils/accessControl';
 
 interface StatesResponse {
   success: boolean;
@@ -31,6 +31,7 @@ type StatusOption = {
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
 function AerialListPage() {
+  const AdminAcess = isAdminUser();
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -926,7 +927,7 @@ function AerialListPage() {
               Preview
             </button>
 
-            {activeTab === 'Aerial' && (
+            {(activeTab === 'Aerial' && AdminAcess) && (
               <button
                 onClick={() => setIsAddModalOpen(true)}
                 className="flex-none h-10 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap flex items-center gap-2"

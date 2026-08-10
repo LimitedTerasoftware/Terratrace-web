@@ -13,8 +13,9 @@ const VIEW_ONLY_EMAILS = ["aditisamanta@terasoftware.com","wb@terasoftware.com",
   "joydipbagchi@terasoftware.com",
   "harunkowshik@terasoftware.com",
 "srayaseemajhi@terasoftware.com",
+"debdiproy@terasoftware.com",
 ];
-const DOWNLOAD_EMAILS = "nexus@terasoftware.com";
+const DOWNLOAD_EMAILS =["nexus@terasoftware.com","debdiproy@terasoftware.com"];
 const SmartInvViewEmail = "survey@terasoftware.com";
 const SmartInvView = ["survey@terasoftware.com"];
 const DOWNLOAD_ONLY_EMAILS = ["nexus@terasoftware.com"];
@@ -71,7 +72,7 @@ export const getAuthHeaders = (): Record<string, string> => {
 export const hasViewOnlyAccess = (): boolean => {
   const user = getUser();
   const email = user?.email?.toLowerCase();
-  return VIEW_ONLY_EMAILS.includes(email ?? "") || email === DOWNLOAD_EMAILS || email === SmartInvViewEmail;
+  return VIEW_ONLY_EMAILS.includes(email ?? "") || DOWNLOAD_EMAILS.includes(email ?? "") || email === SmartInvViewEmail;
 };
 export const hasConstructionAccess = (): boolean => {
   const user = getUser();
