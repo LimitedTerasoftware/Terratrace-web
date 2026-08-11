@@ -191,14 +191,13 @@ export const MachineMapComponent: React.FC<MachineMapComponentProps> = ({
       const depthInfo = activity.eventType === 'DEPTH' && activity.depthMeters ? (() => {
         const actualDepth = getDepthValue(activity.depthMeters);
         const deviation = actualDepth - minDepth;
-        const deviationColor = deviation >= 0 ? '#10b981' : '#ef4444';
+        const deviationColor = deviation >= 0 && '#10b981';
         const deviationSign = deviation >= 0 ? '+' : '';
         
         return `
           <div style="background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; padding: 10px; border-radius: 12px; margin-bottom: 2px;">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
               <h5 style="margin: 0; font-size: 18px; font-weight: 700; letter-spacing: 1px;">DEPTH</h5>
-              ${isCritical ? '<div style="background: #ef4444; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600;">⚠ CRITICAL</div>' : ''}
             </div>
             <div style="display: flex; align-items: center; justify-content: space-between;">
               <div style="font-size: 20px; font-weight: 800; line-height: 1;">${activity.depthMeters}</div>
@@ -234,10 +233,6 @@ export const MachineMapComponent: React.FC<MachineMapComponentProps> = ({
       const infoContent = `
         <div style="padding: 0; min-width: 350px; max-width: 450px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
           ${depthInfo}
-          ${criticalWarning}
-          
-       
-
           <!-- Location Info -->
           <div style="background: #fef7f0; padding: 12px; border-radius: 8px; margin-bottom: 8px;">
             <div style="display: flex; align-items: center; margin-bottom: 8px;">
