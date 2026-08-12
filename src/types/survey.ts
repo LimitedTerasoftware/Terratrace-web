@@ -742,8 +742,8 @@ export interface JointsData {
   gps_lat: string;
   gps_long: string;
   address: string;
-  photo_path: string;
-  proof_photo: string;
+  photo_path: [];
+  proof_photo: [];
   user_id: never;
   user_name: string;
 }

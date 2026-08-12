@@ -5,7 +5,7 @@ import moment from 'moment';
 import DataTable, { TableColumn } from 'react-data-table-component';
 import { ToastContainer, toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
-import { isAdminUser } from '../../utils/accessControl';
+import { getAuthHeaders, isAdminUser } from '../../utils/accessControl';
 
 interface AcceptedLinkRow {
   id: number;
@@ -146,7 +146,10 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
           pageSize: number;
           data: AcceptedLinkRow[];
           summary?: AcceptedLinksSummary;
-        }>(`${TraceBASEURL}/get-accepted-links`, { params });
+        }>(`${TraceBASEURL}/get-accepted-links`, { params ,
+           headers: getAuthHeaders()
+          },
+        );
 
         if (response.data.status) {
           setData(response.data.data);

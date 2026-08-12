@@ -1,12 +1,19 @@
 import { ColumnDef, flexRender, getCoreRowModel, getPaginationRowModel, Row, useReactTable } from '@tanstack/react-table';
 import axios from 'axios';
-import { ChevronDown, Eye, RotateCcw, Search, TableCellsMerge, User } from 'lucide-react';
+import { ChevronDown, Eye, RotateCcw, Search, TableCellsMerge, User, Image as ImageIcon } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import ResponsivePagination from '../Tables/ResponsivePagination';
+import MediaCarousel from '../Tables/MediaCarousel';
 import { JointsApiResponse, JointsData, ProcessedJoints } from '../../types/survey';
 import { hasDownloadAccess, getAuthHeaders } from '../../utils/accessControl';
 import * as XLSX from "xlsx";
+
+interface MediaItem {
+  type: 'image' | 'video';
+  url: string;
+  label: string;
+}
 
 interface StateData {
   state_id: string;
@@ -36,7 +43,9 @@ const Joints: React.FC = () => {
   const DownloadOnly = hasDownloadAccess();
   
   const navigate = useNavigate(); 
-  const [selectedJointId, setSelectedJointId] = useState<string | null>(null); 
+  const [selectedJointId, setSelectedJointId] = useState<string | null>(null);
+  const [isCarouselOpen, setIsCarouselOpen] = useState<boolean>(false);
+  const [carouselMedia, setCarouselMedia] = useState<MediaItem[]>([]);
   const [data, setData] = useState<JointsData[]>([]);
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
@@ -217,29 +226,42 @@ const Joints: React.FC = () => {
       {
         header: "Photos",
         cell: ({ row }) => {
-          const photo = row.original.photo_path;
-          const proof = row.original.proof_photo;
+          const photo: string[] = row.original.photo_path || [];
+          const proof: string[] = row.original.proof_photo || [];
+          const imageCount = photo.length + proof.length;
+
+          if (imageCount === 0) {
+            return <span className="text-gray-400">-</span>;
+          }
+
+          const openJointPhotos = () => {
+            const media: MediaItem[] = [
+              ...photo.map((img, index) => ({
+                type: 'image' as const,
+                url: `${ImgBaseUrl}${img}`,
+                label: `Photo ${index + 1}`,
+              })),
+              ...proof.map((pic, index) => ({
+                type: 'image' as const,
+                url: `${ImgBaseUrl}${pic}`,
+                label: `Proof Photo ${index + 1}`,
+              })),
+            ];
+            setCarouselMedia(media);
+            setIsCarouselOpen(true);
+          };
 
           return (
-            <div className="flex gap-2">
-              {photo && (
-                <img
-                  src={`${ImgBaseUrl}${photo}`}
-                  alt="Photo"
-                  className="w-10 h-10 object-cover rounded cursor-pointer border"
-                  onClick={() => window.open(`${ImgBaseUrl}${photo}`, "_blank")}
-                />
-              )}
-
-              {proof && (
-                <img
-                  src={`${ImgBaseUrl}${proof}`}
-                  alt="Proof Photo"
-                  className="w-10 h-10 object-cover rounded cursor-pointer border"
-                  onClick={() => window.open(`${ImgBaseUrl}${proof}`, "_blank")}
-                />
-              )}
-            </div>
+            <button
+              onClick={openJointPhotos}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-md transition-colors cursor-pointer"
+              title="Click to view photos"
+            >
+              <ImageIcon size={16} className="text-blue-600" />
+              <span className="text-xs text-blue-600 font-medium">
+                {imageCount}
+              </span>
+            </button>
           );
         },
       },
@@ -576,6 +598,11 @@ const Joints: React.FC = () => {
 
 
       </div>
+      <MediaCarousel
+        isOpen={isCarouselOpen}
+        onClose={() => setIsCarouselOpen(false)}
+        mediaItems={carouselMedia}
+      />
     </div>
   )
 }

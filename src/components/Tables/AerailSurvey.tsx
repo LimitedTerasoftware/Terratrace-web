@@ -12,12 +12,19 @@ import { useNavigate, Link, useLocation, useSearchParams } from "react-router-do
 import * as XLSX from "xlsx";
 import ResponsivePagination from "./ResponsivePagination";
 import { hasViewOnlyAccess, hasDownloadAccess, getAuthHeaders } from "../../utils/accessControl";
-import { ChevronDown, Eye, EyeIcon, Globe2Icon, Loader, RotateCcw, Search, SheetIcon, TableCellsMerge, User } from "lucide-react";
+import { ChevronDown, Eye, EyeIcon, Globe2Icon, Loader, RotateCcw, Search, SheetIcon, TableCellsMerge, User, Video as VideoIcon } from "lucide-react";
 import { AerialSurveyDetails } from "../../types/aerial-survey";
 import AerialSurveyMap from "../AerialSurveyMap/AerialSurveyMap";
 import { parseCoordinates } from "../../utils/map-helpers";
 import { FaArrowLeft } from "react-icons/fa";
 import moment from "moment";
+import MediaCarousel from "./MediaCarousel";
+
+interface MediaItem {
+  type: 'image' | 'video';
+  url: string;
+  label: string;
+}
 
 interface AerialSurvey {
   id: string;
@@ -43,6 +50,7 @@ interface AerialSurvey {
   contact_no: number,
   workType:string,
   version:string|null,
+  videoUrl:string|null,
 
 }
 
@@ -101,6 +109,7 @@ const getDistanceInMeters = (
 const AerialSurvey: React.FC = () => {
   const BASEURL = import.meta.env.VITE_API_BASE;
   const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
+  const ImgBaseUrl = import.meta.env.VITE_Image_URL;
   const location = useLocation();
   const viewOnly = hasViewOnlyAccess();
   const DownloadOnly = hasDownloadAccess();
@@ -135,6 +144,8 @@ const AerialSurvey: React.FC = () => {
   const [tempGlobalSearch, setTempGlobalSearch] = useState<string>('');
   const [AerialData,setAerialData]=useState<AerialSurveyDetails[]>([]);
   const[PreviewLoader,setPreviewLoader]=useState(false);
+  const [isCarouselOpen, setIsCarouselOpen] = useState<boolean>(false);
+  const [carouselMedia, setCarouselMedia] = useState<MediaItem[]>([]);
 
   const navigate = useNavigate();
 
@@ -728,6 +739,38 @@ const handleGenerateKML = async () => {
       },
       { accessorKey: "version", header: "Version" },
       {
+        header: "Video",
+        cell: ({ row }: { row: Row<AerialSurvey> }) => {
+          const videoUrl = row.original.videoUrl;
+
+          if (!videoUrl) {
+            return <span className="text-gray-400">-</span>;
+          }
+
+          const openVideo = () => {
+            setCarouselMedia([
+              {
+                type: 'video',
+                url: `${ImgBaseUrl}${videoUrl}`,
+                label: 'Survey Video',
+              },
+            ]);
+            setIsCarouselOpen(true);
+          };
+
+          return (
+            <button
+              onClick={openVideo}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-md transition-colors cursor-pointer"
+              title="Click to play video"
+            >
+              <VideoIcon size={16} className="text-purple-600" />
+              <span className="text-xs text-purple-600 font-medium">Play</span>
+            </button>
+          );
+        },
+      },
+      {
         accessorKey: "is_active",
         header: "Status",
         cell: ({ row }: { row: any }) => {
@@ -1291,6 +1334,12 @@ const handleGenerateKML = async () => {
             </div>
           </div>
         )}
+
+        <MediaCarousel
+          isOpen={isCarouselOpen}
+          onClose={() => setIsCarouselOpen(false)}
+          mediaItems={carouselMedia}
+        />
       </div>
     )}
   </>
