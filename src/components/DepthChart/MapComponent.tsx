@@ -6,6 +6,7 @@ import {
   ConstructionPathResponse,
 } from '../../types/survey';
 import { useNavigate } from 'react-router-dom';
+import { isIEUser } from '../../utils/accessControl';
 
 interface MapComponentProps {
   markers: LiveMarkerData[];
@@ -534,9 +535,13 @@ const MapComponent: React.FC<MapComponentProps> = ({
     };
   }, []);
   return (
+
     <div className="relative w-full h-full">
+      
       <div ref={mapRef} className="w-full h-full rounded-lg" />
+      {!isIEUser() &&(
       <div className="absolute top-20 right-4 bg-white p-3 rounded-lg shadow-lg border border-gray-200 max-w-xs">
+        
         <div className="mb-3">
           <h4 className="text-sm font-semibold text-gray-900 mb-2">Cable</h4>
           <div className="flex items-center gap-2 mb-1">
@@ -631,7 +636,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
             </div>
           </div>
         )}
-      </div>
+      </div>)}
     </div>
   );
 };

@@ -15,6 +15,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { machineApi } from '../Services/api';
 import Filters from '../Checkboxes/Filters';
 import RecentIssues from '../Chat/RecentIssues';
+import { isIEUser } from '../../utils/accessControl';
 
 function ConstructionIssues() {
   const location = useLocation();
@@ -36,6 +37,8 @@ function ConstructionIssues() {
   const [selectedDistrict, setSelectedDistrict] = useState<string>('');
   const [selectedVendor, setSelectedVendor] = useState<string>('');
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
+  const [selectedFromDate, setSelectedFromDate] = useState<string>('');
+  const [selectedToDate, setSelectedToDate] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedIssueType, setSelectedIssueType] = useState<string>(
     issueType || '',
@@ -72,7 +75,9 @@ function ConstructionIssues() {
   };
 
   useEffect(() => {
-    const { fromDate, toDate } = getDateRange(selectedPeriod);
+    const { fromDate, toDate } = isIEUser()
+      ? { fromDate: selectedFromDate || undefined, toDate: selectedToDate || undefined }
+      : getDateRange(selectedPeriod);
     fetchIssues(
       selectedState || undefined,
       selectedDistrict || undefined,
@@ -85,6 +90,8 @@ function ConstructionIssues() {
     selectedState,
     selectedDistrict,
     selectedPeriod,
+    selectedFromDate,
+    selectedToDate,
     selectedVendor,
     selectedIssueType,
   ]);
@@ -126,6 +133,8 @@ function ConstructionIssues() {
     setSelectedDistrict('');
     setSelectedVendor('');
     setSelectedPeriod('all');
+    setSelectedFromDate('');
+    setSelectedToDate('');
     setSearchQuery('');
     setSelectedIssueType('');
     setSelectedSeverity('All');
@@ -237,6 +246,8 @@ function ConstructionIssues() {
             searchQuery={searchQuery}
             selectedWorkType={''}
             selectedIssueType={selectedIssueType}
+            selectedFromDate={selectedFromDate}
+            selectedToDate={selectedToDate}
             onStateChange={setSelectedState}
             onDistrictChange={setSelectedDistrict}
             onBlockChange={() => {}}
@@ -246,6 +257,8 @@ function ConstructionIssues() {
             onWorkTypeChange={() => {}}
             onIssueTypeChange={setSelectedIssueType}
             onReset={handleReset}
+            onFromDateChange={setSelectedFromDate}
+            onToDateChange={setSelectedToDate}
           />
 
           {/* <div className="flex flex-wrap gap-3">

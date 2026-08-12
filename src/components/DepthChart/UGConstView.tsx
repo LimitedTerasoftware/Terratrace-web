@@ -1886,7 +1886,7 @@ function Eventreport() {
                 Map View
               </button>
             </li>
-            {!IEUser && (
+           
             <li className="mr-2">
               <button
                 className={`inline-block p-4 rounded-t-lg outline-none ${
@@ -1900,7 +1900,7 @@ function Eventreport() {
               >
                 Depth Analysis
               </button>
-            </li>)}
+            </li>
           </ul>
 
           <div className="flex flex-wrap items-center gap-3 mt-2">

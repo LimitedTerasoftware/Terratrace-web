@@ -15,6 +15,7 @@ import { Activity, LiveMachines } from '../../types/survey';
 import MachineRouteMap from './MachineRouteMap';
 import Dashboard from './MachineWorkChart/Dashboard';
 import moment from 'moment';
+import { isIEUser } from '../../utils/accessControl';
 
 interface ActivityDetailsProps {
   activity: LiveMachines | null;
@@ -59,6 +60,7 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({
 }) => {
   const [showRouteMap, setShowRouteMap] = useState(false);
   const [showWorkChart, setShowWorkChart] = useState(false);
+   const ieUser = isIEUser();
 
   if (!activity) return null;
   const parsePhotos = (photoString: string | null): string[] => {
@@ -98,7 +100,8 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({
     const photoField = mapping.photoField as keyof LiveMachines;
     const coordField = mapping.coordField as keyof LiveMachines;
 
-    photos = parsePhotos(activity[photoField] as string | null);
+    const allPhotos = parsePhotos(activity[photoField] as string | null);
+    photos = ieUser ? allPhotos.slice(0, 1) : allPhotos;
     coordinates = getCoordinates(activity[coordField] as string | null);
   }
   if (showRouteMap) {
@@ -182,6 +185,7 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({
 
         <div className="p-6 space-y-6">
           {/* Action Buttons */}
+          {!ieUser && (
           <div className="flex gap-3">
             <button
               onClick={() => setShowRouteMap(true)}
@@ -200,6 +204,7 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({
               <ArrowRight className="h-4 w-4" />
             </button>
           </div>
+          )}
 
           {/* Basic Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

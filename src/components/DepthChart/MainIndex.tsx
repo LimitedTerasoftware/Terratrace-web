@@ -5,17 +5,22 @@ import MachineDataTable from './MachineData';
 import LiveTrack from './LiveTrack';
 import Dashboard from './MachineWorkChart/Dashboard';
 import IndexPerformanceChart from './PerformanceChart';
+import { isIEUser } from '../../utils/accessControl';
 
 
 function MainIndex() {
 type TabType = "live-track" | "Machine-Data" | "Machine-Work-Chart" | "Performance-Chart";
 
-const tabs: { id: TabType; label: string }[] = [
-  { id: "live-track", label: "Live Tracking" },
-  { id: "Machine-Data", label: "Machine Data" },
-  { id: "Machine-Work-Chart", label: "Machine Work Chart"},
-  { id: "Performance-Chart", label: "Performance Chart"},
-];
+const ieUser = isIEUser();
+
+const tabs: { id: TabType; label: string }[] = ieUser
+  ? [{ id: "live-track", label: "Live Tracking" }]
+  : [
+      { id: "live-track", label: "Live Tracking" },
+      { id: "Machine-Data", label: "Machine Data" },
+      { id: "Machine-Work-Chart", label: "Machine Work Chart"},
+      { id: "Performance-Chart", label: "Performance Chart"},
+    ];
 
 const [activeTab, setActiveTab] = useState<TabType>();
   const location = useLocation();

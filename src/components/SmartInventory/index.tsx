@@ -1623,6 +1623,67 @@ function SmartInventory() {
         });
       }
 
+      // Add construction data grouped by event type
+      if (rawConstructionData && rawConstructionData.data) {
+        const groupedConstructionByEventType: Record<string, any[]> = {};
+
+        Object.entries(rawConstructionData.data).forEach(
+          ([blockId, points]: [string, any]) => {
+            if (Array.isArray(points)) {
+              points.forEach((point: any) => {
+                const eventType = point.eventType || '';
+                let latlong: string | undefined;
+
+                if (eventType === 'DEPTH') {
+                  latlong = point.depthLatlong;
+                } else if (eventType === 'STARTPIT') {
+                  latlong = point.startPitLatlong;
+                } else if (eventType === 'ENDPIT') {
+                  latlong = point.endPitLatlong;
+                }
+
+                if (!latlong) {
+                  return;
+                }
+
+                const parts = latlong.split(',').map((s: string) => s.trim());
+                const latitude = parseFloat(parts[0]);
+                const longitude = parseFloat(parts[1]);
+
+                if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+                  return;
+                }
+
+                const groupKey = `construction_${eventType.toLowerCase()}`;
+
+                if (!groupedConstructionByEventType[groupKey]) {
+                  groupedConstructionByEventType[groupKey] = [];
+                }
+
+                groupedConstructionByEventType[groupKey].push({
+                  name: `${eventType} - Survey ${point.survey_id}-${point.id}`,
+                  coordinates: {
+                    longitude,
+                    latitude,
+                  },
+                  type: eventType,
+                  properties: {
+                    ...point,
+                    block_id: blockId,
+                  },
+                });
+              });
+            }
+          },
+        );
+
+        Object.entries(groupedConstructionByEventType).forEach(
+          ([groupKey, points]) => {
+            shapefileData.parsed_data[groupKey] = points;
+          },
+        );
+      }
+
       // Add joints data
       if (rawJointsData && rawJointsData.data && rawJointsData.data.length > 0) {
         shapefileData.parsed_data.joints = rawJointsData.data.map((joint) => ({

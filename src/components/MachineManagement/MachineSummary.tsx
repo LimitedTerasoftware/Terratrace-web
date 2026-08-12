@@ -195,13 +195,15 @@ const totalDistance = activities.reduce((sum, survey) => {
 
         {/* DISTANCE ROW */}
         {machineInfo && (
-          <><div className="flex items-center text-gray-700">
+          <>
+          {/* <div className="flex items-center text-gray-700">
               <MapPinIcon className="text-green-600 w-5 h-5 mr-2" />
               <span>
                Today Distance:
                 <span className="font-bold ml-1">{totalDistance.toFixed(2)} m</span>
               </span>
-            </div><div className="flex items-center text-gray-700">
+            </div> */}
+            <div className="flex items-center text-gray-700">
                 <MapIcon className="text-blue-600 w-5 h-5 mr-2" />
                 <span>
                   Total Distance:

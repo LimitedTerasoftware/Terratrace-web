@@ -316,6 +316,7 @@ const Report: React.FC<ReportProps> = ({
   };
 
   const columns: TableColumn<UGConstructionSurveyData>[] = [
+    
     {
       name: (
         <input
@@ -349,7 +350,7 @@ const Report: React.FC<ReportProps> = ({
           className="h-4 w-4 rounded border-gray-300"
         />
       ),
-      cell: (row) => (
+      cell: (row:UGConstructionSurveyData) => (
         <input
           type="checkbox"
           aria-label={`Select row ${row.id}`}
@@ -369,6 +370,7 @@ const Report: React.FC<ReportProps> = ({
       ignoreRowClick: true,
       width: '48px',
     },
+   
     {
       name: 'Survey ID',
       selector: (row) => row.id,
@@ -485,14 +487,14 @@ const Report: React.FC<ReportProps> = ({
       sortable:true,
       wrap:true
     },
-    {
+   
+      ...(IEUser
+      ? [] : [
+      {
       name: 'Versions',
-      selector: (row) => row.versions || '-',
+      selector: (row:UGConstructionSurveyData) => row.versions || '-',
       sortable: true,
     },
-      ...(IEUser
-      ? []
-      : [
     {
       name: 'Surveyor',
       cell: (row: UGConstructionSurveyData) => {
@@ -569,14 +571,16 @@ const Report: React.FC<ReportProps> = ({
           >
             <View className="w-4 h-4" />
           </button>
-          <button
+        
+          {AdminAcess && (
+            <>
+            <button
             onClick={() => setSelectedSurvey(row)}
             className="p-1 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
             title="View Details"
           >
             <Eye className="w-4 h-4" />
           </button>
-          {AdminAcess && (
             <button
               onClick={() => handleUpdate(row.id)}
               className="p-1 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
@@ -584,6 +588,7 @@ const Report: React.FC<ReportProps> = ({
             >
               <PenIcon className="w-4 h-4" />
             </button>
+            </>
           )}
           {user?.email === 'admin@terasoftware.com' &&  (
             <button
@@ -623,15 +628,17 @@ const Report: React.FC<ReportProps> = ({
           'Construction Type',
           'Work Type',
           'Cable Type',
-          'Distance (m)',
-          'Surveyor Name',
-          'Surveyor Mobile',
-          'Status',
-           'Firm Name',
+          ...(IEUser
+            ? []
+            : [
+                'Distance (m)',
+                'Surveyor Name',
+                'Surveyor Mobile',
+                'Status',
+                'Firm Name',
+              ]),
           'Machine Id',
-          'DGPS ID',
-          'Version',
-          'Updated By',
+          ...(IEUser ? [] : ['DGPS ID', 'Version', 'Updated By']),
           'Created At',
           'Updated At',
         ];
@@ -646,19 +653,21 @@ const Report: React.FC<ReportProps> = ({
           row.construction_type || '-',
           row.workType || '-',
           row.cableType || '-',
-          row.total_distance || '0.00',
-          row.user_name,
-          row.user_mobile,
-          row.is_active === 0
-            ? 'Pending'
-            : row.is_active === 1
-              ? 'Accepted'
-              : 'Rejected',
-          row.firm_name,
+          ...(IEUser
+            ? []
+            : [
+                row.total_distance || '0.00',
+                row.user_name,
+                row.user_mobile,
+                row.is_active === 0
+                  ? 'Pending'
+                  : row.is_active === 1
+                    ? 'Accepted'
+                    : 'Rejected',
+                row.firm_name,
+              ]),
           row.machine_id,
-          row.dgps_id,
-          row.versions,
-          row.admin_name,
+          ...(IEUser ? [] : [row.dgps_id, row.versions, row.admin_name]),
           row.created_at,
           row.updated_at,
         ]);

@@ -130,7 +130,10 @@ export default function KPICards({
         </div>
       </div>)}
 
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <div
+        className="bg-white rounded-lg border border-gray-200 p-4 cursor-pointer hover:shadow-md transition-shadow"
+        onClick={() => navigate('/machine-management/machine-tracking/?tab=tracking')}
+      >
         <div className="flex items-start justify-between">
           <div>
             <p className="text-xs font-medium text-gray-600 uppercase">

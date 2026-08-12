@@ -16,6 +16,7 @@ import axios from 'axios';
 import { UGConstructionSurveyData } from '../../types/survey';
 import { Wrapper } from '@googlemaps/react-wrapper';
 import { isIEUser ,getAuthHeaders} from '../../utils/accessControl';
+import { ToastContainer } from 'react-toastify';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -70,6 +71,8 @@ export default function NewConstructionDashboard() {
   const [selectedVendor, setSelectedVendor] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
+  const [selectedFromDate, setSelectedFromDate] = useState<string>('');
+  const [selectedToDate, setSelectedToDate] = useState<string>('');
   const [selectedworkType, setSelectedWorkType] = useState<string>('');
   const [kmTrendData, setKmTrendData] = useState<KmTrendData[]>([]);
   const[kmTotalData, setKmTotalData] = useState<KMresponse>({ status: false, summary: { total_km: '0', total_days: '0', average_km_per_day: '0' }, data: [] });
@@ -128,7 +131,9 @@ export default function NewConstructionDashboard() {
   };
 
   useEffect(() => {
-    const { fromDate, toDate } = getDateRange(selectedPeriod);
+    const { fromDate, toDate } = isIEUser()
+      ? { fromDate: selectedFromDate || undefined, toDate: selectedToDate || undefined }
+      : getDateRange(selectedPeriod);
     fetchKmTrend(
       selectedState,
       selectedDistrict,
@@ -162,6 +167,8 @@ export default function NewConstructionDashboard() {
     selectedDistrict,
     selectedBlock,
     selectedPeriod,
+    selectedFromDate,
+    selectedToDate,
     searchQuery,
     selectedVendor,
     selectedworkType,
@@ -338,6 +345,8 @@ export default function NewConstructionDashboard() {
     setSelectedVendor('');
     setSelectedBlock('');
     setSelectedPeriod('all');
+    setSelectedFromDate('');
+    setSelectedToDate('');
     setSearchQuery('');
     setSelectedWorkType('');
     setSelectedIssueType('');
@@ -354,6 +363,8 @@ export default function NewConstructionDashboard() {
         searchQuery={searchQuery}
         selectedWorkType={selectedworkType}
         selectedIssueType={selectIssueType}
+        selectedFromDate={selectedFromDate}
+        selectedToDate={selectedToDate}
         onStateChange={setSelectedState}
         onDistrictChange={setSelectedDistrict}
         onBlockChange={setSelectedBlock}
@@ -363,6 +374,8 @@ export default function NewConstructionDashboard() {
         onReset={handleReset}
         onWorkTypeChange={setSelectedWorkType}
         onIssueTypeChange={setSelectedIssueType}
+        onFromDateChange={setSelectedFromDate}
+        onToDateChange={setSelectedToDate}
       />
       <KPICards
         Data={dashboardData}
@@ -423,12 +436,16 @@ export default function NewConstructionDashboard() {
             selectedWorkType={selectedworkType}
             searchQuery={searchQuery}
             selectedPeriod={selectedPeriod}
+            selectedFromDate={selectedFromDate}
+            selectedToDate={selectedToDate}
           />
           {!isIEUser() && (
             <RecentIssues data={issuesData} isLoading={issuesLoading} IssueType={selectIssueType} />
           )}
         </div>
       </div>
+      <ToastContainer />
     </div>
+    
   );
 }

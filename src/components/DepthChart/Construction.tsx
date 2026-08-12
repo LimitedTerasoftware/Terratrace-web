@@ -1180,6 +1180,9 @@ function ConstructionPage() {
                 </div>
               )}
             </div>
+             </>
+           
+             )}
 
             {/* Date Filters */}
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
@@ -1201,8 +1204,7 @@ function ConstructionPage() {
                 placeholder="To Date"
               />
             </div>
-            </>
-            )}
+           
             </>
             )}
           {/* </div> */}
@@ -1324,7 +1326,7 @@ function ConstructionPage() {
             )}
 
             {/* Search Bar */}
-            {!IEUser && (
+           
             <div className="relative w-full sm:w-80">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg
@@ -1349,9 +1351,9 @@ function ConstructionPage() {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md bg-white text-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
               />
             </div>
-            )}
+            
 
-            {activeTab === 'UG' && !IEUser && (
+            {activeTab === 'UG' && (
               <>
                 {/* Excel Export Button */}
                 <button
@@ -1361,6 +1363,8 @@ function ConstructionPage() {
                   <SheetIcon className="h-4 w-4 text-green-600" />
                   Excel
                 </button>
+                {!IEUser && (
+                <>
                 <button
                   onClick={() => setkml(true)}
                   className="flex items-center gap-2 flex-none h-10 px-4 py-2 text-sm font-medium text-yellow-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap"
@@ -1382,6 +1386,8 @@ function ConstructionPage() {
                   <EyeIcon className="h-4 w-4 text-blue-600" />
                   Progress Map
                 </button>
+                </>
+                )}
               </>
             )}
             {activeTab === 'UG' && AdminAcess && (

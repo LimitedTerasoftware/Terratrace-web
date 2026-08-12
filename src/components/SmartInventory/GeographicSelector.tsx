@@ -11,6 +11,7 @@ import {
   Loader,
 } from 'lucide-react';
 import { getBlockData, getDistrictData, getStateData } from '../Services/api';
+import { isIEUser } from '../../utils/accessControl';
 
 interface Block {
   id: string;
@@ -97,6 +98,7 @@ const PreviewDropdown: React.FC<PreviewDropdownProps> = ({
           <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
           Desktop Planning
         </button>
+        { !isIEUser() && (<>
 
         <button
           onClick={() => {
@@ -129,6 +131,7 @@ const PreviewDropdown: React.FC<PreviewDropdownProps> = ({
           <div className="w-3 h-3 bg-cyan-500 rounded-full"></div>
           Construction
         </button>
+        </>)}
         <button
           onClick={() => {
             onApprovedKMZ();

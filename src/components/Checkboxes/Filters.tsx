@@ -13,6 +13,8 @@ interface FiltersProps {
   selectedWorkType: string;
   searchQuery: string;
   selectedIssueType: string;
+  selectedFromDate?: string;
+  selectedToDate?: string;
   onStateChange: (state: string) => void;
   onDistrictChange: (district: string) => void;
   onBlockChange: (block: string) => void;
@@ -22,6 +24,8 @@ interface FiltersProps {
   onReset: () => void;
   onWorkTypeChange: (workType: string) => void;
   onIssueTypeChange: (issueType: string) => void;
+  onFromDateChange?: (date: string) => void;
+  onToDateChange?: (date: string) => void;
 }
 
 export default function Filters({
@@ -33,6 +37,8 @@ export default function Filters({
   searchQuery,
   selectedWorkType,
   selectedIssueType,
+  selectedFromDate = '',
+  selectedToDate = '',
   onStateChange,
   onDistrictChange,
   onBlockChange,
@@ -42,6 +48,8 @@ export default function Filters({
   onIssueTypeChange,
   onReset,
   onWorkTypeChange,
+  onFromDateChange,
+  onToDateChange,
 }: FiltersProps) {
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
@@ -241,18 +249,37 @@ export default function Filters({
         </select>
         )}
         
-        <select
-          className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[100px]"
-          value={selectedPeriod}
-          onChange={(e) => onPeriodChange(e.target.value)}
-        >
-          <option value="today">Today</option>
-          <option value="yesterday">Yesterday</option>
-          <option value="7">Last 7 Days</option>
-          <option value="15">Last 15 Days</option>
-          <option value="30">Last 30 Days</option>
-          <option value="all">All Time</option>
-        </select>
+        {ieUser ? (
+          <>
+            <input
+              type="date"
+              className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[100px]"
+              value={selectedFromDate}
+              max={selectedToDate || undefined}
+              onChange={(e) => onFromDateChange?.(e.target.value)}
+            />
+            <input
+              type="date"
+              className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[100px]"
+              value={selectedToDate}
+              min={selectedFromDate || undefined}
+              onChange={(e) => onToDateChange?.(e.target.value)}
+            />
+          </>
+        ) : (
+          <select
+            className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[100px]"
+            value={selectedPeriod}
+            onChange={(e) => onPeriodChange(e.target.value)}
+          >
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="7">Last 7 Days</option>
+            <option value="15">Last 15 Days</option>
+            <option value="30">Last 30 Days</option>
+            <option value="all">All Time</option>
+          </select>
+        )}
 
         {/* <div className="flex-1 min-w-[100px]">
           <div className="relative">

@@ -21,7 +21,7 @@ import {
 import axios from 'axios';
 import { Machine } from '../../types/machine';
 import { getMachineOptions } from '../Services/api';
-import { getAuthHeaders } from '../../utils/accessControl';
+import { getAuthHeaders, isIEUser } from '../../utils/accessControl';
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -62,12 +62,15 @@ const EVENT_TYPE_MAPPING = {
 
 function LiveTrack() {
   const [searchParams] = useSearchParams();
+  const ieUser = isIEUser();
 
   const machineId = searchParams.get('machine_id');
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
-  const [selectedState, setSelectedState] = useState<string | null>(null);
+  const [selectedState, setSelectedState] = useState<string | null>(() =>
+    ieUser ? '6' : null,
+  );
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
   const [loadingStates, setLoadingStates] = useState<boolean>(false);
@@ -115,7 +118,7 @@ function LiveTrack() {
   };
 
   useEffect(() => {
-    if (!selectedBlock) {
+    if (!selectedBlock || ieUser) {
       setKmlData(null);
       setConstructionPathData(null);
       setLoadingKML(false);
@@ -132,7 +135,16 @@ function LiveTrack() {
       const response = await fetch(`${TraceBASEURL}/states`, { headers: getAuthHeaders() });
       if (!response.ok) throw new Error('Failed to fetch states');
       const result: StatesResponse = await response.json();
-      setStates(result.success ? result.data : []);
+      const data = result.success ? result.data : [];
+      setStates(
+        ieUser
+          ? data.filter(
+              (state: any) =>
+                String(state.state_id) === '6' ||
+                String(state.state_code) === '19',
+            )
+          : data,
+      );
     } catch (error) {
       console.error('Error fetching states:', error);
     } finally {
@@ -207,6 +219,16 @@ function LiveTrack() {
       .map((activity) => {
         if (activity.status === 1) return null;
 
+        if (ieUser) {
+          const created = new Date(activity.created_at);
+          const today = new Date();
+          const isToday =
+            created.getDate() === today.getDate() &&
+            created.getMonth() === today.getMonth() &&
+            created.getFullYear() === today.getFullYear();
+          if (!isToday) return null;
+        }
+
         // Get the coordinate field based on event type
         const mapping =
           EVENT_TYPE_MAPPING[
@@ -261,7 +283,7 @@ function LiveTrack() {
           latestActivityByMachine.get(machineKey)?.id === marker.activity.id,
       };
     });
-  }, [activities]);
+  }, [activities, ieUser]);
 
   const handleMarkerClick = useCallback((activity: LiveMachines) => {
     setSelectedActivity(activity);
@@ -292,13 +314,39 @@ function LiveTrack() {
     return null;
   };
   const clearFilters = () => {
-    setSelectedState(null);
+    setSelectedState(ieUser ? '6' : null);
     setSelectedDistrict(null);
     setSelectedBlock(null);
   };
-  const filteredMachines = Machine
-    ? machinesData.filter((m) => m.machine_id == Machine)
+  // Same "active today" logic used for the green markers on the map.
+  const activeMachineIds = useMemo(() => {
+    const today = new Date();
+    const ids = new Set<string>();
+
+    activities
+      .filter((activity) => activity.status !== 1)
+      .forEach((activity) => {
+        const created = new Date(activity.created_at);
+        const isToday =
+          created.getDate() === today.getDate() &&
+          created.getMonth() === today.getMonth() &&
+          created.getFullYear() === today.getFullYear();
+
+        if (isToday) {
+          ids.add(
+            String(activity.machine_id || activity.machine_registration_number),
+          );
+        }
+      });
+
+    return ids;
+  }, [activities]);
+  const machineOptions = ieUser
+    ? machinesData.filter((m) => activeMachineIds.has(String(m.machine_id)))
     : machinesData;
+  const filteredMachines = Machine
+    ? machineOptions.filter((m) => m.machine_id == Machine)
+    : machineOptions;
   return (
     <>
       <div className="mb-4">
@@ -312,7 +360,7 @@ function LiveTrack() {
               className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             >
               <option value="">All Machines</option>
-              {machinesData.map((machine) => (
+              {machineOptions.map((machine) => (
                 <option key={machine.machine_id} value={machine.machine_id}>
                   {machine.registration_number}
                 </option>
@@ -473,6 +521,7 @@ function LiveTrack() {
               </svg>
             </div>
           </div>
+          {!ieUser && (
           <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
             <select
               value={histmachineData !== '' ? histmachineData : ''}
@@ -507,6 +556,7 @@ function LiveTrack() {
               </svg>
             </div>
           </div>
+          )}
           {/* Clear Filters */}
           <button
             onClick={clearFilters}
@@ -577,11 +627,13 @@ function LiveTrack() {
         {/* Main Content */}
         <div className="p-6">
           <div className="space-y-6">
-            <StatsPanel
-              activities={activities || []}
-              totalCount={totalCount}
-              isLoading={isLoading}
-            />
+            {!ieUser && (
+              <StatsPanel
+                activities={activities || []}
+                totalCount={totalCount}
+                isLoading={isLoading}
+              />
+            )}
 
             <div>
               {/* Map */}
