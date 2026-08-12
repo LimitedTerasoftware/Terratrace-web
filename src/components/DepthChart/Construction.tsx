@@ -168,14 +168,12 @@ function ConstructionPage() {
         const filtered = stateData.filter(
           (state: any) =>
             String(state.state_id) === '6' ||
-            String(state.state_code) === '19',
+            String(state.state_code) === '19'||
+            String(state.state_id) === '1'||String(state.state_code) === '35',
         );
         setStates(filtered);
-        // The actual state_id may differ from our '6' guess depending on
-        // which field matched, so align selectedState with the real value
-        // once it's known — otherwise the dropdown shows no selection.
         if (filtered.length > 0) {
-          setSelectedState(String(filtered[0].state_id));
+          setSelectedState('6');
         }
       } else {
         setStates(stateData);

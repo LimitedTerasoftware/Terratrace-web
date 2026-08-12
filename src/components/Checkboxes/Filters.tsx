@@ -87,7 +87,8 @@ export default function Filters({
           ? data.filter(
               (state:any) =>
                 String(state.state_id) === '6' ||
-                String(state.state_code) === '19',
+                String(state.state_code) === '19' ||
+                String(state.state_id) === '1'||String(state.state_code) === '35',
             )
           : data || [],);
     } catch (error) {

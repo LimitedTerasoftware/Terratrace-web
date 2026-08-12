@@ -320,7 +320,7 @@ export default function NewConstructionDashboard() {
     try {
       setLoading(true);
       const response = await machineApi.getFirmDistanceStats(
-        isIEUser() ? '6' : stateId,
+        stateId,
         districtId,
         blockId,
         fromDate,
@@ -340,7 +340,7 @@ export default function NewConstructionDashboard() {
   };
 
   const handleReset = () => {
-    setSelectedState('');
+    setSelectedState(isIEUser() ? '6' :'');
     setSelectedDistrict('');
     setSelectedVendor('');
     setSelectedBlock('');
@@ -436,8 +436,7 @@ export default function NewConstructionDashboard() {
             selectedWorkType={selectedworkType}
             searchQuery={searchQuery}
             selectedPeriod={selectedPeriod}
-            selectedFromDate={selectedFromDate}
-            selectedToDate={selectedToDate}
+           
           />
           {!isIEUser() && (
             <RecentIssues data={issuesData} isLoading={issuesLoading} IssueType={selectIssueType} />

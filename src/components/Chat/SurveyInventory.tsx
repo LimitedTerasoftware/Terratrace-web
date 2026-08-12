@@ -19,8 +19,7 @@ interface SurveyInventoryProps {
   searchQuery?: string;
   selectedWorkType?: string;
   selectedPeriod?: string;
-   selectedFromDate:string;
-  selectedToDate:string;
+ 
 }
 
 export default function SurveyInventory({
@@ -31,8 +30,7 @@ export default function SurveyInventory({
   searchQuery,
   selectedPeriod,
   selectedWorkType,
-  selectedFromDate,
-  selectedToDate
+
 }: SurveyInventoryProps) {
   const navigate = useNavigate();
   const [data, setData] = useState<SurveyLinksData[]>([]);
@@ -45,7 +43,7 @@ export default function SurveyInventory({
       try {
         const params: Record<string, string | number> = {};
 
-        if (selectedState) params.state_id = ieUser ? 6 :selectedState;
+        if (selectedState) params.state_id = selectedState;
         if (selectedDistrict) params.district_id = selectedDistrict;
         if (selectedBlock) params.block_id = selectedBlock;
         if (selectedVendor) params.firm_id = selectedVendor;
@@ -53,8 +51,8 @@ export default function SurveyInventory({
         if (selectedWorkType) params.workType = selectedWorkType;
 
         const { fromDate, toDate } = getDateRange(selectedPeriod);
-        if (fromDate || selectedFromDate) params.from_date = fromDate ? fromDate : selectedFromDate;
-        if (toDate || selectedToDate) params.to_date = toDate ? toDate : selectedToDate;
+        if (fromDate ) params.from_date = fromDate  ;
+        if (toDate) params.to_date = toDate  ;
 
         const response = await axios.get<{
           status: boolean;
@@ -80,10 +78,7 @@ export default function SurveyInventory({
     searchQuery,
     selectedPeriod,
     selectedWorkType,
-    selectedFromDate,
-    selectedToDate
-
-  ]);
+ ]);
   const getDateRange = (period?: string) => {
     if (period === 'all') return { fromDate: undefined, toDate: undefined };
     if (period === 'today') {

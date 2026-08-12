@@ -95,7 +95,7 @@ const Report: React.FC<ReportProps> = ({
         setLoading(true);
         setError('');
         const params: any = {};
-        if (Data.selectedState) params.state_id = IEUser ? '6' : Data.selectedState;
+        if (Data.selectedState) params.state_id = Data.selectedState;
         if (Data.selectedDistrict) params.district_id = Data.selectedDistrict;
         if (Data.selectedBlock) params.block_id = Data.selectedBlock;
         if (Data.connectionStart) params.start = Data.connectionStart;
