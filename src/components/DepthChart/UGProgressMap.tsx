@@ -221,6 +221,29 @@ const EVENT_POINT_STYLES: Record<
   },
 };
 
+// Only these event types are connected into the construction-path polyline.
+// Every other event type is shown as a standalone point marker.
+const CONNECT_EVENT_TYPES = new Set(['STARTPIT', 'ENDPIT', 'DEPTH']);
+
+const DEFAULT_POINT_STYLE: { color: string; shape: MarkerShape } = {
+  color: '#6B7280',
+  shape: 'circle',
+};
+
+const humanizeEventType = (eventType: string) =>
+  eventType
+    .toLowerCase()
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
+const getPointStyle = (
+  eventType: string,
+): { color: string; label: string; shape: MarkerShape } =>
+  EVENT_POINT_STYLES[eventType] ?? {
+    ...DEFAULT_POINT_STYLE,
+    label: humanizeEventType(eventType),
+  };
+
 const buildLabeledCircleIcon = (
   color: string,
   radius: number,
@@ -327,14 +350,13 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
     [visiblePlanningCategories],
   );
   const eventRoutePaths = useMemo(() => {
-    const grouped = markers.reduce<Record<number, ProgressMarker[]>>(
-      (acc, marker) => {
+    const grouped = markers
+      .filter((marker) => CONNECT_EVENT_TYPES.has(marker.eventType))
+      .reduce<Record<number, ProgressMarker[]>>((acc, marker) => {
         if (!acc[marker.surveyId]) acc[marker.surveyId] = [];
         acc[marker.surveyId].push(marker);
         return acc;
-      },
-      {},
-    );
+      }, {});
 
     return Object.entries(grouped)
       .map(([surveyId, items]) => {
@@ -463,9 +485,9 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
 
     eventPointMarkersRef.current.forEach((marker) => marker.setMap(null));
     eventPointMarkersRef.current = markers
-      .filter((marker) => EVENT_POINT_STYLES[marker.eventType])
+      .filter((marker) => !CONNECT_EVENT_TYPES.has(marker.eventType))
       .map((marker) => {
-        const style = EVENT_POINT_STYLES[marker.eventType];
+        const style = getPointStyle(marker.eventType);
         const eventMarker = new google.maps.Marker({
           position: { lat: marker.lat, lng: marker.lng },
           map,
@@ -767,7 +789,14 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
                   <span className="font-medium">{integratedGps.length}</span>
                 </label>
               )}
-              {Object.entries(EVENT_POINT_STYLES).map(([eventType, style]) => {
+              {Array.from(
+                new Set(
+                  markers
+                    .filter((marker) => !CONNECT_EVENT_TYPES.has(marker.eventType))
+                    .map((marker) => marker.eventType),
+                ),
+              ).map((eventType) => {
+                const style = getPointStyle(eventType);
                 const count = markers.filter(
                   (marker) => marker.eventType === eventType,
                 ).length;
