@@ -94,6 +94,9 @@ function Eventreport() {
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const columnMenuRef = useRef<HTMLDivElement>(null);
+  const [pendingModalOpen, setPendingModalOpen] = useState(false);
+  const [pendingRemark, setPendingRemark] = useState('');
+  const [pendingSubmitting, setPendingSubmitting] = useState(false);
 
   const viewOnly = hasViewOnlyAccess();
   const AdminAcess = isAdminUser();
@@ -678,14 +681,16 @@ function Eventreport() {
       setIsCarouselOpen(true);
     }, 0);
   };
-  const handlePending = async () => {
+  const handlePending = async (remark?: string) => {
     try {
+      setPendingSubmitting(true);
       const userData = JSON.parse(localStorage.getItem('userData') || '{}');
 
       const resp = await axios.post(
         `${BASEURL_Val}/underground-surveys/${MainData.id}/pending   `,
         {
           admin_id: userData.id,
+          remark: remark?.trim() || null,
         },
       );
       if (resp.data.status === 1) {
@@ -697,12 +702,15 @@ function Eventreport() {
         } catch (linkError) {
           console.error('Error adding link tracker:', linkError);
         }
-         
+        setPendingModalOpen(false);
+        setPendingRemark('');
       } else {
         toast.error('Failed to pending record');
       }
     } catch (error) {
       toast.error('Error pending record');
+    } finally {
+      setPendingSubmitting(false);
     }
   };
   const handleAccept = async () => {
@@ -2111,7 +2119,8 @@ function Eventreport() {
           <button
             className="bg-orange-500 hover:bg-orange-600 text-white py-2 px-4 rounded"
             onClick={() => {
-              handlePending();
+              setPendingRemark('');
+              setPendingModalOpen(true);
             }}
           >
             Pending
@@ -2241,6 +2250,46 @@ function Eventreport() {
         mediaItems={carouselMedia}
         initialIndex={carouselInitialIndex}
       />
+
+      {/* Pending Reason Modal */}
+      {pendingModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+          <div className="relative w-full max-w-md mx-auto bg-white rounded-lg shadow-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">
+              Mark as Pending
+            </h3>
+            <label className="block text-sm text-gray-600 mb-1">
+              Reason (optional)
+            </label>
+            <textarea
+              value={pendingRemark}
+              onChange={(e) => setPendingRemark(e.target.value)}
+              rows={4}
+              placeholder="Enter reason for marking this record as pending"
+              className="w-full border border-gray-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+            />
+            <div className="mt-4 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setPendingModalOpen(false);
+                  setPendingRemark('');
+                }}
+                disabled={pendingSubmitting}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handlePending(pendingRemark)}
+                disabled={pendingSubmitting}
+                className="px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-md hover:bg-orange-600 disabled:opacity-50"
+              >
+                {pendingSubmitting ? 'Submitting...' : 'Submit'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

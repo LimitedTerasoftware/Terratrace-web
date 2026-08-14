@@ -37,7 +37,7 @@ export interface GPInstallationRow {
   electricity_meter?: string;    status?: string;
   earthpit?: Earthpit | string;
   gp_contact?: Contact | string; key_person?: KeyPerson | string;
-  RFMS_FILTERS?: unknown;        created_at?: string;           updated_at?: string;
+  RFMS_FILTERS?: SmartRack[] | string;        created_at?: string;           updated_at?: string;
 }
 
 export interface BlockInstallationRow {
@@ -110,6 +110,7 @@ function sharedEquipmentHeaders(): string[] {
     "Smart Rack - Make", "Smart Rack - Serial No", "Smart Rack - Type", "Smart Rack - Photo",
     "FDMS Shelf - Make", "FDMS Shelf - Serial No", "FDMS Shelf - Count",
     "FDMS Shelf - Front Photo", "FDMS Shelf - Left Photo", "FDMS Shelf - Right Photo", "FDMS Shelf - QR Photo",
+    "RFMS Filter - Make", "RFMS Filter - Serial No", "RFMS Filter - Type", "RFMS Filter - Photo",
     "IP MPLS Router - Make", "IP MPLS Router - Serial No", "IP MPLS Router - Type", "IP MPLS Router - Photo",
     "SFP 10G/40 - Make", "SFP 10G/40 - Serial No", "SFP 10G/40 - Count", "SFP 10G/40 - Photo",
     "SFP 1G/10 - Make",  "SFP 1G/10 - Serial No",  "SFP 1G/10 - Count",  "SFP 1G/10 - Photo",
@@ -119,6 +120,7 @@ function sharedEquipmentHeaders(): string[] {
 
 function sharedEquipmentCells(
   smart_rack: unknown,
+  RFMS_FILTERS:unknown,
   fdms_shelf: unknown,
   ip_mpls_router: unknown,
   sfp_10g_40: unknown,
@@ -126,6 +128,7 @@ function sharedEquipmentCells(
   sfp_10g_10: unknown
 ): CellValue[] {
   const sr   = listFirst<SmartRack>(smart_rack);
+  const rf = listFirst<SmartRack>(RFMS_FILTERS);
   const fdms = listFirst<FDMSShelf>(fdms_shelf);
   const mpls = asDict<IPMPLSRouter>(ip_mpls_router);
   const s40  = listFirst<SFP>(sfp_10g_40);
@@ -137,6 +140,7 @@ function sharedEquipmentCells(
     fdms.make ?? "", fdms.serial_no ?? "", fdms.count ?? "",
     photoLink(fdms.front_photo), photoLink(fdms.left_photo),
     photoLink(fdms.right_photo), photoLink(fdms.qr_photo),
+    rf?.make ?? "", rf.serial_no ?? "",  rf.type ?? "",   photoLink(rf.photo),
     mpls.make ?? "", mpls.serial_no ?? "", mpls.type ?? "",  photoLink(mpls.photo),
     s40.make ?? "",  s40.serial_no ?? "",  s40.count ?? "",  photoLink(s40.photo),
     s1g.make ?? "",  s1g.serial_no ?? "",  s1g.count ?? "",  photoLink(s1g.photo),
@@ -175,7 +179,7 @@ function flattenGPRow(row: GPInstallationRow): CellValue[] {
     row.state_name ?? "", row.district_name ?? "", row.block_name ?? "",
     row.gp_name ?? "", row.gp_code ?? "", row.gp_latitude ?? "", row.gp_longitude ?? "",
     ...sharedEquipmentCells(
-      row.smart_rack, row.fdms_shelf, row.ip_mpls_router,
+      row.smart_rack,row?.RFMS_FILTERS,row.fdms_shelf, row.ip_mpls_router,
       row.sfp_10g_40, row.sfp_1g_10, row.sfp_10g_10
     ),
     // Power MPPT
@@ -225,7 +229,7 @@ function flattenBlockRow(row: BlockInstallationRow): CellValue[] {
     // Block Photos
     ...photoLinks(asStringList(row.block_photos), 5),
     ...sharedEquipmentCells(
-      row.smart_rack, row.fdms_shelf, row.ip_mpls_router,
+      row.smart_rack,row?.RFMS_FILTERS, row.fdms_shelf, row.ip_mpls_router,
       row.sfp_10g_40, row.sfp_1g_10, row.sfp_10g_10
     ),
     // RFMS

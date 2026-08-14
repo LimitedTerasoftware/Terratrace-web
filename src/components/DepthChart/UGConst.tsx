@@ -35,7 +35,7 @@ interface ReportProps {
     connectionEnd?: string;
     page?: number;
     mergeSurveys: boolean;
-    editLink: boolean;
+    editLink?: boolean;
   };
   Onexcel: () => void;
   OnPreview: () => void;
@@ -46,7 +46,7 @@ interface ReportProps {
   OnPageChange?: (page: number) => void;
   OnMergeSurveys: () => void;
   OnMergeLoadingChange: (loading: boolean) => void;
-  OnEditLink: () => void;
+  OnEditLink?: () => void;
 }
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -553,7 +553,12 @@ const Report: React.FC<ReportProps> = ({
       },
     },
   ]),
-
+     {
+       name:'Remark',
+      selector:(row)=>row.remark || '-',
+      sortable:true,
+      wrap:true
+    },
     {
       name: 'Created',
       selector: (row) => row.created_at,
@@ -737,7 +742,7 @@ const Report: React.FC<ReportProps> = ({
     if (!Data.editLink) return;
     if (selectedRows.length === 0) {
       alert('Please select at least one row to edit link.');
-      OnEditLink();
+      OnEditLink?.();
       return;
     }
     setIsEditLinkModalOpen(true);
@@ -1328,11 +1333,11 @@ const Report: React.FC<ReportProps> = ({
         isOpen={isEditLinkModalOpen}
         onClose={() => {
           setIsEditLinkModalOpen(false);
-          OnEditLink();
+          OnEditLink?.();
         }}
         onSuccess={() => {
           setIsEditLinkModalOpen(false);
-          OnEditLink();
+          OnEditLink?.();
           handleClearRows();
           toast.success('Link updated successfully!');
           if (Data.filtersReady) {

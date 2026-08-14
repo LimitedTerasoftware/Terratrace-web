@@ -1,5 +1,5 @@
 import React from 'react';
-import { Construction, MapPin, Clock, CheckCircle, AlertTriangle, Users, MessageCircleWarningIcon, MailWarningIcon, FileWarningIcon, CircleAlertIcon, Link2, Ruler, Cable, Percent } from 'lucide-react';
+import { Construction, MapPin, Clock, CheckCircle, AlertTriangle, Users, MessageCircleWarningIcon, MailWarningIcon, FileWarningIcon, CircleAlertIcon, Link2, Ruler, Cable, Percent, PlusCircle, Building2 } from 'lucide-react';
 import { UGConstructionSurveyData } from '../../types/survey';
 import type { AcceptedLinksSummary } from './AcceptedLinks';
 
@@ -17,9 +17,11 @@ interface ConstructionStatsPanelProps {
   isLoading: boolean;
   summary?: ConstructionSummary | null;
   acceptedLinksSummary?: AcceptedLinksSummary | null;
+  newPoleCount?: number;
+  existingPoleCount?: number;
 }
 
-const ConstructionStatsPanel: React.FC<ConstructionStatsPanelProps> = ({ surveys, isLoading, summary, acceptedLinksSummary }) => {
+const ConstructionStatsPanel: React.FC<ConstructionStatsPanelProps> = ({ surveys, isLoading, summary, acceptedLinksSummary, newPoleCount, existingPoleCount }) => {
 
   const getAcceptedLinksStatsConfig = (data: AcceptedLinksSummary) => [
     {
@@ -167,14 +169,14 @@ const ConstructionStatsPanel: React.FC<ConstructionStatsPanelProps> = ({ surveys
       bgColor: 'bg-emerald-50',
       id: 'routes'
     },
-    {
-      icon: MapPin,
-      label: 'Active Districts',
-      value: stats.activeDistricts,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      id: 'districts'
-    },
+    // {
+    //   icon: MapPin,
+    //   label: 'Active Districts',
+    //   value: stats.activeDistricts,
+    //   color: 'text-purple-600',
+    //   bgColor: 'bg-purple-50',
+    //   id: 'districts'
+    // },
     {
       icon: Users,
       label: 'Active Surveyors',
@@ -191,30 +193,62 @@ const ConstructionStatsPanel: React.FC<ConstructionStatsPanelProps> = ({ surveys
       bgColor: 'bg-teal-50',
       id: 'states'
     },
-    {
-      icon: Clock,
-      label: 'Last 24h',
-      value: stats.recentSurveys,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
-      id: 'recent'
-    }
+    // {
+    //   icon: Clock,
+    //   label: 'Last 24h',
+    //   value: stats.recentSurveys,
+    //   color: 'text-orange-600',
+    //   bgColor: 'bg-orange-50',
+    //   id: 'recent'
+    // }
   ];
 
-  const statsConfig = acceptedLinksSummary
-    ? getAcceptedLinksStatsConfig(acceptedLinksSummary)
-    : summary
-    ? getSummaryStatsConfig(summary)
-    : getSurveyStatsConfig(getConstructionStats());
+  const hasPoleCounts = newPoleCount != null || existingPoleCount != null;
 
-  const gridColsClass = summary && !acceptedLinksSummary ? 'md:grid-cols-5' : 'md:grid-cols-6';
+  const poleStatsConfig = hasPoleCounts
+    ? [
+        {
+          icon: PlusCircle,
+          label: 'New Poles',
+          value: newPoleCount ?? 0,
+          color: 'text-green-600',
+          bgColor: 'bg-green-50',
+          id: 'new-poles',
+        },
+        {
+          icon: Building2,
+          label: 'Existing Poles',
+          value: existingPoleCount ?? 0,
+          color: 'text-slate-600',
+          bgColor: 'bg-slate-50',
+          id: 'existing-poles',
+        },
+      ]
+    : [];
+
+  const statsConfig = [
+    ...(acceptedLinksSummary
+      ? getAcceptedLinksStatsConfig(acceptedLinksSummary)
+      : summary
+      ? getSummaryStatsConfig(summary)
+      : getSurveyStatsConfig(getConstructionStats())),
+    ...poleStatsConfig,
+  ];
+
+  const statCount = statsConfig.length;
+  const gridColsClass =
+    statCount <= 4 ? 'md:grid-cols-4' :
+    statCount <= 5 ? 'md:grid-cols-5' :
+    statCount <= 6 ? 'md:grid-cols-6' :
+    statCount <= 7 ? 'md:grid-cols-7' :
+    'md:grid-cols-8';
 
   if (isLoading) {
     return (
       <div className="bg-gray-50 border-b border-gray-200">
         <div className="px-1 py-6">
           <div className={`grid grid-cols-2 ${gridColsClass} gap-4`}>
-            {[...Array(summary && !acceptedLinksSummary ? 4 : 6)].map((_, i) => (
+            {[...Array(statCount)].map((_, i) => (
               <div key={i} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 animate-pulse">
                 <div className="flex items-center justify-between">
                   <div>

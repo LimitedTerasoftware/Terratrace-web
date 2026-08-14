@@ -507,6 +507,7 @@ export interface UGConstructionSurveyData {
   start_longitude:string|null;
   end_latitude:string|null;
   end_longitude:string|null;
+  remark:string|null;
 }
 export interface SurveyLinksData {
     startLocation: number; 

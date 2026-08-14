@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { getAuthHeaders, isAdminUser } from '../../utils/accessControl';
+import { getPoleDashboard } from '../Services/api';
 
 interface StatesResponse {
   success: boolean;
@@ -62,7 +63,13 @@ function AerialListPage() {
   const [loadingConnections, setLoadingConnections] = useState(false);
   const [surveyData, setSurveyData] = useState<UGConstructionSurveyData[]>([]);
   const [loadingStats] = useState<boolean>(false);
-  const [worktype, setWorktype] = useState<string>('');
+  const [newPoleCount, setNewPoleCount] = useState<number>(0);
+  const [existingPoleCount, setExistingPoleCount] = useState<number>(0);
+  const [loadingPoleStats, setLoadingPoleStats] = useState<boolean>(false);
+  const [worktype, setWorktype] = useState<string[]>([]);
+  const [workTypeDropdownOpen, setWorkTypeDropdownOpen] = useState(false);
+  const workTypeDropdownRef = useRef<HTMLDivElement>(null);
+
   const [activeTab, setActiveTab] = useState<'Aerial' | 'Pole' | string>('Aerial');
   const constType = 'Aerial';
   const [page, setPage] = useState<number>(() => {
@@ -82,6 +89,13 @@ function AerialListPage() {
       label,
     }),
   );
+  const workTypeOptions = [
+    { value: 'New Construction', label: 'New Construction' },
+    { value: 'Rectification', label: 'Rectification' },
+    { value: 'OFC Blowing/ JointChamber', label: 'OFC Blowing / Joint Chamber' },
+    { value: 'Protection', label: 'Protection' },
+  ];
+
 
   const AerialHeader = () => {
     return (
@@ -121,6 +135,27 @@ function AerialListPage() {
         </div>
       </header>
     );
+  };
+
+  const fetchPoleDashboard = async () => {
+    setLoadingPoleStats(true);
+    try {
+      const response = await getPoleDashboard({
+        state_id: selectedState || undefined,
+        district_id: selectedDistrict || undefined,
+        block_id: selectedBlock || undefined,
+        from_date: fromdate || null,
+        to_date: todate || null,
+      });
+      if (response.status) {
+        setNewPoleCount(response.data.new_poles);
+        setExistingPoleCount(response.data.existing_poles);
+      }
+    } catch (error) {
+      console.error('Error fetching pole dashboard:', error);
+    } finally {
+      setLoadingPoleStats(false);
+    }
   };
 
   const fetchStates = async () => {
@@ -207,6 +242,11 @@ function AerialListPage() {
     fetchVerifiedNetworks();
   }, [selectedState, selectedDistrict, selectedBlock]);
 
+  useEffect(() => {
+    if (!filtersReady) return;
+    fetchPoleDashboard();
+  }, [filtersReady, selectedState, selectedDistrict, selectedBlock, fromdate, todate]);
+
   const getSelectedConnectionDetails = () => {
     if (!selectedConnection) return null;
     return connections.find((c) => c.route_name === selectedConnection);
@@ -249,7 +289,7 @@ function AerialListPage() {
     setFromDate(from_date);
     setToDate(to_date);
     setGlobalSearch(search);
-    setWorktype(worktype);
+    setWorktype(worktype ? worktype.split(',').filter(Boolean):[]);
     setFiltersReady(true);
     setActiveTab(tab);
   }, []);
@@ -265,7 +305,7 @@ function AerialListPage() {
     newBlock: string | null,
     newLink: string | null,
     status: number[],
-    worktype: string,
+    worktype: string[],
     from_date: string | null,
     to_date: string | null,
     search: string | null,
@@ -280,7 +320,7 @@ function AerialListPage() {
     if (status.length > 0) {
       params.status = status.join(',');
     }
-    if (worktype) params.worktype = worktype;
+    if (worktype.length >0) params.worktype = worktype.join(',');
     if (from_date) params.from_date = from_date;
     if (to_date) params.to_date = to_date;
     if (search) params.search = search;
@@ -318,7 +358,7 @@ function AerialListPage() {
     setFromDate('');
     setToDate('');
     setSearchParams({});
-    setWorktype('');
+    setWorktype([]);
     setPage(1);
     
   };
@@ -441,20 +481,31 @@ function AerialListPage() {
       ) {
         setStatusDropdownOpen(false);
       }
+       if (
+        workTypeDropdownRef.current &&
+        !workTypeDropdownRef.current.contains(event.target as Node)
+      ) {
+        setWorkTypeDropdownOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleWorktypeChange = (value: string) => {
-    setWorktype(value);
+
+
+   const handleWorkTypeToggle = (value: string) => {
+    const updated = worktype.includes(value)
+      ? worktype.filter((w) => w !== value)
+      : [...worktype, value];
+    setWorktype(updated);
     handleFilterChange(
       selectedState,
       selectedDistrict,
       selectedBlock,
       selectedConnection,
       selectedStatus,
-      value,
+      updated,
       fromdate,
       todate,
       globalsearch,
@@ -462,6 +513,7 @@ function AerialListPage() {
       page,
     );
   };
+ 
 
   const handleFromDateChange = (value: string) => {
     setFromDate(value);
@@ -518,7 +570,12 @@ function AerialListPage() {
     <div className="min-h-screen bg-gray-50">
       <AerialHeader />
 
-      <ConstructionStatsPanel surveys={surveyData} isLoading={loadingStats} />
+      <ConstructionStatsPanel
+        surveys={surveyData}
+        isLoading={loadingStats || loadingPoleStats}
+        newPoleCount={newPoleCount}
+        existingPoleCount={existingPoleCount}
+      />
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="border-b border-gray-200">
@@ -849,32 +906,61 @@ function AerialListPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-              <select
-                value={worktype !== '' ? worktype : ''}
-                onChange={(e) => handleWorktypeChange(e.target.value)}
-                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              >
-                <option value="">All Work Type</option>
-                <option value="New Construction">New Construction</option>
-                <option value="Rectification">Rectification</option>
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                <svg
-                  className="w-4 h-4 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+             <div
+                  className="relative flex-1 min-w-0 sm:flex-none sm:w-44"
+                  ref={workTypeDropdownRef}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </div>
-            </div>
+                  <button
+                    type="button"
+                    onClick={() => setWorkTypeDropdownOpen((prev) => !prev)}
+                    className="w-full flex items-center justify-between px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  >
+                    <span className="truncate text-left">
+                      {worktype.length === 0
+                        ? 'All Work Type'
+                        : worktype
+                            .map(
+                              (value) =>
+                                workTypeOptions.find(
+                                  (option) => option.value === value,
+                                )?.label ?? value,
+                            )
+                            .join(', ')}
+                    </span>
+                    <svg
+                      className="w-4 h-4 text-gray-400 flex-shrink-0 ml-1"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </button>
+                  {workTypeDropdownOpen && (
+                    <div className="absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg dark:bg-gray-700 dark:border-gray-600">
+                      {workTypeOptions.map((option) => (
+                        <label
+                          key={option.value}
+                          className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 dark:text-white"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={worktype.includes(option.value)}
+                            onChange={() => handleWorkTypeToggle(option.value)}
+                            className="rounded border-gray-300"
+                          />
+                          {option.label}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+          
 
             <div className="relative w-80">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -971,6 +1057,7 @@ function AerialListPage() {
               connectionEnd: getSelectedConnectionDetails()?.endLocation,
               page,
               mergeSurveys: false,
+              
             }}
             Onexcel={() => setExcel(false)}
             OnPreview={() => setPreview(false)}

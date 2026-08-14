@@ -12,7 +12,7 @@ interface PolesProps {
   selectedDistrict: string | null;
   selectedBlock: string | null;
   selectedStatus: number[];
-  worktype: string;
+  worktype: string[];
   fromdate: string;
   todate: string;
   globalsearch: string;
@@ -66,7 +66,7 @@ const Poles: React.FC<PolesProps> = ({
         if (fromdate) params.from_date = fromdate;
         if (todate) params.to_date = todate;
         if (selectedStatus.length > 0) params.status = selectedStatus.join(',');
-        if (worktype !== '') params.worktype = worktype;
+        if (worktype.length > 0) params.worktype = worktype.join(',');
         if (globalsearch.trim()) params.search = globalsearch.trim();
 
         const response = await axios.get<{
