@@ -84,6 +84,7 @@ const EVENT_TYPES = {
   HOLDSURVEY:     { color: '#a93226', icon: '⏸️', label: 'Hold Survey' },
   BLOWING:        { color: '#663300', icon: '💨', label: 'Blowing Survey' },
   OFCBLOWING:     { color: '#0EA5E9', icon: '🧵', label: 'OFC Blowing' },
+  PIPE:  { color: '#7C3AED', icon: '🧪', label: 'Pipe' },
 };
 
 const baseUrl = import.meta.env.VITE_Image_URL;
@@ -115,6 +116,7 @@ const InfoWindow: React.FC<{
     HOLDSURVEY: 'holdPhotos',
     BLOWING: 'blowingPhotos',
     OFCBLOWING: 'blowingPhotos',
+    PIPE:"blowingPhotos",
   };
 
   const getLatLongForEvent = (row: Activity) => {
@@ -135,6 +137,7 @@ const InfoWindow: React.FC<{
       case 'HOLDSURVEY':    return row.holdLatlong;
       case 'BLOWING':
       case 'OFCBLOWING':    return row.blowingLatLong;
+      case 'PIPE':    return row.blowingLatLong;
       default:              return null;
     }
   };
@@ -269,6 +272,9 @@ const InfoWindow: React.FC<{
               </div>
               {photos.length > 5 && <p className="text-xs text-gray-500 mt-1">+{photos.length - 5} more photos</p>}
             </div>
+          )}
+          {typeof event.video === 'string' && event.video.trim() !== '' && event.video !== 'null' && (
+            <iframe width="100%" height="180" src={`${baseUrl}${event.video}`} frameBorder="0" allow="autoplay; encrypted-media" allowFullScreen title={`Video-${event.eventType}`} />
           )}
           {typeof event.videoDetails === 'string' && (() => {
             try {

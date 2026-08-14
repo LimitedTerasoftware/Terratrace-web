@@ -248,7 +248,11 @@ export function EditModal({
           key: 'routeFeatureLatLong',
           label: 'Route Feature Latitude/Longitude',
         };
-
+      case 'PIPE':
+        return {
+          key:'blowingLatLong',
+          label:'PIPE Latitude/Longitude',
+          };
       default:
         return null;
     }

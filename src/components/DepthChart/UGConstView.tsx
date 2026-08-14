@@ -247,6 +247,7 @@ function Eventreport() {
     'DUCT',
     'OFCBLOWING',
     'OFC',
+    'PIPE'
   ];
   const getData = async () => {
     try {
@@ -347,6 +348,8 @@ function Eventreport() {
         return row.blowingLatLong;
       case 'ROUTEFEATURE':
         return row.routeFeatureLatLong;
+      case 'PIPE':
+        return row.blowingLatLong;
       default:
         return null;
     }
@@ -446,6 +449,7 @@ function Eventreport() {
     BLOWING: 'blowingPhotos',
     OFCBLOWING: 'blowingPhotos',
     ROUTEFEATURE: 'routeFeaturePhotos',
+    PIPE:"blowingPhotos",
   };
 
   // Function to extract all media from a row

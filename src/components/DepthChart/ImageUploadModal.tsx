@@ -67,6 +67,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
     OFCBLOWING: { primary: 'blowingPhotos' },
     DUCT: { primary: 'start_duct', hasDuct: true },
     OFC: { primary: 'start_ofc', hasOfc: true },
+    PIPE:{ primary: 'blowingPhotos' },
   };
 
   useEffect(() => {

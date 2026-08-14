@@ -1273,8 +1273,8 @@ function ConstructionPage() {
                   >
                     <option value="">All Construction Type</option>
                     <option value="Hdd">HDD</option>
-                    {/* <option value="Aerial">Aerial</option> */}
                     <option value="OpenTrench">OpenTrench</option>
+                    <option value="Protection">Protection</option>
                   </select>
 
                   <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">

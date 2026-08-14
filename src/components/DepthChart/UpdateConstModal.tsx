@@ -453,6 +453,7 @@ const formatForApi = (value: string) => {
                     <option value="">Select Construction Type</option>
                     <option value="Hdd">HDD</option>
                     <option value="OpenTrench">OpenTrench</option>
+                    <option value="Protection">Protection</option>
                   </select>
                 ) : key === 'workType' ? (
                     <select
