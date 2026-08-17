@@ -14,6 +14,7 @@ export default function JointDetails() {
   const [joint, setJoint] = useState<ProcessedJoints | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const TraceBaseUrl = import.meta.env.VITE_TraceAPI_URL;
   const ImgBaseUrl = import.meta.env.VITE_Image_URL;
 
@@ -42,6 +43,7 @@ export default function JointDetails() {
           district_name: data.district_name,
           block_name: data.block_name,
           photo_path: data.photo_path,
+          proof_photo:data.proof_photo,
           cables: data.cables || [],
           tube_mapping: data.tube_mapping || [],
           fiber_splicing: data.fiber_splicing || [],
@@ -298,28 +300,72 @@ export default function JointDetails() {
                 )}
 
                 {/* Photos */}
-                {joint.photo_path && (
+                {joint.photo_path && joint.photo_path.length > 0 && (
                     <section className="bg-white rounded-lg shadow p-6">
                     <h2 className="text-2xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                         <ImageIcon size={20} className="text-gray-600" />
                         Site Photos
                     </h2>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        <div className="aspect-square rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-400 transition-colors cursor-pointer">
-                        <img
-                            src={`${ImgBaseUrl}${joint.photo_path}`}
-                            alt="Joint photo"
+                        {joint.photo_path.map((photo, idx) => (
+                        <div
+                            key={idx}
+                            className="aspect-square rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-400 transition-colors cursor-pointer"
+                            onClick={() => setPreviewImage(`${ImgBaseUrl}${photo}`)}
+                        >
+                            <img
+                            src={`${ImgBaseUrl}${photo}`}
+                            alt={`Site photo ${idx + 1}`}
                             className="w-full h-full object-cover hover:scale-105 transition-transform"
-                        />
+                            />
                         </div>
+                        ))}
+                    </div>
+                    </section>
+                )}
+
+                {/* Proof Photos */}
+                {joint.proof_photo && joint.proof_photo.length > 0 && (
+                    <section className="bg-white rounded-lg shadow p-6">
+                    <h2 className="text-2xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <ImageIcon size={20} className="text-gray-600" />
+                        Proof Photos
+                    </h2>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {joint.proof_photo.map((photo, idx) => (
+                        <div
+                            key={idx}
+                            className="aspect-square rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-400 transition-colors cursor-pointer"
+                            onClick={() => setPreviewImage(`${ImgBaseUrl}${photo}`)}
+                        >
+                            <img
+                            src={`${ImgBaseUrl}${photo}`}
+                            alt={`Proof photo ${idx + 1}`}
+                            className="w-full h-full object-cover hover:scale-105 transition-transform"
+                            />
+                        </div>
+                        ))}
                     </div>
                     </section>
                 )}
                 </div>
             </div>
-           
-       
+
     </div>
+
+    {/* Image Preview Overlay */}
+    {previewImage && (
+        <div
+        className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-80 z-50"
+        onClick={() => setPreviewImage(null)}
+        >
+        <img
+            src={previewImage}
+            alt="Preview"
+            className="max-w-full max-h-full p-4 rounded-lg"
+        />
+        </div>
+    )}
 
     </>
   );

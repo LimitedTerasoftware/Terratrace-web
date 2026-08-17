@@ -197,7 +197,7 @@ const HotoSurvey: React.FC = () => {
       const userData = JSON.parse(localStorage.getItem("userData") || "{}");
       const companyId = userData?.company_id ?? 1;
 
-      const response = await axios.get<ApiResponse>(`${BASEURL}/hoto-forms`, {
+      const response = await axios.get<ApiResponse>(`${TraceBASEURL}/hoto-forms`, {
         params: {
           from_date: fromdate,
           to_date: todate,
@@ -208,7 +208,7 @@ const HotoSurvey: React.FC = () => {
           district: selectedDistrict,
           block: selectedBlock,
           status: selectedStatus
-        },
+        }, headers: getAuthHeaders(),
       });
       setData(response.data.data);
       setTotalPages(response.data.totalPages);

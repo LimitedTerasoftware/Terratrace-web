@@ -205,7 +205,7 @@ const AerialSurvey: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const response = await axios.get<ApiResponse>(`${BASEURL}/aerial-surveys`, {
+      const response = await axios.get<ApiResponse>(`${TraceBASEURL}/aerial-surveys`, {
         params: {
           from_date: fromdate,
           to_date: todate,
@@ -217,6 +217,7 @@ const AerialSurvey: React.FC = () => {
           block: selectedBlock,
           status: selectedStatus
         },
+        headers: getAuthHeaders(),
       });
 
       setData(response.data.data);

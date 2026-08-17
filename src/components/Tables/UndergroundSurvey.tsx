@@ -184,7 +184,7 @@ const UndergroundSurvey: React.FC = () => {
     setLoading(true);
     try {
 
-      const response = await axios.get<ApiResponse>(`${BASEURL}/underground-surveys`, {
+      const response = await axios.get<ApiResponse>(`${TraceBASEURL}/underground-surveys`, {
         params: {
           from_date: fromdate,
           to_date: todate,
@@ -196,6 +196,7 @@ const UndergroundSurvey: React.FC = () => {
           block: selectedBlock,
           status: selectedStatus
         },
+        headers: getAuthHeaders(),
       });
 
       setData(response.data.data);

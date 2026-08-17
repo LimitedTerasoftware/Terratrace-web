@@ -92,6 +92,7 @@ const Joints: React.FC = () => {
           page,
           limit: 10,
         },
+         headers: getAuthHeaders(),
       });
       if(response.data.success){
        setData(response.data.data);

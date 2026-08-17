@@ -192,7 +192,7 @@ const GpSurvey: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const response = await axios.get<ApiResponse>(`${BASEURL}/gp-surveys`, {
+      const response = await axios.get<ApiResponse>(`${TraceBASEURL}/gp-surveys`, {
         params: {
           from_date: fromdate,
           to_date: todate,
@@ -204,6 +204,7 @@ const GpSurvey: React.FC = () => {
           block: selectedBlock,
           status: selectedStatus
         },
+          headers: getAuthHeaders(),
       });
       setData(response.data.data);
       setTotalPages(response.data.totalPages);

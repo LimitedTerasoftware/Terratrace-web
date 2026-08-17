@@ -171,7 +171,7 @@ const BsnlSurvey: React.FC = () => {
       const userData = JSON.parse(localStorage.getItem("userData") || "{}");
       const companyId = userData?.company_id ?? 1;
 
-      const response = await axios.get<ApiResponse>(`${BASEURL}/bsnl-exchanges`, {
+      const response = await axios.get<ApiResponse>(`${TraceBASEURL}/bsnl-exchanges`, {
         params: {
           from_date: fromdate,
           to_date: todate,
@@ -183,6 +183,7 @@ const BsnlSurvey: React.FC = () => {
           block: selectedBlock,
           status: selectedStatus
         },
+         headers: getAuthHeaders(),
       });
       setData(response.data.data);
       setTotalPages(response.data.totalPages);

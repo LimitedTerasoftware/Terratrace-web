@@ -789,7 +789,8 @@ export interface ProcessedJoints {
   address?: string;
   pointType?: string;
   assetType?: string;
-  photo_path?: string;
+  photo_path?: string[];
+  proof_photo?: string[];
   joint_code?: string;
   joint_type?: string;
   work_type?: string;
