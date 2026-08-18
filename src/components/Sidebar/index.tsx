@@ -252,13 +252,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                 </li>
               </>
             ): constructionUser?(
-              <SideBarItem
-                icon={ConstructionImg}
-                label="Construction"
-                isOpen={isOpen}
-                isActive={!!constructionMatch}
-                path="/construction"
-              />
+              <>
+                <SideBarItem
+                  icon={ConstructionImg}
+                  label="Construction"
+                  isOpen={isOpen}
+                  isActive={!!constructionMatch}
+                  path="/construction"
+                />
+                <SideBarItem
+                  icon={SurveyIcon}
+                  label="Survey"
+                  isOpen={isOpen}
+                  isActive={!!surveyMatch}
+                  path="/survey"
+                />
+              </>
             ): (
               <>
                 {/* Dashboards Menu Group */}

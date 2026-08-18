@@ -319,6 +319,7 @@ export default function NewConstructionDashboard() {
   ) => {
     try {
       setLoading(true);
+      setDashboardData(null);
       const response = await machineApi.getFirmDistanceStats(
         stateId,
         districtId,
