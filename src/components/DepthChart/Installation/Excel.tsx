@@ -155,8 +155,14 @@ function safeParseJSON<T>(value: unknown): T | null {
 }
 
 function listFirst<T>(value: unknown): T {
-  const p = safeParseJSON<T[]>(value);
-  return (Array.isArray(p) && p.length > 0 ? p[0] : {}) as T;
+  const p = safeParseJSON<unknown>(value);
+  if (!p) return {} as T;
+  // Backends sometimes serialize a single-item list as a plain object
+  // (e.g. PHP json_encode of an associative array) instead of a one-element
+  // array — treat that object as the item itself rather than discarding it.
+  if (Array.isArray(p)) return (p.length > 0 ? p[0] : {}) as T;
+  if (typeof p === 'object') return p as T;
+  return {} as T;
 }
 
 function asDict<T>(value: unknown): T {
@@ -164,6 +170,24 @@ function asDict<T>(value: unknown): T {
   if (!p) return {} as T;
   if (Array.isArray(p)) return (p.length > 0 ? p[0] : {}) as T;
   return p as T;
+}
+
+// RFMS_FILTERS entries look like {"data":{"make":...,"serial":...,"photo":...},"type":...} —
+// unwrap the nested "data" object and rename serial -> serial_no to match SmartRack.
+interface RfmsFilterRaw {
+  type?: string;
+  data?: { make?: string; serial?: string; photo?: string };
+}
+
+function firstRfmsFilter(value: unknown): SmartRack {
+  const p = safeParseJSON<RfmsFilterRaw[] | RfmsFilterRaw>(value);
+  const item: RfmsFilterRaw = (Array.isArray(p) ? p[0] : p) ?? {};
+  return {
+    make: item.data?.make,
+    serial_no: item.data?.serial,
+    type: item.type,
+    photo: item.data?.photo,
+  };
 }
 
 function asStringList(value: unknown): string[] {
@@ -233,7 +257,7 @@ function sharedEquipmentCells(
   sfp_10g_10: unknown,
 ): CellValue[] {
   const sr = listFirst<SmartRack>(smart_rack);
-  const rf = listFirst<SmartRack>(RFMS_FILTERS);
+  const rf = firstRfmsFilter(RFMS_FILTERS);
   const fdms = listFirst<FDMSShelf>(fdms_shelf);
   const mpls = asDict<IPMPLSRouter>(ip_mpls_router);
   const s40 = listFirst<SFP>(sfp_10g_40);

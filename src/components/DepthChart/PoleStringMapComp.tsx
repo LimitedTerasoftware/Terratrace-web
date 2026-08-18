@@ -1,5 +1,17 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Eye, EyeOff, Filter, X, ZoomIn } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import {
+  Eye,
+  EyeOff,
+  Filter,
+  X,
+  ZoomIn,
+  Undo2,
+  Send,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  GripVertical,
+} from 'lucide-react';
 import GoogleMapsLoader from '../hooks/googleMapsLoader';
 import moment from 'moment';
 import type {
@@ -8,6 +20,27 @@ import type {
   JointEnclosure,
   Landmark,
 } from '../../types/aerial-survey';
+import { isAdminUser } from '../../utils/accessControl';
+
+/** Current position override for a marker (after drag) */
+interface PositionOverride {
+  lat: number;
+  lng: number;
+}
+
+/** One entry in the undo stack */
+interface DragChange {
+  id: number;
+  eventType: string;
+  surveyId: number | null;
+  prevLat: number;
+  prevLng: number;
+  newLat: number;
+  newLng: number;
+  timestamp: number;
+}
+
+type SubmitStatus = 'idle' | 'loading' | 'success' | 'error';
 
 // ─── Marker type config (keyed by eventType) ─────────────────────────────────
 
@@ -34,10 +67,6 @@ const PIN_PATH =
 const getMarkerConfig = (eventType: string) =>
   EVENT_MARKER_CONFIG[eventType] ?? { ...DEFAULT_MARKER, label: eventType };
 
-// Preview data (raw survey pings) can run into the thousands. Creating a
-// google.maps.Marker per point freezes the map, so above this count we draw
-// only the route polyline and hold off on individual pins until the user
-// zooms in far enough to make sense of them.
 const PREVIEW_LARGE_THRESHOLD = 500;
 const PREVIEW_DETAIL_ZOOM = 16;
 
@@ -87,6 +116,7 @@ function uniqueEndpoints(
 }
 
 const baseUrl = import.meta.env.VITE_Image_URL;
+const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
 // ─── InfoWindow ───────────────────────────────────────────────────────────────
 
@@ -336,13 +366,22 @@ const ErrorComponent: React.FC<{ message: string }> = ({ message }) => (
 interface Props {
   data: PoleString[];
   previewData?: PolePreview[];
+  /** API endpoint to POST marker-position changes to. Defaults to /bulk-update-coordinates */
+  submitApiUrl?: string;
+  onReload?: () => void;
 }
 
-const MapComponent: React.FC<Props> = ({ data, previewData }) => {
+const MapComponent: React.FC<Props> = ({
+  data,
+  previewData,
+  submitApiUrl = `${TraceBASEURL}/poles/bulk-update-coordinates`,
+  onReload,
+}) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const filterRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [gMarkers, setGMarkers] = useState<google.maps.Marker[]>([]);
+  const [gPreviewMarkers, setGPreviewMarkers] = useState<google.maps.Marker[]>([]);
   const [gPolylines, setGPolylines] = useState<google.maps.Polyline[]>([]);
   const [showPolylines, setShowPolylines] = useState(true);
   const [selectedRecord, setSelectedRecord] = useState<PoleString | null>(null);
@@ -358,6 +397,19 @@ const MapComponent: React.FC<Props> = ({ data, previewData }) => {
   const [mapZoom, setMapZoom] = useState(14);
   const [mapBounds, setMapBounds] = useState<google.maps.LatLngBounds | null>(null);
   const hasFitBoundsRef = useRef(false);
+  const AdminAcess = isAdminUser();
+
+  // ── Drag / undo / submit state ──────────────────────────────────────────
+  const positionOverridesRef = useRef<Map<number, PositionOverride>>(new Map());
+  const [renderTick, setRenderTick] = useState(0);
+  const bumpRender = useCallback(() => setRenderTick((t) => t + 1), []);
+
+  const undoStackRef = useRef<DragChange[]>([]);
+  const [undoStack, setUndoStack] = useState<DragChange[]>([]);
+
+  const [submitStatus, setSubmitStatus] = useState<SubmitStatus>('idle');
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [showChangesPanel, setShowChangesPanel] = useState(false);
 
   // GP link start/end points — deduplicated, since every preview record on
   // the same link repeats the same start/end coordinates.
@@ -416,6 +468,156 @@ const MapComponent: React.FC<Props> = ({ data, previewData }) => {
   useEffect(() => {
     hasFitBoundsRef.current = false;
   }, [data, previewData]);
+
+  /** All pole/joint/landmark markers that have been dragged to a new position */
+  const changedMarkers = useMemo(() => {
+    const result: Array<{
+      id: number;
+      eventType: string;
+      surveyId: number | null;
+      origLat: number;
+      origLng: number;
+      newLat: number;
+      newLng: number;
+    }> = [];
+    positionOverridesRef.current.forEach((pos, id) => {
+      const original = validData.find((d) => d.id === id);
+      if (!original) return;
+      const origLat = Number(original.latitude);
+      const origLng = Number(original.longitude);
+      if (origLat !== pos.lat || origLng !== pos.lng) {
+        result.push({
+          id,
+          eventType: original.eventType,
+          surveyId: original.survey_id ?? null,
+          origLat,
+          origLng,
+          newLat: pos.lat,
+          newLng: pos.lng,
+        });
+      }
+    });
+    return result;
+    // renderTick is the actual dependency — the ref mutates silently
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [renderTick, validData]);
+
+  // ── Record a drag change ────────────────────────────────────────────────
+  const recordDrag = useCallback(
+    (
+      id: number,
+      eventType: string,
+      surveyId: number | null,
+      prevLat: number,
+      prevLng: number,
+      newLat: number,
+      newLng: number,
+    ) => {
+      const change: DragChange = {
+        id,
+        eventType,
+        surveyId,
+        prevLat,
+        prevLng,
+        newLat,
+        newLng,
+        timestamp: Date.now(),
+      };
+      undoStackRef.current = [...undoStackRef.current, change];
+      positionOverridesRef.current = new Map(positionOverridesRef.current);
+      positionOverridesRef.current.set(id, { lat: newLat, lng: newLng });
+      setUndoStack([...undoStackRef.current]);
+      setSubmitStatus('idle');
+      setSubmitError(null);
+      bumpRender();
+    },
+    [bumpRender],
+  );
+
+  // ── Undo last drag ──────────────────────────────────────────────────────
+  const handleUndo = useCallback(() => {
+    const stack = undoStackRef.current;
+    if (stack.length === 0) return;
+    const last = stack[stack.length - 1];
+
+    undoStackRef.current = stack.slice(0, -1);
+
+    const newOverrides = new Map(positionOverridesRef.current);
+    const earlierEntry = [...undoStackRef.current].reverse().find((c) => c.id === last.id);
+    if (earlierEntry) {
+      newOverrides.set(last.id, { lat: earlierEntry.newLat, lng: earlierEntry.newLng });
+    } else {
+      newOverrides.delete(last.id);
+    }
+    positionOverridesRef.current = newOverrides;
+
+    setUndoStack([...undoStackRef.current]);
+    setSubmitStatus('idle');
+    setSubmitError(null);
+    bumpRender();
+  }, [bumpRender]);
+
+  // ── Reset all changes ────────────────────────────────────────────────────
+  const handleResetAll = useCallback(() => {
+    undoStackRef.current = [];
+    positionOverridesRef.current = new Map();
+    setUndoStack([]);
+    setSubmitStatus('idle');
+    setSubmitError(null);
+    bumpRender();
+  }, [bumpRender]);
+
+  // ── Submit changes to API ────────────────────────────────────────────────
+  const handleSubmit = useCallback(async () => {
+    if (changedMarkers.length === 0) return;
+    setSubmitStatus('loading');
+    setSubmitError(null);
+    try {
+      const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+
+      const payload = {
+        changes: changedMarkers.map((m) => ({
+          id: m.id,
+          event_type: m.eventType,
+          // survey_id: m.surveyId,
+          lat: m.newLat.toFixed(7),
+          lng: m.newLng.toFixed(7),
+          // user_id: userData.id,
+          // user_name: userData.name,
+        })),
+      };
+      const res = await fetch(submitApiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const errText = await res.text().catch(() => 'Unknown error');
+        throw new Error(`Server responded ${res.status}: ${errText}`);
+      }
+      setSubmitStatus('success');
+      undoStackRef.current = [];
+      positionOverridesRef.current = new Map();
+      setUndoStack([]);
+      bumpRender();
+      onReload?.();
+    } catch (err: any) {
+      setSubmitStatus('error');
+      setSubmitError(err.message ?? 'Failed to save changes');
+    }
+  }, [changedMarkers, submitApiUrl, onReload, bumpRender]);
+
+  // Auto-close the changes panel when all changes are undone/reset
+  useEffect(() => {
+    if (changedMarkers.length === 0) setShowChangesPanel(false);
+  }, [changedMarkers.length]);
+
+  // Auto-dismiss the success state on the toolbar after 2 s
+  useEffect(() => {
+    if (submitStatus !== 'success') return;
+    const t = setTimeout(() => setSubmitStatus('idle'), 2000);
+    return () => clearTimeout(t);
+  }, [submitStatus]);
 
   // Preview data can be huge (thousands of raw survey pings). Above the
   // threshold we skip individual pins while zoomed out — the route polyline
@@ -507,11 +709,17 @@ const MapComponent: React.FC<Props> = ({ data, previewData }) => {
           record.pole_type.toLowerCase() === 'existing' ? '#3B82F6' : '#EF4444';
       }
       idx++;
+
+      const origLat = Number(record.latitude);
+      const origLng = Number(record.longitude);
+      const override = positionOverridesRef.current.get(record.id);
+      const lat = override?.lat ?? origLat;
+      const lng = override?.lng ?? origLng;
+      const hasMoved =
+        override !== undefined && (override.lat !== origLat || override.lng !== origLng);
+
       const marker = new google.maps.Marker({
-        position: {
-          lat: Number(record.latitude),
-          lng: Number(record.longitude),
-        },
+        position: { lat, lng },
         map,
         title: `${config.label} — ${record.pit_id ?? record.id}`,
         label: {
@@ -522,42 +730,47 @@ const MapComponent: React.FC<Props> = ({ data, previewData }) => {
         },
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
-          scale: 9,
+          scale: hasMoved ? 11 : 9,
           fillColor,
           fillOpacity: 0.9,
-          strokeColor: '#ffffff',
-          strokeWeight: 2,
+          strokeColor: hasMoved ? '#facc15' : '#ffffff',
+          strokeWeight: hasMoved ? 2.5 : 2,
         },
+        draggable: AdminAcess,
+        cursor: AdminAcess ? 'grab' : 'pointer',
       });
 
       marker.addListener('click', () => setSelectedRecord(record));
-      newMarkers.push(marker);
-    });
 
-    // Add preview data markers — capped/viewport-limited by previewMarkersToRender
-    previewMarkersToRender.forEach(({ rec, lat, lng }) => {
-      idx++;
-      const cfg = getMarkerConfig('PREVIEW');
-      const marker = new google.maps.Marker({
-        position: { lat, lng },
-        map,
-        title: `Survey — ${rec.pit_id ?? rec.id}`,
-        label: {
-          text: idx.toString(),
-          color: '#ffffff',
-          fontSize: '11px',
-          fontWeight: 'bold',
-        },
-        icon: {
+      marker.addListener('dragstart', () => {
+        setSelectedRecord(null);
+        marker.setIcon({
           path: google.maps.SymbolPath.CIRCLE,
-          scale: 8,
-          fillColor: cfg.color,
-          fillOpacity: 0.9,
-          strokeColor: '#ffffff',
-          strokeWeight: 2,
-        },
+          scale: 12,
+          fillColor,
+          fillOpacity: 1,
+          strokeColor: '#facc15',
+          strokeWeight: 3,
+        });
       });
-      marker.addListener('click', () => setSelectedPreview(rec));
+
+      marker.addListener('dragend', (e: google.maps.MapMouseEvent) => {
+        const newPos = e.latLng;
+        if (!newPos) return;
+        const currentOverride = positionOverridesRef.current.get(record.id);
+        const prevLat = currentOverride?.lat ?? origLat;
+        const prevLng = currentOverride?.lng ?? origLng;
+        recordDrag(
+          record.id,
+          record.eventType,
+          record.survey_id ?? null,
+          prevLat,
+          prevLng,
+          newPos.lat(),
+          newPos.lng(),
+        );
+      });
+
       newMarkers.push(marker);
     });
 
@@ -598,7 +811,53 @@ const MapComponent: React.FC<Props> = ({ data, previewData }) => {
     addEndpointMarkers(endPoints, 'END');
 
     setGMarkers(newMarkers);
-  }, [map, data, visibleTypes, previewMarkersToRender, startPoints, endPoints]);
+    // positionOverridesRef is a ref — not in deps. renderTick drives icon/position updates.
+    // previewMarkersToRender deliberately excluded — it changes on every zoom/pan
+    // 'idle' event for large datasets, and recreating these stable markers on
+    // every such tick caused visible blinking. See the dedicated preview-marker
+    // effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, data, visibleTypes, startPoints, endPoints, renderTick, recordDrag, AdminAcess]);
+
+  // ── Create / update preview markers ─────────────────────────────────────────
+  // Kept separate from the effect above: previewMarkersToRender changes on
+  // every zoom/pan for large preview datasets (viewport sampling), and only
+  // these markers need to be torn down and recreated in response — not the
+  // draggable pole/joint/landmark markers or the GP start/end pins.
+  useEffect(() => {
+    if (!map) return;
+
+    gPreviewMarkers.forEach((m) => m.setMap(null));
+
+    const newPreviewMarkers: google.maps.Marker[] = [];
+    const cfg = getMarkerConfig('PREVIEW');
+    previewMarkersToRender.forEach(({ rec, lat, lng }, i) => {
+      const marker = new google.maps.Marker({
+        position: { lat, lng },
+        map,
+        title: `Survey — ${rec.pit_id ?? rec.id}`,
+        label: {
+          text: (i + 1).toString(),
+          color: '#ffffff',
+          fontSize: '11px',
+          fontWeight: 'bold',
+        },
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 8,
+          fillColor: cfg.color,
+          fillOpacity: 0.9,
+          strokeColor: '#ffffff',
+          strokeWeight: 2,
+        },
+      });
+      marker.addListener('click', () => setSelectedPreview(rec));
+      newPreviewMarkers.push(marker);
+    });
+
+    setGPreviewMarkers(newPreviewMarkers);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, previewMarkersToRender]);
 
   // ── Draw polylines (one per survey_id, points sorted by id) ─────────────────
   useEffect(() => {
@@ -638,10 +897,13 @@ const MapComponent: React.FC<Props> = ({ data, previewData }) => {
       const sorted = [...records].sort((a, b) => a.id - b.id);
       if (sorted.length < 2) return;
 
-      const path = sorted.map((r) => ({
-        lat: Number(r.latitude),
-        lng: Number(r.longitude),
-      }));
+      const path = sorted.map((r) => {
+        const override = positionOverridesRef.current.get(r.id);
+        return {
+          lat: override?.lat ?? Number(r.latitude),
+          lng: override?.lng ?? Number(r.longitude),
+        };
+      });
 
       const strokeColor = STROKE_COLORS[groupIndex % STROKE_COLORS.length];
 
@@ -670,7 +932,9 @@ const MapComponent: React.FC<Props> = ({ data, previewData }) => {
     });
 
     setGPolylines(newPolylines);
-  }, [map, data, visibleTypes, showPolylines]);
+    // positionOverridesRef is a ref — not in deps. renderTick drives redraws after drag/undo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, data, visibleTypes, showPolylines, renderTick]);
 
   // ── Draw preview route polylines (one per survey_id, sorted by id) ─────────
   // Drawn independently of previewMarkersToRender so the overall route stays
@@ -754,6 +1018,140 @@ const MapComponent: React.FC<Props> = ({ data, previewData }) => {
     <div className="relative w-full h-full">
       {/* Map canvas */}
       <div ref={mapRef} className="w-full h-full rounded-lg shadow-lg" />
+
+      {/* ── Drag-edit toolbar (appears when there are changes) ── */}
+      {(undoStack.length > 0 || submitStatus !== 'idle') && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+          <div className="flex items-center gap-2 bg-white rounded-xl shadow-xl px-3 py-2 pointer-events-auto border border-gray-100">
+            <button
+              onClick={handleUndo}
+              disabled={undoStack.length === 0 || submitStatus === 'loading'}
+              title="Undo last move"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                disabled:opacity-40 disabled:cursor-not-allowed
+                bg-gray-100 hover:bg-gray-200 text-gray-700"
+            >
+              <Undo2 size={14} />
+              Undo
+              {undoStack.length > 0 && (
+                <span className="ml-1 bg-gray-200 text-gray-600 text-xs rounded-full px-1.5 py-0.5 font-semibold">
+                  {undoStack.length}
+                </span>
+              )}
+            </button>
+
+            <div className="w-px h-5 bg-gray-200" />
+
+            <button
+              onClick={() => setShowChangesPanel((v) => !v)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-50 hover:bg-amber-100 text-amber-700 transition-colors"
+            >
+              <GripVertical size={14} />
+              {changedMarkers.length} moved
+            </button>
+
+            <div className="w-px h-5 bg-gray-200" />
+
+            <button
+              onClick={handleResetAll}
+              disabled={submitStatus === 'loading'}
+              title="Reset all markers to original positions"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium
+                disabled:opacity-40 disabled:cursor-not-allowed
+                bg-red-50 hover:bg-red-100 text-red-600 transition-colors"
+            >
+              <X size={14} />
+              Reset all
+            </button>
+
+            <div className="w-px h-5 bg-gray-200" />
+
+            <button
+              onClick={handleSubmit}
+              disabled={changedMarkers.length === 0 || submitStatus === 'loading' || submitStatus === 'success'}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                disabled:opacity-40 disabled:cursor-not-allowed
+                ${submitStatus === 'success'
+                  ? 'bg-green-100 text-green-700'
+                  : submitStatus === 'error'
+                  ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                  : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+            >
+              {submitStatus === 'loading' && <Loader2 size={14} className="animate-spin" />}
+              {submitStatus === 'success' && <CheckCircle2 size={14} />}
+              {submitStatus === 'error' && <AlertCircle size={14} />}
+              {submitStatus === 'idle' && <Send size={14} />}
+              {submitStatus === 'loading'
+                ? 'Saving…'
+                : submitStatus === 'success'
+                ? 'Saved!'
+                : submitStatus === 'error'
+                ? 'Retry'
+                : 'Save changes'}
+            </button>
+          </div>
+
+          {submitStatus === 'error' && submitError && (
+            <div className="mt-1 mx-auto max-w-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700 text-center pointer-events-auto">
+              {submitError}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Changes detail panel ── */}
+      {showChangesPanel && changedMarkers.length > 0 && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-20 w-[420px] max-h-72 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 bg-gray-50">
+            <span className="text-sm font-semibold text-gray-700">
+              Pending position changes ({changedMarkers.length})
+            </span>
+            <button onClick={() => setShowChangesPanel(false)} className="text-gray-400 hover:text-gray-600">
+              <X size={14} />
+            </button>
+          </div>
+          <div className="overflow-y-auto max-h-56 divide-y divide-gray-50">
+            {changedMarkers.map((cm, i) => (
+              <div key={cm.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 text-xs">
+                <span className="w-5 h-5 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center font-semibold shrink-0">
+                  {i + 1}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="font-semibold text-gray-700">
+                      {getMarkerConfig(cm.eventType).label}
+                    </span>
+                    <span className="text-gray-400">ID {cm.id}</span>
+                    {cm.surveyId != null && (
+                      <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium">
+                        Survey {cm.surveyId}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-gray-400 font-mono">
+                    <span className="line-through">{cm.origLat.toFixed(6)}, {cm.origLng.toFixed(6)}</span>
+                    <span className="mx-1.5 text-gray-300">→</span>
+                    <span className="text-gray-600">{cm.newLat.toFixed(6)}, {cm.newLng.toFixed(6)}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    undoStackRef.current = undoStackRef.current.filter((c) => c.id !== cm.id);
+                    positionOverridesRef.current = new Map(positionOverridesRef.current);
+                    positionOverridesRef.current.delete(cm.id);
+                    setUndoStack([...undoStackRef.current]);
+                    bumpRender();
+                  }}
+                  title="Revert this marker"
+                  className="shrink-0 text-gray-300 hover:text-red-500 transition-colors"
+                >
+                  <Undo2 size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/*  notice for large preview datasets */}
       {visibleTypes.has('PREVIEW') && validPreview.length > PREVIEW_LARGE_THRESHOLD && (
@@ -847,9 +1245,16 @@ const MapComponent: React.FC<Props> = ({ data, previewData }) => {
       {/* Legend */}
       <div className="absolute bottom-4 left-4 z-10">
         <div className="bg-white rounded-lg shadow-lg p-3">
-          <h4 className="font-medium text-sm text-gray-700 mb-2">
-            Marker Legend
-          </h4>
+          <div className="flex items-center justify-between mb-2 gap-3">
+            <h4 className="font-medium text-sm text-gray-700">
+              Marker Legend
+            </h4>
+            {AdminAcess && changedMarkers.length === 0 && (
+              <span className="text-xs text-gray-400 flex items-center gap-1">
+                <GripVertical size={11} /> Drag to reposition
+              </span>
+            )}
+          </div>
           <div className="space-y-1 text-xs">
             {presentTypes.map((type) => {
               const config = getMarkerConfig(type);
@@ -1079,7 +1484,7 @@ const MapComponent: React.FC<Props> = ({ data, previewData }) => {
 
 // ─── Main export (handles Maps SDK loading) ───────────────────────────────────
 
-const PoleStringMapComp: React.FC<Props> = ({ data, previewData }) => {
+const PoleStringMapComp: React.FC<Props> = ({ data, previewData, submitApiUrl, onReload }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
@@ -1110,7 +1515,14 @@ const PoleStringMapComp: React.FC<Props> = ({ data, previewData }) => {
   if (error) return <ErrorComponent message={error} />;
   if (!isMapReady) return <LoadingComponent />;
 
-  return <MapComponent data={data} previewData={previewData} />;
+  return (
+    <MapComponent
+      data={data}
+      previewData={previewData}
+      submitApiUrl={submitApiUrl}
+      onReload={onReload}
+    />
+  );
 };
 
 export default PoleStringMapComp;

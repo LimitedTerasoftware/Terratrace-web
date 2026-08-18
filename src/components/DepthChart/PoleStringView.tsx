@@ -1023,7 +1023,11 @@ function PoleStringView() {
       {/* ── Map tab ── */}
       {activeTab === 'map' && (
         <div className="h-[600px] p-4">
-          <PoleStringMapComp data={poleData} previewData={polePreviewData} />
+          <PoleStringMapComp
+            data={poleData}
+            previewData={polePreviewData}
+            onReload={getData}
+          />
         </div>
       )}
 

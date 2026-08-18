@@ -552,13 +552,14 @@ const Report: React.FC<ReportProps> = ({
         );
       },
     },
-  ]),
-     {
+    {
        name:'Remark',
-      selector:(row)=>row.remark || '-',
+      selector:(row:UGConstructionSurveyData)=>row.remark || '-',
       sortable:true,
       wrap:true
     },
+  ]),
+   
     {
       name: 'Created',
       selector: (row) => row.created_at,

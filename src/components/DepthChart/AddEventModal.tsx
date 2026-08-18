@@ -29,7 +29,7 @@ interface ImageFieldState {
 const EVENT_TYPES = [
   //   'FPOI',
   'DEPTH',
-  //   'JOINTCHAMBER',
+  'JOINTCHAMBER',
   //   'MANHOLES',
   //   'LANDMARK',
   //   'KILOMETERSTONE',
@@ -38,7 +38,9 @@ const EVENT_TYPES = [
   'STARTPIT',
   'ENDPIT',
   'DUCT',
-  
+  'OFC',
+  'OFCBLOWING',
+
   //   'STARTSURVEY',
   //   'ENDSURVEY',
   //   'ROADCROSSING',
@@ -333,6 +335,70 @@ const getEventSpecificFields = (eventType: string) => {
         required: false,
       },
     ],
+    OFC: [
+      {
+        key: 'start_ofc_cable_type',
+        label: 'Start OFC Cable Type',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'start_ofc_drum_number',
+        label: 'Start OFC Drum Number',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'start_ofc_meter',
+        label: 'Start OFC Meter',
+        type: 'number',
+        required: true,
+      },
+      {
+        key: 'startOfcPhotos',
+        label: 'Start OFC Photos (JSON array)',
+        type: 'textarea',
+        required: false,
+      },
+      {
+        key: 'end_ofc_cable_type',
+        label: 'End OFC Cable Type',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'end_ofc_drum_number',
+        label: 'End OFC Drum Number',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'end_ofc_meter',
+        label: 'End OFC Meter',
+        type: 'number',
+        required: true,
+      },
+      {
+        key: 'endOfcPhotos',
+        label: 'End OFC Photos (JSON array)',
+        type: 'textarea',
+        required: false,
+      },
+    ],
+    OFCBLOWING: [
+      {
+        key: 'blowingLatLong',
+        label: 'OFC Blowing Latitude/Longitude',
+        type: 'text',
+        required: true,
+      },
+      {
+        key: 'blowingPhotos',
+        label: 'OFC Blowing Photos (JSON array)',
+        type: 'textarea',
+        required: false,
+      },
+    ],
     STARTSURVEY: [
       {
         key: 'startPointCoordinates',
@@ -498,7 +564,7 @@ export function AddEventModal({
         newErrors[key] = 'This field is required';
       }
 
-      if (key.includes('Latlong') || key.includes('Coordinates')) {
+      if (key.toLowerCase().includes('latlong') || key.includes('Coordinates')) {
         const value = formData[key] as string;
         if (value && !validateLatLong(value)) {
           newErrors[key] = 'Invalid latitude/longitude format (use: lat,long)';
@@ -741,6 +807,37 @@ export function AddEventModal({
         delete payload['created_at'];
       }
 
+      if (eventType === 'OFC') {
+        const startImages = payload['startOfcPhotos']
+          ? JSON.parse(payload['startOfcPhotos'] as string)
+          : [];
+        const endImages = payload['endOfcPhotos']
+          ? JSON.parse(payload['endOfcPhotos'] as string)
+          : [];
+
+        payload['start_ofc'] = {
+          cable_type: formData['start_ofc_cable_type'] || '',
+          drum_number: formData['start_ofc_drum_number'] || '',
+          meter: formData['start_ofc_meter'] || '',
+          images: startImages,
+        };
+        payload['end_ofc'] = {
+          cable_type: formData['end_ofc_cable_type'] || '',
+          drum_number: formData['end_ofc_drum_number'] || '',
+          meter: formData['end_ofc_meter'] || '',
+          images: endImages,
+        };
+
+        delete payload['start_ofc_cable_type'];
+        delete payload['start_ofc_drum_number'];
+        delete payload['start_ofc_meter'];
+        delete payload['startOfcPhotos'];
+        delete payload['end_ofc_cable_type'];
+        delete payload['end_ofc_drum_number'];
+        delete payload['end_ofc_meter'];
+        delete payload['endOfcPhotos'];
+      }
+
       const response = await fetch(`${baseUrl}/create-event`, {
         method: 'POST',
         headers: {
@@ -979,7 +1076,7 @@ export function AddEventModal({
                         } `}
                         disabled={isLoading}
                         placeholder={
-                          key.includes('Latlong') || key.includes('Coordinates')
+                          key.toLowerCase().includes('latlong') || key.includes('Coordinates')
                             ? '17.4303925, 78.4062873'
                             : ''
                         }
