@@ -1142,15 +1142,15 @@ function Eventreport() {
       selector: (row) => row.distance || '-',
       sortable: true,
     },
-     ...(IEUser
-      ? []
-      : [
     {
       name: 'DGPS Accuracy',
       selector: (row: Activity) => row.dgps_accuracy || '-',
       sortable: true,
     },
-    {
+     ...(IEUser
+      ? []
+      : [
+      {
       name: 'DGPS SIV',
       selector: (row: Activity) => row.dgps_siv || '-',
       sortable: true,
