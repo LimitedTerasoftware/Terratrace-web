@@ -304,7 +304,11 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       const response = await axios.get<{
         status: boolean;
         data: AcceptedLinkRow[];
-      }>(`${TraceBASEURL}/get-accepted-links`, { params });
+      }>(`${TraceBASEURL}/get-accepted-links`, { params ,
+         headers: getAuthHeaders()
+      },
+        
+      );
 
       const rows = response.data.status ? response.data.data : [];
       if (rows.length === 0) {

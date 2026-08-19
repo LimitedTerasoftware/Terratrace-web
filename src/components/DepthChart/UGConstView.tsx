@@ -959,7 +959,12 @@ function Eventreport() {
      ...(IEUser
       ? []
       : [
-    {
+      {
+          name: 'Blowing Type',
+          selector: (row:Activity) => row.blowingType?.toString() || '-',
+          sortable: true,
+        }, 
+      {
       name: 'Order Index',
       selector: (row:Activity) => row.order_index?.toString() || '-',
       sortable: true,

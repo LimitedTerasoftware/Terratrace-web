@@ -38,6 +38,7 @@ interface GPInstallationData {
   power_system_with_out_mppt: string;
   mppt_solar_1kw: string;
   equipment_photo: string;
+  electricity_meter: string;
   earthpit: string;
   gp_contact: string;
   key_person: string;
@@ -81,6 +82,11 @@ interface earthpitItem {
   capacity: string;
   latitude: string;
   longitude: string;
+  photo: string;
+}
+
+interface ElectricityMeterItem {
+  meter_no: string;
   photo: string;
 }
 interface ContactInfo {
@@ -136,6 +142,7 @@ const GPInstallationEdit = () => {
   const routerFileInput = useRef<HTMLInputElement>(null);
   const earthpitFileInput = useRef<HTMLInputElement>(null);
   const rfmsPhotoFileInput = useRef<HTMLInputElement>(null);
+  const electricityMeterFileInput = useRef<HTMLInputElement>(null);
 
   const [routerPhotoIndex, setRouterPhotoIndex] = useState<number | null>(null);
   const [earthpitPhotoIndex, setEarthpitPhotoIndex] = useState<number | null>(
@@ -187,6 +194,8 @@ const GPInstallationEdit = () => {
   const [mpptSolar1kw, setMpptSolar1kw] = useState<PowerSystemItem[]>([]);
   const [earthpit, setEarthpit] = useState<earthpitItem[]>([]);
   const [rfmsFilters, setRfmsFilters] = useState<RFMSFiltersItem[]>([]);
+  const [electricityMeter, setElectricityMeter] =
+    useState<ElectricityMeterItem>({ meter_no: '', photo: '' });
 
   // Contact Information
   const [gpContact, setGpContact] = useState<ContactInfo>({
@@ -339,6 +348,19 @@ const GPInstallationEdit = () => {
       if (data.earthpit) {
         const parsed = JSON.parse(data.earthpit);
         setEarthpit(Array.isArray(parsed) ? parsed : [parsed]);
+      }
+
+      // Electricity Meter
+      if (data.electricity_meter) {
+        const parsed =
+          typeof data.electricity_meter === 'string'
+            ? JSON.parse(data.electricity_meter)
+            : data.electricity_meter;
+        const item = Array.isArray(parsed) ? parsed[0] : parsed;
+        setElectricityMeter({
+          meter_no: item?.meter_no || '',
+          photo: item?.photo || '',
+        });
       }
 
       // RFMS Filters
@@ -531,6 +553,19 @@ const GPInstallationEdit = () => {
       const finalEarthpit = await ProcessEarthpitPhoto(earthpit);
       const finalRfmsFilters = await processRfmsFiltersPhotos(rfmsFilters);
 
+      let finalElectricityMeter: ElectricityMeterItem | null = null;
+      if (electricityMeter.meter_no || electricityMeter.photo) {
+        let meterPhoto = electricityMeter.photo;
+        if (meterPhoto && isDataUrl(meterPhoto)) {
+          const uploadedUrls = await uploadImagesToServer([meterPhoto]);
+          meterPhoto = uploadedUrls[0] || '';
+        }
+        finalElectricityMeter = {
+          meter_no: electricityMeter.meter_no,
+          photo: meterPhoto,
+        };
+      }
+
       const updatePayload = {
         id: parseInt(id || '0'),
         state_code: stateCode,
@@ -552,7 +587,7 @@ const GPInstallationEdit = () => {
         power_system_with_out_mppt: finalPowerSystemWithoutMppt,
         mppt_solar_1kw: finalMpptSolar1kw,
         equipment_photo: finalEquipmentPhotos,
-       
+        electricity_meter: finalElectricityMeter,
         earthpit: finalEarthpit,
         gp_contact: gpContact.name || gpContact.phone ? gpContact : null,
         key_person: keyPerson.name || keyPerson.phone ? keyPerson : null,
@@ -616,6 +651,13 @@ const GPInstallationEdit = () => {
       updated[index] = { ...updated[index], [field]: value };
       setEarthpit(updated);
     }
+  };
+
+  const handleElectricityMeterChange = (
+    field: keyof ElectricityMeterItem,
+    value: string,
+  ) => {
+    setElectricityMeter((prev) => ({ ...prev, [field]: value }));
   };
 
   const handlePowerSystemChange = (
@@ -891,6 +933,9 @@ const GPInstallationEdit = () => {
     setEarthpitPhotoIndex(index);
     earthpitFileInput.current?.click();
   };
+  const triggerElectricityMeterPhotoUpload = () => {
+    electricityMeterFileInput.current?.click();
+  };
   const triggerSmartRackPhotoUpload = (index: number) => {
     setSmartRackPhotoIndex(index);
     smartRackFileInput.current?.click();
@@ -1017,6 +1062,22 @@ const GPInstallationEdit = () => {
     reader.readAsDataURL(file);
     event.target.value = '';
   };
+
+  const handleElectricityMeterPhotoUpload = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = event.target.files;
+    if (!files) return;
+    const file = files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      setElectricityMeter((prev) => ({ ...prev, photo: dataUrl }));
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  };
+
   const handleSFPPhotoUpload = (
     event: React.ChangeEvent<HTMLInputElement>,
     type: '10g' | '1g' | '100g',
@@ -3259,6 +3320,71 @@ const GPInstallationEdit = () => {
               )}
             </div>
 
+            {/* Electricity Meter Section */}
+            <div className="border-t border-gray-200 pt-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Electricity Meter
+              </h3>
+              <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Meter No
+                    </label>
+                    <input
+                      type="text"
+                      value={electricityMeter.meter_no}
+                      onChange={(e) =>
+                        handleElectricityMeterChange('meter_no', e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Enter meter number"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Photo
+                    </label>
+                    {electricityMeter.photo ? (
+                      <div className="relative mb-2">
+                        <img
+                          src={
+                            isDataUrl(electricityMeter.photo)
+                              ? electricityMeter.photo
+                              : `${ImgbaseUrl}/${electricityMeter.photo}`
+                          }
+                          alt="Electricity Meter"
+                          className="h-20 w-auto rounded-md border border-gray-200 object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src =
+                              electricityMeter.photo;
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleElectricityMeterChange('photo', '')
+                          }
+                          className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={triggerElectricityMeterPhotoUpload}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2"
+                    >
+                      <Upload className="h-4 w-4" />
+                      {electricityMeter.photo ? 'Change Photo' : 'Upload Photo'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* RFMS Filters Section */}
             <div className="border-t border-gray-200 pt-8">
               <div className="flex items-center justify-between mb-4">
@@ -3509,6 +3635,13 @@ const GPInstallationEdit = () => {
                 type="file"
                 ref={rfmsPhotoFileInput}
                 onChange={handleRfmsPhotoUpload}
+                accept="image/*"
+                className="hidden"
+              />
+              <input
+                type="file"
+                ref={electricityMeterFileInput}
+                onChange={handleElectricityMeterPhotoUpload}
                 accept="image/*"
                 className="hidden"
               />

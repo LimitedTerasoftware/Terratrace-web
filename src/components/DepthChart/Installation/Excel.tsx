@@ -64,6 +64,10 @@ interface Earthpit {
   longitude?: string;
   photo?: string;
 }
+interface ElectricityMeter {
+  meter_no?: string;
+  photo?: string;
+}
 interface Contact {
   name?: string;
   email?: string;
@@ -94,7 +98,7 @@ export interface GPInstallationRow {
   power_system_with_out_mppt?: PowerSystem | string;
   mppt_solar_1kw?: Solar1KW | string;
   equipment_photo?: string[] | string;
-  electricity_meter?: string;
+  electricity_meter?: ElectricityMeter | string;
   status?: string;
   earthpit?: Earthpit | string;
   gp_contact?: Contact | string;
@@ -335,7 +339,8 @@ const GP_HEADERS: string[] = [
   'Equipment Photo 3',
   'Equipment Photo 4',
   'Equipment Photo 5',
-  'Electricity Meter',
+  'Electricity Meter - Meter No',
+  'Electricity Meter - Photo',
   'Status',
   'Earthpit - Capacity',
   'Earthpit - Latitude',
@@ -355,6 +360,7 @@ function flattenGPRow(row: GPInstallationRow): CellValue[] {
   const pwout = asDict<PowerSystem>(row.power_system_with_out_mppt);
   const solar = asDict<Solar1KW>(row.mppt_solar_1kw);
   const earth = asDict<Earthpit>(row.earthpit);
+  const meter = asDict<ElectricityMeter>(row.electricity_meter);
   const contact = asDict<Contact>(row.gp_contact);
   const kp = asDict<KeyPerson>(row.key_person);
 
@@ -400,8 +406,10 @@ function flattenGPRow(row: GPInstallationRow): CellValue[] {
     photoLink(solar.photo),
     // Equipment Photos
     ...photoLinks(asStringList(row.equipment_photo), 5),
+    // Electricity Meter
+    meter.meter_no ?? '',
+    photoLink(meter.photo),
     // Misc
-    row.electricity_meter ?? '',
     row.status ?? 'PENDING',
     // Earthpit
     earth.capacity ?? '',

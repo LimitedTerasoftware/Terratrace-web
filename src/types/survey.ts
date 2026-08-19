@@ -286,6 +286,7 @@ export interface Activity {
   deviceId?:string;
   user_id?:string;
   user_name?:string;
+  blowingType?:string;
 }
 
 export interface ApiResponseMachine {
