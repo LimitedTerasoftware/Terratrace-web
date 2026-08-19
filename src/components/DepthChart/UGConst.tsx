@@ -644,9 +644,8 @@ const Report: React.FC<ReportProps> = ({
                 'Firm Name',
               ]),
           'Machine Id',
-          ...(IEUser ? [] : ['DGPS ID', 'Version', 'Updated By']),
+          ...(IEUser ? [] : ['DGPS ID', 'Version', 'Updated By','Updated At',]),
           'Created At',
-          'Updated At',
         ];
 
         const dataRows = selectedRows.map((row) => [

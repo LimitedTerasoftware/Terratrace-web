@@ -2176,6 +2176,7 @@ function Eventreport() {
         activity={selectedActivity}
         baseUrl={baseUrl}
         onUpdate={() => getData()}
+        linkName={`${MainData?.start_lgd_name || ''} - ${MainData?.end_lgd_name || ''}`}
       />
       <EditModal
         activity={selectedActivity}
