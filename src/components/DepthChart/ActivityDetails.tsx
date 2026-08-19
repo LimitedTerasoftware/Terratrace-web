@@ -373,6 +373,7 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({
                 {moment(activity.created_at).format('DD/MM/YYYY, hh:mm A')}
               </p>
             </div>
+             {!ieUser && (
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
               <h3 className="text-sm font-medium text-gray-600 mb-2 flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
@@ -381,7 +382,7 @@ const ActivityDetails: React.FC<ActivityDetailsProps> = ({
               <p className="text-gray-900">
                 {moment(activity.updated_at).format('DD/MM/YYYY, hh:mm A')}
               </p>
-            </div>
+            </div>)}
           </div>
         </div>
       </div>
