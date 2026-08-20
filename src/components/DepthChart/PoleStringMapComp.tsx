@@ -894,11 +894,11 @@ const MapComponent: React.FC<Props> = ({
     const newPolylines: google.maps.Polyline[] = [];
     Object.entries(groups).forEach(([, records], groupIndex) => {
       // Sort by id ascending so line follows insertion order
-      const sorted = [...records].sort((a, b) => a.id - b.id);
+      const sorted = [...records].sort((a, b) => a.order_index || a.id - b.order_index || a.id);
       if (sorted.length < 2) return;
 
       const path = sorted.map((r) => {
-        const override = positionOverridesRef.current.get(r.id);
+        const override = positionOverridesRef.current.get(r.order_index || r.id);
         return {
           lat: override?.lat ?? Number(r.latitude),
           lng: override?.lng ?? Number(r.longitude),

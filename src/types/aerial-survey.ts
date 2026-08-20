@@ -165,6 +165,7 @@ export interface PoleString {
   version:string|null;
   is_active:number;
   muff_type:string|null;
+  order_index:number|0;
 }
 export interface PoleSurveyResponse {
   status: boolean;

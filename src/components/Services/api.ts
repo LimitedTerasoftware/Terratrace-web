@@ -735,6 +735,27 @@ export const reorderSurvey = async (
   }
 };
 
+export interface PoleReorderItem {
+  row_id: number;
+  order_index: number;
+}
+
+export const reorderPoleSurvey = async (
+  surveyId: number,
+  order: PoleReorderItem[],
+): Promise<any> => {
+  try {
+    const resp = await axios.post(`${TraceBASEURL}/poles/reorder-survey`, {
+      survey_id: surveyId,
+      order,
+    });
+    return resp.data;
+  } catch (error) {
+    console.error('Error reordering pole survey:', error);
+    throw error;
+  }
+};
+
 export const getRFMSData = async (blockId: string): Promise<RouterData> => {
   try {
     const resp = await axios.get(`${TraceBASEURL}/get-rfms-data/${blockId}`);

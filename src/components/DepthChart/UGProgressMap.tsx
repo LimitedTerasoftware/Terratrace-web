@@ -29,6 +29,7 @@ interface ProgressMapLocationState {
   selectedState?: string | null;
   selectedDistrict?: string | null;
   selectedBlock?: string | null;
+  ofcSurveyIds?: number[];
 }
 
 interface ProgressMarker {
@@ -69,6 +70,7 @@ interface UGProgressMapCompProps {
     visible: boolean,
   ) => void;
   integratedGps: IntegratedGp[];
+  ofcSurveyIds: Set<number>;
 }
 
 const parseSurveyIds = (value: unknown): number[] => {
@@ -154,9 +156,25 @@ const parseLatLong = (value: string | null | undefined) => {
   return { lat, lng };
 };
 
-const buildMarkers = (events: Activity[]): ProgressMarker[] =>
+// For surveys whose work type is "OFC Blowing/ JointChamber" there is no
+// excavation path, so pit/survey-endpoint markers don't apply — only the
+// event's own markers (e.g. JOINTCHAMBER, OFCBLOWING) should be shown.
+const NON_PATH_EVENT_TYPES = new Set(['STARTPIT', 'ENDPIT']);
+
+const buildMarkers = (
+  events: Activity[],
+  ofcSurveyIds: Set<number>,
+): ProgressMarker[] =>
   events
-    .filter((event) => event.status === 0 && event.eventType !== 'STARTSURVEY' && event.eventType !== 'ENDSURVEY' && event.eventType !== 'ROADCROSSING' && event.eventType !== 'FIBERTURN')
+    .filter(
+      (event) =>
+        event.status === 0 &&
+        event.eventType !== 'STARTSURVEY' &&
+        event.eventType !== 'ENDSURVEY' &&
+        event.eventType !== 'ROADCROSSING' &&
+        event.eventType !== 'FIBERTURN' &&
+        !(ofcSurveyIds.has(event.survey_id) && NON_PATH_EVENT_TYPES.has(event.eventType)),
+    )
     .map((event) => {
       const coords = parseLatLong(getLatLongForEvent(event));
       if (!coords) return null;
@@ -334,6 +352,7 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
   visiblePlanningCategories,
   onPlanningCategoryVisibilityChange,
   integratedGps,
+  ofcSurveyIds,
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const eventPolylinesRef = useRef<google.maps.Polyline[]>([]);
@@ -351,7 +370,11 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
   );
   const eventRoutePaths = useMemo(() => {
     const grouped = markers
-      .filter((marker) => CONNECT_EVENT_TYPES.has(marker.eventType))
+      .filter(
+        (marker) =>
+          CONNECT_EVENT_TYPES.has(marker.eventType) &&
+          !ofcSurveyIds.has(marker.surveyId),
+      )
       .reduce<Record<number, ProgressMarker[]>>((acc, marker) => {
         if (!acc[marker.surveyId]) acc[marker.surveyId] = [];
         acc[marker.surveyId].push(marker);
@@ -370,7 +393,7 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
         return { surveyId: Number(surveyId), path };
       })
       .filter((entry) => entry.path.length > 1);
-  }, [markers]);
+  }, [markers, ofcSurveyIds]);
 
   useEffect(() => {
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -485,7 +508,11 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
 
     eventPointMarkersRef.current.forEach((marker) => marker.setMap(null));
     eventPointMarkersRef.current = markers
-      .filter((marker) => !CONNECT_EVENT_TYPES.has(marker.eventType))
+      .filter(
+        (marker) =>
+          !CONNECT_EVENT_TYPES.has(marker.eventType) ||
+          ofcSurveyIds.has(marker.surveyId),
+      )
       .map((marker) => {
         const style = getPointStyle(marker.eventType);
         const eventMarker = new google.maps.Marker({
@@ -513,7 +540,7 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
       eventPointMarkersRef.current.forEach((marker) => marker.setMap(null));
       eventPointMarkersRef.current = [];
     };
-  }, [markers, map]);
+  }, [markers, map, ofcSurveyIds]);
 
   useEffect(() => {
     if (!map || !mapRef.current) return;
@@ -792,7 +819,11 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
               {Array.from(
                 new Set(
                   markers
-                    .filter((marker) => !CONNECT_EVENT_TYPES.has(marker.eventType))
+                    .filter(
+                      (marker) =>
+                        !CONNECT_EVENT_TYPES.has(marker.eventType) ||
+                        ofcSurveyIds.has(marker.surveyId),
+                    )
                     .map((marker) => marker.eventType),
                 ),
               ).map((eventType) => {
@@ -842,6 +873,12 @@ const UGProgressMap: React.FC = () => {
     searchParams.get('selectedBlock') ?? state.selectedBlock ?? '';
   const surveyIdsKey = surveyIds.join(',');
 
+  const ofcSurveyIds = useMemo(() => {
+    const fromQuery = parseSurveyIdsParam(searchParams.get('ofc_survey_ids'));
+    if (fromQuery.length > 0) return new Set(fromQuery);
+    return new Set(parseSurveyIds(state.ofcSurveyIds));
+  }, [searchParams, state.ofcSurveyIds]);
+
   const [events, setEvents] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -856,7 +893,10 @@ const UGProgressMap: React.FC = () => {
   >(new Set());
   const [integratedGps, setIntegratedGps] = useState<IntegratedGp[]>([]);
 
-  const markers = useMemo(() => buildMarkers(events), [events]);
+  const markers = useMemo(
+    () => buildMarkers(events, ofcSurveyIds),
+    [events, ofcSurveyIds],
+  );
 
   useEffect(() => {
     if (surveyIds.length === 0) {
@@ -1043,6 +1083,7 @@ const UGProgressMap: React.FC = () => {
             handlePlanningCategoryVisibilityChange
           }
           integratedGps={integratedGps}
+          ofcSurveyIds={ofcSurveyIds}
         />
       )}
     </div>

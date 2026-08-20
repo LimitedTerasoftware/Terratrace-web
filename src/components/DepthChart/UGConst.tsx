@@ -201,9 +201,19 @@ const Report: React.FC<ReportProps> = ({
       });
     }
   };
-  const handleProgressMap = (rowIds: number[]) => {
+  const handleProgressMap = (
+    rows: { id: number; workType?: string | null }[],
+  ) => {
     const params = new URLSearchParams();
-    params.set('survey_ids', rowIds.join(','));
+    params.set('survey_ids', rows.map((row) => row.id).join(','));
+    
+    const ofcSurveyIds = rows
+      .filter((row) => row.workType == 'OFC Blowing/ JointJamber')
+      .map((row) => row.id);
+    if (ofcSurveyIds.length > 0) {
+      params.set('ofc_survey_ids', ofcSurveyIds.join(','));
+    }
+
     if (Data.selectedState) params.set('selectedState', Data.selectedState);
     if (Data.selectedDistrict)
       params.set('selectedDistrict', Data.selectedDistrict);
@@ -713,7 +723,7 @@ const Report: React.FC<ReportProps> = ({
         return;
       }
 
-      handleProgressMap(selectedRows.map((row) => row.id));
+      handleProgressMap(selectedRows);
       OnProgressMap();
     }
   }, [Data.progressmap]);

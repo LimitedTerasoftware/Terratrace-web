@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Upload, Trash2, Eye, Download, RefreshCw, Droplets } from 'lucide-react';
+import { X, Upload, Trash2, Eye, Download, RefreshCw, Droplets, Eraser } from 'lucide-react';
 import {
   Activity,
   ImageUploadResponse,
@@ -1031,7 +1031,32 @@ const ImageModal: React.FC<ImageModalProps> = ({
       console.error('Watermark error:', error);
       alert('Failed to add watermark. Please try again.');
     } finally {
-      setWatermarkingId(null);  
+      setWatermarkingId(null);
+      onClose();
+    }
+  };
+
+  const handleRemoveWatermark = async (imagePath: string, imageId: string) => {
+    if (!window.confirm('Remove watermark from this image?')) return;
+
+    setWatermarkingId(imageId);
+    try {
+      const response = await fetch(`${TraceBASEURL}/remove-watermark`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imagePath }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Remove watermark request failed');
+      }
+
+      onUpdate();
+    } catch (error) {
+      console.error('Remove watermark error:', error);
+      alert('Failed to remove watermark. Please try again.');
+    } finally {
+      setWatermarkingId(null);
       onClose();
     }
   };
@@ -1204,6 +1229,21 @@ const ImageModal: React.FC<ImageModalProps> = ({
                                 <Droplets size={16} />
                               </button>
                             )}
+                            {!image.isVideo && !image.isNew && (
+                              <button
+                                onClick={() =>
+                                  handleRemoveWatermark(
+                                    image.url.replace(ImgbaseUrl, ''),
+                                    image.id,
+                                  )
+                                }
+                                disabled={watermarkingId === image.id}
+                                className="p-2 bg-white rounded-full hover:bg-gray-100 disabled:opacity-50"
+                                title="Remove Watermark"
+                              >
+                                <Eraser size={16} />
+                              </button>
+                            )}
                             <button
                               onClick={() => removeImage(image.id)}
                               className="p-2 bg-white rounded-full hover:bg-gray-100"
@@ -1322,6 +1362,21 @@ const ImageModal: React.FC<ImageModalProps> = ({
                                 title="Add Watermark"
                               >
                                 <Droplets size={16} />
+                              </button>
+                            )}
+                            {!image.isVideo && !image.isNew && (
+                              <button
+                                onClick={() =>
+                                  handleRemoveWatermark(
+                                    image.url.replace(ImgbaseUrl, ''),
+                                    image.id,
+                                  )
+                                }
+                                disabled={watermarkingId === image.id}
+                                className="p-2 bg-white rounded-full hover:bg-gray-100 disabled:opacity-50"
+                                title="Remove Watermark"
+                              >
+                                <Eraser size={16} />
                               </button>
                             )}
                             <button
@@ -1448,6 +1503,21 @@ const ImageModal: React.FC<ImageModalProps> = ({
                                 <Droplets size={16} />
                               </button>
                             )}
+                            {!image.isVideo && !image.isNew && (
+                              <button
+                                onClick={() =>
+                                  handleRemoveWatermark(
+                                    image.url.replace(ImgbaseUrl, ''),
+                                    image.id,
+                                  )
+                                }
+                                disabled={watermarkingId === image.id}
+                                className="p-2 bg-white rounded-full hover:bg-gray-100 disabled:opacity-50"
+                                title="Remove Watermark"
+                              >
+                                <Eraser size={16} />
+                              </button>
+                            )}
                             <button
                               onClick={() => removeImage(image.id)}
                               className="p-2 bg-white rounded-full hover:bg-gray-100"
@@ -1566,6 +1636,21 @@ const ImageModal: React.FC<ImageModalProps> = ({
                                 title="Add Watermark"
                               >
                                 <Droplets size={16} />
+                              </button>
+                            )}
+                            {!image.isVideo && !image.isNew && (
+                              <button
+                                onClick={() =>
+                                  handleRemoveWatermark(
+                                    image.url.replace(ImgbaseUrl, ''),
+                                    image.id,
+                                  )
+                                }
+                                disabled={watermarkingId === image.id}
+                                className="p-2 bg-white rounded-full hover:bg-gray-100 disabled:opacity-50"
+                                title="Remove Watermark"
+                              >
+                                <Eraser size={16} />
                               </button>
                             )}
                             <button
@@ -1709,6 +1794,21 @@ const ImageModal: React.FC<ImageModalProps> = ({
                             title="Add Watermark"
                           >
                             <Droplets size={16} />
+                          </button>
+                        )}
+                        {!image.isVideo && !isDocument(image.url) && !image.isNew && (
+                          <button
+                            onClick={() =>
+                              handleRemoveWatermark(
+                                image.url.replace(ImgbaseUrl, ''),
+                                image.id,
+                              )
+                            }
+                            disabled={watermarkingId === image.id}
+                            className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
+                            title="Remove Watermark"
+                          >
+                            <Eraser size={16} />
                           </button>
                         )}
                         <button
@@ -1958,6 +2058,21 @@ const ImageModal: React.FC<ImageModalProps> = ({
                               <Droplets size={16} />
                             </button>
                           )}
+                          {!image.isVideo && !isDocument(image.url) && !image.isNew && (
+                            <button
+                              onClick={() =>
+                                handleRemoveWatermark(
+                                  image.url.replace(ImgbaseUrl, ''),
+                                  image.id,
+                                )
+                              }
+                              disabled={watermarkingId === image.id}
+                              className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
+                              title="Remove Watermark"
+                            >
+                              <Eraser size={16} />
+                            </button>
+                          )}
                           <button
                             onClick={() => removeImage(image.id)}
                             className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors"
@@ -2081,6 +2196,21 @@ const ImageModal: React.FC<ImageModalProps> = ({
                             title="Add Watermark"
                           >
                             <Droplets size={16} />
+                          </button>
+                        )}
+                        {!image.isVideo && !image.isNew && (
+                          <button
+                            onClick={() =>
+                              handleRemoveWatermark(
+                                image.url.replace(ImgbaseUrl, ''),
+                                image.id,
+                              )
+                            }
+                            disabled={watermarkingId === image.id}
+                            className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
+                            title="Remove Watermark"
+                          >
+                            <Eraser size={16} />
                           </button>
                         )}
                         <button

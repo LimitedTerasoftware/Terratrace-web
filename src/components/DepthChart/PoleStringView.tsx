@@ -24,6 +24,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import { hasViewOnlyAccess, isAdminUser } from '../../utils/accessControl';
 import { PoleStringEditModal } from './PoleStringEditModal';
 import { PoleStringImageModal } from './PoleStringImageModal';
+import PoleReorderModal from './PoleReorderModal';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const IMGbaseUrl = import.meta.env.VITE_Image_URL;
@@ -118,6 +119,7 @@ function PoleStringView() {
   const [statusLoading, setStatusLoading] = useState<number | null>(null);
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
   const [showColumnMenu, setShowColumnMenu] = useState(false);
+  const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
   const columnMenuRef = useRef<HTMLDivElement>(null);
 
   // ── Data fetch ──────────────────────────────────────────────────────────────
@@ -380,6 +382,12 @@ function PoleStringView() {
     {
       name: 'Longitude',
       selector: (row) => row.longitude,
+      sortable: true,
+      wrap: true,
+    },
+    {
+      name: 'Order Index',
+      selector: (row) => (row.order_index ? row.order_index : '-'),
       sortable: true,
       wrap: true,
     },
@@ -963,6 +971,15 @@ function PoleStringView() {
                 </div>
               )}
             </div>
+            {!multipreview && AdminAcess && (
+              <button
+                onClick={() => setIsReorderModalOpen(true)}
+                className="flex-none h-10 px-4 py-2 text-sm font-medium text-purple-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-purple-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
+              >
+                <Edit2Icon className="h-4 w-4 text-purple-600" />
+                Edit Order Index
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1071,6 +1088,17 @@ function PoleStringView() {
         onSuccess={() => {
           setEditModalOpen(false);
           setSelectedRow(null);
+          getData();
+        }}
+      />
+
+      {/* ── Reorder Modal ── */}
+      <PoleReorderModal
+        isOpen={isReorderModalOpen}
+        onClose={() => setIsReorderModalOpen(false)}
+        surveyId={MainData?.id}
+        eventData={poleData}
+        onSuccess={() => {
           getData();
         }}
       />
