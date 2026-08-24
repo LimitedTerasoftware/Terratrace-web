@@ -247,6 +247,7 @@ export default function Filters({
         <option value="">All Issue Type</option>
           <option value="CORDS">CORS</option>
           <option value="DEPTH">Depth Violation</option>
+          <option value="SPLIT">SPLIT</option>
         </select>
         )}
         

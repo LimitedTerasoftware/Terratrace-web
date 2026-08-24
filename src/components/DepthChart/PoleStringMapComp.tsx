@@ -424,7 +424,7 @@ const MapComponent: React.FC<Props> = ({
 
   // Derive unique event types present in data (plus PREVIEW/START/END if applicable)
   const presentTypes = useMemo(() => {
-    const types = new Set(data.map((d) => d.eventType));
+    const types = new Set(data.filter((val)=>val.is_active == 1).map((d) => d.eventType));
     if (previewData && previewData.length > 0) types.add('PREVIEW');
     if (startPoints.length > 0) types.add('START');
     if (endPoints.length > 0) types.add('END');
@@ -436,7 +436,7 @@ const MapComponent: React.FC<Props> = ({
 
   // Sync visibleTypes when data changes (new event types may appear)
   useEffect(() => {
-    const types = new Set(data.map((d) => d.eventType));
+    const types = new Set(data.filter((val)=>val.is_active == 1).map((d) => d.eventType));
     if (previewData && previewData.length > 0) types.add('PREVIEW');
     if (startPoints.length > 0) types.add('START');
     if (endPoints.length > 0) types.add('END');
@@ -451,7 +451,8 @@ const MapComponent: React.FC<Props> = ({
       !isNaN(Number(r.latitude)) &&
       !isNaN(Number(r.longitude)) &&
       Math.abs(Number(r.latitude)) <= 90 &&
-      Math.abs(Number(r.longitude)) <= 180,
+      Math.abs(Number(r.longitude)) <= 180 && 
+      r.is_active === 1,
   );
 
   // Valid preview points, parsed once per previewData change
