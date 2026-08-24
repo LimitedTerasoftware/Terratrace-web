@@ -244,10 +244,13 @@ export default function Filters({
           value={selectedIssueType}
           onChange={(e) => onIssueTypeChange(e.target.value)}
         >
-        <option value="">All Issue Type</option>
-          <option value="CORDS">CORS</option>
-          <option value="DEPTH">Depth Violation</option>
-          <option value="SPLIT">SPLIT</option>
+        <option value="">All Issue Category</option>
+          <option value="INVALID_COORDINATES">Invalid Coordinates</option>
+          <option value="DEPTH_MISSING">Depth Missing</option>
+          <option value="LOW_DEPTH">Low Depth</option>
+          <option value="HIGH_DEPTH">High Depth</option>
+          <option value="SURVEY_DISTANCE_EXCEEDED">Survey Distance Exceeded</option>
+
         </select>
         )}
         

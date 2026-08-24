@@ -697,7 +697,7 @@ export const machineApi = {
     if (fromDate) params.append('from_date', fromDate);
     if (toDate) params.append('to_date', toDate);
     if (firmId) params.append('firm_id', firmId);
-    if (issueType) params.append('type', issueType);
+    if (issueType) params.append('category', issueType);
     const queryString = params.toString();
     const url = queryString
       ? `${TraceBASEURL}/api/get-issues?${queryString}`
