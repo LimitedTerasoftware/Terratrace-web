@@ -150,7 +150,7 @@ export default function SurveyInventory({
       // const invoiceNo = `INV-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
 
       // ── Background header band ──────────────────────────────────────────
-      doc.setFillColor(15, 40, 80);
+      doc.setFillColor(239, 246, 255);
       doc.rect(0, 0, pageWidth, 38, 'F');
 
       // Accent stripe
@@ -163,22 +163,23 @@ export default function SurveyInventory({
 
       doc.addImage(TricadIcon, 'PNG', 14, 8, logoWidth, logoHeight);
 
-      doc.setTextColor(255, 255, 255);
+      doc.setTextColor(15, 40, 80);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(20);
       doc.text('Trenching & Ducting Report', 38, 18);
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
-      doc.setTextColor(180, 210, 255);
+      doc.setTextColor(60, 80, 120);
       doc.text('Construction Tracking System', 38, 25);
 
       // Right side — invoice meta
-      doc.setTextColor(255, 255, 255);
+      doc.setTextColor(15, 40, 80);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9);
       // doc.text(`Invoice No: ${invoiceNo}`, pageWidth - 14, 13, { align: 'right' });
       doc.setFont('helvetica', 'normal');
+      doc.setTextColor(60, 80, 120);
       doc.text(`Generated: ${now.toLocaleString('en-IN')}`, pageWidth - 14, 20, { align: 'right' });
       doc.text(`Period: ${getPeriodLabel()}`, pageWidth - 14, 27, { align: 'right' });
 
@@ -196,11 +197,13 @@ export default function SurveyInventory({
         doc.setLineWidth(0.4);
         doc.roundedRect(14, yPos, pageWidth / 2 - 20, 32, 2, 2, 'FD');
 
-        doc.setFillColor(59, 130, 246);
-        doc.roundedRect(14, yPos, 28, 7, 1, 1, 'F');
-        doc.setTextColor(255, 255, 255);
+        doc.setFillColor(219, 234, 254);
+        doc.setDrawColor(59, 130, 246);
+        doc.setLineWidth(0.4);
+        doc.roundedRect(14, yPos, 28, 7, 1, 1, 'FD');
+        doc.setTextColor(29, 78, 216);
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(7.5);
+        doc.setFontSize(8);
         doc.text('BILL TO', 18, yPos + 5);
 
         doc.setTextColor(15, 40, 80);
@@ -283,11 +286,13 @@ export default function SurveyInventory({
           lineWidth: 0.2,
         },
         headStyles: {
-          fillColor: [15, 40, 80],
-          textColor: [255, 255, 255],
+          fillColor: [239, 246, 255],
+          textColor: [15, 40, 80],
           fontStyle: 'bold',
           fontSize: 8,
           halign: 'center',
+          lineColor: [59, 130, 246],
+          lineWidth: 0.2,
         },
         alternateRowStyles: { fillColor: [245, 249, 255] },
         columnStyles: {
@@ -299,9 +304,12 @@ export default function SurveyInventory({
           // Footer on every page
           const pg = hookData.pageNumber;
           const totalPages = (doc as any).internal.getNumberOfPages();
-          doc.setFillColor(15, 40, 80);
+          doc.setFillColor(245, 247, 250);
           doc.rect(0, pageHeight - 10, pageWidth, 10, 'F');
-          doc.setTextColor(180, 210, 255);
+          doc.setDrawColor(59, 130, 246);
+          doc.setLineWidth(0.3);
+          doc.line(0, pageHeight - 10, pageWidth, pageHeight - 10);
+          doc.setTextColor(60, 80, 120);
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(7.5);
           doc.text('CONFIDENTIAL — For internal billing use only', 14, pageHeight - 4);

@@ -393,7 +393,7 @@ function PoleStringView() {
     },
     {
       name: 'Distance (m)',
-      selector: (row) => (row.distance ? row.distance.toFixed(2) + ' m' : '-'),
+      selector: (row) => (row.distance != null ? row.distance.toFixed(2) + ' m' : '-'),
       sortable: true,
       wrap: true,
     },
@@ -723,7 +723,7 @@ function PoleStringView() {
       item.latitude,
       item.longitude,
       item.muff_type ?? '-',
-      item.distance ? item.distance.toFixed(2) + ' m' : '-',
+      item.distance != null ? item.distance.toFixed(2) + ' m' : '-',
       item.line_type ?? '-',
       item.pole_material ?? '-',
       item.pole_owner ?? '-',
