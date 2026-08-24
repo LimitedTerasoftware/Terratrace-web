@@ -14,6 +14,7 @@ interface IssueData {
   machine: string;
   timestamp: string;
   status: string;
+  total_distance?:string;
 }
 
 interface RecentIssuesProps {
@@ -99,6 +100,13 @@ export default function RecentIssues({
       selector: (row) => row.depth,
       cell: (row) => (
         <span className="text-sm text-gray-900">{row.depth} m</span>
+      ),
+    },
+    {
+      name: 'Distance',
+      selector: (row) => row.total_distance || '-',
+      cell: (row) => (
+        <span className="text-sm text-gray-900">{row.total_distance ? `${row.total_distance} mt` : '-'}</span>
       ),
     },
     {
