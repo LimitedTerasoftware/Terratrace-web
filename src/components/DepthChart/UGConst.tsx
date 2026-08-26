@@ -762,7 +762,11 @@ const Report: React.FC<ReportProps> = ({
     OnMergeLoadingChange(true);
     try {
       const surveyIds = selectedRows.map((row) => row.id);
-      const resp = await axios.post(`${TraceBASEURL}/find-connected-surveys`, {
+      const mergeUrl =
+        Data.constType === 'Aerial'
+          ? `${TraceBASEURL}/poles/merge-survey`
+          : `${TraceBASEURL}/find-connected-surveys`;
+      const resp = await axios.post(mergeUrl, {
         survey_ids: surveyIds,
       });
 

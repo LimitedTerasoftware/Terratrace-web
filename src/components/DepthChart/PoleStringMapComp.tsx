@@ -118,6 +118,14 @@ function uniqueEndpoints(
 const baseUrl = import.meta.env.VITE_Image_URL;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
+// Default to showing only Pole markers — Joint Enclosure/Drum/Landmark and
+// the preview/GP-link pins all start hidden and can be turned on from the
+// Filters panel (presentTypes still lists every type, just unchecked).
+function computeDefaultVisibleTypes(data: PoleString[]): Set<string> {
+  const hasPole = data.some((d) => d.is_active == 1 && d.eventType === 'POLE');
+  return hasPole ? new Set(['POLE']) : new Set();
+}
+
 // ─── InfoWindow ───────────────────────────────────────────────────────────────
 
 const InfoWindow: React.FC<{
@@ -430,18 +438,14 @@ const MapComponent: React.FC<Props> = ({
     if (endPoints.length > 0) types.add('END');
     return Array.from(types);
   }, [data, previewData, startPoints, endPoints]);
-  const [visibleTypes, setVisibleTypes] = useState<Set<string>>(
-    new Set(presentTypes),
+  const [visibleTypes, setVisibleTypes] = useState<Set<string>>(() =>
+    computeDefaultVisibleTypes(data),
   );
 
   // Sync visibleTypes when data changes (new event types may appear)
   useEffect(() => {
-    const types = new Set(data.filter((val)=>val.is_active == 1).map((d) => d.eventType));
-    if (previewData && previewData.length > 0) types.add('PREVIEW');
-    if (startPoints.length > 0) types.add('START');
-    if (endPoints.length > 0) types.add('END');
-    setVisibleTypes(types);
-  }, [data, previewData, startPoints, endPoints]);
+    setVisibleTypes(computeDefaultVisibleTypes(data));
+  }, [data]);
 
   // Valid points only
   const validData = data.filter(

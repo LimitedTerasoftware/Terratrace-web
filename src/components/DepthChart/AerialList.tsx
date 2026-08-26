@@ -14,6 +14,7 @@ import {
   EyeIcon,
   Globe2Icon,
   PlusCircleIcon,
+  GitMerge,
 } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { getAuthHeaders, isAdminUser } from '../../utils/accessControl';
@@ -51,6 +52,8 @@ function AerialListPage() {
   const [excel, setExcel] = useState<boolean>(false);
   const [kml, setKml] = useState<boolean>(false);
   const [preview, setPreview] = useState<boolean>(false);
+  const [mergeSurveys, setMergeSurveys] = useState<boolean>(false);
+  const [mergeLoading, setMergeLoading] = useState<boolean>(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [filtersReady, setFiltersReady] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -1013,6 +1016,21 @@ function AerialListPage() {
               Preview
             </button>
 
+            {activeTab === 'Aerial' && (
+              <button
+                onClick={() => setMergeSurveys(true)}
+                disabled={mergeLoading}
+                className="flex-none h-10 px-4 py-2 text-sm font-medium text-indigo-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center gap-2"
+              >
+                {mergeLoading ? (
+                  <span className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <GitMerge className="h-4 w-4 text-indigo-600" />
+                )}
+                {mergeLoading ? 'Merging...' : 'Merge Surveys'}
+              </button>
+            )}
+
             {(activeTab === 'Aerial' && AdminAcess) && (
               <button
                 onClick={() => setIsAddModalOpen(true)}
@@ -1056,8 +1074,8 @@ function AerialListPage() {
               connectionStart: getSelectedConnectionDetails()?.startLocation,
               connectionEnd: getSelectedConnectionDetails()?.endLocation,
               page,
-              mergeSurveys: false,
-              
+              mergeSurveys,
+
             }}
             Onexcel={() => setExcel(false)}
             OnPreview={() => setPreview(false)}
@@ -1066,8 +1084,8 @@ function AerialListPage() {
             OnModal={() => setIsAddModalOpen(false)}
             OnData={(data: UGConstructionSurveyData[]) => setSurveyData(data)}
             OnPageChange={handlePageChange}
-            OnMergeSurveys={() => {}}
-            OnMergeLoadingChange={() => {}}
+            OnMergeSurveys={() => setMergeSurveys(false)}
+            OnMergeLoadingChange={setMergeLoading}
           />
         )}
         {activeTab === 'Pole' && (
