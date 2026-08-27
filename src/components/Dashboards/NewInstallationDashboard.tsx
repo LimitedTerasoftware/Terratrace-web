@@ -14,6 +14,7 @@ import {
   getGPSummary,
 } from '../Services/api';
 import { Block, District, StateData } from '../../types/survey';
+import { getAuthHeaders } from '../../utils/accessControl';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
@@ -154,7 +155,7 @@ function NewInstallationDashboard() {
           ? `${TraceBASEURL}/get-gps-count${urlSuffix}`
           : `${TraceBASEURL}/get-block-count${urlSuffix}`;
 
-      const response = await axios.get<{ success: boolean; summary: any }>(url);
+      const response = await axios.get<{ success: boolean; summary: any }>(url,{headers: getAuthHeaders()});
       if (response.data.success) {
         setStatsData(response.data.summary);
       } else {

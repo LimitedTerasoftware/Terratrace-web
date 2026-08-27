@@ -136,7 +136,7 @@ function InstallationPage() {
         url = `${TraceBASEURL}/get-block-count${urlSuffix}`;
       }
 
-      const response = await axios.get<{ success: boolean; summary: any }>(url);
+      const response = await axios.get<{ success: boolean; summary: any }>(url,{headers: getAuthHeaders(),});
 
       if (response.data.success) {
         setStatsData(response.data.summary);

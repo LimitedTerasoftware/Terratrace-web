@@ -6,6 +6,7 @@ import * as XLSX from "xlsx";
 import DataTable, { TableColumn } from 'react-data-table-component';
 import { useNavigate } from 'react-router-dom';
 import { exportGPInstallationExcel } from './Excel';
+import { getAuthHeaders } from '../../../utils/accessControl';
 
 // GP Installation Data Interface
 interface GPInstallationData {
@@ -88,7 +89,10 @@ const GPInstallationReport: React.FC<GPInstallationReportProps> = ({ Data, Onexc
         
         const response = await axios.get<{ status: boolean; data: GPInstallationData[] }>(
           `${BASEURL}/get-gp-installation`,
-          { params }
+          { params ,
+            headers: getAuthHeaders(),
+          },
+          
         );
         
         if (response.data.status) {

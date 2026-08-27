@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Header } from '../../Breadcrumbs/Header';
 import { set } from 'date-fns';
+import { getAuthHeaders } from '../../../utils/accessControl';
 
 interface GPInstallationData {
   id: number;
@@ -217,7 +218,9 @@ const GPInstallationEdit = () => {
   const fetchInstallationData = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${BASEURL}/get-gp-installation`);
+      const response = await axios.get(`${BASEURL}/get-gp-installation`,{
+        headers: getAuthHeaders()
+      });
 
       if (response.data.status && response.data.data) {
         const foundRecord = response.data.data.find(

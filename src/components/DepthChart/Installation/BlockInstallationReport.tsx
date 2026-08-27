@@ -6,6 +6,7 @@ import * as XLSX from "xlsx";
 import DataTable, { TableColumn } from 'react-data-table-component';
 import { useNavigate } from 'react-router-dom';
 import { exportBlockInstallationExcel } from './Excel';
+import { getAuthHeaders } from '../../../utils/accessControl';
 
 // Block Installation Data Interface
 interface BlockInstallationData {
@@ -81,7 +82,9 @@ const BlockInstallationReport: React.FC<BlockInstallationReportProps> = ({ Data,
 
         const response = await axios.get<{ status: boolean; data: BlockInstallationData[] }>(
           `${BASEURL}/get-block-installation`,
-          { params }
+          { params ,
+            headers: getAuthHeaders()
+          }
         );
         
         if (response.data.status) {

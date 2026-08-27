@@ -318,7 +318,7 @@ const InstallationDashboard: React.FC = () => {
         setLoading(true);
         
         // Build URL with filter parameters and pagination
-        let apiUrl = `https://api.tricadtrack.com/get-gps-count?page=${currentPage}&limit=${perPage}`;
+        let apiUrl = `${TraceBASEURL}/get-gps-count?page=${currentPage}&limit=${perPage}`;
         
         // Add location filters - using CODES for the API
         if (selectedStateCode) {
@@ -342,7 +342,9 @@ const InstallationDashboard: React.FC = () => {
           apiUrl += `&from_date=${endDate}&to_date=${endDate}`;
         }
         
-        const response = await fetch(apiUrl);
+        const response = await fetch(apiUrl,{
+            headers: getAuthHeaders(),
+        });
         const data = await response.json();
         
         if (data.success) {

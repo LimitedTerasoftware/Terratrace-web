@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
-import { hasViewOnlyAccess } from "../../../utils/accessControl";
+import { getAuthHeaders, hasViewOnlyAccess } from "../../../utils/accessControl";
 import { 
   MapPin, 
   Phone, 
@@ -70,7 +70,9 @@ const BlockInstallationDetailView = () => {
 
   const fetchDetails = async () => {
     try {
-      const response = await axios.get(`${BASEURL}/get-block-installation`);
+      const response = await axios.get(`${BASEURL}/get-block-installation`,{
+        headers: getAuthHeaders()
+      });
       if (response.data.status && response.data.data) {
         const foundRecord = response.data.data.find((item: BlockInstallationDetail) => item.id.toString() === id);
         if (foundRecord) {

@@ -253,6 +253,30 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
               </>
             ): constructionUser?(
               <>
+                 <li>
+                  <NavLink
+                    to="/dashboards/construction-dashboard"
+                    className={`
+                      flex items-center py-2 ${isOpen ? 'px-3 gap-4' : 'px-2 gap-0'} rounded-lg
+                      transition-colors duration-200 text-bodydark1
+                      ${
+                        pathname.includes('construction-dashboard')
+                          ? 'bg-graydark dark:bg-meta-4'
+                          : 'hover:bg-graydark dark:hover:bg-meta-4'
+                      }
+                      ${!isOpen ? 'w-[44px] justify-center' : ''}
+                    `}
+                  >
+                    <div className="min-w-[20px] flex justify-center">
+                      <HardHat className="w-5 h-5" />
+                    </div>
+                    {isOpen && (
+                      <span className="whitespace-nowrap">
+                       Underground Dashboard
+                      </span>
+                    )}
+                  </NavLink>
+                </li>
                 <SideBarItem
                   icon={ConstructionImg}
                   label="Construction"
