@@ -7,6 +7,7 @@ import UndoIcon from '../../images/icon/undo-icon.svg'
 import { AlertCircle, CheckCircle, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { getAuthHeaders } from '../../utils/accessControl';
+import SearchableSelect from '../Forms/SearchableSelect';
 
 
 
@@ -3399,52 +3400,46 @@ useEffect(() => {
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">State</label>
-            <select
+            <SearchableSelect
               value={locationFilters.state}
-              onChange={(e) => handleLocationFilterChange('state', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Select State</option>
-              {states.map((state) => (
-                <option key={state.state_id} value={state.state_id}>
-                  {state.state_name}
-                </option>
-              ))}
-            </select>
+              onChange={(value) => handleLocationFilterChange('state', value)}
+              options={states.map((state) => ({
+                value: String(state.state_id),
+                label: state.state_name,
+              }))}
+              placeholder="Select State"
+              className="w-full text-sm"
+            />
           </div>
 
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">District</label>
-            <select
+            <SearchableSelect
               value={locationFilters.district}
-              onChange={(e) => handleLocationFilterChange('district', e.target.value)}
+              onChange={(value) => handleLocationFilterChange('district', value)}
               disabled={!locationFilters.state}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-            >
-              <option value="">Select District</option>
-              {districts.map((district) => (
-                <option key={district.district_id} value={district.district_id}>
-                  {district.district_name}
-                </option>
-              ))}
-            </select>
+              options={districts.map((district) => ({
+                value: String(district.district_id),
+                label: district.district_name,
+              }))}
+              placeholder="Select District"
+              className="w-full text-sm"
+            />
           </div>
 
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Block</label>
-            <select
+            <SearchableSelect
               value={locationFilters.block}
-              onChange={(e) => handleLocationFilterChange('block', e.target.value)}
+              onChange={(value) => handleLocationFilterChange('block', value)}
               disabled={!locationFilters.district}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-            >
-              <option value="">Select Block</option>
-              {blocks.map((block) => (
-                <option key={block.block_id} value={block.block_id}>
-                  {block.block_name}
-                </option>
-              ))}
-            </select>
+              options={blocks.map((block) => ({
+                value: String(block.block_id),
+                label: block.block_name,
+              }))}
+              placeholder="Select Block"
+              className="w-full text-sm"
+            />
           </div>
           
           
@@ -3653,104 +3648,62 @@ const MapLegend = () => {
           {/* State Selection */}
           <div className="relative">
             <label className="block text-xs font-medium text-gray-700 mb-1">State</label>
-            <select
-  value={selectedState || ''}
-  onChange={(e) => handleStateChange(e.target.value)}  // Changed from handleLocationFilterChange
-  disabled={loadingStates}
-  className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
->
-  <option value="">Select State</option>
-  {states.map((state) => (
-    <option key={state.state_id} value={state.state_id}>
-      {state.state_name}
-    </option>
-  ))}
-</select>
-
-            <div className="absolute inset-y-0 right-0 top-6 flex items-center pr-2 pointer-events-none">
-              {loadingStates ? (
-                <svg className="animate-spin h-4 w-4 text-gray-400" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              ) : (
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              )}
-            </div>
+            <SearchableSelect
+              value={selectedState || ''}
+              onChange={(value) => handleStateChange(value)}  // Changed from handleLocationFilterChange
+              disabled={loadingStates}
+              options={states.map((state) => ({
+                value: String(state.state_id),
+                label: state.state_name,
+              }))}
+              placeholder="Select State"
+              className="w-full text-sm"
+            />
           </div>
 
           {/* District Selection */}
           <div className="relative">
             <label className="block text-xs font-medium text-gray-700 mb-1">District</label>
-            <select
-  value={selectedDistrict || ''}
-  onChange={(e) => handleDistrictChange(e.target.value)}  // Changed from handleLocationFilterChange
-  disabled={!selectedState || loadingDistricts}
-  className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:opacity-50"
->
-  <option value="">Select District</option>
-  {districts.map((district) => (
-    <option key={district.district_id} value={district.district_id}>
-      {district.district_name}
-    </option>
-  ))}
-</select>
-            <div className="absolute inset-y-0 right-0 top-6 flex items-center pr-2 pointer-events-none">
-              {loadingDistricts ? (
-                <svg className="animate-spin h-4 w-4 text-gray-400" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              ) : (
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              )}
-            </div>
+            <SearchableSelect
+              value={selectedDistrict || ''}
+              onChange={(value) => handleDistrictChange(value)}  // Changed from handleLocationFilterChange
+              disabled={!selectedState || loadingDistricts}
+              options={districts.map((district) => ({
+                value: String(district.district_id),
+                label: district.district_name,
+              }))}
+              placeholder="Select District"
+              className="w-full text-sm"
+            />
           </div>
 
           {/* Block Selection */}
           <div className="relative">
             <label className="block text-xs font-medium text-gray-700 mb-1">Block</label>
-            <select
-  value={selectedBlock || ''}
-  onChange={(e) => handleBlockChange(e.target.value)}  // Changed from handleLocationFilterChange
-  disabled={!selectedDistrict || loadingBlocks}
-  className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:opacity-50"
->
-  <option value="">Select Block</option>
-  {blocks.map((block) => (
-    <option key={block.block_id} value={block.block_id}>
-      {block.block_name}
-    </option>
-  ))}
-</select>
-            <div className="absolute inset-y-0 right-0 top-6 flex items-center pr-2 pointer-events-none">
-              {loadingBlocks ? (
-                <svg className="animate-spin h-4 w-4 text-gray-400" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              ) : (
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              )}
-            </div>
+            <SearchableSelect
+              value={selectedBlock || ''}
+              onChange={(value) => handleBlockChange(value)}  // Changed from handleLocationFilterChange
+              disabled={!selectedDistrict || loadingBlocks}
+              options={blocks.map((block) => ({
+                value: String(block.block_id),
+                label: block.block_name,
+              }))}
+              placeholder="Select Block"
+              className="w-full text-sm"
+            />
           </div>
            <div className="relative">
             <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
-            <select
+            <SearchableSelect
               value={Type || ''}
-              onChange={(e) => setType(e.target.value)}  
-              className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:opacity-50"
-            >
-              <option value="">Select Type</option>
-              <option value="Desktop">Desktop</option>
-              <option value="Approved KMZ">Approved KMZ</option>
-            </select>
+              onChange={(value) => setType(value)}
+              options={[
+                { value: 'Desktop', label: 'Desktop' },
+                { value: 'Approved KMZ', label: 'Approved KMZ' },
+              ]}
+              placeholder="Select Type"
+              className="w-full text-sm"
+            />
             </div>
 
 

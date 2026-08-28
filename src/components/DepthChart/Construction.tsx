@@ -17,6 +17,7 @@ import {
 import { useSearchParams, Link } from 'react-router-dom';
 import { UGConstructionSurveyData } from '../../types/survey';
 import { isAdminUser, isIEUser, getAuthHeaders } from '../../utils/accessControl';
+import SearchableSelect from '../Forms/SearchableSelect';
 interface StatesResponse {
   success: boolean;
   data: StateData[];
@@ -833,229 +834,74 @@ function ConstructionPage() {
           <div className="flex flex-wrap items-center gap-3 mb-4">
             {/* State Filter */}
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-              <select
+              <SearchableSelect
                 value={selectedState || ''}
-                onChange={(e) => handleStateChange(e.target.value)}
+                onChange={handleStateChange}
+                options={states.map((state) => ({
+                  value: String(state.state_id),
+                  label: state.state_name,
+                }))}
+                placeholder="All States"
                 disabled={loadingStates}
-                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
-              >
-                <option value="">All States</option>
-                {states.map((state) => (
-                  <option key={state.state_id} value={state.state_id}>
-                    {state.state_name}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                {loadingStates ? (
-                  <svg
-                    className="animate-spin h-4 w-4 text-gray-400"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      fill="none"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                ) : (
-                  <svg
-                    className="w-4 h-4 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                )}
-              </div>
+              />
             </div>
 
             {/* District Filter */}
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-              <select
+              <SearchableSelect
                 value={selectedDistrict || ''}
-                onChange={(e) => handleDistrictChange(e.target.value)}
+                onChange={handleDistrictChange}
+                options={districts.map((district) => ({
+                  value: String(district.district_id),
+                  label: district.district_name,
+                }))}
+                placeholder="All Districts"
                 disabled={!selectedState || loadingDistricts}
-                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
-              >
-                <option value="">All Districts</option>
-                {districts.map((district) => (
-                  <option
-                    key={district.district_id}
-                    value={district.district_id}
-                  >
-                    {district.district_name}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                {loadingDistricts ? (
-                  <svg
-                    className="animate-spin h-4 w-4 text-gray-400"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      fill="none"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                ) : (
-                  <svg
-                    className="w-4 h-4 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                )}
-              </div>
+              />
             </div>
 
             {/* Block Filter */}
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-              <select
+              <SearchableSelect
                 value={selectedBlock || ''}
-                onChange={(e) => handleBlockChange(e.target.value)}
+                onChange={handleBlockChange}
+                options={blocks.map((block) => ({
+                  value: String(block.block_id),
+                  label: block.block_name,
+                }))}
+                placeholder="All Blocks"
                 disabled={!selectedDistrict || loadingBlock}
-                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
-              >
-                <option value="">All Blocks</option>
-                {blocks.map((block) => (
-                  <option key={block.block_id} value={block.block_id}>
-                    {block.block_name}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                {loadingBlock ? (
-                  <svg
-                    className="animate-spin h-4 w-4 text-gray-400"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      fill="none"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                ) : (
-                  <svg
-                    className="w-4 h-4 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                )}
-              </div>
+              />
             </div>
             {/* T&D and OFC Status Filters */}
             {activeTab === 'AcceptedLinks' && (
               <>
                 <div className="relative flex-1 min-w-0 sm:flex-none sm:w-40">
-                  <select
+                  <SearchableSelect
                     value={tdStatus}
-                    onChange={(e) => handleTdStatusChange(e.target.value)}
-                    className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  >
-                    <option value="">All T&D Status</option>
-                    {statusOptions.filter((val)=>val.value != 2).map((option) => (
-                      <option key={option.value} value={option.value}>
-                          {option.label == "Accepted" ? 'Completed' : option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                    <svg
-                      className="w-4 h-4 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </div>
+                    onChange={handleTdStatusChange}
+                    options={statusOptions
+                      .filter((val) => val.value != 2)
+                      .map((option) => ({
+                        value: String(option.value),
+                        label: option.label == "Accepted" ? 'Completed' : option.label,
+                      }))}
+                    placeholder="All T&D Status"
+                  />
                 </div>
 
                 <div className="relative flex-1 min-w-0 sm:flex-none sm:w-40">
-                  <select
+                  <SearchableSelect
                     value={ofcStatus}
-                    onChange={(e) => handleOfcStatusChange(e.target.value)}
-                    className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  >
-                    <option value="">All OFC Status</option>
-                    {statusOptions.filter((val)=>val.value != 2).map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label == "Accepted" ? 'Completed' : option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                    <svg
-                      className="w-4 h-4 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </div>
+                    onChange={handleOfcStatusChange}
+                    options={statusOptions
+                      .filter((val) => val.value != 2)
+                      .map((option) => ({
+                        value: String(option.value),
+                        label: option.label == "Accepted" ? 'Completed' : option.label,
+                      }))}
+                    placeholder="All OFC Status"
+                  />
                 </div>
 
                 <button
@@ -1076,56 +922,16 @@ function ConstructionPage() {
             {activeTab === 'UG' && (
             <>
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-56">
-              <select
+              <SearchableSelect
                 value={selectedConnection || ''}
-                onChange={(e) => handleLinkChange(e.target.value)}
+                onChange={handleLinkChange}
+                options={connections.map((conn) => ({
+                  value: conn.route_name,
+                  label: conn.route_name,
+                }))}
+                placeholder="Select Links"
                 disabled={!selectedBlock || loadingConnections}
-                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:opacity-50"
-              >
-                <option value="">Select Links</option>
-                {connections.map((conn) => (
-                  <option value={conn.route_name} key={conn.route_name}>
-                    {conn.route_name}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                {loadingConnections ? (
-                  <svg
-                    className="animate-spin h-4 w-4 text-gray-400"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      fill="none"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                ) : (
-                  <svg
-                    className="w-4 h-4 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                )}
-              </div>
+              />
             </div>
 
             {/* Status Filter */}
@@ -1266,59 +1072,27 @@ function ConstructionPage() {
                   )}
                 </div>
                 <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-                  <select
+                  <SearchableSelect
                     value={constType !== '' ? constType : ''}
-                    onChange={(e) => handleConstTypeChange(e.target.value)}
-                    className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  >
-                    <option value="">All Construction Type</option>
-                    <option value="Hdd">HDD</option>
-                    <option value="OpenTrench">OpenTrench</option>
-                    <option value="Protection">Protection</option>
-                  </select>
-
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                    <svg
-                      className="w-4 h-4 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </div>
+                    onChange={handleConstTypeChange}
+                    options={[
+                      { value: 'Hdd', label: 'HDD' },
+                      { value: 'OpenTrench', label: 'OpenTrench' },
+                      { value: 'Protection', label: 'Protection' },
+                    ]}
+                    placeholder="All Construction Type"
+                  />
                 </div>
                 <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-                  <select
+                  <SearchableSelect
                     value={cords !== '' ? cords : ''}
-                    onChange={(e) => handleCordsChange(e.target.value)}
-                    className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  >
-                    <option value="">ALL CORS</option>
-                    <option value="true">True</option>
-                    <option value="false">False</option>
-                  </select>
-
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                    <svg
-                      className="w-4 h-4 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </div>
+                    onChange={handleCordsChange}
+                    options={[
+                      { value: 'true', label: 'True' },
+                      { value: 'false', label: 'False' },
+                    ]}
+                    placeholder="ALL CORS"
+                  />
                 </div>
               </>
             )}

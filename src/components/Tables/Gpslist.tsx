@@ -4,6 +4,7 @@ import { useReactTable, getCoreRowModel, getPaginationRowModel, getFilteredRowMo
 import { useDebounce } from "use-debounce";
 import { useSearchParams } from "react-router-dom";
 import "react-toastify/dist/ReactToastify.css";
+import SearchableSelect from '../Forms/SearchableSelect';
 
 interface GpExchange {
   id: string;
@@ -274,42 +275,30 @@ const Gpslist = () => {
         />
 
         {/* State Dropdown */}
-        <select
-          className="border px-3 py-2 rounded"
+        <SearchableSelect
           value={filters.selectedState}
-          onChange={(e) => handleStateChange(e.target.value)}
-        >
-          <option value="">All States</option>
-          {getUniqueStates().map(state => (
-            <option key={state} value={state}>{state}</option>
-          ))}
-        </select>
+          onChange={(value) => handleStateChange(value)}
+          options={getUniqueStates().map(state => ({ value: state, label: state }))}
+          placeholder="All States"
+        />
 
         {/* District Dropdown */}
-        <select
-          className="border px-3 py-2 rounded"
+        <SearchableSelect
           value={filters.selectedDistrict}
-          onChange={(e) => handleDistrictChange(e.target.value)}
+          onChange={(value) => handleDistrictChange(value)}
           disabled={!filters.selectedState}
-        >
-          <option value="">All Districts</option>
-          {getUniqueDistricts().map(district => (
-            <option key={district} value={district}>{district}</option>
-          ))}
-        </select>
+          options={getUniqueDistricts().map(district => ({ value: district, label: district }))}
+          placeholder="All Districts"
+        />
 
         {/* Block Dropdown */}
-        <select
-          className="border px-3 py-2 rounded"
+        <SearchableSelect
           value={filters.selectedBlock}
-          onChange={(e) => setFilters(prev => ({ ...prev, selectedBlock: e.target.value }))}
+          onChange={(value) => setFilters(prev => ({ ...prev, selectedBlock: value }))}
           disabled={!filters.selectedDistrict}
-        >
-          <option value="">All Blocks</option>
-          {getUniqueBlocks().map(block => (
-            <option key={block} value={block}>{block}</option>
-          ))}
-        </select>
+          options={getUniqueBlocks().map(block => ({ value: block, label: block }))}
+          placeholder="All Blocks"
+        />
       </div>
 
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { X, Save, Loader2, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 import { getAuthHeaders } from '../../utils/accessControl';
+import SearchableSelect from '../Forms/SearchableSelect';
 
 interface GpOption {
   id: number;
@@ -117,42 +118,32 @@ export function EditLinkModal({
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Start GP
             </label>
-            <select
+            <SearchableSelect
               value={startLocation}
-              onChange={(e) => setStartLocation(e.target.value)}
+              onChange={(value) => setStartLocation(value)}
               disabled={loadingGps}
-              className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600"
-            >
-              <option value="">
-                {loadingGps ? 'Loading GPs...' : 'Select Start GP'}
-              </option>
-              {gpOptions.map((gp) => (
-                <option key={gp.id} value={gp.id}>
-                  {gp.name}
-                </option>
-              ))}
-            </select>
+              options={gpOptions.map((gp) => ({
+                value: String(gp.id),
+                label: gp.name,
+              }))}
+              placeholder={loadingGps ? 'Loading GPs...' : 'Select Start GP'}
+            />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               End GP
             </label>
-            <select
+            <SearchableSelect
               value={endLocation}
-              onChange={(e) => setEndLocation(e.target.value)}
+              onChange={(value) => setEndLocation(value)}
               disabled={loadingGps}
-              className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600"
-            >
-              <option value="">
-                {loadingGps ? 'Loading GPs...' : 'Select End GP'}
-              </option>
-              {gpOptions.map((gp) => (
-                <option key={gp.id} value={gp.id}>
-                  {gp.name}
-                </option>
-              ))}
-            </select>
+              options={gpOptions.map((gp) => ({
+                value: String(gp.id),
+                label: gp.name,
+              }))}
+              placeholder={loadingGps ? 'Loading GPs...' : 'Select End GP'}
+            />
           </div>
 
           {error && (

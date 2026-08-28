@@ -3,6 +3,7 @@ import { Machine, MachineFormData } from '../../types/machine';
 import { Edit3, X } from 'lucide-react';
 import { getFirms } from '../Services/api';
 import { Firm } from '../../types/firm';
+import SearchableSelect from '../Forms/SearchableSelect';
 
 interface MachineFormProps {
   machine?: Machine;
@@ -196,10 +197,10 @@ const MachineForm: React.FC<MachineFormProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Firm Name
             </label>
-            <select
+            <SearchableSelect
               value={formData.firm_id || ""}
-              onChange={(e) => {
-                const selectedId = Number(e.target.value);
+              onChange={(value) => {
+                const selectedId = Number(value);
 
                 const selectedFirm = firms.find(f => f.id === selectedId);
 
@@ -213,16 +214,12 @@ const MachineForm: React.FC<MachineFormProps> = ({
                   }));
                 }
               }}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.firm_name ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
-
-            >
-              <option value="">Select Firm</option>
-              {firms.map((firm) => (
-                <option key={firm.id} value={firm.id}>
-                  {firm.firm_name}
-                </option>
-              ))}
-            </select>
+              options={firms.map((firm) => ({
+                value: String(firm.id),
+                label: firm.firm_name,
+              }))}
+              placeholder="Select Firm"
+            />
            
               {errors.firm_name && (
               <p className="mt-1 text-sm text-red-600">{errors.firm_name}</p>
@@ -463,16 +460,17 @@ const MachineForm: React.FC<MachineFormProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Status
             </label>
-            <select
+            <SearchableSelect
               value={formData.status}
-              onChange={(e) => handleChange('status', e.target.value as Machine['status'])}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            >
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="maintenance">Maintenance</option>
-              <option value="retired">Retired</option>
-            </select>
+              onChange={(value) => handleChange('status', value as Machine['status'])}
+              options={[
+                { value: 'active', label: 'Active' },
+                { value: 'inactive', label: 'Inactive' },
+                { value: 'maintenance', label: 'Maintenance' },
+                { value: 'retired', label: 'Retired' },
+              ]}
+              isClearable={false}
+            />
           </div>
         </div>
 

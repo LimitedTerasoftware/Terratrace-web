@@ -4,6 +4,7 @@ import DataTable, { TableColumn } from 'react-data-table-component';
 import { Edit, Eye, Filter, Search, X } from 'lucide-react';
 import moment from 'moment';
 import { getBlockData, getDistrictData, getStateData } from '../Services/api';
+import SearchableSelect from '../Forms/SearchableSelect';
 
 interface GPListProps {
   GpList?: GPMainData;
@@ -209,18 +210,20 @@ const GpListPage: React.FC<GPListProps> = ({ GpList, onEdit, onDelete, OnPage, O
             </div>
             <div className="relative">
               <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <select
+              <SearchableSelect
                 value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
-              >
-                <option value="all">All Types</option>
-                <option value="GP">GP</option>
-                <option value="ONT">ONT</option>
-                <option value="BHQ">BHQ</option>
-                <option value="OLT">OLT</option>
-                <option value="FPOI">FPOI</option>
-              </select>
+                onChange={(value) => setTypeFilter(value)}
+                options={[
+                  { value: 'all', label: 'All Types' },
+                  { value: 'GP', label: 'GP' },
+                  { value: 'ONT', label: 'ONT' },
+                  { value: 'BHQ', label: 'BHQ' },
+                  { value: 'OLT', label: 'OLT' },
+                  { value: 'FPOI', label: 'FPOI' },
+                ]}
+                isClearable={false}
+                className="pl-8"
+              />
             </div>
           </div>
 
@@ -228,68 +231,62 @@ const GpListPage: React.FC<GPListProps> = ({ GpList, onEdit, onDelete, OnPage, O
           <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
             <div className="relative">
               <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <select
+              <SearchableSelect
                 value={selectedState || ''}
-                onChange={(e) => {
-                  const name = states.find((state) => state.state_id == e.target.value);
+                onChange={(value) => {
+                  const name = states.find((state) => state.state_id == value);
                   if (name) {
                     Onstate(name.state_code);
-                    setSelectedState(e.target.value)
+                    setSelectedState(value)
                   }
                 }}
-                className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
-              >
-                <option value="">All States</option>
-                {states.map((state) => (
-                  <option key={state.state_id} value={state.state_id}>
-                    {state.state_name}
-                  </option>
-                ))}
-              </select>
+                options={states.map((state) => ({
+                  value: String(state.state_id),
+                  label: state.state_name,
+                }))}
+                placeholder="All States"
+                className="pl-8"
+              />
             </div>
             <div className="relative">
               <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <select
+              <SearchableSelect
                 value={selectedDistrict || ''}
-                onChange={(e) => {
-                  const name = districts.find((district) => district.district_id == e.target.value);
+                onChange={(value) => {
+                  const name = districts.find((district) => district.district_id == value);
                   if (name) {
                     OnDist(name.district_code);
-                    setSelectedDistrict(e.target.value)
+                    setSelectedDistrict(value)
                   }
                 }}
                 disabled={!selectedState}
-                className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <option value="">All Districts</option>
-                {districts.map((district) => (
-                  <option key={district.district_id} value={district.district_id}>
-                    {district.district_name}
-                  </option>
-                ))}
-              </select>
+                options={districts.map((district) => ({
+                  value: String(district.district_id),
+                  label: district.district_name,
+                }))}
+                placeholder="All Districts"
+                className="pl-8"
+              />
             </div>
             <div className="relative">
               <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <select
+              <SearchableSelect
                 value={selectedBlock || ''}
-                onChange={(e) => {
-                  const name = blocks.find((block) => block.block_id == e.target.value);
+                onChange={(value) => {
+                  const name = blocks.find((block) => block.block_id == value);
                   if (name) {
                     OnBlock(name?.block_code);
-                    setSelectedBlock(e.target.value)
+                    setSelectedBlock(value)
                   }
                 }}
                 disabled={!selectedDistrict}
-                className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <option value="">All Blocks</option>
-                {blocks.map((block) => (
-                  <option key={block.block_id} value={block.block_id}>
-                    {block.block_name}
-                  </option>
-                ))}
-              </select>
+                options={blocks.map((block) => ({
+                  value: String(block.block_id),
+                  label: block.block_name,
+                }))}
+                placeholder="All Blocks"
+                className="pl-8"
+              />
             </div>
             <button
               onClick={handleClearFilters}

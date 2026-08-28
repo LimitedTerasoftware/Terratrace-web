@@ -3,6 +3,7 @@ import { Search, Filter, X, ChevronUp, ChevronDown } from 'lucide-react';
 import { FilterState } from '../../types/kmz';
 import axios from 'axios';
 import { getAuthHeaders } from '../../utils/accessControl';
+import SearchableSelect from '../Forms/SearchableSelect';
 
 interface FilterPanelProps {
   filters: FilterState;
@@ -136,23 +137,14 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
       <div>
         <label className="block text-xs font-medium text-gray-700 mb-1">File Category</label>
         <div className="relative">
-          <select
+          <SearchableSelect
             value={fileCategory}
-            onChange={(e) => onFileCategoryChange?.(e.target.value)}
-            className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-lg shadow-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-          >
-            {categoryOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
-        </div> 
+            onChange={(value) => onFileCategoryChange?.(value)}
+            options={categoryOptions.filter((option) => option.value !== '')}
+            placeholder="All Categories"
+            className="text-sm"
+          />
+        </div>
       </div>
 
       {isExpanded && (
@@ -173,50 +165,35 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
           <div className="grid grid-cols-1 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">State</label>
-              <select
+              <SearchableSelect
                 value={filters.state || ''}
-                onChange={(e) => handleFilterChange('state', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              >
-                <option value="">All States</option>
-                {states.map((state) => (
-                  <option key={state.state_id} value={state.state_id}>
-                    {state.state_name}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => handleFilterChange('state', value)}
+                options={states.map((state) => ({ value: String(state.state_id), label: state.state_name }))}
+                placeholder="All States"
+                className="text-sm"
+              />
             </div>
 
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">District</label>
-              <select
+              <SearchableSelect
                 value={filters.division || ''}
-                onChange={(e) => handleFilterChange('division', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              >
-                <option value="">All Districts</option>
-                {districts.map((district) => (
-                  <option key={district.district_id} value={district.district_id}>
-                    {district.district_name}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => handleFilterChange('division', value)}
+                options={districts.map((district) => ({ value: String(district.district_id), label: district.district_name }))}
+                placeholder="All Districts"
+                className="text-sm"
+              />
             </div>
 
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Block</label>
-              <select
+              <SearchableSelect
                 value={filters.block || ''}
-                onChange={(e) => handleFilterChange('block', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              >
-                <option value="">All Blocks</option>
-                {blocks.map((block) => (
-                  <option key={block.block_id} value={block.block_id}>
-                    {block.block_name}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => handleFilterChange('block', value)}
+                options={blocks.map((block) => ({ value: String(block.block_id), label: block.block_name }))}
+                placeholder="All Blocks"
+                className="text-sm"
+              />
             </div>
           </div>
         </div>

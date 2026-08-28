@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { FilterState } from '../../../types/survey';
 import { getMachineOptions } from '../../Services/api';
 import { getLastMonthFromDate, getLastMonthToDate, getLastWeekDate, getLastWeekFromDate, getLastWeekToDate, getThisMonthFromDate, getThisMonthToDate, getThisWeekFromDate, getTodayDate } from '../../../utils/dateUtils';
+import SearchableSelect from '../../Forms/SearchableSelect';
 
 interface FilterPanelProps {
     filters: FilterState;
@@ -81,55 +82,38 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
         <div className="flex flex-wrap items-center gap-1">
                 <div className="relative flex-1 min-w-0 sm:flex-none sm:w-32">
                  
-                    <select
+                    <SearchableSelect
                         value={filters.machineId}
-                        onChange={(e) => {
-                            const selectedId = e.target.value;
+                        onChange={(selectedId) => {
                             const selectedMachine = machineOptions.find(
                             (m) => m.machine_id == selectedId
                             );
                             handleInputChange('machineId', selectedId, selectedMachine?.registration_number || '');
-                        }}                        
-                        className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                        
-                    >
-                       {machineOptions.map((machine: { machine_id: string; registration_number: string }) => (
-                            <option key={machine.machine_id} value={machine.machine_id}>
-                                {machine.registration_number}
-                            </option>
-                        ))}
-
-                    </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                    </div>
+                        }}
+                        options={machineOptions.map((machine: { machine_id: string; registration_number: string }) => ({
+                            value: String(machine.machine_id),
+                            label: machine.registration_number,
+                        }))}
+                    />
                 </div>
 
                 {filters.month === undefined? (
                 <><div className="relative flex-1 min-w-0 sm:flex-none sm:w-32">
 
-                   <select
+                   <SearchableSelect
                        value={selectedtab}
-                       onChange={(e) => {
-                           setSelectedTab(e.target.value);
+                       onChange={(value) => {
+                           setSelectedTab(value);
 
                        } }
-                       className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                   >
-                       {tabs.map((tab) => (
-                           <option key={tab.label} value={tab.value}>
-                               {tab.label}
-                           </option>
-                       ))}
-
-                   </select>
-                   <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                       <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                       </svg>
-                   </div>
+                       options={tabs
+                           .filter((tab) => tab.value !== '')
+                           .map((tab) => ({
+                               value: tab.value,
+                               label: tab.label,
+                           }))}
+                       placeholder="All Data"
+                   />
                </div><div className="relative flex-1 min-w-0 sm:flex-none sm:w-32">
 
                        <input

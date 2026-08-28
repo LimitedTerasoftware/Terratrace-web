@@ -87,7 +87,7 @@ export const LoadingPage = () => {
   );
 };
 
-export const ErrorPage = (error:any) =>{
+export const ErrorPage = ({ error }: { error?: any }) =>{
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <div className="bg-white p-8 rounded-xl shadow-lg max-w-md text-center">

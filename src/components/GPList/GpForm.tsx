@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Block, District, GPList, GPListFormData, StateData } from '../../types/survey'
 import { Edit3, Plus, X } from 'lucide-react';
 import { getBlockData, getDistrictData, getStateData } from '../Services/api';
+import SearchableSelect from '../Forms/SearchableSelect';
 
 interface GpFormProps {
     GpList?: GPList;
@@ -192,25 +193,20 @@ const GpForm: React.FC<GpFormProps> = ({
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     State
                                 </label>
-                                <select
+                                <SearchableSelect
                                     value={formData.st_code || ''}
-                                    onChange={(e) => {
-                                        handleChange("st_code", e.target.value);
-                                        const name = states.find((state) => state.state_code == e.target.value);
+                                    onChange={(value) => {
+                                        handleChange("st_code", value);
+                                        const name = states.find((state) => state.state_code == value);
                                         if (name) {
                                             handleChange('st_name', name?.state_name);
                                             setSelectedState(name?.state_id)
                                         }
                                     }}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                >
-                                    <option value="">All States</option>
-                                    {states.map((state) => (
-                                        <option key={state.state_code} value={state.state_code}>
-                                            {state.state_name}
-                                        </option>
-                                    ))}
-                                </select>
+                                    options={states.map((state) => ({ value: String(state.state_code), label: state.state_name }))}
+                                    placeholder="All States"
+                                    className="w-full"
+                                />
                                 {errors.st_code && (
                                     <p className="mt-1 text-sm text-red-600">{errors.st_code}</p>
                                 )}
@@ -219,26 +215,21 @@ const GpForm: React.FC<GpFormProps> = ({
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     District
                                 </label>
-                                <select
+                                <SearchableSelect
                                     value={formData.dt_code || ''}
-                                    onChange={(e) => {
-                                        handleChange("dt_code", e.target.value);
-                                        const name = districts.find((district) => district.district_code == e.target.value);
+                                    onChange={(value) => {
+                                        handleChange("dt_code", value);
+                                        const name = districts.find((district) => district.district_code == value);
                                         if (name) {
                                             handleChange('dt_name', name?.district_name);
                                             setSelectedDistrict(name?.district_id)
                                         }
                                     }}
                                     disabled={!formData.st_code}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:opacity-50  disabled:cursor-not-allowed"
-                                >
-                                    <option value="">All Districts</option>
-                                    {districts.map((district) => (
-                                        <option key={district.district_code} value={district.district_code}>
-                                            {district.district_name}
-                                        </option>
-                                    ))}
-                                </select>
+                                    options={districts.map((district) => ({ value: String(district.district_code), label: district.district_name }))}
+                                    placeholder="All Districts"
+                                    className="w-full"
+                                />
                                 {errors.dt_code && (
                                     <p className="mt-1 text-sm text-red-600">{errors.dt_code}</p>
                                 )}
@@ -247,26 +238,21 @@ const GpForm: React.FC<GpFormProps> = ({
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Block
                                 </label>
-                                <select
+                                <SearchableSelect
                                     value={formData.blk_code || ''}
-                                    onChange={(e) => {
-                                        handleChange("blk_code", e.target.value);
-                                        const name = blocks.find((block) => block.block_code == e.target.value);
+                                    onChange={(value) => {
+                                        handleChange("blk_code", value);
+                                        const name = blocks.find((block) => block.block_code == value);
                                         if (name) {
                                             handleChange('blk_name', name?.block_name);
                                             setSelectedBlock(name?.block_id)
                                         }
                                     }}
                                     disabled={!formData.dt_code}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all  disabled:opacity-50  disabled:cursor-not-allowed"
-                                >
-                                    <option value="">All Blocks</option>
-                                    {blocks.map((block) => (
-                                        <option key={block.block_code} value={block.block_code}>
-                                            {block.block_name}
-                                        </option>
-                                    ))}
-                                </select>
+                                    options={blocks.map((block) => ({ value: String(block.block_code), label: block.block_name }))}
+                                    placeholder="All Blocks"
+                                    className="w-full"
+                                />
                                 {errors.blk_code && (
                                     <p className="mt-1 text-sm text-red-600">{errors.blk_code}</p>
                                 )}
@@ -275,19 +261,13 @@ const GpForm: React.FC<GpFormProps> = ({
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Type
                                 </label>
-                                <select
+                                <SearchableSelect
                                     value={formData.type}
-                                    onChange={(e) => handleChange('type', e.target.value)}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                >
-                                    <option value="">Select Type</option>
-                                    <option value="ONT">ONT</option>
-                                    <option value="BHQ">BHQ</option>
-                                    <option value="GP">GP</option>
-                                    <option value="OLT">OLT</option>
-                                    <option value="FPOI">FPOI</option>
-                                     <option value="VILLAGE">VILLAGE</option>
-                                </select>
+                                    onChange={(value) => handleChange('type', value)}
+                                    options={['ONT', 'BHQ', 'GP', 'OLT', 'FPOI', 'VILLAGE']}
+                                    placeholder="Select Type"
+                                    className="w-full"
+                                />
                                 {errors.type && (
                                     <p className="mt-1 text-sm text-red-600">{errors.type}</p>
                                 )}

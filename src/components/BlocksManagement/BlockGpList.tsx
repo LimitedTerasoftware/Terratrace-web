@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, User, UserRoundCheck, X, CheckCircle, AlertCircle, AlertTriangle, Edit, Save } from 'lucide-react';
+import SearchableSelect from '../Forms/SearchableSelect';
 
 interface Connection {
   id?: number;
@@ -674,14 +675,15 @@ const BlockGPList = () => {
         {/* Type */}
         <td className="px-3 py-2">
           {isEditing ? (
-            <select
+            <SearchableSelect
               value={editFormData.type}
-              onChange={(e) => handleEditInputChange('type', e.target.value)}
-              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            >
-              <option value="proposed">Proposed</option>
-              <option value="existing">Existing</option>
-            </select>
+              onChange={(value) => handleEditInputChange('type', value)}
+              options={[
+                { value: 'proposed', label: 'Proposed' },
+                { value: 'existing', label: 'Existing' },
+              ]}
+              className="w-full px-2 py-1 text-sm"
+            />
           ) : (
             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCableTypeBadge(getCableType(connection))}`}>
               {getCableType(connection)}

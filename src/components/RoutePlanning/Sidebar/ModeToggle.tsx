@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../AppContext';
 import SaveIcon from '../../../images/icon/save-file.svg';
+import SearchableSelect from '../../Forms/SearchableSelect';
 
 const ModeToggle: React.FC = () => {
   const { AutoMode, setAutoMode, AIMode, setAIMode, SaveFile, setSaveFile, setDownloadFile, DownloadFile ,VerifySaveFile,setVerifySaveFile,previewKmlData} = useAppContext();
   const [format, setFormat] = useState("");
 
-  const handleChange = (e: any) => {
-    setFormat(e.target.value);
-    setDownloadFile(e.target.value);
+  const handleChange = (value: string) => {
+    setFormat(value);
+    setDownloadFile(value);
   };
   
   return (
@@ -59,18 +60,16 @@ const ModeToggle: React.FC = () => {
         </button>
       </div>*/}
       <div className="relative">
-              <select
+              <SearchableSelect
                 value={DownloadFile}
                 onChange={handleChange}
-                className={`w-full py-2 px-4 text-sm font-medium rounded-md transition-colors appearance-none items-center justify-center gap-2 bg-gray-100 text-gray-700 hover:bg-gray-200
-          `}
-              >
-                <option value='' disabled>
-                  Download
-                </option>
-                <option value="kml">KML</option>
-                <option value="csv">CSV</option>
-              </select>
+                options={[
+                  { value: 'kml', label: 'KML' },
+                  { value: 'csv', label: 'CSV' },
+                ]}
+                placeholder="Download"
+                className={`w-full text-sm font-medium`}
+              />
 
             </div>
     </div>

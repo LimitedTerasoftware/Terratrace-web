@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useParams } from "react-router-dom";
-import { FaArrowLeft } from "react-icons/fa";
 import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import { Header } from "../Breadcrumbs/Header";
 import { AlertCircle, Edit3, Loader2 } from "lucide-react";
 import { ErrorPage, LoadingPage } from "../hooks/useActivities";
@@ -217,18 +215,15 @@ function BsnlEdit() {
             <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
               State Name
             </label>
-            <select
+            <SearchableSelect
               value={data.state_name || ""}
-              onChange={(e) => setSelectedStateId(Number(e.target.value))}
-              className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-            >
-              <option value="">Select State</option>
-              {states.map((state) => (
-              <option key={state.state_id} value={state.state_id}>
-                {state.state_name}
-              </option>
-            ))}
-            </select>
+              onChange={(value) => setSelectedStateId(Number(value))}
+              options={states.map((state) => ({
+                value: state.state_id,
+                label: state.state_name,
+              }))}
+              placeholder="Select State"
+            />
           </div> */}
 
                 {/* District Name Dropdown */}
@@ -236,18 +231,12 @@ function BsnlEdit() {
             <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
               District Name
             </label>
-            <select
+            <SearchableSelect
               value={data.district_name || ""}
-              onChange={(e) => setSelectedDistrict(e.target.value)}
-              className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-            >
-              <option value="">Select District</option>
-              {districts.map((district, index) => (
-                <option key={index} value={district}>
-                  {district}
-                </option>
-              ))}
-            </select>
+              onChange={(value) => setSelectedDistrict(value)}
+              options={districts.map((district) => district)}
+              placeholder="Select District"
+            />
           </div> */}
 
                 {/* Block Name Dropdown */}
@@ -255,18 +244,12 @@ function BsnlEdit() {
             <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
               Block Name
             </label>
-            <select
+            <SearchableSelect
               value={data.block_name || ""}
-              onChange={(e) => setData({ ...data, block_name: e.target.value })}
-              className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-            >
-              <option value="">Select Block</option>
-              {blocks.map((block, index) => (
-                <option key={index} value={block}>
-                  {block}
-                </option>
-              ))}
-            </select>
+              onChange={(value) => setData({ ...data, block_name: value })}
+              options={blocks.map((block) => block)}
+              placeholder="Select Block"
+            />
           </div> */}
 
                 {/* Render the rest of the fields as text inputs */}

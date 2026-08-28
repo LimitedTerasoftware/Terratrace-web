@@ -35,6 +35,7 @@ function ConstructionIssues() {
 
   const [selectedState, setSelectedState] = useState<string>('');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('');
+  const [selectedBlock, setSelectedBlock] = useState<string>('');
   const [selectedVendor, setSelectedVendor] = useState<string>('');
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
   const [selectedFromDate, setSelectedFromDate] = useState<string>('');
@@ -81,6 +82,7 @@ function ConstructionIssues() {
     fetchIssues(
       selectedState || undefined,
       selectedDistrict || undefined,
+      selectedBlock || undefined,
       fromDate,
       toDate,
       selectedVendor || undefined,
@@ -89,6 +91,7 @@ function ConstructionIssues() {
   }, [
     selectedState,
     selectedDistrict,
+    selectedBlock,
     selectedPeriod,
     selectedFromDate,
     selectedToDate,
@@ -131,6 +134,7 @@ function ConstructionIssues() {
   const handleReset = () => {
     setSelectedState('');
     setSelectedDistrict('');
+    setSelectedBlock('');
     setSelectedVendor('');
     setSelectedPeriod('all');
     setSelectedFromDate('');
@@ -143,6 +147,7 @@ function ConstructionIssues() {
   const fetchIssues = async (
     stateId?: string,
     districtId?: string,
+    blockId?: string,
     fromDate?: string,
     toDate?: string,
     firmId?: string,
@@ -153,7 +158,7 @@ function ConstructionIssues() {
       const response = await machineApi.getIssues(
         stateId,
         districtId,
-        undefined,
+        blockId,
         fromDate,
         toDate,
         firmId,
@@ -240,17 +245,18 @@ function ConstructionIssues() {
           <Filters
             selectedState={selectedState}
             selectedDistrict={selectedDistrict}
-            selectedBlock={''}
+            selectedBlock={selectedBlock}
             selectedVendor={selectedVendor}
             selectedPeriod={selectedPeriod}
             searchQuery={searchQuery}
             selectedWorkType={''}
+            showWorkType={false}
             selectedIssueType={selectedIssueType}
             selectedFromDate={selectedFromDate}
             selectedToDate={selectedToDate}
             onStateChange={setSelectedState}
             onDistrictChange={setSelectedDistrict}
-            onBlockChange={() => {}}
+            onBlockChange={setSelectedBlock}
             onVendorChange={setSelectedVendor}
             onPeriodChange={setSelectedPeriod}
             onSearchChange={setSearchQuery}

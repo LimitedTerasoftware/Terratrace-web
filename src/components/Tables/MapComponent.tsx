@@ -13,6 +13,7 @@ import BRIcon from '../../images/icon/bring.svg'
 import GPIcon from '../../images/icon/gpimg.svg';
 import FPOIcon from '../../images/icon/fpimg.svg';
 import BHQIcon from '../../images/icon/bhing.svg'
+import SearchableSelect from '../Forms/SearchableSelect';
 
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -815,45 +816,42 @@ const groupedBySurvey = filteredData.reduce((acc, item) => {
         {/* Event Type Filter */}
         <div className="mb-4">
           <label className="block text-sm font-medium mb-1">Event Type:</label>
-          <select
+          <SearchableSelect
             value={selectedEventType}
-            onChange={(e) => { setSelectedEventType(e.target.value); setCrossingType('All') }}
-            className="w-full p-2 border rounded"
-          >
-            {eventTypes.map((event) => (
-              <option key={event} value={event}>{event}</option>
-            ))}
-          </select>
+            onChange={(value) => { setSelectedEventType(value); setCrossingType('All') }}
+            options={eventTypes}
+            isClearable={false}
+            className="w-full"
+          />
         </div>
         {selectedEventType === 'ROADCROSSING' && (
           <div className="mb-4">
             <label className="block text-sm font-medium mb-1">Crossing Type:</label>
-            <select
+            <SearchableSelect
               value={CrossingType}
-              onChange={(e) => setCrossingType(e.target.value)}
-              className="w-full p-2 border rounded"
-            >
-              <option value='All'>ALL</option>
-              {Object.entries(crossingCounts).map(([type, count]) => (
-                <option key={type} value={type}>
-                  {type} ({count})
-                </option>
-              ))}
-            </select>
+              onChange={(value) => setCrossingType(value)}
+              options={[
+                { value: 'All', label: 'ALL' },
+                ...Object.entries(crossingCounts).map(([type, count]) => ({
+                  value: type,
+                  label: `${type} (${count})`,
+                })),
+              ]}
+              isClearable={false}
+              className="w-full"
+            />
           </div>
         )}
         {/* Execution Modality Filter */}
         <div className="mb-4">
           <label className="block text-sm font-medium mb-1">Execution Modality:</label>
-          <select
+          <SearchableSelect
             value={selectedModality}
-            onChange={(e) => setSelectedModality(e.target.value)}
-            className="w-full p-2 border rounded"
-          >
-            {modalities.map((modality) => (
-              <option key={modality} value={modality}>{modality}</option>
-            ))}
-          </select>
+            onChange={(value) => setSelectedModality(value)}
+            options={modalities}
+            isClearable={false}
+            className="w-full"
+          />
         </div>
 
         {/* Clear Filters Button */}

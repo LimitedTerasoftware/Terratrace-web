@@ -3,6 +3,7 @@ import axios from "axios";
 import * as XLSX from "xlsx";
 import { useLocation, useSearchParams } from 'react-router-dom';
 import ResponsivePagination from "./ResponsivePagination";
+import SearchableSelect from "../Forms/SearchableSelect";
 
 import {
   useReactTable,
@@ -15,7 +16,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { hasViewOnlyAccess, getAuthHeaders } from "../../utils/accessControl";
 import { getStateData } from "../Services/api";
-import { Calendar, ChevronDown, Download, Eye, RotateCcw, Search, TableCellsMerge, User } from "lucide-react";
+import { Calendar, Download, Eye, RotateCcw, Search, TableCellsMerge, User } from "lucide-react";
 
 interface BsnlExchange {
   id: string;
@@ -511,88 +512,64 @@ const BsnlSurvey: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-4">
           {/* State Filter */}
           <div className="relative">
-            <select
-             className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            <SearchableSelect
+              className="w-full text-sm"
               value={selectedState || ''}
-              onChange={(e) => {
-                handleFilterChange(e.target.value, selectedDistrict, selectedBlock, selectedStatus, fromdate, todate, globalsearch, 1)
-                setSelectedState(e.target.value || null);
+              onChange={(value) => {
+                handleFilterChange(value, selectedDistrict, selectedBlock, selectedStatus, fromdate, todate, globalsearch, 1)
+                setSelectedState(value || null);
                 setPage(1);
               }}
-            >
-              <option value="">All States</option>
-              {states.map((state) => (
-                <option key={state.state_id} value={state.state_id}>
-                  {state.state_name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+              options={states.map((state) => ({ value: String(state.state_id), label: state.state_name }))}
+              placeholder="All States"
+            />
           </div>
 
           {/* District Filter */}
           <div className="relative">
-            <select
-             className="disabled:opacity-50 disabled:cursor-not-allowed w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            <SearchableSelect
+              className="w-full text-sm"
               value={selectedDistrict || ''}
-              onChange={(e) => {
-                handleFilterChange(selectedState, e.target.value, selectedBlock, selectedStatus, fromdate, todate, globalsearch, 1)
-                setSelectedDistrict(e.target.value || null);
+              onChange={(value) => {
+                handleFilterChange(selectedState, value, selectedBlock, selectedStatus, fromdate, todate, globalsearch, 1)
+                setSelectedDistrict(value || null);
                 setPage(1);
               }}
+              options={districts.map((district) => ({ value: String(district.district_id), label: district.district_name }))}
+              placeholder="All Districts"
               disabled={!selectedState}
-            >
-              <option value="">All Districts</option>
-              {districts.map((district) => (
-                <option key={district.district_id} value={district.district_id}>
-                  {district.district_name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+            />
           </div>
 
           {/* Block Filter */}
           <div className="relative">
-            <select 
-            className="disabled:opacity-50 disabled:cursor-not-allowed w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            <SearchableSelect
+              className="w-full text-sm"
               value={selectedBlock || ''}
-              onChange={(e) => {
-                handleFilterChange(selectedState, selectedDistrict, e.target.value, selectedStatus, fromdate, todate, globalsearch, 1)
-                setSelectedBlock(e.target.value || null);
+              onChange={(value) => {
+                handleFilterChange(selectedState, selectedDistrict, value, selectedStatus, fromdate, todate, globalsearch, 1)
+                setSelectedBlock(value || null);
                 setPage(1);
               }}
+              options={blocks.map((block) => ({ value: String(block.block_id), label: block.block_name }))}
+              placeholder="All Blocks"
               disabled={!selectedDistrict}
-            >
-              <option value="">All Blocks</option>
-              {blocks.map((block) => (
-                <option key={block.block_id} value={block.block_id}>
-                  {block.block_name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+            />
           </div>
 
           {/* Status Filter */}
           <div className="relative">
-            <select
-             className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              value={selectedStatus !== null ? selectedStatus : ''}
-              onChange={(e) => {
-                handleFilterChange(selectedState, selectedDistrict, selectedBlock, Number(e.target.value), fromdate, todate, globalsearch, 1)
-                setSelectedStatus(e.target.value !== '' ? Number(e.target.value) : null);
+            <SearchableSelect
+              className="w-full text-sm"
+              value={selectedStatus !== null ? String(selectedStatus) : ''}
+              onChange={(value) => {
+                handleFilterChange(selectedState, selectedDistrict, selectedBlock, Number(value), fromdate, todate, globalsearch, 1)
+                setSelectedStatus(value !== '' ? Number(value) : null);
                 setPage(1);
               }}
-            >
-              <option value="">All Status</option>
-              {statusOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+              options={statusOptions.map((option) => ({ value: String(option.value), label: option.label }))}
+              placeholder="All Status"
+            />
           </div>
           {/* Search Bar */}
           <div className="relative">

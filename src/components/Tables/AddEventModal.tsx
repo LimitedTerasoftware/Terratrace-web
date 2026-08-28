@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Upload, Plus, Trash2 } from 'lucide-react';
 import axios from 'axios';
+import SearchableSelect from '../Forms/SearchableSelect';
 
 interface AddEventModalProps {
   isOpen: boolean;
@@ -780,17 +781,14 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Event Type <span className="text-red-500">*</span>
             </label>
-            <select
-              name="eventType"
+            <SearchableSelect
               value={formData.eventType}
-              onChange={handleInputChange}
+              onChange={(value) => setFormData(prev => ({ ...prev, eventType: value }))}
+              options={eventTypes}
+              placeholder="Select Event Type"
+              className="w-full"
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {eventTypes.map(type => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
+            />
           </div>
 
           {/* GPS Coordinates */}
@@ -1111,46 +1109,48 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Route Feasible
               </label>
-              <select
-                name="routeFeasibility.routeFeasible"
+              <SearchableSelect
                 value={formData.routeFeasibility.routeFeasible.toString()}
-                onChange={(e) => {
+                onChange={(value) => {
                   setFormData(prev => ({
                     ...prev,
                     routeFeasibility: {
                       ...prev.routeFeasibility,
-                      routeFeasible: e.target.value === 'true'
+                      routeFeasible: value === 'true'
                     }
                   }));
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="true">True</option>
-                <option value="false">False</option>
-              </select>
+                options={[
+                  { value: 'true', label: 'True' },
+                  { value: 'false', label: 'False' },
+                ]}
+                isClearable={false}
+                className="w-full"
+              />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Alternate Path Available
               </label>
-              <select
-                name="routeFeasibility.alternatePathAvailable"
+              <SearchableSelect
                 value={formData.routeFeasibility.alternatePathAvailable.toString()}
-                onChange={(e) => {
+                onChange={(value) => {
                   setFormData(prev => ({
                     ...prev,
                     routeFeasibility: {
                       ...prev.routeFeasibility,
-                      alternatePathAvailable: e.target.value === 'true'
+                      alternatePathAvailable: value === 'true'
                     }
                   }));
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="true">True</option>
-                <option value="false">False</option>
-              </select>
+                options={[
+                  { value: 'true', label: 'True' },
+                  { value: 'false', label: 'False' },
+                ]}
+                isClearable={false}
+                className="w-full"
+              />
             </div>
           </div>
 

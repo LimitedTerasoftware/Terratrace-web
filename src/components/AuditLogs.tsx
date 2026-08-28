@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { MessageSquareText, Search, ChevronDown } from 'lucide-react';
+import { MessageSquareText, Search } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { getRemarksHistory, Remark } from './Services/api';
 import DataTable, { TableColumn } from 'react-data-table-component';
 import axios from 'axios';
+import SearchableSelect from './Forms/SearchableSelect';
 
 const typeOptions = [
   { value: '', label: 'All Types' },
@@ -322,37 +323,23 @@ useEffect(()=>{
             </div>
 
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-40">
-              <select
+              <SearchableSelect
                 value={selectedType}
-                onChange={(e) => handleTypeChange(e.target.value)}
-                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none"
-              >
-                {typeOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                <ChevronDown className="w-4 h-4 text-gray-400" />
-              </div>
+                onChange={handleTypeChange}
+                placeholder="All Types"
+                options={typeOptions.filter((option) => option.value !== '')}
+              />
             </div>
              <div className="relative flex-1 min-w-0 sm:flex-none sm:w-40">
-              <select
+              <SearchableSelect
                 value={selectedUser}
-                onChange={(e) => handleuser(e.target.value)}
-                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none"
-              >
-                <option value=''>Select User</option>
-                {Users.map((option) => (
-                  <option key={option.user_id} value={option.user_id}>
-                    {option.uname}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                <ChevronDown className="w-4 h-4 text-gray-400" />
-              </div>
+                onChange={handleuser}
+                placeholder="Select User"
+                options={Users.map((option) => ({
+                  value: String(option.user_id),
+                  label: option.uname,
+                }))}
+              />
             </div>
 
 

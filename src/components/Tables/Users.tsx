@@ -6,6 +6,7 @@ import DataTable, { TableColumn } from 'react-data-table-component';
 import Modal from '../hooks/ModalPopup';
 import { Machine } from "../../types/machine";
 import { getMachineOptions } from "../Services/api";
+import SearchableSelect from '../Forms/SearchableSelect';
 
 interface UsersData {
   user_id: string;
@@ -535,15 +536,17 @@ const Users = () => {
                 </div>
                 <div className="relative">
                   <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <select
+                  <SearchableSelect
                     value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
-                  >
-                    <option value="all">All Status</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
+                    onChange={(value) => setStatusFilter(value)}
+                    options={[
+                      { value: 'all', label: 'All Status' },
+                      { value: 'active', label: 'Active' },
+                      { value: 'inactive', label: 'Inactive' },
+                    ]}
+                    isClearable={false}
+                    className="pl-8"
+                  />
                 </div>
                 <button
                   onClick={() => {
@@ -662,37 +665,33 @@ const Users = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Company</label>
-                      <select
+                      <SearchableSelect
                         value={formData.company_id}
-                        onChange={(e) => setFormData({ ...formData, company_id: e.target.value })}
+                        onChange={(value) => setFormData({ ...formData, company_id: value })}
                         required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      >
-                        <option value="">Select company</option>
-                        {companies.map((company) => (
-                          <option key={company.id} value={company.id.toString()}>
-                            {company.name}
-                          </option>
-                        ))}
-                      </select>
+                        options={companies.map((company) => ({
+                          value: company.id.toString(),
+                          label: company.name,
+                        }))}
+                        placeholder="Select company"
+                        className="w-full"
+                      />
                     </div>
 
                     {(constructionUser || (editingUser && formData.machine_id !== '0' && formData.machine_id !== '')) && (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Machine Registration Number</label>
-                        <select
+                        <SearchableSelect
                           value={formData.machine_id}
-                          onChange={(e) => setFormData({ ...formData, machine_id: e.target.value })}
+                          onChange={(value) => setFormData({ ...formData, machine_id: value })}
                           required={constructionUser}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                        >
-                          <option value="">Select Registration Number</option>
-                          {machines.map((machine) => (
-                            <option key={machine.machine_id} value={machine.machine_id}>
-                              {machine.registration_number}
-                            </option>
-                          ))}
-                        </select>
+                          options={machines.map((machine) => ({
+                            value: String(machine.machine_id),
+                            label: machine.registration_number,
+                          }))}
+                          placeholder="Select Registration Number"
+                          className="w-full"
+                        />
                       </div>
                     )}
 

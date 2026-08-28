@@ -1,8 +1,14 @@
 import React, { useState } from 'react';
+import SearchableSelect from '../Forms/SearchableSelect';
 
 const ExecutiveDashboard: React.FC = () => {
   const [selectedTimeFrame, setSelectedTimeFrame] = useState('This Month');
   const [selectedView, setSelectedView] = useState('All');
+  const [selectedProject, setSelectedProject] = useState('');
+  const [selectedState, setSelectedState] = useState('');
+  const [selectedDistrict, setSelectedDistrict] = useState('');
+  const [selectedBlock, setSelectedBlock] = useState('');
+  const [selectedContractor, setSelectedContractor] = useState('');
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -42,35 +48,45 @@ const ExecutiveDashboard: React.FC = () => {
           <div className="p-6">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <select className="px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-700 min-w-[120px]">
-                  <option>All Projects</option>
-                  <option>Project A</option>
-                  <option>Project B</option>
-                </select>
-                
-                <select className="px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-700 min-w-[120px]">
-                  <option>All States</option>
-                  <option>State A</option>
-                  <option>State B</option>
-                </select>
-                
-                <select className="px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-700 min-w-[120px]">
-                  <option>All Districts</option>
-                  <option>District A</option>
-                  <option>District B</option>
-                </select>
-                
-                <select className="px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-700 min-w-[120px]">
-                  <option>All Blocks</option>
-                  <option>Block A</option>
-                  <option>Block B</option>
-                </select>
-                
-                <select className="px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-700 min-w-[120px]">
-                  <option>All Contractors</option>
-                  <option>Contractor A</option>
-                  <option>Contractor B</option>
-                </select>
+                <SearchableSelect
+                  value={selectedProject}
+                  onChange={setSelectedProject}
+                  options={['Project A', 'Project B']}
+                  placeholder="All Projects"
+                  className="min-w-[120px]"
+                />
+
+                <SearchableSelect
+                  value={selectedState}
+                  onChange={setSelectedState}
+                  options={['State A', 'State B']}
+                  placeholder="All States"
+                  className="min-w-[120px]"
+                />
+
+                <SearchableSelect
+                  value={selectedDistrict}
+                  onChange={setSelectedDistrict}
+                  options={['District A', 'District B']}
+                  placeholder="All Districts"
+                  className="min-w-[120px]"
+                />
+
+                <SearchableSelect
+                  value={selectedBlock}
+                  onChange={setSelectedBlock}
+                  options={['Block A', 'Block B']}
+                  placeholder="All Blocks"
+                  className="min-w-[120px]"
+                />
+
+                <SearchableSelect
+                  value={selectedContractor}
+                  onChange={setSelectedContractor}
+                  options={['Contractor A', 'Contractor B']}
+                  placeholder="All Contractors"
+                  className="min-w-[120px]"
+                />
               </div>
 
               <div className="flex items-center gap-3">
@@ -90,16 +106,12 @@ const ExecutiveDashboard: React.FC = () => {
                   ))}
                 </div>
                 
-                <select 
+                <SearchableSelect
                   value={selectedTimeFrame}
-                  onChange={(e) => setSelectedTimeFrame(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-700 min-w-[120px]"
-                >
-                  <option>This Week</option>
-                  <option>This Month</option>
-                  <option>Last Month</option>
-                  <option>This Quarter</option>
-                </select>
+                  onChange={setSelectedTimeFrame}
+                  options={['This Week', 'This Month', 'Last Month', 'This Quarter']}
+                  className="min-w-[120px]"
+                />
               </div>
             </div>
           </div>

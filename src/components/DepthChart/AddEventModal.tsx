@@ -7,6 +7,7 @@ import {
 import axios from 'axios';
 import { Machine } from '../../types/machine';
 import { getMachineOptions } from '../Services/api';
+import SearchableSelect from '../Forms/SearchableSelect';
 
 interface FormErrors {
   [key: string]: string;
@@ -940,10 +941,10 @@ export function AddEventModal({
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Event Type <span className="text-red-500">*</span>
             </label>
-            <select
+            <SearchableSelect
               value={eventType}
-              onChange={(e) => {
-                setEventType(e.target.value);
+              onChange={(value) => {
+                setEventType(value);
                 setFormData((prev) => ({
                   start_lgd: Data?.startLocation || '',
                   end_lgd: Data?.endLocation || '',
@@ -953,16 +954,10 @@ export function AddEventModal({
                 }));
                 setErrors({});
               }}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
+              options={EVENT_TYPES}
+              placeholder="Select an event type"
               disabled={isLoading}
-            >
-              <option value="">Select an event type</option>
-              {EVENT_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
+            />
             {errors.eventType && (
               <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                 {errors.eventType}
@@ -989,28 +984,21 @@ export function AddEventModal({
                       {required && <span className="text-red-500">*</span>}
                     </label>
                     {key === 'machine_id' ? (
-                      <select
+                      <SearchableSelect
                         value={(formData[key] as string) || ''}
-                        onChange={(e) => handleChange(key, e.target.value)}
-                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 
-                        dark:bg-gray-700 dark:text-white ${
+                        onChange={(value) => handleChange(key, value)}
+                        className={
                           errors[key]
                             ? 'border-red-500 dark:border-red-500'
-                            : 'border-gray-300 dark:border-gray-600'
-                        }`}
+                            : ''
+                        }
+                        options={machines.map((machine) => ({
+                          value: String(machine.machine_id),
+                          label: machine.registration_number,
+                        }))}
+                        placeholder="Select Machine"
                         disabled={isLoading}
-                      >
-                        <option value="">Select Machine</option>
-
-                        {machines.map((machine) => (
-                          <option
-                            key={machine.machine_id}
-                            value={machine.machine_id}
-                          >
-                            {machine.registration_number}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     ) : type === 'textarea' ? (
                       <textarea
                         value={(formData[key] as string) || ''}

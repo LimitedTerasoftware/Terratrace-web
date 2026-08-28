@@ -16,6 +16,7 @@ import PoleTrackingTable from '../Chat/PoleTrackingTable';
 import SurveyorPerformance from '../Chat/SurveyorPerformance';
 import BottleneckAnalysis from '../Charts/BottleneckAnalysis';
 import {StatsCard} from '../Chat/StatsCard';
+import SearchableSelect from '../Forms/SearchableSelect';
 
 type PoleDashboardData =
   import('../Services/api').PoleDashboardResponse['data'];
@@ -270,83 +271,75 @@ export default function AerialDashboard() {
               <span className="text-sm font-semibold text-gray-700">
                 FILTERS:
               </span>
-              <select
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              <SearchableSelect
+                className="min-w-[160px] text-sm"
                 value={selectedState}
-                onChange={(e) => {
-                  setSelectedState(e.target.value);
+                onChange={(value) => {
+                  setSelectedState(value);
                   const state = states.find(
-                    (s) => s.state_id.toString() === e.target.value,
+                    (s) => s.state_id.toString() === value,
                   );
                   setSelectedStateCode(state ? state.state_code : '');
                 }}
+                options={states.map((state) => ({
+                  value: String(state.state_id),
+                  label: state.state_name,
+                }))}
+                placeholder="All States"
                 disabled={loadingStates}
-              >
-                <option value="">All States</option>
-                {states.map((state) => (
-                  <option key={state.state_id} value={state.state_id}>
-                    {state.state_name}
-                  </option>
-                ))}
-              </select>
+              />
 
-              <select
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              <SearchableSelect
+                className="min-w-[160px] text-sm"
                 value={selectedDistrict}
-                onChange={(e) => {
-                  setSelectedDistrict(e.target.value);
+                onChange={(value) => {
+                  setSelectedDistrict(value);
                   const district = districts.find(
-                    (d) => d.district_id.toString() === e.target.value,
+                    (d) => d.district_id.toString() === value,
                   );
                   setSelectedDistrictCode(
                     district ? district.district_code : '',
                   );
                 }}
+                options={districts.map((district) => ({
+                  value: String(district.district_id),
+                  label: district.district_name,
+                }))}
+                placeholder="All Districts"
                 disabled={loadingDistricts || !selectedState}
-              >
-                <option value="">All Districts</option>
-                {districts.map((district) => (
-                  <option
-                    key={district.district_id}
-                    value={district.district_id}
-                  >
-                    {district.district_name}
-                  </option>
-                ))}
-              </select>
+              />
 
-              <select
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              <SearchableSelect
+                className="min-w-[160px] text-sm"
                 value={selectedBlock}
-                onChange={(e) => {
-                  setSelectedBlock(e.target.value);
+                onChange={(value) => {
+                  setSelectedBlock(value);
                   const block = blocks.find(
-                    (b) => b.block_id.toString() === e.target.value,
+                    (b) => b.block_id.toString() === value,
                   );
                   setSelectedBlockCode(block ? block.block_code : '');
                 }}
+                options={blocks.map((block) => ({
+                  value: String(block.block_id),
+                  label: block.block_name,
+                }))}
+                placeholder="All Blocks"
                 disabled={loadingBlocks || !selectedDistrict}
-              >
-                <option value="">All Blocks</option>
-                {blocks.map((block) => (
-                  <option key={block.block_id} value={block.block_id}>
-                    {block.block_name}
-                  </option>
-                ))}
-              </select>
+              />
 
-              <select
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              <SearchableSelect
+                className="min-w-[160px] text-sm"
                 value={selectedPeriod}
-                onChange={(e) => setSelectedPeriod(e.target.value)}
-              >
-                <option value="today">Today</option>
-                <option value="yesterday">Yesterday</option>
-                <option value="7">Last 7 Days</option>
-                <option value="15">Last 15 Days</option>
-                <option value="30">Last 30 Days</option>
-                <option value="all">All Time</option>
-              </select>
+                onChange={setSelectedPeriod}
+                options={[
+                  { value: 'today', label: 'Today' },
+                  { value: 'yesterday', label: 'Yesterday' },
+                  { value: '7', label: 'Last 7 Days' },
+                  { value: '15', label: 'Last 15 Days' },
+                  { value: '30', label: 'Last 30 Days' },
+                  { value: 'all', label: 'All Time' },
+                ]}
+              />
 
               <input
                 type="text"

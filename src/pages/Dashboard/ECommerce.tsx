@@ -11,6 +11,7 @@ import SurveyProgressChart from './SurveyProgressChart'
 import UsersDonutChart from './UsersDonutChart';
 import { getAuthHeaders } from '../../utils/accessControl';
 import { ToastContainer } from 'react-toastify';
+import SearchableSelect from '../../components/Forms/SearchableSelect';
 
 
 const tabs = [
@@ -275,33 +276,27 @@ const ECommerce: React.FC = () => {
               </button>
             ))}
           </div> */}
-          <select
+          <SearchableSelect
             value={selectedTab}
-            onChange={(e) => setSelectedTab(e.target.value)}
-            className="border px-3 py-2 rounded-lg bg-white text-gray-700 w-full lg:w-[200px] "
-
-          >
-            {tabs.map((tab) => (
-              <option key={tab.label} value={tab.value}>
-                {tab.label}
-              </option>
-            ))}
-          </select>
+            onChange={setSelectedTab}
+            options={tabs
+              .filter((tab) => tab.value !== '')
+              .map((tab) => ({ value: tab.value, label: tab.label }))}
+            placeholder="All Data"
+            className="w-full lg:w-[200px]"
+          />
 
           {/* State Dropdown */}
-          <select
+          <SearchableSelect
             value={selectedState}
-            onChange={(e) => setSelectedState(e.target.value)}
-            className="border px-3 py-2 rounded-lg bg-white text-gray-700 w-full lg:w-[200px] "
-
-          >
-            <option value="">All States</option>
-            {states.map((state) => (
-              <option key={state.state_id} value={state.state_id}>
-                {state.state_name}
-              </option>
-            ))}
-          </select>
+            onChange={setSelectedState}
+            options={states.map((state) => ({
+              value: String(state.state_id),
+              label: state.state_name,
+            }))}
+            placeholder="All States"
+            className="w-full lg:w-[200px]"
+          />
 
           {/* From Date */}
           <input

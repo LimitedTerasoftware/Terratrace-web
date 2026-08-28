@@ -12,13 +12,14 @@ import { useNavigate, Link, useLocation, useSearchParams } from "react-router-do
 import * as XLSX from "xlsx";
 import ResponsivePagination from "./ResponsivePagination";
 import { hasViewOnlyAccess, hasDownloadAccess, getAuthHeaders } from "../../utils/accessControl";
-import { ChevronDown, Eye, EyeIcon, Globe2Icon, Loader, RotateCcw, Search, SheetIcon, TableCellsMerge, User, Video as VideoIcon } from "lucide-react";
+import { Eye, EyeIcon, Globe2Icon, Loader, RotateCcw, Search, SheetIcon, TableCellsMerge, User, Video as VideoIcon } from "lucide-react";
 import { AerialSurveyDetails } from "../../types/aerial-survey";
 import AerialSurveyMap from "../AerialSurveyMap/AerialSurveyMap";
 import { parseCoordinates } from "../../utils/map-helpers";
 import { FaArrowLeft } from "react-icons/fa";
 import moment from "moment";
 import MediaCarousel from "./MediaCarousel";
+import SearchableSelect from "../Forms/SearchableSelect";
 
 interface MediaItem {
   type: 'image' | 'video';
@@ -982,83 +983,67 @@ const handleGenerateKML = async () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-4">
             {/* State Filter */}
             <div className="relative">
-              <select
+              <SearchableSelect
                 value={tempSelectedState || ''}
-                onChange={(e) => {
-                  setTempSelectedState(e.target.value || null);
+                onChange={(value) => {
+                  setTempSelectedState(value || null);
                   setTempSelectedDistrict(null);
                   setTempSelectedBlock(null);
                 }}
-                className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">All States</option>
-                {states.map((state) => (
-                  <option key={state.state_id} value={state.state_id}>
-                    {state.state_name}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+                options={states.map((state) => ({
+                  value: String(state.state_id),
+                  label: state.state_name,
+                }))}
+                placeholder="All States"
+              />
             </div>
 
             {/* District Filter */}
             <div className="relative">
-              <select
+              <SearchableSelect
                 value={tempSelectedDistrict || ''}
-                onChange={(e) => {
-                  setTempSelectedDistrict(e.target.value || null);
+                onChange={(value) => {
+                  setTempSelectedDistrict(value || null);
                   setTempSelectedBlock(null);
                 }}
                 disabled={!tempSelectedState}
-                className="disabled:opacity-50 disabled:cursor-not-allowed w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">All Districts</option>
-                {districts.map((district) => (
-                  <option key={district.district_id} value={district.district_id}>
-                    {district.district_name}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+                options={districts.map((district) => ({
+                  value: String(district.district_id),
+                  label: district.district_name,
+                }))}
+                placeholder="All Districts"
+              />
             </div>
 
             {/* Block Filter */}
             <div className="relative">
-              <select
+              <SearchableSelect
                 value={tempSelectedBlock || ''}
-                onChange={(e) => {
-                  setTempSelectedBlock(e.target.value || null);
+                onChange={(value) => {
+                  setTempSelectedBlock(value || null);
                 }}
                 disabled={!tempSelectedDistrict}
-                className="disabled:opacity-50 disabled:cursor-not-allowed w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">All Blocks</option>
-                {blocks.map((block) => (
-                  <option key={block.block_id} value={block.block_id}>
-                    {block.block_name}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+                options={blocks.map((block) => ({
+                  value: String(block.block_id),
+                  label: block.block_name,
+                }))}
+                placeholder="All Blocks"
+              />
             </div>
 
             {/* Status Filter */}
             <div className="relative">
-              <select
-                value={tempSelectedStatus !== null ? tempSelectedStatus : ''}
-                onChange={(e) => {
-                  setTempSelectedStatus(e.target.value !== '' ? Number(e.target.value) : null);
+              <SearchableSelect
+                value={tempSelectedStatus !== null ? String(tempSelectedStatus) : ''}
+                onChange={(value) => {
+                  setTempSelectedStatus(value !== '' ? Number(value) : null);
                 }}
-                className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">All Status</option>
-                {statusOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+                options={statusOptions.map((option) => ({
+                  value: String(option.value),
+                  label: option.label,
+                }))}
+                placeholder="All Status"
+              />
             </div>
 
             {/* Date Filters */}

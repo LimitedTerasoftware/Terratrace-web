@@ -13,11 +13,12 @@ import ResponsivePagination from "./ResponsivePagination";
 import * as XLSX from "xlsx";
 import MapComponent from "./MapComponent";
 import { MediaExportService } from "../hooks/useFullscreen";
-import { CameraOffIcon, ChartBar, CheckCircle, ChevronDown, Download, Edit2, Eye, EyeIcon, FolderOpen, Globe2Icon, Loader, MapPinIcon, RotateCcw, Search, SheetIcon, SquaresExcludeIcon, TableCellsMerge, User } from "lucide-react";
+import { CameraOffIcon, ChartBar, CheckCircle, Download, Edit2, Eye, EyeIcon, FolderOpen, Globe2Icon, Loader, MapPinIcon, RotateCcw, Search, SheetIcon, SquaresExcludeIcon, TableCellsMerge, User } from "lucide-react";
 import { hasDownloadAccess, hasViewOnlyAccess, getAuthHeaders, isAdminUser } from "../../utils/accessControl";
 import { FaArrowLeft } from "react-icons/fa";
 import { UnderGroundSurveyData } from "../../types/survey";
 import { BsCameraVideoFill } from "react-icons/bs";
+import SearchableSelect from '../Forms/SearchableSelect';
 
 interface UndergroundSurvey {
   id: string;
@@ -1202,83 +1203,59 @@ const handleMediaFiles = async () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-4">
               {/* State Filter */}
               <div className="relative">
-                <select
+                <SearchableSelect
                   value={tempSelectedState || ''}
-                  onChange={(e) => {
-                    setTempSelectedState(e.target.value || null);
+                  onChange={(value) => {
+                    setTempSelectedState(value || null);
                     setTempSelectedDistrict(null); // Reset dependent filters
                     setTempSelectedBlock(null);
                   }}
-                  className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">All States</option>
-                  {states.map((state) => (
-                    <option key={state.state_id} value={state.state_id}>
-                      {state.state_name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+                  options={states.map((state) => ({ value: String(state.state_id), label: state.state_name }))}
+                  placeholder="All States"
+                  className="w-full text-sm"
+                />
               </div>
 
               {/* District Filter */}
               <div className="relative">
-                <select
+                <SearchableSelect
                   value={tempSelectedDistrict || ''}
-                  onChange={(e) => {
-                    setTempSelectedDistrict(e.target.value || null);
+                  onChange={(value) => {
+                    setTempSelectedDistrict(value || null);
                     setTempSelectedBlock(null); // Reset dependent filter
                   }}
                   disabled={!tempSelectedState}
-                  className="disabled:opacity-50 disabled:cursor-not-allowed w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">All Districts</option>
-                  {districts.map((district) => (
-                    <option key={district.district_id} value={district.district_id}>
-                      {district.district_name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+                  options={districts.map((district) => ({ value: String(district.district_id), label: district.district_name }))}
+                  placeholder="All Districts"
+                  className="w-full text-sm"
+                />
               </div>
 
               {/* Block Filter */}
               <div className="relative">
-                <select
+                <SearchableSelect
                   value={tempSelectedBlock || ''}
-                  onChange={(e) => {
-                    setTempSelectedBlock(e.target.value || null);
+                  onChange={(value) => {
+                    setTempSelectedBlock(value || null);
                   }}
                   disabled={!tempSelectedDistrict}
-                  className="disabled:opacity-50 disabled:cursor-not-allowed w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">All Blocks</option>
-                  {blocks.map((block) => (
-                    <option key={block.block_id} value={block.block_id}>
-                      {block.block_name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+                  options={blocks.map((block) => ({ value: String(block.block_id), label: block.block_name }))}
+                  placeholder="All Blocks"
+                  className="w-full text-sm"
+                />
               </div>
 
               {/* Status Filter */}
               <div className="relative">
-                <select
-                  value={tempSelectedStatus !== null ? tempSelectedStatus : ''}
-                  onChange={(e) => {
-                    setTempSelectedStatus(e.target.value !== '' ? Number(e.target.value) : null);
+                <SearchableSelect
+                  value={tempSelectedStatus !== null ? String(tempSelectedStatus) : ''}
+                  onChange={(value) => {
+                    setTempSelectedStatus(value !== '' ? Number(value) : null);
                   }}
-                  className="w-full appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">All Status</option>
-                  {statusOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+                  options={statusOptions.map((option) => ({ value: String(option.value), label: option.label }))}
+                  placeholder="All Status"
+                  className="w-full text-sm"
+                />
               </div>
 
               {/* Date Filters */}
@@ -1593,21 +1570,15 @@ const handleMediaFiles = async () => {
                       { loadingGPD ? (
                         <div className="mt-1">Loading...</div>
                       ) : (
-                        <select
+                        <SearchableSelect
                           value={editingRow.startLocation || ""}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setEditingRow({ ...editingRow, startLocation: val });
+                          onChange={(value) => {
+                            setEditingRow({ ...editingRow, startLocation: value });
                           }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                        >
-                          <option value="">Select Start GP</option>
-                          {gpOptions.map(opt => (
-                            <option value={opt.id} key={opt.id}>
-                              {opt.name}
-                            </option>
-                          ))}
-                        </select>
+                          options={gpOptions.map(opt => ({ value: String(opt.id), label: opt.name }))}
+                          placeholder="Select Start GP"
+                          className="w-full"
+                        />
                       )}
                     </div>
 
@@ -1616,21 +1587,15 @@ const handleMediaFiles = async () => {
                       { loadingGPD ? (
                         <div className="mt-1">Loading...</div>
                       ) : (
-                        <select
+                        <SearchableSelect
                           value={editingRow?.endLocation || ""}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setEditingRow({ ...editingRow, endLocation: val });
+                          onChange={(value) => {
+                            setEditingRow({ ...editingRow, endLocation: value });
                           }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                        >
-                          <option value="">Select End GP</option>
-                          {gpOptions.map(opt => (
-                            <option value={opt.id} key={opt.id}>
-                              {opt.name}
-                            </option>
-                          ))}
-                        </select>
+                          options={gpOptions.map(opt => ({ value: String(opt.id), label: opt.name }))}
+                          placeholder="Select End GP"
+                          className="w-full"
+                        />
                       )}
                     </div>
                 

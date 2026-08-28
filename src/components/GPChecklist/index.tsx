@@ -19,6 +19,7 @@ import {
   updateChecklistItems,
 } from '../Services/api';
 import { GPList } from '../../types/survey';
+import SearchableSelect from '../Forms/SearchableSelect';
 
 const BASEURL = import.meta.env.VITE_API_BASE;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -1785,78 +1786,63 @@ function App() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   State
                 </label>
-                <select
+                <SearchableSelect
                   value={selectedState}
-                  onChange={(e) => setSelectedState(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                >
-                  <option value="">Select State</option>
-                  {states.map((state) => (
-                    <option key={state.state_id} value={state.state_id}>
-                      {state.state_name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSelectedState}
+                  options={states.map((state) => ({
+                    value: String(state.state_id),
+                    label: state.state_name,
+                  }))}
+                  placeholder="Select State"
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   District
                 </label>
-                <select
+                <SearchableSelect
                   value={selectedDistrict}
-                  onChange={(e) => setSelectedDistrict(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  onChange={setSelectedDistrict}
                   disabled={!selectedState}
-                >
-                  <option value="">Select District</option>
-                  {districts.map((district) => (
-                    <option
-                      key={district.district_id}
-                      value={district.district_id}
-                    >
-                      {district.district_name}
-                    </option>
-                  ))}
-                </select>
+                  options={districts.map((district) => ({
+                    value: String(district.district_id),
+                    label: district.district_name,
+                  }))}
+                  placeholder="Select District"
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Block
                 </label>
-                <select
+                <SearchableSelect
                   value={selectedBlock}
-                  onChange={(e) => setSelectedBlock(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  onChange={setSelectedBlock}
                   disabled={!selectedDistrict}
-                >
-                  <option value="">Select Block</option>
-                  {blocks.map((block) => (
-                    <option key={block.block_id} value={block.block_id}>
-                      {block.block_name}
-                    </option>
-                  ))}
-                </select>
+                  options={blocks.map((block) => ({
+                    value: String(block.block_id),
+                    label: block.block_name,
+                  }))}
+                  placeholder="Select Block"
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   GP
                 </label>
-                <select
+                <SearchableSelect
                   value={selectedGp}
-                  onChange={(e) => setSelectedGp(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  onChange={setSelectedGp}
                   disabled={!selectedBlock}
-                >
-                  <option value="">Select GP</option>
-                  {gps.map((gp) => (
-                    <option key={gp.id} value={gp.id}>
-                      {gp.name}-{gp.lgd_code}
-                    </option>
-                  ))}
-                </select>
+                  options={gps.map((gp) => ({
+                    value: String(gp.id),
+                    label: `${gp.name}-${gp.lgd_code}`,
+                  }))}
+                  placeholder="Select GP"
+                />
               </div>
 
               <button

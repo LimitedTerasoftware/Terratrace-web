@@ -15,6 +15,7 @@ import {
 } from '../Services/api';
 import { Block, District, StateData } from '../../types/survey';
 import { getAuthHeaders } from '../../utils/accessControl';
+import SearchableSelect from '../Forms/SearchableSelect';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
@@ -291,13 +292,12 @@ function NewInstallationDashboard() {
               <span className="text-sm font-semibold text-gray-700">
                 FILTERS:
               </span>
-              <select
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              <SearchableSelect
                 value={selectedState}
-                onChange={(e) => {
-                  setSelectedState(e.target.value);
+                onChange={(value) => {
+                  setSelectedState(value);
                   const selectedState = states.find(
-                    (s) => s.state_id.toString() === e.target.value,
+                    (s) => s.state_id.toString() === value,
                   );
 
                   setSelectedStateCode(
@@ -305,72 +305,62 @@ function NewInstallationDashboard() {
                   );
                 }}
                 disabled={loadingStates}
-              >
-                <option value="">All States</option>
-                {states.map((state) => (
-                  <option key={state.state_id} value={state.state_id}>
-                    {state.state_name}
-                  </option>
-                ))}
-              </select>
+                placeholder="All States"
+                options={states.map((state) => ({
+                  value: state.state_id.toString(),
+                  label: state.state_name,
+                }))}
+              />
 
-              <select
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              <SearchableSelect
                 value={selectedDistrict}
-                onChange={(e) => {
-                  setSelectedDistrict(e.target.value);
+                onChange={(value) => {
+                  setSelectedDistrict(value);
                   const District = districts.find(
-                    (d) => d.district_id.toString() === e.target.value,
+                    (d) => d.district_id.toString() === value,
                   );
                   setSelectedDistrictCode(
                     District ? District.district_code : '',
                   );
                 }}
                 disabled={loadingDistricts || !selectedState}
-              >
-                <option value="">All Districts</option>
-                {districts.map((district) => (
-                  <option
-                    key={district.district_id}
-                    value={district.district_id}
-                  >
-                    {district.district_name}
-                  </option>
-                ))}
-              </select>
+                placeholder="All Districts"
+                options={districts.map((district) => ({
+                  value: district.district_id.toString(),
+                  label: district.district_name,
+                }))}
+              />
 
-              <select
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              <SearchableSelect
                 value={selectedBlock}
-                onChange={(e) => {
-                  setSelectedBlock(e.target.value);
+                onChange={(value) => {
+                  setSelectedBlock(value);
                   const Block = blocks.find(
-                    (b) => b.block_id.toString() === e.target.value,
+                    (b) => b.block_id.toString() === value,
                   );
                   setSelectedBlockCode(Block ? Block.block_code : '');
                 }}
                 disabled={loadingBlocks || !selectedDistrict}
-              >
-                <option value="">All Blocks</option>
-                {blocks.map((block) => (
-                  <option key={block.block_id} value={block.block_id}>
-                    {block.block_name}
-                  </option>
-                ))}
-              </select>
+                placeholder="All Blocks"
+                options={blocks.map((block) => ({
+                  value: block.block_id.toString(),
+                  label: block.block_name,
+                }))}
+              />
 
-              <select
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              <SearchableSelect
                 value={selectedPeriod}
-                onChange={(e) => setSelectedPeriod(e.target.value)}
-              >
-                <option value="today">Today</option>
-                <option value="yesterday">Yesterday</option>
-                <option value="7">Last 7 Days</option>
-                <option value="15">Last 15 Days</option>
-                <option value="30">Last 30 Days</option>
-                <option value="all">All Time</option>
-              </select>
+                onChange={setSelectedPeriod}
+                isClearable={false}
+                options={[
+                  { value: 'today', label: 'Today' },
+                  { value: 'yesterday', label: 'Yesterday' },
+                  { value: '7', label: 'Last 7 Days' },
+                  { value: '15', label: 'Last 15 Days' },
+                  { value: '30', label: 'Last 30 Days' },
+                  { value: 'all', label: 'All Time' },
+                ]}
+              />
 
               <input
                 type="text"

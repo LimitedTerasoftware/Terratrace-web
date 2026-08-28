@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Edit, Save, X, AlertCircle, CheckCircle, Plus } from 'lucide-react';
 import { useAppContext } from '../AppContext';
+import SearchableSelect from '../../Forms/SearchableSelect';
 
 interface NotificationState {
   type: 'success' | 'error';
@@ -559,14 +560,16 @@ const PointDetails: React.FC = () => {
           <div className="text-gray-600 flex-grow min-w-0">
             {isEditing ? (
               <div className="min-w-[120px]">
-                <select
+                <SearchableSelect
                   value={editedData.existing ? 'true' : 'false'}
-                  onChange={(e) => handleInputChange('existing', e.target.value === 'true', false)}
-                  className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                >
-                  <option value="true">Yes</option>
-                  <option value="false">No</option>
-                </select>
+                  onChange={(value) => handleInputChange('existing', value === 'true', false)}
+                  options={[
+                    { value: 'true', label: 'Yes' },
+                    { value: 'false', label: 'No' },
+                  ]}
+                  isClearable={false}
+                  className="w-full text-sm"
+                />
               </div>
             ) : (
               PointProperties.existing ? 'Yes' : 'No'

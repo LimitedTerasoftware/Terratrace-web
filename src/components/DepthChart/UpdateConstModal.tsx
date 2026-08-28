@@ -14,6 +14,7 @@ import { Machine } from '../../types/machine';
 import { Firm } from '../../types/firm';
 import { UGConstructionSurveyData } from '../../types/survey';
 import { getAuthHeaders } from '../../utils/accessControl';
+import SearchableSelect from '../Forms/SearchableSelect';
 
 interface FormErrors {
   [key: string]: string;
@@ -323,152 +324,121 @@ const formatForApi = (value: string) => {
                   {required && <span className="text-red-500">*</span>}
                 </label>
                 {key === 'user_id' ? (
-                  <select
+                  <SearchableSelect
                     value={(formData[key] as string) || ''}
-                    onChange={(e) => handleChange(key, e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg"
-                  >
-                    <option value="">Select User</option>
-                    {Users.map((user) => (
-                      <option key={user.user_id} value={user.user_id}>
-                        {user.uname}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(value) => handleChange(key, value)}
+                    options={Users.map((user) => ({
+                      value: String(user.user_id),
+                      label: user.uname,
+                    }))}
+                    placeholder="Select User"
+                  />
                 ) : key === 'state_id' ? (
-                  <select
+                  <SearchableSelect
                     value={selectedState || ''}
-                    onChange={(e) => {
-                      setSelectedState(e.target.value);
-                      handleChange('state_id', e.target.value);
+                    onChange={(value) => {
+                      setSelectedState(value);
+                      handleChange('state_id', value);
                     }}
-                    className="w-full px-3 py-2 border rounded-lg"
-                  >
-                    <option value="">Select State</option>
-                    {states.map((state) => (
-                      <option key={state.state_id} value={state.state_id}>
-                        {state.state_name}
-                      </option>
-                    ))}
-                  </select>
+                    options={states.map((state) => ({
+                      value: String(state.state_id),
+                      label: state.state_name,
+                    }))}
+                    placeholder="Select State"
+                  />
                 ) : key === 'district_id' ? (
-                  <select
+                  <SearchableSelect
                     value={selectedDistrict || ''}
-                    onChange={(e) => {
-                      setSelectedDistrict(e.target.value);
-                      handleChange('district_id', e.target.value);
+                    onChange={(value) => {
+                      setSelectedDistrict(value);
+                      handleChange('district_id', value);
                     }}
-                    className="w-full px-3 py-2 border rounded-lg"
-                  >
-                    <option value="">Select District</option>
-                    {districts.map((district) => (
-                      <option
-                        key={district.district_id}
-                        value={district.district_id}
-                      >
-                        {district.district_name}
-                      </option>
-                    ))}
-                  </select>
+                    options={districts.map((district) => ({
+                      value: String(district.district_id),
+                      label: district.district_name,
+                    }))}
+                    placeholder="Select District"
+                  />
                 ) : key === 'block_id' ? (
-                  <select
+                  <SearchableSelect
                     value={selectedBlock || ''}
-                    onChange={(e) => {
-                      setSelectedBlock(e.target.value);
-                      handleChange('block_id', e.target.value);
+                    onChange={(value) => {
+                      setSelectedBlock(value);
+                      handleChange('block_id', value);
                     }}
-                    className="w-full px-3 py-2 border rounded-lg"
-                  >
-                    <option value="">Select Block</option>
-                    {blocks.map((block) => (
-                      <option key={block.block_id} value={block.block_id}>
-                        {block.block_name}
-                      </option>
-                    ))}
-                  </select>
+                    options={blocks.map((block) => ({
+                      value: String(block.block_id),
+                      label: block.block_name,
+                    }))}
+                    placeholder="Select Block"
+                  />
                 ) : key === 'startLocation' ? (
-                  <select
+                  <SearchableSelect
                     value={(formData[key] as string) || ''}
-                    onChange={(e) => handleChange(key, e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg"
-                  >
-                    <option value="">Select Start Gp</option>
-                    {Gp.map((code) => (
-                      <option key={code.id} value={code.id}>
-                        {code.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(value) => handleChange(key, value)}
+                    options={Gp.map((code) => ({
+                      value: String(code.id),
+                      label: code.name,
+                    }))}
+                    placeholder="Select Start Gp"
+                  />
                 ) : key === 'endLocation' ? (
-                  <select
+                  <SearchableSelect
                     value={(formData[key] as string) || ''}
-                    onChange={(e) => handleChange(key, e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg"
-                  >
-                    <option value="">Select End Gp</option>
-                    {Gp.map((code) => (
-                      <option key={code.id} value={code.id}>
-                        {code.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(value) => handleChange(key, value)}
+                    options={Gp.map((code) => ({
+                      value: String(code.id),
+                      label: code.name,
+                    }))}
+                    placeholder="Select End Gp"
+                  />
                 ) : key === 'firm' ? (
-                  <select
+                  <SearchableSelect
                     value={Selectfirmname || ''}
-                    onChange={(e) => {
-                      seSelecttFirmName(e.target.value);
-                      handleChange('firm', e.target.value);
+                    onChange={(value) => {
+                      seSelecttFirmName(value);
+                      handleChange('firm', value);
                     }}
-                    className="w-full px-3 py-2 border rounded-lg"
-                  >
-                    <option value="">Select Firm</option>
-                    {firmname.map((code) => (
-                      <option key={code.id} value={code.id}>
-                        {code.firm_name}
-                      </option>
-                    ))}
-                  </select>
+                    options={firmname.map((code) => ({
+                      value: String(code.id),
+                      label: code.firm_name,
+                    }))}
+                    placeholder="Select Firm"
+                  />
                 ) : key === 'vehicleserialno' ? (
-                  <select
+                  <SearchableSelect
                     value={(formData[key] as string) || ''}
-                    onChange={(e) => handleChange(key, e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg"
-                  >
-                    <option value="">Select Vehicle</option>
-                    {Vehical.map((code) => (
-                      <option
-                        key={code.registration_number}
-                        value={code.registration_number}
-                      >
-                        {code.registration_number}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(value) => handleChange(key, value)}
+                    options={Vehical.map((code) => ({
+                      value: code.registration_number,
+                      label: code.registration_number,
+                    }))}
+                    placeholder="Select Vehicle"
+                  />
                 ) : key === 'construction_type' ? (
-                  <select
+                  <SearchableSelect
                     value={(formData[key] as string) || ''}
-                    onChange={(e) => handleChange(key, e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg"
-                  >
-                    <option value="">Select Construction Type</option>
-                    <option value="Hdd">HDD</option>
-                    <option value="OpenTrench">OpenTrench</option>
-                    <option value="Protection">Protection</option>
-                  </select>
+                    onChange={(value) => handleChange(key, value)}
+                    options={[
+                      { value: 'Hdd', label: 'HDD' },
+                      { value: 'OpenTrench', label: 'OpenTrench' },
+                      { value: 'Protection', label: 'Protection' },
+                    ]}
+                    placeholder="Select Construction Type"
+                  />
                 ) : key === 'workType' ? (
-                    <select
+                    <SearchableSelect
                       value={(formData[key] as string) || ''}
-                      onChange={(e) => handleChange(key, e.target.value)}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    >
-                      <option value="">Select Work Type</option>
-
-                      <option value="New Construction">New Construction</option>
-                      <option value="Rectification">Rectification</option>
-                      <option value="OFC Blowing/ JointChamber">OFC Blowing / Joint Chamber</option>
-                      <option value="Protection">Protection</option>
-                    </select>
-                  ): 
+                      onChange={(value) => handleChange(key, value)}
+                      options={[
+                        'New Construction',
+                        'Rectification',
+                        { value: 'OFC Blowing/ JointChamber', label: 'OFC Blowing / Joint Chamber' },
+                        'Protection',
+                      ]}
+                      placeholder="Select Work Type"
+                    />
+                  ):
                  key === 'created_at' ? (
                   <input
                   type="datetime-local"

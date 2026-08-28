@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import DataTable, { TableColumn } from 'react-data-table-component';
 import { getAuthHeaders } from '../../utils/accessControl';
+import SearchableSelect from '../Forms/SearchableSelect';
 
 // ────────────────────────────────────────────────────────────────────────────────
 // Types
@@ -205,7 +206,7 @@ export default function SurveyDashboard() {
         // Build URL with date parameters and pagination
         let usersUrl = `https://api.tricadtrack.com/get-users-survey?state_code=6&page=${currentPage}&limit=${perPage}`;
         let statsUrl = 'https://api.tricadtrack.com/get-survey-count?state_code=19';
-        
+
         if (startDate && endDate) {
           usersUrl += `&from_date=${startDate}&to_date=${endDate}`;
           statsUrl += `&from_date=${startDate}&to_date=${endDate}`;
@@ -544,9 +545,9 @@ export default function SurveyDashboard() {
                 {/* District Filter with API */}
                 <div className="relative">
                   <select
-                    value={selectedDistrictCode}
+                  value={selectedDistrictCode}
                     onChange={(e) => setSelectedDistrictCode(e.target.value)}
-                    disabled={loadingDistricts}
+                  disabled={loadingDistricts}
                     className="px-3 py-2 pr-8 border border-gray-300 rounded-md bg-white text-sm text-gray-700 min-w-[140px] appearance-none disabled:opacity-50"
                   >
                     <option value="">All Districts</option>

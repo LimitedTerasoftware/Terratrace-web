@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import DataTable, { TableColumn } from 'react-data-table-component';
 import Modal from '../hooks/ModalPopup';
+import SearchableSelect from '../Forms/SearchableSelect';
 
 interface EmployeeData {
   id: string;
@@ -466,15 +467,17 @@ const Employees = () => {
                 </div>
                 <div className="relative">
                   <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <select
+                  <SearchableSelect
                     value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
-                  >
-                    <option value="all">All Status</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
+                    onChange={(value) => setStatusFilter(value)}
+                    options={[
+                      { value: 'all', label: 'All Status' },
+                      { value: 'active', label: 'Active' },
+                      { value: 'inactive', label: 'Inactive' },
+                    ]}
+                    isClearable={false}
+                    className="pl-8"
+                  />
                 </div>
                 <button
                   onClick={() => {

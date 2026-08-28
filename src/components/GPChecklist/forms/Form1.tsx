@@ -22,6 +22,7 @@ import axios from 'axios';
 import { getAuthHeaders } from '../../../utils/accessControl';
 import ImageCapture from './ImageCapture';
 import MediaCarousel from '../../DepthChart/MediaCarousel';
+import SearchableSelect from '../../Forms/SearchableSelect';
 import { addImageAttachment, buildPrintPage ,addPdfAttachment} from './printUtils';
 
 interface Form1Props {
@@ -598,77 +599,65 @@ export default function Form1({
         </div>
         <div className="space-y-3">
           <div>
-            <select
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.state ? 'border-red-500' : 'border-gray-300'}
-              ${readOnly && 'opacity-50 cursor-not-allowed bg-gray-50'}}`}
+            <SearchableSelect
+              className="w-full"
               value={selectedState}
-              onChange={(e) => handleStateChange(e.target.value)}
+              onChange={(value) => handleStateChange(value)}
               disabled={loadingStates || readOnly}
-            >
-              <option value="">Select State</option>
-              {states.map((state) => (
-                <option key={state.state_id} value={state.state_id}>
-                  {state.state_name}
-                </option>
-              ))}
-            </select>
+              options={states.map((state) => ({
+                value: String(state.state_id),
+                label: state.state_name,
+              }))}
+              placeholder="Select State"
+            />
             {errors.state && (
               <p className="text-red-500 text-sm mt-1">{errors.state}</p>
             )}
           </div>
           <div>
-            <select
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.district ? 'border-red-500' : 'border-gray-300'}
-                ${readOnly && 'opacity-50 cursor-not-allowed bg-gray-50'}`}
+            <SearchableSelect
+              className="w-full"
               value={selectedDistrict}
-              onChange={(e) => handleDistrictChange(e.target.value)}
+              onChange={(value) => handleDistrictChange(value)}
               disabled={loadingDistricts || !selectedState || readOnly}
-            >
-              <option value="">Select District</option>
-              {districts.map((district) => (
-                <option key={district.district_id} value={district.district_id}>
-                  {district.district_name}
-                </option>
-              ))}
-            </select>
+              options={districts.map((district) => ({
+                value: String(district.district_id),
+                label: district.district_name,
+              }))}
+              placeholder="Select District"
+            />
             {errors.district && (
               <p className="text-red-500 text-sm mt-1">{errors.district}</p>
             )}
           </div>
           <div>
-            <select
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.block ? 'border-red-500' : 'border-gray-300'}
-                ${readOnly && 'opacity-50 cursor-not-allowed bg-gray-50'}`}
+            <SearchableSelect
+              className="w-full"
               value={selectedBlock}
-              onChange={(e) => handleBlockChange(e.target.value)}
+              onChange={(value) => handleBlockChange(value)}
               disabled={loadingBlocks || !selectedDistrict || readOnly}
-            >
-              <option value="">Select Block</option>
-              {blocks.map((block) => (
-                <option key={block.block_id} value={block.block_id}>
-                  {block.block_name}
-                </option>
-              ))}
-            </select>
+              options={blocks.map((block) => ({
+                value: String(block.block_id),
+                label: block.block_name,
+              }))}
+              placeholder="Select Block"
+            />
             {errors.block && (
               <p className="text-red-500 text-sm mt-1">{errors.block}</p>
             )}
           </div>
           <div>
-            <select
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.gp ? 'border-red-500' : 'border-gray-300'}
-                ${readOnly && 'opacity-50 cursor-not-allowed bg-gray-50'}`}
+            <SearchableSelect
+              className="w-full"
               value={selectedGP}
-              onChange={(e) => handleGPChange(e.target.value)}
+              onChange={(value) => handleGPChange(value)}
               disabled={loadingGPs || !selectedBlock || readOnly}
-            >
-              <option value="">Select GP</option>
-              {Gps.map((gp) => (
-                <option key={gp.id} value={gp.id}>
-                  {gp.name}
-                </option>
-              ))}
-            </select>
+              options={Gps.map((gp) => ({
+                value: String(gp.id),
+                label: gp.name,
+              }))}
+              placeholder="Select GP"
+            />
             {errors.gp && (
               <p className="text-red-500 text-sm mt-1">{errors.gp}</p>
             )}
@@ -787,21 +776,20 @@ export default function Form1({
             <label className="block text-sm font-medium text-gray-900 mb-2">
               Select Building Type
             </label>
-            <select
-              className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${readOnly && 'opacity-50 cursor-not-allowed bg-gray-50'}`}
+            <SearchableSelect
+              className="w-full"
               value={data?.building_type || ''}
-              onChange={(e) => handleBuildingTypeChange(e.target.value)}
+              onChange={(value) => handleBuildingTypeChange(value)}
               disabled={readOnly}
-            >
-              <option value="">Select Building</option>
-              <option value="Panchayat Bhawan">Panchayat Bhawan</option>
-              <option value="School">School</option>
-              <option value="CSC (Common Service Center)">
-                CSC (Common Service Center)
-              </option>
-              <option value="Anganwadi">Anganwadi</option>
-              <option value="Other">Other</option>
-            </select>
+              options={[
+                'Panchayat Bhawan',
+                'School',
+                'CSC (Common Service Center)',
+                'Anganwadi',
+                'Other',
+              ]}
+              placeholder="Select Building"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-900 mb-2">

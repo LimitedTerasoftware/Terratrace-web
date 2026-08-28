@@ -27,6 +27,7 @@ import { useNavigate } from 'react-router-dom'; // Added for navigation
 import UserAssignmentModal from './UserAssginmentModal';
 import * as XLSX from 'xlsx';
 import { getAuthHeaders } from '../../utils/accessControl';
+import SearchableSelect from '../Forms/SearchableSelect';
 
 
 // Types
@@ -1161,89 +1162,59 @@ const getProgressComponent = (stage: string, progress: string) => {
           <div className="flex flex-wrap items-center gap-3 mb-4">
             {/* District Filter */}
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-              <select
+              <SearchableSelect
                 value={selectedDistrict}
-                onChange={(e) => setSelectedDistrict(e.target.value)}
+                onChange={setSelectedDistrict}
                 disabled={loadingDistricts}
-                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none disabled:opacity-50"
-              >
-                <option value="">District</option>
-                {districts.map((district) => (
-                  <option key={district.district_id} value={district.district_code}>
-                    {district.district_name}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                {loadingDistricts ? (
-                  <svg className="animate-spin h-4 w-4 text-gray-400" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                  </svg>
-                )}
-              </div>
+                options={districts.map((district) => ({
+                  value: String(district.district_code),
+                  label: district.district_name,
+                }))}
+                placeholder="District"
+              />
             </div>
 
             {/* Stage Filter */}
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-              <select
+              <SearchableSelect
                 value={selectedStage}
-                onChange={(e) => setSelectedStage(e.target.value)}
-                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none"
-              >
-                <option value="survey">Survey</option>
-                <option value="construction">Construction</option>
-                <option value="installation">Installation</option>
-                <option value="desktop">Desktop</option>
-                <option value="boq">BOQ</option>
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
+                onChange={setSelectedStage}
+                options={[
+                  { value: 'survey', label: 'Survey' },
+                  { value: 'construction', label: 'Construction' },
+                  { value: 'installation', label: 'Installation' },
+                  { value: 'desktop', label: 'Desktop' },
+                  { value: 'boq', label: 'BOQ' },
+                ]}
+                isClearable={false}
+              />
             </div>
 
             {/* Status Filter */}
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-              <select
+              <SearchableSelect
                 value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none"
-              >
-                <option value="">Status</option>
-                <option value="Completed">Completed</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Not started">Not Started</option>
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
+                onChange={setSelectedStatus}
+                options={[
+                  { value: 'Completed', label: 'Completed' },
+                  { value: 'In Progress', label: 'In Progress' },
+                  { value: 'Not started', label: 'Not Started' },
+                ]}
+                placeholder="Status"
+              />
             </div>
 
             {/* Contractor Filter */}
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-              <select
+              <SearchableSelect
                 value={selectedContractor}
-                onChange={(e) => setSelectedContractor(e.target.value)}
-                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none"
-              >
-                <option value="">Contractor</option>
-                {uniqueContractors.map(contractor => (
-                  <option key={contractor} value={contractor}>{contractor}</option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
+                onChange={setSelectedContractor}
+                options={uniqueContractors.map((contractor) => ({
+                  value: contractor,
+                  label: contractor,
+                }))}
+                placeholder="Contractor"
+              />
             </div>
           </div>
 
@@ -1576,32 +1547,35 @@ const getProgressComponent = (stage: string, progress: string) => {
             {/* Stage Selector */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">Stage</label>
-              <select
+              <SearchableSelect
                 value={editFormData.stage}
-                onChange={(e) => handleEditFormChange('stage', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="desktop">Desktop Survey</option>
-                <option value="survey">Physical Survey</option>
-                <option value="boq">BOQ (Bill of Quantities)</option>
-                <option value="construction">Construction</option>
-                <option value="installation">Installation</option>
-              </select>
+                onChange={(value) => handleEditFormChange('stage', value)}
+                options={[
+                  { value: 'desktop', label: 'Desktop Survey' },
+                  { value: 'survey', label: 'Physical Survey' },
+                  { value: 'boq', label: 'BOQ (Bill of Quantities)' },
+                  { value: 'construction', label: 'Construction' },
+                  { value: 'installation', label: 'Installation' },
+                ]}
+                isClearable={false}
+                className="w-full"
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                <select
+                <SearchableSelect
                   value={editFormData.status}
-                  onChange={(e) => handleEditFormChange('status', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select Status</option>
-                  <option value="Not started">Not Started</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Completed">Completed</option>
-                </select>
+                  onChange={(value) => handleEditFormChange('status', value)}
+                  options={[
+                    { value: 'Not started', label: 'Not Started' },
+                    { value: 'In Progress', label: 'In Progress' },
+                    { value: 'Completed', label: 'Completed' },
+                  ]}
+                  placeholder="Select Status"
+                  className="w-full"
+                />
               </div>
               
               {editFormData.stage !== 'boq' && (

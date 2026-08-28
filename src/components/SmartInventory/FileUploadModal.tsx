@@ -2,6 +2,7 @@ import axios from "axios";
 import { AlertCircle, FilePenLine, Upload } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { getAuthHeaders } from "../../utils/accessControl";
+import SearchableSelect from "../Forms/SearchableSelect";
 
 interface FileUploadModalProps {
     isOpen: boolean;
@@ -121,23 +122,13 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClose, onUp
                         <div className="mb-4">
                             <label className="block text-xs font-medium text-gray-700 mb-1">Category *</label>
                             <div className="relative">
-                                <select
+                                <SearchableSelect
                                     value={category}
-                                    onChange={(e) => setCategory(e.target.value)}
-                                    className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                >
-                                    <option value="">Select Category</option>
-                                    {categoryOptions.map((option) => (
-                                        <option key={option.value} value={option.value}>
-                                            {option.label}
-                                        </option>
-                                    ))}
-                                </select>
-                                <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </div>
+                                    onChange={setCategory}
+                                    options={categoryOptions}
+                                    placeholder="Select Category"
+                                    className="text-sm"
+                                />
                             </div>
                         </div>
 
@@ -146,75 +137,45 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClose, onUp
                             {/* State Filter */}
                             <div className="relative">
                                 <label className="block text-xs font-medium text-gray-700 mb-1">State *</label>
-                                <select
+                                <SearchableSelect
                                     value={selectedState || ''}
-                                    onChange={(e) => {
-                                        setSelectedState(e.target.value || null);
+                                    onChange={(value) => {
+                                        setSelectedState(value || null);
                                     }}
-                                    className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                >
-                                    <option value="">Select State</option>
-                                    {states.map((state) => (
-                                        <option key={state.state_id} value={state.state_id}>
-                                            {state.state_name}
-                                        </option>
-                                    ))}
-                                </select>
-                                <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </div>
+                                    options={states.map((state) => ({ value: String(state.state_id), label: state.state_name }))}
+                                    placeholder="Select State"
+                                    className="text-sm"
+                                />
                             </div>
 
                             {/* District Filter */}
                             <div className="relative">
                                 <label className="block text-xs font-medium text-gray-700 mb-1">District *</label>
-                                <select
+                                <SearchableSelect
                                     value={selectedDistrict || ''}
-                                    onChange={(e) => {
-                                        setSelectedDistrict(e.target.value || null);
+                                    onChange={(value) => {
+                                        setSelectedDistrict(value || null);
                                     }}
                                     disabled={!selectedState}
-                                    className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100"
-                                >
-                                    <option value="">Select District</option>
-                                    {districts.map((district) => (
-                                        <option key={district.district_id} value={district.district_id}>
-                                            {district.district_name}
-                                        </option>
-                                    ))}
-                                </select>
-                                <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </div>
+                                    options={districts.map((district) => ({ value: String(district.district_id), label: district.district_name }))}
+                                    placeholder="Select District"
+                                    className="text-sm"
+                                />
                             </div>
 
                             {/* Block Filter */}
                             <div className="relative">
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Block *</label>
-                                <select
+                                <SearchableSelect
                                     value={selectedBlock || ''}
-                                    onChange={(e) => {
-                                        setSelectedBlock(e.target.value || null);
+                                    onChange={(value) => {
+                                        setSelectedBlock(value || null);
                                     }}
                                     disabled={!selectedDistrict}
-                                    className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100"
-                                >
-                                    <option value="">Select Block</option>
-                                    {blocks.map((block) => (
-                                        <option key={block.block_id} value={block.block_id}>
-                                            {block.block_name}
-                                        </option>
-                                    ))}
-                                </select>
-                                <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </div>
+                                    options={blocks.map((block) => ({ value: String(block.block_id), label: block.block_name }))}
+                                    placeholder="Select Block"
+                                    className="text-sm"
+                                />
                             </div>
                         </div>
 

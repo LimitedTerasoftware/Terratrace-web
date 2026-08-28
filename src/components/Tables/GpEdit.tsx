@@ -201,18 +201,13 @@ function gpEdit() {
             <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
               State Name
             </label>
-            <select
+            <SearchableSelect
               value={data.state_name || ""}
-              onChange={(e) => setData({ ...data, state_name: e.target.value })}
-              className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-            >
-              <option value="">Select State</option>
-              {states.map((state, index) => (
-                <option key={index} value={state}>
-                  {state}
-                </option>
-              ))}
-            </select>
+              onChange={(value) => setData({ ...data, state_name: value })}
+              className="text-sm"
+              options={states}
+              placeholder="Select State"
+            />
           </div> */}
 
           {/* District Name Dropdown */}
@@ -220,18 +215,13 @@ function gpEdit() {
             <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
               District Name
             </label>
-            <select
+            <SearchableSelect
               value={data.district_name || ""}
-              onChange={(e) => setData({ ...data, district_name: e.target.value })}
-              className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-            >
-              <option value="">Select District</option>
-              {districts.map((district, index) => (
-                <option key={index} value={district}>
-                  {district}
-                </option>
-              ))}
-            </select>
+              onChange={(value) => setData({ ...data, district_name: value })}
+              className="text-sm"
+              options={districts}
+              placeholder="Select District"
+            />
           </div> */}
 
           {/* Block Name Dropdown */}
@@ -239,18 +229,13 @@ function gpEdit() {
             <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
               Block Name
             </label>
-            <select
+            <SearchableSelect
               value={data.block_name || ""}
-              onChange={(e) => setData({ ...data, block_name: e.target.value })}
-              className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-            >
-              <option value="">Select Block</option>
-              {blocks.map((block, index) => (
-                <option key={index} value={block}>
-                  {block}
-                </option>
-              ))}
-            </select>
+              onChange={(value) => setData({ ...data, block_name: value })}
+              className="text-sm"
+              options={blocks}
+              placeholder="Select Block"
+            />
           </div> */}
 
           {/* Render the rest of the fields as text inputs */}

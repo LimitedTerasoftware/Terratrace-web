@@ -17,6 +17,7 @@ import {
   RouterData,
 } from '../../types/block-router-checklist';
 import BlockRackForm from './forms/BlockRack';
+import SearchableSelect from '../Forms/SearchableSelect';
 
 type FormType = 'RFMS' | 'Block Router' | 'Block Rack';
 
@@ -274,68 +275,55 @@ const BlockRouterChecklist = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   State <span className="text-red-500">*</span>
                 </label>
-                <select
+                <SearchableSelect
                   value={selectedState}
-                  onChange={(e) => handleStateChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                >
-                  <option value="">Select State</option>
-                  {states.map((state) => (
-                    <option key={state.state_id} value={state.state_id}>
-                      {state.state_name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={handleStateChange}
+                  options={states.map((state) => ({
+                    value: String(state.state_id),
+                    label: state.state_name,
+                  }))}
+                  placeholder="Select State"
+                  className="w-full"
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   District <span className="text-red-500">*</span>
                 </label>
-                <select
+                <SearchableSelect
                   value={selectedDistrict}
-                  onChange={(e) => handleDistrictChange(e.target.value)}
+                  onChange={handleDistrictChange}
                   disabled={!selectedState || loadingDistricts}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:bg-gray-100"
-                >
-                  <option value="">
-                    {loadingDistricts ? 'Loading...' : 'Select District'}
-                  </option>
-                  {districts.map((district) => (
-                    <option
-                      key={district.district_id}
-                      value={district.district_id}
-                    >
-                      {district.district_name}
-                    </option>
-                  ))}
-                </select>
+                  options={districts.map((district) => ({
+                    value: String(district.district_id),
+                    label: district.district_name,
+                  }))}
+                  placeholder={loadingDistricts ? 'Loading...' : 'Select District'}
+                  className="w-full"
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Block <span className="text-red-500">*</span>
                 </label>
-                <select
+                <SearchableSelect
                   value={selectedBlock}
-                  onChange={(e) => {
+                  onChange={(value) => {
                     const block = blocks.find(
-                      (b) => b.block_id == e.target.value,
+                      (b) => b.block_id == value,
                     );
-                    handleBlockChange(e.target.value, block?.block_name);
+                    handleBlockChange(value, block?.block_name);
                   }}
                   disabled={!selectedDistrict || loadingBlocks}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:bg-gray-100"
-                >
-                  <option value="">
-                    {loadingBlocks ? 'Loading...' : 'Select Block'}
-                  </option>
-                  {blocks.map((block) => (
-                    <option key={block.block_id} value={block.block_id}>
-                      {block.block_name}
-                    </option>
-                  ))}
-                </select>
+                  options={blocks.map((block) => ({
+                    value: String(block.block_id),
+                    label: block.block_name,
+                  }))}
+                  placeholder={loadingBlocks ? 'Loading...' : 'Select Block'}
+                  className="w-full"
+                />
               </div>
 
               <div>

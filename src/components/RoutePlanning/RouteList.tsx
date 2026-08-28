@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { AlertCircle, AlertTriangle, CheckCircle, Eye, Trash, X, ChevronDown, RotateCcw, Search, User, Route, SheetIcon} from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle, Eye, Trash, X, RotateCcw, Search, User, Route, SheetIcon} from 'lucide-react';
 import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useAppContext } from './AppContext';
 import { getAuthHeaders } from '../../utils/accessControl';
+import SearchableSelect from '../Forms/SearchableSelect';
 
 interface NetworksResponse {
   success: boolean;
@@ -608,102 +609,57 @@ const RouteList = () => {
           <div className="flex flex-wrap items-center gap-3 mb-4">
             {/* State Filter */}
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-              <select
+              <SearchableSelect
                 value={selectedState || ''}
-                onChange={(e) => handleStateChange(e.target.value)}
+                onChange={(value) => handleStateChange(value)}
+                options={states.map((state) => ({
+                  value: String(state.state_id),
+                  label: state.state_name,
+                }))}
+                placeholder="All States"
                 disabled={loadingStates}
-                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none disabled:opacity-50"
-              >
-                <option value="">All States</option>
-                {states.map((state) => (
-                  <option key={state.state_id} value={state.state_id}>
-                    {state.state_name}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                {loadingStates ? (
-                  <svg className="animate-spin h-4 w-4 text-gray-400" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
-                )}
-              </div>
+              />
             </div>
 
             {/* District Filter */}
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-              <select
+              <SearchableSelect
                 value={selectedDistrict || ''}
-                onChange={(e) => handleDistrictChange(e.target.value)}
+                onChange={(value) => handleDistrictChange(value)}
+                options={districts.map((district) => ({
+                  value: String(district.district_id),
+                  label: district.district_name,
+                }))}
+                placeholder="All Districts"
                 disabled={!selectedState || loadingDistricts}
-                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none disabled:opacity-50"
-              >
-                <option value="">All Districts</option>
-                {districts.map((district) => (
-                  <option key={district.district_id} value={district.district_id}>
-                    {district.district_name}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                {loadingDistricts ? (
-                  <svg className="animate-spin h-4 w-4 text-gray-400" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
-                )}
-              </div>
+              />
             </div>
 
             {/* Block Filter */}
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-              <select
+              <SearchableSelect
                 value={selectedBlock || ''}
-                onChange={(e) => handleBlockChange(e.target.value)}
+                onChange={(value) => handleBlockChange(value)}
+                options={blocks.map((block) => ({
+                  value: String(block.block_id),
+                  label: block.block_name,
+                }))}
+                placeholder="All Blocks"
                 disabled={!selectedDistrict || loadingBlocks}
-                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none disabled:opacity-50"
-              >
-                <option value="">All Blocks</option>
-                {blocks.map((block) => (
-                  <option key={block.block_id} value={block.block_id}>
-                    {block.block_name}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                {loadingBlocks ? (
-                  <svg className="animate-spin h-4 w-4 text-gray-400" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
-                )}
-              </div>
+              />
             </div>
 
             {/* Status Filter */}
             <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-              <select
+              <SearchableSelect
                 value={selectedStatus || ''}
-                onChange={(e) => handleStatusChange(e.target.value)}
-                className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none"
-              >
-                <option value="">All Status</option>
-                {statusOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                <ChevronDown className="w-4 h-4 text-gray-400" />
-              </div>
+                onChange={(value) => handleStatusChange(value)}
+                options={statusOptions.map((option) => ({
+                  value: option.value,
+                  label: option.label,
+                }))}
+                placeholder="All Status"
+              />
             </div>
 
             {/* Date Filters */}

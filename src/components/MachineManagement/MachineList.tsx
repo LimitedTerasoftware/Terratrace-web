@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Machine } from '../../types/machine';
 import { Edit, Trash2, Search, Filter, Eye } from 'lucide-react';
 import DataTable, { TableColumn } from 'react-data-table-component';
+import SearchableSelect from '../Forms/SearchableSelect';
 
 interface MachineListProps {
   machines: Machine[];
@@ -149,17 +150,19 @@ const MachineList: React.FC<MachineListProps> = ({ machines, onEdit, onDelete, I
           </div>
           <div className="relative">
             <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <select
+            <SearchableSelect
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as Machine['status'] | 'all')}
-              className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="maintenance">Maintenance</option>
-              <option value="retired">Retired</option>
-            </select>
+              onChange={(value) => setStatusFilter(value as Machine['status'] | 'all')}
+              options={[
+                { value: 'all', label: 'All Status' },
+                { value: 'active', label: 'Active' },
+                { value: 'inactive', label: 'Inactive' },
+                { value: 'maintenance', label: 'Maintenance' },
+                { value: 'retired', label: 'Retired' },
+              ]}
+              isClearable={false}
+              className="pl-8"
+            />
           </div>
         </div>
       </div>

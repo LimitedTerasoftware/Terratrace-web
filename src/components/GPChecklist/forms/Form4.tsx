@@ -12,6 +12,7 @@ import { FormData, GeoTaggedImage } from '../../../types/gp-checklist';
 import { useState, useEffect } from 'react';
 import ImageCapture from './ImageCapture';
 import { addImageAttachment, buildPrintPage } from './printUtils';
+import SearchableSelect from '../../Forms/SearchableSelect';
 
 interface Form4Props {
   data: FormData['form4'] | undefined;
@@ -370,15 +371,13 @@ export default function Form4({ data, onChange }: Form4Props) {
           <p className="text-sm text-gray-600 mb-3">
             Enter power source (Grid / Solar) details updated in GIS
           </p>
-          <select
+          <SearchableSelect
             value={data?.powerSource || ''}
-            onChange={(e) => updateField('powerSource', e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all bg-white"
-          >
-            <option value="">Select Power Source</option>
-            <option value="Grid">Grid</option>
-            <option value="Solar">Solar</option>
-          </select>
+            onChange={(value) => updateField('powerSource', value)}
+            options={['Grid', 'Solar']}
+            placeholder="Select Power Source"
+            className="w-full"
+          />
         </div>
 
         {data?.earthingVerified === 'yes' && (

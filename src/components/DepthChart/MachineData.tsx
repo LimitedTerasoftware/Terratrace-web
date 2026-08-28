@@ -8,6 +8,7 @@ import moment from "moment";
 import { getMachineOptions } from "../Services/api";
 import {getTodayDate } from "../../utils/dateUtils";
 import { getDistanceFromLatLonInMeters } from "../../utils/calculations";
+import SearchableSelect from "../Forms/SearchableSelect";
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const BASEURL_Val = import.meta.env.VITE_API_BASE;
@@ -314,27 +315,18 @@ const MachineDataTable = () => {
         <div className="mb-4">
           <div className="flex flex-wrap items-center gap-3">
               <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
-            <select
+            <SearchableSelect
               value={Machine !== '' ? Machine : ''}
-              onChange={(e) => {
-              setMachine(e.target.value !== '' ? (e.target.value) :'');
+              onChange={(value) => {
+              setMachine(value !== '' ? (value) :'');
 
               }}
-              className="w-full appearance-none px-3 py-2 pr-8 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            >
-              <option value="">All</option>
-                {machinesData.map((machine) => (
-                  <option key={machine.machine_id} value={machine.machine_id}>
-                    {machine.registration_number}
-                  </option>
-                ))}
-
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
+              options={machinesData.map((machine) => ({
+                value: String(machine.machine_id),
+                label: machine.registration_number,
+              }))}
+              placeholder="All"
+            />
           </div>
 
               {/* Date Filters */}

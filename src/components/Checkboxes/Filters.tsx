@@ -3,6 +3,7 @@ import { getStateData, getDistrictData, getBlockData, machineApi } from '../Serv
 import { Block, District, StateData } from '../../types/survey';
 import { MachineDetailsResponse } from '../../types/machine';
 import { isIEUser } from '../../utils/accessControl';
+import SearchableSelect from '../Forms/SearchableSelect';
 
 interface FiltersProps {
   selectedState: string;
@@ -15,6 +16,7 @@ interface FiltersProps {
   selectedIssueType: string;
   selectedFromDate?: string;
   selectedToDate?: string;
+  showWorkType?: boolean;
   onStateChange: (state: string) => void;
   onDistrictChange: (district: string) => void;
   onBlockChange: (block: string) => void;
@@ -39,6 +41,7 @@ export default function Filters({
   selectedIssueType,
   selectedFromDate = '',
   selectedToDate = '',
+  showWorkType = true,
   onStateChange,
   onDistrictChange,
   onBlockChange,
@@ -171,87 +174,82 @@ export default function Filters({
   return (
     <div className="bg-white border-b border-gray-200 px-6 py-3">
       <div className="flex flex-wrap items-center gap-3">
-        <select
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[100px]"
+        <SearchableSelect
+          className="min-w-[100px]"
           value={selectedState}
-          onChange={(e) => onStateChange(e.target.value)}
+          onChange={onStateChange}
           disabled={loadingStates}
-        >
-          <option value="">All States</option>
-          {states.map((state) => (
-            <option key={state.state_id} value={state.state_id}>
-              {state.state_name}
-            </option>
-          ))}
-        </select>
+          placeholder="All States"
+          options={states.map((state) => ({
+            value: String(state.state_id),
+            label: state.state_name,
+          }))}
+        />
 
-        <select
-          className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[100px]"
+        <SearchableSelect
+          className="min-w-[100px]"
           value={selectedDistrict}
-          onChange={(e) => onDistrictChange(e.target.value)}
+          onChange={onDistrictChange}
           disabled={loadingDistricts || !selectedState}
-        >
-          <option value="">All Districts</option>
-          {districts.map((district) => (
-            <option key={district.district_id} value={district.district_id}>
-              {district.district_name}
-            </option>
-          ))}
-        </select>
-        <select
-          className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[100px]"
+          placeholder="All Districts"
+          options={districts.map((district) => ({
+            value: String(district.district_id),
+            label: district.district_name,
+          }))}
+        />
+        <SearchableSelect
+          className="min-w-[100px]"
           value={selectedBlock}
-          onChange={(e) => onBlockChange(e.target.value)}
+          onChange={onBlockChange}
           disabled={loadingBlock || !selectedDistrict}
-        >
-          <option value="">All Blocks</option>
-          {blocks.map((block) => (
-            <option key={block.block_id} value={block.block_id}>
-              {block.block_name}
-            </option>
-          ))}
-        </select>
+          placeholder="All Blocks"
+          options={blocks.map((block) => ({
+            value: String(block.block_id),
+            label: block.block_name,
+          }))}
+        />
         {!ieUser && (
-        <select
-          className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[100px] "
+        <SearchableSelect
+          className="min-w-[100px]"
           value={selectedVendor}
-          onChange={(e) => onVendorChange(e.target.value)}
+          onChange={onVendorChange}
           disabled={loadingVendors}
-        >
-          <option value="">All Vendors</option>
-          {vendors.map((vendor) => (
-            <option key={vendor.firm_id} value={vendor.firm_id.toString()}>
-              {vendor.firm_name}
-            </option>
-          ))}
-        </select>
+          placeholder="All Vendors"
+          options={vendors.map((vendor) => ({
+            value: vendor.firm_id.toString(),
+            label: vendor.firm_name,
+          }))}
+        />
  )}
-        
-        <select
-          className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[100px]"
-          value={selectedWorkType}
-          onChange={(e) => onWorkTypeChange(e.target.value)}
-        >
-        <option value="">All Work Type</option>
-          <option value="New Construction">New Construction</option>
-          <option value="Rectification">Rectification</option>
-           <option value="OFC Blowing/ JointChamber">OFC Blowing / Joint Chamber</option>
-          <option value="Protection">Protection</option>
-        </select>
-        {!ieUser && (
-         <select
-          className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[100px]"
-          value={selectedIssueType}
-          onChange={(e) => onIssueTypeChange(e.target.value)}
-        >
-        <option value="">All Issue Category</option>
-          <option value="INVALID_COORDINATES">Invalid Coordinates</option>
-          <option value="DEPTH_MISSING">Depth Missing</option>
-          <option value="LOW_DEPTH">Low Depth</option>
-          <option value="HIGH_DEPTH">High Depth</option>
-          <option value="SURVEY_DISTANCE_EXCEEDED">Survey Distance Exceeded</option>
 
-        </select>
+        {showWorkType && (
+        <SearchableSelect
+          className="min-w-[100px]"
+          value={selectedWorkType}
+          onChange={onWorkTypeChange}
+          placeholder="All Work Type"
+          options={[
+            { value: 'New Construction', label: 'New Construction' },
+            { value: 'Rectification', label: 'Rectification' },
+            { value: 'OFC Blowing/ JointChamber', label: 'OFC Blowing / Joint Chamber' },
+            { value: 'Protection', label: 'Protection' },
+          ]}
+        />
+        )}
+        {!ieUser && (
+         <SearchableSelect
+          className="min-w-[100px]"
+          value={selectedIssueType}
+          onChange={onIssueTypeChange}
+          placeholder="All Issue Category"
+          options={[
+            { value: 'INVALID_COORDINATES', label: 'Invalid Coordinates' },
+            { value: 'DEPTH_MISSING', label: 'Depth Missing' },
+            { value: 'LOW_DEPTH', label: 'Low Depth' },
+            { value: 'HIGH_DEPTH', label: 'High Depth' },
+            { value: 'SURVEY_DISTANCE_EXCEEDED', label: 'Survey Distance Exceeded' },
+          ]}
+        />
         )}
         
         {ieUser ? (
@@ -272,18 +270,20 @@ export default function Filters({
             />
           </>
         ) : (
-          <select
-            className="px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[100px]"
+          <SearchableSelect
+            className="min-w-[100px]"
             value={selectedPeriod}
-            onChange={(e) => onPeriodChange(e.target.value)}
-          >
-            <option value="today">Today</option>
-            <option value="yesterday">Yesterday</option>
-            <option value="7">Last 7 Days</option>
-            <option value="15">Last 15 Days</option>
-            <option value="30">Last 30 Days</option>
-            <option value="all">All Time</option>
-          </select>
+            onChange={onPeriodChange}
+            isClearable={false}
+            options={[
+              { value: 'today', label: 'Today' },
+              { value: 'yesterday', label: 'Yesterday' },
+              { value: '7', label: 'Last 7 Days' },
+              { value: '15', label: 'Last 15 Days' },
+              { value: '30', label: 'Last 30 Days' },
+              { value: 'all', label: 'All Time' },
+            ]}
+          />
         )}
 
         {/* <div className="flex-1 min-w-[100px]">

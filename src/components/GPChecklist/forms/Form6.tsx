@@ -12,6 +12,7 @@ import {
 import { FormData, GeoTaggedImage } from '../../../types/gp-checklist';
 import { useState, useEffect } from 'react';
 import ImageCapture from './ImageCapture';
+import SearchableSelect from '../../Forms/SearchableSelect';
 import {
   addImageAttachment,
   buildPrintPage,
@@ -240,16 +241,13 @@ export default function Form6({ data, onChange }: Form6Props) {
           <label className="block text-sm font-medium text-gray-900 mb-2">
             Site clear of loose cables, debris, or obstructions
           </label>
-          <select
+          <SearchableSelect
             value={data?.siteClean || ''}
-            onChange={(e) => updateField('siteClean', e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all bg-white"
-          >
-            <option value="">Select</option>
-            <option value="Loose cables">Loose cables</option>
-            <option value="Debris">Debris</option>
-            <option value="Obstructions">Obstructions</option>
-          </select>
+            onChange={(value) => updateField('siteClean', value)}
+            options={['Loose cables', 'Debris', 'Obstructions']}
+            placeholder="Select"
+            className="w-full"
+          />
         </div>
         <>
           <ImageCapture

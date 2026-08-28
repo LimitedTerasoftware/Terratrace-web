@@ -11,6 +11,7 @@ import { FormData, GeoTaggedImage } from '../../../types/gp-checklist';
 import { useState, useEffect } from 'react';
 import ImageCapture from './ImageCapture';
 import { addImageAttachment, buildPrintPage } from './printUtils';
+import SearchableSelect from '../../Forms/SearchableSelect';
 
 interface Form3Props {
   data: FormData['form3'] | undefined;
@@ -377,17 +378,13 @@ export default function Form3({ data, onChange }: Form3Props) {
           Select device and upload QR code image
         </p>
         <div className="space-y-3">
-          <select
+          <SearchableSelect
             value={data?.qrType || ''}
-            onChange={(e) => updateField('qrType', e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all bg-white"
-          >
-            <option value="">Select Qr Type</option>
-            <option value="ONT">ONT</option>
-            <option value="Enclosure">Enclosure</option>
-            <option value="Solar Panel">Solar Panel</option>
-            <option value="Battery">Battery</option>
-          </select>
+            onChange={(value) => updateField('qrType', value)}
+            options={['ONT', 'Enclosure', 'Solar Panel', 'Battery']}
+            placeholder="Select Qr Type"
+            className="w-full"
+          />
 
           <ImageCapture
             onCapture={handleQrCodeCapture}

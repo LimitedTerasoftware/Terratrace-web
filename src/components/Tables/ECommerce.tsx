@@ -7,6 +7,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { useNavigate } from 'react-router-dom';
 import moment from "moment";
 import { getAuthHeaders } from "../../utils/accessControl";
+import SearchableSelect from '../Forms/SearchableSelect';
 
 
 const tabs = [
@@ -230,19 +231,13 @@ const ECommerce: React.FC = () => {
           </div>
 
           {/* State Dropdown */}
-          <select
+          <SearchableSelect
           value={selectedState}
-          onChange={(e) => setSelectedState(e.target.value)}
-          className="border px-3 py-2 rounded-lg bg-white text-gray-700 w-full lg:w-[200px] "
-         
-        >
-          <option value="">All States</option>
-          {states.map((state) => (
-            <option key={state.state_id} value={state.state_id}>
-              {state.state_name}
-            </option>
-          ))}
-        </select>
+          onChange={(value) => setSelectedState(value)}
+          options={states.map((state) => ({ value: String(state.state_id), label: state.state_name }))}
+          placeholder="All States"
+          className="w-full lg:w-[200px]"
+        />
 
           {/* From Date */}
           <input

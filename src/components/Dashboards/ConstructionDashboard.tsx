@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { 
+import SearchableSelect from '../Forms/SearchableSelect';
+import {
   Download,
   HardHat,
   Mail, 
@@ -96,6 +97,10 @@ const ConstructionDashboard: React.FC = () => {
   const [activeTimeFilter, setActiveTimeFilter] = useState<'Today' | 'Week' | 'Month' | 'Custom'>('Today');
   const [activeTab, setActiveTab] = useState<'Teams' | 'Contractors'>('Teams');
   const [activeViewTab, setActiveViewTab] = useState<'Table' | 'Charts' | 'Insights'>('Table');
+  const [selectedDistrict, setSelectedDistrict] = useState('');
+  const [selectedBlock, setSelectedBlock] = useState('');
+  const [selectedContractor, setSelectedContractor] = useState('');
+  const [selectedTeam, setSelectedTeam] = useState('');
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -146,29 +151,37 @@ const ConstructionDashboard: React.FC = () => {
           <div className="p-5">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <select className="px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-700 min-w-[140px]">
-                  <option>All Districts</option>
-                  <option>North District</option>
-                  <option>South District</option>
-                </select>
-                
-                <select className="px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-700 min-w-[140px]">
-                  <option>All Blocks</option>
-                  <option>Block A</option>
-                  <option>Block B</option>
-                </select>
-                
-                <select className="px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-700 min-w-[140px]">
-                  <option>All Contractors</option>
-                  <option>BuildCorp Ltd</option>
-                  <option>FastTrack Construction</option>
-                </select>
-                
-                <select className="px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-700 min-w-[140px]">
-                  <option>All Teams</option>
-                  <option>Team Alpha</option>
-                  <option>Team Beta</option>
-                </select>
+                <SearchableSelect
+                  value={selectedDistrict}
+                  onChange={setSelectedDistrict}
+                  options={['North District', 'South District']}
+                  placeholder="All Districts"
+                  className="min-w-[140px]"
+                />
+
+                <SearchableSelect
+                  value={selectedBlock}
+                  onChange={setSelectedBlock}
+                  options={['Block A', 'Block B']}
+                  placeholder="All Blocks"
+                  className="min-w-[140px]"
+                />
+
+                <SearchableSelect
+                  value={selectedContractor}
+                  onChange={setSelectedContractor}
+                  options={['BuildCorp Ltd', 'FastTrack Construction']}
+                  placeholder="All Contractors"
+                  className="min-w-[140px]"
+                />
+
+                <SearchableSelect
+                  value={selectedTeam}
+                  onChange={setSelectedTeam}
+                  options={['Team Alpha', 'Team Beta']}
+                  placeholder="All Teams"
+                  className="min-w-[140px]"
+                />
               </div>
 
               <div className="flex items-center gap-3">

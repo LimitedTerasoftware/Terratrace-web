@@ -5,6 +5,7 @@ import { useParams } from "react-router-dom";
 import { FaArrowLeft } from "react-icons/fa";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import SearchableSelect from "../Forms/SearchableSelect";
 
 interface AerialEdit {
   [key: string]: string;
@@ -134,36 +135,26 @@ function AerialEdit() {
                 <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
                   Start GP Name
                 </label>
-                <select
+                <SearchableSelect
                   value={data.startGpName || ""}
-                  onChange={(e) => setData({ ...data, startGpName: e.target.value })}
-                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                >
-                  <option value="">Select Start Gp</option>
-                  {startGpName.map((startgp, index) => (
-                    <option key={index} value={startgp}>
-                      {startgp}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(value) => setData({ ...data, startGpName: value })}
+                  options={startGpName}
+                  placeholder="Select Start Gp"
+                  className="w-full"
+                />
               </div>
 
               <div>
                 <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
                   End GP Name
                 </label>
-                <select
+                <SearchableSelect
                   value={data.endGpName || ""}
-                  onChange={(e) => setData({ ...data, endGpName: e.target.value })}
-                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                >
-                  <option value="">Select End GP Name</option>
-                  {endGpName.map((endgp, index) => (
-                    <option key={index} value={endgp}>
-                      {endgp}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(value) => setData({ ...data, endGpName: value })}
+                  options={endGpName}
+                  placeholder="Select End GP Name"
+                  className="w-full"
+                />
               </div>
 
           

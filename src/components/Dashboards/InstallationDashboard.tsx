@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import DataTable, { TableColumn } from 'react-data-table-component';
 import { getAuthHeaders } from '../../utils/accessControl';
+import SearchableSelect from '../Forms/SearchableSelect';
 
 // API Response Types for GP Installation
 interface ApiResponse {
@@ -848,89 +849,44 @@ const InstallationDashboard: React.FC = () => {
               <div className="flex items-center gap-3 flex-wrap">
                 {/* State Filter */}
                 <div className="relative min-w-[140px]">
-                  <select
+                  <SearchableSelect
                     value={selectedStateCode || ''}
-                    onChange={(e) => handleStateChange(e.target.value)}
+                    onChange={handleStateChange}
+                    options={states.map((state) => ({
+                      value: String(state.state_code),
+                      label: state.state_name,
+                    }))}
+                    placeholder="All States"
                     disabled={loadingStates}
-                    className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md bg-white text-sm text-gray-700 appearance-none disabled:opacity-50"
-                  >
-                    <option value="">All States</option>
-                    {states.map((state) => (
-                      <option key={state.state_id} value={state.state_code}>
-                        {state.state_name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                    {loadingStates ? (
-                      <svg className="animate-spin h-4 w-4 text-gray-400" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                    ) : (
-                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    )}
-                  </div>
+                  />
                 </div>
 
                 {/* District Filter */}
                 <div className="relative min-w-[140px]">
-                  <select
+                  <SearchableSelect
                     value={selectedDistrictCode || ''}
-                    onChange={(e) => handleDistrictChange(e.target.value)}
+                    onChange={handleDistrictChange}
+                    options={districts.map((district) => ({
+                      value: String(district.district_code),
+                      label: district.district_name,
+                    }))}
+                    placeholder="All Districts"
                     disabled={!selectedStateId || loadingDistricts}
-                    className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md bg-white text-sm text-gray-700 appearance-none disabled:opacity-50"
-                  >
-                    <option value="">All Districts</option>
-                    {districts.map((district) => (
-                      <option key={district.district_id} value={district.district_code}>
-                        {district.district_name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                    {loadingDistricts ? (
-                      <svg className="animate-spin h-4 w-4 text-gray-400" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                    ) : (
-                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    )}
-                  </div>
+                  />
                 </div>
 
                 {/* Block Filter */}
                 <div className="relative min-w-[140px]">
-                  <select
+                  <SearchableSelect
                     value={selectedBlockCode || ''}
-                    onChange={(e) => handleBlockChange(e.target.value)}
+                    onChange={handleBlockChange}
+                    options={blocks.map((block) => ({
+                      value: String(block.block_code),
+                      label: block.block_name,
+                    }))}
+                    placeholder="All Blocks"
                     disabled={!selectedDistrictId || loadingBlocks}
-                    className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md bg-white text-sm text-gray-700 appearance-none disabled:opacity-50"
-                  >
-                    <option value="">All Blocks</option>
-                    {blocks.map((block) => (
-                      <option key={block.block_id} value={block.block_code}>
-                        {block.block_name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                    {loadingBlocks ? (
-                      <svg className="animate-spin h-4 w-4 text-gray-400" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                    ) : (
-                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    )}
-                  </div>
+                  />
                 </div>
               </div>
 

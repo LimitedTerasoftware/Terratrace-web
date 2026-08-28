@@ -4,6 +4,7 @@ import { AerialSurveyDetails, AerialPole, AerialRoadCrossing, EditType } from '.
 import { updateAerialData } from '../Services/api';
 import axios from 'axios';
 import { getAuthHeaders } from '../../utils/accessControl';
+import SearchableSelect from '../Forms/SearchableSelect';
 
 
 
@@ -346,18 +347,13 @@ const removeImageAtIndex = (index: number) => {
         {loadingGPD ? (
           <div className="mt-1 text-sm text-gray-500">Loading...</div>
         ) : (
-          <select
+          <SearchableSelect
             value={formData.gp_id || ''}
-            onChange={(e) => handleGPChange('gp_id', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Select Start GP</option>
-            {gpOptions.map((opt) => (
-              <option value={opt.id} key={opt.id}>
-                {opt.name}-{opt.lgd_code}
-              </option>
-            ))}
-          </select>
+            onChange={(value) => handleGPChange('gp_id', value)}
+            options={gpOptions.map((opt) => ({ value: String(opt.id), label: `${opt.name}-${opt.lgd_code}` }))}
+            placeholder="Select Start GP"
+            className="w-full"
+          />
         )}
       </div>
       <div>
@@ -376,18 +372,13 @@ const removeImageAtIndex = (index: number) => {
         {loadingGPD ? (
           <div className="mt-1 text-sm text-gray-500">Loading...</div>
         ) : (
-          <select
+          <SearchableSelect
             value={formData.end_gp_id || ''}
-            onChange={(e) => handleGPChange('end_gp_id', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Select End GP</option>
-            {gpOptions.map((opt) => (
-              <option value={opt.id} key={opt.id}>
-                {opt.name}-{opt.lgd_code}
-              </option>
-            ))}
-          </select>
+            onChange={(value) => handleGPChange('end_gp_id', value)}
+            options={gpOptions.map((opt) => ({ value: String(opt.id), label: `${opt.name}-${opt.lgd_code}` }))}
+            placeholder="Select End GP"
+            className="w-full"
+          />
         )}
       </div>
       <div>
@@ -417,32 +408,24 @@ const removeImageAtIndex = (index: number) => {
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Pole Condition</label>
-        <select
+        <SearchableSelect
           value={formData.poleCondition || ''}
-          onChange={(e) => handleChange('poleCondition', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Select Condition</option>
-          <option value="Accessible">Accessible </option>
-          <option value="Non Accessible">Non Accessible</option>
-        
-        </select>
+          onChange={(value) => handleChange('poleCondition', value)}
+          options={['Accessible', 'Non Accessible']}
+          placeholder="Select Condition"
+          className="w-full"
+        />
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Type of Pole</label>
-          <select
+          <SearchableSelect
           value={formData.typeOfPole || ''}
-          onChange={(e) => handleChange('typeOfPole', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Select Type</option>
-          <option value='Cement'>Cement</option>
-          <option value='Iron'>Iron</option>
-          <option value='GI'>GI</option>
-          <option value='Tower Pole'>Tower Pole</option>
-        
-        </select>
-       
+          onChange={(value) => handleChange('typeOfPole', value)}
+          options={['Cement', 'Iron', 'GI', 'Tower Pole']}
+          placeholder="Select Type"
+          className="w-full"
+        />
+
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Pole Position</label>
@@ -455,18 +438,14 @@ const removeImageAtIndex = (index: number) => {
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Pole Availability At</label>
-          <select
+          <SearchableSelect
           value={formData.poleAvailabilityAt || ''}
-          onChange={(e) => handleChange('poleAvailabilityAt', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Select Availability</option>
-          <option value="Agriculture Land">Agriculture Land</option>
-          <option value="Road Side">Road Side</option>
-          <option value="Open Field">Open Field</option>
-        
-        </select>
-     
+          onChange={(value) => handleChange('poleAvailabilityAt', value)}
+          options={['Agriculture Land', 'Road Side', 'Open Field']}
+          placeholder="Select Availability"
+          className="w-full"
+        />
+
       </div>
       <ImageField label="Pole Photo" field="polePhoto" />
     </>
@@ -485,20 +464,13 @@ const removeImageAtIndex = (index: number) => {
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Type of Crossing</label>
-        <select
+        <SearchableSelect
           value={formData.typeOfCrossing || ''}
-          onChange={(e) => handleChange('typeOfCrossing', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Select Type</option>
-          <option value='Bridge'>Bridge</option>
-          <option value='Culvert'>Culvert</option>
-          <option value='Rail Over & Under Bridge'>Rail Over &amp; Under Bridge</option>
-          <option value='Cause Ways'>Cause Ways</option>
-          <option value='Level Crossing'>Level Crossing</option>
-          <option value="Road Crossing">Road Crossing</option>
-        
-        </select>
+          onChange={(value) => handleChange('typeOfCrossing', value)}
+          options={['Bridge', 'Culvert', 'Rail Over & Under Bridge', 'Cause Ways', 'Level Crossing', 'Road Crossing']}
+          placeholder="Select Type"
+          className="w-full"
+        />
       </div>
       <ImageField label="Start Photo" field="startPhoto" />
       <ImageField label="End Photo" field="endPhoto" />

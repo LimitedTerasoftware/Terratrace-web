@@ -27,6 +27,7 @@ import {
   getMachineOptions,
 } from '../../Services/api';
 import DataTable, { TableColumn } from 'react-data-table-component';
+import SearchableSelect from '../../Forms/SearchableSelect';
 import { Block, District } from '../../../types/survey';
 
 interface StateData {
@@ -470,140 +471,42 @@ export default function Dashboard() {
         <div className="px-4 py-3 border-b border-gray-100">
           <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1">
             <div className="relative flex-shrink-0">
-              <select
+              <SearchableSelect
                 value={selectedState}
-                onChange={(e) => handleStateChange(e.target.value)}
-                className="appearance-none pl-3 pr-7 py-1.5 md:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-w-[100px] md:min-w-[120px] text-xs md:text-sm"
-              >
-                <option value="">All States</option>
-                {states.map((state) => (
-                  <option key={state.state_id} value={state.state_id}>
-                    {state.state_name}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                <svg
-                  className="w-4 h-4 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </div>
+                onChange={handleStateChange}
+                options={states.map((state) => ({
+                  value: String(state.state_id),
+                  label: state.state_name,
+                }))}
+                placeholder="All States"
+                className="min-w-[100px] md:min-w-[120px] text-xs md:text-sm"
+              />
             </div>
             <div className="relative flex-shrink-0">
-              <select
+              <SearchableSelect
                 value={selectedDistrict}
-                onChange={(e) => handleDistrictChange(e.target.value)}
+                onChange={handleDistrictChange}
                 disabled={!selectedState || loadingDistricts}
-                className="appearance-none pl-3 pr-7 py-1.5 md:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-w-[100px] md:min-w-[120px] disabled:opacity-50 text-xs md:text-sm"
-              >
-                <option value="">All Districts</option>
-                {districts.map((district) => (
-                  <option
-                    key={district.district_id}
-                    value={district.district_id}
-                  >
-                    {district.district_name}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                {loadingDistricts ? (
-                  <svg
-                    className="animate-spin h-4 w-4 text-gray-400"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      fill="none"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                ) : (
-                  <svg
-                    className="w-4 h-4 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                )}
-              </div>
+                options={districts.map((district) => ({
+                  value: String(district.district_id),
+                  label: district.district_name,
+                }))}
+                placeholder="All Districts"
+                className="min-w-[100px] md:min-w-[120px] text-xs md:text-sm"
+              />
             </div>
             <div className="relative flex-shrink-0">
-              <select
+              <SearchableSelect
                 value={selectedBlock}
-                onChange={(e) => handleBlockChange(e.target.value)}
+                onChange={handleBlockChange}
                 disabled={!selectedDistrict || loadingBlock}
-                className="appearance-none pl-3 pr-7 py-1.5 md:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-w-[100px] md:min-w-[120px] disabled:opacity-50 text-xs md:text-sm"
-              >
-                <option value="">All Blocks</option>
-                {blocks.map((block) => (
-                  <option key={block.block_id} value={block.block_id}>
-                    {block.block_name}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                {loadingBlock ? (
-                  <svg
-                    className="animate-spin h-4 w-4 text-gray-400"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      fill="none"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                ) : (
-                  <svg
-                    className="w-4 h-4 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                )}
-              </div>
+                options={blocks.map((block) => ({
+                  value: String(block.block_id),
+                  label: block.block_name,
+                }))}
+                placeholder="All Blocks"
+                className="min-w-[100px] md:min-w-[120px] text-xs md:text-sm"
+              />
             </div>
             <div className="relative flex-shrink-0">
               <input

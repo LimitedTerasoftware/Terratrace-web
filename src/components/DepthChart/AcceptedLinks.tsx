@@ -6,6 +6,7 @@ import DataTable, { TableColumn } from 'react-data-table-component';
 import { ToastContainer, toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
 import { getAuthHeaders, isAdminUser } from '../../utils/accessControl';
+import SearchableSelect from '../Forms/SearchableSelect';
 
 interface AcceptedLinkRow {
   id: number;
@@ -513,10 +514,10 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
         return (
           <select
             value={status}
-            disabled={isUpdating}
+              disabled={isUpdating}
             onChange={(e) =>
               handleStatusChange(row, 'status', Number(e.target.value))
-            }
+              }
             className={`text-xs font-semibold rounded-full px-2 py-1 border outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${config.className}`}
           >
             <option value={0}>Pending</option>
@@ -575,10 +576,10 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
         return (
           <select
             value={status}
-            disabled={isUpdating}
+              disabled={isUpdating}
             onChange={(e) =>
               handleStatusChange(row, 'ofc_status', Number(e.target.value))
-            }
+              }
             className={`text-xs font-semibold rounded-full px-2 py-1 border outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${config.className}`}
           >
             <option value={0}>Pending</option>
