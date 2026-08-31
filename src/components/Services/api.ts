@@ -951,11 +951,19 @@ export interface PoleDashboardResponse {
     total_poles: number;
     new_poles: number;
     existing_poles: number;
-    pending_poles: number;
-    accepted_poles: number;
-    rejected_poles: number;
+    pending_poles?: number;
+    accepted_poles?: number;
+    rejected_poles?: number;
     total_distance_km: number;
+    new_poles_distance_km: number;
+    existing_poles_distance_km: number;
     completion_rate: number;
+    new_poles_by_muff_type: {
+      Muff: number;
+      Mold: number;
+      Unknown: number;
+      [key: string]: number;
+    };
   };
 }
 

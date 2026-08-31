@@ -66,18 +66,40 @@ export default function AerialDashboard() {
           accentColor: 'default' as const,
         },
         {
-          label: 'Pending Poles',
-          value: formatNumber(poleData.pending_poles),
+          label: 'Muff Count',
+          value: formatNumber(
+            (poleData.new_poles_by_muff_type?.Muff ?? 0) +
+              (poleData.new_poles_by_muff_type?.Mold ?? 0) +
+              (poleData.new_poles_by_muff_type?.Unknown ?? 0),
+          ),
           accentColor: 'yellow' as const,
+          breakdown: [
+            {
+              label: 'Muff',
+              value: formatNumber(poleData.new_poles_by_muff_type?.Muff ?? 0),
+            },
+            {
+              label: 'Mold',
+              value: formatNumber(poleData.new_poles_by_muff_type?.Mold ?? 0),
+            },
+            {
+              label: 'Unknown',
+              value: formatNumber(
+                poleData.new_poles_by_muff_type?.Unknown ?? 0,
+              ),
+            },
+          ],
         },
         {
-          label: 'Rejected Poles',
-          value: formatNumber(poleData.rejected_poles),
+          label: 'Existing Poles Distance',
+          value: formatNumber(poleData.existing_poles_distance_km),
+          unit: 'KM',
           accentColor: 'red' as const,
         },
         {
-          label: 'Accepted Poles',
-          value: formatNumber(poleData.accepted_poles),
+          label: 'New Poles Distance',
+          value: formatNumber(poleData.new_poles_distance_km),
+          unit: 'KM',
           accentColor: 'default' as const,
         },
         {
@@ -369,6 +391,7 @@ export default function AerialDashboard() {
                       value={s.value}
                       unit={s.unit}
                       accentColor={s.accentColor}
+                      breakdown={s.breakdown}
                     />
                   ))}
                 </div>

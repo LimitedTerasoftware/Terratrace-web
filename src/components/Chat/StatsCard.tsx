@@ -3,6 +3,7 @@ interface StatsCardProps {
   value: string | number;
   unit?: string;
   accentColor?: 'default' | 'green' | 'blue' | 'yellow' | 'red';
+  breakdown?: { label: string; value: string | number }[];
 }
 
 const accentMap: Record<string, string> = {
@@ -13,7 +14,7 @@ const accentMap: Record<string, string> = {
   red: 'border-l-red-500',
 };
 
-export function StatsCard({ label, value, unit, accentColor = 'default' }: StatsCardProps) {
+export function StatsCard({ label, value, unit, accentColor = 'default', breakdown }: StatsCardProps) {
   return (
     <div className={`bg-white rounded-xl border border-gray-200 border-l-4 ${accentMap[accentColor]} px-4 py-4 shadow-sm min-w-0`}>
       <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
@@ -21,6 +22,15 @@ export function StatsCard({ label, value, unit, accentColor = 'default' }: Stats
         {value}
         {unit && <span className="text-sm font-semibold text-gray-500 ml-1">{unit}</span>}
       </p>
+      {breakdown && breakdown.length > 0 && (
+        <div className="mt-2 flex flex-nowrap items-center gap-x-2 overflow-x-auto whitespace-nowrap">
+          {breakdown.map((b) => (
+            <span key={b.label} className="text-[11px] text-gray-500 shrink-0">
+              {b.label}: <span className="font-semibold text-gray-700">{b.value}</span>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
