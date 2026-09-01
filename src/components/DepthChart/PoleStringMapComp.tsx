@@ -185,7 +185,7 @@ const InfoWindow: React.FC<{
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-lg">{config.icon}</span>
-            <h3 className="font-semibold text-sm">{config.label}</h3>
+            <h3 className="font-semibold text-sm">{config.label} - {record.id}</h3>
             {record.pit_id && (
               <span className="text-xs bg-white bg-opacity-20 px-2 py-0.5 rounded">
                 {record.pit_id}
@@ -704,7 +704,6 @@ const MapComponent: React.FC<Props> = ({
 
     const visible = validData.filter((r) => visibleTypes.has(r.eventType));
     const newMarkers: google.maps.Marker[] = [];
-    let idx = 0;
 
     visible.forEach((record) => {
       const config = getMarkerConfig(record.eventType);
@@ -713,7 +712,6 @@ const MapComponent: React.FC<Props> = ({
         fillColor =
           record.pole_type.toLowerCase() === 'existing' ? '#3B82F6' : '#EF4444';
       }
-      idx++;
 
       const origLat = Number(record.latitude);
       const origLng = Number(record.longitude);
@@ -726,9 +724,9 @@ const MapComponent: React.FC<Props> = ({
       const marker = new google.maps.Marker({
         position: { lat, lng },
         map,
-        title: `${config.label} — ${record.pit_id ?? record.id}`,
+        title: `${config.label} — ${(record.order_index || record.id).toString() ?? record.pit_id }`,
         label: {
-          text: idx.toString(),
+          text: (record.order_index || record.id).toString(),
           color: '#ffffff',
           fontSize: '11px',
           fontWeight: 'bold',
@@ -784,7 +782,6 @@ const MapComponent: React.FC<Props> = ({
       if (!visibleTypes.has(kind)) return;
       const cfg = getMarkerConfig(kind);
       points.forEach((point) => {
-        idx++;
         const marker = new google.maps.Marker({
           position: { lat: point.lat, lng: point.lng },
           map,
@@ -876,13 +873,17 @@ const MapComponent: React.FC<Props> = ({
       return;
     }
 
-    // Group valid points by survey_id, sorted ascending by record id
+    // Group valid, currently-visible points by survey_id, sorted ascending
+    // by record id — hidden event types must not stitch the line through
+    // their coordinates.
     const groups: Record<string, PoleString[]> = {};
-    validData.forEach((r) => {
-      const key = String(r.survey_id ?? `no_survey_${r.id}`);
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(r);
-    });
+    validData
+      .filter((r) => visibleTypes.has(r.eventType))
+      .forEach((r) => {
+        const key = String(r.survey_id ?? `no_survey_${r.id}`);
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(r);
+      });
 
     // Assign a distinct stroke color per survey group
     const STROKE_COLORS = [
@@ -898,12 +899,14 @@ const MapComponent: React.FC<Props> = ({
 
     const newPolylines: google.maps.Polyline[] = [];
     Object.entries(groups).forEach(([, records], groupIndex) => {
-      // Sort by id ascending so line follows insertion order
-      const sorted = [...records].sort((a, b) => a.order_index || a.id - b.order_index || a.id);
+      // Sort by order_index ascending so line follows survey order
+      const sorted = [...records].sort(
+        (a, b) => (a.order_index || a.id) - (b.order_index || b.id),
+      );
       if (sorted.length < 2) return;
 
       const path = sorted.map((r) => {
-        const override = positionOverridesRef.current.get(r.order_index || r.id);
+        const override = positionOverridesRef.current.get(r.id);
         return {
           lat: override?.lat ?? Number(r.latitude),
           lng: override?.lng ?? Number(r.longitude),

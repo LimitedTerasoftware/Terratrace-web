@@ -20,6 +20,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { getAuthHeaders, isAdminUser } from '../../utils/accessControl';
 import { getPoleDashboard } from '../Services/api';
 import SearchableSelect from '../Forms/SearchableSelect';
+import { StatsCard } from '../Chat/StatsCard';
 
 interface StatesResponse {
   success: boolean;
@@ -31,7 +32,14 @@ type StatusOption = {
   label: string;
 };
 
+type PoleDashboardData =
+  import('../Services/api').PoleDashboardResponse['data'];
+
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
+
+const formatNumber = (num: number) => {
+  return num.toLocaleString('en-IN');
+};
 
 function AerialListPage() {
   const AdminAcess = isAdminUser();
@@ -67,8 +75,7 @@ function AerialListPage() {
   const [loadingConnections, setLoadingConnections] = useState(false);
   const [surveyData, setSurveyData] = useState<UGConstructionSurveyData[]>([]);
   const [loadingStats] = useState<boolean>(false);
-  const [newPoleCount, setNewPoleCount] = useState<number>(0);
-  const [existingPoleCount, setExistingPoleCount] = useState<number>(0);
+  const [poleData, setPoleData] = useState<PoleDashboardData | null>(null);
   const [loadingPoleStats, setLoadingPoleStats] = useState<boolean>(false);
   const [worktype, setWorktype] = useState<string[]>([]);
   const [workTypeDropdownOpen, setWorkTypeDropdownOpen] = useState(false);
@@ -99,6 +106,69 @@ function AerialListPage() {
     { value: 'OFC Blowing/ JointChamber', label: 'OFC Blowing / Joint Chamber' },
     { value: 'Protection', label: 'Protection' },
   ];
+
+  const poleStats = poleData
+    ? [
+        {
+          label: 'Total Poles',
+          value: formatNumber(poleData.total_poles),
+          accentColor: 'blue' as const,
+        },
+        {
+          label: 'New Poles',
+          value: formatNumber(poleData.new_poles),
+          accentColor: 'green' as const,
+          breakdown: [
+            {
+              label: 'Distance',
+              value: `${formatNumber(poleData.new_poles_distance_km)} KM`,
+            },
+          ],
+        },
+        {
+          label: 'Existing Poles',
+          value: formatNumber(poleData.existing_poles),
+          accentColor: 'red' as const,
+          breakdown: [
+            {
+              label: 'Distance',
+              value: `${formatNumber(poleData.existing_poles_distance_km)} KM`,
+            },
+          ],
+        },
+        {
+          label: 'Muff Count',
+          value: formatNumber(
+            (poleData.new_poles_by_muff_type?.Muff ?? 0) +
+              (poleData.new_poles_by_muff_type?.Mold ?? 0) +
+              (poleData.new_poles_by_muff_type?.Unknown ?? 0),
+          ),
+          accentColor: 'yellow' as const,
+          breakdown: [
+            {
+              label: 'Muff',
+              value: formatNumber(poleData.new_poles_by_muff_type?.Muff ?? 0),
+            },
+            {
+              label: 'Mold',
+              value: formatNumber(poleData.new_poles_by_muff_type?.Mold ?? 0),
+            },
+            {
+              label: 'Unknown',
+              value: formatNumber(
+                poleData.new_poles_by_muff_type?.Unknown ?? 0,
+              ),
+            },
+          ],
+        },
+        {
+          label: 'Total Distance',
+          value: formatNumber(poleData.total_distance_km),
+          unit: 'KM',
+          accentColor: 'default' as const,
+        },
+      ]
+    : [];
 
 
   const AerialHeader = () => {
@@ -150,10 +220,11 @@ function AerialListPage() {
         block_id: selectedBlock || undefined,
         from_date: fromdate || null,
         to_date: todate || null,
+        start: getSelectedConnectionDetails()?.startLocation,
+        end:   getSelectedConnectionDetails()?.endLocation,
       });
       if (response.status) {
-        setNewPoleCount(response.data.new_poles);
-        setExistingPoleCount(response.data.existing_poles);
+        setPoleData(response.data);
       }
     } catch (error) {
       console.error('Error fetching pole dashboard:', error);
@@ -249,7 +320,7 @@ function AerialListPage() {
   useEffect(() => {
     if (!filtersReady) return;
     fetchPoleDashboard();
-  }, [filtersReady, selectedState, selectedDistrict, selectedBlock, fromdate, todate]);
+  }, [filtersReady, selectedState, selectedDistrict, selectedBlock, fromdate, todate,selectedConnection]);
 
   const getSelectedConnectionDetails = () => {
     if (!selectedConnection) return null;
@@ -272,6 +343,7 @@ function AerialListPage() {
     const state_id = searchParams.get('state_id') || null;
     const district_id = searchParams.get('district_id') || null;
     const block_id = searchParams.get('block_id') || null;
+    const link = searchParams.get('link') || null;
     const status = searchParams.get('status') || null;
     const from_date = searchParams.get('from_date') || '';
     const to_date = searchParams.get('to_date') || '';
@@ -282,6 +354,7 @@ function AerialListPage() {
     setSelectedState(state_id);
     setSelectedDistrict(district_id);
     setSelectedBlock(block_id);
+    setSelectedConnection(link);
     setSelectedStatus(
       status !== null && status !== ''
         ? status
@@ -574,12 +647,27 @@ function AerialListPage() {
     <div className="min-h-screen bg-gray-50">
       <AerialHeader />
 
-      <ConstructionStatsPanel
+      {/* <ConstructionStatsPanel
         surveys={surveyData}
         isLoading={loadingStats || loadingPoleStats}
-        newPoleCount={newPoleCount}
-        existingPoleCount={existingPoleCount}
-      />
+      /> */}
+
+      {poleStats.length > 0 && (
+        <div className="p-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-5 gap-3">
+            {poleStats.map((s) => (
+              <StatsCard
+                key={s.label}
+                label={s.label}
+                value={s.value}
+                unit={s.unit}
+                accentColor={s.accentColor}
+                breakdown={s.breakdown}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="border-b border-gray-200">

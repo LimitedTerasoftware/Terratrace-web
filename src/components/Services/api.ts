@@ -973,6 +973,8 @@ export const getPoleDashboard = async (params: {
   block_id?: string;
   from_date?: string | null;
   to_date?: string | null;
+  start?:string|null;
+  end?:string|null;
 }): Promise<PoleDashboardResponse> => {
   try {
     const queryParams = new URLSearchParams();
@@ -982,6 +984,9 @@ export const getPoleDashboard = async (params: {
     if (params.block_id) queryParams.append('block_id', params.block_id);
     if (params.from_date) queryParams.append('from_date', params.from_date);
     if (params.to_date) queryParams.append('to_date', params.to_date);
+    if(params.start) queryParams.append('start',params.start);
+    if(params.end) queryParams.append('start',params.end);
+
 
     const queryString = queryParams.toString();
     const url = queryString

@@ -17,15 +17,15 @@ const accentMap: Record<string, string> = {
 export function StatsCard({ label, value, unit, accentColor = 'default', breakdown }: StatsCardProps) {
   return (
     <div className={`bg-white rounded-xl border border-gray-200 border-l-4 ${accentMap[accentColor]} px-4 py-4 shadow-sm min-w-0`}>
-      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
+      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide truncate" title={label}>{label}</p>
       <p className="mt-1.5 text-2xl font-bold text-gray-900 leading-none">
         {value}
         {unit && <span className="text-sm font-semibold text-gray-500 ml-1">{unit}</span>}
       </p>
       {breakdown && breakdown.length > 0 && (
-        <div className="mt-2 flex flex-nowrap items-center gap-x-2 overflow-x-auto whitespace-nowrap">
+        <div className={`mt-2 ${breakdown.length > 1 ? 'grid grid-cols-2 gap-x-2 gap-y-0.5' : 'flex flex-col'}`}>
           {breakdown.map((b) => (
-            <span key={b.label} className="text-[11px] text-gray-500 shrink-0">
+            <span key={b.label} className="text-[11px] text-gray-500 whitespace-nowrap">
               {b.label}: <span className="font-semibold text-gray-700">{b.value}</span>
             </span>
           ))}

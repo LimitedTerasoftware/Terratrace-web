@@ -53,17 +53,29 @@ export default function AerialDashboard() {
         {
           label: 'Total Poles',
           value: formatNumber(poleData.total_poles),
-          accentColor: 'default' as const,
+          accentColor: 'blue' as const,
         },
         {
           label: 'New Poles',
           value: formatNumber(poleData.new_poles),
           accentColor: 'green' as const,
+          breakdown: [
+            {
+              label: 'Distance',
+              value: `${formatNumber(poleData.new_poles_distance_km)} KM`,
+            },
+          ],
         },
         {
           label: 'Existing Poles',
           value: formatNumber(poleData.existing_poles),
-          accentColor: 'default' as const,
+          accentColor: 'red' as const,
+          breakdown: [
+            {
+              label: 'Distance',
+              value: `${formatNumber(poleData.existing_poles_distance_km)} KM`,
+            },
+          ],
         },
         {
           label: 'Muff Count',
@@ -91,27 +103,10 @@ export default function AerialDashboard() {
           ],
         },
         {
-          label: 'Existing Poles Distance',
-          value: formatNumber(poleData.existing_poles_distance_km),
-          unit: 'KM',
-          accentColor: 'red' as const,
-        },
-        {
-          label: 'New Poles Distance',
-          value: formatNumber(poleData.new_poles_distance_km),
-          unit: 'KM',
-          accentColor: 'default' as const,
-        },
-        {
           label: 'Total Distance',
           value: formatNumber(poleData.total_distance_km),
           unit: 'KM',
           accentColor: 'default' as const,
-        },
-        {
-          label: 'Completion Rate',
-          value: `${poleData.completion_rate}%`,
-          accentColor: 'blue' as const,
         },
       ]
     : [];
@@ -383,7 +378,7 @@ export default function AerialDashboard() {
           <div className="flex-1 overflow-auto">
             <main className="flex-1 min-w-0 overflow-y-auto">
               <div className="px-5 lg:px-8 py-6 max-w-screen-2xl mx-auto">
-                <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3 mb-6">
+                <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-5 gap-3 mb-6">
                   {stats.map((s) => (
                     <StatsCard
                       key={s.label}
