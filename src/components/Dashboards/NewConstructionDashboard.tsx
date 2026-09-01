@@ -385,6 +385,13 @@ export default function NewConstructionDashboard() {
         todayKm={todayKm}
         yesterdayKm={yesterdayKm}
         selectIssueType={selectIssueType}
+        selectedState={selectedState}
+        selectedDistrict={selectedDistrict}
+        selectedBlock={selectedBlock}
+        selectedVendor={selectedVendor}
+        selectedPeriod={selectedPeriod}
+        selectedFromDate={selectedFromDate}
+        selectedToDate={selectedToDate}
       />
 
       <div className="px-6 pb-6">

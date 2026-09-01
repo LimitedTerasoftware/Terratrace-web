@@ -19,11 +19,7 @@ export default function JointInfoModal({ joint, baseUrl = '', onClose }: JointIn
     if (statusLower.includes('cut')) return 'bg-red-100 text-red-700';
     return 'bg-gray-100 text-gray-700';
   };
-  const photos = joint.photo_path
-  ?.split(',')
-  .map(p => p.trim())
-  .filter(Boolean);
-
+  const photos = joint.photo_path;
  
 
   return (

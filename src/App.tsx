@@ -84,6 +84,7 @@ import MachineDetails from './components/MachineManagement/Reports/MachineItem';
 import MachineSurveyDashboard from './components/MachineManagement/MachineSummary';
 import NewConstructionDashboard from './components/Dashboards/NewConstructionDashboard';
 import AerialDashboard from './components/Dashboards/AerialDashboard';
+import ExecutiveConstructionView from './components/Dashboards/ExecutiveConstructionView';
 import ConstructionIssues from './components/DepthChart/ConstructionIssues';
 import ProtectedRoute, { PublicRoute } from './components/ProtectedRoute';
 import NewInstallationDashboard from './components/Dashboards/NewInstallationDashboard';
@@ -264,6 +265,18 @@ function App() {
                     <DefaultLayout>
                       <PageTitle title="Aerial Dashboard" />
                       <AerialDashboard />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+
+              <Route
+                path="/dashboards/executive-construction-view"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Executive Construction View" />
+                      <ExecutiveConstructionView />
                     </DefaultLayout>
                   </>
                 }

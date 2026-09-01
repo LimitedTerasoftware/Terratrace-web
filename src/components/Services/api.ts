@@ -985,7 +985,7 @@ export const getPoleDashboard = async (params: {
     if (params.from_date) queryParams.append('from_date', params.from_date);
     if (params.to_date) queryParams.append('to_date', params.to_date);
     if(params.start) queryParams.append('start',params.start);
-    if(params.end) queryParams.append('start',params.end);
+    if(params.end) queryParams.append('end',params.end);
 
 
     const queryString = queryParams.toString();

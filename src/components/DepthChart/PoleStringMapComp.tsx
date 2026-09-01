@@ -53,8 +53,8 @@ const EVENT_MARKER_CONFIG: Record<
   DRUM: { color: '#F59E0B', icon: '🥁', label: 'Drum' },
   LANDMARK: { color: '#10B981', icon: '📍', label: 'Landmark' },
   PREVIEW: { color: '#EF4444', icon: '📍', label: 'Survey' },
-  START: { color: '#22C55E', icon: '🟢', label: 'Start Point' },
-  END: { color: '#DC2626', icon: '🔴', label: 'End Point' },
+  START: { color: '#22C55E', icon: '🟢', label: 'Start GP' },
+  END: { color: '#DC2626', icon: '🔴', label: 'End GP' },
 };
 
 const DEFAULT_MARKER = { color: '#6B7280', icon: '📌', label: 'Other' };

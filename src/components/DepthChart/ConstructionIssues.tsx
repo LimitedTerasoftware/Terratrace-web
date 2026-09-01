@@ -33,13 +33,27 @@ function ConstructionIssues() {
   });
   const [loading, setLoading] = useState(true);
 
-  const [selectedState, setSelectedState] = useState<string>('');
-  const [selectedDistrict, setSelectedDistrict] = useState<string>('');
-  const [selectedBlock, setSelectedBlock] = useState<string>('');
-  const [selectedVendor, setSelectedVendor] = useState<string>('');
-  const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
-  const [selectedFromDate, setSelectedFromDate] = useState<string>('');
-  const [selectedToDate, setSelectedToDate] = useState<string>('');
+  const [selectedState, setSelectedState] = useState<string>(
+    location.state?.state_id || '',
+  );
+  const [selectedDistrict, setSelectedDistrict] = useState<string>(
+    location.state?.district_id || '',
+  );
+  const [selectedBlock, setSelectedBlock] = useState<string>(
+    location.state?.block_id || '',
+  );
+  const [selectedVendor, setSelectedVendor] = useState<string>(
+    location.state?.vendor_id || '',
+  );
+  const [selectedPeriod, setSelectedPeriod] = useState<string>(
+    location.state?.period || 'all',
+  );
+  const [selectedFromDate, setSelectedFromDate] = useState<string>(
+    location.state?.from_date || '',
+  );
+  const [selectedToDate, setSelectedToDate] = useState<string>(
+    location.state?.to_date || '',
+  );
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedIssueType, setSelectedIssueType] = useState<string>(
     issueType || '',

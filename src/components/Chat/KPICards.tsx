@@ -25,6 +25,13 @@ interface KPICardsProps {
   todayKm?: number;
   yesterdayKm?: number;
   selectIssueType: string;
+  selectedState?: string;
+  selectedDistrict?: string;
+  selectedBlock?: string;
+  selectedVendor?: string;
+  selectedPeriod?: string;
+  selectedFromDate?: string;
+  selectedToDate?: string;
 }
 
 export default function KPICards({
@@ -34,6 +41,13 @@ export default function KPICards({
   todayKm,
   yesterdayKm,
   selectIssueType,
+  selectedState,
+  selectedDistrict,
+  selectedBlock,
+  selectedVendor,
+  selectedPeriod,
+  selectedFromDate,
+  selectedToDate,
 }: KPICardsProps) {
   const navigate = useNavigate();
   const ieUser = isIEUser();
@@ -214,7 +228,20 @@ export default function KPICards({
 
       <div
         className="bg-white rounded-lg border border-gray-200 p-4 cursor-pointer hover:shadow-md transition-shadow"
-        onClick={() => navigate('/construction-issues',{ state: { issueType: selectIssueType } })}
+        onClick={() =>
+          navigate('/construction-issues', {
+            state: {
+              issueType: selectIssueType,
+              state_id: selectedState,
+              district_id: selectedDistrict,
+              block_id: selectedBlock,
+              vendor_id: selectedVendor,
+              period: selectedPeriod,
+              from_date: selectedFromDate,
+              to_date: selectedToDate,
+            },
+          })
+        }
       >
         <div className="flex items-start justify-between">
           <div>

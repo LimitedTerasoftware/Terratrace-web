@@ -92,6 +92,15 @@ export interface ProcessedPhysicalSurvey {
   // NEW: Image fields
   images: SurveyImage[];
   hasImages: boolean;
+  routeDetails:string;
+  routeFeasibility:string;
+  startLgdName:string;
+  endLgdName:string;
+  createdTime:string;
+  blockName:string;
+districtName:string;
+stateName:string;
+
 }
 
 export interface SurveyImage {
@@ -377,7 +386,7 @@ export interface ProcessedJoints {
   address?: string;
   pointType?: string;
   assetType?: string;
-  photo_path?: string;
+  photo_path?: [];
   joint_code?: string;
   joint_type?: string;
   work_type?: string;
