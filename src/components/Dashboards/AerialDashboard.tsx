@@ -25,6 +25,11 @@ const formatNumber = (num: number) => {
   return num.toLocaleString('en-IN');
 };
 
+const formatAvgDistanceM = (distanceKm: number, count: number) => {
+  if (!count) return '-';
+  return `${formatNumber(Number(((distanceKm * 1000) / count).toFixed(2)))} M`;
+};
+
 export default function AerialDashboard() {
   const [selectedState, setSelectedState] = useState<string>('');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('');
@@ -54,6 +59,19 @@ export default function AerialDashboard() {
           label: 'Total Poles',
           value: formatNumber(poleData.total_poles),
           accentColor: 'blue' as const,
+          breakdown: [
+            {
+              label: 'Distance',
+              value: `${formatNumber(poleData.total_distance_km)} KM`,
+            },
+            {
+              label: 'Avg/Pole',
+              value: formatAvgDistanceM(
+                poleData.total_distance_km,
+                poleData.total_poles,
+              ),
+            },
+          ],
         },
         {
           label: 'New Poles',
@@ -63,6 +81,13 @@ export default function AerialDashboard() {
             {
               label: 'Distance',
               value: `${formatNumber(poleData.new_poles_distance_km)} KM`,
+            },
+            {
+              label: 'Avg/Pole',
+              value: formatAvgDistanceM(
+                poleData.new_poles_distance_km,
+                poleData.new_poles,
+              ),
             },
           ],
         },
@@ -74,6 +99,13 @@ export default function AerialDashboard() {
             {
               label: 'Distance',
               value: `${formatNumber(poleData.existing_poles_distance_km)} KM`,
+            },
+            {
+              label: 'Avg/Pole',
+              value: formatAvgDistanceM(
+                poleData.existing_poles_distance_km,
+                poleData.existing_poles,
+              ),
             },
           ],
         },
@@ -101,12 +133,6 @@ export default function AerialDashboard() {
               ),
             },
           ],
-        },
-        {
-          label: 'Total Distance',
-          value: formatNumber(poleData.total_distance_km),
-          unit: 'KM',
-          accentColor: 'default' as const,
         },
       ]
     : [];
@@ -378,13 +404,12 @@ export default function AerialDashboard() {
           <div className="flex-1 overflow-auto">
             <main className="flex-1 min-w-0 overflow-y-auto">
               <div className="px-5 lg:px-8 py-6 max-w-screen-2xl mx-auto">
-                <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-5 gap-3 mb-6">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
                   {stats.map((s) => (
                     <StatsCard
                       key={s.label}
                       label={s.label}
                       value={s.value}
-                      unit={s.unit}
                       accentColor={s.accentColor}
                       breakdown={s.breakdown}
                     />

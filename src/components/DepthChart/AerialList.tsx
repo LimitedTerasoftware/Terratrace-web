@@ -41,6 +41,11 @@ const formatNumber = (num: number) => {
   return num.toLocaleString('en-IN');
 };
 
+const formatAvgDistanceM = (distanceKm: number, count: number) => {
+  if (!count) return '-';
+  return `${formatNumber(Number(((distanceKm * 1000) / count).toFixed(2)))} M`;
+};
+
 function AerialListPage() {
   const AdminAcess = isAdminUser();
   const [states, setStates] = useState<StateData[]>([]);
@@ -113,6 +118,19 @@ function AerialListPage() {
           label: 'Total Poles',
           value: formatNumber(poleData.total_poles),
           accentColor: 'blue' as const,
+          breakdown: [
+            {
+              label: 'Distance',
+              value: `${formatNumber(poleData.total_distance_km)} KM`,
+            },
+            {
+              label: 'Avg/Pole',
+              value: formatAvgDistanceM(
+                poleData.total_distance_km,
+                poleData.total_poles,
+              ),
+            },
+          ],
         },
         {
           label: 'New Poles',
@@ -122,6 +140,13 @@ function AerialListPage() {
             {
               label: 'Distance',
               value: `${formatNumber(poleData.new_poles_distance_km)} KM`,
+            },
+            {
+              label: 'Avg/Pole',
+              value: formatAvgDistanceM(
+                poleData.new_poles_distance_km,
+                poleData.new_poles,
+              ),
             },
           ],
         },
@@ -133,6 +158,13 @@ function AerialListPage() {
             {
               label: 'Distance',
               value: `${formatNumber(poleData.existing_poles_distance_km)} KM`,
+            },
+            {
+              label: 'Avg/Pole',
+              value: formatAvgDistanceM(
+                poleData.existing_poles_distance_km,
+                poleData.existing_poles,
+              ),
             },
           ],
         },
@@ -160,12 +192,6 @@ function AerialListPage() {
               ),
             },
           ],
-        },
-        {
-          label: 'Total Distance',
-          value: formatNumber(poleData.total_distance_km),
-          unit: 'KM',
-          accentColor: 'default' as const,
         },
       ]
     : [];
@@ -654,13 +680,12 @@ function AerialListPage() {
 
       {poleStats.length > 0 && (
         <div className="p-3">
-          <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {poleStats.map((s) => (
               <StatsCard
                 key={s.label}
                 label={s.label}
                 value={s.value}
-                unit={s.unit}
                 accentColor={s.accentColor}
                 breakdown={s.breakdown}
               />
