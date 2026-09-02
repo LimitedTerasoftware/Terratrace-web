@@ -29,6 +29,7 @@ const normalizeOptions = (options: RawOption[]): SearchableSelectOption[] =>
       : { value: String(opt), label: String(opt) },
   );
 
+
 const customStyles: StylesConfig<
   SearchableSelectOption,
   false,
@@ -36,17 +37,21 @@ const customStyles: StylesConfig<
 > = {
   control: (base, state) => ({
     ...base,
-    minHeight: '1.75rem',
+    minHeight: '2.5rem',
+    fontSize: '0.875rem',
     borderRadius: '0.375rem',
-    borderColor: state.isFocused ? '#3c50e0' : '#e2e8f0',
-    boxShadow: 'none',
+    borderColor: state.isFocused ? '#3c50e0' : '#d1d5db',
+    boxShadow: state.isFocused
+      ? '0 0 0 1px #3c50e0'
+      : '0 1px 2px 0 rgb(0 0 0 / 0.05)',
     backgroundColor: '#fff',
     '&:hover': {
-      borderColor: state.isFocused ? '#3c50e0' : '#e2e8f0',
+      borderColor: state.isFocused ? '#3c50e0' : '#d1d5db',
     },
   }),
   menu: (base) => ({
     ...base,
+    fontSize: '0.875rem',
     zIndex: 9999,
   }),
   menuPortal: (base) => ({
