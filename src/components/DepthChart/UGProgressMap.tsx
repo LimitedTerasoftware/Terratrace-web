@@ -1,7 +1,8 @@
 import axios from 'axios';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Loader2, X, ZoomIn, Camera } from 'lucide-react';
+import moment from 'moment';
 import GoogleMapsLoader from '../hooks/googleMapsLoader';
 import { Activity } from '../../types/survey';
 import type {
@@ -71,6 +72,7 @@ interface UGProgressMapCompProps {
   ) => void;
   integratedGps: IntegratedGp[];
   ofcSurveyIds: Set<number>;
+  events: Activity[];
 }
 
 const parseSurveyIds = (value: unknown): number[] => {
@@ -130,6 +132,75 @@ const getLatLongForEvent = (row: Activity) => {
     default:
       return null;
   }
+};
+
+const baseUrl = import.meta.env.VITE_Image_URL;
+
+const EVENT_PHOTO_FIELDS: Partial<Record<string, keyof Activity>> = {
+  FPOI: 'fpoiPhotos',
+  DEPTH: 'depthPhoto',
+  JOINTCHAMBER: 'jointChamberPhotos',
+  MANHOLES: 'manholePhotos',
+  LANDMARK: 'landmarkPhotos',
+  KILOMETERSTONE: 'kilometerstonePhotos',
+  FIBERTURN: 'fiberTurnPhotos',
+  ROUTEINDICATOR: 'routeIndicatorPhotos',
+  STARTPIT: 'startPitPhotos',
+  ENDPIT: 'endPitPhotos',
+  HOLDSURVEY: 'holdPhotos',
+  BLOWING: 'blowingPhotos',
+  OFCBLOWING: 'blowingPhotos',
+  ROUTEFEATURE: 'routeFeaturePhotos',
+};
+
+const parseEventPhotos = (rawPhotoData: unknown): string[] => {
+  if (typeof rawPhotoData !== 'string' || rawPhotoData.trim() === '') return [];
+  try {
+    const parsed = JSON.parse(rawPhotoData);
+    if (Array.isArray(parsed)) {
+      return parsed.filter(
+        (photo): photo is string =>
+          typeof photo === 'string' && photo.trim() !== '',
+      );
+    }
+    if (typeof parsed === 'string' && parsed.trim() !== '') return [parsed.trim()];
+  } catch {
+    return [rawPhotoData.trim()];
+  }
+  return [];
+};
+
+const getEventPhotos = (event: Activity): string[] => {
+  const photos = new Set<string>();
+  const photoField = EVENT_PHOTO_FIELDS[event.eventType];
+  if (photoField) {
+    parseEventPhotos(event[photoField]).forEach((photo) => photos.add(photo));
+  }
+  // Depth photos are often captured alongside joint-chamber/manhole events.
+  if (event.eventType === 'JOINTCHAMBER' || event.eventType === 'MANHOLES') {
+    parseEventPhotos(event.depthPhoto).forEach((photo) => photos.add(photo));
+  }
+  return Array.from(photos);
+};
+
+const getEventVideoUrl = (event: Activity): string | null => {
+  if (
+    typeof event.video === 'string' &&
+    event.video.trim() !== '' &&
+    event.video !== 'null'
+  ) {
+    return event.video.trim();
+  }
+  if (typeof event.videoDetails === 'string') {
+    try {
+      const parsed = JSON.parse(event.videoDetails);
+      const url = parsed?.videoUrl?.trim().replace(/(^"|"$)/g, '');
+      if (url) return url;
+    } catch {
+      return null;
+    }
+  }
+  return null;
 };
 
 const isSameLocation = (
@@ -345,6 +416,138 @@ const ShapeSwatch: React.FC<{ shape: MarkerShape; color: string }> = ({
   );
 };
 
+const MarkerDetailsPanel: React.FC<{
+  event: Activity;
+  onClose: () => void;
+  onImageClick: (url: string) => void;
+}> = ({ event, onClose, onImageClick }) => {
+  const style = getPointStyle(event.eventType);
+  const coords = parseLatLong(getLatLongForEvent(event));
+  const photos = getEventPhotos(event);
+  const videoUrl = getEventVideoUrl(event);
+
+  return (
+    <div className="bg-white rounded-lg shadow-lg max-w-sm w-80 max-h-[26rem] overflow-hidden">
+      <div
+        className="p-4 text-white"
+        style={{ backgroundColor: style.color }}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-sm">{style.label}</h3>
+          <button
+            onClick={onClose}
+            className="text-white/90 hover:text-white transition-colors"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      </div>
+      <div className="p-4 max-h-[22rem] overflow-y-auto space-y-3 text-sm">
+        <div className="flex justify-between">
+          <span className="text-gray-600">Survey ID:</span>
+          <span className="font-medium">{event.survey_id}</span>
+        </div>
+       {event.start_lgd_name && event.end_lgd_name && (
+          <div className="flex justify-between">
+            <span className="text-gray-600">Link Name:</span>
+            <span className="font-medium">
+              {event.start_lgd_name}_{event.end_lgd_name}
+            </span>
+          </div>
+        )}
+        {coords && (
+          <div className="flex justify-between">
+            <span className="text-gray-600">Coordinates:</span>
+            <span className="font-medium">
+              {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
+            </span>
+          </div>
+        )}
+        {event.eventType === 'DEPTH' && event.depthMeters && (
+          <div className="flex justify-between">
+            <span className="text-gray-600">Depth:</span>
+            <span className="font-medium">{event.depthMeters}m</span>
+          </div>
+        )}
+        {event.landmark_type && (
+          <div className="flex justify-between">
+            <span className="text-gray-600">Landmark Type:</span>
+            <span className="font-medium">{event.landmark_type}</span>
+          </div>
+        )}
+        {event.landmark_description && (
+          <div className="flex justify-between">
+            <span className="text-gray-600">Landmark Description:</span>
+            <span className="font-medium">{event.landmark_description}</span>
+          </div>
+        )}
+        {event.soilType && (
+          <div className="flex justify-between">
+            <span className="text-gray-600">Soil Type:</span>
+            <span className="font-medium">{event.soilType}</span>
+          </div>
+        )}
+        {event.roadType && (
+          <div className="flex justify-between">
+            <span className="text-gray-600">Road Type:</span>
+            <span className="font-medium">{event.roadType}</span>
+          </div>
+        )}
+      
+
+        {photos.length > 0 && (
+          <div className="pt-1">
+            <h4 className="text-xs font-medium text-gray-700 mb-2 flex items-center gap-1">
+              <Camera size={12} /> Photos
+            </h4>
+            <div className="grid grid-cols-2 gap-2">
+              {photos.slice(0, 6).map((photo, index) => (
+                <div
+                  key={index}
+                  className="relative aspect-square bg-gray-100 rounded-md overflow-hidden cursor-pointer hover:opacity-80 transition-opacity group"
+                  onClick={() => onImageClick(`${baseUrl}${photo}`)}
+                >
+                  <img
+                    src={`${baseUrl}${photo}`}
+                    alt={`${style.label} photo ${index + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                    <ZoomIn
+                      className="text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                      size={16}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+            {photos.length > 6 && (
+              <p className="text-xs text-gray-500 mt-1">
+                +{photos.length - 6} more photos
+              </p>
+            )}
+          </div>
+        )}
+
+        {videoUrl && (
+          <div className="pt-1">
+            <h4 className="text-xs font-medium text-gray-700 mb-2">Video</h4>
+            <iframe
+              width="100%"
+              height="160"
+              src={`${baseUrl}${videoUrl}`}
+              frameBorder="0"
+              allow="autoplay; encrypted-media"
+              allowFullScreen
+              title={`Video-${event.eventType}`}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
   markers,
   planningPlacemarks,
@@ -353,6 +556,7 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
   onPlanningCategoryVisibilityChange,
   integratedGps,
   ofcSurveyIds,
+  events,
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const eventPolylinesRef = useRef<google.maps.Polyline[]>([]);
@@ -364,6 +568,8 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<Activity | null>(null);
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
   const visiblePlanningKey = useMemo(
     () => Array.from(visiblePlanningCategories).sort().join('|'),
     [visiblePlanningCategories],
@@ -524,13 +730,19 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
         });
 
         eventMarker.addListener('click', () => {
-          infoWindowRef.current?.setContent(`
-            <div style="padding:4px 4px;font-size:13px;line-height:1.5">
-              <div style="font-weight:700;color:${style.color}">${escapeHtml(style.label)}</div>
-              <div>Survey ID: ${marker.surveyId}</div>
-            </div>
-          `);
-          infoWindowRef.current?.open(map, eventMarker);
+          infoWindowRef.current?.close();
+          const fullEvent = events.find((event) => event.id === marker.id);
+          if (fullEvent) {
+            setSelectedEvent(fullEvent);
+          } else {
+            infoWindowRef.current?.setContent(`
+              <div style="padding:4px 4px;font-size:13px;line-height:1.5">
+                <div style="font-weight:700;color:${style.color}">${escapeHtml(style.label)}</div>
+                <div>Survey ID: ${marker.surveyId}</div>
+              </div>
+            `);
+            infoWindowRef.current?.open(map, eventMarker);
+          }
         });
 
         return eventMarker;
@@ -540,7 +752,7 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
       eventPointMarkersRef.current.forEach((marker) => marker.setMap(null));
       eventPointMarkersRef.current = [];
     };
-  }, [markers, map, ofcSurveyIds]);
+  }, [markers, map, ofcSurveyIds, events]);
 
   useEffect(() => {
     if (!map || !mapRef.current) return;
@@ -613,10 +825,40 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
         });
 
         marker.addListener('click', () => {
+          const rows: string[] = [
+            `<div>Category: ${escapeHtml(placemark.category)}</div>`,
+          ];
+          if (placemark.pointType) {
+            rows.push(`<div>Point Type: ${escapeHtml(placemark.pointType)}</div>`);
+          }
+          if (placemark.assetType) {
+            rows.push(`<div>Asset Type: ${escapeHtml(placemark.assetType)}</div>`);
+          }
+          if (placemark.status) {
+            rows.push(`<div>Status: ${escapeHtml(placemark.status)}</div>`);
+          }
+          if (placemark.ring) {
+            rows.push(`<div>Ring: ${escapeHtml(placemark.ring)}</div>`);
+          }
+          if (placemark.connectionType) {
+            rows.push(
+              `<div>Connection Type: ${escapeHtml(placemark.connectionType)}</div>`,
+            );
+          }
+          if (placemark.length) {
+            rows.push(`<div>Length: ${escapeHtml(placemark.length)}</div>`);
+          }
+          if (placemark.lgdCode && placemark.lgdCode !== 'NULL') {
+            rows.push(`<div>LGD Code: ${escapeHtml(placemark.lgdCode)}</div>`);
+          }
+          if (placemark.networkId) {
+            rows.push(`<div>Network ID: ${escapeHtml(String(placemark.networkId))}</div>`);
+          }
+
           infoWindowRef.current?.setContent(`
-            <div style="padding:4px 4px;font-size:13px;line-height:1.5">
-              <div style="font-weight:700;color:#111827">${escapeHtml(placemark.name)}</div>
-              <div>${escapeHtml(placemark.category)}</div>
+            <div style="padding:4px 4px;font-size:13px;line-height:1.6">
+              <div style="font-weight:700;color:#111827;margin-bottom:2px">${escapeHtml(placemark.name)}</div>
+              ${rows.join('')}
             </div>
           `);
           infoWindowRef.current?.open(map, marker);
@@ -678,9 +920,12 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
 
         marker.addListener('click', () => {
           infoWindowRef.current?.setContent(`
-            <div style="padding:4px 4px;font-size:13px;line-height:1.5">
-              <div style="font-weight:700;color:#111827">${escapeHtml(gp.name)}</div>
+            <div style="padding:4px 4px;font-size:13px;line-height:1.6">
+              <div style="font-weight:700;color:#111827;margin-bottom:2px">${escapeHtml(gp.name)}</div>
               <div>Type: ${escapeHtml(gp.type)}</div>
+              <div>Block: ${escapeHtml(gp.blk_name)}</div>
+              <div>District: ${escapeHtml(gp.dt_name)}</div>
+              <div>State: ${escapeHtml(gp.st_name)}</div>
               <div style="color:${INTEGRATED_GP_COLOR};font-weight:600">Integrated GP</div>
             </div>
           `);
@@ -847,6 +1092,29 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
               })}
             </div>
           </div>
+        </div>
+      )}
+
+      {selectedEvent && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30">
+          <MarkerDetailsPanel
+            event={selectedEvent}
+            onClose={() => setSelectedEvent(null)}
+            onImageClick={setZoomImage}
+          />
+        </div>
+      )}
+
+      {zoomImage && (
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-80 z-50"
+          onClick={() => setZoomImage(null)}
+        >
+          <img
+            src={zoomImage}
+            alt="Zoomed"
+            className="max-w-full max-h-full p-4 rounded-lg"
+          />
         </div>
       )}
     </div>
@@ -1084,6 +1352,7 @@ const UGProgressMap: React.FC = () => {
           }
           integratedGps={integratedGps}
           ofcSurveyIds={ofcSurveyIds}
+          events={events}
         />
       )}
     </div>
