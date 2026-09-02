@@ -58,6 +58,7 @@ import LiveTrack from './components/DepthChart/LiveTrack';
 import Eventreport from './components/DepthChart/UGConstView';
 import Report from './components/DepthChart/UGConst';
 import UGProgressMap from './components/DepthChart/UGProgressMap';
+import AerialProgressMap from './components/DepthChart/AerialProgressMap';
 import Construction from './components/DepthChart/Construction';
 import AerialList from './components/DepthChart/AerialList';
 import InstallationPage from './components/DepthChart/Installation/Installation';
@@ -850,7 +851,16 @@ function App() {
                   <>
                       <PageTitle title="construction-progress-map" />
                       <UGProgressMap />
-                    
+
+                  </>
+                }
+              />
+              <Route
+                path="/aerial-progress-map"
+                element={
+                  <>
+                    <PageTitle title="aerial-progress-map" />
+                    <AerialProgressMap />
                   </>
                 }
               />

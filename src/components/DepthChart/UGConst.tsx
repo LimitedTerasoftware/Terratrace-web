@@ -36,6 +36,7 @@ interface ReportProps {
     page?: number;
     mergeSurveys: boolean;
     editLink?: boolean;
+    selectedVendor?: string | null;
   };
   Onexcel: () => void;
   OnPreview: () => void;
@@ -108,6 +109,7 @@ const Report: React.FC<ReportProps> = ({
         if (Data.constType !== '') params.construction_type = Data.constType;
         if (Data.globalsearch.trim()) params.search = Data.globalsearch.trim();
         if (Data.cords !== '') params.coords = Data.cords;
+        if (Data.selectedVendor) params.firm_id = Data.selectedVendor;
         params.page = Data.page || 1;
         params.limit = perPage;
 
@@ -160,6 +162,7 @@ const Report: React.FC<ReportProps> = ({
     Data.isAddModalOpen,
     Data.cords,
     Data.page,
+    Data.selectedVendor,
     perPage,
   ]);
 
@@ -206,12 +209,14 @@ const Report: React.FC<ReportProps> = ({
   ) => {
     const params = new URLSearchParams();
     params.set('survey_ids', rows.map((row) => row.id).join(','));
-    
-    const ofcSurveyIds = rows
-      .filter((row) => row.workType == 'OFC Blowing/ JointJamber')
-      .map((row) => row.id);
-    if (ofcSurveyIds.length > 0) {
-      params.set('ofc_survey_ids', ofcSurveyIds.join(','));
+
+    if (Data.constType !== 'Aerial') {
+      const ofcSurveyIds = rows
+        .filter((row) => row.workType == 'OFC Blowing/ JointJamber')
+        .map((row) => row.id);
+      if (ofcSurveyIds.length > 0) {
+        params.set('ofc_survey_ids', ofcSurveyIds.join(','));
+      }
     }
 
     if (Data.selectedState) params.set('selectedState', Data.selectedState);
@@ -219,7 +224,10 @@ const Report: React.FC<ReportProps> = ({
       params.set('selectedDistrict', Data.selectedDistrict);
     if (Data.selectedBlock) params.set('selectedBlock', Data.selectedBlock);
 
-    const url = `/construction-progress-map?${params.toString()}`;
+    const url =
+      Data.constType === 'Aerial'
+        ? `/aerial-progress-map?${params.toString()}`
+        : `/construction-progress-map?${params.toString()}`;
     const opened = window.open(url, '_blank');
     if (opened) {
       opened.opener = null;

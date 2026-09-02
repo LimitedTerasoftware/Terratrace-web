@@ -18,6 +18,8 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { UGConstructionSurveyData } from '../../types/survey';
 import { isAdminUser, isIEUser, getAuthHeaders } from '../../utils/accessControl';
 import SearchableSelect from '../Forms/SearchableSelect';
+import { machineApi } from '../Services/api';
+import { MachineDetailsResponse } from '../../types/machine';
 interface StatesResponse {
   success: boolean;
   data: StateData[];
@@ -77,6 +79,9 @@ function ConstructionPage() {
     null,
   );
   const [loadingConnections, setLoadingConnections] = useState(false);
+  const [selectedVendor, setSelectedVendor] = useState<string | null>(null);
+  const [vendors, setVendors] = useState<MachineDetailsResponse['data']>([]);
+  const [loadingVendors, setLoadingVendors] = useState(false);
 
   // New state for stats panel
   const [surveyData, setSurveyData] = useState<UGConstructionSurveyData[]>([]);
@@ -261,6 +266,31 @@ function ConstructionPage() {
     }
   };
 
+  const fetchVendors = async () => {
+    try {
+      if (!selectedBlock) {
+        setVendors([]);
+        return;
+      }
+      setLoadingVendors(true);
+      const response = await machineApi.getFirmDistanceStats(
+        selectedState || undefined,
+        selectedDistrict || undefined,
+        selectedBlock || undefined,
+      );
+      setVendors(response.data || []);
+    } catch (error) {
+      console.error('Error fetching vendors:', error);
+      setVendors([]);
+    } finally {
+      setLoadingVendors(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchVendors();
+  }, [selectedState, selectedDistrict, selectedBlock]);
+
   const fetchConstructionSummary = async () => {
     try {
       setLoadingStats(true);
@@ -275,6 +305,7 @@ function ConstructionPage() {
       if (todate) params.to_date = todate;
       if (globalsearch.trim()) params.search = globalsearch.trim();
       if (cords) params.coords = cords;
+      if (selectedVendor) params.firm_id = selectedVendor;
       const start = getSelectedConnectionDetails()?.startLocation;
       const end =getSelectedConnectionDetails()?.endLocation;
       if(start) params.start = start;
@@ -313,6 +344,7 @@ function ConstructionPage() {
     globalsearch,
     cords,
     selectedConnection,
+    selectedVendor
   ]);
 
   useEffect(() => {
@@ -350,6 +382,7 @@ function ConstructionPage() {
     const tab = searchParams.get('tab') || 'UG';
     const td_status = searchParams.get('td_status') || '';
     const ofc_status = searchParams.get('ofc_status') || '';
+    const firm_id = searchParams.get('firm_id') || null;
 
     setcords(cords);
     setSelectedState(state_id || (IEUser ? '6' : null));
@@ -374,6 +407,7 @@ function ConstructionPage() {
     setActiveTab(IEUser ? 'UG' : tab === 'AcceptedLinks' ? 'AcceptedLinks' : 'UG');
     setTdStatus(td_status);
     setOfcStatus(ofc_status);
+    setSelectedVendor(firm_id);
   }, []);
 
   useEffect(() => {
@@ -397,6 +431,7 @@ function ConstructionPage() {
     page?: number,
     tdStatus?: string,
     ofcStatus?: string,
+    firmId?: string | null,
   ) => {
     const params: Record<string, string> = {};
     if (newState) params.state_id = newState;
@@ -416,6 +451,7 @@ function ConstructionPage() {
     if (page && page > 1) params.page = String(page);
     if (tdStatus) params.td_status = tdStatus;
     if (ofcStatus) params.ofc_status = ofcStatus;
+    if (firmId) params.firm_id = firmId;
     setSearchParams(params);
     if (!page) setPage(1);
   };
@@ -425,13 +461,14 @@ function ConstructionPage() {
     setSelectedDistrict(null);
     setSelectedBlock(null);
     setSelectedConnection(null);
+    setSelectedVendor(null);
     setSelectedStatus(IEUser ? [1] : []);
     setGlobalSearch('');
     setFromDate('');
     setToDate('');
     setSearchParams({});
     setworktype([]);
-    setConstType('');
+    setConstType('Hdd');
     setcords('');
     setTdStatus('');
     setOfcStatus('');
@@ -456,6 +493,7 @@ function ConstructionPage() {
       page,
       tdStatus,
       ofcStatus,
+      selectedVendor,
     );
   };
 
@@ -464,6 +502,7 @@ function ConstructionPage() {
     setSelectedDistrict(null);
     setSelectedBlock(null);
     setSelectedConnection(null);
+    setSelectedVendor(null);
 
     handleFilterChange(
       value || null,
@@ -481,6 +520,7 @@ function ConstructionPage() {
       page,
       tdStatus,
       ofcStatus,
+      null,
     );
   };
 
@@ -488,6 +528,7 @@ function ConstructionPage() {
     setSelectedDistrict(value || null);
     setSelectedBlock(null);
     setSelectedConnection(null);
+    setSelectedVendor(null);
     handleFilterChange(
       selectedState,
       value || null,
@@ -504,12 +545,14 @@ function ConstructionPage() {
       page,
       tdStatus,
       ofcStatus,
+      null,
     );
   };
 
   const handleBlockChange = (value: string) => {
     setSelectedBlock(value || null);
     setSelectedConnection(null);
+    setSelectedVendor(null);
 
     handleFilterChange(
       selectedState,
@@ -527,6 +570,7 @@ function ConstructionPage() {
       page,
       tdStatus,
       ofcStatus,
+      null,
     );
   };
   const handleLinkChange = (value: string) => {
@@ -547,6 +591,7 @@ function ConstructionPage() {
       page,
       tdStatus,
       ofcStatus,
+      selectedVendor,
     );
   };
 
@@ -571,6 +616,7 @@ function ConstructionPage() {
       page,
       tdStatus,
       ofcStatus,
+      selectedVendor,
     );
   };
 
@@ -613,6 +659,7 @@ function ConstructionPage() {
       page,
       tdStatus,
       ofcStatus,
+      selectedVendor,
     );
   };
   const handleConstTypeChange = (value: string) => {
@@ -633,6 +680,7 @@ function ConstructionPage() {
       page,
       tdStatus,
       ofcStatus,
+      selectedVendor,
     );
   };
   const handleCordsChange = (value: string) => {
@@ -653,6 +701,7 @@ function ConstructionPage() {
       page,
       tdStatus,
       ofcStatus,
+      selectedVendor,
     );
   };
 
@@ -674,6 +723,7 @@ function ConstructionPage() {
       page,
       value,
       ofcStatus,
+      selectedVendor,
     );
   };
 
@@ -695,6 +745,7 @@ function ConstructionPage() {
       page,
       tdStatus,
       value,
+      selectedVendor,
     );
   };
 
@@ -716,6 +767,7 @@ function ConstructionPage() {
       page,
       tdStatus,
       ofcStatus,
+      selectedVendor,
     );
   };
 
@@ -737,6 +789,7 @@ function ConstructionPage() {
       page,
       tdStatus,
       ofcStatus,
+      selectedVendor,
     );
   };
 
@@ -758,6 +811,7 @@ function ConstructionPage() {
       page,
       tdStatus,
       ofcStatus,
+      selectedVendor,
     );
   };
   const handlePageChange = (newPage: number) => {
@@ -778,6 +832,29 @@ function ConstructionPage() {
       newPage,
       tdStatus,
       ofcStatus,
+      selectedVendor,
+    );
+  };
+
+  const handleVendorChange = (value: string) => {
+    setSelectedVendor(value || null);
+    handleFilterChange(
+      selectedState,
+      selectedDistrict,
+      selectedBlock,
+      selectedConnection,
+      selectedStatus,
+      worktype,
+      fromdate,
+      todate,
+      globalsearch,
+      constType,
+      activeTab,
+      cords,
+      page,
+      tdStatus,
+      ofcStatus,
+      value || null,
     );
   };
   return (
@@ -873,6 +950,22 @@ function ConstructionPage() {
                 disabled={!selectedDistrict || loadingBlock}
               />
             </div>
+
+            {/* Vendor Filter */}
+            {activeTab === 'UG' && !IEUser && (
+              <div className="relative flex-1 min-w-0 sm:flex-none sm:w-40">
+                <SearchableSelect
+                  value={selectedVendor || ''}
+                  onChange={handleVendorChange}
+                  options={vendors.map((vendor) => ({
+                    value: vendor.firm_id.toString(),
+                    label: vendor.firm_name,
+                  }))}
+                  placeholder="All Vendors"
+                  disabled={!selectedBlock || loadingVendors}
+                />
+              </div>
+            )}
             {/* T&D and OFC Status Filters */}
             {activeTab === 'AcceptedLinks' && (
               <>
@@ -1233,6 +1326,7 @@ function ConstructionPage() {
               page,
               mergeSurveys,
               editLink,
+              selectedVendor,
             }}
             Onexcel={() => setExcel(false)}
             OnPreview={() => setPreview(false)}

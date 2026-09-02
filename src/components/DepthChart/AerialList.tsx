@@ -66,6 +66,7 @@ function AerialListPage() {
   const [excel, setExcel] = useState<boolean>(false);
   const [kml, setKml] = useState<boolean>(false);
   const [preview, setPreview] = useState<boolean>(false);
+  const [progressmap, setProgressmap] = useState<boolean>(false);
   const [mergeSurveys, setMergeSurveys] = useState<boolean>(false);
   const [mergeLoading, setMergeLoading] = useState<boolean>(false);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -969,6 +970,16 @@ function AerialListPage() {
 
             {activeTab === 'Aerial' && (
               <button
+                onClick={() => setProgressmap(!progressmap)}
+                className="flex-none h-10 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none whitespace-nowrap flex items-center gap-2"
+              >
+                <EyeIcon className="h-4 w-4 text-blue-600" />
+                Progress Map
+              </button>
+            )}
+
+            {activeTab === 'Aerial' && (
+              <button
                 onClick={() => setMergeSurveys(true)}
                 disabled={mergeLoading}
                 className="flex-none h-10 px-4 py-2 text-sm font-medium text-indigo-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center gap-2"
@@ -1019,7 +1030,7 @@ function AerialListPage() {
               kml,
               filtersReady,
               preview,
-              progressmap: false,
+              progressmap,
               isAddModalOpen,
               selectedConnection,
               connectionStart: getSelectedConnectionDetails()?.startLocation,
@@ -1030,7 +1041,7 @@ function AerialListPage() {
             }}
             Onexcel={() => setExcel(false)}
             OnPreview={() => setPreview(false)}
-            OnProgressMap={() => {}}
+            OnProgressMap={() => setProgressmap(false)}
             OnKml={() => setKml(false)}
             OnModal={() => setIsAddModalOpen(false)}
             OnData={(data: UGConstructionSurveyData[]) => setSurveyData(data)}

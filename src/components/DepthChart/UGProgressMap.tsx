@@ -570,6 +570,22 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<Activity | null>(null);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [showConstructionPath, setShowConstructionPath] = useState(true);
+  const [showIntegratedGps, setShowIntegratedGps] = useState(true);
+  const [hiddenEventTypes, setHiddenEventTypes] = useState<Set<string>>(
+    new Set(),
+  );
+  const toggleEventType = (eventType: string) => {
+    setHiddenEventTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(eventType)) {
+        next.delete(eventType);
+      } else {
+        next.add(eventType);
+      }
+      return next;
+    });
+  };
   const visiblePlanningKey = useMemo(
     () => Array.from(visiblePlanningCategories).sort().join('|'),
     [visiblePlanningCategories],
@@ -656,8 +672,14 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
 
   useEffect(() => {
     if (!map) return;
-    
+
     eventPolylinesRef.current.forEach((polyline) => polyline.setMap(null));
+
+    if (!showConstructionPath) {
+      eventPolylinesRef.current = [];
+      return;
+    }
+
     eventPolylinesRef.current = eventRoutePaths.flatMap(({ surveyId, path }) => {
       // outline/casing - drawn first, wider, white
       const casing = new google.maps.Polyline({
@@ -707,7 +729,7 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
       eventPolylinesRef.current.forEach((polyline) => polyline.setMap(null));
       eventPolylinesRef.current = [];
     };
-  }, [eventRoutePaths, map]);
+  }, [eventRoutePaths, map, showConstructionPath]);
 
   useEffect(() => {
     if (!map) return;
@@ -716,8 +738,9 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
     eventPointMarkersRef.current = markers
       .filter(
         (marker) =>
-          !CONNECT_EVENT_TYPES.has(marker.eventType) ||
-          ofcSurveyIds.has(marker.surveyId),
+          (!CONNECT_EVENT_TYPES.has(marker.eventType) ||
+            ofcSurveyIds.has(marker.surveyId)) &&
+          !hiddenEventTypes.has(marker.eventType),
       )
       .map((marker) => {
         const style = getPointStyle(marker.eventType);
@@ -752,7 +775,7 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
       eventPointMarkersRef.current.forEach((marker) => marker.setMap(null));
       eventPointMarkersRef.current = [];
     };
-  }, [markers, map, ofcSurveyIds, events]);
+  }, [markers, map, ofcSurveyIds, events, hiddenEventTypes]);
 
   useEffect(() => {
     if (!map || !mapRef.current) return;
@@ -898,6 +921,12 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
     if (!map) return;
 
     integratedGpMarkersRef.current.forEach((marker) => marker.setMap(null));
+
+    if (!showIntegratedGps) {
+      integratedGpMarkersRef.current = [];
+      return;
+    }
+
     integratedGpMarkersRef.current = integratedGps
       .map((gp) => {
         const lat = Number(gp.lattitude);
@@ -940,7 +969,7 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
       integratedGpMarkersRef.current.forEach((marker) => marker.setMap(null));
       integratedGpMarkersRef.current = [];
     };
-  }, [map, integratedGps]);
+  }, [map, integratedGps, showIntegratedGps]);
 
   useEffect(() => {
     if (!map) return;
@@ -1043,7 +1072,13 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
               })}
             <div className="mt-2 border-t border-gray-200 pt-2">
               <label className="flex cursor-pointer items-center gap-2">
-                <input type="checkbox" checked={true} disabled />
+                <input
+                  type="checkbox"
+                  checked={showConstructionPath}
+                  onChange={(event) =>
+                    setShowConstructionPath(event.target.checked)
+                  }
+                />
                 <span
                   className="h-2 w-2 rounded-full"
                   style={{ backgroundColor: '#9C27B0' }}
@@ -1052,7 +1087,13 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
               </label>
               {integratedGps.length > 0 && (
                 <label className="mt-1 flex cursor-pointer items-center gap-2">
-                  <input type="checkbox" checked={true} disabled />
+                  <input
+                    type="checkbox"
+                    checked={showIntegratedGps}
+                    onChange={(event) =>
+                      setShowIntegratedGps(event.target.checked)
+                    }
+                  />
                   <span
                     className="h-2 w-2 rounded-full"
                     style={{ backgroundColor: INTEGRATED_GP_COLOR }}
@@ -1083,7 +1124,11 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
                     key={eventType}
                     className="mt-1 flex cursor-pointer items-center gap-2"
                   >
-                    <input type="checkbox" checked={true} disabled />
+                    <input
+                      type="checkbox"
+                      checked={!hiddenEventTypes.has(eventType)}
+                      onChange={() => toggleEventType(eventType)}
+                    />
                     <ShapeSwatch shape={style.shape} color={style.color} />
                     <span className="flex-1 truncate">{style.label}</span>
                     <span className="font-medium">{count}</span>
