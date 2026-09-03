@@ -932,6 +932,43 @@ const Report: React.FC<ReportProps> = ({
         : selectedEventTypes;
       const iconMap = isAerial ? AERIAL_ICON_MAP : UG_ICON_MAP;
 
+      const hasValue = (val: any) =>
+        val !== null && val !== undefined && val !== '' && val !== 'null';
+
+      const buildUgDescription = (activity: any, lat: number, lng: number) => {
+        const fields: [string, any][] = [
+          ['Survey ID', activity.survey_id],
+          ['ID', activity.id],
+          ['Event Type', activity.eventType],
+          ['Area Type', activity.area_type],
+          ['Route Belongs To', activity.routeBelongsTo],
+          ['Road Type', activity.roadType],
+          ['Road Margin (Side)', activity.road_margin],
+          ['Road Width', activity.roadWidth],
+          ['Soil Type', activity.soilType],
+          ['Cable Laid On', activity.cableLaidOn],
+          ['Road Feasibility', activity.Roadfesibility],
+          ['Crossing Type', activity.crossingType],
+          ['Crossing Length', activity.crossingLength],
+          ['Depth (Meters)', activity.depthMeters],
+          ['Distance (Meters)', activity.distance],
+          ['Offset', activity.offset],
+          ['Execution Modality', activity.executionModality],
+          ['Cable Stack', activity.cable_stack],
+          ['DGPS Accuracy', activity.dgps_accuracy],
+          ['DGPS SIV', activity.dgps_siv],
+          ['Landmark Type', activity.landmark_type],
+          ['Landmark Description', activity.landmark_description],
+        ];
+
+        const rows = fields
+          .filter(([, value]) => hasValue(value))
+          .map(([label, value]) => `<b>${label}:</b> ${value}`)
+          .join('<br/>\n             ');
+
+        return `${rows}<br/>\n             <b>Coordinates:</b> ${lat}, ${lng}`;
+      };
+
       activities.forEach((activity: any) => {
         const eventType = activity.eventType;
         if (!activeEventTypes.includes(eventType)) return;
@@ -956,11 +993,7 @@ const Report: React.FC<ReportProps> = ({
              <b>Pole Type:</b> ${activity.pole_type || 'N/A'}<br/>
              <b>Distance:</b> ${activity.distance || 'N/A'}<br/>
              <b>Coordinates:</b> ${lat}, ${lng}`
-          : `<b>Survey ID:</b> ${activity.survey_id || 'N/A'}<br/>
-             <b>ID:</b> ${activity.id || 'N/A'}<br/>
-             <b>Area Type:</b> ${activity.area_type || 'N/A'}<br/>
-             <b>Depth:</b> ${activity.depthMeters || 'N/A'}<br/>
-             <b>Coordinates:</b> ${lat}, ${lng}`;
+          : buildUgDescription(activity, lat, lng);
 
         allPlacemarks += `
       <Placemark>

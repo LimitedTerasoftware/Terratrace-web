@@ -782,7 +782,7 @@ function Eventreport() {
       });
       if (resp.status === 200 || resp.status === 201) {
         toast.success(
-          `Status updated to ${newStatus === 0 ? 'Inactive':'Active'}`,
+          `Status updated to ${newStatus === 0 ? 'Active' : 'Inactive'}`,
         );
         getData();
       }
@@ -1513,20 +1513,21 @@ function Eventreport() {
                   disabled={statusLoading === row.id}
                   className={`px-3 py-1 text-xs font-medium rounded-md outline-none transition-colors flex items-center gap-1 whitespace-nowrap ${
                     row.status === 0
-                      ? 'text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 dark:bg-red-900 dark:text-red-300 dark:border-red-700 dark:hover:bg-red-800'
-                      : 'text-green-600 bg-green-50 border border-green-200 hover:bg-green-100 dark:bg-green-900 dark:text-green-300 dark:border-green-700 dark:hover:bg-green-800'
+                     ? 'text-green-600 bg-green-50 border border-green-200 hover:bg-green-100 dark:bg-green-900 dark:text-green-300 dark:border-green-700 dark:hover:bg-green-800'
+                     :'text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 dark:bg-red-900 dark:text-red-300 dark:border-red-700 dark:hover:bg-red-800'
                   }`}
                 >
                   {statusLoading === row.id ? (
                     <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
                   ) : row.status === 0 ? (
                     <>
-                      <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+
                       Active
                     </>
                   ) : (
                     <>
-                      <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                     <span className="w-2 h-2 bg-red-500 rounded-full"></span>
                       Inactive
                     </>
                   )}
