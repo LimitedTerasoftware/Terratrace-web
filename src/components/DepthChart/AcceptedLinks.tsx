@@ -5,6 +5,9 @@ import moment from 'moment';
 import DataTable, { TableColumn } from 'react-data-table-component';
 import { ToastContainer, toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import TricadIcon from '../../images/logo/favicon.png';
 import { getAuthHeaders, isAdminUser } from '../../utils/accessControl';
 import SearchableSelect from '../Forms/SearchableSelect';
 
@@ -29,6 +32,9 @@ interface AcceptedLinkRow {
   status:number;
   ofc_status:number;
   ofc_distance_diff_meters:number;
+  route_indicators:string;
+  otdr_length:string;
+  joint_chambers:string;
 }
 
 interface AcceptedLinksSummary {
@@ -38,6 +44,8 @@ interface AcceptedLinksSummary {
   ofcDistanceMeters: number;
   totalSurveyCount: number;
   overallCompletionPercent: number | null;
+  totalJointChambers?: number;
+  totalRouteIndicators?: number;
 }
 
 interface AcceptedLinksProps {
@@ -52,6 +60,9 @@ interface AcceptedLinksProps {
   excel?: boolean;
   onExcel?: () => void;
   onExcelLoadingChange?: (loading: boolean) => void;
+  pdf?: boolean;
+  onPdf?: () => void;
+  onPdfLoadingChange?: (loading: boolean) => void;
 }
 
 export type { AcceptedLinksSummary };
@@ -106,6 +117,9 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
   excel,
   onExcel,
   onExcelLoadingChange,
+  pdf,
+  onPdf,
+  onPdfLoadingChange,
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -327,11 +341,14 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
         'T&D Distance (m)',
         'BOQ - T&D Distance Difference (m)',
         'Completion %',
+        'OTDR Distance',
         'T&D Status',
         'OFC/Blowing Distance',
         'T&D - OFC Distance Difference (m)',
         'OFC Completion %',
         'OFC Status',
+        'JointChamber Count',
+        'ROuteIndicator Count',
         'Updated At',
       ];
 
@@ -347,11 +364,14 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
         (row.total_distance_meters ?? 0).toFixed(2),
         (row.distance_diff_meters ?? 0).toFixed(2),
         row.completion_percent != null ? `${row.completion_percent}%` : '-',
+        row.otdr_length,
         statusLabel(row.status),
         (row.ofc_distance_meters ?? 0).toFixed(2),
         (row.ofc_distance_diff_meters ?? 0).toFixed(2),
         '-',
         statusLabel(row.ofc_status),
+        row.joint_chambers,
+        row.route_indicators,
         moment(row.updated_at).format('DD/MM/YYYY, hh:mm A'),
       ]);
 
@@ -372,6 +392,200 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
     if (!excel) return;
     handleExportExcel();
   }, [excel]);
+
+  const generatePDF = async () => {
+    onPdfLoadingChange?.(true);
+    try {
+      const params: Record<string, string | number> = {
+        page: 1,
+        limit: totalRows > 0 ? totalRows : 10000,
+      };
+      if (selectedState) params.state_id = selectedState;
+      if (selectedDistrict) params.district_id = selectedDistrict;
+      if (selectedBlock) params.block_id = selectedBlock;
+      if (globalsearch.trim()) params.search = globalsearch.trim();
+      if (tdStatus) params.td_status = tdStatus;
+      if (ofcStatus) params.ofc_status = ofcStatus;
+
+      const response = await axios.get<{
+        status: boolean;
+        data: AcceptedLinkRow[];
+      }>(`${TraceBASEURL}/get-accepted-links`, {
+        params,
+        headers: getAuthHeaders(),
+      });
+
+      const rows = response.data.status ? response.data.data : [];
+      if (rows.length === 0) {
+        toast.error('No data available to export.');
+        return;
+      }
+
+      const totals = rows.reduce(
+        (acc, row) => {
+          acc.boq += row.actual_distance_meters ?? 0;
+          acc.td += row.total_distance_meters ?? 0;
+          acc.ofc += row.ofc_distance_meters ?? 0;
+          acc.jointChambers += Number(row.joint_chambers) || 0;
+          acc.routeIndicators += Number(row.route_indicators) || 0;
+          return acc;
+        },
+        { boq: 0, td: 0, ofc: 0, jointChambers: 0, routeIndicators: 0 },
+      );
+
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const now = new Date();
+
+      // ── Background header band ──────────────────────────────────────────
+      doc.setFillColor(239, 246, 255);
+      doc.rect(0, 0, pageWidth, 38, 'F');
+
+      // Accent stripe
+      doc.setFillColor(59, 130, 246);
+      doc.rect(0, 38, pageWidth, 2, 'F');
+
+      // ── Header text ────────────────────────────────────────────────────
+      const logoWidth = 18;
+      const logoHeight = 18;
+
+      doc.addImage(TricadIcon, 'PNG', 14, 8, logoWidth, logoHeight);
+
+      doc.setTextColor(15, 40, 80);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(20);
+      doc.text('Accepted T&D Links Report', 38, 18);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(60, 80, 120);
+      doc.text('Construction Tracking System', 38, 25);
+
+      doc.setTextColor(15, 40, 80);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(60, 80, 120);
+      doc.text(`Generated: ${now.toLocaleString('en-IN')}`, pageWidth - 14, 20, { align: 'right' });
+
+      let yPos = 48;
+
+      // ── Summary cards row ──────────────────────────────────────────────
+      const cardW = (pageWidth - 28 - 5 * 4) / 6;
+      const cardData = [
+        { label: 'Total Links', value: String(rows.length), bg: [239, 246, 255] as [number, number, number], border: [59, 130, 246] as [number, number, number], text: [29, 78, 216] as [number, number, number] },
+        { label: 'BOQ Distance (km)', value: (totals.boq / 1000).toFixed(2), bg: [236, 253, 245] as [number, number, number], border: [16, 185, 129] as [number, number, number], text: [4, 120, 87] as [number, number, number] },
+        { label: 'T&D Distance (km)', value: (totals.td / 1000).toFixed(2), bg: [245, 243, 255] as [number, number, number], border: [139, 92, 246] as [number, number, number], text: [109, 40, 217] as [number, number, number] },
+        { label: 'OFC Distance (km)', value: (totals.ofc / 1000).toFixed(2), bg: [255, 251, 235] as [number, number, number], border: [245, 158, 11] as [number, number, number], text: [180, 83, 9] as [number, number, number] },
+        { label: 'JointChamber Count', value: String(totals.jointChambers), bg: [238, 242, 255] as [number, number, number], border: [99, 102, 241] as [number, number, number], text: [67, 56, 202] as [number, number, number] },
+        { label: 'RouteIndicator Count', value: String(totals.routeIndicators), bg: [240, 253, 250] as [number, number, number], border: [20, 184, 166] as [number, number, number], text: [15, 118, 110] as [number, number, number] },
+      ];
+
+      cardData.forEach((card, i) => {
+        const cx = 14 + i * (cardW + 4);
+        doc.setFillColor(card.bg[0], card.bg[1], card.bg[2]);
+        doc.setDrawColor(card.border[0], card.border[1], card.border[2]);
+        doc.setLineWidth(0.4);
+        doc.roundedRect(cx, yPos, cardW, 18, 2, 2, 'FD');
+        doc.setTextColor(card.text[0], card.text[1], card.text[2]);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.text(card.value, cx + cardW / 2, yPos + 10, { align: 'center' });
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.text(card.label, cx + cardW / 2, yPos + 15.5, { align: 'center' });
+      });
+
+      yPos += 24;
+
+      // ── Section title ──────────────────────────────────────────────────
+      doc.setTextColor(15, 40, 80);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text('Link Details', 14, yPos);
+      doc.setDrawColor(59, 130, 246);
+      doc.setLineWidth(0.5);
+      doc.line(14, yPos + 1.5, 14 + 50, yPos + 1.5);
+
+      yPos += 6;
+
+      // ── Table ──────────────────────────────────────────────────────────
+      const tableRows = rows.map((row, idx) => [
+        String(idx + 1),
+        row.state_name || '-',
+        row.district_name || '-',
+        row.block_name || '-',
+        row.link_name || '-',
+        row.actual_distance_meters != null ? row.actual_distance_meters.toFixed(2) : '-',
+        (row.total_distance_meters ?? 0).toFixed(2),
+        row.otdr_length ? Number(row.otdr_length).toFixed(2) : '-',
+        (row.ofc_distance_meters ?? 0).toFixed(2),
+        row.joint_chambers || '-',
+        row.route_indicators || '-',
+      ]);
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['#', 'State', 'District', 'Block', 'Link (Start TO End)', 'BOQ Distance(mt)', 'T&D Distance(mt)', 'OTDR Distance(mt)', 'OFC Distance(mt)', 'JointChamberCount', 'RouteIndicator Count']],
+        body: tableRows,
+        theme: 'grid',
+        styles: {
+          fontSize: 8,
+          cellPadding: { top: 3, right: 3, bottom: 3, left: 3 },
+          textColor: [30, 40, 60],
+          lineColor: [210, 220, 235],
+          lineWidth: 0.2,
+        },
+        headStyles: {
+          fillColor: [239, 246, 255],
+          textColor: [15, 40, 80],
+          fontStyle: 'bold',
+          fontSize: 7.5,
+          halign: 'center',
+          lineColor: [59, 130, 246],
+          lineWidth: 0.2,
+        },
+        alternateRowStyles: { fillColor: [245, 249, 255] },
+        columnStyles: {
+          0: { halign: 'center', cellWidth: 8 },
+          5: { halign: 'center' },
+          6: { halign: 'center' },
+          7: { halign: 'center' },
+          8: { halign: 'center' },
+          9: { halign: 'center' },
+          10: { halign: 'center' },
+        },
+        didDrawPage: (hookData) => {
+          const pg = hookData.pageNumber;
+          const totalPages = (doc as any).internal.getNumberOfPages();
+          doc.setFillColor(245, 247, 250);
+          doc.rect(0, pageHeight - 10, pageWidth, 10, 'F');
+          doc.setDrawColor(59, 130, 246);
+          doc.setLineWidth(0.3);
+          doc.line(0, pageHeight - 10, pageWidth, pageHeight - 10);
+          doc.setTextColor(60, 80, 120);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7.5);
+          doc.text('CONFIDENTIAL — For internal use only', 14, pageHeight - 4);
+          doc.text(`Page ${pg} of ${totalPages}`, pageWidth - 14, pageHeight - 4, { align: 'right' });
+        },
+      });
+
+      doc.save(`T&D_links_${now.toISOString().split('T')[0]}.pdf`);
+    } catch (err) {
+      console.error('PDF generation failed', err);
+      toast.error('Failed to generate PDF.');
+    } finally {
+      onPdfLoadingChange?.(false);
+      onPdf?.();
+    }
+  };
+
+  useEffect(() => {
+    if (!pdf) return;
+    generatePDF();
+  }, [pdf]);
 
   const columns: TableColumn<AcceptedLinkRow>[] = [
  
@@ -484,6 +698,13 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       cell: (row) =>
         row.completion_percent != null ? `${row.completion_percent}%` : '-',
     },
+    {
+      name :'OTDR Distance(mt)',
+      selector:(row)=>row.otdr_length ?? 0,
+      sortable: true,
+      cell: (row) =>(Number(row.otdr_length) ?? 0).toFixed(2) ,
+
+    },
       {
       name: 'T & D Status',
       selector: (row) => row.status,
@@ -590,9 +811,15 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
     },
     {
       name :'JointChamber Count',
-      selector:(row)=>'-',
+      selector:(row)=> row.joint_chambers || '-',
      sortable: true,
-      cell: (row) =>'-',
+      cell: (row) => row.joint_chambers|| '-',
+    },
+    {
+      name :'RouteIndicator Count',
+      selector:(row)=> row.route_indicators || '-',
+     sortable: true,
+      cell: (row) => row.route_indicators|| '-',
     },
    {
       name: 'Updated',

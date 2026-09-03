@@ -13,6 +13,7 @@ import {
   GitMerge,
   PenSquare,
   Loader2,
+  FileText,
 } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { UGConstructionSurveyData } from '../../types/survey';
@@ -62,6 +63,8 @@ function ConstructionPage() {
   const [todate, setToDate] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'UG' | 'AcceptedLinks'>('UG');
   const [excel, setExcel] = useState<boolean>(false);
+  const [pdf, setPdf] = useState<boolean>(false);
+  const [acceptedPdfLoading, setAcceptedPdfLoading] = useState<boolean>(false);
   const [kml, setkml] = useState<boolean>(false);
   const [preview, setPreview] = useState<boolean>(false);
   const [progressmap, setProgressmap] = useState<boolean>(false);
@@ -1009,6 +1012,19 @@ function ConstructionPage() {
                   )}
                   {acceptedExcelLoading ? 'Exporting...' : 'Excel'}
                 </button>
+
+                <button
+                  onClick={() => setPdf(true)}
+                  disabled={acceptedPdfLoading}
+                  className="flex-none h-10 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-blue-400 dark:border-gray-600 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center gap-2"
+                >
+                  {acceptedPdfLoading ? (
+                    <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                  ) : (
+                    <FileText className="h-4 w-4 text-blue-600" />
+                  )}
+                  {acceptedPdfLoading ? 'Generating...' : 'PDF'}
+                </button>
               </>
             )}
             {/* Links Filter */}
@@ -1355,6 +1371,9 @@ function ConstructionPage() {
               excel={excel}
               onExcel={() => setExcel(false)}
               onExcelLoadingChange={setAcceptedExcelLoading}
+              pdf={pdf}
+              onPdf={() => setPdf(false)}
+              onPdfLoadingChange={setAcceptedPdfLoading}
             />
           </>
         )}

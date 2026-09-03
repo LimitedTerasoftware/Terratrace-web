@@ -1,5 +1,5 @@
 import React from 'react';
-import { Construction, MapPin, Clock, CheckCircle, AlertTriangle, Users, MessageCircleWarningIcon, MailWarningIcon, FileWarningIcon, CircleAlertIcon, Link2, Ruler, Cable, Percent, PlusCircle, Building2 } from 'lucide-react';
+import { Construction, MapPin, Clock, CheckCircle, AlertTriangle, Users, MessageCircleWarningIcon, MailWarningIcon, FileWarningIcon, CircleAlertIcon, Link2, Ruler, Cable, Percent, PlusCircle, Building2, Boxes, Signpost } from 'lucide-react';
 import { UGConstructionSurveyData } from '../../types/survey';
 import type { AcceptedLinksSummary } from './AcceptedLinks';
 
@@ -58,23 +58,20 @@ const ConstructionStatsPanel: React.FC<ConstructionStatsPanelProps> = ({ surveys
       id: 'ofc-distance',
     },
     {
-      icon: Users,
-      label: 'Total Survey Count',
-      value: data.totalSurveyCount,
+      icon: Boxes,
+      label: 'JointChamber Count',
+      value: data.totalJointChambers ?? 0,
       color: 'text-indigo-600',
       bgColor: 'bg-indigo-50',
-      id: 'survey-count',
+      id: 'joint-chamber-count',
     },
     {
-      icon: Percent,
-      label: 'Overall Completion',
-      value:
-        data.overallCompletionPercent != null
-          ? `${data.overallCompletionPercent}%`
-          : '-',
+      icon: Signpost,
+      label: 'RouteIndicator Count',
+      value: data.totalRouteIndicators ?? 0,
       color: 'text-teal-600',
       bgColor: 'bg-teal-50',
-      id: 'completion',
+      id: 'route-indicator-count',
     },
   ];
 
