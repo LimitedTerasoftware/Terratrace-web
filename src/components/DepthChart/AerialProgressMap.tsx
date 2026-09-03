@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { AlertCircle, Camera, Loader2, X, ZoomIn } from 'lucide-react';
 import moment from 'moment';
 import GoogleMapsLoader from '../hooks/googleMapsLoader';
-import type { PoleString } from '../../types/aerial-survey';
+import type { JointEnclosure, Landmark, PoleString } from '../../types/aerial-survey';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const baseUrl = import.meta.env.VITE_Image_URL;
@@ -16,6 +16,9 @@ interface ProgressPoleMarker {
   eventType: string;
   surveyId: number;
   orderIndex: number;
+  /** Joint Enclosure's jointType, when present — lets joint markers be
+   * styled/grouped by joint type instead of all sharing one look. */
+  subType?: string;
 }
 
 const parseSurveyIdsParam = (value: string | null): number[] => {
@@ -52,15 +55,11 @@ const EVENT_POINT_STYLES: Record<
   DRUM: { color: '#F59E0B', label: 'Drum', shape: 'triangle' },
 };
 
-// Any event type not explicitly listed above still needs a shape+color
-// combo that's visually distinct from the others — cycling through this
-// palette (keyed by a hash of the type name) beats falling back to one
-// bland gray circle for every unknown type.
+
 const FALLBACK_SHAPES: MarkerShape[] = [
-  'star',
+  'square',
   'pentagon',
   'circle',
-  'square',
   'triangle',
   'diamond',
 ];
@@ -100,10 +99,64 @@ const getFallbackStyle = (
   };
 };
 
+// The pole-stringing API returns this event type under more than one
+// spelling/format across datasets — the historical typo used elsewhere in
+// this app ("JOINT ENCLOUSER", with a space) and the correctly spelled,
+// unspaced form ("JOINTENCLOSURE") — plus arbitrary case. Normalize before
+// comparing so both resolve to the same style/grouping.
+const normalizeEventTypeKey = (value: string) =>
+  value.trim().toUpperCase().replace(/[\s_-]/g, '');
+
+const NORMALIZED_EVENT_POINT_STYLES = new Map<
+  string,
+  { color: string; label: string; shape: MarkerShape }
+>(
+  Object.entries(EVENT_POINT_STYLES).map(([key, value]) => [
+    normalizeEventTypeKey(key),
+    value,
+  ]),
+);
+NORMALIZED_EVENT_POINT_STYLES.set(
+  normalizeEventTypeKey('JOINTENCLOSURE'),
+  EVENT_POINT_STYLES['JOINT ENCLOUSER'],
+);
+
+const JOINT_ENCLOSURE_KEYS = new Set(
+  ['JOINT ENCLOUSER', 'JOINTENCLOSURE'].map(normalizeEventTypeKey),
+);
+const isJointEnclosureEventType = (eventType: string) =>
+  JOINT_ENCLOSURE_KEYS.has(normalizeEventTypeKey(eventType));
+
 const getPointStyle = (
   eventType: string,
 ): { color: string; label: string; shape: MarkerShape } =>
-  EVENT_POINT_STYLES[eventType] ?? getFallbackStyle(eventType);
+  NORMALIZED_EVENT_POINT_STYLES.get(normalizeEventTypeKey(eventType)) ??
+  getFallbackStyle(eventType);
+
+/** Groups markers for the legend/visibility toggle — Joint Enclosure markers
+ * group by jointType (when recorded) instead of all sharing one bucket. */
+const getMarkerGroupKey = (
+  marker: Pick<ProgressPoleMarker, 'eventType' | 'subType'>,
+): string =>
+  isJointEnclosureEventType(marker.eventType) && marker.subType
+    ? `${marker.eventType}::${marker.subType}`
+    : marker.eventType;
+
+/** Resolves the shape/color/label actually drawn for a marker — Joint
+ * Enclosure markers get a distinct look per jointType (hashed, same
+ * mechanism as the unknown-eventType fallback) instead of one flat style. */
+// The user wants the joint type itself as the title/label — not the
+// generic "Joint Enclosure" name — so the label is just marker.subType,
+// with no "Joint Enclosure -" prefix, whenever a joint type is recorded.
+const getMarkerStyle = (
+  marker: Pick<ProgressPoleMarker, 'eventType' | 'subType'>,
+): { color: string; label: string; shape: MarkerShape } => {
+  if (isJointEnclosureEventType(marker.eventType) && marker.subType) {
+    const { color, shape } = getFallbackStyle(getMarkerGroupKey(marker));
+    return { color, shape, label: marker.subType };
+  }
+  return getPointStyle(marker.eventType);
+};
 
 const escapeHtml = (value: string) =>
   value.replace(/[&<>"']/g, (char) => {
@@ -241,12 +294,35 @@ const ShapeSwatch: React.FC<{ shape: MarkerShape; color: string }> = ({
 const resolveImageUrl = (value: string) =>
   value.startsWith('http') ? value : `${baseUrl}${value}`;
 
+// Some pole-stringing records deliver joint_enclosure/landmark as JSON
+// strings rather than already-parsed objects — parse defensively so a
+// stringified payload doesn't silently hide fields behind a no-op '?.'.
+const parseNestedField = <T,>(raw: unknown): T | null => {
+  if (!raw) return null;
+  if (typeof raw === 'string') {
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      return null;
+    }
+  }
+  return raw as T;
+};
+
+const getJointEnclosure = (record: PoleString): JointEnclosure | null =>
+  parseNestedField<JointEnclosure>(record.joint_enclosure);
+
+const getLandmark = (record: PoleString): Landmark | null =>
+  parseNestedField<Landmark>(record.landmark);
+
 const getRecordPhotos = (record: PoleString): string[] => {
   const photos = new Set<string>();
   if (record.image) photos.add(record.image);
   record.images?.forEach((img) => img && photos.add(img));
-  record.joint_enclosure?.jointImages?.forEach((img) => img && photos.add(img));
-  record.landmark?.images?.forEach((img) => img && photos.add(img));
+  getJointEnclosure(record)?.jointImages?.forEach(
+    (img) => img && photos.add(img),
+  );
+  getLandmark(record)?.images?.forEach((img) => img && photos.add(img));
   return Array.from(photos);
 };
 
@@ -281,6 +357,7 @@ const buildMarkers = (records: PoleString[]): ProgressPoleMarker[] =>
       eventType: record.eventType,
       surveyId: record.survey_id ?? 0,
       orderIndex: record.order_index || record.id,
+      subType: getJointEnclosure(record)?.jointType?.trim() || undefined,
     }));
 
 const LoadingState: React.FC<{ label: string }> = ({ label }) => (
@@ -316,7 +393,12 @@ const MarkerDetailsPanel: React.FC<{
   onClose: () => void;
   onImageClick: (url: string) => void;
 }> = ({ record, onClose, onImageClick }) => {
-  const style = getPointStyle(record.eventType);
+  const jointEnclosure = getJointEnclosure(record);
+  const landmark = getLandmark(record);
+  const style = getMarkerStyle({
+    eventType: record.eventType,
+    subType: jointEnclosure?.jointType?.trim() || undefined,
+  });
   const photos = getRecordPhotos(record);
   const videoUrl = getRecordVideoUrl(record);
 
@@ -353,14 +435,12 @@ const MarkerDetailsPanel: React.FC<{
         {record.drum_number && (
           <Row label="Drum Number" value={record.drum_number} />
         )}
-        {record.landmark?.type && (
-          <Row label="Landmark Type" value={record.landmark.type} />
+        {landmark?.type && <Row label="Landmark Type" value={landmark.type} />}
+        {landmark?.description && (
+          <Row label="Landmark Description" value={landmark.description} />
         )}
-        {record.landmark?.description && (
-          <Row label="Landmark Description" value={record.landmark.description} />
-        )}
-        {record.joint_enclosure?.jointType && (
-          <Row label="Joint Type" value={record.joint_enclosure.jointType} />
+        {jointEnclosure?.jointType && (
+          <Row label="Joint Type" value={jointEnclosure.jointType} />
         )}
         {record.start_lgd_name && record.end_lgd_name && (
           <Row
@@ -447,17 +527,17 @@ const AerialProgressMapComp: React.FC<AerialProgressMapCompProps> = ({
   const [selectedRecord, setSelectedRecord] = useState<PoleString | null>(null);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
   const [showRoute, setShowRoute] = useState(true);
-  const [hiddenEventTypes, setHiddenEventTypes] = useState<Set<string>>(
+  const [hiddenMarkerGroups, setHiddenMarkerGroups] = useState<Set<string>>(
     new Set(),
   );
 
-  const toggleEventType = (eventType: string) => {
-    setHiddenEventTypes((prev) => {
+  const toggleMarkerGroup = (groupKey: string) => {
+    setHiddenMarkerGroups((prev) => {
       const next = new Set(prev);
-      if (next.has(eventType)) {
-        next.delete(eventType);
+      if (next.has(groupKey)) {
+        next.delete(groupKey);
       } else {
-        next.add(eventType);
+        next.add(groupKey);
       }
       return next;
     });
@@ -482,17 +562,26 @@ const AerialProgressMapComp: React.FC<AerialProgressMapCompProps> = ({
       .filter((entry) => entry.path.length > 1);
   }, [markers]);
 
-  const pointEventTypes = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          markers
-            .filter((marker) => !CONNECT_EVENT_TYPES.has(marker.eventType))
-            .map((marker) => marker.eventType),
-        ),
-      ),
-    [markers],
-  );
+  // One legend/toggle entry per marker group — Joint Enclosure markers split
+  // out by jointType, everything else keyed by eventType alone.
+  const pointMarkerGroups = useMemo(() => {
+    const groups = new Map<
+      string,
+      { groupKey: string; marker: ProgressPoleMarker; count: number }
+    >();
+    markers
+      .filter((marker) => !CONNECT_EVENT_TYPES.has(marker.eventType))
+      .forEach((marker) => {
+        const groupKey = getMarkerGroupKey(marker);
+        const existing = groups.get(groupKey);
+        if (existing) {
+          existing.count += 1;
+        } else {
+          groups.set(groupKey, { groupKey, marker, count: 1 });
+        }
+      });
+    return Array.from(groups.values());
+  }, [markers]);
 
   useEffect(() => {
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -613,16 +702,22 @@ const AerialProgressMapComp: React.FC<AerialProgressMapCompProps> = ({
       .filter(
         (marker) =>
           !CONNECT_EVENT_TYPES.has(marker.eventType) &&
-          !hiddenEventTypes.has(marker.eventType),
+          !hiddenMarkerGroups.has(getMarkerGroupKey(marker)),
       )
       .map((marker) => {
-        const style = getPointStyle(marker.eventType);
+        const style = getMarkerStyle(marker);
         const pointMarker = new google.maps.Marker({
           position: { lat: marker.lat, lng: marker.lng },
           map,
           title: style.label,
           zIndex: 997,
           icon: buildLabeledShapeIcon(style.shape, style.color, 14),
+          label: {
+            text: style.label,
+            color: '#111827',
+            fontSize: '10px',
+            fontWeight: '600',
+          },
         });
 
         pointMarker.addListener('click', () => {
@@ -648,7 +743,7 @@ const AerialProgressMapComp: React.FC<AerialProgressMapCompProps> = ({
       pointMarkersRef.current.forEach((marker) => marker.setMap(null));
       pointMarkersRef.current = [];
     };
-  }, [markers, map, records, hiddenEventTypes]);
+  }, [markers, map, records, hiddenMarkerGroups]);
 
   useEffect(() => {
     if (!map || !mapRef.current) return;
@@ -699,22 +794,18 @@ const AerialProgressMapComp: React.FC<AerialProgressMapCompProps> = ({
             />
             <span className="flex-1 truncate">Pole Route</span>
           </label>
-          {pointEventTypes.map((eventType) => {
-            const style = getPointStyle(eventType);
-            const count = markers.filter(
-              (marker) => marker.eventType === eventType,
-            ).length;
-            if (count === 0) return null;
+          {pointMarkerGroups.map(({ groupKey, marker, count }) => {
+            const style = getMarkerStyle(marker);
 
             return (
               <label
-                key={eventType}
+                key={groupKey}
                 className="mt-1 flex cursor-pointer items-center gap-2"
               >
                 <input
                   type="checkbox"
-                  checked={!hiddenEventTypes.has(eventType)}
-                  onChange={() => toggleEventType(eventType)}
+                  checked={!hiddenMarkerGroups.has(groupKey)}
+                  onChange={() => toggleMarkerGroup(groupKey)}
                 />
                 <ShapeSwatch shape={style.shape} color={style.color} />
                 <span className="flex-1 truncate">{style.label}</span>
