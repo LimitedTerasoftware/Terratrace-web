@@ -52,6 +52,121 @@ interface ReportProps {
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
+const hasValue = (val: any) =>
+  val !== null && val !== undefined && val !== '' && val !== 'null';
+
+const escapeXml = (val: any) =>
+  String(val)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+
+const getUgFields = (activity: any): [string, any][] => [
+  ['Survey ID', activity.survey_id],
+  ['ID', activity.id],
+  ['Event Type', activity.eventType],
+  ['Area Type', activity.area_type],
+  ['Route Belongs To', activity.routeBelongsTo],
+  ['Road Type', activity.roadType],
+  ['Road Margin (Side)', activity.road_margin],
+  ['Road Width', activity.roadWidth],
+  ['Soil Type', activity.soilType],
+  ['Cable Laid On', activity.cableLaidOn],
+  ['Road Feasibility', activity.Roadfesibility],
+  ['Crossing Type', activity.crossingType],
+  ['Crossing Length', activity.crossingLength],
+  ['Depth (Meters)', activity.depthMeters],
+  ['Distance (Meters)', activity.distance],
+  ['Offset', activity.offset],
+  ['Execution Modality', activity.executionModality],
+  ['Cable Stack', activity.cable_stack],
+  ['DGPS Accuracy', activity.dgps_accuracy],
+  ['DGPS SIV', activity.dgps_siv],
+  ['Landmark Type', activity.landmark_type],
+  ['Landmark Description', activity.landmark_description],
+];
+
+const getAerialFields = (activity: any): [string, any][] => [
+  ['Survey ID', activity.survey_id],
+  ['ID', activity.id],
+  ['Event Type', activity.eventType],
+  ['Pole Type', activity.pole_type],
+  ['Existing Pole', activity.existing_pole],
+  ['New Pole', activity.new_pole],
+  ['Distance', activity.distance],
+];
+
+const getLatLongForEvent = (row: any, isAerial: boolean): string | null => {
+  if (isAerial) {
+    if (row.latitude != null && row.longitude != null) {
+      return `${row.latitude},${row.longitude}`;
+    }
+    return null;
+  }
+  switch (row.eventType) {
+    case 'FPOI':
+      return row.fpoiLatLong;
+    case 'DEPTH':
+      return row.depthLatlong;
+    case 'JOINTCHAMBER':
+      return row.jointChamberLatLong;
+    case 'MANHOLES':
+      return row.manholeLatLong;
+    case 'LANDMARK':
+      return row.landmarkLatLong;
+    case 'KILOMETERSTONE':
+      return row.kilometerstoneLatLong;
+    case 'FIBERTURN':
+      return row.fiberTurnLatLong;
+    case 'ROUTEINDICATOR':
+      return row.routeIndicatorLatLong;
+    case 'STARTPIT':
+      return row.startPitLatlong;
+    case 'ENDPIT':
+      return row.endPitLatlong;
+    case 'STARTSURVEY':
+      return row.startPointCoordinates;
+    case 'ENDSURVEY':
+      return row.endPointCoordinates;
+    case 'ROADCROSSING':
+      return row.crossingLatlong;
+    case 'HOLDSURVEY':
+      return row.holdLatlong;
+    case 'BLOWING':
+      return row.blowingLatLong;
+    case 'ROUTEFEATURE':
+      return row.routeFeatureLatLong;
+    default:
+      return null;
+  }
+};
+
+// Google Earth renders the description's HTML in the balloon popup.
+const buildDescription = (fields: [string, any][], lat: number, lng: number) => {
+  const rows = fields
+    .filter(([, value]) => hasValue(value))
+    .map(([label, value]) => `<b>${label}:</b> ${value}`)
+    .join('<br/>\n             ');
+
+  return `${rows}<br/>\n             <b>Coordinates:</b> ${lat}, ${lng}`;
+};
+
+// QGIS (and most GIS software) ignore description HTML and instead read
+// ExtendedData as individual attribute-table columns.
+const buildExtendedData = (fields: [string, any][]) => {
+  const rows = fields
+    .filter(([, value]) => hasValue(value))
+    .map(
+      ([label, value]) =>
+        `<Data name="${escapeXml(label)}"><value>${escapeXml(value)}</value></Data>`,
+    )
+    .join('\n          ');
+
+  return rows ? `<ExtendedData>\n          ${rows}\n        </ExtendedData>` : '';
+};
+
 const Report: React.FC<ReportProps> = ({
   Data,
   Onexcel,
@@ -701,6 +816,69 @@ const Report: React.FC<ReportProps> = ({
           worksheet,
           'Underground Construction',
         );
+
+        if (!IEUser) {
+          try {
+            const { activities, isAerial } = await fetchDetailActivities();
+
+            if (activities.length > 0) {
+              const rowById = new Map(selectedRows.map((row) => [row.id, row]));
+              const extraLabels = (isAerial ? getAerialFields({}) : getUgFields({}))
+                .slice(3)
+                .map(([label]) => label);
+
+              const detailHeaders = [
+                '#',
+                'Survey ID',
+                'ID',
+                'State',
+                'District',
+                'Block',
+                'Link',
+                'Event Type',
+                ...extraLabels,
+                'Latitude',
+                'Longitude',
+              ];
+
+              const detailRows = activities.map((activity: any, idx: number) => {
+                const linkRow = rowById.get(Number(activity.survey_id));
+                const fields = isAerial ? getAerialFields(activity) : getUgFields(activity);
+                const extraValues = fields
+                  .slice(3)
+                  .map(([, value]) => (hasValue(value) ? value : '-'));
+                const latLongStr = getLatLongForEvent(activity, isAerial);
+                const [lat, lng] = latLongStr
+                  ? latLongStr.split(',').map((v) => v.trim())
+                  : ['-', '-'];
+
+                return [
+                  idx + 1,
+                  activity.survey_id ?? '-',
+                  activity.id ?? '-',
+                  linkRow?.state_name ?? '-',
+                  linkRow?.district_name ?? '-',
+                  linkRow?.block_name ?? '-',
+                  linkRow ? `${linkRow.start_lgd_name}-${linkRow.end_lgd_name}` : '-',
+                  activity.eventType ?? '-',
+                  ...extraValues,
+                  lat,
+                  lng,
+                ];
+              });
+
+              const detailSheet = XLSX.utils.aoa_to_sheet([
+                detailHeaders,
+                ...detailRows,
+              ]);
+              XLSX.utils.book_append_sheet(workbook, detailSheet, 'Activity Details');
+            }
+          } catch (err) {
+            console.error('Error fetching activity details for excel', err);
+            toast.error('Could not fetch full activity details; exported summary only.');
+          }
+        }
+
         XLSX.writeFile(workbook, 'Underground_Construction.xlsx', {
           compression: true,
         });
@@ -792,6 +970,37 @@ const Report: React.FC<ReportProps> = ({
     }
   };
 
+  const fetchDetailActivities = async (): Promise<{
+    activities: any[];
+    isAerial: boolean;
+  }> => {
+    const surveyIds = selectedRows.map((row) => row.id).join(',');
+    let baseurl = 'construction-forms';
+    let isAerial = false;
+
+    if (
+      Data.constType === 'Aerial' ||
+      filteredData.some((d) => d.construction_type === 'Aerial')
+    ) {
+      baseurl = 'get-pole-stringing';
+      isAerial = true;
+    }
+
+    const resp = await axios.get(`${TraceBASEURL}/${baseurl}`, {
+      params: { survey_ids: surveyIds },
+    });
+
+    if (resp.status !== 200 && resp.status !== 201) {
+      throw new Error('Failed to fetch survey data');
+    }
+
+    const activities = isAerial
+      ? Object.values(resp.data?.data || {}).flat()
+      : resp.data?.data.filter((data: any) => data.status == 0) || [];
+
+    return { activities, isAerial };
+  };
+
   const handleGenerateKML = async () => {
     if (selectedRows.length === 0) {
       alert('No rows selected');
@@ -850,27 +1059,9 @@ const Report: React.FC<ReportProps> = ({
     let isAerial = false;
 
     try {
-      const surveyIds = selectedRows.map((row) => row.id).join(',');
-      let baseurl = 'construction-forms';
-
-      if (
-        Data.constType === 'Aerial' ||
-        filteredData.some((d) => d.construction_type === 'Aerial')
-      ) {
-        baseurl = 'get-pole-stringing';
-        isAerial = true;
-      }
-      const resp = await axios.get(`${TraceBASEURL}/${baseurl}`, {
-        params: { survey_ids: surveyIds },
-      });
-
-      if (resp.status !== 200 && resp.status !== 201) {
-        throw new Error('Failed to fetch survey data');
-      }
-
-      const activities = isAerial
-        ? Object.values(resp.data?.data || {}).flat()
-        : resp.data?.data.filter((data: any) => data.status == 0) || [];
+      const detail = await fetchDetailActivities();
+      const activities = detail.activities;
+      isAerial = detail.isAerial;
 
       if (activities.length === 0) {
         alert('No survey data found for selected rows');
@@ -878,51 +1069,6 @@ const Report: React.FC<ReportProps> = ({
         OnKml();
         return;
       }
-
-      const getLatLongForEvent = (row: any): string | null => {
-        if (isAerial) {
-          if (row.latitude != null && row.longitude != null) {
-            return `${row.latitude},${row.longitude}`;
-          }
-          return null;
-        }
-        switch (row.eventType) {
-          case 'FPOI':
-            return row.fpoiLatLong;
-          case 'DEPTH':
-            return row.depthLatlong;
-          case 'JOINTCHAMBER':
-            return row.jointChamberLatLong;
-          case 'MANHOLES':
-            return row.manholeLatLong;
-          case 'LANDMARK':
-            return row.landmarkLatLong;
-          case 'KILOMETERSTONE':
-            return row.kilometerstoneLatLong;
-          case 'FIBERTURN':
-            return row.fiberTurnLatLong;
-          case 'ROUTEINDICATOR':
-            return row.routeIndicatorLatLong;
-          case 'STARTPIT':
-            return row.startPitLatlong;
-          case 'ENDPIT':
-            return row.endPitLatlong;
-          case 'STARTSURVEY':
-            return row.startPointCoordinates;
-          case 'ENDSURVEY':
-            return row.endPointCoordinates;
-          case 'ROADCROSSING':
-            return row.crossingLatlong;
-          case 'HOLDSURVEY':
-            return row.holdLatlong;
-          case 'BLOWING':
-            return row.blowingLatLong;
-          case 'ROUTEFEATURE':
-            return row.routeFeatureLatLong;
-          default:
-            return null;
-        }
-      };
 
       // ── Group activities by survey_id for polyline drawing ─────────────────
       const surveyGroups: Record<string, { lat: number; lng: number }[]> = {};
@@ -932,48 +1078,11 @@ const Report: React.FC<ReportProps> = ({
         : selectedEventTypes;
       const iconMap = isAerial ? AERIAL_ICON_MAP : UG_ICON_MAP;
 
-      const hasValue = (val: any) =>
-        val !== null && val !== undefined && val !== '' && val !== 'null';
-
-      const buildUgDescription = (activity: any, lat: number, lng: number) => {
-        const fields: [string, any][] = [
-          ['Survey ID', activity.survey_id],
-          ['ID', activity.id],
-          ['Event Type', activity.eventType],
-          ['Area Type', activity.area_type],
-          ['Route Belongs To', activity.routeBelongsTo],
-          ['Road Type', activity.roadType],
-          ['Road Margin (Side)', activity.road_margin],
-          ['Road Width', activity.roadWidth],
-          ['Soil Type', activity.soilType],
-          ['Cable Laid On', activity.cableLaidOn],
-          ['Road Feasibility', activity.Roadfesibility],
-          ['Crossing Type', activity.crossingType],
-          ['Crossing Length', activity.crossingLength],
-          ['Depth (Meters)', activity.depthMeters],
-          ['Distance (Meters)', activity.distance],
-          ['Offset', activity.offset],
-          ['Execution Modality', activity.executionModality],
-          ['Cable Stack', activity.cable_stack],
-          ['DGPS Accuracy', activity.dgps_accuracy],
-          ['DGPS SIV', activity.dgps_siv],
-          ['Landmark Type', activity.landmark_type],
-          ['Landmark Description', activity.landmark_description],
-        ];
-
-        const rows = fields
-          .filter(([, value]) => hasValue(value))
-          .map(([label, value]) => `<b>${label}:</b> ${value}`)
-          .join('<br/>\n             ');
-
-        return `${rows}<br/>\n             <b>Coordinates:</b> ${lat}, ${lng}`;
-      };
-
       activities.forEach((activity: any) => {
         const eventType = activity.eventType;
         if (!activeEventTypes.includes(eventType)) return;
 
-        const latLongStr = getLatLongForEvent(activity);
+        const latLongStr = getLatLongForEvent(activity, isAerial);
         if (!latLongStr) return;
 
         const [latStr, lngStr] = latLongStr.split(',');
@@ -986,14 +1095,9 @@ const Report: React.FC<ReportProps> = ({
 
         const icon = iconMap[eventType] ?? defaultIcon;
 
-        const description = isAerial
-          ? `<b>Survey ID:</b> ${activity.survey_id || 'N/A'}<br/>
-             <b>ID:</b> ${activity.id || 'N/A'}<br/>
-             <b>Event Type:</b> ${eventType}<br/>
-             <b>Pole Type:</b> ${activity.pole_type || 'N/A'}<br/>
-             <b>Distance:</b> ${activity.distance || 'N/A'}<br/>
-             <b>Coordinates:</b> ${lat}, ${lng}`
-          : buildUgDescription(activity, lat, lng);
+        const fields = isAerial ? getAerialFields(activity) : getUgFields(activity);
+        const description = buildDescription(fields, lat, lng);
+        const extendedData = buildExtendedData(fields);
 
         allPlacemarks += `
       <Placemark>
@@ -1001,6 +1105,7 @@ const Report: React.FC<ReportProps> = ({
         <description><![CDATA[
           ${description}
         ]]></description>
+        ${extendedData}
         <Style>
           <IconStyle>
             <scale>1.1</scale>
