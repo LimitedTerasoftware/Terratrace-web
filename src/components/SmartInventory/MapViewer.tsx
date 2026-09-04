@@ -264,7 +264,6 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
         const loader = new Loader({
           apiKey: GOOGLE_MAPS_API_KEY,
           version: 'weekly',
-          libraries: ['places'],
         });
 
         await loader.load();

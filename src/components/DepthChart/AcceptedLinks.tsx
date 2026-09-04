@@ -35,6 +35,8 @@ interface AcceptedLinkRow {
   route_indicators:string;
   otdr_length:string;
   joint_chambers:string;
+  firm_names:string;
+  machine_ids:number;
 }
 
 interface AcceptedLinksSummary {
@@ -52,6 +54,7 @@ interface AcceptedLinksProps {
   selectedState: string | null;
   selectedDistrict: string | null;
   selectedBlock: string | null;
+  selectedvendor:string|null;
   globalsearch: string;
   filtersReady: boolean;
   tdStatus?: string;
@@ -109,6 +112,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
   selectedState,
   selectedDistrict,
   selectedBlock,
+  selectedvendor,
   globalsearch,
   filtersReady,
   tdStatus,
@@ -130,6 +134,9 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editValue, setEditValue] = useState('');
   const [savingId, setSavingId] = useState<number | null>(null);
+  const [editingOtdrId, setEditingOtdrId] = useState<number | null>(null);
+  const [otdrEditValue, setOtdrEditValue] = useState('');
+  const [savingOtdrId, setSavingOtdrId] = useState<number | null>(null);
   const [statusUpdatingId, setStatusUpdatingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const adminAccess = isAdminUser();
@@ -148,6 +155,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
         if (selectedState) params.state_id = selectedState;
         if (selectedDistrict) params.district_id = selectedDistrict;
         if (selectedBlock) params.block_id = selectedBlock;
+        if(selectedvendor) params.firm_id = selectedvendor;
         if (globalsearch.trim()) params.search = globalsearch.trim();
         if (tdStatus) params.td_status = tdStatus;
         if (ofcStatus) params.ofc_status = ofcStatus;
@@ -191,6 +199,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
     selectedState,
     selectedDistrict,
     selectedBlock,
+    selectedvendor,
     globalsearch,
     tdStatus,
     ofcStatus,
@@ -201,7 +210,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
 
   useEffect(() => {
     setPage(1);
-  }, [selectedState, selectedDistrict, selectedBlock, globalsearch, tdStatus, ofcStatus]);
+  }, [selectedState, selectedDistrict, selectedBlock, selectedvendor,globalsearch, tdStatus, ofcStatus]);
 
   const startEdit = (row: AcceptedLinkRow) => {
     setEditingId(row.id);
@@ -245,6 +254,47 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       toast.error('Failed to update BOQ distance.');
     } finally {
       setSavingId(null);
+    }
+  };
+
+  const startOtdrEdit = (row: AcceptedLinkRow) => {
+    setEditingOtdrId(row.id);
+    setOtdrEditValue(row.otdr_length != null ? String(row.otdr_length) : '');
+  };
+
+  const cancelOtdrEdit = () => {
+    setEditingOtdrId(null);
+    setOtdrEditValue('');
+  };
+
+  const saveOtdrEdit = async (row: AcceptedLinkRow) => {
+    const trimmed = otdrEditValue.trim();
+    const parsed = Number(trimmed);
+    if (trimmed === '' || Number.isNaN(parsed)) {
+      toast.error('Enter a valid number for OTDR distance.');
+      return;
+    }
+
+    setSavingOtdrId(row.id);
+    try {
+      await axios.post(`${TraceBASEURL}/update-link`, {
+        link_id: String(row.id),
+        otdr_length: String(parsed),
+      });
+
+      setData((prev) =>
+        prev.map((item) =>
+          item.id === row.id ? { ...item, otdr_length: String(parsed) } : item,
+        ),
+      );
+      setEditingOtdrId(null);
+      setOtdrEditValue('');
+      toast.success('OTDR distance updated.');
+    } catch (err) {
+      console.error('Error updating OTDR distance', err);
+      toast.error('Failed to update OTDR distance.');
+    } finally {
+      setSavingOtdrId(null);
     }
   };
 
@@ -312,6 +362,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       if (selectedState) params.state_id = selectedState;
       if (selectedDistrict) params.district_id = selectedDistrict;
       if (selectedBlock) params.block_id = selectedBlock;
+      if(selectedvendor) params.firm_id =selectedvendor;
       if (globalsearch.trim()) params.search = globalsearch.trim();
       if (tdStatus) params.td_status = tdStatus;
       if (ofcStatus) params.ofc_status = ofcStatus;
@@ -403,6 +454,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       if (selectedState) params.state_id = selectedState;
       if (selectedDistrict) params.district_id = selectedDistrict;
       if (selectedBlock) params.block_id = selectedBlock;
+      if(selectedvendor) params.firm_id =selectedvendor;
       if (globalsearch.trim()) params.search = globalsearch.trim();
       if (tdStatus) params.td_status = tdStatus;
       if (ofcStatus) params.ofc_status = ofcStatus;
@@ -516,6 +568,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
         row.state_name || '-',
         row.district_name || '-',
         row.block_name || '-',
+        row.firm_names || '-',
         row.link_name || '-',
         row.actual_distance_meters != null ? row.actual_distance_meters.toFixed(2) : '-',
         (row.total_distance_meters ?? 0).toFixed(2),
@@ -527,7 +580,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
 
       autoTable(doc, {
         startY: yPos,
-        head: [['#', 'State', 'District', 'Block', 'Link (Start TO End)', 'BOQ Distance(mt)', 'T&D Distance(mt)', 'OTDR Distance(mt)', 'OFC Distance(mt)', 'JointChamberCount', 'RouteIndicator Count']],
+        head: [['#', 'State', 'District', 'Block','Vendor', 'Link (Start TO End)', 'BOQ Distance(mt)', 'T&D Distance(mt)', 'OTDR Distance(mt)', 'OFC Distance(mt)', 'JointChamberCount', 'RouteIndicator Count']],
         body: tableRows,
         theme: 'grid',
         styles: {
@@ -606,6 +659,12 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       selector: (row) => row.block_name,
       sortable: true,
       wrap: true,
+    },
+    {
+      name:'Firm Name',
+      selector:row=> row.firm_names,
+      sortable:true,
+      wrap:true,
     },
     {
       name: 'Link Name',
@@ -700,10 +759,60 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
     },
     {
       name :'OTDR Distance(mt)',
+      minWidth: '170px',
       selector:(row)=>row.otdr_length ?? 0,
       sortable: true,
-      cell: (row) =>(Number(row.otdr_length) ?? 0).toFixed(2) ,
-
+      cell: (row) => {
+        if (adminAccess && editingOtdrId === row.id) {
+          const isSaving = savingOtdrId === row.id;
+          return (
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                autoFocus
+                value={otdrEditValue}
+                disabled={isSaving}
+                onChange={(e) => setOtdrEditValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveOtdrEdit(row);
+                  if (e.key === 'Escape') cancelOtdrEdit();
+                }}
+                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded outline-none focus:border-blue-400 disabled:opacity-50"
+              />
+              <button
+                onClick={() => saveOtdrEdit(row)}
+                disabled={isSaving}
+                className="p-1 text-green-600 hover:bg-green-50 rounded disabled:opacity-50"
+                title="Save"
+              >
+                <Check className="w-4 h-4" />
+              </button>
+              <button
+                onClick={cancelOtdrEdit}
+                disabled={isSaving}
+                className="p-1 text-gray-500 hover:bg-gray-100 rounded disabled:opacity-50"
+                title="Cancel"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          );
+        }
+        return (
+          <div className="flex items-center gap-2">
+            <span>{(Number(row.otdr_length) || 0).toFixed(2)}</span>
+            {adminAccess && (
+              <button
+                onClick={() => startOtdrEdit(row)}
+                className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                title="Edit OTDR distance"
+              >
+                <PenIcon className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        );
+      },
     },
       {
       name: 'T & D Status',

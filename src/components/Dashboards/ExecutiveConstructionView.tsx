@@ -466,15 +466,32 @@ export default function ExecutiveConstructionView() {
   return (
     <div className="flex flex-col h-[calc(100vh-48px)] bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4 flex flex-row items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Executive Construction View</h1>
-        <div className="flex items-center text-sm text-gray-500 gap-1">
-          <Link to="/dashboard" className="hover:text-blue-600">
-            Dashboard
-          </Link>
-          <ChevronRight className="w-3.5 h-3.5" />
-          <span className="text-gray-700 font-medium">Executive Construction View</span>
+      <div className="bg-white border-b border-gray-200 px-6 py-0 flex flex-row items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Executive Construction View</h1>
+          {/* <div className="flex items-center text-sm text-gray-500 gap-1 mt-1">
+            <Link to="/dashboard" className="hover:text-blue-600">
+              Dashboard
+            </Link>
+            <ChevronRight className="w-3.5 h-3.5" />
+            <span className="text-gray-700 font-medium">Executive Construction View</span>
+          </div> */}
         </div>
+        <nav className="flex gap-6 flex-shrink-0">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`py-2 border-b-4 text-sm font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
       </div>
 
       {/* Filters */}
@@ -522,25 +539,6 @@ export default function ExecutiveConstructionView() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="bg-white border-b border-gray-200 px-6">
-        <nav className="flex gap-6">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`py-3 border-b-4 text-sm font-medium transition-colors ${
-                activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-      </div>
-
       {/* Stat cards */}
       {activeTab === 'construction' && blockSelected && (
         <KPICards
@@ -553,7 +551,7 @@ export default function ExecutiveConstructionView() {
         />
       )}
       {activeTab === 'aerial' && aerialStatsCards.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 px-6 py-6 bg-gray-50">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-2 bg-gray-50">
           {aerialStatsCards.map((s) => (
             <StatsCard
               key={s.label}

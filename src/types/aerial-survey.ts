@@ -166,6 +166,10 @@ export interface PoleString {
   is_active:number;
   muff_type:string|null;
   order_index:number|0;
+  start_latitude: string,
+  start_longitude: string,
+  end_latitude: string,
+  end_longitude: string,
 }
 export interface PoleSurveyResponse {
   status: boolean;

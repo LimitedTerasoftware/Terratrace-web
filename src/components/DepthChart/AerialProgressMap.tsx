@@ -246,6 +246,76 @@ const buildLabeledShapeIcon = (
   };
 };
 
+// Classic map-pin ("drop") icon used for the start/end GP of a
+// pole-stringing link — distinct from the shape icons used for in-between
+// survey events (poles, landmarks, joints, drums, ...).
+const buildDropIcon = (color: string, size = 30): google.maps.Icon => {
+  const width = size;
+  const height = size * 1.375;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 24 33">
+    <path d="M12 0C5.373 0 0 5.373 0 12c0 9 12 21 12 21s12-12 12-21c0-6.627-5.373-12-12-12z" fill="${color}" stroke="#ffffff" stroke-width="1.5"/>
+    <circle cx="12" cy="12" r="4.5" fill="#ffffff"/>
+  </svg>`;
+
+  return {
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    scaledSize: new google.maps.Size(width, height),
+    anchor: new google.maps.Point(width / 2, height),
+    labelOrigin: new google.maps.Point(width / 2, -6),
+  };
+};
+
+const START_GP_COLOR = '#16A34A'; // green
+const END_GP_COLOR = '#DC2626'; // red
+
+interface GpEndpointMarker {
+  key: string;
+  kind: 'start' | 'end';
+  lat: number;
+  lng: number;
+  name: string;
+}
+
+// Every pole-stringing record carries the start/end GP of the link it
+// belongs to — dedupe by coordinates so repeated records for the same link
+// don't stack identical pins on top of each other.
+const buildGpEndpointMarkers = (records: PoleString[]): GpEndpointMarker[] => {
+  const seen = new Set<string>();
+  const endpoints: GpEndpointMarker[] = [];
+
+  const pushEndpoint = (
+    kind: 'start' | 'end',
+    latRaw: unknown,
+    lngRaw: unknown,
+    name: string | null | undefined,
+  ) => {
+    const lat = Number(latRaw);
+    const lng = Number(lngRaw);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return;
+    if (lat === 0 && lng === 0) return;
+
+    const key = `${kind}:${lat.toFixed(6)},${lng.toFixed(6)}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+
+    endpoints.push({
+      key,
+      kind,
+      lat,
+      lng,
+      name: name?.trim() || (kind === 'start' ? 'Start GP' : 'End GP'),
+    });
+  };
+
+  records.forEach((record) => {
+    pushEndpoint('start', record.start_latitude, record.start_longitude, record.start_lgd_name);
+    pushEndpoint('end', record.end_latitude, record.end_longitude, record.end_lgd_name);
+  });
+
+  return endpoints;
+};
+
 const ShapeSwatch: React.FC<{ shape: MarkerShape; color: string }> = ({
   shape,
   color,
@@ -520,6 +590,7 @@ const AerialProgressMapComp: React.FC<AerialProgressMapCompProps> = ({
   const mapRef = useRef<HTMLDivElement>(null);
   const routePolylinesRef = useRef<google.maps.Polyline[]>([]);
   const pointMarkersRef = useRef<google.maps.Marker[]>([]);
+  const gpMarkersRef = useRef<google.maps.Marker[]>([]);
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -527,6 +598,8 @@ const AerialProgressMapComp: React.FC<AerialProgressMapCompProps> = ({
   const [selectedRecord, setSelectedRecord] = useState<PoleString | null>(null);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
   const [showRoute, setShowRoute] = useState(true);
+  const [showStartGp, setShowStartGp] = useState(true);
+  const [showEndGp, setShowEndGp] = useState(true);
   const [hiddenMarkerGroups, setHiddenMarkerGroups] = useState<Set<string>>(
     new Set(),
   );
@@ -582,6 +655,8 @@ const AerialProgressMapComp: React.FC<AerialProgressMapCompProps> = ({
       });
     return Array.from(groups.values());
   }, [markers]);
+
+  const gpEndpointMarkers = useMemo(() => buildGpEndpointMarkers(records), [records]);
 
   useEffect(() => {
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -745,6 +820,49 @@ const AerialProgressMapComp: React.FC<AerialProgressMapCompProps> = ({
     };
   }, [markers, map, records, hiddenMarkerGroups]);
 
+  // Start/End GP markers — green drop pin at the link's start GP, red at its end GP.
+  useEffect(() => {
+    if (!map) return;
+
+    gpMarkersRef.current.forEach((marker) => marker.setMap(null));
+    gpMarkersRef.current = gpEndpointMarkers
+      .filter((gp) => (gp.kind === 'start' ? showStartGp : showEndGp))
+      .map((gp) => {
+        const color = gp.kind === 'start' ? START_GP_COLOR : END_GP_COLOR;
+        const gpMarker = new google.maps.Marker({
+          position: { lat: gp.lat, lng: gp.lng },
+          map,
+          title: gp.name,
+          zIndex: 1000,
+          icon: buildDropIcon(color),
+          label: {
+            text: gp.name,
+            color: '#111827',
+            fontSize: '11px',
+            fontWeight: '700',
+          },
+        });
+
+        gpMarker.addListener('click', () => {
+          infoWindowRef.current?.close();
+          infoWindowRef.current?.setContent(`
+            <div style="padding:4px 4px;font-size:13px;line-height:1.5">
+              <div style="font-weight:700;color:${color}">${escapeHtml(gp.kind === 'start' ? 'Start GP' : 'End GP')}</div>
+              <div>${escapeHtml(gp.name)}</div>
+            </div>
+          `);
+          infoWindowRef.current?.open(map, gpMarker);
+        });
+
+        return gpMarker;
+      });
+
+    return () => {
+      gpMarkersRef.current.forEach((marker) => marker.setMap(null));
+      gpMarkersRef.current = [];
+    };
+  }, [gpEndpointMarkers, map, showStartGp, showEndGp]);
+
   useEffect(() => {
     if (!map || !mapRef.current) return;
 
@@ -766,11 +884,15 @@ const AerialProgressMapComp: React.FC<AerialProgressMapCompProps> = ({
       bounds.extend({ lat: marker.lat, lng: marker.lng });
       points += 1;
     });
+    gpEndpointMarkers.forEach((gp) => {
+      bounds.extend({ lat: gp.lat, lng: gp.lng });
+      points += 1;
+    });
 
     if (points === 0) return;
     map.fitBounds(bounds, 48);
     if (points === 1) map.setZoom(16);
-  }, [map, markers]);
+  }, [map, markers, gpEndpointMarkers]);
 
   if (isLoading) return <LoadingState label="Loading map..." />;
   if (error) return <ErrorState message={error} />;
@@ -793,6 +915,30 @@ const AerialProgressMapComp: React.FC<AerialProgressMapCompProps> = ({
               style={{ backgroundColor: '#3B82F6' }}
             />
             <span className="flex-1 truncate">Pole Route</span>
+          </label>
+          <label className="mt-1 flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={showStartGp}
+              onChange={(event) => setShowStartGp(event.target.checked)}
+            />
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ backgroundColor: START_GP_COLOR }}
+            />
+            <span className="flex-1 truncate">Start GP</span>
+          </label>
+          <label className="mt-1 flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={showEndGp}
+              onChange={(event) => setShowEndGp(event.target.checked)}
+            />
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ backgroundColor: END_GP_COLOR }}
+            />
+            <span className="flex-1 truncate">End GP</span>
           </label>
           {pointMarkerGroups.map(({ groupKey, marker, count }) => {
             const style = getMarkerStyle(marker);

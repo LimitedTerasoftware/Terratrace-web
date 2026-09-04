@@ -955,7 +955,7 @@ function ConstructionPage() {
             </div>
 
             {/* Vendor Filter */}
-            {activeTab === 'UG' && !IEUser && (
+            {!IEUser && (
               <div className="relative flex-1 min-w-0 sm:flex-none sm:w-40">
                 <SearchableSelect
                   value={selectedVendor || ''}
@@ -1363,6 +1363,7 @@ function ConstructionPage() {
               selectedState={selectedState}
               selectedDistrict={selectedDistrict}
               selectedBlock={selectedBlock}
+              selectedvendor={selectedVendor}
               globalsearch={globalsearch}
               filtersReady={filtersReady}
               tdStatus={tdStatus}
