@@ -736,7 +736,7 @@ const AerialProgressMapComp: React.FC<AerialProgressMapCompProps> = ({
       const polyline = new google.maps.Polyline({
         path,
         geodesic: true,
-        strokeColor: '#3B82F6',
+        strokeColor: '#F2F507',
         strokeOpacity: 0.95,
         strokeWeight: 4,
         zIndex: 999,

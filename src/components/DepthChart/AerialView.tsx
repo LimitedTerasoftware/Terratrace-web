@@ -287,8 +287,13 @@ function AerialView() {
 
   const handleAccept = async () => {
     try {
+      const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+
       const resp = await axios.post(
         `${BASEURL}/underground-surveys/${MainData.id}/accept`,
+           {
+          admin_id: userData.id,
+        },
       );
       if (resp.data.status === 1) {
         toast.success('Record Accepted successfully!');

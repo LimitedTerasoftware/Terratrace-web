@@ -37,6 +37,7 @@ interface ReportProps {
     mergeSurveys: boolean;
     editLink?: boolean;
     selectedVendor?: string | null;
+    downloadMBLink?: boolean;
   };
   Onexcel: () => void;
   OnPreview: () => void;
@@ -48,6 +49,8 @@ interface ReportProps {
   OnMergeSurveys: () => void;
   OnMergeLoadingChange: (loading: boolean) => void;
   OnEditLink?: () => void;
+  OnDownloadMBLink?: () => void;
+  OnDownloadMBLinkLoadingChange?: (loading: boolean) => void;
 }
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -179,6 +182,8 @@ const Report: React.FC<ReportProps> = ({
   OnMergeSurveys,
   OnMergeLoadingChange,
   OnEditLink,
+  OnDownloadMBLink,
+  OnDownloadMBLinkLoadingChange,
 }) => {
   const AdminAcess = isAdminUser();
   const IEUser = isIEUser();
@@ -967,6 +972,45 @@ const Report: React.FC<ReportProps> = ({
     } finally {
       OnMergeLoadingChange(false);
       OnMergeSurveys();
+    }
+  };
+
+  useEffect(() => {
+    if (!Data.downloadMBLink) return;
+    if (selectedRows.length === 0) {
+      alert('Please select at least one row to download the MB link.');
+      OnDownloadMBLink?.();
+      return;
+    }
+    handleDownloadMBLink();
+  }, [Data.downloadMBLink]);
+
+  const handleDownloadMBLink = async () => {
+    OnDownloadMBLinkLoadingChange?.(true);
+    try {
+      const surveyIds = selectedRows.map((row) => row.id);
+      const response = await axios.get(`${TraceBASEURL}/download-mb-link`, {
+        data: { survey_ids: surveyIds },
+        responseType: 'blob',
+      });
+
+      const disposition = response.headers['content-disposition'];
+      let filename = `MB_Link_${Date.now()}`;
+      const match = disposition?.match(/filename="?([^"]+)"?/);
+      if (match?.[1]) filename = match[1];
+
+      const url = URL.createObjectURL(response.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading MB link', error);
+      toast.error('Failed to download MB link');
+    } finally {
+      OnDownloadMBLinkLoadingChange?.(false);
+      OnDownloadMBLink?.();
     }
   };
 
