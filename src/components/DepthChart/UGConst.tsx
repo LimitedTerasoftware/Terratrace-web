@@ -989,10 +989,11 @@ const Report: React.FC<ReportProps> = ({
     OnDownloadMBLinkLoadingChange?.(true);
     try {
       const surveyIds = selectedRows.map((row) => row.id);
-      const response = await axios.get(`${TraceBASEURL}/download-mb-link`, {
-        data: { survey_ids: surveyIds },
-        responseType: 'blob',
-      });
+      const response = await axios.post(
+        `${TraceBASEURL}/download-mb-link`,
+        { survey_ids: surveyIds },
+        { responseType: 'blob' },
+      );
 
       const disposition = response.headers['content-disposition'];
       let filename = `MB_Link_${Date.now()}`;
