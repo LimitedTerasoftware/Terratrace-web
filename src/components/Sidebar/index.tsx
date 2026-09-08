@@ -1241,13 +1241,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
             </div>
 
             {/* Compact Dark Mode Switcher - Small fixed width on the right */}
-            {isOpen && (
+            {/* {isOpen && (
               <div className="flex-shrink-0">
                 <ul>
                   <DarkModeSwitcher />
                 </ul>
               </div>
-            )}
+            )} */}
           </div>
         </div>
       </div>
