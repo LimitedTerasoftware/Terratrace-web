@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Upload, Trash2, Eye, RefreshCw } from 'lucide-react';
+import { X, Upload, Trash2, Eye, RefreshCw, Droplets, Eraser } from 'lucide-react';
 import { PoleString } from '../../types/aerial-survey';
 import { ImageUploadResponse } from '../../types/survey';
 import axios from 'axios';
+import { addSingleWatermark, removeWatermark } from '../Services/api';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const BASEURL = import.meta.env.VITE_API_BASE;
@@ -36,6 +37,12 @@ export function PoleStringImageModal({
   const [uploading, setUploading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [addingWatermarkId, setAddingWatermarkId] = useState<string | null>(
+    null,
+  );
+  const [removingWatermarkId, setRemovingWatermarkId] = useState<
+    string | null
+  >(null);
   const originalSnapshot = useRef<Record<string, string[]>>({});
 
   useEffect(() => {
@@ -70,12 +77,12 @@ export function PoleStringImageModal({
       });
     };
 
-    // const rowImages = (row.images as unknown as string[]) || [];
-    // addItems(rowImages, 'images', 'image');
+    const rowImages = (row.images as unknown as string[]) || [];
+    addItems(rowImages, 'images', 'pole-image');
 
-    if (row.image) {
-      addItems([row.image], 'image', 'image-main');
-    }
+    // if (row.image) {
+    //   addItems([row.image], 'image', 'image-main');
+    // }
 
     if (row.road_crossing) {
       try {
@@ -125,11 +132,43 @@ export function PoleStringImageModal({
     setImages(items);
   };
 
+  const handleAddWatermark = async (imageId: string) => {
+    if (!row) return;
+    if (!window.confirm('Add watermark to this image?')) return;
+
+    setAddingWatermarkId(imageId);
+    setError(null);
+    try {
+      await addSingleWatermark(row.id);
+      onSuccess();
+    } catch (err) {
+      setError('Failed to add watermark. Please try again.');
+    } finally {
+      setAddingWatermarkId(null);
+    }
+  };
+
+  const handleRemoveWatermark = async (imagePath: string, imageId: string) => {
+    if (!window.confirm('Remove watermark from this image?')) return;
+
+    setRemovingWatermarkId(imageId);
+    setError(null);
+    try {
+      await removeWatermark(imagePath);
+      onSuccess();
+    } catch (err) {
+      setError('Failed to remove watermark. Please try again.');
+    } finally {
+      setRemovingWatermarkId(null);
+    }
+  };
+
   if (!isOpen || !row) return null;
 
   const getFieldLabel = (fieldName: string) => {
     const labels: Record<string, string> = {
       image: 'Main Image',
+      images: 'Pole Images',
       road_crossing: 'Crossing Photos',
       landmark: 'Landmark Images',
       joint_enclosure: 'Joint Enclosure Images',
@@ -256,9 +295,9 @@ export function PoleStringImageModal({
         user_name: userData.name,
       };
 
-      // if (hasFieldChanged('images')) {
-      //   payload.images = getFinalUrlsForField('images', uploadMap);
-      // }
+      if (hasFieldChanged('images')) {
+        payload.images = getFinalUrlsForField('images', uploadMap);
+      }
       if (hasFieldChanged('image')) {
         const urls = getFinalUrlsForField('image', uploadMap);
         payload.image = urls[0] || '';
@@ -438,6 +477,31 @@ export function PoleStringImageModal({
                                 }}
                               />
                             </label>
+                            {!image.isNew && (
+                              <button
+                                onClick={() => handleAddWatermark(image.id)}
+                                disabled={addingWatermarkId === image.id}
+                                className="p-2 bg-white rounded-full hover:bg-gray-100 disabled:opacity-50"
+                                title="Add Watermark"
+                              >
+                                <Droplets size={16} />
+                              </button>
+                            )}
+                            {!image.isNew && (
+                              <button
+                                onClick={() =>
+                                  handleRemoveWatermark(
+                                    image.originalUrl || stripBaseUrl(image.url),
+                                    image.id,
+                                  )
+                                }
+                                disabled={removingWatermarkId === image.id}
+                                className="p-2 bg-white rounded-full hover:bg-gray-100 disabled:opacity-50"
+                                title="Remove Watermark"
+                              >
+                                <Eraser size={16} />
+                              </button>
+                            )}
                             <button
                               onClick={() => removeImage(image.id)}
                               className="p-2 bg-white rounded-full hover:bg-gray-100"

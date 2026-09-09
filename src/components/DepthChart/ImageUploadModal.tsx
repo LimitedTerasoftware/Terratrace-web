@@ -5,6 +5,7 @@ import {
   ImageUploadResponse,
   UpdatePhotosRequest,
 } from '../../types/survey';
+import { removeWatermark } from '../Services/api';
 
 interface ImageModalProps {
   isOpen: boolean;
@@ -1041,16 +1042,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
 
     setWatermarkingId(imageId);
     try {
-      const response = await fetch(`${TraceBASEURL}/remove-watermark`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imagePath }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Remove watermark request failed');
-      }
-
+      await removeWatermark(imagePath);
       onUpdate();
     } catch (error) {
       console.error('Remove watermark error:', error);

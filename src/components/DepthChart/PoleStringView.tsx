@@ -8,6 +8,7 @@ import {
   Video,
   Edit2Icon,
   Columns3,
+  Stamp,
 } from 'lucide-react';
 import axios from 'axios';
 import { FaArrowLeft } from 'react-icons/fa';
@@ -120,6 +121,7 @@ function PoleStringView() {
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
+  const [watermarkLoading, setWatermarkLoading] = useState(false);
   const columnMenuRef = useRef<HTMLDivElement>(null);
 
   // ── Data fetch ──────────────────────────────────────────────────────────────
@@ -331,6 +333,29 @@ function PoleStringView() {
       toast.error('Failed to update status');
     } finally {
       setStatusLoading(null);
+    }
+  };
+
+  const handleAddWatermark = async () => {
+    const surveyId = multipreview ? null : MainData?.id;
+    if (!surveyId) {
+      toast.error('No survey selected to add watermark');
+      return;
+    }
+    try {
+      setWatermarkLoading(true);
+      const resp = await axios.post(`${TraceBASEURL}/poles/add-watermark`, {
+        survey_id: surveyId,
+      });
+      if (resp.status === 200 || resp.status === 201) {
+        toast.success('Watermark added successfully');
+        getData();
+      }
+    } catch (error) {
+      console.error('Error adding watermark:', error);
+      toast.error('Failed to add watermark');
+    } finally {
+      setWatermarkLoading(false);
     }
   };
 
@@ -980,6 +1005,20 @@ function PoleStringView() {
               >
                 <Edit2Icon className="h-4 w-4 text-purple-600" />
                 Edit Order Index
+              </button>
+            )}
+            {!multipreview && AdminAcess && (
+              <button
+                onClick={handleAddWatermark}
+                disabled={watermarkLoading}
+                className="flex-none h-10 px-4 py-2 text-sm font-medium text-teal-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-teal-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
+              >
+                {watermarkLoading ? (
+                  <span className="w-4 h-4 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Stamp className="h-4 w-4 text-teal-600" />
+                )}
+                {watermarkLoading ? 'Adding Watermark...' : 'Add Watermark'}
               </button>
             )}
           </div>

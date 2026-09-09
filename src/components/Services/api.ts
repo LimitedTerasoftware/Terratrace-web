@@ -740,6 +740,30 @@ export interface PoleReorderItem {
   order_index: number;
 }
 
+export const addSingleWatermark = async (id: number | string): Promise<any> => {
+  try {
+    const resp = await axios.post(`${TraceBASEURL}/poles/single-watermark`, {
+      id,
+    });
+    return resp.data;
+  } catch (error) {
+    console.error('Error adding single watermark:', error);
+    throw error;
+  }
+};
+
+export const removeWatermark = async (imagePath: string): Promise<any> => {
+  try {
+    const resp = await axios.post(`${TraceBASEURL}/remove-watermark`, {
+      imagePath,
+    });
+    return resp.data;
+  } catch (error) {
+    console.error('Error removing watermark:', error);
+    throw error;
+  }
+};
+
 export const reorderPoleSurvey = async (
   surveyId: number,
   order: PoleReorderItem[],
