@@ -332,7 +332,7 @@ const Report: React.FC<ReportProps> = ({
 
     if (Data.constType !== 'Aerial') {
       const ofcSurveyIds = rows
-        .filter((row) => row.workType == 'OFC Blowing/ JointJamber')
+        .filter((row) => row.workType == 'OFC Blowing/ JointChamber')
         .map((row) => row.id);
       if (ofcSurveyIds.length > 0) {
         params.set('ofc_survey_ids', ofcSurveyIds.join(','));

@@ -5,7 +5,7 @@ import {
   ImageUploadResponse,
   UpdatePhotosRequest,
 } from '../../types/survey';
-import { removeWatermark } from '../Services/api';
+import { addImageWatermark, removeWatermark } from '../Services/api';
 
 interface ImageModalProps {
   isOpen: boolean;
@@ -1011,21 +1011,13 @@ const ImageModal: React.FC<ImageModalProps> = ({
 
     setWatermarkingId(imageId);
     try {
-      const response = await fetch(`${TraceBASEURL}/add-single-watermark`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imagePath,
-          latitude,
-          longitude,
-          linkName: linkName || '',
-          createdTime: activity.created_time || activity.created_at || '',
-        }),
+      await addImageWatermark({
+        imagePath,
+        latitude,
+        longitude,
+        linkName: linkName || '',
+        createdTime: activity.created_time || activity.created_at || '',
       });
-
-      if (!response.ok) {
-        throw new Error('Watermark request failed');
-      }
 
       onUpdate();
     } catch (error) {

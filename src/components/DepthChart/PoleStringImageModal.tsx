@@ -3,7 +3,7 @@ import { X, Upload, Trash2, Eye, RefreshCw, Droplets, Eraser } from 'lucide-reac
 import { PoleString } from '../../types/aerial-survey';
 import { ImageUploadResponse } from '../../types/survey';
 import axios from 'axios';
-import { addSingleWatermark, removeWatermark } from '../Services/api';
+import { addImageWatermark, removeWatermark } from '../Services/api';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const BASEURL = import.meta.env.VITE_API_BASE;
@@ -132,14 +132,20 @@ export function PoleStringImageModal({
     setImages(items);
   };
 
-  const handleAddWatermark = async (imageId: string) => {
+  const handleAddWatermark = async (imagePath: string, imageId: string) => {
     if (!row) return;
     if (!window.confirm('Add watermark to this image?')) return;
 
     setAddingWatermarkId(imageId);
     setError(null);
     try {
-      await addSingleWatermark(row.id);
+      await addImageWatermark({
+        imagePath,
+        latitude: row.latitude != null ? String(row.latitude) : '',
+        longitude: row.longitude != null ? String(row.longitude) : '',
+        linkName: `${row.start_lgd_name || ''} - ${row.end_lgd_name || ''}`,
+        createdTime: row.created_at || '',
+      });
       onSuccess();
     } catch (err) {
       setError('Failed to add watermark. Please try again.');
@@ -479,7 +485,12 @@ export function PoleStringImageModal({
                             </label>
                             {!image.isNew && (
                               <button
-                                onClick={() => handleAddWatermark(image.id)}
+                                onClick={() =>
+                                  handleAddWatermark(
+                                    image.originalUrl || stripBaseUrl(image.url),
+                                    image.id,
+                                  )
+                                }
                                 disabled={addingWatermarkId === image.id}
                                 className="p-2 bg-white rounded-full hover:bg-gray-100 disabled:opacity-50"
                                 title="Add Watermark"
