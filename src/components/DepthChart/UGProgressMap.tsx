@@ -40,6 +40,7 @@ interface ProgressMarker {
   eventType: string;
   surveyId: number;
   indexId: number;
+  workType: string | null;
 }
 
 interface IntegratedGp {
@@ -257,6 +258,7 @@ const buildMarkers = (
         eventType: event.eventType,
         surveyId: event.survey_id,
         indexId: event.order_index,
+        workType: event.work_type ?? null,
       };
     })
     .filter((event): event is ProgressMarker => event !== null);
@@ -295,6 +297,11 @@ const ErrorState: React.FC<{ message: string }> = ({ message }) => (
 );
 
 const INTEGRATED_GP_COLOR = '#16A34A';
+const CONSTRUCTION_PATH_COLOR = '#9C27B0';
+const RECTIFICATION_PATH_COLOR = '#854419';
+
+const getPathColor = (workType: string | null) =>
+  workType === 'Rectification' ? RECTIFICATION_PATH_COLOR : CONSTRUCTION_PATH_COLOR;
 
 type MarkerShape = 'circle' | 'square' | 'triangle' | 'diamond';
 
@@ -605,14 +612,15 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
 
     return Object.entries(grouped)
       .map(([surveyId, items]) => {
-        const path = [...items]
-          .sort(
-            (a, b) =>
-              (a.indexId ?? Number.MAX_SAFE_INTEGER) -
-                (b.indexId ?? Number.MAX_SAFE_INTEGER) || a.id - b.id,
-          )
-          .map((item) => ({ lat: item.lat, lng: item.lng }));
-        return { surveyId: Number(surveyId), path };
+        const sorted = [...items].sort(
+          (a, b) =>
+            (a.indexId ?? Number.MAX_SAFE_INTEGER) -
+              (b.indexId ?? Number.MAX_SAFE_INTEGER) || a.id - b.id,
+        );
+        const path = sorted.map((item) => ({ lat: item.lat, lng: item.lng }));
+        const workType =
+          sorted.find((item) => item.workType)?.workType ?? null;
+        return { surveyId: Number(surveyId), path, workType };
       })
       .filter((entry) => entry.path.length > 1);
   }, [markers, ofcSurveyIds]);
@@ -680,7 +688,7 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
       return;
     }
 
-    eventPolylinesRef.current = eventRoutePaths.flatMap(({ surveyId, path }) => {
+    eventPolylinesRef.current = eventRoutePaths.flatMap(({ surveyId, path, workType }) => {
       // outline/casing - drawn first, wider, white
       const casing = new google.maps.Polyline({
         path,
@@ -696,7 +704,7 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
       const polyline = new google.maps.Polyline({
         path,
         geodesic: true,
-        strokeColor: '#9C27B0',
+        strokeColor: getPathColor(workType),
         strokeOpacity: 0.95,
         strokeWeight: 4,
         zIndex: 999,
@@ -709,6 +717,7 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
           infoWindowRef.current?.setContent(`
               <div style="padding:4px 4px;font-size:13px;line-height:1.5">
                 <div style="font-weight:700;color:#111827">Survey ID: ${surveyId}</div>
+                ${workType ? `<div style="color:#374151">Work Type: ${escapeHtml(workType)}</div>` : ''}
               </div>
             `);
           infoWindowRef.current?.setPosition(e.latLng);
@@ -1081,10 +1090,20 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
                 />
                 <span
                   className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: '#9C27B0' }}
+                  style={{ backgroundColor: CONSTRUCTION_PATH_COLOR }}
                 />
                 <span className="flex-1 truncate">Construction Path</span>
               </label>
+              {eventRoutePaths.some((entry) => entry.workType === 'Rectification') && (
+                <label className="mt-1 flex cursor-pointer items-center gap-2 text-gray-500">
+                  <span className="w-[13px]" />
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: RECTIFICATION_PATH_COLOR }}
+                  />
+                  <span className="flex-1 truncate">Rectification Path</span>
+                </label>
+              )}
               {integratedGps.length > 0 && (
                 <label className="mt-1 flex cursor-pointer items-center gap-2">
                   <input

@@ -287,6 +287,7 @@ export interface Activity {
   user_id?:string;
   user_name?:string;
   blowingType?:string;
+  work_type?: string | null;
 }
 
 export interface ApiResponseMachine {
