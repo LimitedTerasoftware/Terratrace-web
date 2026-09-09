@@ -80,6 +80,86 @@ function sampleEvenly<T>(items: T[], maxCount: number): T[] {
   return sampled;
 }
 
+// ─── Clustering for /get-pole-stringing markers (POLE/JOINT ENCLOUSER/DRUM/
+// LANDMARK) ─────────────────────────────────────────────────────────────────
+// Points are always bucketed onto a pixel grid sized to the current zoom —
+// points that land in the same cell are grouped into one cluster bubble, and
+// a cell with a single point renders as a normal exact/draggable pin. As you
+// zoom in, cells cover less ground, so clusters keep splitting apart on
+// their own until every point gets its own pin — no separate zoom cutoff is
+// needed. This only applies to `data` (PoleString[]) — the preview/GP-link
+// layer is unaffected.
+const CLUSTER_GRID_PX = 60;
+// A cell needs at least this many points before it collapses into a cluster
+// bubble — anything smaller is left as individual exact pins.
+const MIN_CLUSTER_SIZE = 20;
+
+interface DataClusterPoint {
+  rec: PoleString;
+  lat: number;
+  lng: number;
+}
+
+interface DataCluster {
+  lat: number;
+  lng: number;
+  count: number;
+  items: DataClusterPoint[];
+}
+
+function clusterDataPoints(
+  points: DataClusterPoint[],
+  map: google.maps.Map,
+  zoom: number,
+  gridPx: number = CLUSTER_GRID_PX,
+): DataCluster[] {
+  const projection = map.getProjection();
+  if (!projection) {
+    return points.map((p) => ({ lat: p.lat, lng: p.lng, count: 1, items: [p] }));
+  }
+
+  const scale = Math.pow(2, zoom);
+  const cells = new Map<string, DataClusterPoint[]>();
+
+  points.forEach((p) => {
+    const worldPoint = projection.fromLatLngToPoint(
+      new google.maps.LatLng(p.lat, p.lng),
+    );
+    if (!worldPoint) return;
+    const cellX = Math.floor((worldPoint.x * scale) / gridPx);
+    const cellY = Math.floor((worldPoint.y * scale) / gridPx);
+    const key = `${cellX}_${cellY}`;
+    const cell = cells.get(key);
+    if (cell) cell.push(p);
+    else cells.set(key, [p]);
+  });
+
+  return Array.from(cells.values()).map((items) => {
+    const count = items.length;
+    const lat = items.reduce((sum, p) => sum + p.lat, 0) / count;
+    const lng = items.reduce((sum, p) => sum + p.lng, 0) / count;
+    return { lat, lng, count, items };
+  });
+}
+
+// Dominant event type in a cluster decides its bubble color (ties favor the
+// first type encountered while scanning).
+function dominantClusterColor(items: DataClusterPoint[]): string {
+  const counts = new Map<string, number>();
+  items.forEach(({ rec }) => {
+    counts.set(rec.eventType, (counts.get(rec.eventType) ?? 0) + 1);
+  });
+  let bestType = items[0].rec.eventType;
+  let bestCount = 0;
+  counts.forEach((count, type) => {
+    if (count > bestCount) {
+      bestCount = count;
+      bestType = type;
+    }
+  });
+  return getMarkerConfig(bestType).color;
+}
+
 interface EndpointPoint {
   lat: number;
   lng: number;
@@ -404,6 +484,7 @@ const MapComponent: React.FC<Props> = ({
   const [gPreviewPolylines, setGPreviewPolylines] = useState<google.maps.Polyline[]>([]);
   const [mapZoom, setMapZoom] = useState(14);
   const [mapBounds, setMapBounds] = useState<google.maps.LatLngBounds | null>(null);
+  const idleDebounceRef = useRef<number | null>(null);
   const hasFitBoundsRef = useRef(false);
   const AdminAcess = isAdminUser();
 
@@ -447,16 +528,24 @@ const MapComponent: React.FC<Props> = ({
     setVisibleTypes(computeDefaultVisibleTypes(data));
   }, [data]);
 
-  // Valid points only
-  const validData = data.filter(
-    (r) =>
-      r.latitude != null &&
-      r.longitude != null &&
-      !isNaN(Number(r.latitude)) &&
-      !isNaN(Number(r.longitude)) &&
-      Math.abs(Number(r.latitude)) <= 90 &&
-      Math.abs(Number(r.longitude)) <= 180 && 
-      r.is_active === 1,
+  // Valid points only. Memoized on `data` — visibleDataPoints/dataClusters
+  // below depend on this array's identity, so recomputing it fresh on every
+  // render (even when `data` hasn't changed) would make those recompute too,
+  // which would re-run the marker effect and setGMarkers every render —
+  // an infinite update loop.
+  const validData = useMemo(
+    () =>
+      data.filter(
+        (r) =>
+          r.latitude != null &&
+          r.longitude != null &&
+          !isNaN(Number(r.latitude)) &&
+          !isNaN(Number(r.longitude)) &&
+          Math.abs(Number(r.latitude)) <= 90 &&
+          Math.abs(Number(r.longitude)) <= 180 &&
+          r.is_active === 1,
+      ),
+    [data],
   );
 
   // Valid preview points, parsed once per previewData change
@@ -624,6 +713,46 @@ const MapComponent: React.FC<Props> = ({
     return () => clearTimeout(t);
   }, [submitStatus]);
 
+  // Visible /get-pole-stringing points (override-adjusted for any in-progress
+  // drag), used both to plot exact pins and to build clusters at low zoom.
+  const visibleDataPoints = useMemo(() => {
+    return validData
+      .filter((r) => visibleTypes.has(r.eventType))
+      .map((rec) => {
+        const origLat = Number(rec.latitude);
+        const origLng = Number(rec.longitude);
+        const override = positionOverridesRef.current.get(rec.id);
+        return {
+          rec,
+          lat: override?.lat ?? origLat,
+          lng: override?.lng ?? origLng,
+        };
+      });
+    // positionOverridesRef is a ref — renderTick is the real dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [validData, visibleTypes, renderTick]);
+
+  // Group nearby pole-stringing points into cluster bubbles at the current
+  // zoom; a point that lands alone in its grid cell comes back as its own
+  // count-1 cluster and is rendered as a normal exact pin (see the marker
+  // effect below), so this naturally resolves to all-exact once zoomed in
+  // far enough that no two points share a cell. Cells under MIN_CLUSTER_SIZE
+  // are broken back apart into individual exact pins instead of a bubble.
+  const dataClusters = useMemo(() => {
+    if (!map) return [];
+    const raw = clusterDataPoints(visibleDataPoints, map, mapZoom);
+    return raw.flatMap((cluster) =>
+      cluster.count < MIN_CLUSTER_SIZE
+        ? cluster.items.map((item) => ({
+            lat: item.lat,
+            lng: item.lng,
+            count: 1,
+            items: [item],
+          }))
+        : [cluster],
+    );
+  }, [map, visibleDataPoints, mapZoom]);
+
   // Preview data can be huge (thousands of raw survey pings). Above the
   // threshold we skip individual pins while zoomed out — the route polyline
   // (drawn separately, see below) still shows the overall shape — and only
@@ -669,9 +798,20 @@ const MapComponent: React.FC<Props> = ({
       ],
     });
 
+    // 'idle' can fire in quick succession while the user is actively
+    // scroll/pinch-zooming (each micro zoom step settles briefly). Debounce
+    // it and round the zoom to a whole number so clustering/marker rebuilds
+    // — which are driven by mapZoom/mapBounds — only run once per
+    // meaningful change instead of on every intermediate tick, which is
+    // what made the map feel like it was freezing while zooming.
     mapInstance.addListener('idle', () => {
-      setMapZoom(mapInstance.getZoom() ?? 14);
-      setMapBounds(mapInstance.getBounds() ?? null);
+      if (idleDebounceRef.current != null) {
+        window.clearTimeout(idleDebounceRef.current);
+      }
+      idleDebounceRef.current = window.setTimeout(() => {
+        setMapZoom(Math.round(mapInstance.getZoom() ?? 14));
+        setMapBounds(mapInstance.getBounds() ?? null);
+      }, 150);
     });
 
     setMap(mapInstance);
@@ -702,78 +842,113 @@ const MapComponent: React.FC<Props> = ({
 
     gMarkers.forEach((m) => m.setMap(null));
 
-    const visible = validData.filter((r) => visibleTypes.has(r.eventType));
     const newMarkers: google.maps.Marker[] = [];
 
-    visible.forEach((record) => {
-      const config = getMarkerConfig(record.eventType);
-      let fillColor = config.color;
-      if (record.eventType === 'POLE' && record.pole_type) {
-        fillColor =
-          record.pole_type.toLowerCase() === 'existing' ? '#3B82F6' : '#EF4444';
+    dataClusters.forEach((cluster) => {
+      if (cluster.count === 1) {
+        // Alone in its grid cell — render exactly like any other exact,
+        // draggable pin (same as before clustering existed).
+        const record = cluster.items[0].rec;
+        const config = getMarkerConfig(record.eventType);
+        let fillColor = config.color;
+        if (record.eventType === 'POLE' && record.pole_type) {
+          fillColor =
+            record.pole_type.toLowerCase() === 'existing' ? '#3B82F6' : '#EF4444';
+        }
+
+        const origLat = Number(record.latitude);
+        const origLng = Number(record.longitude);
+        const override = positionOverridesRef.current.get(record.id);
+        const lat = override?.lat ?? origLat;
+        const lng = override?.lng ?? origLng;
+        const hasMoved =
+          override !== undefined && (override.lat !== origLat || override.lng !== origLng);
+
+        const marker = new google.maps.Marker({
+          position: { lat, lng },
+          map,
+          title: `${config.label} — ${(record.order_index || record.id).toString() ?? record.pit_id }`,
+          label: {
+            text: (record.order_index || record.id).toString(),
+            color: '#ffffff',
+            fontSize: '11px',
+            fontWeight: 'bold',
+          },
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: hasMoved ? 11 : 9,
+            fillColor,
+            fillOpacity: 0.9,
+            strokeColor: hasMoved ? '#facc15' : '#ffffff',
+            strokeWeight: hasMoved ? 2.5 : 2,
+          },
+          draggable: AdminAcess,
+          cursor: AdminAcess ? 'grab' : 'pointer',
+        });
+
+        marker.addListener('click', () => setSelectedRecord(record));
+
+        marker.addListener('dragstart', () => {
+          setSelectedRecord(null);
+          marker.setIcon({
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 12,
+            fillColor,
+            fillOpacity: 1,
+            strokeColor: '#facc15',
+            strokeWeight: 3,
+          });
+        });
+
+        marker.addListener('dragend', (e: google.maps.MapMouseEvent) => {
+          const newPos = e.latLng;
+          if (!newPos) return;
+          const currentOverride = positionOverridesRef.current.get(record.id);
+          const prevLat = currentOverride?.lat ?? origLat;
+          const prevLng = currentOverride?.lng ?? origLng;
+          recordDrag(
+            record.id,
+            record.eventType,
+            record.survey_id ?? null,
+            prevLat,
+            prevLng,
+            newPos.lat(),
+            newPos.lng(),
+          );
+        });
+
+        newMarkers.push(marker);
+        return;
       }
 
-      const origLat = Number(record.latitude);
-      const origLng = Number(record.longitude);
-      const override = positionOverridesRef.current.get(record.id);
-      const lat = override?.lat ?? origLat;
-      const lng = override?.lng ?? origLng;
-      const hasMoved =
-        override !== undefined && (override.lat !== origLat || override.lng !== origLng);
-
+      // Multiple points share this grid cell — collapse into one cluster
+      // bubble. Not draggable: precise repositioning only makes sense once
+      // zoomed in far enough that the point stands alone.
       const marker = new google.maps.Marker({
-        position: { lat, lng },
+        position: { lat: cluster.lat, lng: cluster.lng },
         map,
-        title: `${config.label} — ${(record.order_index || record.id).toString() ?? record.pit_id }`,
+        title: `${cluster.count} points`,
+        zIndex: google.maps.Marker.MAX_ZINDEX,
         label: {
-          text: (record.order_index || record.id).toString(),
+          text: String(cluster.count),
           color: '#ffffff',
-          fontSize: '11px',
+          fontSize: '12px',
           fontWeight: 'bold',
         },
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
-          scale: hasMoved ? 11 : 9,
-          fillColor,
-          fillOpacity: 0.9,
-          strokeColor: hasMoved ? '#facc15' : '#ffffff',
-          strokeWeight: hasMoved ? 2.5 : 2,
+          scale: Math.min(24, 12 + Math.sqrt(cluster.count) * 2),
+          fillColor: dominantClusterColor(cluster.items),
+          fillOpacity: 0.75,
+          strokeColor: '#ffffff',
+          strokeWeight: 2,
         },
-        draggable: AdminAcess,
-        cursor: AdminAcess ? 'grab' : 'pointer',
       });
-
-      marker.addListener('click', () => setSelectedRecord(record));
-
-      marker.addListener('dragstart', () => {
-        setSelectedRecord(null);
-        marker.setIcon({
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 12,
-          fillColor,
-          fillOpacity: 1,
-          strokeColor: '#facc15',
-          strokeWeight: 3,
-        });
+      marker.addListener('click', () => {
+        const bounds = new google.maps.LatLngBounds();
+        cluster.items.forEach(({ lat, lng }) => bounds.extend({ lat, lng }));
+        map.fitBounds(bounds, 60);
       });
-
-      marker.addListener('dragend', (e: google.maps.MapMouseEvent) => {
-        const newPos = e.latLng;
-        if (!newPos) return;
-        const currentOverride = positionOverridesRef.current.get(record.id);
-        const prevLat = currentOverride?.lat ?? origLat;
-        const prevLng = currentOverride?.lng ?? origLng;
-        recordDrag(
-          record.id,
-          record.eventType,
-          record.survey_id ?? null,
-          prevLat,
-          prevLng,
-          newPos.lat(),
-          newPos.lng(),
-        );
-      });
-
       newMarkers.push(marker);
     });
 
@@ -819,7 +994,18 @@ const MapComponent: React.FC<Props> = ({
     // every such tick caused visible blinking. See the dedicated preview-marker
     // effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, data, visibleTypes, startPoints, endPoints, renderTick, recordDrag, AdminAcess]);
+  }, [
+    map,
+    data,
+    visibleTypes,
+    startPoints,
+    endPoints,
+    renderTick,
+    recordDrag,
+    AdminAcess,
+    dataClusters,
+    visibleDataPoints,
+  ]);
 
   // ── Create / update preview markers ─────────────────────────────────────────
   // Kept separate from the effect above: previewMarkersToRender changes on
@@ -1161,14 +1347,22 @@ const MapComponent: React.FC<Props> = ({
         </div>
       )}
 
-      {/*  notice for large preview datasets */}
-      {visibleTypes.has('PREVIEW') && validPreview.length > PREVIEW_LARGE_THRESHOLD && (
-        <div className="absolute top-15 left-2 z-10 bg-white rounded-lg shadow-lg px-3 py-1.5 text-xs text-gray-700">
-          {mapZoom < PREVIEW_DETAIL_ZOOM
-            ? `Showing route line for ${validPreview.length} preview points — zoom in to see individual points`
-            : `Showing ${previewMarkersToRender.length} of ${validPreview.length} preview points in view`}
-        </div>
-      )}
+      {/* notices: pole-stringing clustering + large preview datasets */}
+      <div className="absolute top-15 left-2 z-10 flex flex-col gap-1.5">
+        {dataClusters.some((c) => c.count > 1) && (
+          <div className="bg-white rounded-lg shadow-lg px-3 py-1.5 text-xs text-gray-700">
+            {`Showing ${dataClusters.length} cluster${dataClusters.length === 1 ? '' : 's'} of ${visibleDataPoints.length} points — zoom in to see individual pins`}
+          </div>
+        )}
+
+        {visibleTypes.has('PREVIEW') && validPreview.length > PREVIEW_LARGE_THRESHOLD && (
+          <div className="bg-white rounded-lg shadow-lg px-3 py-1.5 text-xs text-gray-700">
+            {mapZoom < PREVIEW_DETAIL_ZOOM
+              ? `Showing route line for ${validPreview.length} preview points — zoom in to see individual points`
+              : `Showing ${previewMarkersToRender.length} of ${validPreview.length} preview points in view`}
+          </div>
+        )}
+      </div>
 
       {/* Filter panel */}
       <div ref={filterRef} className="absolute top-2 right-10 z-10">

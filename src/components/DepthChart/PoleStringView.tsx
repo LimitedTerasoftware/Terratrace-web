@@ -9,6 +9,7 @@ import {
   Edit2Icon,
   Columns3,
   Stamp,
+  Scissors,
 } from 'lucide-react';
 import axios from 'axios';
 import { FaArrowLeft } from 'react-icons/fa';
@@ -26,6 +27,7 @@ import { hasViewOnlyAccess, isAdminUser } from '../../utils/accessControl';
 import { PoleStringEditModal } from './PoleStringEditModal';
 import { PoleStringImageModal } from './PoleStringImageModal';
 import PoleReorderModal from './PoleReorderModal';
+import { movePolesSurvey } from '../Services/api';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const IMGbaseUrl = import.meta.env.VITE_Image_URL;
@@ -121,6 +123,9 @@ function PoleStringView() {
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
+  const [isSplitMode, setIsSplitMode] = useState(false);
+  const [selectedSplitIds, setSelectedSplitIds] = useState<number[]>([]);
+  const [splitLoading, setSplitLoading] = useState(false);
   const [watermarkLoading, setWatermarkLoading] = useState(false);
   const columnMenuRef = useRef<HTMLDivElement>(null);
 
@@ -359,9 +364,107 @@ function PoleStringView() {
     }
   };
 
+  // ── Split ────────────────────────────────────────────────────────────────────
+
+  const handleSplitCheckboxChange = (id: number, checked: boolean) => {
+    setSelectedSplitIds((prev) =>
+      checked ? [...prev, id] : prev.filter((existingId) => existingId !== id),
+    );
+  };
+
+  const handleSelectAllSplitCheckbox = (checked: boolean) => {
+    setSelectedSplitIds(checked ? poleData.map((row) => row.id) : []);
+  };
+
+  const handleCancelSplit = () => {
+    setIsSplitMode(false);
+    setSelectedSplitIds([]);
+  };
+
+  const handleSplitPoles = async () => {
+    if (selectedSplitIds.length === 0) {
+      toast.error('Please select at least one row to split.');
+      return;
+    }
+
+    const selectedRows = poleData.filter((row) =>
+      selectedSplitIds.includes(row.id),
+    );
+    const groupedBySurvey = selectedRows.reduce<Record<number, number[]>>(
+      (acc, row) => {
+        const surveyId = row.survey_id;
+        if (!surveyId) return acc;
+        if (!acc[surveyId]) acc[surveyId] = [];
+        acc[surveyId].push(row.id);
+        return acc;
+      },
+      {},
+    );
+
+    try {
+      setSplitLoading(true);
+      const responses = await Promise.all(
+        Object.entries(groupedBySurvey).map(([surveyId, poleStringingIds]) =>
+          movePolesSurvey(Number(surveyId), poleStringingIds),
+        ),
+      );
+
+      const newSurveyIds = responses
+        .map((resp) => resp?.data?.new_survey_id)
+        .filter((id) => id !== undefined && id !== null);
+
+      if (newSurveyIds.length > 0) {
+        toast.success(
+          `Poles split successfully! New Survey ID${
+            newSurveyIds.length > 1 ? 's' : ''
+          }: ${newSurveyIds.join(', ')}`,
+        );
+      } else {
+        toast.success('Poles split successfully!');
+      }
+
+      setIsSplitMode(false);
+      setSelectedSplitIds([]);
+      getData();
+    } catch (error) {
+      console.error('Error splitting poles:', error);
+      toast.error('Failed to split poles');
+    } finally {
+      setSplitLoading(false);
+    }
+  };
+
   // ── Columns ─────────────────────────────────────────────────────────────────
 
   const allColumns: TableColumn<PoleString>[] = [
+    ...(isSplitMode
+      ? [
+          {
+            name: (
+              <input
+                type="checkbox"
+                checked={
+                  poleData.length > 0 &&
+                  selectedSplitIds.length === poleData.length
+                }
+                onChange={(e) =>
+                  handleSelectAllSplitCheckbox(e.target.checked)
+                }
+              />
+            ),
+            cell: (row: PoleString) => (
+              <input
+                type="checkbox"
+                checked={selectedSplitIds.includes(row.id)}
+                onChange={(e) =>
+                  handleSplitCheckboxChange(row.id, e.target.checked)
+                }
+              />
+            ),
+            maxWidth: '48px',
+          } as TableColumn<PoleString>,
+        ]
+      : []),
     {
       name: 'ID',
       selector: (row) => row.id,
@@ -1020,6 +1123,35 @@ function PoleStringView() {
                 )}
                 {watermarkLoading ? 'Adding Watermark...' : 'Add Watermark'}
               </button>
+            )}
+            {!multipreview && AdminAcess && (
+              <>
+                <button
+                  onClick={() =>
+                    isSplitMode ? handleCancelSplit() : setIsSplitMode(true)
+                  }
+                  className={`flex-none h-10 px-4 py-2 text-sm font-medium rounded-md border outline-none whitespace-nowrap flex items-center gap-2 ${
+                    isSplitMode
+                      ? 'text-red-600 bg-white border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-red-400 dark:border-gray-600 dark:hover:bg-gray-600'
+                      : 'text-indigo-600 bg-white border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-indigo-400 dark:border-gray-600 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  <Scissors className="h-4 w-4" />
+                  {isSplitMode ? 'Cancel Split' : 'Split'}
+                </button>
+                {isSplitMode && (
+                  <button
+                    onClick={handleSplitPoles}
+                    disabled={splitLoading || selectedSplitIds.length === 0}
+                    className="flex-none h-10 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 outline-none disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center gap-2"
+                  >
+                    <Scissors className="h-4 w-4" />
+                    {splitLoading
+                      ? 'Splitting...'
+                      : `Confirm Split (${selectedSplitIds.length})`}
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>

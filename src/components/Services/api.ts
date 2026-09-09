@@ -788,6 +788,22 @@ export const reorderPoleSurvey = async (
   }
 };
 
+export const movePolesSurvey = async (
+  surveyId: number,
+  poleStringingIds: number[],
+): Promise<any> => {
+  try {
+    const resp = await axios.post(`${TraceBASEURL}/move-poles-survey`, {
+      survey_id: surveyId,
+      pole_stringing_ids: poleStringingIds,
+    });
+    return resp.data;
+  } catch (error) {
+    console.error('Error splitting pole survey:', error);
+    throw error;
+  }
+};
+
 export const getRFMSData = async (blockId: string): Promise<RouterData> => {
   try {
     const resp = await axios.get(`${TraceBASEURL}/get-rfms-data/${blockId}`);
