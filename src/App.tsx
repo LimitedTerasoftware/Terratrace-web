@@ -93,6 +93,7 @@ import GPChecklist from './components/GPChecklist';
 import GPChecklistList from './components/GPChecklist/List';
 import GPChecklistView from './components/GPChecklist/View';
 import BlockRouterChecklist from './components/BlockRouterChecklist';
+import ATChecklist from './components/ATChecklist';
 import BlockRouterChecklistView from './components/BlockRouterChecklist/List/BlockRouterChecklistView';
 import BlockChecklistList from './components/BlockRouterChecklist/List';
 import AuditLogs from './components/AuditLogs';
@@ -119,6 +120,7 @@ function App() {
     pathname === '/machine-activity' ||
     pathname === '/gp-checklist' ||
     pathname === '/block-router-checklist' ||
+    pathname === '/at-checklist' ||
     pathname === '/privacy' ||
     pathname === '/terms';
 
@@ -174,6 +176,16 @@ function App() {
                 <>
                   <PageTitle title="Block Router Checklist" />
                   <BlockRouterChecklist />
+                </>
+              }
+            />
+
+            <Route
+              path="/at-checklist"
+              element={
+                <>
+                  <PageTitle title="AT (Acceptance Test) Checklist" />
+                  <ATChecklist />
                 </>
               }
             />

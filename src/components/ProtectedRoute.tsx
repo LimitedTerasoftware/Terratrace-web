@@ -19,6 +19,7 @@ export const PublicRoute = ({ children }: { children: React.ReactNode }) => {
     token &&
     pathname !== '/gp-checklist' &&
     pathname !== '/block-router-checklist' &&
+    pathname !== '/at-checklist' &&
     pathname !== '/machine-activity'
   ) {
     return <Navigate to="/dashboard" replace />;

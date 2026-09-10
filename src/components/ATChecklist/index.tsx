@@ -1,0 +1,334 @@
+import { useState, useEffect } from 'react';
+import { Loader2, X } from 'lucide-react';
+import {
+  getStateData,
+  getDistrictData,
+  getBlockData,
+  getATBlockRouterData,
+  getATBlockRackData,
+} from '../Services/api';
+import { Block, District, StateData } from '../../types/survey';
+import { ATRouterData, RouterData } from '../../types/block-router-checklist';
+import ATBlockRouterForm from './forms/ATBlockRouter';
+import ATBlockRackForm from './forms/ATBlockRack';
+import SearchableSelect from '../Forms/SearchableSelect';
+
+type FormType = 'Block Router' | 'Block Rack';
+
+// AT checklist is a public, no-login page — states/districts/blocks APIs
+// still require an admin/company identity, so a fixed one is used here.
+const AT_AUTH_HEADERS = { 'x-admin-id': '1', 'x-company-id': '8' };
+
+interface BlockCreateResponse {
+  status: boolean;
+  message: string;
+  block_id: number;
+}
+const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
+
+const ATChecklist = () => {
+  const [showModal, setShowModal] = useState(true);
+  const [selectedState, setSelectedState] = useState<string>('');
+  const [selectedDistrict, setSelectedDistrict] = useState<string>('');
+  const [selectedBlock, setSelectedBlock] = useState<string>('');
+  const [selectedBlockName, setSelectedBlockName] = useState<string>('');
+  const [selectedFormType, setSelectedFormType] = useState<FormType | ''>('');
+  const [states, setStates] = useState<StateData[]>([]);
+  const [districts, setDistricts] = useState<District[]>([]);
+  const [blocks, setBlocks] = useState<Block[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingDistricts, setLoadingDistricts] = useState(false);
+  const [loadingBlocks, setLoadingBlocks] = useState(false);
+  const [routerData, setRouterData] = useState<ATRouterData | null>(null);
+  const [atRackData, setATRackData] = useState<RouterData | null>(null);
+
+  useEffect(() => {
+    const fetchStates = async () => {
+      try {
+        const stateData = await getStateData(AT_AUTH_HEADERS);
+        setStates(stateData);
+      } catch (error) {
+        console.error('Error fetching states:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStates();
+  }, []);
+
+  const handleStateChange = async (stateId: string) => {
+    setSelectedState(stateId);
+    setSelectedDistrict('');
+    setSelectedBlock('');
+    setLoadingDistricts(true);
+    try {
+      const districtData = await getDistrictData(stateId, AT_AUTH_HEADERS);
+      setDistricts(districtData);
+    } catch (error) {
+      console.error('Error fetching districts:', error);
+    } finally {
+      setLoadingDistricts(false);
+    }
+  };
+
+  const handleDistrictChange = async (districtId: string) => {
+    setSelectedDistrict(districtId);
+    setSelectedBlock('');
+    setLoadingBlocks(true);
+    try {
+      const blockData = await getBlockData(districtId, AT_AUTH_HEADERS);
+      setBlocks(blockData);
+    } catch (error) {
+      console.error('Error fetching blocks:', error);
+    } finally {
+      setLoadingBlocks(false);
+    }
+  };
+
+  const handleBlockChange = (blockId: string, blockName?: string) => {
+    setSelectedBlock(blockId);
+    if (blockName) {
+      setSelectedBlockName(blockName);
+    }
+  };
+
+  const fetchRouterData = async (blockId: string) => {
+    try {
+      const data = await getATBlockRouterData(blockId);
+      if (data.status) {
+        setRouterData(data);
+      } else {
+        setRouterData(null);
+      }
+    } catch (error) {
+      console.error('Error fetching AT Router data:', error);
+      setRouterData(null);
+    }
+  };
+
+  const fetchBlockRack = async (blockId: string) => {
+    try {
+      const data = await getATBlockRackData(blockId);
+      if (data.status && data.tests) {
+        setATRackData(data);
+      } else {
+        setATRackData(null);
+      }
+    } catch (error) {
+      setATRackData(null);
+    }
+  };
+
+  const handleFormTypeChange = (formType: FormType) => {
+    setSelectedFormType(formType);
+  };
+
+  const handleSubmit = async () => {
+    if (
+      !selectedState ||
+      !selectedDistrict ||
+      !selectedBlock ||
+      !selectedFormType
+    ) {
+      alert('Please fill all fields');
+      return;
+    }
+
+    try {
+      const blockName =
+        blocks.find((b) => b.block_id == selectedBlock)?.block_name || '';
+      const response = await fetch(`${TraceBASEURL}/insert-block`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          state_id: parseInt(selectedState),
+          district_id: parseInt(selectedDistrict),
+          block_id: parseInt(selectedBlock),
+          block_name: selectedBlockName || blockName,
+        }),
+      });
+
+      const data: BlockCreateResponse = await response.json();
+
+      if (!data.status) {
+        console.log('Block already exists, continuing...');
+      } else {
+        console.log(data.message);
+      }
+    } catch (error) {
+      console.error('Error creating block:', error);
+    }
+
+    if (selectedFormType === 'Block Router') {
+      await fetchRouterData(selectedBlock);
+    }
+    if (selectedFormType === 'Block Rack') {
+      await fetchBlockRack(selectedBlock);
+    }
+
+    setShowModal(false);
+  };
+
+  const formTypes: FormType[] = ['Block Router', 'Block Rack'];
+
+  const renderForm = () => {
+    switch (selectedFormType) {
+      case 'Block Router':
+        return (
+          <ATBlockRouterForm
+            blockId={selectedBlock}
+            blockName={selectedBlockName}
+            existingData={routerData}
+            onBack={() => setShowModal(true)}
+          />
+        );
+      case 'Block Rack':
+        return (
+          <ATBlockRackForm
+            blockId={selectedBlock}
+            blockName={selectedBlockName}
+            existingData={atRackData}
+            onBack={() => setShowModal(true)}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-lg font-semibold text-gray-800">
+                AT (Acceptance Test) Checklist
+              </h2>
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  State <span className="text-red-500">*</span>
+                </label>
+                <SearchableSelect
+                  value={selectedState}
+                  onChange={handleStateChange}
+                  options={states.map((state) => ({
+                    value: String(state.state_id),
+                    label: state.state_name,
+                  }))}
+                  placeholder="Select State"
+                  className="w-full"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  District <span className="text-red-500">*</span>
+                </label>
+                <SearchableSelect
+                  value={selectedDistrict}
+                  onChange={handleDistrictChange}
+                  disabled={!selectedState || loadingDistricts}
+                  options={districts.map((district) => ({
+                    value: String(district.district_id),
+                    label: district.district_name,
+                  }))}
+                  placeholder={loadingDistricts ? 'Loading...' : 'Select District'}
+                  className="w-full"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Block <span className="text-red-500">*</span>
+                </label>
+                <SearchableSelect
+                  value={selectedBlock}
+                  onChange={(value) => {
+                    const block = blocks.find(
+                      (b) => b.block_id == value,
+                    );
+                    handleBlockChange(value, block?.block_name);
+                  }}
+                  disabled={!selectedDistrict || loadingBlocks}
+                  options={blocks.map((block) => ({
+                    value: String(block.block_id),
+                    label: block.block_name,
+                  }))}
+                  placeholder={loadingBlocks ? 'Loading...' : 'Select Block'}
+                  className="w-full"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Form Type <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {formTypes.map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => handleFormTypeChange(type)}
+                      className={`px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                        selectedFormType === type
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-gray-700 border-gray-300 hover:border-blue-500'
+                      }`}
+                    >
+                      {type}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 p-4 border-t bg-gray-50">
+              <button
+                onClick={() => setShowModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={
+                  !selectedState ||
+                  !selectedDistrict ||
+                  !selectedBlock ||
+                  !selectedFormType
+                }
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Start Checklist
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!showModal && <div>{renderForm()}</div>}
+    </>
+  );
+};
+
+export default ATChecklist;

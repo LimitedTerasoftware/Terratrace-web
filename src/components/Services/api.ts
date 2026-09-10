@@ -20,6 +20,7 @@ import {
   BlockChecklistResponse,
   RouterData,
   RackResponse,
+  ATRouterData,
 } from '../../types/block-router-checklist';
 import { getAuthHeaders } from '../../utils/accessControl';
 
@@ -211,10 +212,10 @@ export const useActivities = (
   };
 };
 
-export const getStateData = async () => {
+export const getStateData = async (headers?: Record<string, string>) => {
   try {
     const resp = await axios.get(`${TraceBASEURL}/states`, {
-      headers: getAuthHeaders(),
+      headers: headers ?? getAuthHeaders(),
     });
     if (resp.status === 200 || resp.status === 201) {
       return resp.data.data;
@@ -226,11 +227,14 @@ export const getStateData = async () => {
   }
 };
 
-export const getDistrictData = async (selectedState: string | null) => {
+export const getDistrictData = async (
+  selectedState: string | null,
+  headers?: Record<string, string>,
+) => {
   try {
     const resp = await axios.get(
       `${TraceBASEURL}/districtsdata?state_code=${selectedState}`,
-      { headers: getAuthHeaders() },
+      { headers: headers ?? getAuthHeaders() },
     );
     if (resp.status === 200 || resp.status === 201) {
       return resp.data;
@@ -242,11 +246,14 @@ export const getDistrictData = async (selectedState: string | null) => {
   }
 };
 
-export const getBlockData = async (selectedDistrict: string | null) => {
+export const getBlockData = async (
+  selectedDistrict: string | null,
+  headers?: Record<string, string>,
+) => {
   try {
     const resp = await axios.get(
       `${TraceBASEURL}/blocksdata?district_code=${selectedDistrict}`,
-      { headers: getAuthHeaders() },
+      { headers: headers ?? getAuthHeaders() },
     );
     if (resp.status === 200 || resp.status === 201) {
       return resp.data;
@@ -833,6 +840,32 @@ export const getBlockRackData = async (
   try {
     const resp = await axios.get(
       `${TraceBASEURL}/get-smartrack-data/${blockId}`,
+    );
+    return resp.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getATBlockRackData = async (
+  blockId: string,
+): Promise<RouterData> => {
+  try {
+    const resp = await axios.get(
+      `${TraceBASEURL}/get-at-smartrack-data/${blockId}`,
+    );
+    return resp.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getATBlockRouterData = async (
+  blockId: string,
+): Promise<ATRouterData> => {
+  try {
+    const resp = await axios.get(
+      `${TraceBASEURL}/get-at-blockrouter-data/${blockId}`,
     );
     return resp.data;
   } catch (error) {

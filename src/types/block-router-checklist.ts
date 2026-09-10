@@ -56,6 +56,19 @@ export interface RouterData {
     } | null
   >;
   message?: string;
+  memorandum?: {
+    equipmentDescription?: string;
+    siteNameBlockCode?: string;
+    siteAddress?: string;
+    dateTime?: string;
+  };
+  certificationFiles?: {
+    tsecCertificate?: string;
+    qaCertificate?: string;
+    qrCodeLogo?: string;
+    photoEvidence?: string;
+    oemApproval?: string;
+  };
 }
 export interface InfrastructureItem {
   Image: string;
@@ -99,4 +112,51 @@ export interface RackResponse {
   status: boolean;
   data: RackData;
   percentage: RackPercentage;
+}
+
+export interface ATRouterMemorandum {
+  equipmentDescription: string;
+  siteNameLGD: string;
+  siteAddress: string;
+  routerHostname: string;
+  wanInterfaceIp: string;
+  dateTime: string;
+}
+
+export interface ATRouterTestItem {
+  Image: string;
+  remarks: string;
+  compliance: string;
+}
+
+export interface ATRouterNetworkTestItem {
+  Image: string;
+  remarks: string;
+  status: string;
+  testConfiguration: string;
+  testResults: string;
+}
+
+export interface ATRouterMemorandumFiles {
+  networkDiagram?: string;
+  qrCode?: string;
+}
+
+export interface ATRouterCertificationFiles {
+  tsecCertificate?: string;
+  qaCertificate?: string;
+  qrCodeLogo?: string;
+  photoEvidence?: string;
+  oemApproval?: string;
+}
+
+export interface ATRouterData {
+  status: boolean;
+  block_id?: number;
+  memorandum?: ATRouterMemorandum;
+  memorandumFiles?: ATRouterMemorandumFiles;
+  certificationFiles?: ATRouterCertificationFiles;
+  basic?: Record<string, ATRouterTestItem | null>;
+  network?: Record<string, ATRouterNetworkTestItem | null>;
+  message?: string;
 }

@@ -2787,13 +2787,14 @@ useEffect(() => {
     // Get admin codes
     const adminCodes = {
       blockCode: selectedBlock || localData.dt_code || "",
-      blockName: blocks.find(b => b.block_id === selectedBlock)?.block_name || localData.mainPointName || "",
+      blockName: blocks.find(b => b.block_id == selectedBlock)?.block_name || localData.mainPointName || "",
       dtCode: selectedDistrict || localData.dt_code || "",
-      dtName: districts.find(d => d.district_id === selectedDistrict)?.district_name || localData.dt_name || "",
+      dtName: districts.find(d => d.district_id == selectedDistrict)?.district_name || localData.dt_name || "",
       stCode: selectedState || localData.st_code || "",
-      stName: states.find(s => s.state_id === selectedState)?.state_name || localData.st_name || "",
+      stName: states.find(s => s.state_id == selectedState)?.state_name || localData.st_name || "",
      
     };
+    console.log(adminCodes,selectedBlock)
 
     // Collect all points
     const allPoints: LoopEntry[] = localData.loop || [];
