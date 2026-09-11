@@ -554,7 +554,7 @@ export default function ExecutiveConstructionView() {
       {/* Joints tab intentionally has no stat cards. */}
 
       {/* Map */}
-      <div className="flex-1 relative min-h-[500px]">
+      <div className="flex-1 relative min-h-[580px]">
         {!blockSelected && activeTab === 'joints' && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-white border border-gray-200 rounded-lg shadow-sm px-4 py-2 text-sm text-gray-600">
             Select a state, district, and block to load {activeTab} data
