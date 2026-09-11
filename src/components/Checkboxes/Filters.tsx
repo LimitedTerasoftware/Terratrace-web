@@ -14,9 +14,11 @@ interface FiltersProps {
   selectedWorkType: string;
   searchQuery: string;
   selectedIssueType: string;
+  selectedStatus?: string;
   selectedFromDate?: string;
   selectedToDate?: string;
   showWorkType?: boolean;
+  showStatus?: boolean;
   onStateChange: (state: string) => void;
   onDistrictChange: (district: string) => void;
   onBlockChange: (block: string) => void;
@@ -26,6 +28,7 @@ interface FiltersProps {
   onReset: () => void;
   onWorkTypeChange: (workType: string) => void;
   onIssueTypeChange: (issueType: string) => void;
+  onStatusChange?: (status: string) => void;
   onFromDateChange?: (date: string) => void;
   onToDateChange?: (date: string) => void;
 }
@@ -39,9 +42,11 @@ export default function Filters({
   searchQuery,
   selectedWorkType,
   selectedIssueType,
+  selectedStatus = '',
   selectedFromDate = '',
   selectedToDate = '',
   showWorkType = true,
+  showStatus = false,
   onStateChange,
   onDistrictChange,
   onBlockChange,
@@ -49,6 +54,7 @@ export default function Filters({
   onPeriodChange,
   onSearchChange,
   onIssueTypeChange,
+  onStatusChange,
   onReset,
   onWorkTypeChange,
   onFromDateChange,
@@ -251,7 +257,20 @@ export default function Filters({
           ]}
         />
         )}
-        
+
+        {showStatus && (
+          <SearchableSelect
+            className="min-w-[100px]"
+            value={selectedStatus}
+            onChange={(value) => onStatusChange?.(value)}
+            placeholder="All Status"
+            options={[
+              { value: 'OPEN', label: 'Open' },
+              { value: 'CHECKED', label: 'Checked' },
+            ]}
+          />
+        )}
+
         {ieUser ? (
           <>
             <input

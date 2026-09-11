@@ -59,6 +59,7 @@ function ConstructionIssues() {
     issueType || '',
   );
   const [selectedSeverity, setSelectedSeverity] = useState<string>('All');
+  const [selectedStatus, setSelectedStatus] = useState<string>('');
 
   const getDateRange = (period: string) => {
     if (period === 'all') {
@@ -101,6 +102,7 @@ function ConstructionIssues() {
       toDate,
       selectedVendor || undefined,
       selectedIssueType || undefined,
+      selectedStatus || undefined,
     );
   }, [
     selectedState,
@@ -111,6 +113,7 @@ function ConstructionIssues() {
     selectedToDate,
     selectedVendor,
     selectedIssueType,
+    selectedStatus,
   ]);
 
   useEffect(() => {
@@ -156,6 +159,7 @@ function ConstructionIssues() {
     setSearchQuery('');
     setSelectedIssueType('');
     setSelectedSeverity('All');
+    setSelectedStatus('');
   };
 
   const fetchIssues = async (
@@ -166,6 +170,7 @@ function ConstructionIssues() {
     toDate?: string,
     firmId?: string,
     issueType?: string,
+    status?: string,
   ) => {
     try {
       setLoading(true);
@@ -177,6 +182,7 @@ function ConstructionIssues() {
         toDate,
         firmId,
         issueType,
+        status,
       );
 
       if (response.status) {
@@ -266,6 +272,8 @@ function ConstructionIssues() {
             selectedWorkType={''}
             showWorkType={false}
             selectedIssueType={selectedIssueType}
+            selectedStatus={selectedStatus}
+            showStatus={true}
             selectedFromDate={selectedFromDate}
             selectedToDate={selectedToDate}
             onStateChange={setSelectedState}
@@ -276,6 +284,7 @@ function ConstructionIssues() {
             onSearchChange={setSearchQuery}
             onWorkTypeChange={() => {}}
             onIssueTypeChange={setSelectedIssueType}
+            onStatusChange={setSelectedStatus}
             onReset={handleReset}
             onFromDateChange={setSelectedFromDate}
             onToDateChange={setSelectedToDate}
