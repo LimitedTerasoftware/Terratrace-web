@@ -1159,6 +1159,60 @@ export const getAcceptedPoles = async (params: Record<string, string | number>):
   }
 };
 
+export interface OverallConstructionPoint {
+  point_id: number;
+  eventType: string;
+  depth: number | null;
+  coordinates: [number, number]; // [longitude, latitude]
+}
+
+export interface OverallConstructionSurvey {
+  survey_id: number;
+  machine_id: string;
+  coordinates: OverallConstructionPoint[];
+}
+
+export interface OverallConstructionBlock {
+  state_id: number;
+  district_id: number;
+  block_id: number;
+  surveys: OverallConstructionSurvey[];
+}
+
+export interface OverallConstructionResponse {
+  status: boolean;
+  total_blocks: number;
+  data: OverallConstructionBlock[];
+}
+
+export const getOverallConstruction = async (params: {
+  stateId?: string;
+  district_id?: string;
+  block_id?: string;
+}): Promise<OverallConstructionResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
+    if (params.stateId) queryParams.append('stateId', params.stateId);
+    if (params.district_id)
+      queryParams.append('district_id', params.district_id);
+    if (params.block_id) queryParams.append('block_id', params.block_id);
+
+    const queryString = queryParams.toString();
+    const url = queryString
+      ? `${TraceBASEURL}/get-overall-costruction?${queryString}`
+      : `${TraceBASEURL}/get-overall-costruction`;
+
+    const response = await fetch(url, { headers: getAuthHeaders() });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+  } catch (error) {
+    console.error('Error fetching overall construction data:', error);
+    throw error;
+  }
+};
+
 export const getRemarksHistory = async (params: {
   offset?: number;
   limit?: number;

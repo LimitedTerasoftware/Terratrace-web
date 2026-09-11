@@ -9,25 +9,28 @@ import {
   getBlockData,
   getAcceptedPoles,
   getPoleDashboard,
+  getOverallConstruction,
   machineApi,
 } from '../Services/api';
-import type { AcceptedPolesResponse, PoleDashboardResponse } from '../Services/api';
+import type {
+  AcceptedPolesResponse,
+  PoleDashboardResponse,
+  OverallConstructionBlock,
+} from '../Services/api';
 import { Block, District, StateData } from '../../types/survey';
 import { MachineDetailsResponse } from '../../types/machine';
 import { isIEUser } from '../../utils/accessControl';
 import { GoogleMap } from '../SmartInventory/MapViewer';
 import {
-  processConstructionData,
   processJointsData,
   processDesktopPlanningData,
 } from '../SmartInventory/PlaceMark';
 import GISMap from '../Chat/GISMap';
+import ConstructionOverallMap from '../Chat/ConstructionOverallMap';
 import KPICards from '../Chat/KPICards';
 import { StatsCard } from '../Chat/StatsCard';
 import {
-  ConstructionApiResponse,
   JointsApiResponse,
-  ProcessedConstruction,
   ProcessedJoints,
   ProcessedDesktopPlanning,
   DesktopPlanningApiResponse,
@@ -89,8 +92,7 @@ export default function ExecutiveConstructionView() {
   const [loadingMapData, setLoadingMapData] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
 
-  const [constructionPlacemarks, setConstructionPlacemarks] = useState<ProcessedConstruction[]>([]);
-  const [constructionCategories, setConstructionCategories] = useState<PlacemarkCategory[]>([]);
+  const [overallConstructionData, setOverallConstructionData] = useState<OverallConstructionBlock[]>([]);
 
   const [planningPlacemarks, setPlanningPlacemarks] = useState<ProcessedDesktopPlanning[]>([]);
   const [planningCategories, setPlanningCategories] = useState<PlacemarkCategory[]>([]);
@@ -165,17 +167,16 @@ export default function ExecutiveConstructionView() {
   }, [selectedDistrict]);
 
   // Load the active tab's map data whenever the tab or the selected block changes.
+  // Construction (like Aerial) loads unfiltered on first render — the state/
+  // district/block filters just narrow an already-visible map.
   useEffect(() => {
-    if (!blockSelected && activeTab !== 'aerial') {
-      setConstructionPlacemarks([]);
-      setConstructionCategories([]);
+    if (!blockSelected && activeTab === 'joints') {
       setJointsPlacemarks([]);
       setJointsCategories([]);
-      setAcceptedPoles([]);
       setMapError(null);
       return;
     }
-   
+
 
     const params = {
       state_id: selectedState,
@@ -188,13 +189,12 @@ export default function ExecutiveConstructionView() {
       setMapError(null);
       try {
         if (activeTab === 'construction') {
-          const resp = await axios.get<ConstructionApiResponse>(
-            `${BASEURL}/get-construction-data`,
-            { params },
-          );
-          const { placemarks, categories } = processConstructionData(resp.data);
-          setConstructionPlacemarks(placemarks);
-          setConstructionCategories(categories);
+          const resp = await getOverallConstruction({
+            stateId: selectedState,
+            district_id: selectedDistrict,
+            block_id: selectedBlock,
+          });
+          setOverallConstructionData(resp.status ? resp.data || [] : []);
         } else if (activeTab === 'joints') {
           const resp = await axios.get<JointsApiResponse>(
             `${BASEURL}/fetch-joints-location`,
@@ -211,8 +211,7 @@ export default function ExecutiveConstructionView() {
         console.error(`Failed to load ${activeTab} map data:`, error);
         setMapError(`Failed to load ${activeTab} data for this block.`);
         if (activeTab === 'construction') {
-          setConstructionPlacemarks([]);
-          setConstructionCategories([]);
+          setOverallConstructionData([]);
         } else if (activeTab === 'joints') {
           setJointsPlacemarks([]);
           setJointsCategories([]);
@@ -353,25 +352,14 @@ export default function ExecutiveConstructionView() {
     loadPoleStats();
   }, [activeTab, selectedState, selectedDistrict, selectedBlock]);
 
-  const constructionVisibleCategories = useMemo(
-    () =>
-      new Set([
-        ...constructionCategories.map((c) => c.id),
-        ...planningCategories.map((c) => c.id),
-      ]),
-    [constructionCategories, planningCategories],
-  );
   const jointsVisibleCategories = useMemo(
     () => new Set(jointsCategories.map((c) => c.id)),
     [jointsCategories],
   );
 
-  const activeCategories =
-    activeTab === 'construction'
-      ? [...constructionCategories, ...planningCategories]
-      : activeTab === 'joints'
-        ? jointsCategories
-        : [];
+  // The construction tab renders its own legend (event types + Approved KMZ
+  // overlay) inside ConstructionOverallMap, so it's excluded here.
+  const activeCategories = activeTab === 'joints' ? jointsCategories : [];
 
   const aerialStatsCards = poleStats
     ? [
@@ -567,7 +555,7 @@ export default function ExecutiveConstructionView() {
 
       {/* Map */}
       <div className="flex-1 relative min-h-[500px]">
-        {!blockSelected && (
+        {!blockSelected && activeTab === 'joints' && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-white border border-gray-200 rounded-lg shadow-sm px-4 py-2 text-sm text-gray-600">
             Select a state, district, and block to load {activeTab} data
           </div>
@@ -604,12 +592,10 @@ export default function ExecutiveConstructionView() {
         {activeTab === 'aerial' ? (
           <GISMap acceptedPoles={acceptedPoles} />
         ) : activeTab === 'construction' ? (
-          <GoogleMap
-            className="h-full w-full"
-            placemarks={[...constructionPlacemarks, ...planningPlacemarks]}
-            categories={[...constructionCategories, ...planningCategories]}
-            visibleCategories={constructionVisibleCategories}
-            onPlacemarkClick={() => {}}
+          <ConstructionOverallMap
+            data={overallConstructionData}
+            planningPlacemarks={planningPlacemarks}
+            planningCategories={planningCategories}
           />
         ) : (
           <GoogleMap
