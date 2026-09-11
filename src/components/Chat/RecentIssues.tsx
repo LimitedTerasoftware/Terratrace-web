@@ -1,6 +1,9 @@
-import { ChevronRight, AlertTriangle, Eye } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ChevronRight, AlertTriangle, Eye, Pencil } from 'lucide-react';
 import DataTable, { TableColumn } from 'react-data-table-component';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import UpdateIssueStatusModal from './UpdateIssueStatusModal';
 
 interface IssueData {
   issue_type: string;
@@ -15,6 +18,7 @@ interface IssueData {
   timestamp: string;
   status: string;
   total_distance?:string;
+  remark?:string;
 }
 
 interface RecentIssuesProps {
@@ -31,6 +35,28 @@ export default function RecentIssues({
   IssueType,
 }: RecentIssuesProps) {
   const navigate = useNavigate();
+  const [rows, setRows] = useState<IssueData[]>(data || []);
+  const [editingIssue, setEditingIssue] = useState<IssueData | null>(null);
+
+  useEffect(() => {
+    setRows(data || []);
+  }, [data]);
+
+  const handleStatusUpdated = (status: string, remarks: string) => {
+    if (!editingIssue) return;
+    setRows((prev) =>
+      prev.map((row) =>
+        row.survey_id === editingIssue.survey_id &&
+        row.point_id === editingIssue.point_id &&
+        row.category === editingIssue.category &&
+        row.issue_type === editingIssue.issue_type
+          ? { ...row, status }
+          : row,
+      ),
+    );
+    setEditingIssue(null);
+    toast.success('Status updated successfully');
+  };
 
   const columns: TableColumn<IssueData>[] = [
     {
@@ -87,12 +113,25 @@ export default function RecentIssues({
     {
       name: 'Status',
       selector: (row) => row.status,
+      minWidth: '140px',
       cell: (row) => (
-        <span
-          className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusClass(row.status)}`}
-        >
-          {row.status}
-        </span>
+        <div className="flex items-center gap-2 flex-nowrap whitespace-nowrap">
+          <span
+            className={`inline-flex px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${getStatusClass(row.status)}`}
+          >
+            {row.status}
+          </span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditingIssue(row);
+            }}
+            className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors shrink-0"
+            title="Update Status"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+          </button>
+        </div>
       ),
     },
     {
@@ -127,7 +166,7 @@ export default function RecentIssues({
       selector: (row) => row.vendor,
       cell: (row) => (
         <span
-          className="text-sm text-gray-600 max-w-[150px] truncate block"
+          className="text-sm text-gray-600 max-w-[150px]"
           title={row.vendor}
         >
           {row.vendor}
@@ -139,12 +178,13 @@ export default function RecentIssues({
       selector: (row) => row.machine,
       cell: (row) => (
         <span
-          className="text-sm text-gray-600 max-w-[120px] truncate block"
+          className="text-sm text-gray-600 max-w-[120px]"
           title={row.machine}
         >
           {row.machine}
         </span>
       ),
+      wrap:true
     },
     {
       name: 'Survey ID',
@@ -163,6 +203,13 @@ export default function RecentIssues({
       ),
     },
     {
+      name: 'Remarks',
+      selector: (row) => row?.remark || '-',
+      cell: (row) => (
+        <span className="text-sm text-gray-600">{row?.remark || '-'}</span>
+      ),
+    },
+    {
       name: 'Timestamp',
       selector: (row) => row.timestamp,
       cell: (row) => (
@@ -171,7 +218,6 @@ export default function RecentIssues({
         </span>
       ),
     },
- 
     {
       name: 'Actions',
       cell: (row) => (
@@ -222,6 +268,7 @@ export default function RecentIssues({
         return 'bg-red-100 text-red-800';
       case 'IN_PROGRESS':
         return 'bg-blue-100 text-blue-800';
+      case 'CHECKED':
       case 'RESOLVED':
         return 'bg-green-100 text-green-800';
       default:
@@ -264,7 +311,7 @@ export default function RecentIssues({
       <div className="p-4">
         <DataTable
           columns={columns}
-          data={data || []}
+          data={rows}
           pagination
           paginationPerPage={10}
           paginationRowsPerPageOptions={[10, 25, 50, 100]}
@@ -282,6 +329,13 @@ export default function RecentIssues({
           }
         />
       </div>
+      {editingIssue && (
+        <UpdateIssueStatusModal
+          issue={editingIssue}
+          onClose={() => setEditingIssue(null)}
+          onSuccess={handleStatusUpdated}
+        />
+      )}
     </div>
   );
 }

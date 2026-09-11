@@ -715,6 +715,28 @@ export const machineApi = {
     }
     return response.json();
   },
+
+  updateIssueStatus: async (payload: {
+    survey_id: number;
+    point_id?: number;
+    category: string;
+    issue_type: string;
+    status: string;
+    remarks: string;
+  }): Promise<{ status: boolean; message?: string }> => {
+    const response = await fetch(`${TraceBASEURL}/api/update-status`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to update issue status');
+    }
+    return response.json();
+  },
 };
 
 export interface ReorderItem {
