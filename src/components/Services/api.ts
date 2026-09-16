@@ -822,11 +822,23 @@ export const reorderPoleSurvey = async (
 export const movePolesSurvey = async (
   surveyId: number,
   poleStringingIds: number[],
+  location: {
+    state_id: number;
+    district_id: number;
+    block_id: number;
+    startLocation: number;
+    endLocation: number;
+  },
 ): Promise<any> => {
   try {
     const resp = await axios.post(`${TraceBASEURL}/move-poles-survey`, {
       survey_id: surveyId,
       pole_stringing_ids: poleStringingIds,
+      state_id: location.state_id,
+      district_id: location.district_id,
+      block_id: location.block_id,
+      startLocation: location.startLocation,
+      endLocation: location.endLocation,
     });
     return resp.data;
   } catch (error) {

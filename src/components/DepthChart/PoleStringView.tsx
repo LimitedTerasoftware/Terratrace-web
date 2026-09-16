@@ -28,6 +28,7 @@ import { PoleStringEditModal } from './PoleStringEditModal';
 import { PoleStringImageModal } from './PoleStringImageModal';
 import PoleReorderModal from './PoleReorderModal';
 import { movePolesSurvey } from '../Services/api';
+import { PoleSplitModal, PoleSplitLocation } from './PoleSplitModal';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const IMGbaseUrl = import.meta.env.VITE_Image_URL;
@@ -126,6 +127,7 @@ function PoleStringView() {
   const [isSplitMode, setIsSplitMode] = useState(false);
   const [selectedSplitIds, setSelectedSplitIds] = useState<number[]>([]);
   const [splitLoading, setSplitLoading] = useState(false);
+  const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
   const [watermarkLoading, setWatermarkLoading] = useState(false);
   const columnMenuRef = useRef<HTMLDivElement>(null);
 
@@ -381,7 +383,33 @@ function PoleStringView() {
     setSelectedSplitIds([]);
   };
 
-  const handleSplitPoles = async () => {
+  const handleOpenSplitModal = () => {
+    if (selectedSplitIds.length === 0) {
+      toast.error('Please select at least one row to split.');
+      return;
+    }
+    setIsSplitModalOpen(true);
+  };
+
+  // Defaults for the split-location modal — pulled from the survey currently
+  // being viewed, when available (single-survey view, not the multi-survey preview).
+  const splitLocationDefaults = !multipreview
+    ? {
+        stateId: MainData?.state_id ?? null,
+        districtId: MainData?.district_id ?? null,
+        blockId: MainData?.block_id ?? null,
+        startLocation: MainData?.startLocation ?? null,
+        endLocation: MainData?.endLocation ?? null,
+      }
+    : {
+        stateId: null,
+        districtId: null,
+        blockId: null,
+        startLocation: null,
+        endLocation: null,
+      };
+
+  const handleConfirmSplit = async (location: PoleSplitLocation) => {
     if (selectedSplitIds.length === 0) {
       toast.error('Please select at least one row to split.');
       return;
@@ -405,7 +433,7 @@ function PoleStringView() {
       setSplitLoading(true);
       const responses = await Promise.all(
         Object.entries(groupedBySurvey).map(([surveyId, poleStringingIds]) =>
-          movePolesSurvey(Number(surveyId), poleStringingIds),
+          movePolesSurvey(Number(surveyId), poleStringingIds, location),
         ),
       );
 
@@ -423,6 +451,7 @@ function PoleStringView() {
         toast.success('Poles split successfully!');
       }
 
+      setIsSplitModalOpen(false);
       setIsSplitMode(false);
       setSelectedSplitIds([]);
       getData();
@@ -1141,7 +1170,7 @@ function PoleStringView() {
                 </button>
                 {isSplitMode && (
                   <button
-                    onClick={handleSplitPoles}
+                    onClick={handleOpenSplitModal}
                     disabled={splitLoading || selectedSplitIds.length === 0}
                     className="flex-none h-10 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 outline-none disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center gap-2"
                   >
@@ -1282,6 +1311,20 @@ function PoleStringView() {
         onClose={() => setIsCarouselOpen(false)}
         mediaItems={carouselMedia}
         initialIndex={carouselInitialIndex}
+      />
+
+      {/* ── Split location modal ── */}
+      <PoleSplitModal
+        isOpen={isSplitModalOpen}
+        onClose={() => setIsSplitModalOpen(false)}
+        onConfirm={handleConfirmSplit}
+        selectedCount={selectedSplitIds.length}
+        isSubmitting={splitLoading}
+        defaultStateId={splitLocationDefaults.stateId}
+        defaultDistrictId={splitLocationDefaults.districtId}
+        defaultBlockId={splitLocationDefaults.blockId}
+        defaultStartLocation={splitLocationDefaults.startLocation}
+        defaultEndLocation={splitLocationDefaults.endLocation}
       />
     </div>
   );
