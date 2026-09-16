@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import GoogleMapsLoader from '../hooks/googleMapsLoader';
 import moment from 'moment';
-import { Activity } from '../../types/survey';
+import { Activity, JointChamberData } from '../../types/survey';
 import type {
   ProcessedDesktopPlanning,
   PlacemarkCategory,
@@ -33,6 +33,10 @@ interface MarkerData {
   id: number;
   survey_id: number;
   index_id: number;
+  /** Set for joint chamber point markers (pointA/B/C) — the id of the parent JOINTCHAMBER Activity */
+  parentId?: number;
+  /** Set for joint chamber point markers — which point this marker represents */
+  pointKey?: 'pointA' | 'pointB' | 'pointC';
 }
 
 interface MapCompProps {
@@ -85,6 +89,9 @@ const EVENT_TYPES = {
   BLOWING:        { color: '#663300', icon: '💨', label: 'Blowing Survey' },
   OFCBLOWING:     { color: '#0EA5E9', icon: '🧵', label: 'OFC Blowing' },
   PIPE:  { color: '#7C3AED', icon: '🧪', label: 'Pipe' },
+  JOINTCHAMBER_A: { color: '#8B5CF6', icon: '📌', label: 'Joint Chamber - Point A' },
+  JOINTCHAMBER_B: { color: '#A78BFA', icon: '📌', label: 'Joint Chamber - Point B' },
+  JOINTCHAMBER_C: { color: '#C4B5FD', icon: '📌', label: 'Joint Chamber - Point C' },
 };
 
 const baseUrl = import.meta.env.VITE_Image_URL;
@@ -94,11 +101,33 @@ const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
   const AdminAcess = isAdminUser();
 // ─── InfoWindow ───────────────────────────────────────────────────────────────
 
+const parseJointChamberData = (
+  data: string | JointChamberData | null | undefined,
+): JointChamberData | null => {
+  if (!data) return null;
+  if (typeof data === 'object') return data;
+  if (typeof data === 'string' && data.trim() !== '' && data !== 'null') {
+    try {
+      return JSON.parse(data);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
+const JOINT_CHAMBER_POINT_LABELS: Record<string, string> = {
+  pointA: 'Point A',
+  pointB: 'Point B',
+  pointC: 'Point C',
+};
+
 const InfoWindow: React.FC<{
   event: Activity;
+  pointKey?: 'pointA' | 'pointB' | 'pointC' | null;
   onClose: () => void;
   onImageClick: (url: string) => void;
-}> = ({ event, onClose, onImageClick }) => {
+}> = ({ event, pointKey, onClose, onImageClick }) => {
   const eventPhotoFields: Record<string, keyof Activity> = {
     FPOI: 'fpoiPhotos',
     DEPTH: 'depthPhoto',
@@ -166,8 +195,18 @@ const InfoWindow: React.FC<{
     return photos;
   };
 
-  const photos = getEventPhotos(event);
-  const eventConfig = EVENT_TYPES[event.eventType as keyof typeof EVENT_TYPES];
+  const jointChamberPoint = pointKey
+    ? parseJointChamberData(event.jointChamberData)?.[pointKey]
+    : null;
+
+  const photos = pointKey
+    ? jointChamberPoint?.photo
+      ? [jointChamberPoint.photo]
+      : []
+    : getEventPhotos(event);
+  const eventConfig = pointKey
+    ? EVENT_TYPES[`JOINTCHAMBER_${pointKey.slice(-1)}` as keyof typeof EVENT_TYPES]
+    : EVENT_TYPES[event.eventType as keyof typeof EVENT_TYPES];
 
   return (
     <div className="bg-white rounded-lg shadow-lg max-w-sm w-80 max-h-96 overflow-hidden">
@@ -209,17 +248,41 @@ const InfoWindow: React.FC<{
               <span className="font-medium text-sm">{event.start_lgd_name}_{event.end_lgd_name}</span>
             </div>
           )}
+          {pointKey && (
+            <div className="flex justify-between">
+              <span className="text-gray-600 text-sm">Point:</span>
+              <span className="font-medium text-sm">{JOINT_CHAMBER_POINT_LABELS[pointKey]}</span>
+            </div>
+          )}
           <div className="flex justify-between">
             <span className="text-gray-600 text-sm">Coordinates:</span>
-            <span className="font-medium text-sm">{getLatLongForEvent(event)}</span>
+            <span className="font-medium text-sm">
+              {pointKey
+                ? jointChamberPoint?.latitude != null && jointChamberPoint?.longitude != null
+                  ? `${jointChamberPoint.latitude}, ${jointChamberPoint.longitude}`
+                  : '-'
+                : getLatLongForEvent(event)}
+            </span>
           </div>
-          {event.depthMeters && (
+          {pointKey && jointChamberPoint?.structureName && (
+            <div className="flex justify-between">
+              <span className="text-gray-600 text-sm">Structure Name:</span>
+              <span className="font-medium text-sm">{jointChamberPoint.structureName}</span>
+            </div>
+          )}
+          {pointKey && jointChamberPoint?.distance && (
+            <div className="flex justify-between">
+              <span className="text-gray-600 text-sm">Distance:</span>
+              <span className="font-medium text-sm">{jointChamberPoint.distance}</span>
+            </div>
+          )}
+          {!pointKey && event.depthMeters && (
             <div className="flex justify-between">
               <span className="text-gray-600 text-sm">Depth:</span>
               <span className="font-medium text-sm">{event.depthMeters}m</span>
             </div>
           )}
-          {event.distance && (
+          {!pointKey && event.distance && (
             <div className="flex justify-between">
               <span className="text-gray-600 text-sm">Distance:</span>
               <span className="font-medium text-sm">{event.distance}</span>
@@ -340,6 +403,9 @@ const MapComponent: React.FC<MapCompProps> = ({
 
   const polylinesRef = useRef<google.maps.Polyline[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Activity | null>(null);
+  const [selectedPointKey, setSelectedPointKey] = useState<
+    'pointA' | 'pointB' | 'pointC' | null
+  >(null);
   const [visibleEventTypes, setVisibleEventTypes] = useState<Set<string>>(
     new Set(['DEPTH', 'STARTPIT', 'ENDPIT']),
   );
@@ -572,7 +638,7 @@ const MapComponent: React.FC<MapCompProps> = ({
           // Update icon: yellow ring = moved, white ring = original
           existing.setIcon({
             path: google.maps.SymbolPath.CIRCLE,
-            scale: hasMoved ? 10 : 8,
+            scale: hasMoved ? 10 : point.pointKey ? 6 : 8,
             fillColor: eventConfig.color,
             fillOpacity: 0.9,
             strokeColor: hasMoved ? '#facc15' : '#ffffff',
@@ -589,30 +655,39 @@ const MapComponent: React.FC<MapCompProps> = ({
           map,
           title: `${eventConfig.label} — ${point.eventType} — Survey: ${point.survey_id}`,
           label: {
-            text: (point.index_id).toString(),
+            text: point.pointKey ? point.pointKey.slice(-1) : (point.index_id).toString(),
             color: 'white',
             fontSize: '11px',
             fontWeight: 'bold',
           },
           icon: {
             path: google.maps.SymbolPath.CIRCLE,
-            scale: 8,
+            scale: point.pointKey ? 6 : 8,
             fillColor: eventConfig.color,
             fillOpacity: 0.9,
             strokeColor: '#ffffff',
             strokeWeight: 2,
           },
           // draggable: point.eventType !== 'STARTPIT' && point.eventType !== 'ENDPIT' && AdminAcess,
-          draggable: AdminAcess,
+          draggable: AdminAcess && !point.pointKey,
           animation: google.maps.Animation.DROP,
           // cursor: (point.eventType === 'STARTPIT' || point.eventType === 'ENDPIT' || !AdminAcess) ? 'pointer' : 'grab',
-          cursor: (!AdminAcess) ? 'pointer' : 'grab',
+          cursor: (!AdminAcess || point.pointKey) ? 'pointer' : 'grab',
 
         });
 
         // Click → open info window
         marker.addListener('click', () => {
-          if (eventDetails) setSelectedEvent(eventDetails);
+          if (point.pointKey && point.parentId != null) {
+            const parentEvent = eventData.find(e => e.id === point.parentId);
+            if (parentEvent) {
+              setSelectedEvent(parentEvent);
+              setSelectedPointKey(point.pointKey);
+            }
+          } else if (eventDetails) {
+            setSelectedEvent(eventDetails);
+            setSelectedPointKey(null);
+          }
         });
 
         // Drag start → change cursor & close any open info
@@ -1124,7 +1199,12 @@ const MapComponent: React.FC<MapCompProps> = ({
       {/* ── InfoWindow overlay ── */}
       {selectedEvent && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
-          <InfoWindow event={selectedEvent} onClose={() => setSelectedEvent(null)} onImageClick={setZoomImage} />
+          <InfoWindow
+            event={selectedEvent}
+            pointKey={selectedPointKey}
+            onClose={() => { setSelectedEvent(null); setSelectedPointKey(null); }}
+            onImageClick={setZoomImage}
+          />
         </div>
       )}
 

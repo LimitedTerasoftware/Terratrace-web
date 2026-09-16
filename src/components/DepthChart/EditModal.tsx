@@ -1,6 +1,11 @@
 import { useState, useEffect, act } from 'react';
 import { X, Save, Loader2, Plus, Trash2 } from 'lucide-react';
-import { Activity, StartDuct, EndDuct } from '../../types/survey';
+import {
+  Activity,
+  StartDuct,
+  EndDuct,
+  JointChamberData,
+} from '../../types/survey';
 import { sub } from 'date-fns';
 
 interface EditModalProps {
@@ -31,6 +36,48 @@ const emptyOfcEntry: OfcEntry = {
   images: [],
 };
 
+interface JointChamberPointForm {
+  structureName: string;
+  distance: string;
+  latitude: string;
+  longitude: string;
+}
+
+const JOINT_CHAMBER_POINT_KEYS = ['pointA', 'pointB', 'pointC'] as const;
+const JOINT_CHAMBER_POINT_LABELS: Record<string, string> = {
+  pointA: 'Point A',
+  pointB: 'Point B',
+  pointC: 'Point C',
+};
+
+const emptyJointChamberPoint: JointChamberPointForm = {
+  structureName: '',
+  distance: '',
+  latitude: '',
+  longitude: '',
+};
+
+const emptyJointChamberData: Record<string, JointChamberPointForm> = {
+  pointA: { ...emptyJointChamberPoint },
+  pointB: { ...emptyJointChamberPoint },
+  pointC: { ...emptyJointChamberPoint },
+};
+
+const parseJointChamberData = (
+  data: string | JointChamberData | null | undefined,
+): JointChamberData | null => {
+  if (!data) return null;
+  if (typeof data === 'object') return data;
+  if (typeof data === 'string' && data.trim() !== '' && data !== 'null') {
+    try {
+      return JSON.parse(data);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
 export function EditModal({
   activity,
   isOpen,
@@ -46,6 +93,9 @@ export function EditModal({
   const [endDuctData, setEndDuctData] = useState<DuctEntry[]>([]);
   const [startOfcData, setStartOfcData] = useState<OfcEntry>(emptyOfcEntry);
   const [endOfcData, setEndOfcData] = useState<OfcEntry>(emptyOfcEntry);
+  const [jointChamberPointsData, setJointChamberPointsData] = useState<
+    Record<string, JointChamberPointForm>
+  >(emptyJointChamberData);
 
   const parseDuctData = (data: any): DuctEntry[] => {
     if (!data) return [];
@@ -85,6 +135,23 @@ export function EditModal({
       if (activity.eventType === 'OFC') {
         setStartOfcData(parseOfcData(activity.start_ofc));
         setEndOfcData(parseOfcData(activity.end_ofc));
+      }
+      if (activity.eventType === 'JOINTCHAMBER') {
+        const parsed = parseJointChamberData(activity.jointChamberData);
+        const next: Record<string, JointChamberPointForm> = {
+          ...emptyJointChamberData,
+        };
+        JOINT_CHAMBER_POINT_KEYS.forEach((key) => {
+          const point = parsed?.[key];
+          next[key] = {
+            structureName: point?.structureName || '',
+            distance: point?.distance || '',
+            latitude: point?.latitude != null ? String(point.latitude) : '',
+            longitude:
+              point?.longitude != null ? String(point.longitude) : '',
+          };
+        });
+        setJointChamberPointsData(next);
       }
     }
   }, [activity]);
@@ -133,6 +200,17 @@ export function EditModal({
     }
   };
 
+  const handleJointChamberPointChange = (
+    key: string,
+    field: keyof JointChamberPointForm,
+    value: string,
+  ) => {
+    setJointChamberPointsData((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], [field]: value },
+    }));
+  };
+
   if (!isOpen || !activity) return null;
 
   const handleChange = (field: keyof Activity, value: string | number) => {
@@ -159,6 +237,23 @@ export function EditModal({
       }else if (activity.eventType === 'OFC') {
         submitData.start_ofc = JSON.stringify(startOfcData);
         submitData.end_ofc = JSON.stringify(endOfcData);
+      }else if (activity.eventType === 'JOINTCHAMBER') {
+        const existing =
+          parseJointChamberData(activity.jointChamberData) || {};
+        const updated: JointChamberData = {};
+        JOINT_CHAMBER_POINT_KEYS.forEach((key) => {
+          const form = jointChamberPointsData[key];
+          const latitude = parseFloat(form.latitude);
+          const longitude = parseFloat(form.longitude);
+          updated[key] = {
+            ...(existing[key] || {}),
+            structureName: form.structureName,
+            distance: form.distance,
+            latitude: isNaN(latitude) ? undefined : latitude,
+            longitude: isNaN(longitude) ? undefined : longitude,
+          };
+        });
+        submitData.jointChamberData = JSON.stringify(updated);
       }
         submitData.user_id=userData.id;
          submitData.user_name=userData.name;
@@ -594,6 +689,105 @@ export function EditModal({
                     />
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {activity.eventType === 'JOINTCHAMBER' && (
+            <div className="mt-6 border-t pt-6">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                Joint Chamber Points
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                Photos for each point are managed from the media manager;
+                only their details are editable here.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {JOINT_CHAMBER_POINT_KEYS.map((key) => (
+                  <div
+                    key={key}
+                    className="border border-gray-200 dark:border-gray-700 rounded-lg p-3"
+                  >
+                    <h4 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">
+                      {JOINT_CHAMBER_POINT_LABELS[key]}
+                    </h4>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">
+                          Structure Name
+                        </label>
+                        <input
+                          type="text"
+                          value={jointChamberPointsData[key].structureName}
+                          onChange={(e) =>
+                            handleJointChamberPointChange(
+                              key,
+                              'structureName',
+                              e.target.value,
+                            )
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                          disabled={isLoading}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">
+                          Distance
+                        </label>
+                        <input
+                          type="text"
+                          value={jointChamberPointsData[key].distance}
+                          onChange={(e) =>
+                            handleJointChamberPointChange(
+                              key,
+                              'distance',
+                              e.target.value,
+                            )
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                          disabled={isLoading}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">
+                          Latitude
+                        </label>
+                        <input
+                          type="text"
+                          value={jointChamberPointsData[key].latitude}
+                          onChange={(e) =>
+                            handleJointChamberPointChange(
+                              key,
+                              'latitude',
+                              e.target.value,
+                            )
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                          disabled={isLoading}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">
+                          Longitude
+                        </label>
+                        <input
+                          type="text"
+                          value={jointChamberPointsData[key].longitude}
+                          onChange={(e) =>
+                            handleJointChamberPointChange(
+                              key,
+                              'longitude',
+                              e.target.value,
+                            )
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                          disabled={isLoading}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}

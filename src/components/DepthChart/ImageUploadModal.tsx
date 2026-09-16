@@ -4,8 +4,32 @@ import {
   Activity,
   ImageUploadResponse,
   UpdatePhotosRequest,
+  JointChamberData,
 } from '../../types/survey';
 import { addImageWatermark, removeWatermark } from '../Services/api';
+
+const JOINT_CHAMBER_POINT_KEYS = ['pointA', 'pointB', 'pointC'] as const;
+const JOINT_CHAMBER_POINT_LABELS: Record<string, string> = {
+  pointA: 'Point A',
+  pointB: 'Point B',
+  pointC: 'Point C',
+};
+
+const parseJointChamberData = (
+  data: string | JointChamberData | null | undefined,
+): JointChamberData | null => {
+  if (!data) return null;
+  if (typeof data === 'object') return data;
+  if (typeof data === 'string' && data.trim() !== '' && data !== 'null') {
+    try {
+      return JSON.parse(data);
+    } catch (e) {
+      console.error('Error parsing joint chamber data:', e);
+      return null;
+    }
+  }
+  return null;
+};
 
 interface ImageModalProps {
   isOpen: boolean;
@@ -51,11 +75,12 @@ const ImageModal: React.FC<ImageModalProps> = ({
       secondary?: keyof Activity;
       hasDuct?: boolean;
       hasOfc?: boolean;
+      hasJointChamberData?: boolean;
     }
   > = {
     FPOI: { primary: 'fpoiPhotos' },
     DEPTH: { primary: 'depthPhoto' },
-    JOINTCHAMBER: { primary: 'jointChamberPhotos' },
+    JOINTCHAMBER: { primary: 'jointChamberPhotos', hasJointChamberData: true },
     MANHOLES: { primary: 'manholePhotos' },
     LANDMARK: { primary: 'landmarkPhotos' },
     KILOMETERSTONE: { primary: 'kilometerstonePhotos' },
@@ -246,6 +271,27 @@ const ImageModal: React.FC<ImageModalProps> = ({
             isVideo: checkIsVideo(secondaryData),
           });
         }
+      }
+    }
+
+    // Load joint chamber point photos (pointA/pointB/pointC)
+    if (fieldMapping.hasJointChamberData) {
+      const jointChamberData = parseJointChamberData(activity.jointChamberData);
+      if (jointChamberData) {
+        JOINT_CHAMBER_POINT_KEYS.forEach((key) => {
+          const photo = jointChamberData[key]?.photo;
+          if (photo) {
+            imageItems.push({
+              id: `jointChamberData-${key}`,
+              url: `${ImgbaseUrl}${photo}`,
+              isNew: false,
+              isReplaced: false,
+              fieldName: `jointChamberData.${key}`,
+              originalIndex: 0,
+              isVideo: false,
+            });
+          }
+        });
       }
     }
 
@@ -874,6 +920,53 @@ const ImageModal: React.FC<ImageModalProps> = ({
         }
       }
 
+      // Handle joint chamber point photos (pointA/pointB/pointC)
+      if (fieldMapping.hasJointChamberData) {
+        const existingJointChamberData =
+          parseJointChamberData(activity.jointChamberData) || {};
+
+        const pointImagesByKey = JOINT_CHAMBER_POINT_KEYS.map((key) => ({
+          key,
+          images: images.filter(
+            (img) => img.fieldName === `jointChamberData.${key}`,
+          ),
+        }));
+
+        const newPointFiles = pointImagesByKey.flatMap(({ images }) =>
+          images.filter((img) => img.isNew && img.file).map((img) => img.file!),
+        );
+
+        let uploadedPointUrls: string[] = [];
+        if (newPointFiles.length > 0) {
+          uploadedPointUrls = await uploadImages(newPointFiles);
+        }
+
+        let uploadedPointIdx = 0;
+        const updatedJointChamberData: JointChamberData = {
+          ...existingJointChamberData,
+        };
+        pointImagesByKey.forEach(({ key, images: pointImages }) => {
+          let photoPath = '';
+          if (pointImages.length > 0) {
+            const img = pointImages[0];
+            if (img.isNew) {
+              photoPath = uploadedPointUrls[uploadedPointIdx] || '';
+              uploadedPointIdx++;
+            } else {
+              photoPath = img.url.replace(ImgbaseUrl, '');
+            }
+          }
+          updatedJointChamberData[key] = {
+            ...(existingJointChamberData[key] || {}),
+            photo: photoPath,
+          };
+        });
+
+        updateData['jointChamberData'] = JSON.stringify(
+          updatedJointChamberData,
+        );
+      }
+
       // Handle video field (activity.video)
       const simpleVideoItems = images.filter(
         (img) => img.fieldName === 'video',
@@ -1113,6 +1206,9 @@ const ImageModal: React.FC<ImageModalProps> = ({
   const depthPhotoImages = images.filter(
     (img) => img.fieldName === 'depthPhoto',
   );
+  const jointChamberPointsData = fieldMapping?.hasJointChamberData
+    ? parseJointChamberData(activity.jointChamberData)
+    : null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1831,6 +1927,144 @@ const ImageModal: React.FC<ImageModalProps> = ({
                   </p>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Joint Chamber Point Photos Section - pointA/pointB/pointC */}
+          {fieldMapping?.hasJointChamberData && (
+            <div className="mb-8">
+              <h3 className="text-lg font-medium text-gray-800 mb-4">
+                Joint Chamber Point Photos
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {JOINT_CHAMBER_POINT_KEYS.map((key) => {
+                  const fieldName = `jointChamberData.${key}`;
+                  const pointImage = images.find(
+                    (img) => img.fieldName === fieldName,
+                  );
+                  const pointData = jointChamberPointsData?.[key];
+                  const label = JOINT_CHAMBER_POINT_LABELS[key];
+
+                  return (
+                    <div
+                      key={key}
+                      className="border rounded-lg overflow-hidden"
+                    >
+                      <div className="px-3 py-2 bg-gray-50 border-b flex justify-between items-center">
+                        <span className="text-sm font-medium text-gray-700 truncate">
+                          {label}
+                          {pointData?.structureName
+                            ? ` - ${pointData.structureName}`
+                            : ''}
+                        </span>
+                        <label className="text-blue-600 hover:text-blue-800 cursor-pointer text-xs whitespace-nowrap ml-2">
+                          <Upload size={14} className="inline mr-1" />
+                          {pointImage ? 'Replace' : 'Add'}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              if (pointImage) {
+                                replaceImage(pointImage.id, file);
+                              } else {
+                                handleFileSelect(e, fieldName);
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
+
+                      {pointImage ? (
+                        <div className="relative group">
+                          <img
+                            src={pointImage.url}
+                            alt={`${label} photo`}
+                            className="w-full h-48 object-cover cursor-pointer"
+                            onClick={() => setPreviewImage(pointImage.url)}
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => setPreviewImage(pointImage.url)}
+                                className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors"
+                                title="Preview"
+                              >
+                                <Eye size={16} />
+                              </button>
+                              {!pointImage.isNew && (
+                                <button
+                                  onClick={() =>
+                                    handleAddWatermark(
+                                      pointImage.url.replace(ImgbaseUrl, ''),
+                                      pointImage.id,
+                                    )
+                                  }
+                                  disabled={watermarkingId === pointImage.id}
+                                  className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
+                                  title="Add Watermark"
+                                >
+                                  <Droplets size={16} />
+                                </button>
+                              )}
+                              {!pointImage.isNew && (
+                                <button
+                                  onClick={() =>
+                                    handleRemoveWatermark(
+                                      pointImage.url.replace(ImgbaseUrl, ''),
+                                      pointImage.id,
+                                    )
+                                  }
+                                  disabled={watermarkingId === pointImage.id}
+                                  className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
+                                  title="Remove Watermark"
+                                >
+                                  <Eraser size={16} />
+                                </button>
+                              )}
+                              <button
+                                onClick={() => removeImage(pointImage.id)}
+                                className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </div>
+                          {(pointImage.isReplaced ||
+                            (pointImage.isNew && !pointImage.isReplaced)) && (
+                            <div className="absolute top-2 right-2 px-2 py-0.5 rounded text-xs font-medium bg-white/90">
+                              {pointImage.isReplaced ? (
+                                <span className="text-orange-600">
+                                  Replaced
+                                </span>
+                              ) : (
+                                <span className="text-green-600">New</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="h-48 flex items-center justify-center text-gray-400 text-sm">
+                          No photo
+                        </div>
+                      )}
+
+                      <div className="px-3 py-2 text-xs text-gray-500 border-t">
+                        Distance: {pointData?.distance || '-'}
+                        <br />
+                        Lat/Long:{' '}
+                        {pointData?.latitude != null &&
+                        pointData?.longitude != null
+                          ? `${pointData.latitude}, ${pointData.longitude}`
+                          : '-'}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 

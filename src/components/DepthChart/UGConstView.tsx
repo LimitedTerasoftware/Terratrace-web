@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Activity, VideoDetails } from '../../types/survey';
+import { Activity, VideoDetails, JointChamberData } from '../../types/survey';
 import { useLocation } from 'react-router-dom';
 import DataTable, { TableColumn } from 'react-data-table-component';
 import {
@@ -55,6 +55,28 @@ const parsePoleData = (
     console.error('Error parsing pole data:', e);
     return null;
   }
+};
+
+const parseJointChamberData = (
+  data: string | JointChamberData | null | undefined,
+): JointChamberData | null => {
+  if (!data) return null;
+  if (typeof data === 'object') return data;
+  if (typeof data === 'string' && data.trim() !== '' && data !== 'null') {
+    try {
+      return JSON.parse(data);
+    } catch (e) {
+      console.error('Error parsing joint chamber data:', e);
+      return null;
+    }
+  }
+  return null;
+};
+
+const JOINT_CHAMBER_POINT_LABELS: Record<string, string> = {
+  pointA: 'Point A',
+  pointB: 'Point B',
+  pointC: 'Point C',
 };
 
 interface MediaItem {
@@ -398,7 +420,19 @@ function Eventreport() {
 
   const FilteredMainData = filteredData.filter((data) => data.status == 0);
 
-  const markers = FilteredMainData.map((row: Activity) => {
+  type MarkerPoint = {
+    lat: number;
+    lng: number;
+    eventType: string;
+    id: number;
+    survey_id: number;
+    index_id: number;
+    parentId?: number;
+    pointKey?: 'pointA' | 'pointB' | 'pointC';
+  };
+
+  const markers = FilteredMainData.flatMap((row: Activity): MarkerPoint[] => {
+    const points: MarkerPoint[] = [];
     const latLongStr = getLatLongForEvent(row);
     if (typeof latLongStr === 'string' && latLongStr.includes(',')) {
       const [latStr, lngStr] = latLongStr.split(',');
@@ -411,29 +445,45 @@ function Eventreport() {
         Math.abs(lat) <= 90 &&
         Math.abs(lng) <= 180
       ) {
-        return {
+        points.push({
           lat,
           lng,
           eventType: row.eventType,
           id: row.id,
           survey_id: row.survey_id,
           index_id: row.order_index,
-        };
+        });
       }
     }
-    return null;
-  }).filter(
-    (
-      m,
-    ): m is {
-      lat: number;
-      lng: number;
-      eventType: string;
-      id: number;
-      survey_id: number;
-      index_id: number;
-    } => m !== null,
-  );
+
+    if (row.eventType === 'JOINTCHAMBER') {
+      const jointChamberData = parseJointChamberData(row.jointChamberData);
+      if (jointChamberData) {
+        (['pointA', 'pointB', 'pointC'] as const).forEach((key, idx) => {
+          const point = jointChamberData[key];
+          if (
+            point?.latitude != null &&
+            point?.longitude != null &&
+            Math.abs(point.latitude) <= 90 &&
+            Math.abs(point.longitude) <= 180
+          ) {
+            points.push({
+              lat: point.latitude,
+              lng: point.longitude,
+              eventType: `JOINTCHAMBER_${key.slice(-1)}`,
+              id: -(row.id * 10 + idx + 1),
+              survey_id: row.survey_id,
+              index_id: row.order_index,
+              parentId: row.id,
+              pointKey: key,
+            });
+          }
+        });
+      }
+    }
+
+    return points;
+  });
 
   const eventPhotoFields: Record<string, keyof Activity> = {
     FPOI: 'fpoiPhotos',
@@ -496,6 +546,22 @@ function Eventreport() {
       const depthPhotos = row[depthPhotoField];
 
       addImages(depthPhotos, 'DEPTH Photo');
+    }
+
+    // Add joint chamber point photos (pointA/pointB/pointC)
+    const jointChamberData = parseJointChamberData(row.jointChamberData);
+    if (jointChamberData) {
+      (['pointA', 'pointB', 'pointC'] as const).forEach((pointKey) => {
+        const point = jointChamberData[pointKey];
+        if (point?.photo) {
+          const label = JOINT_CHAMBER_POINT_LABELS[pointKey];
+          mediaItems.push({
+            type: 'image',
+            url: `${baseUrl}${point.photo}`,
+            label: `Joint Chamber ${label}${point.structureName ? ` (${point.structureName})` : ''}`,
+          });
+        }
+      });
     }
 
     if (row.video) {
@@ -1452,6 +1518,58 @@ function Eventreport() {
       sortable: true,
     },
     {
+      name: 'Joint Chamber Data',
+      cell: (row: Activity) => {
+        const jointChamberData = parseJointChamberData(row.jointChamberData);
+        if (!jointChamberData) return <span className="text-gray-400">-</span>;
+
+        const points = (['pointA', 'pointB', 'pointC'] as const)
+          .map((key) => ({ key, point: jointChamberData[key] }))
+          .filter(({ point }) => point);
+
+        if (points.length === 0)
+          return <span className="text-gray-400">-</span>;
+
+        return (
+          <div className="text-xs py-1 space-y-1.5">
+            {points.map(({ key, point }) => (
+              <div
+                key={key}
+                className="border border-gray-200 rounded px-2 py-1"
+              >
+                <div className="font-medium text-gray-800">
+                  {JOINT_CHAMBER_POINT_LABELS[key]}
+                  {point?.structureName ? ` - ${point.structureName}` : ''}
+                </div>
+                <div className="text-gray-500">
+                  Distance: {point?.distance || '-'}
+                </div>
+                <div className="text-gray-500">
+                  Lat/Long:{' '}
+                  {point?.latitude != null && point?.longitude != null
+                    ? `${point.latitude}, ${point.longitude}`
+                    : '-'}
+                </div>
+                {point?.photo && (
+                  <span
+                    className="text-blue-600 cursor-pointer underline"
+                    onClick={() =>
+                      setZoomImage(`${baseUrl}${point.photo}`)
+                    }
+                  >
+                    View Photo
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        );
+      },
+      wrap: true,
+      minWidth: '220px',
+      sortable: true,
+    },
+    {
       name: 'Status',
       selector: (row: Activity) => row.status,
       sortable: true,
@@ -1618,6 +1736,21 @@ function Eventreport() {
       'End OFC Meter',
       'End OFC Cable Type',
       'End OFC Images',
+      'Joint Chamber Point A Structure',
+      'Joint Chamber Point A Distance',
+      'Joint Chamber Point A Latitude',
+      'Joint Chamber Point A Longitude',
+      'Joint Chamber Point A Photo',
+      'Joint Chamber Point B Structure',
+      'Joint Chamber Point B Distance',
+      'Joint Chamber Point B Latitude',
+      'Joint Chamber Point B Longitude',
+      'Joint Chamber Point B Photo',
+      'Joint Chamber Point C Structure',
+      'Joint Chamber Point C Distance',
+      'Joint Chamber Point C Latitude',
+      'Joint Chamber Point C Longitude',
+      'Joint Chamber Point C Photo',
       'Authorised Person',
       'Contractor Details',
       'Vehicle Serial No',
@@ -1741,6 +1874,24 @@ function Eventreport() {
         }
       }
 
+      // Joint chamber point data (pointA/pointB/pointC)
+      const jointChamberData = parseJointChamberData(item.jointChamberData);
+      const jointChamberPointCells = (['pointA', 'pointB', 'pointC'] as const)
+        .map((key) => {
+          const point = jointChamberData?.[key];
+          const photoCell = point?.photo
+            ? `=HYPERLINK("${baseUrl}${point.photo}", "${JOINT_CHAMBER_POINT_LABELS[key]}_Photo")`
+            : '-';
+          return [
+            point?.structureName || '-',
+            point?.distance || '-',
+            point?.latitude ?? '-',
+            point?.longitude ?? '-',
+            photoCell,
+          ];
+        })
+        .flat();
+
       const poleTypeData = parsePoleData(item.pole_type);
       const existingPoleData = parsePoleData(item.existing_pole);
       const newPoleData = parsePoleData(item.new_pole);
@@ -1805,6 +1956,7 @@ function Eventreport() {
         endOFCMeter,
         endOFCCableType,
         endOFCImages,
+        ...jointChamberPointCells,
         item.authorised_person,
         item.contractor_details,
         item.vehicleserialno,

@@ -264,7 +264,7 @@ const GpForm: React.FC<GpFormProps> = ({
                                 <SearchableSelect
                                     value={formData.type}
                                     onChange={(value) => handleChange('type', value)}
-                                    options={['ONT', 'BHQ', 'GP', 'OLT', 'FPOI', 'VILLAGE']}
+                                    options={['ONT', 'BHQ', 'GP', 'OLT', 'FPOI', 'VILLAGE','BJC']}
                                     placeholder="Select Type"
                                     className="w-full"
                                 />

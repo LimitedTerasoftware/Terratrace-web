@@ -187,6 +187,18 @@ export interface EndDuct {
   images: string;
   meter: string;
 }
+export interface JointChamberPoint {
+  photo?: string;
+  distance?: string;
+  latitude?: number;
+  longitude?: number;
+  structureName?: string;
+}
+export interface JointChamberData {
+  pointA?: JointChamberPoint;
+  pointB?: JointChamberPoint;
+  pointC?: JointChamberPoint;
+}
 export interface Activity {
   id: number;
   state_id: string | null;
@@ -215,6 +227,7 @@ export interface Activity {
   fpoiPhotos: string | null;
   jointChamberLatLong: string | null;
   jointChamberPhotos: string | null;
+  jointChamberData: string | JointChamberData | null;
   manholeLatLong: string | null;
   manholePhotos: string | null;
   routeIndicatorLatLong: string | null;
