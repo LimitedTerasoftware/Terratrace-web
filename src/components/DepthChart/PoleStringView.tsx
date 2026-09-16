@@ -10,6 +10,7 @@ import {
   Columns3,
   Stamp,
   Scissors,
+  PlusCircleIcon,
 } from 'lucide-react';
 import axios from 'axios';
 import { FaArrowLeft } from 'react-icons/fa';
@@ -29,6 +30,7 @@ import { PoleStringImageModal } from './PoleStringImageModal';
 import PoleReorderModal from './PoleReorderModal';
 import { movePolesSurvey } from '../Services/api';
 import { PoleSplitModal, PoleSplitLocation } from './PoleSplitModal';
+import { AddPoleEventModal } from './AddPoleEventModal';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const IMGbaseUrl = import.meta.env.VITE_Image_URL;
@@ -128,6 +130,7 @@ function PoleStringView() {
   const [selectedSplitIds, setSelectedSplitIds] = useState<number[]>([]);
   const [splitLoading, setSplitLoading] = useState(false);
   const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
+  const [isAddPoleModalOpen, setIsAddPoleModalOpen] = useState(false);
   const [watermarkLoading, setWatermarkLoading] = useState(false);
   const columnMenuRef = useRef<HTMLDivElement>(null);
 
@@ -1141,6 +1144,15 @@ function PoleStringView() {
             )}
             {!multipreview && AdminAcess && (
               <button
+                onClick={() => setIsAddPoleModalOpen(true)}
+                className="flex-none h-10 px-4 py-2 text-sm font-medium text-green-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-green-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
+              >
+                <PlusCircleIcon className="h-4 w-4 text-green-600" />
+                Add New Event
+              </button>
+            )}
+            {!multipreview && AdminAcess && (
+              <button
                 onClick={handleAddWatermark}
                 disabled={watermarkLoading}
                 className="flex-none h-10 px-4 py-2 text-sm font-medium text-teal-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-teal-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
@@ -1311,6 +1323,17 @@ function PoleStringView() {
         onClose={() => setIsCarouselOpen(false)}
         mediaItems={carouselMedia}
         initialIndex={carouselInitialIndex}
+      />
+
+      {/* ── Add pole event modal ── */}
+      <AddPoleEventModal
+        isOpen={isAddPoleModalOpen}
+        onClose={() => setIsAddPoleModalOpen(false)}
+        onSuccess={() => {
+          getData();
+        }}
+        surveyId={MainData?.id}
+        blockId={MainData?.block_id}
       />
 
       {/* ── Split location modal ── */}
