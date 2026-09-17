@@ -4,7 +4,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, Loader2, X, ZoomIn, Camera } from 'lucide-react';
 import moment from 'moment';
 import GoogleMapsLoader from '../hooks/googleMapsLoader';
-import { Activity } from '../../types/survey';
+import { Activity, JointChamberData } from '../../types/survey';
 import type {
   DesktopPlanningApiResponse,
   PlacemarkCategory,
@@ -41,6 +41,10 @@ interface ProgressMarker {
   surveyId: number;
   indexId: number;
   workType: string | null;
+  /** Set for joint chamber point markers (pointA/B/C) — the id of the parent JOINTCHAMBER Activity */
+  parentId?: number;
+  /** Set for joint chamber point markers — which point this marker represents */
+  pointKey?: 'pointA' | 'pointB' | 'pointC';
 }
 
 interface IntegratedGp {
@@ -204,6 +208,28 @@ const getEventVideoUrl = (event: Activity): string | null => {
   return null;
 };
 
+const JOINT_CHAMBER_POINT_KEYS = ['pointA', 'pointB', 'pointC'] as const;
+const JOINT_CHAMBER_POINT_LABELS: Record<string, string> = {
+  pointA: 'Point A',
+  pointB: 'Point B',
+  pointC: 'Point C',
+};
+
+const parseJointChamberData = (
+  data: string | JointChamberData | null | undefined,
+): JointChamberData | null => {
+  if (!data) return null;
+  if (typeof data === 'object') return data;
+  if (typeof data === 'string' && data.trim() !== '' && data !== 'null') {
+    try {
+      return JSON.parse(data);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
 const isSameLocation = (
   a: { lat: number; lng: number },
   b: { lat: number; lng: number },
@@ -247,21 +273,50 @@ const buildMarkers = (
         event.eventType !== 'FIBERTURN' &&
         !(ofcSurveyIds.has(event.survey_id) && NON_PATH_EVENT_TYPES.has(event.eventType)),
     )
-    .map((event) => {
+    .flatMap((event): ProgressMarker[] => {
+      const result: ProgressMarker[] = [];
       const coords = parseLatLong(getLatLongForEvent(event));
-      if (!coords) return null;
+      if (coords) {
+        result.push({
+          id: event.id,
+          lat: coords.lat,
+          lng: coords.lng,
+          eventType: event.eventType,
+          surveyId: event.survey_id,
+          indexId: event.order_index,
+          workType: event.work_type ?? null,
+        });
+      }
 
-      return {
-        id: event.id,
-        lat: coords.lat,
-        lng: coords.lng,
-        eventType: event.eventType,
-        surveyId: event.survey_id,
-        indexId: event.order_index,
-        workType: event.work_type ?? null,
-      };
-    })
-    .filter((event): event is ProgressMarker => event !== null);
+      if (event.eventType === 'JOINTCHAMBER') {
+        const jointChamberData = parseJointChamberData(event.jointChamberData);
+        if (jointChamberData) {
+          JOINT_CHAMBER_POINT_KEYS.forEach((key, idx) => {
+            const point = jointChamberData[key];
+            if (
+              point?.latitude != null &&
+              point?.longitude != null &&
+              Math.abs(point.latitude) <= 90 &&
+              Math.abs(point.longitude) <= 180
+            ) {
+              result.push({
+                id: -(event.id * 10 + idx + 1),
+                lat: point.latitude,
+                lng: point.longitude,
+                eventType: `JOINTCHAMBER_${key.slice(-1)}`,
+                surveyId: event.survey_id,
+                indexId: event.order_index,
+                workType: event.work_type ?? null,
+                parentId: event.id,
+                pointKey: key,
+              });
+            }
+          });
+        }
+      }
+
+      return result;
+    });
 
 const escapeHtml = (value: string) =>
   value.replace(/[&<>"']/g, (char) => {
@@ -314,6 +369,21 @@ const EVENT_POINT_STYLES: Record<
     color: '#0EA5E9',
     label: 'Route Indicator',
     shape: 'triangle',
+  },
+  JOINTCHAMBER_A: {
+    color: '#C2410C',
+    label: 'Joint Chamber - Point A',
+    shape: 'diamond',
+  },
+  JOINTCHAMBER_B: {
+    color: '#EA580C',
+    label: 'Joint Chamber - Point B',
+    shape: 'diamond',
+  },
+  JOINTCHAMBER_C: {
+    color: '#FB923C',
+    label: 'Joint Chamber - Point C',
+    shape: 'diamond',
   },
 };
 
@@ -425,13 +495,28 @@ const ShapeSwatch: React.FC<{ shape: MarkerShape; color: string }> = ({
 
 const MarkerDetailsPanel: React.FC<{
   event: Activity;
+  pointKey?: 'pointA' | 'pointB' | 'pointC' | null;
   onClose: () => void;
   onImageClick: (url: string) => void;
-}> = ({ event, onClose, onImageClick }) => {
-  const style = getPointStyle(event.eventType);
-  const coords = parseLatLong(getLatLongForEvent(event));
-  const photos = getEventPhotos(event);
-  const videoUrl = getEventVideoUrl(event);
+}> = ({ event, pointKey, onClose, onImageClick }) => {
+  const jointChamberPoint = pointKey
+    ? parseJointChamberData(event.jointChamberData)?.[pointKey]
+    : null;
+
+  const style = pointKey
+    ? getPointStyle(`JOINTCHAMBER_${pointKey.slice(-1)}`)
+    : getPointStyle(event.eventType);
+  const coords = pointKey
+    ? jointChamberPoint?.latitude != null && jointChamberPoint?.longitude != null
+      ? { lat: jointChamberPoint.latitude, lng: jointChamberPoint.longitude }
+      : null
+    : parseLatLong(getLatLongForEvent(event));
+  const photos = pointKey
+    ? jointChamberPoint?.photo
+      ? [jointChamberPoint.photo]
+      : []
+    : getEventPhotos(event);
+  const videoUrl = pointKey ? null : getEventVideoUrl(event);
 
   return (
     <div className="bg-white rounded-lg shadow-lg max-w-sm w-80 max-h-[26rem] overflow-hidden">
@@ -462,6 +547,14 @@ const MarkerDetailsPanel: React.FC<{
             </span>
           </div>
         )}
+        {pointKey && (
+          <div className="flex justify-between">
+            <span className="text-gray-600">Point:</span>
+            <span className="font-medium">
+              {JOINT_CHAMBER_POINT_LABELS[pointKey]}
+            </span>
+          </div>
+        )}
         {coords && (
           <div className="flex justify-between">
             <span className="text-gray-600">Coordinates:</span>
@@ -470,7 +563,21 @@ const MarkerDetailsPanel: React.FC<{
             </span>
           </div>
         )}
-        {event.eventType === 'DEPTH' && event.depthMeters && (
+        {pointKey && jointChamberPoint?.structureName && (
+          <div className="flex justify-between">
+            <span className="text-gray-600">Structure Name:</span>
+            <span className="font-medium">
+              {jointChamberPoint.structureName}
+            </span>
+          </div>
+        )}
+        {pointKey && jointChamberPoint?.distance && (
+          <div className="flex justify-between">
+            <span className="text-gray-600">Distance:</span>
+            <span className="font-medium">{jointChamberPoint.distance}</span>
+          </div>
+        )}
+        {!pointKey && event.eventType === 'DEPTH' && event.depthMeters && (
           <div className="flex justify-between">
             <span className="text-gray-600">Depth:</span>
             <span className="font-medium">{event.depthMeters}m</span>
@@ -576,6 +683,9 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<Activity | null>(null);
+  const [selectedPointKey, setSelectedPointKey] = useState<
+    'pointA' | 'pointB' | 'pointC' | null
+  >(null);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
   const [showConstructionPath, setShowConstructionPath] = useState(true);
   const [showIntegratedGps, setShowIntegratedGps] = useState(true);
@@ -758,14 +868,31 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
           map,
           title: style.label,
           zIndex: 997,
-          icon: buildLabeledShapeIcon(style.shape, style.color, 14),
+          icon: buildLabeledShapeIcon(
+            style.shape,
+            style.color,
+            marker.pointKey ? 10 : 14,
+          ),
         });
 
         eventMarker.addListener('click', () => {
           infoWindowRef.current?.close();
+
+          if (marker.pointKey && marker.parentId != null) {
+            const parentEvent = events.find(
+              (event) => event.id === marker.parentId,
+            );
+            if (parentEvent) {
+              setSelectedEvent(parentEvent);
+              setSelectedPointKey(marker.pointKey);
+              return;
+            }
+          }
+
           const fullEvent = events.find((event) => event.id === marker.id);
           if (fullEvent) {
             setSelectedEvent(fullEvent);
+            setSelectedPointKey(null);
           } else {
             infoWindowRef.current?.setContent(`
               <div style="padding:4px 4px;font-size:13px;line-height:1.5">
@@ -1163,7 +1290,11 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30">
           <MarkerDetailsPanel
             event={selectedEvent}
-            onClose={() => setSelectedEvent(null)}
+            pointKey={selectedPointKey}
+            onClose={() => {
+              setSelectedEvent(null);
+              setSelectedPointKey(null);
+            }}
             onImageClick={setZoomImage}
           />
         </div>
