@@ -63,7 +63,7 @@ interface UploadedFile {
   isDocument?: boolean;
 }
 
-interface ATRackCheckItem {
+export interface ATRackCheckItem {
   id: string;
   testCaseNo: string;
   clause: string;
@@ -91,14 +91,14 @@ interface ATBlockRackFormProps {
 
 const DOC_CODE = 'ABP/AT/BLRK/002 Ver1.0';
 
-type CertificationKey =
+export type CertificationKey =
   | 'tsecCertificate'
   | 'qaCertificate'
   | 'qrCodeLogo'
   | 'photoEvidence'
   | 'oemApproval';
 
-const CERTIFICATION_FIELDS: { key: CertificationKey; label: string }[] = [
+export const CERTIFICATION_FIELDS: { key: CertificationKey; label: string }[] = [
   { key: 'tsecCertificate', label: 'TSEC Certificate' },
   { key: 'qaCertificate', label: 'QA Certificate' },
   { key: 'qrCodeLogo', label: 'QR Code / Logo' },
@@ -408,7 +408,7 @@ const atRackTestsRaw: Omit<
   },
 ];
 
-const atRackTests: ATRackCheckItem[] = atRackTestsRaw.map((tc, index) => ({
+export const atRackTests: ATRackCheckItem[] = atRackTestsRaw.map((tc, index) => ({
   ...tc,
   ...COLORS[index % COLORS.length],
 }));

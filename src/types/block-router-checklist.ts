@@ -160,3 +160,32 @@ export interface ATRouterData {
   network?: Record<string, ATRouterNetworkTestItem | null>;
   message?: string;
 }
+
+export interface ATBlockListItem {
+  block_id: number;
+  block_name: string;
+  state_name: string;
+  district_name: string;
+  memorandum?: {
+    equipmentDescription?: string;
+    siteNameBlockCode?: string;
+    siteAddress?: string;
+    dateTime?: string;
+  };
+  completion_percentage: string;
+  filled_tests: number;
+  total_tests: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ATBlockListResponse {
+  status: boolean;
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+  blocks: ATBlockListItem[];
+}
