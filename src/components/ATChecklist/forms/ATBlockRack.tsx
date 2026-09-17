@@ -714,9 +714,9 @@ const ATBlockRackForm = ({
         block_id: parseInt(blockId),
         memorandum,
         certificationFiles: certificationFilesPayload,
-        ...atRackData,
+        tests: atRackData,
       };
-      const response = await fetch(`${TraceBASEURL}/upload-at-smartrack-data`, {
+      const response = await fetch(`${TraceBASEURL}/upload-blockRack-AT`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

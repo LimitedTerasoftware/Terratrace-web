@@ -887,9 +887,7 @@ export const getATBlockRackData = async (
   blockId: string,
 ): Promise<RouterData> => {
   try {
-    const resp = await axios.get(
-      `${TraceBASEURL}/get-at-smartrack-data/${blockId}`,
-    );
+    const resp = await axios.get(`${TraceBASEURL}/block-rack-at/${blockId}`);
     return resp.data;
   } catch (error) {
     throw error;
