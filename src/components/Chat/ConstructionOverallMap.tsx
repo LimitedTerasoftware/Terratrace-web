@@ -1017,29 +1017,42 @@ export default function ConstructionOverallMap({
           )}
         </div>
 
-        {milestones.length > 0 && (
-          <div className="p-4 border-b border-gray-200">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-semibold text-gray-900">Milestone Progress</span>
-              <span className="text-xs text-blue-600 font-medium">Target: Q4 2026</span>
-            </div>
-            <div className="space-y-3">
-              {milestones.map((m) => (
-                <div key={m.label}>
-                  <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-                    <span>{m.label}</span>
-                    <span className="font-semibold text-gray-900">{m.percent}%</span>
-                  </div>
-                  <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${m.colorClass}`}
-                      style={{ width: `${m.percent}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+       {milestones.length > 0 && (
+  <div className="p-4 border-b border-gray-200">
+    <div className="flex items-center justify-between mb-3">
+      <span className="text-sm font-semibold text-gray-900">
+        Work Type Distance
+      </span>
+    </div>
+
+    <div className="space-y-3">
+      {milestones.map((m) => (
+        <div key={m.label}>
+          <div className="flex items-center justify-between text-xs mb-1">
+            <span className="text-gray-600">{m.label}</span>
+
+            <span className="font-semibold text-gray-900">
+              {m.percent.toFixed(2)} km
+            </span>
           </div>
+
+          <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full ${m.colorClass}`}
+              style={{
+                width: `${Math.min(
+                  (m.percent /
+                    Math.max(...milestones.map((m) => m.percent))) *
+                    100,
+                  100
+                )}%`,
+              }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
         )}
 
         {legendEntries.length > 0 && (

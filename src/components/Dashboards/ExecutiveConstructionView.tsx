@@ -119,32 +119,35 @@ const FALLBACK_MILESTONE_COLORS = [
   'bg-pink-500',
 ];
 
-// Work types with a null/blank label are counted toward the total (so the
-// visible bars' percentages still reflect their true share of all surveyed
-// distance) but aren't shown as their own bar.
-const buildConstructionMilestones = (data: ConstProgressItem[]): MilestoneItem[] => {
-  const totals = new Map<string, number>();
-  let grandTotal = 0;
+const buildConstructionMilestones = (
+  data: ConstProgressItem[]
+): MilestoneItem[] => {
+  const milestonesMap: Record<string, MilestoneItem> = {};
 
   data.forEach((item) => {
-    const km = item.total_distance_km || 0;
-    grandTotal += km;
-    const label = item.workType?.trim();
-    if (!label) return;
-    totals.set(label, (totals.get(label) ?? 0) + km);
+    const label = item.workType?.trim() || "Unclassified";
+
+    if (!milestonesMap[label]) {
+      milestonesMap[label] = {
+        label,
+        percent: 0,
+        colorClass:
+          label === "New Construction"
+            ? "bg-blue-500"
+            : label === "Rectification"
+            ? "bg-green-500"
+            : label === "Protection"
+            ? "bg-orange-500"
+            : label === "OFC Blowing/ JointChamber"
+            ? "bg-purple-500"
+            : "bg-gray-400",
+      };
+    }
+
+    milestonesMap[label].percent += item.total_distance_km;
   });
 
-  if (grandTotal <= 0) return [];
-
-  return Array.from(totals.entries())
-    .sort((a, b) => b[1] - a[1])
-    .map(([label, km], i) => ({
-      label,
-      percent: Math.round((km / grandTotal) * 100),
-      colorClass:
-        CONSTRUCTION_MILESTONE_COLORS[label] ??
-        FALLBACK_MILESTONE_COLORS[i % FALLBACK_MILESTONE_COLORS.length],
-    }));
+  return Object.values(milestonesMap);
 };
 
 interface ConstructionSummary {
