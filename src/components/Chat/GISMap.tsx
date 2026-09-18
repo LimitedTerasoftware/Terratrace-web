@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Navigation, Plus, Minus, MapPin } from 'lucide-react';
 import GoogleMapsLoader from '../hooks/googleMapsLoader';
 
-interface PoleData {
+export interface PoleData {
   id: number;
   survey_id: number;
   pole_type: string;
@@ -17,6 +17,13 @@ interface PoleData {
 
 interface GISMapProps {
   acceptedPoles: PoleData[];
+  // Reports the map's zoom/bounds on every pan/zoom — lets a parent (like
+  // ExecutiveConstructionView) compute its own "Current View" stats without
+  // this component needing to know about that UI.
+  onViewportChange?: (zoom: number, bounds: google.maps.LatLngBounds | null) => void;
+  // Fired in addition to the built-in InfoWindow when a pole marker is
+  // clicked — hook a details lookup up here (e.g. /get-poledata-preview).
+  onPoleClick?: (pole: PoleData) => void;
 }
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -73,13 +80,26 @@ const clusterPoles = (poles: PoleData[], zoom: number): PoleCluster[] => {
   }));
 };
 
-export default function GISMap({ acceptedPoles }: GISMapProps) {
+export default function GISMap({ acceptedPoles, onViewportChange, onPoleClick }: GISMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
   const [mapsLoaded, setMapsLoaded] = useState(false);
   const [zoom, setZoom] = useState<number>(10);
   const [bounds, setBounds] = useState<google.maps.LatLngBounds | null>(null);
+
+  // Read via a ref inside the marker click handler so rebuilding markers
+  // doesn't need `onPoleClick` in its dependency list (it's a new function
+  // identity every parent render, which would otherwise thrash the
+  // Marker instances the comment above `makePoleMarker` warns about).
+  const onPoleClickRef = useRef(onPoleClick);
+  useEffect(() => {
+    onPoleClickRef.current = onPoleClick;
+  }, [onPoleClick]);
+
+  useEffect(() => {
+    onViewportChange?.(zoom, bounds);
+  }, [zoom, bounds, onViewportChange]);
 
   useEffect(() => {
     const loader = GoogleMapsLoader.getInstance();
@@ -168,6 +188,7 @@ export default function GISMap({ acceptedPoles }: GISMapProps) {
 
     marker.addListener('click', () => {
       infoWindow.open(map, marker);
+      onPoleClickRef.current?.(pole);
     });
 
     return marker;

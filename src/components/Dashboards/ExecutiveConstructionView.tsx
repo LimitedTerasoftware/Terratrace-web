@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ChevronRight, Maximize2, LayoutDashboard } from 'lucide-react';
+import { ChevronRight, Maximize2, LayoutDashboard, MapPin, X } from 'lucide-react';
 import SearchableSelect from '../Forms/SearchableSelect';
 import {
   getStateData,
@@ -17,12 +17,13 @@ import type {
   OverallConstructionBlock,
 } from '../Services/api';
 import { Block, District, StateData } from '../../types/survey';
+import { getAuthHeaders } from '../../utils/accessControl';
 import { GoogleMap } from '../SmartInventory/MapViewer';
 import {
   processJointsData,
   processDesktopPlanningData,
 } from '../SmartInventory/PlaceMark';
-import GISMap from '../Chat/GISMap';
+import GISMap, { PoleData } from '../Chat/GISMap';
 import ConstructionOverallMap, { MilestoneItem, HealthIndexData } from '../Chat/ConstructionOverallMap';
 import { StatsCard } from '../Chat/StatsCard';
 import {
@@ -47,12 +48,26 @@ const DESKTOP_PLANNING_CATEGORIES = [
 ];
 
 const BASEURL = import.meta.env.VITE_TraceAPI_URL;
+const IMAGE_BASE_URL = import.meta.env.VITE_Image_URL;
 
 const formatNumber = (num: number) => num.toLocaleString('en-IN');
 
 const formatAvgDistanceM = (distanceKm: number, count: number) => {
   if (!count) return '-';
   return `${formatNumber(Number(((distanceKm * 1000) / count).toFixed(2)))} M`;
+};
+
+const parsePolePhotos = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.filter((p): p is string => typeof p === 'string' && p.trim() !== '');
+  }
+  if (typeof value !== 'string' || !value.trim()) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((p) => typeof p === 'string' && p.trim() !== '') : [];
+  } catch {
+    return [];
+  }
 };
 
 type TabType = 'construction' | 'aerial' | 'joints';
@@ -80,25 +95,69 @@ const AERIAL_MILESTONE_ITEMS: MilestoneItem[] = [
   { label: 'Pole Installed', percent: 10, colorClass: 'bg-green-500' },
 ];
 
-// Construction has no executive-level aggregate API yet, so this row is a
-// static placeholder (same treatment as MILESTONE_ITEMS above) until one
-// exists — swap these for real values once that endpoint is available.
-const CONSTRUCTION_KPI_CARDS: {
-  label: string;
-  value: string;
-  accentColor: 'default' | 'green' | 'blue' | 'yellow' | 'red';
-  breakdown?: { label: string; value: string }[];
-}[] = [
-  { label: 'Total Surveys', value: formatNumber(8297), accentColor: 'blue' },
-  { label: 'Total Links', value: formatNumber(6842), accentColor: 'blue' },
-  { label: 'Accepted Surveys', value: formatNumber(7668), accentColor: 'green' },
-  { label: 'Pending Surveys', value: formatNumber(412), accentColor: 'yellow' },
-  { label: 'Rejected Surveys', value: formatNumber(217), accentColor: 'red' },
-  { label: 'Total Distance', value: `${formatNumber(2145.32)} KM`, accentColor: 'blue' },
+// Row returned by GET /get-const-progress — total surveyed distance grouped
+// by work type. Construction's Milestone Progress bars are each work type's
+// share of the total distance, computed at render time (see
+// buildConstructionMilestones below).
+interface ConstProgressItem {
+  workType: string | null;
+  total_distance_km: number;
+}
+
+const CONSTRUCTION_MILESTONE_COLORS: Record<string, string> = {
+  'New Construction': 'bg-green-500',
+  Rectification: 'bg-blue-500',
+  'OFC Blowing/ JointChamber': 'bg-indigo-500',
+  Protection: 'bg-orange-500',
+};
+const FALLBACK_MILESTONE_COLORS = [
+  'bg-green-500',
+  'bg-blue-500',
+  'bg-indigo-500',
+  'bg-orange-500',
+  'bg-purple-500',
+  'bg-pink-500',
 ];
 
-// Same reasoning as CONSTRUCTION_KPI_CARDS — no depth-compliance/health-scoring
-// API for Construction yet, so this is a static placeholder until one exists.
+// Work types with a null/blank label are counted toward the total (so the
+// visible bars' percentages still reflect their true share of all surveyed
+// distance) but aren't shown as their own bar.
+const buildConstructionMilestones = (data: ConstProgressItem[]): MilestoneItem[] => {
+  const totals = new Map<string, number>();
+  let grandTotal = 0;
+
+  data.forEach((item) => {
+    const km = item.total_distance_km || 0;
+    grandTotal += km;
+    const label = item.workType?.trim();
+    if (!label) return;
+    totals.set(label, (totals.get(label) ?? 0) + km);
+  });
+
+  if (grandTotal <= 0) return [];
+
+  return Array.from(totals.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([label, km], i) => ({
+      label,
+      percent: Math.round((km / grandTotal) * 100),
+      colorClass:
+        CONSTRUCTION_MILESTONE_COLORS[label] ??
+        FALLBACK_MILESTONE_COLORS[i % FALLBACK_MILESTONE_COLORS.length],
+    }));
+};
+
+interface ConstructionSummary {
+  totalSurveys: number;
+  acceptedSurveys: number;
+  rejectedSurveys: number;
+  totalDistanceMeters: number;
+  totalKm: number;
+  pendingSurveys: number;
+}
+
+// No depth-compliance/health-scoring API for Construction yet, so this is a
+// static placeholder until one exists.
 const CONSTRUCTION_HEALTH_INDEX: HealthIndexData = {
   percent: 88,
   status: 'Stable',
@@ -112,6 +171,194 @@ interface InsightGroup {
   sub: string;
 }
 
+// Row returned by GET /get-poledata-preview?ids=<pole_id>, keyed by survey_id
+// in the response — fetched on demand when an aerial pole marker is clicked.
+interface PolePreviewDetails {
+  id: number;
+  survey_id: number;
+  pit_id?: string | null;
+  pole_type?: string | null;
+  eventType?: string;
+  latitude: number;
+  longitude: number;
+  distance?: number;
+  pole_height?: string | null;
+  drum_number?: string | null;
+  meter?: string | null;
+  image?: string | null;
+  images?: string[];
+  created_at?: string | null;
+  workType?: string | null;
+  construction_type?: string | null;
+  start_lgd_name?: string | null;
+  end_lgd_name?: string | null;
+  state_name?: string | null;
+  district_name?: string | null;
+  block_name?: string | null;
+  user_name?: string | null;
+  user_mobile?: string | null;
+  muff_type?: string | null;
+  [key: string]: unknown;
+}
+
+// Slide-in panel for a selected aerial pole — same docked-to-sidebar,
+// slide-from-right treatment as ConstructionOverallMap's SelectedPointPanel.
+function SelectedPolePanel({
+  pole,
+  details,
+  loading,
+  onClose,
+}: {
+  pole: PoleData | null;
+  details: PolePreviewDetails | null;
+  loading: boolean;
+  onClose: () => void;
+}) {
+  const open = pole !== null;
+  const photos = details ? parsePolePhotos(details.images ?? details.image) : [];
+
+  return (
+    <div
+      className={`absolute top-0 right-0 z-30 h-full w-full md:w-80 bg-white shadow-xl border-l border-gray-200 overflow-y-auto transition-transform duration-300 ease-out ${
+        open ? 'translate-x-0' : 'translate-x-full pointer-events-none'
+      }`}
+    >
+      {pole && (
+        <>
+          <div className="flex items-center justify-between p-4 pb-3 border-b border-gray-100 sticky top-0 bg-white">
+            <div className="font-semibold text-gray-900 text-sm">Selected Pole</div>
+            <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="p-4 pt-3">
+            <table className="w-full text-sm mb-2">
+              <tbody>
+                <tr>
+                  <td className="py-1 pr-2 text-gray-500">Type</td>
+                  <td className="py-1 font-medium text-gray-900 capitalize">{pole.pole_type}</td>
+                </tr>
+                <tr>
+                  <td className="py-1 pr-2 text-gray-500 align-top">Coordinates</td>
+                  <td className="py-1 font-medium text-gray-900">
+                    {pole.latitude.toFixed(5)}, {pole.longitude.toFixed(5)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            {loading ? (
+              <div className="flex items-center justify-center py-6">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+              </div>
+            ) : details ? (
+              <>
+                <table className="w-full text-sm">
+                  <tbody>
+                    {details.pit_id && (
+                      <tr>
+                        <td className="py-1 pr-2 text-gray-500">Pit ID</td>
+                        <td className="py-1 font-medium text-gray-900">{details.pit_id}</td>
+                      </tr>
+                    )}
+                    {details.workType && (
+                      <tr>
+                        <td className="py-1 pr-2 text-gray-500">Work Type</td>
+                        <td className="py-1 font-medium text-gray-900">{details.workType}</td>
+                      </tr>
+                    )}
+                    {details.muff_type && (
+                      <tr>
+                        <td className="py-1 pr-2 text-gray-500">Muff Type</td>
+                        <td className="py-1 font-medium text-gray-900">{details.muff_type}</td>
+                      </tr>
+                    )}
+                    {(details.start_lgd_name || details.end_lgd_name) && (
+                      <tr>
+                        <td className="py-1 pr-2 text-gray-500">Route</td>
+                        <td className="py-1 font-medium text-gray-900">
+                          {details.start_lgd_name || '—'} → {details.end_lgd_name || '—'}
+                        </td>
+                      </tr>
+                    )}
+                    <tr>
+                      <td className="py-1 pr-2 text-gray-500 align-top">Location</td>
+                      <td className="py-1 font-medium text-gray-900">
+                        {[details.block_name, details.district_name, details.state_name]
+                          .filter(Boolean)
+                          .join(', ') || '—'}
+                      </td>
+                    </tr>
+                    {details.distance !== undefined && details.distance !== null && (
+                      <tr>
+                        <td className="py-1 pr-2 text-gray-500">Distance</td>
+                        <td className="py-1 font-medium text-gray-900">{details.distance} m</td>
+                      </tr>
+                    )}
+                    {details.pole_height && (
+                      <tr>
+                        <td className="py-1 pr-2 text-gray-500">Pole Height</td>
+                        <td className="py-1 font-medium text-gray-900">{details.pole_height}</td>
+                      </tr>
+                    )}
+                    {details.drum_number && (
+                      <tr>
+                        <td className="py-1 pr-2 text-gray-500">Drum Number</td>
+                        <td className="py-1 font-medium text-gray-900">{details.drum_number}</td>
+                      </tr>
+                    )}
+                    {details.meter && (
+                      <tr>
+                        <td className="py-1 pr-2 text-gray-500">Meter</td>
+                        <td className="py-1 font-medium text-gray-900">{details.meter}</td>
+                      </tr>
+                    )}
+                    {details.user_name && (
+                      <tr>
+                        <td className="py-1 pr-2 text-gray-500">Surveyor</td>
+                        <td className="py-1 font-medium text-gray-900">
+                          {details.user_name}
+                          {details.user_mobile ? ` (${details.user_mobile})` : ''}
+                        </td>
+                      </tr>
+                    )}
+                    {details.created_at && (
+                      <tr>
+                        <td className="py-1 pr-2 text-gray-500">Created</td>
+                        <td className="py-1 font-medium text-gray-900">{details.created_at}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+
+                {photos.length > 0 && (
+                  <div className="mt-3">
+                    <div className="text-xs font-medium text-gray-500 mb-1.5">Photos</div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {photos.map((src, i) => (
+                        <a key={i} href={`${IMAGE_BASE_URL}${src}`} target="_blank" rel="noreferrer">
+                          <img
+                            src={`${IMAGE_BASE_URL}${src}`}
+                            alt={`Photo ${i + 1}`}
+                            className="w-full h-16 object-cover rounded border border-gray-200"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-xs text-gray-400">No additional details found for this pole.</p>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // Standalone "Project Insights" sidebar for the Aerial/Joints tabs, mirroring
 // the panel ConstructionOverallMap renders natively for the Construction tab.
 function ProjectInsightsPanel({
@@ -120,12 +367,17 @@ function ProjectInsightsPanel({
   groups,
   groupsLabel,
   milestones,
+  currentView,
 }: {
   healthPercent: number | null;
   healthDescription: string;
   groups: InsightGroup[];
   groupsLabel: string;
   milestones: MilestoneItem[];
+  // When provided, renders a "Current View" section (zoom + tiles) with the
+  // groups list nested inside it, same as ConstructionOverallMap's sidebar.
+  // Omit for tabs with no zoom-tracked viewport (e.g. Joints).
+  currentView?: { zoom: number; tiles: { label: string; value: number }[] };
 }) {
   const healthBadgeClass =
     healthPercent === null
@@ -143,7 +395,7 @@ function ProjectInsightsPanel({
         <span className="font-semibold text-gray-900 text-sm">Project Insights</span>
       </div>
 
-      <div className="p-4 border-b border-gray-200">
+      {/* <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-between mb-1">
           <span className="text-sm font-semibold text-gray-900">
             {healthPercent === null ? 'Summary' : 'Project Health Index'}
@@ -158,7 +410,41 @@ function ProjectInsightsPanel({
           <div className="text-2xl font-bold text-gray-900 mb-1">{healthPercent}%</div>
         )}
         <p className="text-xs text-gray-500">{healthDescription}</p>
-      </div>
+      </div> */}
+
+      {currentView && (
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2 text-gray-900 font-semibold text-sm">
+              <MapPin className="w-4 h-4 text-blue-600" />
+              Current View
+            </div>
+            <span className="text-xs text-gray-400">Zoom {currentView.zoom}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            {currentView.tiles.map((t) => (
+              <div key={t.label} className="bg-gray-50 rounded-lg px-3 py-2">
+                <div className="text-xs text-gray-500">{t.label}</div>
+                <div className="text-lg font-semibold text-gray-900">{formatNumber(t.value)}</div>
+              </div>
+            ))}
+          </div>
+
+          {groups.length > 0 && (
+            <div className="pt-1">
+              <div className="text-xs font-medium text-gray-500 mb-1.5">{groupsLabel}</div>
+              <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                {groups.map((g) => (
+                  <div key={g.key} className="flex items-center justify-between text-sm bg-gray-50 rounded px-2 py-1">
+                    <span className="text-gray-600 truncate" title={g.label}>{g.label}</span>
+                    <span className="text-gray-400 flex-shrink-0 ml-2">{g.sub}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-between mb-3">
@@ -180,7 +466,7 @@ function ProjectInsightsPanel({
         </div>
       </div>
 
-      {groups.length > 0 && (
+      {!currentView && groups.length > 0 && (
         <div className="p-4">
           <div className="text-xs font-medium text-gray-500 mb-1.5">{groupsLabel}</div>
           <div className="space-y-1.5">
@@ -224,6 +510,11 @@ export default function ExecutiveConstructionView({ fullView = false }: Executiv
   const [loadingMapData, setLoadingMapData] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
 
+  // Kept separate from loadingMapData/mapError above — Construction now
+  // fetches independently of the active tab, so it needs its own indicators.
+  const [loadingConstructionMap, setLoadingConstructionMap] = useState(false);
+  const [constructionMapError, setConstructionMapError] = useState<string | null>(null);
+
   const [overallConstructionData, setOverallConstructionData] = useState<OverallConstructionBlock[]>([]);
 
   const [planningPlacemarks, setPlanningPlacemarks] = useState<ProcessedDesktopPlanning[]>([]);
@@ -234,8 +525,20 @@ export default function ExecutiveConstructionView({ fullView = false }: Executiv
 
   const [acceptedPoles, setAcceptedPoles] = useState<AcceptedPolesResponse['data']>([]);
 
+  const [constructionSummary, setConstructionSummary] = useState<ConstructionSummary | null>(null);
+  const [loadingConstructionSummary, setLoadingConstructionSummary] = useState(false);
+
+  const [constProgress, setConstProgress] = useState<ConstProgressItem[]>([]);
+
   const [poleStats, setPoleStats] = useState<PoleDashboardResponse['data'] | null>(null);
   const [loadingPoleStats, setLoadingPoleStats] = useState(false);
+
+  const [aerialZoom, setAerialZoom] = useState(10);
+  const [aerialBounds, setAerialBounds] = useState<google.maps.LatLngBounds | null>(null);
+
+  const [selectedPole, setSelectedPole] = useState<PoleData | null>(null);
+  const [polePreview, setPolePreview] = useState<PolePreviewDetails | null>(null);
+  const [loadingPolePreview, setLoadingPolePreview] = useState(false);
 
   const blockSelected = Boolean(selectedState && selectedDistrict && selectedBlock);
 
@@ -294,17 +597,45 @@ export default function ExecutiveConstructionView({ fullView = false }: Executiv
     fetchBlocks();
   }, [selectedDistrict]);
 
-  // Load the active tab's map data whenever the tab or the selected block changes.
-  // Construction (like Aerial) loads unfiltered on first render — the state/
-  // district/block filters just narrow an already-visible map.
+  // Construction's map data is fetched once on mount and again only when the
+  // state/district/block filters change — NOT on every tab switch. Refetching
+  // (and the resulting point/polyline rebuild) on each return to this tab is
+  // what was making the map hang when flipping between tabs.
   useEffect(() => {
+    const loadConstructionMapData = async () => {
+      setLoadingConstructionMap(true);
+      setConstructionMapError(null);
+      try {
+        const resp = await getOverallConstruction({
+          stateId: selectedState,
+          district_id: selectedDistrict,
+          block_id: selectedBlock,
+        });
+        setOverallConstructionData(resp.status ? resp.data || [] : []);
+      } catch (error) {
+        console.error('Failed to load construction map data:', error);
+        setConstructionMapError('Failed to load construction data for this block.');
+        setOverallConstructionData([]);
+      } finally {
+        setLoadingConstructionMap(false);
+      }
+    };
+
+    loadConstructionMapData();
+  }, [selectedState, selectedDistrict, selectedBlock]);
+
+  // Aerial/Joints map data — lazy-loaded per tab, unlike Construction above.
+  // Neither has reported the same tab-switch freeze, so this keeps the
+  // original lazy-load-on-tab-select behavior.
+  useEffect(() => {
+    if (activeTab === 'construction') return;
+
     if (!blockSelected && activeTab === 'joints') {
       setJointsPlacemarks([]);
       setJointsCategories([]);
       setMapError(null);
       return;
     }
-
 
     const params = {
       state_id: selectedState,
@@ -316,14 +647,7 @@ export default function ExecutiveConstructionView({ fullView = false }: Executiv
       setLoadingMapData(true);
       setMapError(null);
       try {
-        if (activeTab === 'construction') {
-          const resp = await getOverallConstruction({
-            stateId: selectedState,
-            district_id: selectedDistrict,
-            block_id: selectedBlock,
-          });
-          setOverallConstructionData(resp.status ? resp.data || [] : []);
-        } else if (activeTab === 'joints') {
+        if (activeTab === 'joints') {
           const resp = await axios.get<JointsApiResponse>(
             `${BASEURL}/fetch-joints-location`,
             { params },
@@ -338,9 +662,7 @@ export default function ExecutiveConstructionView({ fullView = false }: Executiv
       } catch (error) {
         console.error(`Failed to load ${activeTab} map data:`, error);
         setMapError(`Failed to load ${activeTab} data for this block.`);
-        if (activeTab === 'construction') {
-          setOverallConstructionData([]);
-        } else if (activeTab === 'joints') {
+        if (activeTab === 'joints') {
           setJointsPlacemarks([]);
           setJointsCategories([]);
         } else {
@@ -354,10 +676,12 @@ export default function ExecutiveConstructionView({ fullView = false }: Executiv
     loadMapData();
   }, [activeTab, blockSelected, selectedState, selectedDistrict, selectedBlock]);
 
-  // Approved KMZ (desktop planning) overlay for the construction map —
-  // same /get-desktop-planning call and category whitelist as construction-progress-map.
+  // Approved KMZ (desktop planning) overlay for the construction map — same
+  // /get-desktop-planning call and category whitelist as construction-progress-map.
+  // Not gated on activeTab: only re-fetches when the filters actually
+  // change, not on every switch back to the Construction tab.
   useEffect(() => {
-    if (activeTab !== 'construction' || !blockSelected) {
+    if (!blockSelected) {
       setPlanningPlacemarks([]);
       setPlanningCategories([]);
       return;
@@ -412,7 +736,63 @@ export default function ExecutiveConstructionView({ fullView = false }: Executiv
     return () => {
       mounted = false;
     };
-  }, [activeTab, blockSelected, selectedState, selectedDistrict, selectedBlock]);
+  }, [blockSelected, selectedState, selectedDistrict, selectedBlock]);
+
+  // Construction KPI row — same /getConstructionSummary endpoint the
+  // Construction Dashboard uses, scoped to HDD construction. Not gated on
+  // activeTab: fetches once on mount, then again only on filter changes.
+  useEffect(() => {
+    const loadConstructionSummary = async () => {
+      setLoadingConstructionSummary(true);
+      try {
+        const params: Record<string, string> = { construction_type: 'Hdd' };
+        if (selectedState) params.state_id = selectedState;
+        if (selectedDistrict) params.district_id = selectedDistrict;
+        if (selectedBlock) params.block_id = selectedBlock;
+
+        const response = await fetch(
+          `${BASEURL}/getConstructionSummary?${new URLSearchParams(params).toString()}`,
+          { headers: getAuthHeaders() },
+        );
+        const result = await response.json();
+        setConstructionSummary(result.status ? result.summary : null);
+      } catch (error) {
+        console.error('Failed to load construction summary:', error);
+        setConstructionSummary(null);
+      } finally {
+        setLoadingConstructionSummary(false);
+      }
+    };
+
+    loadConstructionSummary();
+  }, [selectedState, selectedDistrict, selectedBlock]);
+
+  // Milestone Progress bars — real data from /get-const-progress (distance
+  // surveyed per work type). Same not-gated-on-activeTab treatment as the
+  // summary/map-data fetches above.
+  useEffect(() => {
+    const loadConstProgress = async () => {
+      try {
+        const params: Record<string, string> = {};
+        if (selectedState) params.stateId = selectedState;
+        if (selectedDistrict) params.districtId = selectedDistrict;
+        if (selectedBlock) params.blockId = selectedBlock;
+        const queryString = new URLSearchParams(params).toString();
+
+        const response = await fetch(
+          `${BASEURL}/api/get-const-progress${queryString ? `?${queryString}` : ''}`,
+          { headers: getAuthHeaders() },
+        );
+        const result = await response.json();
+        setConstProgress(result.status ? result.data || [] : []);
+      } catch (error) {
+        console.error('Failed to load construction progress:', error);
+        setConstProgress([]);
+      }
+    };
+
+    loadConstProgress();
+  }, [selectedState, selectedDistrict, selectedBlock]);
 
   // Aerial stat cards — same source as the Aerial Dashboard's pole stats row.
   useEffect(() => {
@@ -441,6 +821,28 @@ export default function ExecutiveConstructionView({ fullView = false }: Executiv
     loadPoleStats();
   }, [activeTab, selectedState, selectedDistrict, selectedBlock]);
 
+  // Fetches the full pole record for a clicked aerial marker — feeds the
+  // slide-in SelectedPolePanel, same pattern as construction's point popup.
+  const loadPolePreview = async (pole: PoleData) => {
+    setSelectedPole(pole);
+    setPolePreview(null);
+    setLoadingPolePreview(true);
+    try {
+      const resp = await fetch(`${BASEURL}/get-poledata-preview?ids=${pole.id}`, {
+        headers: getAuthHeaders(),
+      });
+      const result = await resp.json();
+      const groups: Record<string, PolePreviewDetails[]> = result.status ? result.data || {} : {};
+      const row = Object.values(groups).flat()[0] ?? null;
+      setPolePreview(row);
+    } catch (error) {
+      console.error('Failed to load pole preview:', error);
+      setPolePreview(null);
+    } finally {
+      setLoadingPolePreview(false);
+    }
+  };
+
   const jointsVisibleCategories = useMemo(
     () => new Set(jointsCategories.map((c) => c.id)),
     [jointsCategories],
@@ -449,6 +851,41 @@ export default function ExecutiveConstructionView({ fullView = false }: Executiv
   // The construction tab renders its own legend (event types + Approved KMZ
   // overlay) inside ConstructionOverallMap, so it's excluded here.
   const activeCategories = activeTab === 'joints' ? jointsCategories : [];
+
+  const constructionStatsCards: {
+    label: string;
+    value: string;
+    accentColor: 'default' | 'green' | 'blue' | 'yellow' | 'red';
+    breakdown?: { label: string; value: string }[];
+  }[] = constructionSummary
+    ? [
+        {
+          label: 'Total Surveys',
+          value: formatNumber(constructionSummary.totalSurveys),
+          accentColor: 'blue',
+        },
+        {
+          label: 'Accepted Surveys',
+          value: formatNumber(constructionSummary.acceptedSurveys),
+          accentColor: 'green',
+        },
+        {
+          label: 'Pending Surveys',
+          value: formatNumber(constructionSummary.pendingSurveys),
+          accentColor: 'yellow',
+        },
+        {
+          label: 'Rejected Surveys',
+          value: formatNumber(constructionSummary.rejectedSurveys),
+          accentColor: 'red',
+        },
+        {
+          label: 'Total Distance',
+          value: `${formatNumber(Number(constructionSummary.totalKm?.toFixed(2) ?? 0))} KM`,
+          accentColor: 'blue',
+        },
+      ]
+    : [];
 
   const aerialStatsCards = poleStats
     ? [
@@ -507,19 +944,6 @@ export default function ExecutiveConstructionView({ fullView = false }: Executiv
           ],
         },
         {
-          label: 'Completion Rate',
-          value: `${formatNumber(Math.round(poleStats.completion_rate))}%`,
-          accentColor: poleStats.completion_rate >= 90 ? ('green' as const) : ('yellow' as const),
-        },
-        {
-          label: 'Action Required',
-          value: formatNumber(poleStats.pending_poles ?? 0),
-          accentColor: (poleStats.pending_poles ?? 0) > 0 ? ('red' as const) : ('green' as const),
-          breakdown: [
-            { label: 'Pending', value: formatNumber(poleStats.pending_poles ?? 0) },
-          ],
-        },
-        {
           label: 'Muff Count',
           value: formatNumber(
             (poleStats.new_poles_by_muff_type?.Muff ?? 0) +
@@ -566,12 +990,45 @@ export default function ExecutiveConstructionView({ fullView = false }: Executiv
       .map(([key, g]) => ({ key, label: g.label, sub: `${formatNumber(g.count)} poles` }));
   }, [acceptedPoles]);
 
+  // Viewport-scoped version of the same breakdown — feeds the "Current View"
+  // section, same real-viewport behavior as ConstructionOverallMap's sidebar.
+  const aerialViewStats = useMemo(() => {
+    const scoped = aerialBounds
+      ? acceptedPoles.filter((p) => aerialBounds.contains({ lat: p.latitude, lng: p.longitude }))
+      : acceptedPoles;
+
+    const groups = new Map<string, { label: string; count: number }>();
+    scoped.forEach((p) => {
+      const key = `${p.state_name}-${p.district_name}-${p.block_name}`;
+      const existing = groups.get(key);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        groups.set(key, { label: `${p.state_name} · ${p.district_name} · ${p.block_name}`, count: 1 });
+      }
+    });
+
+    return {
+      newCount: scoped.filter((p) => p.pole_type === 'new').length,
+      existingCount: scoped.filter((p) => p.pole_type === 'existing').length,
+      groups: Array.from(groups.entries())
+        .sort((a, b) => b[1].count - a[1].count)
+        .slice(0, 6)
+        .map(([key, g]) => ({ key, label: g.label, sub: `${formatNumber(g.count)} poles` })) as InsightGroup[],
+    };
+  }, [acceptedPoles, aerialBounds]);
+
   const aerialHealthPercent = poleStats ? Math.round(poleStats.completion_rate) : null;
   const aerialHealthDescription = poleStats
     ? `${formatNumber(poleStats.total_poles)} poles surveyed across ${aerialGroups.length} block${
         aerialGroups.length === 1 ? '' : 's'
       }. ${formatNumber(poleStats.pending_poles ?? 0)} pole(s) pending review.`
     : 'Loading pole survey data…';
+
+  const constructionMilestones = useMemo(
+    () => buildConstructionMilestones(constProgress),
+    [constProgress],
+  );
 
   // Real per-block breakdown for the Joints tab's Project Insights panel.
   const jointsGroups: InsightGroup[] = useMemo(() => {
@@ -703,9 +1160,9 @@ export default function ExecutiveConstructionView({ fullView = false }: Executiv
       </div>
 
       {/* Stat cards */}
-      {activeTab === 'construction' && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 p-2 bg-gray-50">
-          {CONSTRUCTION_KPI_CARDS.map((s) => (
+      {activeTab === 'construction' && constructionStatsCards.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 p-2 bg-gray-50">
+          {constructionStatsCards.map((s) => (
             <StatsCard
               key={s.label}
               label={s.label}
@@ -717,7 +1174,7 @@ export default function ExecutiveConstructionView({ fullView = false }: Executiv
         </div>
       )}
       {activeTab === 'aerial' && aerialStatsCards.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 p-2 bg-gray-50">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-2 bg-gray-50">
           {aerialStatsCards.map((s) => (
             <StatsCard
               key={s.label}
@@ -732,21 +1189,22 @@ export default function ExecutiveConstructionView({ fullView = false }: Executiv
       {/* Joints tab intentionally has no stat cards. */}
 
       {/* Map (+ Project Insights panel for tabs that don't render their own) */}
-      <div className="flex-1 flex min-h-[580px] overflow-hidden">
+      <div className="relative flex-1 flex min-h-[580px] overflow-hidden">
         <div className="flex-1 relative min-w-0">
           {!blockSelected && activeTab === 'joints' && (
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-white border border-gray-200 rounded-lg shadow-sm px-4 py-2 text-sm text-gray-600">
               Select a state, district, and block to load {activeTab} data
             </div>
           )}
-          {loadingMapData && (
+          {((activeTab === 'construction' && loadingConstructionMap) ||
+            (activeTab !== 'construction' && loadingMapData)) && (
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-white border border-gray-200 rounded-lg shadow-sm px-4 py-2 text-sm text-blue-600">
               Loading {activeTab} data...
             </div>
           )}
-          {mapError && (
+          {(activeTab === 'construction' ? constructionMapError : mapError) && (
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-red-50 border border-red-200 rounded-lg shadow-sm px-4 py-2 text-sm text-red-600">
-              {mapError}
+              {activeTab === 'construction' ? constructionMapError : mapError}
             </div>
           )}
 
@@ -780,14 +1238,22 @@ export default function ExecutiveConstructionView({ fullView = false }: Executiv
           )}
 
           {activeTab === 'aerial' ? (
-            <GISMap acceptedPoles={acceptedPoles} />
+            <GISMap
+              acceptedPoles={acceptedPoles}
+              onViewportChange={(zoom, bounds) => {
+                setAerialZoom(zoom);
+                setAerialBounds(bounds);
+              }}
+              onPoleClick={loadPolePreview}
+            />
           ) : activeTab === 'construction' ? (
             <ConstructionOverallMap
               data={overallConstructionData}
               planningPlacemarks={planningPlacemarks}
               planningCategories={planningCategories}
               healthIndex={CONSTRUCTION_HEALTH_INDEX}
-              milestones={MILESTONE_ITEMS}
+              totalSurveys={constructionSummary?.totalSurveys}
+              milestones={constructionMilestones}
             />
           ) : (
             <GoogleMap
@@ -806,9 +1272,16 @@ export default function ExecutiveConstructionView({ fullView = false }: Executiv
           <ProjectInsightsPanel
             healthPercent={aerialHealthPercent}
             healthDescription={aerialHealthDescription}
-            groups={aerialGroups}
+            groups={aerialViewStats.groups}
             groupsLabel="By State / District / Block"
             milestones={AERIAL_MILESTONE_ITEMS}
+            currentView={{
+              zoom: aerialZoom,
+              tiles: [
+                { label: 'New Poles', value: aerialViewStats.newCount },
+                { label: 'Existing Poles', value: aerialViewStats.existingCount },
+              ],
+            }}
           />
         )}
         {!fullView && activeTab === 'joints' && (
@@ -818,6 +1291,18 @@ export default function ExecutiveConstructionView({ fullView = false }: Executiv
             groups={jointsGroups}
             groupsLabel="By State / District / Block"
             milestones={MILESTONE_ITEMS}
+          />
+        )}
+
+        {activeTab === 'aerial' && (
+          <SelectedPolePanel
+            pole={selectedPole}
+            details={polePreview}
+            loading={loadingPolePreview}
+            onClose={() => {
+              setSelectedPole(null);
+              setPolePreview(null);
+            }}
           />
         )}
       </div>

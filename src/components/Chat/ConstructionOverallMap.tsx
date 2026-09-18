@@ -3,6 +3,7 @@ import { Navigation, Plus, Minus, MapPin, X, Layers } from 'lucide-react';
 import GoogleMapsLoader from '../hooks/googleMapsLoader';
 import { OverallConstructionBlock } from '../Services/api';
 import { ProcessedDesktopPlanning, PlacemarkCategory } from '../../types/kmz';
+import { getAuthHeaders } from '../../utils/accessControl';
 
 export interface MilestoneItem {
   label: string;
@@ -16,6 +17,38 @@ export interface HealthIndexData {
   description: string;
 }
 
+// Row returned by GET /get-construction-row?ids=<point_id> — a much richer
+// record than the point data plotted on the map, fetched on demand when a
+// marker is clicked. The API returns many more fields than listed here;
+// the index signature covers the rest.
+export interface ConstructionRowDetails {
+  id: number;
+  link_name: string;
+  work_type: string | null;
+  eventType: string;
+  survey_id: number;
+  machine_id: string;
+  machine_registration_number?: string | null;
+  firm_name?: string | null;
+  distance?: string | null;
+  roadType?: string | null;
+  cableLaidOn?: string | null;
+  soilType?: string | null;
+  executionModality?: string | null;
+  depthMeters?: string | null;
+  roadWidth?: string | null;
+  start_lgd_name?: string | null;
+  end_lgd_name?: string | null;
+  state_name?: string | null;
+  district_name?: string | null;
+  block_name?: string | null;
+  created_at?: string | null;
+  startPitPhotos?: string | null;
+  endPitPhotos?: string | null;
+  depthPhoto?: string | null;
+  [key: string]: unknown;
+}
+
 interface ConstructionOverallMapProps {
   data: OverallConstructionBlock[];
   planningPlacemarks?: ProcessedDesktopPlanning[];
@@ -24,6 +57,11 @@ interface ConstructionOverallMapProps {
   // CONSTRUCTION_HEALTH_INDEX in ExecutiveConstructionView. Omit to hide
   // the sidebar's Project Health Index section.
   healthIndex?: HealthIndexData;
+  // Real survey count from /getConstructionSummary — shown in the sidebar's
+  // "Overview" tile in place of the plotted-path count (surveyPaths.length),
+  // which undercounts since it only includes surveys with >=2 valid points.
+  // Falls back to surveyPaths.length when omitted.
+  totalSurveys?: number;
   milestones?: MilestoneItem[];
   // Called whenever a point marker is clicked, in addition to the built-in
   // details panel — hook a real lookup up here once a point-detail API
@@ -53,11 +91,15 @@ interface FlatPoint {
   state_id: number;
   district_id: number;
   block_id: number;
+  state_name: string;
+  district_name: string;
+  block_name: string;
 }
 
 interface SurveyPath {
   survey_id: number;
   machine_id: string;
+  distance?: number;
   path: { lat: number; lng: number }[];
 }
 
@@ -69,6 +111,8 @@ interface PointCluster {
 }
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+const BASEURL = import.meta.env.VITE_TraceAPI_URL;
+const IMAGE_BASE_URL = import.meta.env.VITE_Image_URL;
 
 const EVENT_COLORS: Record<string, string> = {
   DEPTH: '#3B82F6',
@@ -80,6 +124,54 @@ const EVENT_LABELS: Record<string, string> = {
   DEPTH: 'Depth',
   STARTPIT: 'Start Pit',
   ENDPIT: 'End Pit',
+};
+
+// Which ConstructionRowDetails field holds photos for a given event type.
+const PHOTO_FIELD_BY_EVENT: Record<string, string> = {
+  DEPTH: 'depthPhoto',
+  STARTPIT: 'startPitPhotos',
+  ENDPIT: 'endPitPhotos',
+};
+
+const parsePhotos = (value: unknown): string[] => {
+  if (typeof value !== 'string' || !value.trim()) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((p) => typeof p === 'string' && p.trim() !== '') : [];
+  } catch {
+    return [];
+  }
+};
+
+const buildPointInfoContent = (point: FlatPoint, row: ConstructionRowDetails | null) => {
+  const eventLabel = EVENT_LABELS[point.eventType] || point.eventType;
+
+  if (!row) {
+    return `
+      <div style="padding:8px;font-family:system-ui,sans-serif;font-size:12px;color:#4b5563;">
+        <strong>${eventLabel}</strong><br/>Loading details…
+      </div>
+    `;
+  }
+
+  const location = [row.block_name, row.district_name, row.state_name].filter(Boolean).join(', ');
+
+  return `
+    <div style="padding:8px;font-family:system-ui,sans-serif;font-size:12px;color:#374151;max-width:240px;">
+      <div style="font-weight:600;color:#111827;margin-bottom:4px;">
+        ${row.link_name || `Survey #${point.survey_id}`}
+      </div>
+      <div>${eventLabel}${row.work_type ? ` · ${row.work_type}` : ''}</div>
+      ${
+        row.start_lgd_name || row.end_lgd_name
+          ? `<div style="margin-top:4px;">${row.start_lgd_name || '—'} → ${row.end_lgd_name || '—'}</div>`
+          : ''
+      }
+      ${location ? `<div style="color:#6b7280;">${location}</div>` : ''}
+      ${row.distance ? `<div style="margin-top:4px;">Distance: ${row.distance} KM</div>` : ''}
+      ${row.firm_name ? `<div>Firm: ${row.firm_name}</div>` : ''}
+    </div>
+  `;
 };
 
 // The route line color needs to stand out against Google Maps' own blues
@@ -123,6 +215,9 @@ const flattenPoints = (data: OverallConstructionBlock[]): FlatPoint[] => {
             state_id: block.state_id,
             district_id: block.district_id,
             block_id: block.block_id,
+            state_name: block.state_name,
+            district_name: block.district_name,
+            block_name: block.block_name,
           });
         }
       });
@@ -139,7 +234,7 @@ const buildSurveyPaths = (data: OverallConstructionBlock[]): SurveyPath[] => {
         .filter((c) => Array.isArray(c.coordinates) && isValidPoint(c.coordinates[1], c.coordinates[0]))
         .map((c) => ({ lat: c.coordinates[1], lng: c.coordinates[0] }));
       if (path.length >= 2) {
-        paths.push({ survey_id: survey.survey_id, machine_id: survey.machine_id, path });
+        paths.push({ survey_id: survey.survey_id, machine_id: survey.machine_id, distance: survey.distance, path });
       }
     });
   });
@@ -188,11 +283,189 @@ const countByEvent = (points: FlatPoint[]) =>
     return acc;
   }, {});
 
+// Slide-in panel docked to the sidebar's position (right edge), not the map —
+// stays mounted so the transform transition actually animates instead of the
+// panel just popping in/out.
+function SelectedPointPanel({
+  point,
+  details,
+  loading,
+  onClose,
+}: {
+  point: FlatPoint | null;
+  details: ConstructionRowDetails | null;
+  loading: boolean;
+  onClose: () => void;
+}) {
+  const open = point !== null;
+
+  return (
+    <div
+      className={`absolute top-0 right-0 z-30 h-full w-full md:w-80 bg-white shadow-xl border-l border-gray-200 overflow-y-auto transition-transform duration-300 ease-out ${
+        open ? 'translate-x-0' : 'translate-x-full pointer-events-none'
+      }`}
+    >
+      {point && (
+        <>
+          <div className="flex items-center justify-between p-4 pb-3 border-b border-gray-100 sticky top-0 bg-white">
+            <div className="font-semibold text-gray-900 text-sm">Selected Point</div>
+            <button
+              onClick={onClose}
+              className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="p-4 pt-3">
+            <table className="w-full text-sm mb-2">
+              <tbody>
+                <tr>
+                  <td className="py-1 pr-2 text-gray-500">Event</td>
+                  <td className="py-1 font-medium text-gray-900">
+                    {EVENT_LABELS[point.eventType] || point.eventType}
+                  </td>
+                </tr>
+                {point.depth !== null && point.depth !== undefined && (
+                  <tr>
+                    <td className="py-1 pr-2 text-gray-500">Depth</td>
+                    <td className="py-1 font-medium text-gray-900">{point.depth} m</td>
+                  </tr>
+                )}
+                <tr>
+                  <td className="py-1 pr-2 text-gray-500 align-top">Coordinates</td>
+                  <td className="py-1 font-medium text-gray-900">
+                    {point.lat.toFixed(5)}, {point.lng.toFixed(5)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            {loading ? (
+              <div className="flex items-center justify-center py-6">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+              </div>
+            ) : details ? (
+              <>
+                <table className="w-full text-sm">
+                  <tbody>
+                    <tr>
+                      <td className="py-1 pr-2 text-gray-500">Link</td>
+                      <td className="py-1 font-medium text-gray-900">{details.link_name || '—'}</td>
+                    </tr>
+                    {details.work_type && (
+                      <tr>
+                        <td className="py-1 pr-2 text-gray-500">Work Type</td>
+                        <td className="py-1 font-medium text-gray-900">{details.work_type}</td>
+                      </tr>
+                    )}
+                    {(details.start_lgd_name || details.end_lgd_name) && (
+                      <tr>
+                        <td className="py-1 pr-2 text-gray-500">Route</td>
+                        <td className="py-1 font-medium text-gray-900">
+                          {details.start_lgd_name || '—'} → {details.end_lgd_name || '—'}
+                        </td>
+                      </tr>
+                    )}
+                    <tr>
+                      <td className="py-1 pr-2 text-gray-500 align-top">Location</td>
+                      <td className="py-1 font-medium text-gray-900">
+                        {[details.block_name, details.district_name, details.state_name]
+                          .filter(Boolean)
+                          .join(', ') || '—'}
+                      </td>
+                    </tr>
+                    {details.distance && (
+                      <tr>
+                        <td className="py-1 pr-2 text-gray-500">Distance</td>
+                        <td className="py-1 font-medium text-gray-900">{details.distance} KM</td>
+                      </tr>
+                    )}
+                    {details.roadType && (
+                      <tr>
+                        <td className="py-1 pr-2 text-gray-500">Road Type</td>
+                        <td className="py-1 font-medium text-gray-900">{details.roadType}</td>
+                      </tr>
+                    )}
+                    {details.cableLaidOn && (
+                      <tr>
+                        <td className="py-1 pr-2 text-gray-500">Cable Laid On</td>
+                        <td className="py-1 font-medium text-gray-900">{details.cableLaidOn}</td>
+                      </tr>
+                    )}
+                    {details.soilType && (
+                      <tr>
+                        <td className="py-1 pr-2 text-gray-500">Soil Type</td>
+                        <td className="py-1 font-medium text-gray-900">{details.soilType}</td>
+                      </tr>
+                    )}
+                    {details.depthMeters && (
+                      <tr>
+                        <td className="py-1 pr-2 text-gray-500">Depth (mt)</td>
+                        <td className="py-1 font-medium text-gray-900">{details.depthMeters}</td>
+                      </tr>
+                    )}
+                    {details.machine_registration_number && (
+                      <tr>
+                        <td className="py-1 pr-2 text-gray-500">Machine</td>
+                        <td className="py-1 font-medium text-gray-900">
+                          {details.machine_registration_number}
+                        </td>
+                      </tr>
+                    )}
+                    {details.firm_name && (
+                      <tr>
+                        <td className="py-1 pr-2 text-gray-500">Firm</td>
+                        <td className="py-1 font-medium text-gray-900">{details.firm_name}</td>
+                      </tr>
+                    )}
+                    {details.created_at && (
+                      <tr>
+                        <td className="py-1 pr-2 text-gray-500">Created</td>
+                        <td className="py-1 font-medium text-gray-900">{details.created_at}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+
+                {(() => {
+                  const photoField = PHOTO_FIELD_BY_EVENT[point.eventType];
+                  const photos = photoField ? parsePhotos(details[photoField]) : [];
+                  if (photos.length === 0) return null;
+                  return (
+                    <div className="mt-3">
+                      <div className="text-xs font-medium text-gray-500 mb-1.5">Photos</div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {photos.map((src, i) => (
+                          <a key={i} href={`${IMAGE_BASE_URL}${src}`} target="_blank" rel="noreferrer">
+                            <img
+                              src={`${IMAGE_BASE_URL}${src}`}
+                              alt={`Photo ${i + 1}`}
+                              className="w-full h-16 object-cover rounded border border-gray-200"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </>
+            ) : (
+              <p className="text-xs text-gray-400">No additional details found for this point.</p>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function ConstructionOverallMap({
   data,
   planningPlacemarks = [],
   planningCategories = [],
   healthIndex,
+  totalSurveys,
   milestones = [],
   onPointSelect,
 }: ConstructionOverallMapProps) {
@@ -207,11 +480,10 @@ export default function ConstructionOverallMap({
   const [zoom, setZoom] = useState<number>(13);
   const [bounds, setBounds] = useState<google.maps.LatLngBounds | null>(null);
 
-  // The point behind the last marker click, and whatever extra detail was
-  // looked up for it. `pointDetails` is populated by `loadPointDetails`
-  // below — that's the one place to swap in a real API call later.
+  // The point behind the last marker click, and the full row fetched for it
+  // from /get-construction-row — populated by `loadPointDetails` below.
   const [selectedPoint, setSelectedPoint] = useState<FlatPoint | null>(null);
-  const [pointDetails, setPointDetails] = useState<FlatPoint | null>(null);
+  const [pointDetails, setPointDetails] = useState<ConstructionRowDetails | null>(null);
   const [loadingPointDetails, setLoadingPointDetails] = useState(false);
 
   // True while individual markers/polylines are being built at high zoom —
@@ -272,19 +544,27 @@ export default function ConstructionOverallMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, data]);
 
-  // Placeholder point-detail lookup. It currently just surfaces the fields
-  // already carried on the clicked point so the panel has something to show
-  // today. Once a details API exists, replace the body with the real call
-  // (keyed on point.point_id / point.survey_id) and set the response here —
-  // the panel re-renders automatically when `pointDetails` changes.
+  // Fetches the full construction row for the clicked point from
+  // /get-construction-row, keyed on point_id — feeds both the sidebar's
+  // "Selected Point" panel and the marker's InfoWindow.
   const loadPointDetails = async (point: FlatPoint) => {
     setSelectedPoint(point);
     setPointDetails(null);
     setLoadingPointDetails(true);
     onPointSelect?.(point);
     try {
-      // TODO: const resp = await getConstructionPointDetails(point.point_id);
-      setPointDetails(point);
+      const resp = await fetch(`${BASEURL}/get-construction-row?ids=${point.point_id}`, {
+        headers: getAuthHeaders(),
+      });
+      const result = await resp.json();
+      const row: ConstructionRowDetails | null =
+        result.status && Array.isArray(result.data) && result.data.length > 0 ? result.data[0] : null;
+      setPointDetails(row);
+      infoWindowRef.current?.setContent(buildPointInfoContent(point, row));
+    } catch (error) {
+      console.error('Failed to load construction point details:', error);
+      setPointDetails(null);
+      infoWindowRef.current?.setContent(buildPointInfoContent(point, null));
     } finally {
       setLoadingPointDetails(false);
     }
@@ -307,7 +587,15 @@ export default function ConstructionOverallMap({
       },
     });
 
-    marker.addListener('click', () => loadPointDetails(point));
+    marker.addListener('click', () => {
+      const infoWindow = infoWindowRef.current;
+      if (infoWindow) {
+        infoWindow.setContent(buildPointInfoContent(point, null));
+        infoWindow.setPosition({ lat: point.lat, lng: point.lng });
+        infoWindow.open(map);
+      }
+      loadPointDetails(point);
+    });
 
     return marker;
   };
@@ -512,15 +800,23 @@ export default function ConstructionOverallMap({
   // user pans/zooms so the sidebar answers "this area has how many points".
   // Since the data can span multiple states/districts/blocks (it now loads
   // unfiltered), `byBlock` breaks the view down by the state/district/block
-  // ids carried on each point, not just a single aggregate count.
+  // names carried on each point (the API now resolves these instead of just
+  // ids), plus each block's total surveyed distance.
   const viewStats = useMemo(() => {
     const scoped = bounds
       ? flatPoints.filter((p) => bounds.contains({ lat: p.lat, lng: p.lng }))
       : flatPoints;
 
+    const surveyDistanceById = new Map<number, number>();
+    data.forEach((block) => {
+      (block.surveys || []).forEach((survey) => {
+        if (survey.distance !== undefined) surveyDistanceById.set(survey.survey_id, survey.distance);
+      });
+    });
+
     const blockGroups = new Map<
       string,
-      { state_id: number; district_id: number; block_id: number; points: number; surveys: Set<number> }
+      { state_name: string; district_name: string; block_name: string; points: number; surveys: Set<number> }
     >();
     scoped.forEach((p) => {
       const key = `${p.state_id}-${p.district_id}-${p.block_id}`;
@@ -530,9 +826,9 @@ export default function ConstructionOverallMap({
         group.surveys.add(p.survey_id);
       } else {
         blockGroups.set(key, {
-          state_id: p.state_id,
-          district_id: p.district_id,
-          block_id: p.block_id,
+          state_name: p.state_name,
+          district_name: p.district_name,
+          block_name: p.block_name,
           points: 1,
           surveys: new Set([p.survey_id]),
         });
@@ -543,11 +839,19 @@ export default function ConstructionOverallMap({
       points: scoped.length,
       surveys: new Set(scoped.map((p) => p.survey_id)).size,
       byEvent: countByEvent(scoped),
-      byBlock: Array.from(blockGroups.values())
-        .map((g) => ({ ...g, surveys: g.surveys.size }))
+      byBlock: Array.from(blockGroups.entries())
+        .map(([key, g]) => ({
+          key,
+          state_name: g.state_name,
+          district_name: g.district_name,
+          block_name: g.block_name,
+          points: g.points,
+          surveys: g.surveys.size,
+          distanceKm: Array.from(g.surveys).reduce((sum, id) => sum + (surveyDistanceById.get(id) ?? 0), 0),
+        }))
         .sort((a, b) => b.points - a.points),
     };
-  }, [flatPoints, bounds]);
+  }, [flatPoints, bounds, data]);
 
   const legendEntries = [
     ...Object.entries(EVENT_LABELS)
@@ -564,7 +868,7 @@ export default function ConstructionOverallMap({
   ];
 
   return (
-    <div className="flex flex-col md:flex-row w-full h-full">
+    <div className="relative flex flex-col md:flex-row w-full h-full overflow-hidden">
       {/* Map */}
       <div className="relative flex-1 min-w-0 min-h-[320px] md:min-h-0">
         {!mapsLoaded && (
@@ -623,33 +927,11 @@ export default function ConstructionOverallMap({
 
       {/* Stats sidebar */}
       <div className="w-full md:w-80 shrink-0 border-t md:border-t-0 md:border-l border-gray-200 bg-white overflow-y-auto">
-        <div className="p-4 border-b border-gray-200 flex items-center gap-2">
+        {/* <div className="p-4 border-b border-gray-200 flex items-center gap-2">
           <Layers className="w-4 h-4 text-blue-600" />
           <span className="font-semibold text-gray-900 text-sm">Project Insights</span>
-        </div>
-
-        {healthIndex && (
-          <div className="p-4 border-b border-gray-200">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-semibold text-gray-900">Project Health Index</span>
-              <span
-                className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                  healthIndex.status === 'Stable'
-                    ? 'bg-green-100 text-green-700'
-                    : healthIndex.status === 'Watch'
-                    ? 'bg-yellow-100 text-yellow-700'
-                    : 'bg-red-100 text-red-700'
-                }`}
-              >
-                {healthIndex.status}
-              </span>
-            </div>
-            <div className="text-2xl font-bold text-gray-900 mb-1">{healthIndex.percent}%</div>
-            <p className="text-xs text-gray-500">{healthIndex.description}</p>
-          </div>
-        )}
-
-        <div className="p-4 border-b border-gray-200">
+        </div> */}
+        {/* <div className="p-4 border-b border-gray-200">
           <div className="flex items-center gap-2 text-gray-900 font-semibold text-sm mb-3">
             <Layers className="w-4 h-4 text-blue-600" />
             Overview
@@ -661,10 +943,12 @@ export default function ConstructionOverallMap({
             </div>
             <div className="bg-gray-50 rounded-lg px-3 py-4">
               <div className="text-xs text-gray-500">Total Surveys</div>
-              <div className="text-2xl font-semibold text-gray-900">{surveyPaths.length}</div>
+              <div className="text-2xl font-semibold text-gray-900">
+                {totalSurveys ?? surveyPaths.length}
+              </div>
             </div>
           </div>
-        </div>
+        </div> */}
 
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between mb-3">
@@ -703,14 +987,17 @@ export default function ConstructionOverallMap({
               <div className="space-y-1.5 max-h-48 overflow-y-auto">
                 {viewStats.byBlock.map((group) => (
                   <div
-                    key={`${group.state_id}-${group.district_id}-${group.block_id}`}
+                    key={group.key}
                     className="flex items-center justify-between text-sm bg-gray-50 rounded px-2 py-1"
                   >
-                    <span className="text-gray-600 truncate">
-                      S:{group.state_id} · D:{group.district_id} · B:{group.block_id}
+                    <span
+                      className="text-gray-600 truncate"
+                      title={`${group.block_name}, ${group.district_name}, ${group.state_name}`}
+                    >
+                      {group.block_name} · {group.district_name} · {group.state_name}
                     </span>
                     <span className="text-gray-400 flex-shrink-0 ml-2">
-                      {group.points} pts · {group.surveys} sv
+                      {group.points} pts · {group.surveys} sv · {group.distanceKm.toFixed(2)} km
                     </span>
                   </div>
                 ))}
@@ -770,79 +1057,17 @@ export default function ConstructionOverallMap({
             ))}
           </div>
         )}
-
-        {selectedPoint && (
-          <div className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="font-semibold text-gray-900 text-sm">Selected Point</div>
-              <button
-                onClick={() => {
-                  setSelectedPoint(null);
-                  setPointDetails(null);
-                }}
-                className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {loadingPointDetails ? (
-              <div className="flex items-center justify-center py-6">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-              </div>
-            ) : (
-              pointDetails && (
-                <table className="w-full text-sm">
-                  <tbody>
-                    <tr>
-                      <td className="py-1 pr-2 text-gray-500">Event</td>
-                      <td className="py-1 font-medium text-gray-900">
-                        {EVENT_LABELS[pointDetails.eventType] || pointDetails.eventType}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="py-1 pr-2 text-gray-500">State ID</td>
-                      <td className="py-1 font-medium text-gray-900">{pointDetails.state_id}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-1 pr-2 text-gray-500">District ID</td>
-                      <td className="py-1 font-medium text-gray-900">{pointDetails.district_id}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-1 pr-2 text-gray-500">Block ID</td>
-                      <td className="py-1 font-medium text-gray-900">{pointDetails.block_id}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-1 pr-2 text-gray-500">Survey ID</td>
-                      <td className="py-1 font-medium text-gray-900">{pointDetails.survey_id}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-1 pr-2 text-gray-500">Machine ID</td>
-                      <td className="py-1 font-medium text-gray-900">{pointDetails.machine_id}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-1 pr-2 text-gray-500">Point ID</td>
-                      <td className="py-1 font-medium text-gray-900">{pointDetails.point_id}</td>
-                    </tr>
-                    {pointDetails.depth !== null && pointDetails.depth !== undefined && (
-                      <tr>
-                        <td className="py-1 pr-2 text-gray-500">Depth</td>
-                        <td className="py-1 font-medium text-gray-900">{pointDetails.depth} m</td>
-                      </tr>
-                    )}
-                    <tr>
-                      <td className="py-1 pr-2 text-gray-500 align-top">Coordinates</td>
-                      <td className="py-1 font-medium text-gray-900">
-                        {pointDetails.lat.toFixed(5)}, {pointDetails.lng.toFixed(5)}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              )
-            )}
-          </div>
-        )}
       </div>
+
+      <SelectedPointPanel
+        point={selectedPoint}
+        details={pointDetails}
+        loading={loadingPointDetails}
+        onClose={() => {
+          setSelectedPoint(null);
+          setPointDetails(null);
+        }}
+      />
     </div>
   );
 }

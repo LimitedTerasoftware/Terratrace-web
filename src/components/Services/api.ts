@@ -1214,6 +1214,7 @@ export interface OverallConstructionPoint {
 export interface OverallConstructionSurvey {
   survey_id: number;
   machine_id: string;
+  distance?: number;
   coordinates: OverallConstructionPoint[];
 }
 
@@ -1221,6 +1222,9 @@ export interface OverallConstructionBlock {
   state_id: number;
   district_id: number;
   block_id: number;
+  state_name: string;
+  district_name: string;
+  block_name: string;
   surveys: OverallConstructionSurvey[];
 }
 
