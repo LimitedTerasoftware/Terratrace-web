@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { ChevronRight, Maximize2 } from 'lucide-react';
 import SearchableSelect from '../Forms/SearchableSelect';
 import {
   getStateData,
@@ -75,12 +75,22 @@ const TABS: { id: TabType; label: string }[] = [
   { id: 'joints', label: 'Joints' },
 ];
 
-export default function ExecutiveConstructionView() {
-  const [activeTab, setActiveTab] = useState<TabType>('construction');
+interface ExecutiveConstructionViewProps {
+  // When true, renders just the map full-bleed (no header/filters/stat cards) —
+  // used by the "Full View" tab opened from the normal dashboard view.
+  fullView?: boolean;
+}
 
-  const [selectedState, setSelectedState] = useState('');
-  const [selectedDistrict, setSelectedDistrict] = useState('');
-  const [selectedBlock, setSelectedBlock] = useState('');
+export default function ExecutiveConstructionView({ fullView = false }: ExecutiveConstructionViewProps) {
+  const [searchParams] = useSearchParams();
+
+  const [activeTab, setActiveTab] = useState<TabType>(
+    (searchParams.get('tab') as TabType) || 'construction',
+  );
+
+  const [selectedState, setSelectedState] = useState(searchParams.get('state') || '');
+  const [selectedDistrict, setSelectedDistrict] = useState(searchParams.get('district') || '');
+  const [selectedBlock, setSelectedBlock] = useState(searchParams.get('block') || '');
 
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
@@ -451,8 +461,21 @@ export default function ExecutiveConstructionView() {
     setSelectedBlock('');
   };
 
+  const handleOpenFullView = () => {
+    const params = new URLSearchParams();
+    params.set('tab', activeTab);
+    if (selectedState) params.set('state', selectedState);
+    if (selectedDistrict) params.set('district', selectedDistrict);
+    if (selectedBlock) params.set('block', selectedBlock);
+    window.open(
+      `/dashboards/executive-construction-view/full-map?${params.toString()}`,
+      '_blank',
+      'noopener,noreferrer',
+    );
+  };
+
   return (
-    <div className="flex flex-col h-[calc(100vh-48px)] bg-gray-50">
+    <div className={`flex flex-col bg-gray-50 ${fullView ? 'h-screen' : 'h-[calc(100vh-48px)]'}`}>
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-0 flex flex-row items-center justify-between gap-4">
         <div>
@@ -465,7 +488,7 @@ export default function ExecutiveConstructionView() {
             <span className="text-gray-700 font-medium">Executive Construction View</span>
           </div> */}
         </div>
-        <nav className="flex gap-6 flex-shrink-0">
+        <nav className="flex items-center gap-6 flex-shrink-0">
           {TABS.map((tab) => (
             <button
               key={tab.id}
@@ -479,6 +502,16 @@ export default function ExecutiveConstructionView() {
               {tab.label}
             </button>
           ))}
+          {!fullView && (
+            <button
+              onClick={handleOpenFullView}
+              title="Open map in full view (new tab)"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-blue-600 border border-gray-300 rounded-lg hover:border-blue-400"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+              Full View
+            </button>
+          )}
         </nav>
       </div>
 
@@ -587,6 +620,17 @@ export default function ExecutiveConstructionView() {
               </div>
             ))}
           </div>
+        )}
+
+        {!fullView && (
+          <button
+            onClick={handleOpenFullView}
+            title="Open map in full view (new tab)"
+            className="absolute bottom-4 right-4 z-20 flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-white rounded-lg shadow-md border border-gray-200 hover:bg-gray-50 hover:text-blue-600"
+          >
+            <Maximize2 className="w-4 h-4" />
+            Full View
+          </button>
         )}
 
         {activeTab === 'aerial' ? (

@@ -298,6 +298,16 @@ function App() {
               />
 
               <Route
+                path="/dashboards/executive-construction-view/full-map"
+                element={
+                  <>
+                    <PageTitle title="Executive Construction View - Full Map" />
+                    <ExecutiveConstructionView fullView />
+                  </>
+                }
+              />
+
+              <Route
                 path="/dashboards/Executive-dashboard"
                 element={
                   <>
