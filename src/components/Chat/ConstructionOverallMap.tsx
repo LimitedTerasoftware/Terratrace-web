@@ -4,10 +4,27 @@ import GoogleMapsLoader from '../hooks/googleMapsLoader';
 import { OverallConstructionBlock } from '../Services/api';
 import { ProcessedDesktopPlanning, PlacemarkCategory } from '../../types/kmz';
 
+export interface MilestoneItem {
+  label: string;
+  percent: number;
+  colorClass: string;
+}
+
+export interface HealthIndexData {
+  percent: number;
+  status: 'Stable' | 'Watch' | 'At Risk';
+  description: string;
+}
+
 interface ConstructionOverallMapProps {
   data: OverallConstructionBlock[];
   planningPlacemarks?: ProcessedDesktopPlanning[];
   planningCategories?: PlacemarkCategory[];
+  // Static placeholder until a real health-scoring API exists — see
+  // CONSTRUCTION_HEALTH_INDEX in ExecutiveConstructionView. Omit to hide
+  // the sidebar's Project Health Index section.
+  healthIndex?: HealthIndexData;
+  milestones?: MilestoneItem[];
   // Called whenever a point marker is clicked, in addition to the built-in
   // details panel — hook a real lookup up here once a point-detail API
   // exists (e.g. to fetch photos/history for that point_id).
@@ -175,6 +192,8 @@ export default function ConstructionOverallMap({
   data,
   planningPlacemarks = [],
   planningCategories = [],
+  healthIndex,
+  milestones = [],
   onPointSelect,
 }: ConstructionOverallMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -604,6 +623,32 @@ export default function ConstructionOverallMap({
 
       {/* Stats sidebar */}
       <div className="w-full md:w-80 shrink-0 border-t md:border-t-0 md:border-l border-gray-200 bg-white overflow-y-auto">
+        <div className="p-4 border-b border-gray-200 flex items-center gap-2">
+          <Layers className="w-4 h-4 text-blue-600" />
+          <span className="font-semibold text-gray-900 text-sm">Project Insights</span>
+        </div>
+
+        {healthIndex && (
+          <div className="p-4 border-b border-gray-200">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-semibold text-gray-900">Project Health Index</span>
+              <span
+                className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                  healthIndex.status === 'Stable'
+                    ? 'bg-green-100 text-green-700'
+                    : healthIndex.status === 'Watch'
+                    ? 'bg-yellow-100 text-yellow-700'
+                    : 'bg-red-100 text-red-700'
+                }`}
+              >
+                {healthIndex.status}
+              </span>
+            </div>
+            <div className="text-2xl font-bold text-gray-900 mb-1">{healthIndex.percent}%</div>
+            <p className="text-xs text-gray-500">{healthIndex.description}</p>
+          </div>
+        )}
+
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center gap-2 text-gray-900 font-semibold text-sm mb-3">
             <Layers className="w-4 h-4 text-blue-600" />
@@ -684,6 +729,31 @@ export default function ConstructionOverallMap({
             </p>
           )}
         </div>
+
+        {milestones.length > 0 && (
+          <div className="p-4 border-b border-gray-200">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold text-gray-900">Milestone Progress</span>
+              <span className="text-xs text-blue-600 font-medium">Target: Q4 2026</span>
+            </div>
+            <div className="space-y-3">
+              {milestones.map((m) => (
+                <div key={m.label}>
+                  <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                    <span>{m.label}</span>
+                    <span className="font-semibold text-gray-900">{m.percent}%</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${m.colorClass}`}
+                      style={{ width: `${m.percent}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {legendEntries.length > 0 && (
           <div className="p-4 border-b border-gray-200">
