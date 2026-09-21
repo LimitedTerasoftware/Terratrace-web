@@ -14,15 +14,12 @@ const typeOptions = [
   {value:'construction',label:'Construction'}
 ];
 interface UsersData {
-  user_id:number;
-  uname: string;
+  id: string;
+  name: string;
   email: string;
-  version: string;
-  is_active: string;
-  company_id: string;
-  machine_id: string;
+  is_active?: string;
 }
-const BASEURL = import.meta.env.VITE_API_BASE;
+const BASEURL = import.meta.env.VITE_TraceAPI_URL;
 
 function AuditLogs() {
   const [data, setData] = useState<Remark[]>([]);
@@ -104,7 +101,7 @@ function AuditLogs() {
   };
   const fetchusers = async () => {
     try {
-      const response = await axios.get(`${BASEURL}/allusers`);
+      const response = await axios.get(`${BASEURL}/get-admins`);
       setUsers(response.data.data);
     } catch (err: any) {
       console.log(err.message || 'Failed to fetch data');
@@ -336,8 +333,8 @@ useEffect(()=>{
                 onChange={handleuser}
                 placeholder="Select User"
                 options={Users.map((option) => ({
-                  value: String(option.user_id),
-                  label: option.uname,
+                  value: String(option.id),
+                  label: option.name,
                 }))}
               />
             </div>
