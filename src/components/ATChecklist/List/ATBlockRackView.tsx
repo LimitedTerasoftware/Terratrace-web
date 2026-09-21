@@ -23,7 +23,6 @@ import {
   CertificationKey,
 } from '../forms/ATBlockRack';
 import MediaCarousel from '../../DepthChart/MediaCarousel';
-import TricadIcon from '../../../images/logo/favicon.png';
 import BharatNetLogo from '../../../images/logo/bharatnet-logo.jpg';
 import BsnlLogo from '../../../images/logo/bsnl-logo.jpg';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -271,7 +270,8 @@ const ATBlockRackView = () => {
           </div>
           <div class="doc-card-info" style="border-left:3px solid ${meta.color};">
             <p style="color:${meta.color};font-weight:600;margin-bottom:4px;">PDF Document</p>
-            <p style="color:#64748b;font-size:8pt;">${pdfPages.length > 0 ? 'Full PDF content is included in the attachment appendix.' : 'Preview unavailable.'}</p>
+            <p style="color:#64748b;font-size:8pt;">${pdfPages.length > 0 ? 'Full PDF content is included in the attachment appendix.' : 'This PDF could not be embedded (file server blocked the request). Open it using the link below.'}</p>
+            ${pdfPages.length === 0 ? `<p style="font-size:7.5pt;color:#94a3b8;margin-top:4px;word-break:break-all;">📎 ${escapeHtml(getFullImageUrl(doc))}</p>` : ''}
           </div>
         </div>`;
     }
@@ -312,6 +312,7 @@ const ATBlockRackView = () => {
   const fileSlotHtml = async (
     url: string | undefined,
     label: string,
+    attachmentPages: string[],
   ): Promise<string> => {
     if (!url) return '&nbsp;';
     if (isImageUrl(url)) {
@@ -319,7 +320,29 @@ const ATBlockRackView = () => {
       try {
         src = await toBase64(src);
       } catch (_) {}
+      attachmentPages.push(`
+        <div class="attachment-page image-attachment-page">
+          <div class="attachment-label">Certification Verification - ${escapeHtml(label)}</div>
+          <img src="${src}" alt="${escapeHtml(label)}" />
+        </div>
+      `);
       return `<img src="${src}" alt="${escapeHtml(label)}" class="memo-file-image" />`;
+    }
+
+    if (getFileExt(url) === 'pdf') {
+      try {
+        const pdfPages = await renderPdfToImages(url);
+        pdfPages.forEach((src, index) => {
+          attachmentPages.push(`
+            <div class="attachment-page pdf-attachment-page">
+              <div class="attachment-label">Certification Verification - ${escapeHtml(label)} - Page ${index + 1}</div>
+              <img src="${src}" alt="${escapeHtml(label)} page ${index + 1}" />
+            </div>
+          `);
+        });
+      } catch (error) {
+        console.error('Certification PDF render failed:', label, error);
+      }
     }
     return `<div class="doc-chip">📎 ${escapeHtml(getFileName(url))}</div>`;
   };
@@ -370,48 +393,25 @@ const ATBlockRackView = () => {
     .sig-table td { border:1px solid #94a3b8; padding:14px 10px; width:33.33%; vertical-align:top; font-size:9pt; }
     .sig-table .sig-title { font-weight:700; margin-bottom:26px; display:block; }
 
-    .report-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding-bottom: 14px; border-bottom: 3px solid #1565c0; margin-bottom: 22px;
+    table.test-table { width:100%; border-collapse:collapse; margin-top:6px; font-size:8pt; table-layout:fixed; }
+    table.test-table thead { display:table-header-group; }
+    table.test-table tbody { display:table-row-group; }
+    table.test-table th, table.test-table td {
+      border:1px solid #94a3b8; padding:6px 7px; vertical-align:top; text-align:left;
+      word-break:break-word; overflow-wrap:break-word;
     }
-    .report-header img { height: 48px; }
-    .report-header-title { text-align: right; }
-    .report-header-title h1 { font-size: 17pt; font-weight: 700; color: #0d47a1; }
-    .report-header-title p { font-size: 9pt; color: #5f6b8c; margin-top: 2px; }
-
-    .summary-bar { display: flex; gap: 10px; margin-bottom: 20px; }
-    .summary-chip { flex: 1; padding: 10px 12px; border-radius: 8px; text-align: center; border: 1px solid #e2e8f0; }
-    .chip-value { font-size: 18pt; font-weight: 700; line-height: 1; }
-    .chip-label { font-size: 8pt; color: #64748b; margin-top: 3px; }
-    .chip-total   { background:#eff6ff; } .chip-total .chip-value   { color:#1d4ed8; }
-    .chip-yes     { background:#f0fdf4; } .chip-yes .chip-value     { color:#15803d; }
-    .chip-no      { background:#fef2f2; } .chip-no .chip-value      { color:#b91c1c; }
-    .chip-pending { background:#fafafa; } .chip-pending .chip-value { color:#64748b; }
-
-    .progress-wrap { margin-bottom: 24px; padding: 12px 16px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0; }
-    .progress-label { display:flex; justify-content:space-between; font-size:9pt; color:#475569; margin-bottom:6px; }
-    .progress-track { height:10px; background:#e2e8f0; border-radius:99px; overflow:hidden; }
-    .progress-fill  { height:100%; border-radius:99px; background:linear-gradient(90deg,#2563eb,#16a34a); }
-
-    .test-card { border:1px solid #e2e8f0; border-radius:10px; margin-bottom:16px; overflow:hidden; break-inside:auto; page-break-inside:auto; }
-    .test-card-header { display:flex; align-items:flex-start; gap:10px; padding:12px 14px; background:#f8fafc; border-bottom:1px solid #e2e8f0; }
-    .test-badge { font-size:11pt; font-weight:700; color:#1d4ed8; background:#dbeafe; padding:4px 10px; border-radius:6px; white-space:nowrap; flex-shrink:0; }
-    .test-description { flex:1; font-size:9.5pt; color:#1e293b; line-height:1.45; }
-    .compliance-badge { padding:4px 12px; border-radius:99px; font-size:9pt; font-weight:600; white-space:nowrap; flex-shrink:0; }
-    .badge-yes     { background:#dcfce7; color:#166534; border:1px solid #86efac; }
-    .badge-no      { background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; }
-    .badge-pending { background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1; }
-
-    .test-card-body { padding: 12px 14px; }
-    .clause-box    { background:#eef2ff; border:1px solid #c7d2fe; border-radius:6px; padding:8px 12px; margin-bottom:10px; font-size:8.5pt; color:#3730a3; }
-    .clause-box strong { color:#312e81; }
-    .params-box    { background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:8px 12px; margin-bottom:10px; font-size:9pt; color:#334155; }
-    .params-box strong { color:#0f172a; }
-    .procedure-box { background:#f0f9ff; border:1px solid #bae6fd; border-radius:6px; padding:8px 12px; margin-bottom:10px; font-size:9pt; color:#0c4a6e; }
-    .procedure-box strong { color:#075985; }
-    .result-box    { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; padding:8px 12px; margin-bottom:10px; font-size:9pt; color:#14532d; }
-    .result-box strong { color:#166534; }
-    .remarks-box   { background:#fffbeb; border:1px solid #fde68a; border-radius:6px; padding:8px 12px; margin-bottom:10px; font-size:9pt; color:#78350f; }
+    table.test-table thead th {
+      background:#e2e8f0; color:#0f172a; font-size:8pt; font-weight:700; text-align:center;
+    }
+    tr.test-row { page-break-inside:avoid; break-inside:avoid; }
+    tr.test-row td.tc-cell { font-weight:700; color:#1d4ed8; text-align:center; white-space:nowrap; }
+    tr.test-row td.clause-cell { font-size:7.6pt; color:#3730a3; }
+    tr.test-row td.compliance-cell { text-align:center; font-weight:700; }
+    tr.test-row td.compliance-yes     { background:#dcfce7; color:#166534; }
+    tr.test-row td.compliance-no      { background:#fee2e2; color:#991b1b; }
+    tr.test-row td.compliance-pending { background:#f1f5f9; color:#64748b; }
+    tr.test-row td.remarks-cell { color:#78350f; }
+    tr.attachment-row td { background:#f8fafc; page-break-inside:avoid; break-inside:avoid; }
 
     .section-title { font-size:9pt; font-weight:600; color:#374151; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
     .section-title::before { content:''; display:inline-block; width:3px; height:12px; border-radius:2px; }
@@ -439,7 +439,7 @@ const ATBlockRackView = () => {
     .doc-filename { font-size:9pt; color:#1e293b; font-weight:500; flex:1; word-break:break-all; }
     .doc-card-info { padding:10px 14px; background:#fff; }
 
-    .test-card-header, .clause-box, .params-box, .procedure-box, .result-box, .remarks-box, .images-section, .compact-doc-card {
+    .images-section, .compact-doc-card {
       break-inside:avoid;
       page-break-inside:avoid;
     }
@@ -503,12 +503,6 @@ const ATBlockRackView = () => {
       </head><body>⏳ Preparing report, please wait…</body></html>`);
     printWindow.document.close();
 
-    let iconBase64 = '';
-    try {
-      iconBase64 = await toBase64(TricadIcon as unknown as string);
-    } catch (_) {
-      /* skip */
-    }
     let bharatNetLogoBase64 = '';
     let bsnlLogoBase64 = '';
     try {
@@ -537,26 +531,31 @@ const ATBlockRackView = () => {
           ),
         );
 
-        const complianceBadgeClass =
+        const complianceClass =
           item.compliance === 'Yes'
-            ? 'badge-yes'
+            ? 'compliance-yes'
             : item.compliance === 'No'
-              ? 'badge-no'
-              : 'badge-pending';
+              ? 'compliance-no'
+              : 'compliance-pending';
+
+        const hasAttachments = imagesHtml.length > 0 || docsHtml.length > 0;
 
         return `
-          <div class="test-card">
-            <div class="test-card-header">
-              <span class="test-badge">${escapeHtml(item.testCaseNo)}</span>
-              <span class="test-description">${escapeHtml(item.description)}</span>
-              <span class="compliance-badge ${complianceBadgeClass}">${escapeHtml(item.compliance || 'Pending')}</span>
-            </div>
-            <div class="test-card-body">
-              <div class="clause-box"><strong>RFP Clause: </strong>${escapeHtml(item.clause)}</div>
-              <div class="params-box"><strong>Test Parameters: </strong>${escapeHtml(item.parameters)}</div>
-              <div class="procedure-box"><strong>Test Procedure: </strong>${escapeHtml(item.procedure)}</div>
-              <div class="result-box"><strong>Expected Result: </strong>${escapeHtml(item.expectedResult)}</div>
-              ${item.remarks ? `<div class="remarks-box"><strong>Remarks: </strong>${escapeHtml(item.remarks)}</div>` : ''}
+          <tr class="test-row">
+            <td class="tc-cell">${escapeHtml(item.testCaseNo)}</td>
+            <td class="clause-cell">${escapeHtml(item.clause)}</td>
+            <td>${escapeHtml(item.description)}</td>
+            <td>${escapeHtml(item.parameters)}</td>
+            <td>${escapeHtml(item.procedure)}</td>
+            <td>${escapeHtml(item.expectedResult)}</td>
+            <td class="compliance-cell ${complianceClass}">${escapeHtml(item.compliance) || '&nbsp;'}</td>
+            <td class="remarks-cell">${item.remarks ? escapeHtml(item.remarks) : '&nbsp;'}</td>
+          </tr>
+          ${
+            hasAttachments
+              ? `
+          <tr class="attachment-row">
+            <td colspan="8">
               ${
                 imagesHtml.length > 0
                   ? `
@@ -575,15 +574,12 @@ const ATBlockRackView = () => {
               </div>`
                   : ''
               }
-            </div>
-          </div>`;
+            </td>
+          </tr>`
+              : ''
+          }`;
       }),
     );
-
-    const yesCount = passedCount;
-    const noCount = testItems.filter((item) => item.compliance === 'No').length;
-    const pendingCount = testItems.length - completedCount;
-    const progress = Math.round((completedCount / testItems.length) * 100);
 
     const tocHtml = `
       <li>1. Introduction</li>
@@ -601,7 +597,7 @@ const ATBlockRackView = () => {
       oemApproval: '',
     };
     for (const { key, label } of CERTIFICATION_FIELDS) {
-      certFileHtml[key] = await fileSlotHtml(certFiles?.[key], label);
+      certFileHtml[key] = await fileSlotHtml(certFiles?.[key], label, attachmentPages);
     }
 
     const fullHtml = `<!DOCTYPE html>
@@ -669,28 +665,29 @@ const ATBlockRackView = () => {
   </table>
 
   <h2 class="section-title">3. Acceptance Testing Test Cases</h2>
-  <div class="report-header">
-    ${iconBase64 ? `<img src="${iconBase64}" alt="Logo" />` : '<div></div>'}
-    <div class="report-header-title">
-      <h1>AT Block Rack Tests - ${escapeHtml(blockName)}</h1>
-      <p>Acceptance Test - BSNL BharatNet Block Rack Compliance Report</p>
-      <p style="font-size:8pt;color:#94a3b8;margin-top:2px;">Generated: ${new Date().toLocaleString()}</p>
-    </div>
-  </div>
 
-  <div class="summary-bar">
-    <div class="summary-chip chip-total"><div class="chip-value">${testItems.length}</div><div class="chip-label">Total Tests</div></div>
-    <div class="summary-chip chip-yes"><div class="chip-value">${yesCount}</div><div class="chip-label">Compliant</div></div>
-    <div class="summary-chip chip-no"><div class="chip-value">${noCount}</div><div class="chip-label">Non-Compliant</div></div>
-    <div class="summary-chip chip-pending"><div class="chip-value">${pendingCount}</div><div class="chip-label">Pending</div></div>
-  </div>
-
-  <div class="progress-wrap">
-    <div class="progress-label"><span>Completion Progress</span><span>${completedCount} / ${testItems.length} completed (${progress}%)</span></div>
-    <div class="progress-track"><div class="progress-fill" style="width:${progress}%"></div></div>
-  </div>
-
-  ${itemsHtml.join('')}
+  <table class="test-table">
+    <colgroup>
+      <col style="width:6%"><col style="width:10%"><col style="width:15%">
+      <col style="width:17%"><col style="width:15%"><col style="width:18%">
+      <col style="width:10%"><col style="width:9%">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Test Cases</th>
+        <th>RFP Clause</th>
+        <th>Test Description</th>
+        <th>Test Parameters</th>
+        <th>Test Procedure</th>
+        <th>Test Result</th>
+        <th>Compliance (Y/N)</th>
+        <th>Remarks</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${itemsHtml.join('')}
+    </tbody>
+  </table>
 
   <div class="signature-section">
     <div class="signature-grid">
@@ -713,11 +710,29 @@ const ATBlockRackView = () => {
     printWindow.document.write(fullHtml);
     printWindow.document.close();
 
+    const waitForImages = (doc: Document): Promise<void> => {
+      const imgs = Array.from(doc.images);
+      if (imgs.length === 0) return Promise.resolve();
+      return Promise.all(
+        imgs.map(
+          (img) =>
+            img.complete
+              ? Promise.resolve()
+              : new Promise<void>((resolve) => {
+                  img.addEventListener('load', () => resolve());
+                  img.addEventListener('error', () => resolve());
+                }),
+        ),
+      ).then(() => undefined);
+    };
+
     printWindow.onload = () => {
-      setTimeout(() => {
-        printWindow.focus();
-        printWindow.print();
-      }, 800);
+      waitForImages(printWindow.document).then(() => {
+        setTimeout(() => {
+          printWindow.focus();
+          printWindow.print();
+        }, 300);
+      });
     };
   };
 
