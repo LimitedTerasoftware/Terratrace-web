@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { X, Save, Loader2, ArrowUpDown } from 'lucide-react';
-import { reorderSurvey } from '../Services/api';
+import { X, Save, Loader2, ArrowUpDown, Droplet } from 'lucide-react';
+import { reorderSurvey, watermarkConstruction } from '../Services/api';
 import { Activity } from '../../types/survey';
 
 interface ReorderModalProps {
@@ -26,6 +26,7 @@ const ReorderModal: React.FC<ReorderModalProps> = ({
   const [items, setItems] = useState<ReorderItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [watermarking, setWatermarking] = useState(false);
 
   useEffect(() => {
     if (isOpen && eventData.length > 0) {
@@ -45,6 +46,18 @@ const ReorderModal: React.FC<ReorderModalProps> = ({
         item.id === id ? { ...item, order_index: newIndex } : item,
       ),
     );
+  };
+
+  const handleWatermark = async () => {
+    setWatermarking(true);
+    setError(null);
+    try {
+      await watermarkConstruction(surveyId);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to watermark construction');
+    } finally {
+      setWatermarking(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -123,13 +136,30 @@ const ReorderModal: React.FC<ReorderModalProps> = ({
           <button
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-            disabled={loading}
+            disabled={loading || watermarking}
           >
             Cancel
           </button>
           <button
+            onClick={handleWatermark}
+            disabled={loading || watermarking}
+            className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 flex items-center gap-2"
+          >
+            {watermarking ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Watermarking...
+              </>
+            ) : (
+              <>
+                <Droplet className="w-4 h-4" />
+                WaterMarker
+              </>
+            )}
+          </button>
+          <button
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={loading || watermarking}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 flex items-center gap-2"
           >
             {loading ? (

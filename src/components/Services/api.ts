@@ -792,6 +792,18 @@ export const addImageWatermark = async (
   }
 };
 
+export const watermarkConstruction = async (surveyId: number): Promise<any> => {
+  try {
+    const resp = await axios.post(`${TraceBASEURL}/watermark-construction`, {
+      survey_id: surveyId,
+    });
+    return resp.data;
+  } catch (error) {
+    console.error('Error watermarking construction:', error);
+    throw error;
+  }
+};
+
 export const removeWatermark = async (imagePath: string): Promise<any> => {
   try {
     const resp = await axios.post(`${TraceBASEURL}/remove-watermark`, {
