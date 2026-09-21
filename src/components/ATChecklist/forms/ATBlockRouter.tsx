@@ -39,7 +39,7 @@ const BASEURL = import.meta.env.VITE_API_BASE;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const ImgbaseUrl = import.meta.env.VITE_Image_URL;
 
-const DOC_CODE = 'ABP/AT/BLRT/001, Ver1.0';
+export const DOC_CODE = 'ABP/AT/BLRT/001, Ver1.0';
 
 const parseImageUrls = (imageString: string): string[] => {
   if (!imageString || imageString === '[]') return [];
@@ -76,7 +76,7 @@ interface UploadedFile {
   isDocument?: boolean;
 }
 
-interface BasicCheckItem {
+export interface BasicCheckItem {
   id: string;
   testCaseNo: string;
   description: string;
@@ -91,7 +91,7 @@ interface BasicCheckFormItem extends BasicCheckItem {
   documents: UploadedFile[];
 }
 
-interface NetworkTestItem {
+export interface NetworkTestItem {
   id: string;
   testNo: string;
   title: string;
@@ -121,14 +121,14 @@ interface ATBlockRouterFormProps {
   onBack: () => void;
 }
 
-type CertificationKey =
+export type CertificationKey =
   | 'tsecCertificate'
   | 'qaCertificate'
   | 'qrCodeLogo'
   | 'photoEvidence'
   | 'oemApproval';
 
-const CERTIFICATION_FIELDS: { key: CertificationKey; label: string }[] = [
+export const CERTIFICATION_FIELDS: { key: CertificationKey; label: string }[] = [
   { key: 'tsecCertificate', label: 'TSEC Certificate' },
   { key: 'qaCertificate', label: 'QA Certificate' },
   { key: 'qrCodeLogo', label: 'QR Code / Logo' },
@@ -243,10 +243,12 @@ const basicCheckTestsRaw: Omit<BasicCheckItem, 'iconBg' | 'iconColor'>[] = [
   },
 ];
 
-const basicCheckTests: BasicCheckItem[] = basicCheckTestsRaw.map((tc, i) => ({
-  ...tc,
-  ...COLORS[i % COLORS.length],
-}));
+export const basicCheckTests: BasicCheckItem[] = basicCheckTestsRaw.map(
+  (tc, i) => ({
+    ...tc,
+    ...COLORS[i % COLORS.length],
+  }),
+);
 
 // Test Setup diagrams are static per test type (same topology used for every AT session)
 const SETUP_IMAGE_BY_ID: Record<string, string> = {
@@ -624,11 +626,13 @@ const networkTestsRaw: Omit<NetworkTestItem, 'iconBg' | 'iconColor' | 'testSetup
   },
 ];
 
-const networkTests: NetworkTestItem[] = networkTestsRaw.map((tc, i) => ({
-  ...tc,
-  ...COLORS[i % COLORS.length],
-  testSetupImage: SETUP_IMAGE_BY_ID[tc.id] || '',
-}));
+export const networkTests: NetworkTestItem[] = networkTestsRaw.map(
+  (tc, i) => ({
+    ...tc,
+    ...COLORS[i % COLORS.length],
+    testSetupImage: SETUP_IMAGE_BY_ID[tc.id] || '',
+  }),
+);
 
 const ATBlockRouterForm = ({
   blockId,
@@ -1164,6 +1168,45 @@ const ATBlockRouterForm = ({
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
 
+  const isPdfFile = (file?: File, url?: string): boolean => {
+    const name = file?.name || url || '';
+    return name.toLowerCase().split('?')[0].endsWith('.pdf');
+  };
+
+  const renderPdfToImages = async (source: File | string): Promise<string[]> => {
+    let arrayBuffer: ArrayBuffer;
+    if (source instanceof File) {
+      arrayBuffer = await source.arrayBuffer();
+    } else {
+      const fullUrl = getFullImageUrl(source);
+      arrayBuffer = await fetch(fullUrl, {
+        mode: 'cors',
+        credentials: 'omit',
+        cache: 'no-cache',
+      }).then((response) => {
+        if (!response.ok) throw new Error(`Failed to fetch PDF: ${fullUrl}`);
+        return response.arrayBuffer();
+      });
+    }
+
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const pages: string[] = [];
+
+    for (let pageNo = 1; pageNo <= pdf.numPages; pageNo += 1) {
+      const page = await pdf.getPage(pageNo);
+      const viewport = page.getViewport({ scale: 1.6 });
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      if (!context) continue;
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+      await page.render({ canvasContext: context, viewport, canvas }).promise;
+      pages.push(canvas.toDataURL('image/png'));
+    }
+
+    return pages;
+  };
+
   const triggerPrint = async () => {
     const printWindow = window.open('', '_blank', 'width=1200,height=900');
     if (!printWindow) {
@@ -1209,7 +1252,29 @@ const ATBlockRouterForm = ({
         try {
           src = slot.file ? await toBase64(slot.file) : await toBase64(slot.preview);
         } catch (_) {}
+        attachmentPages.push(`
+          <div class="attachment-page image-attachment-page">
+            <div class="attachment-label">${escapeHtml(label)}</div>
+            <img src="${src}" alt="${escapeHtml(label)}" />
+          </div>
+        `);
         return `<img src="${src}" alt="${escapeHtml(label)}" class="memo-file-image" />`;
+      }
+
+      if (isPdfFile(slot.file, slot.url)) {
+        try {
+          const pdfPages = await renderPdfToImages(slot.file || slot.url || '');
+          pdfPages.forEach((src, index) => {
+            attachmentPages.push(`
+              <div class="attachment-page pdf-attachment-page">
+                <div class="attachment-label">${escapeHtml(label)} - Page ${index + 1}</div>
+                <img src="${src}" alt="${escapeHtml(label)} page ${index + 1}" />
+              </div>
+            `);
+          });
+        } catch (error) {
+          console.error('Certification PDF render failed:', label, error);
+        }
       }
       return `<div class="doc-chip">📎 ${escapeHtml(name)}</div>`;
     };
@@ -1240,13 +1305,43 @@ const ATBlockRouterForm = ({
         : '';
     };
 
+    const buildDocsListHtml = async (
+      documents: UploadedFile[],
+      labelPrefix: string,
+    ): Promise<string> => {
+      if (documents.length === 0) return '';
+      const chips = await Promise.all(
+        documents.map(async (doc) => {
+          const name = doc.file?.name || doc.url?.split('/').pop() || 'document';
+          if (isPdfFile(doc.file, doc.url)) {
+            try {
+              const pdfPages = await renderPdfToImages(doc.file || doc.url || '');
+              pdfPages.forEach((src, index) => {
+                attachmentPages.push(`
+                  <div class="attachment-page pdf-attachment-page">
+                    <div class="attachment-label">${escapeHtml(labelPrefix)} - ${escapeHtml(name)} - Page ${index + 1}</div>
+                    <img src="${src}" alt="${escapeHtml(name)} page ${index + 1}" />
+                  </div>
+                `);
+              });
+            } catch (error) {
+              console.error('Document PDF render failed:', name, error);
+            }
+          }
+          return `<div class="doc-chip">📎 ${escapeHtml(name)}</div>`;
+        }),
+      );
+      return `<div class="docs-list">${chips.join('')}</div>`;
+    };
+
     const basicRowsHtml = await Promise.all(
       basicItems.map(async (item) => {
         const imagesHtml = await collectImagesHtml(item.images, item.testCaseNo);
+        const docsHtml = await buildDocsListHtml(item.documents, item.testCaseNo);
         return `
           <tr>
             <td class="cell-code">${item.testCaseNo}</td>
-            <td class="cell-desc">${escapeHtml(item.description)}<div class="mini-procedure"><strong>Procedure: </strong>${escapeHtml(item.procedure)}</div>${item.remarks ? `<div class="mini-remarks"><strong>Remarks: </strong>${escapeHtml(item.remarks)}</div>` : ''}${imagesHtml}</td>
+            <td class="cell-desc">${escapeHtml(item.description)}<div class="mini-procedure"><strong>Procedure: </strong>${escapeHtml(item.procedure)}</div>${item.remarks ? `<div class="mini-remarks"><strong>Remarks: </strong>${escapeHtml(item.remarks)}</div>` : ''}${imagesHtml}${docsHtml}</td>
             <td class="cell-status ${item.compliance === 'Yes' ? 'status-pass' : item.compliance === 'No' ? 'status-fail' : ''}">${item.compliance || 'Pending'}</td>
           </tr>`;
       }),
@@ -1264,11 +1359,7 @@ const ATBlockRouterForm = ({
     const networkSectionsHtml = await Promise.all(
       networkItems.map(async (item) => {
         const imagesHtml = await collectImagesHtml(item.images, `Test ${item.testNo}`);
-        const docsHtml = item.documents.length
-          ? `<div class="docs-list">${item.documents
-              .map((doc) => `<div class="doc-chip">📎 ${escapeHtml(doc.file?.name || doc.url?.split('/').pop() || 'document')}</div>`)
-              .join('')}</div>`
-          : '';
+        const docsHtml = await buildDocsListHtml(item.documents, `Test ${item.testNo}`);
         const setupImageHtml = setupImageBase64Cache[item.testSetupImage]
           ? `<img class="setup-diagram" src="${setupImageBase64Cache[item.testSetupImage]}" alt="Test setup" />`
           : '';

@@ -22,6 +22,7 @@ import {
   RackResponse,
   ATRouterData,
   ATBlockListResponse,
+  ATRouterBlockListResponse,
 } from '../../types/block-router-checklist';
 import { getAuthHeaders } from '../../utils/accessControl';
 
@@ -912,7 +913,7 @@ export const getATBlockRouterData = async (
 ): Promise<ATRouterData> => {
   try {
     const resp = await axios.get(
-      `${TraceBASEURL}/get-at-blockrouter-data/${blockId}`,
+      `${TraceBASEURL}/block-checklist-router/${blockId}`,
     );
     return resp.data;
   } catch (error) {
@@ -985,6 +986,40 @@ export const getATBlocksList = async (filters: {
     return resp.data;
   } catch (error) {
     console.error('Error fetching AT blocks list:', error);
+    throw error;
+  }
+};
+
+export const getATBlockRouterList = async (filters: {
+  state_id?: string;
+  district_id?: string;
+  block_id?: string;
+  from_date?: string;
+  to_date?: string;
+  search?: string;
+  page?: number;
+  per_page?: number;
+}): Promise<ATRouterBlockListResponse> => {
+  try {
+    const params = new URLSearchParams();
+    if (filters.state_id) params.append('state_id', filters.state_id);
+    if (filters.district_id) params.append('district_id', filters.district_id);
+    if (filters.block_id) params.append('block_id', filters.block_id);
+    if (filters.from_date) params.append('from_date', filters.from_date);
+    if (filters.to_date) params.append('to_date', filters.to_date);
+    if (filters.search) params.append('search', filters.search);
+    if (filters.page) params.append('page', filters.page.toString());
+    if (filters.per_page)
+      params.append('per_page', filters.per_page.toString());
+    const queryString = params.toString();
+    const urlSuffix = queryString ? `?${queryString}` : '';
+
+    const resp = await axios.get(
+      `${TraceBASEURL}/block-checklist-router${urlSuffix}`,
+    );
+    return resp.data;
+  } catch (error) {
+    console.error('Error fetching AT block router list:', error);
     throw error;
   }
 };

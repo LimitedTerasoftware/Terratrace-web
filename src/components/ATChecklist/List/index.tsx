@@ -14,9 +14,9 @@ import {
   getDistrictData,
   getStateData,
   getATBlocksList,
+  getATBlockRouterList,
 } from '../../Services/api';
 import DataTable, { TableColumn } from 'react-data-table-component';
-import { ATBlockListItem } from '../../../types/block-router-checklist';
 import SearchableSelect from '../../Forms/SearchableSelect';
 
 interface StatsData {
@@ -24,6 +24,20 @@ interface StatsData {
   completed: number;
   avgCompletion: number;
   byState: Record<string, number>;
+}
+
+type FormTab = 'rack' | 'router';
+
+interface CommonBlockItem {
+  block_id: number;
+  block_name: string;
+  state_name: string;
+  district_name: string;
+  completion_percentage: string;
+  filled_tests: number;
+  total_tests: number;
+  created_at: string;
+  updated_at: string;
 }
 
 function ATChecklistList() {
@@ -44,7 +58,8 @@ function ATChecklistList() {
   const [filtersReady, setFiltersReady] = useState(false);
   const [fromdate, setFromDate] = useState<string>('');
   const [todate, setToDate] = useState<string>('');
-  const [checklistData, setChecklistData] = useState<ATBlockListItem[]>([]);
+  const [activeTab, setActiveTab] = useState<FormTab>('rack');
+  const [checklistData, setChecklistData] = useState<CommonBlockItem[]>([]);
   const [loadingData, setLoadingData] = useState<boolean>(false);
   const [stats, setStats] = useState<StatsData>({
     total: 0,
@@ -69,7 +84,7 @@ function ATChecklistList() {
                 AT Checklist Data
               </h1>
               <p className="text-sm text-gray-600">
-                View AT (Acceptance Test) Block Rack submissions
+                View AT (Acceptance Test) Block Router / Rack submissions
               </p>
             </div>
           </div>
@@ -222,7 +237,7 @@ function ATChecklistList() {
     try {
       setLoadingData(true);
 
-      const response = await getATBlocksList({
+      const filters = {
         state_id: selectedStateId || undefined,
         district_id: selectedDistrictId || undefined,
         block_id: selectedBlockId || undefined,
@@ -231,7 +246,12 @@ function ATChecklistList() {
         search: globalsearch || undefined,
         page: currentPage,
         per_page: rowsPerPage,
-      });
+      };
+
+      const response =
+        activeTab === 'rack'
+          ? await getATBlocksList(filters)
+          : await getATBlockRouterList(filters);
 
       if (response.status && response.blocks) {
         setChecklistData(response.blocks || []);
@@ -313,6 +333,7 @@ function ATChecklistList() {
     }
   }, [
     filtersReady,
+    activeTab,
     selectedStateId,
     selectedDistrictId,
     selectedBlockId,
@@ -322,6 +343,12 @@ function ATChecklistList() {
     currentPage,
     rowsPerPage,
   ]);
+
+  const handleTabChange = (tab: FormTab) => {
+    if (tab === activeTab) return;
+    setActiveTab(tab);
+    setCurrentPage(1);
+  };
 
   const handleFilterChange = (
     stateId: string | null,
@@ -418,7 +445,7 @@ function ATChecklistList() {
     );
   };
 
-  const columns: TableColumn<ATBlockListItem>[] = [
+  const columns: TableColumn<CommonBlockItem>[] = [
     {
       name: 'Sl.No',
       selector: (_row, index = 0) =>
@@ -493,15 +520,21 @@ function ATChecklistList() {
     },
     {
       name: 'Actions',
-      cell: (row) => (
-        <Link
-          to={`/at-checklist-data/view/${row.block_id}?block_name=${encodeURIComponent(row.block_name)}&state_name=${encodeURIComponent(row.state_name)}&district_name=${encodeURIComponent(row.district_name)}`}
-          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
-          title="View Details"
-        >
-          <Eye className="w-4 h-4" />
-        </Link>
-      ),
+      cell: (row) => {
+        const viewPath =
+          activeTab === 'rack'
+            ? `/at-checklist-data/view/${row.block_id}`
+            : `/at-checklist-data/router/view/${row.block_id}`;
+        return (
+          <Link
+            to={`${viewPath}?block_name=${encodeURIComponent(row.block_name)}&state_name=${encodeURIComponent(row.state_name)}&district_name=${encodeURIComponent(row.district_name)}`}
+            className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+            title="View Details"
+          >
+            <Eye className="w-4 h-4" />
+          </Link>
+        );
+      },
       ignoreRowClick: true,
       width: '80px',
     },
@@ -519,6 +552,32 @@ function ATChecklistList() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
+
+      <div className="bg-white border-b border-gray-200 px-7">
+        <div className="flex gap-1">
+          <button
+            onClick={() => handleTabChange('rack')}
+            className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'rack'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Block Rack
+          </button>
+          <button
+            onClick={() => handleTabChange('router')}
+            className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'router'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Block Router
+          </button>
+        </div>
+      </div>
+
       <StatsPanel />
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -633,7 +692,8 @@ function ATChecklistList() {
             }
             noDataComponent={
               <div className="p-6 text-center text-gray-500">
-                No AT checklist data found
+                No AT {activeTab === 'rack' ? 'Block Rack' : 'Block Router'}{' '}
+                checklist data found
               </div>
             }
           />
