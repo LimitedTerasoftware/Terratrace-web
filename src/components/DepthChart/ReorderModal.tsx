@@ -27,6 +27,7 @@ const ReorderModal: React.FC<ReorderModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [watermarking, setWatermarking] = useState(false);
+  const [watermarkSuccess, setWatermarkSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen && eventData.length > 0) {
@@ -51,8 +52,11 @@ const ReorderModal: React.FC<ReorderModalProps> = ({
   const handleWatermark = async () => {
     setWatermarking(true);
     setError(null);
+    setWatermarkSuccess(null);
     try {
       await watermarkConstruction(surveyId);
+      setWatermarkSuccess('Watermark added successfully');
+      setTimeout(() => setWatermarkSuccess(null), 4000);
     } catch (err: any) {
       setError(err?.message || 'Failed to watermark construction');
     } finally {
@@ -96,6 +100,12 @@ const ReorderModal: React.FC<ReorderModalProps> = ({
           {error && (
             <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
               {error}
+            </div>
+          )}
+
+          {watermarkSuccess && (
+            <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-md">
+              {watermarkSuccess}
             </div>
           )}
 
