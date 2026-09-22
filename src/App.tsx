@@ -99,6 +99,7 @@ import BlockChecklistList from './components/BlockRouterChecklist/List';
 import ATChecklistList from './components/ATChecklist/List';
 import ATBlockRackView from './components/ATChecklist/List/ATBlockRackView';
 import ATBlockRouterView from './components/ATChecklist/List/ATBlockRouterView';
+import OverallMap from './components/OverallMap';
 import AuditLogs from './components/AuditLogs';
 import AerialView from './components/DepthChart/AerialView';
 import PoleStringView from './components/DepthChart/PoleStringView';
@@ -1074,6 +1075,18 @@ function App() {
                     <DefaultLayout>
                       <PageTitle title="AT Checklist View" />
                       <ATBlockRouterView />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+
+              <Route
+                path="/overall-map"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Overall Map" />
+                      <OverallMap />
                     </DefaultLayout>
                   </>
                 }
