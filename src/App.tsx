@@ -245,12 +245,25 @@ function App() {
                   <>
                     <DefaultLayout>
                       <PageTitle title="Tricad Dashboard" />
-                      <ECommerce />
+                      {/* <ECommerce /> */}
                       {/* <MainDashboard/> */}
+                       <OverallMap />
                     </DefaultLayout>
                   </>
                 }
               />
+              
+              {/* <Route
+                path="/overall-map"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Overall Map" />
+                      <OverallMap />
+                    </DefaultLayout>
+                  </>
+                }
+              /> */}
               <Route
                 path="/dashboards/survey-dashboard"
                 element={
@@ -1079,7 +1092,7 @@ function App() {
                   </>
                 }
               />
-
+{/* 
               <Route
                 path="/overall-map"
                 element={
@@ -1090,7 +1103,7 @@ function App() {
                     </DefaultLayout>
                   </>
                 }
-              />
+              /> */}
 
               <Route
                 path="/audit-logs"

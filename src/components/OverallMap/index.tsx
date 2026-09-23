@@ -1,132 +1,1122 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
   CheckCircle2,
-  ChevronDown,
-  Compass,
   Crosshair,
-  Download,
-  Eye,
-  Filter,
   Grid2X2,
   Layers3,
-  LocateFixed,
-  Minus,
+  Loader2,
+  MapPin,
   Navigation,
-  Plus,
   RefreshCw,
   Search,
   Wrench,
   X,
-  ZoomIn,
 } from 'lucide-react';
+import BlockDataMap, { type LayerVisibility, type PoleMapPoint } from './BlockDataMap';
+import { searchBlocks, getBlockByCode, type BlockRecord } from '../../utils/blockLookup';
+import { locateByCoordinates } from '../../utils/bharatlasLocate';
+import {
+  getAcceptedPoles,
+  getConstructionData,
+  getDesktopPlanning,
+  getStateData,
+  getDistrictData,
+  getBlockData,
+  getExecutiveDashboard,
+  type ExecutiveDashboardResponse,
+} from '../Services/api';
+import { processConstructionData, processDesktopPlanningData } from '../SmartInventory/PlaceMark';
+import type {
+  DesktopPlanningNetwork,
+  PlacemarkCategory,
+  ProcessedConstruction,
+  ProcessedDesktopPlanning,
+} from '../../types/kmz';
 
-type LOD = 1 | 2 | 3 | 4 | 5;
+// Below this zoom the viewport covers many blocks at once, so reverse
+// geocoding the center wouldn't mean much — wait until the user has zoomed
+// in to roughly block/town level before attempting auto-detect.
+const AUTO_DETECT_MIN_ZOOM = 11;
+const AUTO_DETECT_DEBOUNCE_MS = 700;
+// ~1km — enough to skip redundant lookups from tiny idle jitters at the
+// same spot, small enough to still catch a real pan to the next block.
+const AUTO_DETECT_MIN_MOVE_DEG = 0.01;
 
-const kpis = [
-  { label: 'Survey Distance', value: '1,615', suffix: 'KM', detail: '+34.2 KM this wk', note: '100% Sanc.', tone: 'blue', icon: Navigation },
-  { label: 'Construction Built', value: '1,240', suffix: 'KM', detail: '78.8% of planned', note: '76.8%', tone: 'cyan', icon: Wrench, progress: 76.8 },
-  { label: 'Survey → Const Match', value: '91.8%', suffix: '', detail: 'Target: >=90%', note: 'Compliant', tone: 'indigo', icon: RefreshCw, trend: '+1.2%' },
-  { label: 'GPS Integrated', value: '78.0%', suffix: 'Active', detail: '1,260 / 1,615 KM', note: 'RFMS Synced', tone: 'sky', icon: Crosshair },
-  { label: 'GPs Completed', value: '1,248', suffix: '/ 1,580', detail: '79% Gram Panchayats', note: '332 Left', tone: 'slate', icon: Grid2X2 },
-  { label: 'Open GIS Alerts', value: '126', suffix: '', detail: 'Deviations & Depth', note: 'Review 14', tone: 'red', icon: AlertTriangle, critical: '14 Critical' },
-];
+// Shape common to the /states, /districtsdata and /blocksdata rows once
+// normalized — `id` is the internal numeric id these APIs (and the data
+// APIs) key on, `code` is the LGD-style code shown/searched by.
+interface GeoOption {
+  id: number;
+  name: string;
+  code: number;
+}
 
-const lodLabels: Record<LOD, string> = { 1: 'L1: 4 States', 2: 'L2: District', 3: 'L3: Block', 4: 'L4: Route R-104', 5: 'L5: Pits & Nodes' };
+interface LoadedBlockData {
+  poles: PoleMapPoint[];
+  constructionPlacemarks: ProcessedConstruction[];
+  constructionCategories: PlacemarkCategory[];
+  planningPlacemarks: ProcessedDesktopPlanning[];
+  planningCategories: PlacemarkCategory[];
+  // Raw networks (not yet flattened into placemarks) — carries the
+  // route-level summary fields (name, status, total/existing/proposed
+  // length) the sidebar's route overview card is built from.
+  planningNetworks: DesktopPlanningNetwork[];
+}
+
+const EMPTY_DATA: LoadedBlockData = {
+  poles: [],
+  constructionPlacemarks: [],
+  constructionCategories: [],
+  planningPlacemarks: [],
+  planningCategories: [],
+  planningNetworks: [],
+};
 
 function OverallMap() {
-  const [lod, setLod] = useState<LOD>(4);
-  const [layersOpen, setLayersOpen] = useState(true);
-  const [mapMode, setMapMode] = useState('GIS Map');
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
-  const [notice, setNotice] = useState('');
+  const [suggestions, setSuggestions] = useState<BlockRecord[]>([]);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [selectedBlock, setSelectedBlock] = useState<BlockRecord | null>(null);
+  const [blockSource, setBlockSource] = useState<'search' | 'viewport' | null>(null);
 
-  const filteredLayers = useMemo(() => query ? 'Matching “' + query + '”' : 'GIS Layer Control', [query]);
+  // KPI cards at the top of the page — /get-executive-dashboard, project-wide
+  // when no block is selected, scoped to state_id/district_id/block_id once
+  // one is.
+  const [dashboard, setDashboard] = useState<ExecutiveDashboardResponse | null>(null);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setDashboardLoading(true);
+    const filters = selectedBlock
+      ? {
+          state_id: selectedBlock.state_id,
+          ...(selectedBlock.district_id !== null ? { district_id: selectedBlock.district_id } : {}),
+          block_id: selectedBlock.block_id,
+        }
+      : {};
+    getExecutiveDashboard(filters)
+      .then((result) => {
+        if (!cancelled) setDashboard(result);
+      })
+      .catch((error) => {
+        console.error('Failed to load executive dashboard:', error);
+        if (!cancelled) setDashboard(null);
+      })
+      .finally(() => !cancelled && setDashboardLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedBlock]);
+
+  // State / District / Block cascading filters — an alternative to typing
+  // into the search box, sourced live from /states, /districtsdata and
+  // /blocksdata (the same endpoints SmartInventory/GeographicSelector.tsx
+  // uses) rather than the local blocksData.json.
+  const [filterStateId, setFilterStateId] = useState<number | null>(null);
+  const [filterDistrictId, setFilterDistrictId] = useState<number | null>(null);
+  const [filterBlockId, setFilterBlockId] = useState<number | null>(null);
+  const [stateOptions, setStateOptions] = useState<GeoOption[]>([]);
+  const [districtOptions, setDistrictOptions] = useState<GeoOption[]>([]);
+  const [blockOptions, setBlockOptions] = useState<GeoOption[]>([]);
+  const [statesLoading, setStatesLoading] = useState(false);
+  const [districtsLoading, setDistrictsLoading] = useState(false);
+  const [blocksLoading, setBlocksLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setStatesLoading(true);
+    getStateData()
+      .then((rows: any[]) => {
+        if (cancelled) return;
+        setStateOptions(rows.map((s) => ({ id: s.state_id, name: s.state_name, code: s.state_code })));
+      })
+      .catch(() => !cancelled && showNotice('Failed to load states'))
+      .finally(() => !cancelled && setStatesLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    setDistrictOptions([]);
+    setBlockOptions([]);
+    if (filterStateId === null) return;
+
+    let cancelled = false;
+    setDistrictsLoading(true);
+    getDistrictData(String(filterStateId))
+      .then((rows: any[]) => {
+        if (cancelled) return;
+        setDistrictOptions(rows.map((d) => ({ id: d.district_id, name: d.district_name, code: d.district_code })));
+      })
+      .catch(() => !cancelled && showNotice('Failed to load districts'))
+      .finally(() => !cancelled && setDistrictsLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [filterStateId]);
+
+  useEffect(() => {
+    setBlockOptions([]);
+    if (filterDistrictId === null) return;
+
+    let cancelled = false;
+    setBlocksLoading(true);
+    getBlockData(String(filterDistrictId))
+      .then((rows: any[]) => {
+        if (cancelled) return;
+        setBlockOptions(rows.map((b) => ({ id: b.block_id, name: b.block_name, code: b.block_code })));
+      })
+      .catch(() => !cancelled && showNotice('Failed to load blocks'))
+      .finally(() => !cancelled && setBlocksLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [filterDistrictId]);
+
+  const [autoDetectEnabled, setAutoDetectEnabled] = useState(true);
+  const [detecting, setDetecting] = useState(false);
+
+  const [loading, setLoading] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [data, setData] = useState<LoadedBlockData>(EMPTY_DATA);
+  const [fitToken, setFitToken] = useState(0);
+
+  const [layersOpen, setLayersOpen] = useState(true);
+  const [visibleLayers, setVisibleLayers] = useState<LayerVisibility>({
+    poles: true,
+    construction: true,
+    planning: true,
+  });
+  // Categories toggled off individually (e.g. just "Construction: Depth"
+  // within the Construction layer) — checked-in by default, so a name only
+  // appears here once the user has explicitly checked it out.
+  const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(new Set());
+  const toggleCategory = (name: string): void => {
+    setHiddenCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
+
+  const [zoom, setZoom] = useState<number | null>(null);
+  const [bounds, setBounds] = useState<google.maps.LatLngBounds | null>(null);
+
+  const searchBoxRef = useRef<HTMLDivElement>(null);
+  const autoDetectTimerRef = useRef<number | null>(null);
+  const lastLocatedRef = useRef<{ lat: number; lng: number } | null>(null);
+  const autoDetectEnabledRef = useRef(autoDetectEnabled);
+  const suggestionsOpenRef = useRef(suggestionsOpen);
+  const selectedBlockRef = useRef(selectedBlock);
+
+  useEffect(() => {
+    autoDetectEnabledRef.current = autoDetectEnabled;
+  }, [autoDetectEnabled]);
+  useEffect(() => {
+    suggestionsOpenRef.current = suggestionsOpen;
+  }, [suggestionsOpen]);
+  useEffect(() => {
+    selectedBlockRef.current = selectedBlock;
+  }, [selectedBlock]);
 
   const showNotice = (message: string): void => {
     setNotice(message);
-    window.setTimeout(() => setNotice(''), 2800);
+    window.setTimeout(() => setNotice(''), 3500);
   };
 
-  const changeLod = (next: LOD): void => {
-    setLod(next);
-    showNotice(`${lodLabels[next]} activated`);
+  useEffect(() => {
+    if (!query.trim()) {
+      setSuggestions([]);
+      return;
+    }
+    setSuggestions(searchBlocks(query));
+  }, [query]);
+
+  useEffect(() => {
+    const onClickOutside = (event: MouseEvent) => {
+      if (searchBoxRef.current && !searchBoxRef.current.contains(event.target as Node)) {
+        setSuggestionsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
+
+  const selectBlock = (block: BlockRecord, source: 'search' | 'viewport' = 'search'): void => {
+    setSelectedBlock(block);
+    setBlockSource(source);
+    setQuery(`${block.block_name}${block.district_name ? `, ${block.district_name}` : ''}`);
+    setSuggestionsOpen(false);
+    // Keep the State/District/Block dropdowns in sync however the block
+    // was chosen (search, auto-detect, or the dropdowns themselves).
+    setFilterStateId(block.state_id);
+    setFilterDistrictId(block.district_id);
+    setFilterBlockId(block.block_id);
   };
+
+  const clearSelection = (): void => {
+    setSelectedBlock(null);
+    setBlockSource(null);
+    setQuery('');
+    setData(EMPTY_DATA);
+    lastLocatedRef.current = null;
+    setFilterStateId(null);
+    setFilterDistrictId(null);
+    setFilterBlockId(null);
+  };
+
+  const onFilterStateChange = (stateId: number | null): void => {
+    setFilterStateId(stateId);
+    setFilterDistrictId(null);
+    setFilterBlockId(null);
+  };
+
+  const onFilterDistrictChange = (districtId: number | null): void => {
+    setFilterDistrictId(districtId);
+    setFilterBlockId(null);
+  };
+
+  const onFilterBlockChange = (blockId: number | null): void => {
+    setFilterBlockId(blockId);
+    if (blockId === null) return;
+
+    const block = blockOptions.find((b) => b.id === blockId);
+    const state = stateOptions.find((s) => s.id === filterStateId);
+    const district = districtOptions.find((d) => d.id === filterDistrictId);
+    if (!block || !state) return;
+
+    selectBlock(
+      {
+        block_id: block.id,
+        block_code: block.code,
+        block_name: block.name,
+        district_id: district?.id ?? null,
+        district_code: district?.code ?? null,
+        district_name: district?.name ?? null,
+        state_id: state.id,
+        state_code: state.code,
+        state_name: state.name,
+      },
+      'search',
+    );
+  };
+
+  // Reverse-geocode the map center via bharatlas.com and resolve it to a
+  // local block by LGD block_code — the "map viewport -> find block" path,
+  // used as an automatic complement to the manual search box above.
+  const autoDetectBlock = async (lat: number, lng: number): Promise<void> => {
+    setDetecting(true);
+    try {
+      const located = await locateByCoordinates(lat, lng);
+      if (!located?.blockLgd) return;
+
+      const block = getBlockByCode(located.blockLgd);
+      if (!block) return;
+      if (selectedBlockRef.current?.block_id === block.block_id) return;
+
+      selectBlock(block, 'viewport');
+    } finally {
+      setDetecting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!selectedBlock) return;
+
+    let cancelled = false;
+    const loadBlockData = async () => {
+      setLoading(true);
+      try {
+        const { block_id, district_id, state_id, block_name } = selectedBlock;
+        const districtFilter = district_id !== null ? { district_id } : {};
+
+        const [polesResult, constructionResult, planningResult] = await Promise.allSettled([
+          getAcceptedPoles({ state_id, block_id, ...districtFilter }),
+          getConstructionData({ state_id, block_id, ...districtFilter }),
+          getDesktopPlanning({
+            stateId: state_id,
+            blockId: block_id,
+            ...(district_id !== null ? { districtId: district_id } : {}),
+          }),
+        ]);
+
+        if (cancelled) return;
+
+        const poles: PoleMapPoint[] =
+          polesResult.status === 'fulfilled' && polesResult.value.status ? polesResult.value.data : [];
+
+        const { placemarks: constructionPlacemarks, categories: constructionCategories } =
+          constructionResult.status === 'fulfilled'
+            ? processConstructionData(constructionResult.value)
+            : { placemarks: [], categories: [] };
+
+        const { placemarks: planningPlacemarks, categories: planningCategories } =
+          planningResult.status === 'fulfilled'
+            ? processDesktopPlanningData(planningResult.value)
+            : { placemarks: [], categories: [] };
+        const planningNetworks: DesktopPlanningNetwork[] =
+          planningResult.status === 'fulfilled' && planningResult.value.status ? planningResult.value.data : [];
+
+        setData({ poles, constructionPlacemarks, constructionCategories, planningPlacemarks, planningCategories, planningNetworks });
+        setFitToken((token) => token + 1);
+
+        const prefix = blockSource === 'viewport' ? `Auto-detected ${block_name}` : block_name;
+        const failed = [polesResult, constructionResult, planningResult].filter((r) => r.status === 'rejected').length;
+        if (failed > 0) {
+          showNotice(`${prefix}: ${failed} of 3 data sources failed to load`);
+        } else if (poles.length === 0 && constructionPlacemarks.length === 0 && planningPlacemarks.length === 0) {
+          showNotice(`No data found for ${prefix}`);
+        } else {
+          showNotice(`Loaded data for ${prefix}`);
+        }
+      } catch (error) {
+        if (!cancelled) showNotice('Failed to load block data');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    loadBlockData();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedBlock]);
+
+  const totalRecords = data.poles.length + data.constructionPlacemarks.length + data.planningPlacemarks.length;
+  const existingPoles = useMemo(() => data.poles.filter((p) => p.pole_type === 'existing').length, [data.poles]);
+  const newPoles = data.poles.length - existingPoles;
+
+  const visibleConstructionPlacemarks = useMemo(
+    () => data.constructionPlacemarks.filter((pm) => !hiddenCategories.has(pm.category)),
+    [data.constructionPlacemarks, hiddenCategories],
+  );
+  const visiblePlanningPlacemarks = useMemo(
+    () => data.planningPlacemarks.filter((pm) => !hiddenCategories.has(pm.category)),
+    [data.planningPlacemarks, hiddenCategories],
+  );
+
+  const viewportLabel = useMemo(() => {
+    if (!bounds) return null;
+    const ne = bounds.getNorthEast();
+    const sw = bounds.getSouthWest();
+    return `${sw.lat().toFixed(3)}, ${sw.lng().toFixed(3)}  →  ${ne.lat().toFixed(3)}, ${ne.lng().toFixed(3)}`;
+  }, [bounds]);
 
   return (
     <div className="min-h-screen bg-[#f7f9fe] text-[#0b1c30]">
       <header className="sticky top-0 z-40 border-b border-[#d9e2f3] bg-white/95 shadow-[0_1px_10px_rgba(20,42,90,0.05)] backdrop-blur-md">
         <div className="flex min-h-16 items-center justify-between gap-3 px-4 lg:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="hidden shrink-0 items-center gap-1.5 rounded-full bg-[#e6f7f4] px-2.5 py-1 text-[11px] font-medium text-[#176b67] sm:flex"><span className="h-2 w-2 animate-pulse rounded-full bg-[#10b981]" /> Live Project Data</div>
+            <div className="hidden shrink-0 items-center gap-1.5 rounded-full bg-[#e6f7f4] px-2.5 py-1 text-[11px] font-medium text-[#176b67] sm:flex">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-[#10b981]" /> Live Project Data
+            </div>
             <div className="hidden h-5 w-px bg-[#ccd6e7] md:block" />
             <h1 className="truncate text-lg font-bold tracking-tight">Executive Construction View</h1>
+
+            <div ref={searchBoxRef} className="relative ml-2">
+              <div className="flex items-center gap-2 rounded-lg bg-[#f0f4fb] px-3 py-1.5">
+                <Search size={16} className="text-[#8794aa]" />
+                <input
+                  value={query}
+                  onChange={(event) => {
+                    setQuery(event.target.value);
+                    setSuggestionsOpen(true);
+                  }}
+                  onFocus={() => setSuggestionsOpen(true)}
+                  placeholder="Search block name, e.g. BORUM..."
+                  className="w-48 bg-transparent text-xs outline-none placeholder:text-[#8794aa] md:w-64"
+                />
+                {loading && <Loader2 size={14} className="animate-spin text-[#1c33c8]" />}
+                {selectedBlock && !loading && (
+                  <button onClick={clearSelection} className="text-[#8290a6] hover:text-[#0b1c30]">
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {suggestionsOpen && suggestions.length > 0 && (
+                <div className="absolute left-0 top-full z-30 mt-1 max-h-80 w-80 overflow-y-auto rounded-lg bg-white shadow-lg">
+                  {suggestions.map((block) => (
+                    <button
+                      key={block.block_id}
+                      onClick={() => selectBlock(block)}
+                      className="flex w-full flex-col items-start gap-0.5 border-b border-[#f0f3fa] px-3 py-2 text-left hover:bg-[#f0f4fb] last:border-b-0"
+                    >
+                      <span className="text-xs font-semibold text-[#0b1c30]">{block.block_name}</span>
+                      <span className="text-[10px] text-[#8290a6]">
+                        {(block.district_name ?? 'Unknown district')}, {block.state_name} · block_id {block.block_id}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {suggestionsOpen && query.trim() && suggestions.length === 0 && (
+                <div className="absolute left-0 top-full z-30 mt-1 w-80 rounded-lg bg-white px-3 py-2 text-xs text-[#8290a6] shadow-lg">
+                  No block matches "{query}"
+                </div>
+              )}
+            </div>
+
+            <select
+              value={filterStateId ?? ''}
+              onChange={(event) => onFilterStateChange(event.target.value ? Number(event.target.value) : null)}
+              disabled={statesLoading}
+              className="rounded-lg bg-[#f0f4fb] px-2.5 py-1.5 text-xs outline-none disabled:opacity-50"
+            >
+              <option value="">{statesLoading ? 'Loading states…' : 'State'}</option>
+              {stateOptions.map((state) => (
+                <option key={state.id} value={state.id}>
+                  {state.name}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={filterDistrictId ?? ''}
+              onChange={(event) => onFilterDistrictChange(event.target.value ? Number(event.target.value) : null)}
+              disabled={filterStateId === null || districtsLoading}
+              className="rounded-lg bg-[#f0f4fb] px-2.5 py-1.5 text-xs outline-none disabled:opacity-50"
+            >
+              <option value="">{districtsLoading ? 'Loading…' : 'District'}</option>
+              {districtOptions.map((district) => (
+                <option key={district.id} value={district.id}>
+                  {district.name}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={filterBlockId ?? ''}
+              onChange={(event) => onFilterBlockChange(event.target.value ? Number(event.target.value) : null)}
+              disabled={filterDistrictId === null || blocksLoading}
+              className="rounded-lg bg-[#f0f4fb] px-2.5 py-1.5 text-xs outline-none disabled:opacity-50"
+            >
+              <option value="">{blocksLoading ? 'Loading…' : 'Block'}</option>
+              {blockOptions.map((block) => (
+                <option key={block.id} value={block.id}>
+                  {block.name}
+                </option>
+              ))}
+            </select>
           </div>
-          <div className="mx-2 hidden max-w-xl flex-1 lg:block">
-            <div className="relative flex items-center"><Search size={17} className="absolute left-3.5 text-[#8591a6]" /><input value={query} onChange={(event) => setQuery(event.target.value)} className="w-full rounded-lg border-0 bg-[#f0f4fb] py-2 pl-10 pr-16 text-sm outline-none ring-0 placeholder:text-[#8591a6] focus:ring-2 focus:ring-[#bac8ff]" placeholder="Search route, GP, block, district, pole..." /><span className="absolute right-2.5 rounded bg-[#e3eaf7] px-1.5 py-0.5 text-[10px] text-[#6d7a91]">⌘ K</span></div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2.5" />
         </div>
-        <div className="flex h-9 items-center justify-between border-t border-[#e2e8f3] bg-[#f2f6ff] px-4 text-xs lg:px-6"><div className="flex items-center gap-2 text-[#52617a]"><Compass size={14} className="text-[#1c33c8]" /><span className="font-semibold text-[#0b1c30]">India</span><span>/</span><span className="font-semibold text-[#0b1c30]">All Project Corridors</span><span className="hidden text-[10px] text-[#8290a6] sm:inline">(Automatic Viewport Sync)</span></div><div className="flex items-center gap-1.5 rounded-full bg-[#d8f4ff] px-2.5 py-1 text-[10px] font-semibold text-[#005f7d]"><ChevronDown size={12} /> Auto-Drill Mode Active</div></div>
+        <div className="flex h-9 items-center justify-between border-t border-[#e2e8f3] bg-[#f2f6ff] px-4 text-xs lg:px-6">
+          <div className="flex items-center gap-2 text-[#52617a]">
+            <MapPin size={14} className="text-[#1c33c8]" />
+            <span className="font-semibold text-[#0b1c30]">
+              {selectedBlock
+                ? `${selectedBlock.block_name}, ${selectedBlock.district_name ?? '—'}, ${selectedBlock.state_name}`
+                : 'No block selected'}
+            </span>
+            {selectedBlock && <span className="text-[10px] text-[#8290a6]">block_id: {selectedBlock.block_id}</span>}
+            {selectedBlock && blockSource === 'viewport' && (
+              <span className="flex items-center gap-1 rounded-full bg-[#e5ecff] px-2 py-0.5 text-[9px] font-semibold text-[#1c33c8]">
+                <Crosshair size={10} /> Auto-detected from viewport
+              </span>
+            )}
+          </div>
+        </div>
       </header>
 
       <main>
-          <section className="border-b border-[#e2e8f3] bg-white p-3 lg:px-4">
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-              {kpis.map(({ label, value, suffix, detail, note, tone, icon: Icon, progress, trend, critical }) => <KpiCard key={label} label={label} value={value} suffix={suffix} detail={detail} note={note} tone={tone} icon={<Icon size={16} />} progress={progress} trend={trend} critical={critical} />)}
-            </div>
-          </section>
+        <KpiRow
+          dashboard={dashboard}
+          loading={dashboardLoading}
+          onAlertsClick={() =>
+            navigate('/construction-issues', {
+              state: {
+                state_id: selectedBlock?.state_id,
+                district_id: selectedBlock?.district_id,
+                block_id: selectedBlock?.block_id,
+              },
+            })
+          }
+        />
 
-          <section className="flex flex-col xl:flex-row">
-            <div className="relative min-h-[700px] flex-1 overflow-hidden bg-[#edf4fc] xl:min-h-[calc(100vh-202px)]">
-              <div className="absolute left-4 right-4 top-3 z-20 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-2 rounded-lg bg-white/95 px-3 py-1.5 shadow-md backdrop-blur"><Search size={16} className="text-[#8794aa]" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Quick find Nadia, Chapra, Pit #124..." className="w-40 bg-transparent text-xs outline-none placeholder:text-[#8794aa] md:w-56" /><span className="rounded bg-[#edf2fb] px-1.5 py-0.5 text-[10px] text-[#7b879c]">R-104</span></div>
-                  <button onClick={() => setLayersOpen(!layersOpen)} className="flex items-center gap-1.5 rounded-lg bg-white/95 px-3 py-2 text-xs font-semibold shadow-md hover:bg-white"><Layers3 size={16} className="text-[#1c33c8]" /> Layers <span className="h-2 w-2 rounded-full bg-[#1c33c8]" /></button>
-                  <button onClick={() => showNotice('Filter controls are ready')} className="hidden items-center gap-1.5 rounded-lg bg-white/95 px-3 py-2 text-xs font-semibold shadow-md hover:bg-white sm:flex"><Filter size={15} className="text-[#424a5c]" /> Filter</button>
-                </div>
-                <div className="hidden items-center gap-1 rounded-full bg-white/95 p-1 shadow-md backdrop-blur md:flex">{([1, 2, 3, 4, 5] as LOD[]).map((item) => <button key={item} onClick={() => changeLod(item)} className={`rounded-full px-3 py-1 text-[11px] transition-all ${lod === item ? 'bg-[#1c33c8] font-semibold text-white shadow-sm' : 'text-[#52617a] hover:bg-[#eef3ff]'}`}>{lodLabels[item]}</button>)}</div>
-                <div className="flex items-center gap-1.5"><div className="hidden rounded-lg bg-white/95 p-0.5 text-[11px] shadow-md sm:flex">{['GIS Map', 'Satellite', 'Terrain'].map((mode) => <button key={mode} onClick={() => { setMapMode(mode); showNotice(`${mode} view selected`); }} className={`rounded-md px-2.5 py-1 ${mapMode === mode ? 'bg-[#e5ecff] font-semibold text-[#1c33c8]' : 'text-[#65738a]'}`}>{mode}</button>)}</div><button onClick={() => changeLod(4)} className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/95 text-[#52617a] shadow-md hover:text-[#1c33c8]"><LocateFixed size={17} /></button></div>
+        <section className="flex flex-col xl:flex-row">
+          <div className="relative min-h-[700px] flex-1 overflow-hidden bg-[#edf4fc] xl:min-h-[calc(100vh-88px)]">
+            <div className="absolute right-4 top-3 z-20 flex items-center gap-2">
+              <button
+                onClick={() => setAutoDetectEnabled((prev) => !prev)}
+                title={`Auto-detect block from map viewport (zoom in past ${AUTO_DETECT_MIN_ZOOM} to activate)`}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold shadow-md ${
+                  autoDetectEnabled ? 'bg-[#1c33c8] text-white hover:bg-[#16279e]' : 'bg-white/95 text-[#52617a] hover:bg-white'
+                }`}
+              >
+                {detecting ? <Loader2 size={16} className="animate-spin" /> : <Crosshair size={16} />}
+                Auto-detect
+              </button>
+              <button
+                onClick={() => setLayersOpen(!layersOpen)}
+                className="flex items-center gap-1.5 rounded-lg bg-white/95 px-3 py-2 text-xs font-semibold shadow-md hover:bg-white"
+              >
+                <Layers3 size={16} className="text-[#1c33c8]" /> Layers
+              </button>
+            </div>
+
+            {!selectedBlock && (
+              <div className="absolute left-1/2 top-16 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-medium text-[#35445b] shadow-sm backdrop-blur">
+                <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-[#1c33c8]" />
+                Highlighted states have project data — hover for block count, click to zoom in
               </div>
+            )}
 
-              <div className="absolute left-1/2 top-16 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-medium text-[#35445b] shadow-sm backdrop-blur"><span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-[#10b981]" />Map synchronized · Nadia Construction Corridor (LOD {lod} Active) <span className="ml-2 text-[10px] text-[#8a96aa]">| 14.2s latency</span></div>
-              <MapCanvas lod={lod} mapMode={mapMode} onIssue={() => showNotice('Critical issue ISS-1042 selected')} onRoute={() => showNotice('Route R-104 inspector selected')} />
+            <BlockDataMap
+              poles={data.poles}
+              constructionPlacemarks={visibleConstructionPlacemarks}
+              constructionCategories={data.constructionCategories}
+              planningPlacemarks={visiblePlanningPlacemarks}
+              planningCategories={data.planningCategories}
+              visibleLayers={visibleLayers}
+              fitToken={fitToken}
+              highlightStates={!selectedBlock}
+              onViewportChange={(z, b) => {
+                setZoom(z);
+                setBounds(b);
 
-              {layersOpen && <LayerPanel title={filteredLayers} onClose={() => setLayersOpen(false)} />}
-              <div className="absolute bottom-14 left-4 z-10 w-[min(360px,calc(100%-32px))] rounded-xl bg-white/95 p-3 shadow-md backdrop-blur"><div className="mb-1.5 flex items-center justify-between"><div className="flex items-center gap-1.5 text-xs font-bold"><span className="h-2 w-2 rounded-full bg-[#1c33c8]" /> Route &amp; Block Inspection (LOD {lod})</div><span className="rounded bg-[#e4edff] px-1.5 py-0.5 text-[10px] font-semibold text-[#1c33c8]">1:25,000</span></div><p className="text-[11px] text-[#63718a]">Visible: <b className="text-[#0b1c30]">Chapra &amp; Krishnanagar</b>, Nadia District, West Bengal</p><div className="mt-2 grid grid-cols-3 gap-2 border-t border-[#e3e8f1] pt-2 text-center text-[10px]"><div><b className="block text-[#0b1c30]">12,482</b><span className="text-[#8692a5]">Records</span></div><div><b className="block text-[#0b1c30]">412 KM</b><span className="text-[#8692a5]">Corridor</span></div><div><b className="block text-[#0b1c30]">1,248</b><span className="text-[#8692a5]">Segments</span></div></div><div className="mt-2 flex items-center gap-1 text-[10px] font-medium text-[#007c82]"><ZoomIn size={12} /> Scroll wheel to zoom in for sub-meter pit nodes &amp; RFMS joint chambers</div></div>
-              <div className="absolute bottom-14 right-4 z-10 flex flex-col items-end gap-2"><div className="overflow-hidden rounded-lg bg-white/95 shadow-md"><button onClick={() => changeLod(Math.min(5, lod + 1) as LOD)} className="flex h-8 w-8 items-center justify-center text-[#52617a] hover:bg-[#eef3ff]"><Plus size={17} /></button><div className="h-px bg-[#e3e8f1]" /><button onClick={() => changeLod(Math.max(1, lod - 1) as LOD)} className="flex h-8 w-8 items-center justify-center text-[#52617a] hover:bg-[#eef3ff]"><Minus size={17} /></button></div><button onClick={() => changeLod(4)} className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/95 text-[#52617a] shadow-md hover:text-[#1c33c8]"><RefreshCw size={16} /></button><div className="rounded bg-white/90 px-2.5 py-1 text-[10px] text-[#63718a] shadow-sm">23°32'14&quot;N&nbsp;&nbsp;88°31'40&quot;E&nbsp;&nbsp; ━ 2 KM</div></div>
-              <div className="absolute bottom-0 left-0 right-0 z-10 flex h-10 items-center gap-3 overflow-x-auto whitespace-nowrap border-t border-[#d7e0ee] bg-white px-4 text-[11px] text-[#63718a] shadow-inner"><b className="flex items-center gap-1 text-[#0b1c30]"><Eye size={14} className="text-[#1c33c8]" /> Viewport Totals:</b><span>Routes: <b className="text-[#0b1c30]">124</b></span><i>•</i><span>Survey: <b className="text-[#0b1c30]">412.0 KM</b></span><i>•</i><span>Construction Planned: <b className="text-[#0b1c30]">346.0 KM</b></span><i>•</i><span>Completed: <b className="text-[#059669]">298.0 KM</b></span><i>•</i><span>Issues: <b className="text-[#ba1a1a]">12 (1 Critical)</b></span></div>
+                if (autoDetectTimerRef.current !== null) {
+                  window.clearTimeout(autoDetectTimerRef.current);
+                  autoDetectTimerRef.current = null;
+                }
+                if (!autoDetectEnabledRef.current || suggestionsOpenRef.current || !b || z < AUTO_DETECT_MIN_ZOOM) {
+                  return;
+                }
+
+                const center = b.getCenter();
+                const lat = center.lat();
+                const lng = center.lng();
+                const last = lastLocatedRef.current;
+                if (last && Math.abs(last.lat - lat) < AUTO_DETECT_MIN_MOVE_DEG && Math.abs(last.lng - lng) < AUTO_DETECT_MIN_MOVE_DEG) {
+                  return;
+                }
+
+                autoDetectTimerRef.current = window.setTimeout(() => {
+                  lastLocatedRef.current = { lat, lng };
+                  autoDetectBlock(lat, lng);
+                }, AUTO_DETECT_DEBOUNCE_MS);
+              }}
+            />
+
+            {layersOpen && (
+              <LayerPanel
+                visibleLayers={visibleLayers}
+                onToggle={(key) => setVisibleLayers((prev) => ({ ...prev, [key]: !prev[key] }))}
+                onClose={() => setLayersOpen(false)}
+                poleCount={data.poles.length}
+                constructionCategories={data.constructionCategories}
+                planningCategories={data.planningCategories}
+                hiddenCategories={hiddenCategories}
+                onToggleCategory={toggleCategory}
+              />
+            )}
+
+            <div className="absolute bottom-0 left-0 right-0 z-10 flex h-10 items-center gap-3 overflow-x-auto whitespace-nowrap border-t border-[#d7e0ee] bg-white px-4 text-[11px] text-[#63718a] shadow-inner">
+              <b className="flex items-center gap-1 text-[#0b1c30]">
+                <MapPin size={14} className="text-[#1c33c8]" /> Viewport:
+              </b>
+              <span>Zoom: <b className="text-[#0b1c30]">{zoom ?? '—'}</b></span>
+              <i>•</i>
+              <span>Bounds: <b className="text-[#0b1c30]">{viewportLabel ?? '—'}</b></span>
+              <i>•</i>
+              <span>Records shown: <b className="text-[#0b1c30]">{totalRecords}</b></span>
             </div>
-            <InsightsPanel onAction={() => showNotice('Rectification request sent to Eishen Enterprises')} onDownload={() => showNotice('Executive GIS audit report queued')} />
-          </section>
-        </main>
-      {notice && <div className="fixed bottom-5 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-lg bg-[#0b1c30] px-4 py-3 text-sm font-medium text-white shadow-xl"><CheckCircle2 size={17} className="text-[#8ed8fd]" />{notice}</div>}
+          </div>
+
+          <InsightsPanel
+            selectedBlock={selectedBlock}
+            data={data}
+            existingPoles={existingPoles}
+            newPoles={newPoles}
+            loading={loading}
+            dashboard={dashboard}
+          />
+        </section>
+      </main>
+
+      {notice && (
+        <div className="fixed bottom-5 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-lg bg-[#0b1c30] px-4 py-3 text-sm font-medium text-white shadow-xl">
+          <CheckCircle2 size={17} className="text-[#8ed8fd]" />
+          {notice}
+        </div>
+      )}
     </div>
   );
 }
 
-function KpiCard({ label, value, suffix, detail, note, tone, icon, progress, trend, critical }: { label: string; value: string; suffix: string; detail: string; note: string; tone: string; icon: ReactNode; progress?: number; trend?: string; critical?: string }) {
-  const colors: Record<string, string> = { blue: 'border-[#1c33c8] text-[#1c33c8]', cyan: 'border-[#006686] text-[#006686]', indigo: 'border-[#3c50e0] text-[#3c50e0]', sky: 'border-[#8ed8fd] text-[#006686]', slate: 'border-[#424a5c] text-[#424a5c]', red: 'border-[#ba1a1a] text-[#ba1a1a]' };
-  return <div className={`min-h-[106px] rounded-lg border-l-[3px] bg-white p-3 shadow-[0_1px_5px_rgba(28,51,91,0.08)] ${colors[tone]}`}><div className="flex items-center justify-between"><span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#65738a]">{label}</span><span>{icon}</span></div><div className="mt-1 flex items-baseline gap-1.5"><span className={`text-[27px] font-bold tracking-tight ${tone === 'red' ? 'text-[#ba1a1a]' : 'text-[#0b1c30]'}`}>{value}</span>{suffix && <span className="text-[10px] font-bold text-[#65738a]">{suffix}</span>}{critical && <span className="rounded bg-[#ffe0dc] px-1.5 py-0.5 text-[10px] font-bold text-[#93000a]">{critical}</span>}</div><div className="mt-1 flex items-center justify-between text-[10px]"><span className={tone === 'red' ? 'text-[#65738a]' : `font-semibold ${colors[tone].split(' ')[1]}`}>{trend || detail}</span>{trend ? <span className="font-semibold text-[#10b981]">{trend}</span> : progress ? <div className="h-1.5 w-11 overflow-hidden rounded-full bg-[#dce9ff]"><div className="h-full rounded-full bg-[#006686]" style={{ width: `${progress}%` }} /></div> : <span className="text-[#7f8ca0]">{note}</span>}</div></div>;
+// /get-executive-dashboard KPI row — project-wide by default, scoped to the
+// selected block's state_id/district_id/block_id once one is chosen.
+// Formats a possibly-null/undefined API number, defaulting to an em dash —
+// /get-executive-dashboard returns null (not just omits the field) for any
+// of these when a filter matches no data.
+const fmtNum = (value: number | null | undefined, digits = 0): string =>
+  value === null || value === undefined ? '—' : digits > 0 ? value.toFixed(digits) : value.toLocaleString('en-IN');
+
+function KpiRow({
+  dashboard,
+  loading,
+  onAlertsClick,
+}: {
+  dashboard: ExecutiveDashboardResponse | null;
+  loading: boolean;
+  onAlertsClick: () => void;
+}) {
+  const construction = dashboard?.construction_built.summary;
+  const alerts = dashboard?.open_gis_alerts.summary;
+  const acceptedPct =
+    construction && construction.totalSurveys && construction.totalSurveys > 0 && construction.acceptedSurveys !== null
+      ? Math.round((construction.acceptedSurveys / construction.totalSurveys) * 100)
+      : undefined;
+
+  const cards = [
+    {
+      label: 'Survey Distance',
+      value: fmtNum(dashboard?.survey_distance_km, 1),
+      suffix: 'KM',
+      detail: 'Cumulative surveyed',
+      note: 'All accepted surveys',
+      tone: 'blue',
+      icon: Navigation,
+    },
+    {
+      label: 'Construction Built',
+      value: fmtNum(construction?.totalKm, 1),
+      suffix: 'KM',
+      detail: construction ? `${fmtNum(construction.acceptedSurveys)} / ${fmtNum(construction.totalSurveys)} accepted` : '—',
+      note: construction ? `${fmtNum(construction.pendingSurveys)} pending` : '—',
+      tone: 'cyan',
+      icon: Wrench,
+      progress: acceptedPct,
+    },
+    {
+      label: 'Survey → Const Match',
+      value: fmtNum(dashboard?.survey_const_match_pct, 1),
+      suffix: dashboard?.survey_const_match_pct != null ? '%' : '',
+      detail: 'Actual vs sanctioned',
+      note: 'Project-wide ratio',
+      tone: 'indigo',
+      icon: RefreshCw,
+    },
+    {
+      label: 'GPS Integrated',
+      value: fmtNum(dashboard?.gps_integrated_count),
+      suffix: '',
+      detail: 'RFMS synced points',
+      note: 'Live sync',
+      tone: 'sky',
+      icon: Crosshair,
+    },
+    {
+      label: 'GPs Completed',
+      value: fmtNum(dashboard?.gps_completed_count),
+      suffix: '',
+      detail: 'Gram Panchayats',
+      note: 'Fully connected',
+      tone: 'slate',
+      icon: Grid2X2,
+    },
+    {
+      label: 'Open GIS Alerts',
+      value: fmtNum(alerts?.total),
+      suffix: '',
+      detail: alerts ? `${fmtNum(alerts.open)} open · ${fmtNum(alerts.checked)} checked` : '—',
+      note: alerts ? `${fmtNum(alerts.low_depth)} low depth · ${fmtNum(alerts.high_depth)} high depth` : '—',
+      tone: 'red',
+      icon: AlertTriangle,
+      critical: alerts && alerts.open ? `${fmtNum(alerts.open)} Open` : undefined,
+      onClick: onAlertsClick,
+    },
+  ] as const;
+
+  return (
+    <section className="border-b border-[#e2e8f3] bg-white p-3 lg:px-4">
+      <div className={`grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6 ${loading ? 'animate-pulse opacity-70' : ''}`}>
+        {cards.map((kpi) => (
+          <KpiCard key={kpi.label} {...kpi} icon={<kpi.icon size={16} />} />
+        ))}
+      </div>
+    </section>
+  );
 }
 
-function LayerPanel({ title, onClose }: { title: string; onClose: () => void }) {
-  const rows = [['#2563eb', 'Survey Route Baseline', true], ['#1c33c8', 'Survey Points & Depths', true], ['#10b981', 'Start / End Pits', true], ['#10b981', 'Completed Trench', true], ['#f59e0b', 'Pending Trench', true], ['#7c3aed', 'Planned Alignment', true], ['#ef4444', 'Rectification Segment', true], ['#0284c7', 'Joint Chambers (JC)', true], ['#64748b', 'Existing & New Poles (Muffing)', false], ['#006686', 'Gram Panchayat Endpoints', true]] as const;
-  return <div className="absolute left-4 top-16 z-20 w-72 rounded-xl bg-white/95 p-3.5 shadow-lg backdrop-blur"><div className="flex items-center justify-between border-b border-[#e6ebf3] pb-2"><div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider"><Layers3 size={16} className="text-[#1c33c8]" /> {title}</div><button onClick={onClose} className="text-[#8290a6] hover:text-[#0b1c30]"><X size={18} /></button></div><div className="max-h-[360px] space-y-3 overflow-y-auto pt-3 text-[11px]"><LayerGroup title="Survey Geometry" rows={rows.slice(0, 3)} /><LayerGroup title="Construction Progress" rows={rows.slice(3, 8)} /><LayerGroup title="Aerial & Network Nodes" rows={rows.slice(8)} /></div></div>;
+function KpiCard({
+  label,
+  value,
+  suffix,
+  detail,
+  note,
+  tone,
+  icon,
+  progress,
+  critical,
+  onClick,
+}: {
+  label: string;
+  value: string;
+  suffix: string;
+  detail: string;
+  note: string;
+  tone: string;
+  icon: ReactNode;
+  progress?: number;
+  critical?: string;
+  onClick?: () => void;
+}) {
+  const colors: Record<string, string> = {
+    blue: 'border-[#1c33c8] text-[#1c33c8]',
+    cyan: 'border-[#006686] text-[#006686]',
+    indigo: 'border-[#3c50e0] text-[#3c50e0]',
+    sky: 'border-[#8ed8fd] text-[#006686]',
+    slate: 'border-[#424a5c] text-[#424a5c]',
+    red: 'border-[#ba1a1a] text-[#ba1a1a]',
+  };
+  return (
+    <div
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={
+        onClick
+          ? (event) => {
+              if (event.key === 'Enter' || event.key === ' ') onClick();
+            }
+          : undefined
+      }
+      className={`min-h-[106px] rounded-lg border-l-[3px] bg-white p-3 shadow-[0_1px_5px_rgba(28,51,91,0.08)] ${colors[tone]} ${
+        onClick ? 'cursor-pointer transition-shadow hover:shadow-[0_2px_10px_rgba(28,51,91,0.16)]' : ''
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#65738a]">{label}</span>
+        <span>{icon}</span>
+      </div>
+      <div className="mt-1 flex items-baseline gap-1.5">
+        <span className={`text-[27px] font-bold tracking-tight ${tone === 'red' ? 'text-[#ba1a1a]' : 'text-[#0b1c30]'}`}>{value}</span>
+        {suffix && <span className="text-[10px] font-bold text-[#65738a]">{suffix}</span>}
+        {critical && <span className="rounded bg-[#ffe0dc] px-1.5 py-0.5 text-[10px] font-bold text-[#93000a]">{critical}</span>}
+      </div>
+      <div className="mt-1 text-[10px] text-[#65738a]">{detail}</div>
+      <div className="mt-1 flex items-center justify-between text-[10px]">
+        {progress !== undefined ? (
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#dce9ff]">
+            <div className="h-full rounded-full bg-[#006686]" style={{ width: `${progress}%` }} />
+          </div>
+        ) : (
+          <span className="text-[#7f8ca0]">{note}</span>
+        )}
+      </div>
+    </div>
+  );
 }
 
-function LayerGroup({ title, rows }: { title: string; rows: readonly (readonly [string, string, boolean])[] }) { return <div><div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-[#8490a4]">{title}</div><div className="space-y-1">{rows.map(([color, label, checked]) => <label key={label} className="flex cursor-pointer items-center justify-between rounded p-1.5 hover:bg-[#f0f4fb]"><span className="flex items-center gap-2"><span className="h-2 w-3 rounded-full" style={{ backgroundColor: color }} />{label}</span><input type="checkbox" defaultChecked={checked} className="accent-[#1c33c8]" /></label>)}</div></div>; }
+function LayerPanel({
+  visibleLayers,
+  onToggle,
+  onClose,
+  poleCount,
+  constructionCategories,
+  planningCategories,
+  hiddenCategories,
+  onToggleCategory,
+}: {
+  visibleLayers: LayerVisibility;
+  onToggle: (key: keyof LayerVisibility) => void;
+  onClose: () => void;
+  poleCount: number;
+  constructionCategories: PlacemarkCategory[];
+  planningCategories: PlacemarkCategory[];
+  hiddenCategories: Set<string>;
+  onToggleCategory: (name: string) => void;
+}) {
+  const constructionCount = constructionCategories.reduce((sum, c) => sum + c.count, 0);
+  const planningCount = planningCategories.reduce((sum, c) => sum + c.count, 0);
 
-function MapCanvas({ lod, mapMode, onIssue, onRoute }: { lod: LOD; mapMode: string; onIssue: () => void; onRoute: () => void }) {
-  const scale = 0.94 + lod * 0.045;
-  return <div className={`map-surface absolute inset-0 ${mapMode === 'Satellite' ? 'satellite-mode' : mapMode === 'Terrain' ? 'terrain-mode' : ''}`}><svg className="absolute inset-0 h-full w-full" viewBox="0 0 1100 780" preserveAspectRatio="xMidYMid slice" style={{ transform: `scale(${scale})`, transformOrigin: 'center' }}><defs><pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M60 0H0V60" fill="none" stroke="#dce6f3" strokeWidth="0.7" /></pattern><filter id="shadow"><feDropShadow dx="0" dy="3" stdDeviation="4" floodOpacity=".14" /></filter></defs><rect width="1100" height="780" fill="#f7faff" /><rect width="1100" height="780" fill="url(#grid)" /><path d="M50 130C230 30 365 115 520 85S820 100 1080 40L1100 300C850 270 760 350 530 280S210 320 0 250Z" fill="#eef8f1" opacity=".75" /><path d="M0 490C190 390 300 530 450 475S770 420 1100 550V780H0Z" fill="#eef5fc" /><path d="M-20 800C175 670 205 545 305 480C405 415 390 310 500 220C625 118 730 90 850 -30" fill="none" stroke="#b9dcfa" strokeWidth="14" opacity=".68" /><path d="M-20 800C175 670 205 545 305 480C405 415 390 310 500 220C625 118 730 90 850 -30" fill="none" stroke="#d1e8ff" strokeWidth="8" /><text x="320" y="380" fill="#65a5dc" fontSize="11" fontWeight="700" letterSpacing="2" transform="rotate(-38 320 380)">BHAGIRATHI RIVER CORRIDOR</text><path d="M-20 470L280 445L520 465L780 425L1120 458" fill="none" stroke="#fff" strokeWidth="8" /><path d="M-20 470L280 445L520 465L780 425L1120 458" fill="none" stroke="#c3cfde" strokeWidth="4" /><text x="130" y="435" fill="#8d9bad" fontSize="9" fontWeight="700">SH-11 HIGHWAY CORRIDOR</text><path d="M210 590L280 510L390 520L460 490" fill="none" stroke="#10b981" strokeWidth="5" strokeLinecap="round" /><text x="310" y="505" fill="#047857" fontSize="10" fontWeight="700">R-102 (12.4 KM · COMPLETED)</text><path d="M720 440L790 390L880 410L960 370" fill="none" stroke="#7c3aed" strokeWidth="3" strokeDasharray="7 5" /><path d="M720 440L790 390" fill="none" stroke="#f59e0b" strokeWidth="5" strokeLinecap="round" /><text x="810" y="380" fill="#6d28d9" fontSize="10" fontWeight="700">R-103 (9.1 KM · PENDING TRENCH)</text><path d="M330 320L410 290L490 310L530 260" fill="none" stroke="#2563eb" strokeWidth="3" strokeDasharray="5 4" /><text x="390" y="280" fill="#1d4ed8" fontSize="9" fontWeight="700">R-105 · SURVEY STAGE</text><g onClick={onRoute} className="cursor-pointer"><path d="M440 540L510 480L560 495L640 430L710 450" fill="none" stroke="#3c50e0" strokeWidth="16" opacity=".13" strokeLinecap="round" /><path d="M440 540L510 480L560 495L605 455" fill="none" stroke="#10b981" strokeWidth="6" strokeLinecap="round" /><path d="M605 455L640 430" fill="none" stroke="#f59e0b" strokeWidth="6" strokeLinecap="round" /><path d="M640 430C665 410 680 412 710 450" fill="none" stroke="#ef4444" strokeWidth="5" strokeDasharray="4 3" strokeLinecap="round" /><circle cx="480" cy="506" r="7" fill="#0284c7" stroke="white" strokeWidth="2" /><circle cx="560" cy="495" r="7" fill="#0284c7" stroke="white" strokeWidth="2" /><circle cx="640" cy="430" r="9" fill="#f59e0b" stroke="white" strokeWidth="2" /><rect x="525" y="448" width="84" height="22" rx="4" fill="#0b1c30" /><text x="567" y="463" textAnchor="middle" fill="white" fontSize="11" fontWeight="700">ROUTE R-104</text><g transform="translate(440 540)"><path d="M0 0C-5-12-8-16-8-22C-8-28-4-32 0-32S8-28 8-22C8-16 5-12 0 0Z" fill="#10b981" stroke="white" strokeWidth="1.5" /><circle cy="-22" r="3" fill="white" /></g><g transform="translate(710 450)"><path d="M0 0C-5-12-8-16-8-22C-8-28-4-32 0-32S8-28 8-22C8-16 5-12 0 0Z" fill="#ef4444" stroke="white" strokeWidth="1.5" /><circle cy="-22" r="3" fill="white" /></g></g><g onClick={onIssue} className="cursor-pointer"><circle cx="668" cy="395" r="15" fill="#ef4444" opacity=".2" /><circle cx="668" cy="395" r="8" fill="#ef4444" stroke="white" strokeWidth="2" /><path d="M668 391V396M668 398V399" stroke="white" strokeWidth="1.6" strokeLinecap="round" /><g transform="translate(682 369)"><rect width="170" height="53" rx="6" fill="white" filter="url(#shadow)" /><rect width="4" height="53" rx="1" fill="#ba1a1a" /><text x="13" y="17" fill="#ba1a1a" fontSize="10" fontWeight="700">CRITICAL: ISS-1042</text><text x="13" y="31" fill="#0b1c30" fontSize="10" fontWeight="700">Route Deviation (+0.55 KM)</text><text x="13" y="45" fill="#7b879b" fontSize="9">Off Sanctioned ROW · Tap to review</text></g></g><g transform="translate(360 480)"><circle r="16" fill="#3c50e0" stroke="white" strokeWidth="2" /><text y="4" textAnchor="middle" fill="white" fontSize="10" fontWeight="700">42 Pts</text><rect x="-24" y="20" width="48" height="14" rx="3" fill="#e5eeff" /><text y="30" textAnchor="middle" fill="#1c33c8" fontSize="8" fontWeight="700">Depth 1.65m</text></g><g transform="translate(760 520)"><circle r="15" fill="#006686" stroke="white" strokeWidth="2" /><text y="4" textAnchor="middle" fill="white" fontSize="10" fontWeight="700">18 GPs</text><rect x="-22" y="18" width="44" height="14" rx="3" fill="#c0e8ff" /><text y="28" textAnchor="middle" fill="#004d66" fontSize="8" fontWeight="700">OFC Ring B</text></g><g transform="translate(870 310)"><circle r="14" fill="#424a5c" stroke="white" strokeWidth="2" /><text y="4" textAnchor="middle" fill="white" fontSize="9" fontWeight="700">128 P</text></g><g transform="translate(240 210)"><rect width="176" height="54" rx="8" fill="white" filter="url(#shadow)" /><rect width="6" height="54" rx="2" fill="#10b981" /><text x="14" y="20" fill="#0b1c30" fontSize="12" fontWeight="700">West Bengal Corridor</text><text x="14" y="36" fill="#10b981" fontSize="11" fontWeight="700">82% Complete</text><text x="96" y="36" fill="#7b879b" fontSize="10">| 1,120 KM</text><text x="14" y="49" fill="#52617a" fontSize="9">Nadia, 24 Pgs, Murshidabad</text></g><g transform="translate(70 70)"><rect width="144" height="42" rx="6" fill="white" filter="url(#shadow)" /><rect width="4" height="42" fill="#3c50e0" /><text x="10" y="17" fill="#0b1c30" fontSize="11" fontWeight="700">Himachal Pradesh</text><text x="10" y="32" fill="#3c50e0" fontSize="10" fontWeight="600">76% Built · 390 KM</text></g><g transform="translate(880 640)"><rect width="154" height="42" rx="6" fill="white" filter="url(#shadow)" /><rect width="4" height="42" fill="#f59e0b" /><text x="10" y="17" fill="#0b1c30" fontSize="11" fontWeight="700">Andaman &amp; Nicobar</text><text x="10" y="32" fill="#d97706" fontSize="10" fontWeight="600">64% Built · 210 KM</text></g><g transform="translate(420 360)"><rect width="180" height="26" rx="13" fill="white" filter="url(#shadow)" /><circle cx="13" cy="13" r="5" fill="#10b981" /><text x="25" y="17" fill="#0b1c30" fontSize="10" fontWeight="700">Nadia: 82% · 412 KM · 12 Iss</text></g></svg><div className="absolute bottom-20 right-1/2 h-0 w-0" /></div>;
+  return (
+    <div className="absolute left-4 top-16 z-20 w-72 rounded-xl bg-white/95 p-3.5 shadow-lg backdrop-blur">
+      <div className="flex items-center justify-between border-b border-[#e6ebf3] pb-2">
+        <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider">
+          <Layers3 size={16} className="text-[#1c33c8]" /> GIS Layer Control
+        </div>
+        <button onClick={onClose} className="text-[#8290a6] hover:text-[#0b1c30]">
+          <X size={18} />
+        </button>
+      </div>
+      <div className="max-h-[360px] space-y-1 overflow-y-auto pt-3 text-[11px]">
+        <label className="flex cursor-pointer items-center justify-between rounded p-1.5 hover:bg-[#f0f4fb]">
+          <span className="flex items-center gap-2">
+            <span className="h-2 w-3 rounded-full" style={{ backgroundColor: '#22c55e' }} />
+            Accepted Poles ({poleCount})
+          </span>
+          <input type="checkbox" checked={visibleLayers.poles} onChange={() => onToggle('poles')} className="accent-[#1c33c8]" />
+        </label>
+        <label className="flex cursor-pointer items-center justify-between rounded p-1.5 hover:bg-[#f0f4fb]">
+          <span className="flex items-center gap-2">
+            <span className="h-2 w-3 rounded-full" style={{ backgroundColor: '#3b82f6' }} />
+            Construction Data ({constructionCount})
+          </span>
+          <input
+            type="checkbox"
+            checked={visibleLayers.construction}
+            onChange={() => onToggle('construction')}
+            className="accent-[#1c33c8]"
+          />
+        </label>
+        <label className="flex cursor-pointer items-center justify-between rounded p-1.5 hover:bg-[#f0f4fb]">
+          <span className="flex items-center gap-2">
+            <span className="h-2 w-3 rounded-full" style={{ backgroundColor: '#7c3aed' }} />
+            Desktop Planning ({planningCount})
+          </span>
+          <input
+            type="checkbox"
+            checked={visibleLayers.planning}
+            onChange={() => onToggle('planning')}
+            className="accent-[#1c33c8]"
+          />
+        </label>
+
+        {constructionCategories.length > 0 && (
+          <div className="mt-2 border-t border-[#e6ebf3] pt-2">
+            <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-[#8490a4]">Construction Categories</div>
+            {constructionCategories.map((c) => (
+              <label key={c.id} className="flex cursor-pointer items-center justify-between rounded px-1.5 py-1 hover:bg-[#f0f4fb]">
+                <span className="flex items-center gap-2">
+                  <span className="h-2 w-3 rounded-full" style={{ backgroundColor: c.color }} />
+                  {c.name}
+                  <span className="text-[#8290a6]">({c.count})</span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={!hiddenCategories.has(c.name)}
+                  onChange={() => onToggleCategory(c.name)}
+                  className="accent-[#1c33c8]"
+                />
+              </label>
+            ))}
+          </div>
+        )}
+
+        {planningCategories.length > 0 && (
+          <div className="mt-2 border-t border-[#e6ebf3] pt-2">
+            <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-[#8490a4]">Planning Categories</div>
+            {planningCategories.map((c) => (
+              <label key={c.id} className="flex cursor-pointer items-center justify-between rounded px-1.5 py-1 hover:bg-[#f0f4fb]">
+                <span className="flex items-center gap-2">
+                  <span className="h-2 w-3 rounded-full" style={{ backgroundColor: c.color }} />
+                  {c.name}
+                  <span className="text-[#8290a6]">({c.count})</span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={!hiddenCategories.has(c.name)}
+                  onChange={() => onToggleCategory(c.name)}
+                  className="accent-[#1c33c8]"
+                />
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
-function InsightsPanel({ onAction, onDownload }: { onAction: () => void; onDownload: () => void }) {
-  return <aside className="w-full shrink-0 space-y-4 overflow-y-auto bg-white p-4 shadow-sm xl:w-[340px] xl:max-h-[calc(100vh-202px)]"><div className="rounded-xl bg-[#eef4ff] p-3"><div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[#1c33c8]">Active Inspection Unit <span className="flex items-center gap-1 rounded-full bg-[#d5f6ee] px-2 py-1 text-[9px] text-[#047857]"><span className="h-1.5 w-1.5 rounded-full bg-[#10b981]" /> Live Field Link</span></div><h2 className="mt-1 text-lg font-bold">Nadia &amp; Chapra Sector</h2><p className="text-xs text-[#63718a]">Circle: West Bengal · Package WB-04</p><div className="mt-3 flex justify-between border-t border-[#dce5f3] pt-2 text-xs"><span className="text-[#63718a]">Corridor Completion</span><b>82.4%</b></div><div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#dbe6fb]"><div className="h-full w-[82.4%] rounded-full bg-[#1c33c8]" /></div></div><div className="rounded-xl border-l-[3px] border-[#1c33c8] bg-white p-3.5 shadow-[0_2px_10px_rgba(28,51,91,0.1)]"><div className="flex items-start justify-between"><div><div className="flex items-center gap-1.5"><h3 className="text-lg font-bold">Route R-104</h3><span className="rounded bg-[#dfe0ff] px-1.5 py-0.5 text-[10px] font-bold text-[#172fc5]">OFC Spur</span></div><p className="text-[11px] text-[#63718a]">Chapra Junction to GP Tehatta Node</p></div><span className="rounded-full bg-[#d8f4ff] px-2 py-1 text-[10px] font-bold text-[#005f7d]">In Progress (93%)</span></div><div className="mt-3 grid grid-cols-2 gap-2 text-xs"><Metric label="Survey Distance" value="8.45 KM" note="Sanctioned KML" /><Metric label="Planned Const." value="8.20 KM" note="Alignment verified" /><Metric label="Actual Built" value="7.65 KM" note="93.3% constructed" good /><Metric label="Deviation Flag" value="+0.55 KM" note="ROW Offset" alert /></div><div className="mt-3 space-y-1.5 border-t border-[#e3e8f1] pt-2 text-[11px]"><Property label="Contractor" value="Eishen Enterprises Ltd." /><Property label="Work Type" value="New Trench & Duct Laying" /><Property label="Road Category" value="THARROAD / PWD Class III" /><Property label="Cable Side" value="LHS (Left Hand Side)" /><Property label="GPS Integrated" value="Yes (100% Synced)" good /></div><div className="mt-3 border-t border-[#e3e8f1] pt-2"><div className="mb-2 text-[11px] font-bold">5-Stage Verification Pipeline</div>{['Field GIS Survey', 'BSNL DoT Approval', 'Trenching & Ducting', 'OTDR & Blowing Test', 'GPS Integration (RFMS)'].map((item, index) => <div key={item} className="flex items-center justify-between py-1 text-[11px]"><span className={`flex items-center gap-1.5 ${index === 3 ? 'font-semibold text-[#006686]' : ''}`}><CheckCircle2 size={14} className={index === 3 ? 'text-[#006686]' : 'text-[#10b981]'} />{index + 1}. {item}</span><span className="text-[10px] text-[#8390a5]">{['Verified 18-Oct', 'Sanctioned', '7.65 / 8.20 KM', 'In Progress', 'Geo-tagged'][index]}</span></div>)}</div><div className="mt-3 grid grid-cols-3 gap-1.5 border-t border-[#e3e8f1] pt-2"><button onClick={() => onDownload()} className="rounded bg-[#edf2fb] py-1.5 text-[10px] font-semibold hover:bg-[#e1e9f8]">Survey KML</button><button onClick={() => onDownload()} className="rounded bg-[#edf2fb] py-1.5 text-[10px] font-semibold hover:bg-[#e1e9f8]">Photos (18)</button><button onClick={() => onDownload()} className="rounded bg-[#edf2fb] py-1.5 text-[10px] font-semibold hover:bg-[#e1e9f8]">GPS Track</button></div></div><div className="rounded-xl border-l-[3px] border-[#ba1a1a] bg-[#fff0ee] p-3.5"><div className="flex items-center justify-between"><div className="flex items-center gap-1.5 text-xs font-bold text-[#ba1a1a]"><AlertTriangle size={17} /> CRITICAL ISSUE: ISS-1042</div><span className="rounded bg-[#ba1a1a] px-1.5 py-0.5 text-[10px] font-bold text-white">Open</span></div><h3 className="mt-2 text-xs font-bold">Route Alignment Deviation Detected</h3><p className="mt-1 text-[11px] leading-relaxed text-[#63718a]">Duct trench has shifted <b>0.55 KM East</b> of approved PWD ROW sanction into private agricultural land between Chainage CH: 06+200 and CH: 06+750.</p><div className="mt-2 space-y-1 text-[11px] text-[#63718a]"><Property label="Assigned" value="Nadia Field Unit 04" /><Property label="Logged" value="Yesterday 16:40 IST" /></div><div className="mt-3 flex gap-2"><button onClick={onAction} className="flex-1 rounded-lg bg-[#ba1a1a] py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-[#a91515]">Request Rectification</button><button onClick={() => onDownload()} className="rounded-lg bg-white px-2.5 py-1.5 text-xs hover:bg-[#ffe4e1]">Audit Log</button></div></div><div className="rounded-xl bg-[#eef4ff] p-3.5"><div className="mb-2 flex items-center justify-between text-xs font-bold uppercase tracking-wider">All 4 Project States <span className="text-[10px] text-[#1c33c8]">Live Sync</span></div>{[['West Bengal', '82%', '1,120 KM', '#10b981'], ['Himachal Pradesh', '76%', '390 KM', '#1c33c8'], ['Arunachal Pradesh', '71%', '480 KM', '#006686'], ['Andaman & Nicobar', '64%', '210 KM', '#f59e0b']].map(([name, percent, km, color]) => <div key={name} className="mb-2 rounded-lg bg-white p-2"><div className="flex items-center justify-between text-[11px] font-semibold"><span>{name}</span><span style={{ color }}>{percent} · {km}</span></div><div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#dce6f5]"><div className="h-full rounded-full" style={{ width: percent, backgroundColor: color }} /></div></div>)}<button onClick={onDownload} className="mt-1 flex w-full items-center justify-center gap-1 py-1.5 text-xs font-semibold text-[#1c33c8] hover:bg-white"><Download size={13} /> Download Executive GIS Audit Report (.PDF)</button></div></aside>;
+function InsightsPanel({
+  selectedBlock,
+  data,
+  existingPoles,
+  newPoles,
+  loading,
+  dashboard,
+}: {
+  selectedBlock: BlockRecord | null;
+  data: LoadedBlockData;
+  existingPoles: number;
+  newPoles: number;
+  loading: boolean;
+  dashboard: ExecutiveDashboardResponse | null;
+}) {
+  if (!selectedBlock) {
+    return (
+      <aside className="w-full shrink-0 space-y-4 overflow-y-auto bg-white p-4 shadow-sm xl:w-[340px] xl:max-h-[calc(100vh-88px)]">
+        <div className="rounded-xl bg-[#eef4ff] p-4 text-center">
+          <Search size={22} className="mx-auto mb-2 text-[#1c33c8]" />
+          <p className="text-xs text-[#52617a]">
+            Search for a block above, or zoom into the map past level {AUTO_DETECT_MIN_ZOOM} with Auto-detect on — its accepted
+            poles, construction progress and desktop planning data will load automatically.
+          </p>
+        </div>
+      </aside>
+    );
+  }
+
+  const hasData = data.poles.length > 0 || data.constructionPlacemarks.length > 0 || data.planningPlacemarks.length > 0;
+
+  return (
+    <aside className="w-full shrink-0 space-y-4 overflow-y-auto bg-white p-4 shadow-sm xl:w-[340px] xl:max-h-[calc(100vh-88px)]">
+      <div className="rounded-xl bg-[#eef4ff] p-3">
+        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[#1c33c8]">
+          Active Inspection Unit
+          {loading ? (
+            <span className="flex items-center gap-1 rounded-full bg-[#d5f6ee] px-2 py-1 text-[9px] text-[#047857]">
+              <Loader2 size={10} className="animate-spin" /> Loading
+            </span>
+          ) : hasData ? (
+            <span className="flex items-center gap-1 rounded-full bg-[#d5f6ee] px-2 py-1 text-[9px] text-[#047857]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#10b981]" />Field Link Data
+
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 rounded-full bg-[#ffe0dc] px-2 py-1 text-[9px] text-[#93000a]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#dc2626]" /> No Data
+            </span>
+          )}
+        </div>
+        <h2 className="mt-1 text-lg font-bold">{selectedBlock.block_name}</h2>
+        <p className="text-xs text-[#63718a]">
+          {selectedBlock.district_name ?? 'Unknown district'} · {selectedBlock.state_name}
+        </p>
+        <div className="mt-2 grid grid-cols-3 gap-2 border-t border-[#dce5f3] pt-2 text-center text-[10px]">
+          <div>
+            <b className="block text-[#0b1c30]">{selectedBlock.block_id}</b>
+            <span className="text-[#8692a5]">Block ID</span>
+          </div>
+          <div>
+            <b className="block text-[#0b1c30]">{selectedBlock.district_id ?? '—'}</b>
+            <span className="text-[#8692a5]">District ID</span>
+          </div>
+          <div>
+            <b className="block text-[#0b1c30]">{selectedBlock.state_id}</b>
+            <span className="text-[#8692a5]">State ID</span>
+          </div>
+        </div>
+      </div>
+
+      <RouteOverviewCard networks={data.planningNetworks} dashboard={dashboard} />
+
+      <div className="space-y-2">
+        <Metric label="Accepted Poles" value={data.poles.length} note={`${newPoles} new · ${existingPoles} existing`} />
+        <Metric
+          label="Construction Points"
+          value={data.constructionPlacemarks.length}
+          note={data.constructionCategories.map((c) => c.name.replace('Construction: ', '')).join(', ') || 'No data'}
+        />
+        <Metric
+          label="Desktop Planning Assets"
+          value={data.planningPlacemarks.length}
+          note={data.planningCategories.length > 0 ? `${data.planningCategories.length} categories` : 'No data'}
+        />
+      </div>
+
+      {!loading &&
+        data.poles.length === 0 &&
+        data.constructionPlacemarks.length === 0 &&
+        data.planningPlacemarks.length === 0 && (
+          <div className="flex items-start gap-2 rounded-lg bg-[#fff8e6] p-3 text-[11px] text-[#8a6d00]">
+            <AlertTriangle size={15} className="mt-0.5 shrink-0" />
+            No accepted poles, construction or planning data was returned for this block yet.
+          </div>
+        )}
+    </aside>
+  );
 }
 
-function Metric({ label, value, note, good, alert }: { label: string; value: string; note: string; good?: boolean; alert?: boolean }) { return <div className={`rounded-lg p-2 ${alert ? 'bg-[#fff0ee]' : 'bg-[#f0f4fb]'}`}><div className={`text-[10px] ${alert ? 'font-semibold text-[#ba1a1a]' : 'text-[#63718a]'}`}>{label}</div><div className={`text-sm font-bold ${good ? 'text-[#047857]' : alert ? 'text-[#ba1a1a]' : ''}`}>{value}</div><div className={`text-[10px] ${alert ? 'text-[#ba1a1a]' : 'text-[#63718a]'}`}>{note}</div></div>; }
-function Property({ label, value, good }: { label: string; value: string; good?: boolean }) { return <div className="flex items-start justify-between gap-3"><span className="text-[#63718a]">{label}:</span><span className={`text-right font-medium ${good ? 'font-bold text-[#047857]' : ''}`}>{value}</span></div>; }
+// Built from the raw desktop-planning network response (total/existing/
+// proposed length, name, status) — the same fields RoutePlanning/RouteList.tsx
+// shows in its table, here rolled up into the mockup's "Route" card shape
+// but with real numbers instead of placeholder ones.
+function RouteOverviewCard({
+  networks,
+  dashboard,
+}: {
+  networks: DesktopPlanningNetwork[];
+  dashboard: ExecutiveDashboardResponse | null;
+}) {
+  if (networks.length === 0) return null;
+
+  const toKm = (value: string) => {
+    const n = parseFloat(value);
+    return isNaN(n) ? 0 : n;
+  };
+
+  const totalKm = networks.reduce((sum, n) => sum + toKm(n.total_length), 0);
+  const proposedKm = networks.reduce((sum, n) => sum + toKm(n.proposed_length), 0);
+
+  // "Actual Built" mirrors the Construction Built KPI card (same
+  // /get-executive-dashboard scoping to this block) rather than the desktop
+  // planning network's own existing_length, so the two stay consistent.
+  const actualBuiltKm = dashboard?.construction_built.summary.totalKm ?? null;
+  const remainingKm = actualBuiltKm !== null ? Math.max(totalKm - actualBuiltKm, 0) : null;
+  const percent = actualBuiltKm !== null && totalKm > 0 ? Math.min(100, Math.round((actualBuiltKm / totalKm) * 100)) : 0;
+
+  const primary = networks[0];
+  const routeName = networks.length > 1 ? `${primary.name} +${networks.length - 1} more` : primary.name;
+
+  return (
+    <div className="rounded-xl border-l-[3px] border-[#1c33c8] bg-white p-3.5 shadow-[0_2px_10px_rgba(28,51,91,0.1)]">
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="flex items-center gap-1.5">
+            <h3 className="text-base font-bold">{routeName}</h3>
+            <span className="rounded bg-[#dfe0ff] px-1.5 py-0.5 text-[10px] font-bold text-[#172fc5]">Desktop Planning</span>
+          </div>
+          {primary.main_point_name && <p className="text-[11px] text-[#63718a]">{primary.main_point_name}</p>}
+        </div>
+        <span className="whitespace-nowrap rounded-full bg-[#d8f4ff] px-2 py-1 text-[10px] font-bold text-[#005f7d]">
+          {primary.status || 'Planned'} ({percent}%)
+        </span>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+        <RouteMetric label="Survey Distance" value={`${totalKm.toFixed(2)} KM`} note="Total network length" />
+        <RouteMetric label="Planned Const." value={`${proposedKm.toFixed(2)} KM`} note="Proposed cable" />
+        <RouteMetric label="Actual Built" value={`${fmtNum(actualBuiltKm, 2)} KM`} note={`${percent}% constructed`} good />
+        <RouteMetric
+          label="Remaining"
+          value={`${remainingKm !== null ? remainingKm.toFixed(2) : '—'} KM`}
+          note="Left to build"
+          alert={!!remainingKm && remainingKm > 0}
+        />
+      </div>
+    </div>
+  );
+}
+
+function RouteMetric({
+  label,
+  value,
+  note,
+  good,
+  alert,
+}: {
+  label: string;
+  value: string;
+  note: string;
+  good?: boolean;
+  alert?: boolean;
+}) {
+  return (
+    <div className={`rounded-lg p-2 ${alert ? 'bg-[#fff0ee]' : 'bg-[#f0f4fb]'}`}>
+      <div className={`text-[10px] ${alert ? 'font-semibold text-[#ba1a1a]' : 'text-[#63718a]'}`}>{label}</div>
+      <div className={`text-sm font-bold ${good ? 'text-[#047857]' : alert ? 'text-[#ba1a1a]' : ''}`}>{value}</div>
+      <div className={`text-[10px] ${alert ? 'text-[#ba1a1a]' : 'text-[#63718a]'}`}>{note}</div>
+    </div>
+  );
+}
+
+function Metric({ label, value, note }: { label: string; value: number; note: string }) {
+  return (
+    <div className="rounded-lg border-l-[3px] border-[#1c33c8] bg-[#f0f4fb] p-3">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-[#63718a]">{label}</div>
+      <div className="text-xl font-bold text-[#0b1c30]">{value.toLocaleString('en-IN')}</div>
+      <div className="mt-0.5 truncate text-[10px] text-[#8692a5]" title={note}>
+        {note}
+      </div>
+    </div>
+  );
+}
 
 export default OverallMap;

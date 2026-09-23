@@ -25,6 +25,10 @@ import {
   ATRouterBlockListResponse,
 } from '../../types/block-router-checklist';
 import { getAuthHeaders } from '../../utils/accessControl';
+import {
+  ConstructionApiResponse,
+  DesktopPlanningApiResponse,
+} from '../../types/kmz';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
@@ -1226,7 +1230,7 @@ export interface AcceptedPolesResponse {
   }[];
 }
 
-export const getAcceptedPoles = async (params: Record<string, string | number>): Promise<AcceptedPolesResponse> => {
+export const getAcceptedPoles = async (params: Record<string, string | number | undefined>): Promise<AcceptedPolesResponse> => {
   try {
     const queryParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
@@ -1341,6 +1345,145 @@ export const getRemarksHistory = async (params: {
     return response.json();
   } catch (error) {
     console.error('Error fetching remarks history:', error);
+    throw error;
+  }
+};
+
+// GET /get-construction-data — same endpoint SmartInventory's construction
+// tab uses, keyed by block_id and processed with processConstructionData()
+// from SmartInventory/PlaceMark.tsx into DEPTH/STARTPIT/ENDPIT placemarks.
+export const getConstructionData = async (params: {
+  state_id?: string | number;
+  district_id?: string | number;
+  block_id?: string | number;
+}): Promise<ConstructionApiResponse> => {
+  try {
+    const queryParams: Record<string, string> = {};
+    if (params.state_id !== undefined) queryParams.state_id = String(params.state_id);
+    if (params.district_id !== undefined) queryParams.district_id = String(params.district_id);
+    if (params.block_id !== undefined) queryParams.block_id = String(params.block_id);
+
+    const response = await axios.get(`${TraceBASEURL}/get-construction-data`, {
+      params: queryParams,
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching construction data:', error);
+    throw error;
+  }
+};
+
+// POST /get-desktop-planning — same call SmartInventory/ExecutiveConstructionView
+// use for the "Approved KMZ" desktop-planning overlay, processed with
+// processDesktopPlanningData() from SmartInventory/PlaceMark.tsx.
+export const getDesktopPlanning = async (params: {
+  stateId: string | number;
+  districtId?: string | number;
+  blockId: string | number;
+  type?: string;
+}): Promise<DesktopPlanningApiResponse> => {
+  try {
+    const response = await axios.post(
+      `${TraceBASEURL}/get-desktop-planning`,
+      {
+        stateId: params.stateId,
+        districtId: params.districtId ?? '',
+        blockId: params.blockId,
+        type: params.type ?? 'Approved KMZ',
+      },
+      { headers: { 'Content-Type': 'application/json' } },
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching desktop planning data:', error);
+    throw error;
+  }
+};
+
+// Every numeric field here has been observed null (not just absent) when a
+// state_id/district_id/block_id filter matches no data — always null-check
+// before formatting, never assume the summary object being present implies
+// its numbers are.
+export interface ExecutiveDashboardConstructionSummary {
+  totalSurveys: number | null;
+  acceptedSurveys: number | null;
+  pendingSurveys: number | null;
+  rejectedSurveys: number | null;
+  totalDistanceMeters: number | null;
+  totalKm: number | null;
+}
+
+export interface ExecutiveDashboardAlertsSummary {
+  total: number | null;
+  missing_depth: number | null;
+  low_depth: number | null;
+  high_depth: number | null;
+  split: number | null;
+  checked: number | null;
+  open: number | null;
+}
+
+export interface ExecutiveDashboardAlert {
+  issue_type: string;
+  category: string;
+  severity: string;
+  survey_id: number;
+  point_id: number;
+  depth: string;
+  location: string;
+  vendor: string;
+  machine: string;
+  timestamp: string;
+  status: string;
+  checked_by: string | null;
+  remark: string | null;
+  checked_at: string | null;
+  [key: string]: unknown;
+}
+
+export interface ExecutiveDashboardResponse {
+  survey_distance_km: number | null;
+  construction_built: {
+    status: boolean;
+    summary: ExecutiveDashboardConstructionSummary;
+  };
+  survey_const_match_pct: number | null;
+  gps_integrated_count: number | null;
+  gps_completed_count: number | null;
+  open_gis_alerts: {
+    status: boolean;
+    filters: { type: string; category: string | null; status: string | null };
+    summary: ExecutiveDashboardAlertsSummary;
+    data: ExecutiveDashboardAlert[];
+  };
+}
+
+// GET /get-executive-dashboard — powers the KPI cards at the top of
+// OverallMap. Optional state_id/district_id/block_id scope the numbers to
+// the currently selected block; omitted, it returns the project-wide totals.
+export const getExecutiveDashboard = async (params: {
+  state_id?: string | number;
+  district_id?: string | number;
+  block_id?: string | number;
+}): Promise<ExecutiveDashboardResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
+    if (params.state_id !== undefined) queryParams.append('state_id', String(params.state_id));
+    if (params.district_id !== undefined) queryParams.append('district_id', String(params.district_id));
+    if (params.block_id !== undefined) queryParams.append('block_id', String(params.block_id));
+
+    const queryString = queryParams.toString();
+    const url = queryString
+      ? `${TraceBASEURL}/get-executive-dashboard?${queryString}`
+      : `${TraceBASEURL}/get-executive-dashboard`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+  } catch (error) {
+    console.error('Error fetching executive dashboard:', error);
     throw error;
   }
 };

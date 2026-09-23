@@ -694,7 +694,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                   </span>
                                 </NavLink>
                               </li>
-                              <li>
+                              {/* <li>
                                 <NavLink
                                   to="/dashboards/executive-construction-view"
                                   className={({ isActive }) =>
@@ -711,7 +711,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                                     Executive Construction View
                                   </span>
                                 </NavLink>
-                              </li>
+                              </li> */}
                               <li>
                                 <NavLink
                                   to="/construction"
