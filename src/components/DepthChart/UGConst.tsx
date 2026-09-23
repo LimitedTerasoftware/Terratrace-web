@@ -1116,7 +1116,14 @@ const Report: React.FC<ReportProps> = ({
       }
 
       // ── Group activities by survey_id for polyline drawing ─────────────────
-      const surveyGroups: Record<string, { lat: number; lng: number }[]> = {};
+      // STARTSURVEY/ENDSURVEY are excluded from the route line itself (they're
+      // still plotted as point placemarks above) and the remaining points are
+      // connected in order_index order rather than API/array order.
+      const POLYLINE_EXCLUDED_EVENT_TYPES = ['STARTSURVEY', 'ENDSURVEY'];
+      const surveyGroups: Record<
+        string,
+        { lat: number; lng: number; order_index: number }[]
+      > = {};
 
       const activeEventTypes = isAerial
         ? AERIAL_EVENT_TYPES
@@ -1163,16 +1170,26 @@ const Report: React.FC<ReportProps> = ({
         </Point>
       </Placemark>`;
 
-        // Collect points per survey for route polyline
-        const sid = String(activity.survey_id || activity.id);
-        if (!surveyGroups[sid]) surveyGroups[sid] = [];
-        surveyGroups[sid].push({ lat, lng });
+        // Collect points per survey for route polyline — STARTSURVEY/ENDSURVEY
+        // are point-only and never part of the connecting line.
+        if (!POLYLINE_EXCLUDED_EVENT_TYPES.includes(eventType)) {
+          const sid = String(activity.survey_id || activity.id);
+          if (!surveyGroups[sid]) surveyGroups[sid] = [];
+          surveyGroups[sid].push({
+            lat,
+            lng,
+            order_index: Number(activity.order_index) || 0,
+          });
+        }
       });
 
       // ── Polyline per survey_id ──────────────────────────────────────────────
       Object.entries(surveyGroups).forEach(([sid, points]) => {
         if (points.length < 2) return;
-        const coords = points
+        const orderedPoints = [...points].sort(
+          (a, b) => a.order_index - b.order_index,
+        );
+        const coords = orderedPoints
           .map(({ lat, lng }) => `${lng},${lat},0`)
           .join('\n              ');
         allPlacemarks += `

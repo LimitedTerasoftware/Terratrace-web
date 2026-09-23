@@ -1,7 +1,7 @@
 import axios from 'axios';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertCircle, ArrowLeft, Loader2, X, ZoomIn, Camera } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Loader2, X, ZoomIn, Camera, RefreshCw } from 'lucide-react';
 import moment from 'moment';
 import GoogleMapsLoader from '../hooks/googleMapsLoader';
 import { Activity, JointChamberData } from '../../types/survey';
@@ -1355,6 +1355,11 @@ const UGProgressMap: React.FC = () => {
     Set<string>
   >(new Set());
   const [integratedGps, setIntegratedGps] = useState<IntegratedGp[]>([]);
+  const [syncingGps, setSyncingGps] = useState(false);
+  const [syncGpsMessage, setSyncGpsMessage] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
 
   const markers = useMemo(
     () => buildMarkers(events, ofcSurveyIds),
@@ -1464,41 +1469,54 @@ const UGProgressMap: React.FC = () => {
     };
   }, [selectedBlock, selectedDistrict, selectedState]);
 
-  useEffect(() => {
+  const fetchIntegratedGps = useCallback(async () => {
     if (!selectedBlock) {
       setIntegratedGps([]);
       return;
     }
+    try {
+      const response = await axios.get(`${TraceBASEURL}/getIntegratedGps`, {
+        params: { block_id: selectedBlock },
+      });
 
-    let mounted = true;
-    const fetchIntegratedGps = async () => {
-      try {
-        const response = await axios.get(`${TraceBASEURL}/getIntegratedGps`, {
-          params: { block_id: selectedBlock },
-        });
-
-        if (!mounted) return;
-        if (response.data?.status && Array.isArray(response.data.data)) {
-          setIntegratedGps(
-            response.data.data.filter(
-              (gp: IntegratedGp) => Number(gp.integrated) === 1,
-            ),
-          );
-        } else {
-          setIntegratedGps([]);
-        }
-      } catch (err) {
-        if (!mounted) return;
-        console.error('Error fetching integrated GPs', err);
+      if (response.data?.status && Array.isArray(response.data.data)) {
+        setIntegratedGps(
+          response.data.data.filter(
+            (gp: IntegratedGp) => Number(gp.integrated) === 1,
+          ),
+        );
+      } else {
         setIntegratedGps([]);
       }
-    };
-
-    fetchIntegratedGps();
-    return () => {
-      mounted = false;
-    };
+    } catch (err) {
+      console.error('Error fetching integrated GPs', err);
+      setIntegratedGps([]);
+    }
   }, [selectedBlock]);
+
+  useEffect(() => {
+    fetchIntegratedGps();
+  }, [fetchIntegratedGps]);
+
+  const handleSyncGps = async () => {
+    setSyncingGps(true);
+    setSyncGpsMessage(null);
+    try {
+      await axios.get(
+        `${TraceBASEURL}/sync-gps`,
+      );
+      setSyncGpsMessage({ type: 'success', text: 'GPS synced successfully.' });
+      await fetchIntegratedGps();
+    } catch (err) {
+      console.error('Error syncing GPS:', err);
+      setSyncGpsMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Failed to sync GPS',
+      });
+    } finally {
+      setSyncingGps(false);
+    }
+  };
 
   const handlePlanningCategoryVisibilityChange = (
     categoryId: string,
@@ -1529,7 +1547,30 @@ const UGProgressMap: React.FC = () => {
               events
             </p>
           </div>
+          <button
+            onClick={handleSyncGps}
+            disabled={syncingGps}
+            className="ml-auto flex flex-none items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {syncingGps ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            {syncingGps ? 'Syncing...' : 'Sync GPS'}
+          </button>
         </div>
+        {syncGpsMessage && (
+          <p
+            className={`mt-2 text-xs ${
+              syncGpsMessage.type === 'success'
+                ? 'text-green-600'
+                : 'text-red-600'
+            }`}
+          >
+            {syncGpsMessage.text}
+          </p>
+        )}
       </div>
 
       {loading ? (
