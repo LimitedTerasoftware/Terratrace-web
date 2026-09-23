@@ -1697,9 +1697,11 @@ function SmartInventory() {
         }));
       }
 
-      // Add desktop planning points and connections
-      if (desktopPlanningData && desktopPlanningData.length > 0) {
-        desktopPlanningData.forEach((item) => {
+      // Add desktop planning / approved KMZ points and connections
+      const addPlanningItemsToShapefile = (
+        items: ProcessedDesktopPlanning[],
+      ) => {
+        items.forEach((item) => {
           if (item.type === 'point') {
             const coord = item.coordinates as { lat: number; lng: number };
             shapefileData.parsed_data.points.push({
@@ -1722,6 +1724,15 @@ function SmartInventory() {
             });
           }
         });
+      };
+
+      if (desktopPlanningData && desktopPlanningData.length > 0) {
+        addPlanningItemsToShapefile(desktopPlanningData);
+      }
+
+      // Add Approved KMZ points and connections
+      if (approvedKmzData && approvedKmzData.length > 0) {
+        addPlanningItemsToShapefile(approvedKmzData);
       }
 
       // Send request to shapefile download API
