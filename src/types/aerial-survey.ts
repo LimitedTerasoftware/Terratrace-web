@@ -115,6 +115,9 @@ export interface PolePreview {
 export interface JointEnclosure {
   jointType: string;
   jointImages: string[];
+  trayImages?: string[];
+  startMeterImages?: string[];
+  endMeterImages?: string[];
   endDrumMeter: string;
   endDrumNumber: string;
   startDrumMeter: string;

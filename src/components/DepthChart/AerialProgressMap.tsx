@@ -389,9 +389,8 @@ const getRecordPhotos = (record: PoleString): string[] => {
   const photos = new Set<string>();
   if (record.image) photos.add(record.image);
   record.images?.forEach((img) => img && photos.add(img));
-  getJointEnclosure(record)?.jointImages?.forEach(
-    (img) => img && photos.add(img),
-  );
+  // Joint enclosure images (joint/start meter/end meter) get their own
+  // labeled groups in MarkerDetailsPanel — excluded here to avoid duplicates.
   getLandmark(record)?.images?.forEach((img) => img && photos.add(img));
   return Array.from(photos);
 };
@@ -458,6 +457,47 @@ const Row: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   </div>
 );
 
+const ImageGroup: React.FC<{
+  label: string;
+  photos: string[];
+  onImageClick: (url: string) => void;
+}> = ({ label, photos, onImageClick }) => {
+  if (photos.length === 0) return null;
+  return (
+    <div className="pt-1">
+      <h4 className="text-xs font-medium text-gray-700 mb-2 flex items-center gap-1">
+        <Camera size={12} /> {label}
+      </h4>
+      <div className="grid grid-cols-2 gap-2">
+        {photos.slice(0, 6).map((photo, index) => (
+          <div
+            key={index}
+            className="relative aspect-square bg-gray-100 rounded-md overflow-hidden cursor-pointer hover:opacity-80 transition-opacity group"
+            onClick={() => onImageClick(resolveImageUrl(photo))}
+          >
+            <img
+              src={resolveImageUrl(photo)}
+              alt={`${label} ${index + 1}`}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+              <ZoomIn
+                className="text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                size={16}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+      {photos.length > 6 && (
+        <p className="text-xs text-gray-500 mt-1">
+          +{photos.length - 6} more photos
+        </p>
+      )}
+    </div>
+  );
+};
+
 const MarkerDetailsPanel: React.FC<{
   record: PoleString;
   onClose: () => void;
@@ -469,8 +509,21 @@ const MarkerDetailsPanel: React.FC<{
     eventType: record.eventType,
     subType: jointEnclosure?.jointType?.trim() || undefined,
   });
-  const photos = getRecordPhotos(record);
   const videoUrl = getRecordVideoUrl(record);
+
+  // Some records repeat the same URL across joint_enclosure sub-fields (or
+  // between those and the record's own `images`) — without this, the exact
+  // same photo would render in more than one group below.
+  const shownImages = new Set<string>();
+  const uniqueImages = (urls: string[] | undefined) => {
+    const unique = (urls ?? []).filter((url) => url && !shownImages.has(url));
+    unique.forEach((url) => shownImages.add(url));
+    return unique;
+  };
+  const jointImages = uniqueImages(jointEnclosure?.jointImages);
+  const startMeterImages = uniqueImages(jointEnclosure?.startMeterImages);
+  const endMeterImages = uniqueImages(jointEnclosure?.endMeterImages);
+  const photos = uniqueImages(getRecordPhotos(record));
 
   return (
     <div className="bg-white rounded-lg shadow-lg max-w-sm w-80 max-h-[26rem] overflow-hidden">
@@ -512,6 +565,33 @@ const MarkerDetailsPanel: React.FC<{
         {jointEnclosure?.jointType && (
           <Row label="Joint Type" value={jointEnclosure.jointType} />
         )}
+        {jointEnclosure?.startDrumNumber && (
+          <Row
+            label="Start Drum"
+            value={`${jointEnclosure.startDrumNumber} / ${jointEnclosure.startDrumMeter}m`}
+          />
+        )}
+        {jointEnclosure?.endDrumNumber && (
+          <Row
+            label="End Drum"
+            value={`${jointEnclosure.endDrumNumber} / ${jointEnclosure.endDrumMeter}m`}
+          />
+        )}
+        <ImageGroup
+          label="Joint Images"
+          photos={jointImages}
+          onImageClick={onImageClick}
+        />
+        <ImageGroup
+          label="Start Meter Images"
+          photos={startMeterImages}
+          onImageClick={onImageClick}
+        />
+        <ImageGroup
+          label="End Meter Images"
+          photos={endMeterImages}
+          onImageClick={onImageClick}
+        />
         {record.start_lgd_name && record.end_lgd_name && (
           <Row
             label="GP Link"
@@ -525,39 +605,7 @@ const MarkerDetailsPanel: React.FC<{
         {record.block_name && <Row label="Block" value={record.block_name} />}
   
 
-        {photos.length > 0 && (
-          <div className="pt-1">
-            <h4 className="text-xs font-medium text-gray-700 mb-2 flex items-center gap-1">
-              <Camera size={12} /> Photos
-            </h4>
-            <div className="grid grid-cols-2 gap-2">
-              {photos.slice(0, 6).map((photo, index) => (
-                <div
-                  key={index}
-                  className="relative aspect-square bg-gray-100 rounded-md overflow-hidden cursor-pointer hover:opacity-80 transition-opacity group"
-                  onClick={() => onImageClick(resolveImageUrl(photo))}
-                >
-                  <img
-                    src={resolveImageUrl(photo)}
-                    alt={`${style.label} photo ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                    <ZoomIn
-                      className="text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                      size={16}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-            {photos.length > 6 && (
-              <p className="text-xs text-gray-500 mt-1">
-                +{photos.length - 6} more photos
-              </p>
-            )}
-          </div>
-        )}
+        <ImageGroup label="Photos" photos={photos} onImageClick={onImageClick} />
 
         {videoUrl && (
           <div className="pt-1">
