@@ -359,6 +359,7 @@ export function AddPoleEventModal({
         end_lon: Number(gpEndLng),
       });
       toast.success('GP boundaries saved successfully.');
+      onSuccess();
     } catch (err) {
       console.error('Error saving GP boundaries:', err);
       setGpError(

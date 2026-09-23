@@ -55,6 +55,8 @@ const EVENT_MARKER_CONFIG: Record<
   PREVIEW: { color: '#EF4444', icon: '📍', label: 'Survey' },
   START: { color: '#22C55E', icon: '🟢', label: 'Start GP' },
   END: { color: '#DC2626', icon: '🔴', label: 'End GP' },
+  startgp_pole: { color: '#22C55E', icon: '🟢', label: 'Start GP (Pole)' },
+  endgp_pole: { color: '#DC2626', icon: '🔴', label: 'End GP (Pole)' },
 };
 
 const DEFAULT_MARKER = { color: '#6B7280', icon: '📌', label: 'Other' };
@@ -64,8 +66,56 @@ const DEFAULT_MARKER = { color: '#6B7280', icon: '📌', label: 'Other' };
 const PIN_PATH =
   'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z';
 
+// Case-insensitive fallback — new event types coming back from the API
+// (e.g. startgp_pole / STARTGP_POLE) should still resolve to their config
+// regardless of casing.
+const EVENT_MARKER_CONFIG_UPPER: Record<string, { color: string; icon: string; label: string }> =
+  Object.fromEntries(
+    Object.entries(EVENT_MARKER_CONFIG).map(([key, value]) => [key.toUpperCase(), value]),
+  );
+
 const getMarkerConfig = (eventType: string) =>
-  EVENT_MARKER_CONFIG[eventType] ?? { ...DEFAULT_MARKER, label: eventType };
+  EVENT_MARKER_CONFIG[eventType] ??
+  EVENT_MARKER_CONFIG_UPPER[eventType.toUpperCase()] ?? { ...DEFAULT_MARKER, label: eventType };
+
+// GP-boundary pole events read better as drop pins (matching the GP-link
+// start/end markers) than as plain circles.
+const isGpPoleEndpoint = (eventType: string) => {
+  const upper = eventType.toUpperCase();
+  return upper === 'STARTGP_POLE' || upper === 'ENDGP_POLE';
+};
+
+// Builds the icon for an exact (non-clustered) /get-pole-stringing marker —
+// a drop pin for GP-boundary start/end events, a plain circle for everything
+// else — with three visual states: resting, moved-but-not-dragging, and
+// actively being dragged.
+const buildExactMarkerIcon = (
+  eventType: string,
+  fillColor: string,
+  state: 'normal' | 'moved' | 'dragging',
+): google.maps.Symbol => {
+  if (isGpPoleEndpoint(eventType)) {
+    return {
+      path: PIN_PATH,
+      fillColor,
+      fillOpacity: state === 'normal' ? 0.95 : 1,
+      strokeColor: state === 'normal' ? '#ffffff' : '#facc15',
+      strokeWeight: state === 'normal' ? 1.5 : state === 'moved' ? 2.5 : 3,
+      scale: state === 'dragging' ? 2.2 : state === 'moved' ? 2.0 : 1.7,
+      anchor: new google.maps.Point(12, 22),
+      labelOrigin: new google.maps.Point(12, 9),
+    };
+  }
+
+  return {
+    path: google.maps.SymbolPath.CIRCLE,
+    scale: state === 'dragging' ? 12 : state === 'moved' ? 11 : 9,
+    fillColor,
+    fillOpacity: state === 'normal' ? 0.9 : 1,
+    strokeColor: state === 'normal' ? '#ffffff' : '#facc15',
+    strokeWeight: state === 'normal' ? 2 : state === 'moved' ? 2.5 : 3,
+  };
+};
 
 const PREVIEW_LARGE_THRESHOLD = 500;
 const PREVIEW_DETAIL_ZOOM = 16;
@@ -198,12 +248,24 @@ function uniqueEndpoints(
 const baseUrl = import.meta.env.VITE_Image_URL;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
-// Default to showing only Pole markers — Joint Enclosure/Drum/Landmark and
-// the preview/GP-link pins all start hidden and can be turned on from the
-// Filters panel (presentTypes still lists every type, just unchecked).
+// Default to showing only Pole markers plus the GP-boundary start/end pole
+// markers — Joint Enclosure/Drum/Landmark and the preview/GP-link pins all
+// start hidden and can be turned on from the Filters panel (presentTypes
+// still lists every type, just unchecked).
+const DEFAULT_VISIBLE_EVENT_TYPES = ['POLE', 'STARTGP_POLE', 'ENDGP_POLE'];
+
 function computeDefaultVisibleTypes(data: PoleString[]): Set<string> {
-  const hasPole = data.some((d) => d.is_active == 1 && d.eventType === 'POLE');
-  return hasPole ? new Set(['POLE']) : new Set();
+  const active = data.filter((d) => d.is_active == 1);
+  const presentUpper = new Set(active.map((d) => d.eventType.toUpperCase()));
+  const exactTypes = new Set(active.map((d) => d.eventType));
+  return new Set(
+    DEFAULT_VISIBLE_EVENT_TYPES.filter((type) => presentUpper.has(type)).map(
+      (type) =>
+        // Keep the exact casing as it appears in `data` — that's what's used
+        // as the Set key everywhere else (presentTypes, visibleTypes, etc.).
+        [...exactTypes].find((t) => t.toUpperCase() === type) ?? type,
+    ),
+  );
 }
 
 // ─── InfoWindow ───────────────────────────────────────────────────────────────
@@ -874,14 +936,11 @@ const MapComponent: React.FC<Props> = ({
             fontSize: '11px',
             fontWeight: 'bold',
           },
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: hasMoved ? 11 : 9,
+          icon: buildExactMarkerIcon(
+            record.eventType,
             fillColor,
-            fillOpacity: 0.9,
-            strokeColor: hasMoved ? '#facc15' : '#ffffff',
-            strokeWeight: hasMoved ? 2.5 : 2,
-          },
+            hasMoved ? 'moved' : 'normal',
+          ),
           draggable: AdminAcess,
           cursor: AdminAcess ? 'grab' : 'pointer',
         });
@@ -890,14 +949,9 @@ const MapComponent: React.FC<Props> = ({
 
         marker.addListener('dragstart', () => {
           setSelectedRecord(null);
-          marker.setIcon({
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 12,
-            fillColor,
-            fillOpacity: 1,
-            strokeColor: '#facc15',
-            strokeWeight: 3,
-          });
+          marker.setIcon(
+            buildExactMarkerIcon(record.eventType, fillColor, 'dragging'),
+          );
         });
 
         marker.addListener('dragend', (e: google.maps.MapMouseEvent) => {

@@ -69,6 +69,18 @@ export const EVENT_TYPE_CONFIG: Record<
     text: 'text-green-700',
     border: 'border-green-300',
   },
+  startgp_pole: {
+    label: 'Start GP',
+    bg: 'bg-emerald-100',
+    text: 'text-emerald-700',
+    border: 'border-emerald-300',
+  },
+  endgp_pole: {
+    label: 'End GP',
+    bg: 'bg-red-100',
+    text: 'text-red-700',
+    border: 'border-red-300',
+  },
 };
 
 const getEventBadge = (eventType: string) => {
