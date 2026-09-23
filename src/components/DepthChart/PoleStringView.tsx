@@ -1334,6 +1334,10 @@ function PoleStringView() {
         }}
         surveyId={MainData?.id}
         blockId={MainData?.block_id}
+        defaultStartLat={poleData[0]?.start_latitude}
+        defaultStartLng={poleData[0]?.start_longitude}
+        defaultEndLat={poleData[0]?.end_latitude}
+        defaultEndLng={poleData[0]?.end_longitude}
       />
 
       {/* ── Split location modal ── */}

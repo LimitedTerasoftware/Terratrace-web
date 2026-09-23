@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { X, Save, Loader2, AlertCircle, Upload, Trash2 } from 'lucide-react';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const BASEURL = import.meta.env.VITE_API_BASE;
@@ -36,12 +37,18 @@ interface ImagePickerState {
 
 const emptyImagePicker: ImagePickerState = { files: [], previews: [] };
 
+type ModalTab = 'event' | 'gp';
+
 interface AddPoleEventModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   surveyId: number | null | undefined;
   blockId: number | string | null | undefined;
+  defaultStartLat?: string | number | null;
+  defaultStartLng?: string | number | null;
+  defaultEndLat?: string | number | null;
+  defaultEndLng?: string | number | null;
 }
 
 export function AddPoleEventModal({
@@ -50,7 +57,12 @@ export function AddPoleEventModal({
   onSuccess,
   surveyId,
   blockId,
+  defaultStartLat,
+  defaultStartLng,
+  defaultEndLat,
+  defaultEndLng,
 }: AddPoleEventModalProps) {
+  const [modalTab, setModalTab] = useState<ModalTab>('event');
   const [poleType, setPoleType] = useState<PoleType>('new');
   const [poleFields, setPoleFields] = useState<PoleFieldsState>(emptyPoleFields);
   const [poleLat, setPoleLat] = useState('');
@@ -68,11 +80,19 @@ export function AddPoleEventModal({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [gpStartLat, setGpStartLat] = useState('');
+  const [gpStartLng, setGpStartLng] = useState('');
+  const [gpEndLat, setGpEndLat] = useState('');
+  const [gpEndLng, setGpEndLng] = useState('');
+  const [gpSaving, setGpSaving] = useState(false);
+  const [gpError, setGpError] = useState<string | null>(null);
+
   const poleFileRef = useRef<HTMLInputElement | null>(null);
   const muffFileRef = useRef<HTMLInputElement | null>(null);
   const earthingFileRef = useRef<HTMLInputElement | null>(null);
 
   const resetForm = () => {
+    setModalTab('event');
     setPoleType('new');
     setPoleFields(emptyPoleFields);
     setPoleLat('');
@@ -85,6 +105,11 @@ export function AddPoleEventModal({
     setEarthingLng('');
     setEarthingImages(emptyImagePicker);
     setError(null);
+    setGpStartLat('');
+    setGpStartLng('');
+    setGpEndLat('');
+    setGpEndLng('');
+    setGpError(null);
     [poleFileRef, muffFileRef, earthingFileRef].forEach((ref) => {
       if (ref.current) ref.current.value = '';
     });
@@ -93,6 +118,16 @@ export function AddPoleEventModal({
   useEffect(() => {
     if (!isOpen) resetForm();
   }, [isOpen]);
+
+  // Prefill the GP Boundaries tab from the survey's own start/end GP
+  // coordinates every time the modal opens.
+  useEffect(() => {
+    if (!isOpen) return;
+    setGpStartLat(defaultStartLat != null ? String(defaultStartLat) : '');
+    setGpStartLng(defaultStartLng != null ? String(defaultStartLng) : '');
+    setGpEndLat(defaultEndLat != null ? String(defaultEndLat) : '');
+    setGpEndLng(defaultEndLng != null ? String(defaultEndLng) : '');
+  }, [isOpen, defaultStartLat, defaultStartLng, defaultEndLat, defaultEndLng]);
 
   if (!isOpen) return null;
 
@@ -297,6 +332,64 @@ export function AddPoleEventModal({
     }
   };
 
+  const handleSaveGpBoundaries = async () => {
+    setGpError(null);
+
+    if (!surveyId) {
+      setGpError('Missing survey. Please reopen this survey and try again.');
+      return;
+    }
+    if (
+      !gpStartLat.trim() ||
+      !gpStartLng.trim() ||
+      !gpEndLat.trim() ||
+      !gpEndLng.trim()
+    ) {
+      setGpError('Start and end GP latitude/longitude are required.');
+      return;
+    }
+
+    setGpSaving(true);
+    try {
+      await axios.post(`${TraceBASEURL}/insert-gp-boundaries`, {
+        survey_id: surveyId,
+        start_lat: Number(gpStartLat),
+        start_lon: Number(gpStartLng),
+        end_lat: Number(gpEndLat),
+        end_lon: Number(gpEndLng),
+      });
+      toast.success('GP boundaries saved successfully.');
+    } catch (err) {
+      console.error('Error saving GP boundaries:', err);
+      setGpError(
+        err instanceof Error ? err.message : 'Failed to save GP boundaries',
+      );
+    } finally {
+      setGpSaving(false);
+    }
+  };
+
+  const gpField = (
+    label: string,
+    value: string,
+    onChange: (value: string) => void,
+  ) => (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        {label}
+        <span className="text-red-500">*</span>
+      </label>
+      <input
+        type="number"
+        step="any"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
+        disabled={gpSaving}
+      />
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -313,6 +406,52 @@ export function AddPoleEventModal({
           </button>
         </div>
 
+        <div className="flex gap-1 px-6 pt-4 border-b border-gray-200 dark:border-gray-700">
+          {(
+            [
+              { id: 'event', label: 'Pole Event' },
+              { id: 'gp', label: 'GP Boundaries' },
+            ] as { id: ModalTab; label: string }[]
+          ).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setModalTab(tab.id)}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg outline-none ${
+                modalTab === tab.id
+                  ? 'text-blue-600 border-b-2 border-blue-600 dark:text-blue-500 dark:border-blue-500'
+                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {modalTab === 'gp' ? (
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <h3 className="md:col-span-2 text-lg font-medium text-gray-800 dark:text-gray-200 border-b pb-2">
+                Start GP
+              </h3>
+              {gpField('Latitude', gpStartLat, setGpStartLat)}
+              {gpField('Longitude', gpStartLng, setGpStartLng)}
+
+              <h3 className="md:col-span-2 text-lg font-medium text-gray-800 dark:text-gray-200 border-b pb-2 mt-2">
+                End GP
+              </h3>
+              {gpField('Latitude', gpEndLat, setGpEndLat)}
+              {gpField('Longitude', gpEndLng, setGpEndLng)}
+            </div>
+
+            {gpError && (
+              <div className="mt-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
+                <p className="text-sm text-red-600 dark:text-red-400">{gpError}</p>
+              </div>
+            )}
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
           {/* Pole type toggle */}
           <div className="mb-6">
@@ -436,6 +575,7 @@ export function AddPoleEventModal({
             </div>
           )}
         </form>
+        )}
 
         <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
           <button
@@ -445,27 +585,48 @@ export function AddPoleEventModal({
               onClose();
             }}
             className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            disabled={isLoading}
+            disabled={modalTab === 'gp' ? gpSaving : isLoading}
           >
-            Cancel
+            {modalTab === 'gp' ? 'Close' : 'Cancel'}
           </button>
-          <button
-            onClick={handleSubmit}
-            disabled={isLoading}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                Create Event
-              </>
-            )}
-          </button>
+          {modalTab === 'event' ? (
+            <button
+              onClick={handleSubmit}
+              disabled={isLoading}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  Create Event
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSaveGpBoundaries}
+              disabled={gpSaving}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {gpSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  Save Boundaries
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>
