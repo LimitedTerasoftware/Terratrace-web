@@ -42,6 +42,20 @@ interface BlockDataMapProps {
   // set) until the user has drilled into a block — gives an at-a-glance
   // "where is there data" view before any search/auto-detect has run.
   highlightStates: boolean;
+  // The State/District/Block dropdown filters — used to pan/zoom the map to
+  // whatever's been picked even before a full block (and its data) is
+  // selected. Once filterBlockId is set the fitToken effect below takes
+  // over with the actual plotted data's bounds instead.
+  filterStateId: number | null;
+  filterStateName: string | null;
+  filterStateCode: number | null;
+  filterDistrictId: number | null;
+  filterDistrictName: string | null;
+  filterBlockId: number | null;
+  // Fired when a highlighted state polygon on the map is clicked — lets the
+  // parent sync its State dropdown/filter (and everything driven by it: KPI
+  // cards, district options) the same way picking it from the dropdown does.
+  onStateClick?: (stateCode: number, stateName: string) => void;
   onViewportChange?: (zoom: number, bounds: google.maps.LatLngBounds | null) => void;
 }
 
@@ -110,6 +124,13 @@ function BlockDataMap({
   visibleLayers,
   fitToken,
   highlightStates,
+  filterStateId,
+  filterStateName,
+  filterStateCode,
+  filterDistrictId,
+  filterDistrictName,
+  filterBlockId,
+  onStateClick,
   onViewportChange,
 }: BlockDataMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -124,6 +145,13 @@ function BlockDataMap({
   // different pole's popup if the user clicked elsewhere in the meantime.
   const polePreviewCacheRef = useRef<Map<number, PolePreviewDetails | null>>(new Map());
   const openPoleIdRef = useRef<number | null>(null);
+  // The map is only created once (see the [mapsLoaded, map] effect below),
+  // so its state-polygon click listener is attached once too — read the
+  // latest onStateClick through a ref rather than closing over a stale one.
+  const onStateClickRef = useRef(onStateClick);
+  useEffect(() => {
+    onStateClickRef.current = onStateClick;
+  }, [onStateClick]);
 
   useEffect(() => {
     GoogleMapsLoader.getInstance()
@@ -187,6 +215,10 @@ function BlockDataMap({
       const bounds = new google.maps.LatLngBounds();
       e.feature.getGeometry()?.forEachLatLng((latLng) => bounds.extend(latLng));
       mapInstance.fitBounds(bounds, 24);
+
+      const stateLgd = e.feature.getProperty('state_lgd') as number;
+      const stateName = e.feature.getProperty('state_name') as string;
+      onStateClickRef.current?.(stateLgd, stateName);
     });
     statesDataRef.current = statesData;
 
@@ -555,6 +587,48 @@ function BlockDataMap({
     if (hasPoint) map.fitBounds(bounds, 48);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, fitToken]);
+
+  // Pan/zoom to whatever's picked in the State/District/Block dropdowns
+  // even before a block (and its plotted data) is chosen. A district has no
+  // locally bundled geometry, so it's resolved via geocoding; a state tries
+  // the local boundary set first (exact, no network call) and only falls
+  // back to geocoding for states outside the 6 project states.
+  useEffect(() => {
+    if (!map) return;
+    if (filterBlockId !== null) return; // the fitToken effect above takes over once a block is loaded
+
+    if (filterDistrictId !== null && filterDistrictName && filterStateName) {
+      new google.maps.Geocoder().geocode(
+        { address: `${filterDistrictName} district, ${filterStateName}, India` },
+        (results, status) => {
+          const viewport = status === 'OK' ? results?.[0]?.geometry.viewport : null;
+          if (viewport) map.fitBounds(viewport, 24);
+        },
+      );
+      return;
+    }
+
+    if (filterStateId !== null) {
+      const feature = (stateBoundaries as GeoJSON.FeatureCollection).features.find(
+        (f) => f.properties?.state_lgd === filterStateCode,
+      );
+      if (feature) {
+        const bounds = new google.maps.LatLngBounds();
+        const geometry = feature.geometry;
+        const rings =
+          geometry.type === 'Polygon' ? geometry.coordinates : geometry.type === 'MultiPolygon' ? geometry.coordinates.flat() : [];
+        rings.forEach((ring) => ring.forEach(([lng, lat]) => bounds.extend({ lat, lng })));
+        map.fitBounds(bounds, 24);
+        return;
+      }
+      if (filterStateName) {
+        new google.maps.Geocoder().geocode({ address: `${filterStateName}, India` }, (results, status) => {
+          const viewport = status === 'OK' ? results?.[0]?.geometry.viewport : null;
+          if (viewport) map.fitBounds(viewport, 24);
+        });
+      }
+    }
+  }, [map, filterStateId, filterStateCode, filterStateName, filterDistrictId, filterDistrictName, filterBlockId]);
 
   return (
     <div className="absolute inset-0">

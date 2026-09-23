@@ -83,34 +83,12 @@ function OverallMap() {
   const [blockSource, setBlockSource] = useState<'search' | 'viewport' | null>(null);
 
   // KPI cards at the top of the page — /get-executive-dashboard, project-wide
-  // when no block is selected, scoped to state_id/district_id/block_id once
-  // one is.
+  // with no filters, scoped down as state/district/block are picked. See the
+  // effect below (keyed off filterStateId/filterDistrictId/filterBlockId,
+  // not selectedBlock) so a state- or district-only pick updates the cards
+  // too, without waiting for a full block selection.
   const [dashboard, setDashboard] = useState<ExecutiveDashboardResponse | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    setDashboardLoading(true);
-    const filters = selectedBlock
-      ? {
-          state_id: selectedBlock.state_id,
-          ...(selectedBlock.district_id !== null ? { district_id: selectedBlock.district_id } : {}),
-          block_id: selectedBlock.block_id,
-        }
-      : {};
-    getExecutiveDashboard(filters)
-      .then((result) => {
-        if (!cancelled) setDashboard(result);
-      })
-      .catch((error) => {
-        console.error('Failed to load executive dashboard:', error);
-        if (!cancelled) setDashboard(null);
-      })
-      .finally(() => !cancelled && setDashboardLoading(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedBlock]);
 
   // State / District / Block cascading filters — an alternative to typing
   // into the search box, sourced live from /states, /districtsdata and
@@ -177,6 +155,32 @@ function OverallMap() {
       cancelled = true;
     };
   }, [filterDistrictId]);
+
+  // Refreshes the KPI cards as soon as a state or district is picked, not
+  // just once a full block is — filterStateId/filterDistrictId/filterBlockId
+  // cover every selection path (dropdowns, search, auto-detect all keep
+  // these three in sync via selectBlock below).
+  useEffect(() => {
+    let cancelled = false;
+    setDashboardLoading(true);
+    const filters: { state_id?: number; district_id?: number; block_id?: number } = {};
+    if (filterStateId !== null) filters.state_id = filterStateId;
+    if (filterDistrictId !== null) filters.district_id = filterDistrictId;
+    if (filterBlockId !== null) filters.block_id = filterBlockId;
+
+    getExecutiveDashboard(filters)
+      .then((result) => {
+        if (!cancelled) setDashboard(result);
+      })
+      .catch((error) => {
+        console.error('Failed to load executive dashboard:', error);
+        if (!cancelled) setDashboard(null);
+      })
+      .finally(() => !cancelled && setDashboardLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [filterStateId, filterDistrictId, filterBlockId]);
 
   const [autoDetectEnabled, setAutoDetectEnabled] = useState(true);
   const [detecting, setDetecting] = useState(false);
@@ -576,6 +580,16 @@ function OverallMap() {
               visibleLayers={visibleLayers}
               fitToken={fitToken}
               highlightStates={!selectedBlock}
+              filterStateId={filterStateId}
+              filterStateName={stateOptions.find((s) => s.id === filterStateId)?.name ?? null}
+              filterStateCode={stateOptions.find((s) => s.id === filterStateId)?.code ?? null}
+              filterDistrictId={filterDistrictId}
+              filterDistrictName={districtOptions.find((d) => d.id === filterDistrictId)?.name ?? null}
+              filterBlockId={filterBlockId}
+              onStateClick={(stateCode) => {
+                const matched = stateOptions.find((s) => s.code === stateCode);
+                if (matched) onFilterStateChange(matched.id);
+              }}
               onViewportChange={(z, b) => {
                 setZoom(z);
                 setBounds(b);
