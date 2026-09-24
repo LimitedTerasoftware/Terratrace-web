@@ -22,12 +22,15 @@ import {
   networkTests,
   CERTIFICATION_FIELDS,
   CertificationKey,
-  DOC_CODE,
 } from '../forms/ATBlockRouter';
+import {
+  ATBlockRouterPrintData,
+  PrintFile,
+  buildATBlockRouterPrintHtml,
+  loadTemplateImages,
+  printHtmlDocument,
+} from '../print/atBlockRouterPrint';
 import MediaCarousel from '../../DepthChart/MediaCarousel';
-import BharatNetLogo from '../../../images/logo/bharatnet-logo.jpg';
-import BsnlLogo from '../../../images/logo/bsnl-logo.jpg';
-import NetworkDiagram from '../../../images/logo/at-router-network-diagram.png';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 
@@ -207,14 +210,6 @@ const ATBlockRouterView = () => {
   const memorandumFiles = routerData?.memorandumFiles;
   const certFiles = routerData?.certificationFiles;
 
-  const escapeHtml = (value: string | number | null | undefined): string =>
-    String(value ?? '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-
   const toBase64 = async (source: string): Promise<string> => {
     try {
       const response = await fetch(source, {
@@ -265,98 +260,32 @@ const ATBlockRouterView = () => {
     return pages;
   };
 
-  const buildPrintStyles = (): string => `
-    *, *::before, *::after { box-sizing: border-box; margin:0; padding:0; }
-    body {
-      font-family: 'Times New Roman', Georgia, serif;
-      font-size: 10.5pt;
-      color: #111827;
-      background:#fff;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+  const toPrintFile = async (
+    url: string | undefined,
+    fallbackName: string,
+  ): Promise<PrintFile | null> => {
+    if (!url) return null;
+    const name = getFileName(url) || fallbackName;
+    const kind = isImageUrl(url) ? 'image' : getFileExt(url) === 'pdf' ? 'pdf' : 'other';
+    try {
+      if (kind === 'image') {
+        return { name, kind, pages: [await toBase64(getFullImageUrl(url))] };
+      }
+      if (kind === 'pdf') {
+        return { name, kind, pages: await renderPdfToImages(url) };
+      }
+    } catch (error) {
+      console.error('Attachment render failed:', name, error);
     }
-    @page { size: A4; margin: 18mm 16mm 16mm 16mm; }
+    return { name, kind, pages: [] };
+  };
 
-    .doc-header {
-      display:flex; justify-content:flex-end; font-size:8.5pt; color:#374151;
-      padding-bottom:6px; margin-bottom:14px; border-bottom:1px solid #cbd5e1;
-    }
-    .cover {
-      text-align:center; padding: 30px 0 20px; page-break-after: always; break-after: page;
-    }
-    .cover img.cover-logo { height:64px; margin: 0 auto 14px; display:block; }
-    .cover h1 { font-size:14pt; font-weight:700; margin-bottom:4px; margin-top:10px; }
-    .cover p { font-size:11pt; max-width:620px; margin:6px auto 0; line-height:1.5; }
-
-    .toc-page { page-break-after: always; break-after: page; }
-    .toc-list { list-style:none; padding-left:0; font-size:10pt; line-height:2; color:#1e293b; }
-    .toc-sublist { list-style:none; padding-left:22px; font-size:9.3pt; line-height:1.85; color:#475569; }
-
-    .network-diagram {
-      display:block; width:100%; max-width:640px; margin:10px auto 6px;
-      border:1px solid #e2e8f0; border-radius:6px;
-    }
-    .setup-diagram {
-      display:block; max-width:320px; margin-bottom:8px;
-      border:1px solid #e2e8f0; border-radius:4px;
-    }
-    .memo-file-image {
-      display:block; max-width:220px; max-height:160px; border:1px solid #e2e8f0; border-radius:4px;
-    }
-
-    h2.section-title {
-      font-size:13pt; font-weight:700; margin:22px 0 10px; padding-bottom:4px;
-      border-bottom:2px solid #1565c0; color:#0d47a1;
-    }
-    h3.sub-title { font-size:11pt; font-weight:700; margin:16px 0 8px; color:#1565c0; }
-    p.intro-text { font-size:9.5pt; line-height:1.55; margin-bottom:10px; color:#1e293b; }
-
-    table.memo-table, table.cert-table, table.test-table {
-      width:100%; border-collapse:collapse; margin-bottom:14px; font-size:9.2pt;
-    }
-    table.memo-table td, table.cert-table td, table.test-table td {
-      border:1px solid #94a3b8; padding:6px 8px; vertical-align:top;
-    }
-    table.memo-table td.label, table.cert-table td.label { width:28%; font-weight:600; background:#f1f5f9; }
-    table.test-table td.th { width:22%; font-weight:700; background:#eff6ff; color:#0d47a1; }
-
-    .sig-table { width:100%; border-collapse:collapse; margin-top:8px; }
-    .sig-table td { border:1px solid #94a3b8; padding:14px 10px; width:33.33%; vertical-align:top; font-size:9pt; }
-    .sig-table .sig-title { font-weight:700; margin-bottom:26px; display:block; }
-
-    .mini-procedure, .mini-remarks { font-size:8.5pt; color:#475569; margin-top:4px; }
-    .mini-remarks { color:#92400e; }
-    .images-grid { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
-    .image-thumb { width:70px; height:52px; border:1px solid #cbd5e1; border-radius:3px; overflow:hidden; }
-    .image-thumb img { width:100%; height:100%; object-fit:cover; }
-    .docs-list { margin-top:6px; }
-    .doc-chip { font-size:8pt; color:#4338ca; }
-
-    td.status-pass, .status-pass { color:#166534; font-weight:700; }
-    td.status-fail, .status-fail { color:#b91c1c; font-weight:700; }
-
-    .basic-table { width:100%; border-collapse:collapse; font-size:9pt; margin-bottom:16px; }
-    .basic-table th { background:#0d47a1; color:#fff; padding:6px 8px; text-align:left; font-size:8.8pt; }
-    .basic-table td { border:1px solid #cbd5e1; padding:6px 8px; vertical-align:top; }
-    .cell-code { width:8%; font-weight:700; text-align:center; }
-    .cell-status { width:12%; text-align:center; font-weight:700; }
-
-    .test-table { page-break-inside: avoid; break-inside: avoid; }
-
-    .attachment-page {
-      page-break-before: always; break-before: page; page-break-inside: avoid;
-      height: 245mm; border:1px solid #cbd5e1; display:flex; flex-direction:column; overflow:hidden;
-    }
-    .attachment-label { padding:7px 10px; font-size:8.5pt; font-weight:700; background:#f8fafc; border-bottom:1px solid #cbd5e1; }
-    .attachment-page img { flex:1 1 auto; width:100%; height:100%; object-fit:contain; }
-
-    .summary-bar { display:flex; gap:10px; margin-bottom:16px; }
-    .summary-chip { flex:1; border:1px solid #cbd5e1; border-radius:6px; padding:8px; text-align:center; }
-    .summary-chip .val { font-size:16pt; font-weight:700; }
-    .summary-chip .lbl { font-size:8pt; color:#64748b; }
-
-    .page-footer { margin-top:20px; padding-top:8px; border-top:1px solid #cbd5e1; font-size:8pt; color:#64748b; display:flex; justify-content:space-between; }
-  `;
+  const toPrintFiles = async (urls: string[], labelPrefix: string): Promise<PrintFile[]> => {
+    const files = await Promise.all(
+      urls.map((url, index) => toPrintFile(url, `${labelPrefix}-${index + 1}`)),
+    );
+    return files.filter((file): file is PrintFile => file !== null);
+  };
 
   const triggerPrint = async () => {
     if (totalCount === 0 || (basicCompletedCount === 0 && networkCompletedCount === 0)) {
@@ -376,326 +305,50 @@ const ATBlockRouterView = () => {
       </head><body>⏳ Preparing report, please wait…</body></html>`);
     printWindow.document.close();
 
-    let bharatNetLogoBase64 = '';
-    let bsnlLogoBase64 = '';
-    try {
-      bharatNetLogoBase64 = await toBase64(BharatNetLogo as unknown as string);
-    } catch (_) {
-      /* skip */
-    }
-    try {
-      bsnlLogoBase64 = await toBase64(BsnlLogo as unknown as string);
-    } catch (_) {
-      /* skip */
-    }
-    let networkDiagramBase64 = '';
-    try {
-      networkDiagramBase64 = await toBase64(NetworkDiagram as unknown as string);
-    } catch (_) {
-      /* skip */
-    }
-
-    const attachmentPages: string[] = [];
-
-    const fileSlotHtml = async (
-      url: string | undefined,
-      label: string,
-    ): Promise<string> => {
-      if (!url) return '&nbsp;';
-      if (isImageUrl(url)) {
-        let src = getFullImageUrl(url);
-        try {
-          src = await toBase64(src);
-        } catch (_) {}
-        attachmentPages.push(`
-          <div class="attachment-page image-attachment-page">
-            <div class="attachment-label">${escapeHtml(label)}</div>
-            <img src="${src}" alt="${escapeHtml(label)}" />
-          </div>
-        `);
-        return `<img src="${src}" alt="${escapeHtml(label)}" class="memo-file-image" />`;
-      }
-
-      if (getFileExt(url) === 'pdf') {
-        try {
-          const pdfPages = await renderPdfToImages(url);
-          pdfPages.forEach((src, index) => {
-            attachmentPages.push(`
-              <div class="attachment-page pdf-attachment-page">
-                <div class="attachment-label">${escapeHtml(label)} - Page ${index + 1}</div>
-                <img src="${src}" alt="${escapeHtml(label)} page ${index + 1}" />
-              </div>
-            `);
-          });
-        } catch (error) {
-          console.error('Certification PDF render failed:', label, error);
-        }
-      }
-      return `<div class="doc-chip">📎 ${escapeHtml(getFileName(url))}</div>`;
-    };
-
-    const buildDocsListHtml = async (
-      documents: string[],
-      labelPrefix: string,
-    ): Promise<string> => {
-      if (documents.length === 0) return '';
-      const chips = await Promise.all(
-        documents.map(async (doc) => {
-          const name = getFileName(doc);
-          if (getFileExt(doc) === 'pdf') {
-            try {
-              const pdfPages = await renderPdfToImages(doc);
-              pdfPages.forEach((src, index) => {
-                attachmentPages.push(`
-                  <div class="attachment-page pdf-attachment-page">
-                    <div class="attachment-label">${escapeHtml(labelPrefix)} - ${escapeHtml(name)} - Page ${index + 1}</div>
-                    <img src="${src}" alt="${escapeHtml(name)} page ${index + 1}" />
-                  </div>
-                `);
-              });
-            } catch (error) {
-              console.error('Document PDF render failed:', name, error);
-            }
-          }
-          return `<div class="doc-chip">📎 ${escapeHtml(name)}</div>`;
-        }),
-      );
-      return `<div class="docs-list">${chips.join('')}</div>`;
-    };
-
-    const collectImagesHtml = async (
-      images: string[],
-      labelPrefix: string,
-    ): Promise<string> => {
-      const thumbs = await Promise.all(
-        images.map(async (image, index) => {
-          const fullUrl = getFullImageUrl(image);
-          let src = fullUrl;
-          try {
-            src = await toBase64(fullUrl);
-          } catch (_) {}
-          const label = getFileName(image) || `${labelPrefix}-image-${index + 1}`;
-          attachmentPages.push(`
-            <div class="attachment-page">
-              <div class="attachment-label">${escapeHtml(labelPrefix)} - ${escapeHtml(label)}</div>
-              <img src="${src}" alt="${escapeHtml(label)}" />
-            </div>
-          `);
-          return `<div class="image-thumb"><img src="${src}" alt="evidence" /></div>`;
-        }),
-      );
-      return thumbs.length
-        ? `<div class="images-grid">${thumbs.join('')}</div>`
-        : '';
-    };
-
-    const basicRowsHtml = await Promise.all(
-      basicItems.map(async (item) => {
-        const imagesHtml = await collectImagesHtml(item.images, item.testCaseNo);
-        const docsHtml = await buildDocsListHtml(item.documents, item.testCaseNo);
-        return `
-          <tr>
-            <td class="cell-code">${item.testCaseNo}</td>
-            <td class="cell-desc">${escapeHtml(item.description)}<div class="mini-procedure"><strong>Procedure: </strong>${escapeHtml(item.procedure)}</div>${item.remarks ? `<div class="mini-remarks"><strong>Remarks: </strong>${escapeHtml(item.remarks)}</div>` : ''}${imagesHtml}${docsHtml}</td>
-            <td class="cell-status ${item.compliance === 'Yes' ? 'status-pass' : item.compliance === 'No' ? 'status-fail' : ''}">${item.compliance || 'Pending'}</td>
-          </tr>`;
-      }),
-    );
-
-    const setupImageBase64Cache: Record<string, string> = {};
-    for (const src of new Set(networkItems.map((i) => i.testSetupImage).filter(Boolean))) {
-      try {
-        setupImageBase64Cache[src] = await toBase64(src as unknown as string);
-      } catch (_) {
-        /* skip */
-      }
-    }
-
-    const networkSectionsHtml = await Promise.all(
-      networkItems.map(async (item) => {
-        const imagesHtml = await collectImagesHtml(item.images, `Test ${item.testNo}`);
-        const docsHtml = await buildDocsListHtml(item.documents, `Test ${item.testNo}`);
-        const setupImageHtml = setupImageBase64Cache[item.testSetupImage]
-          ? `<img class="setup-diagram" src="${setupImageBase64Cache[item.testSetupImage]}" alt="Test setup" />`
-          : '';
-        return `
-        <table class="test-table">
-          <tr><td class="th">Test No</td><td colspan="3">${item.testNo}</td></tr>
-          <tr><td class="th">Test Details</td><td colspan="3">${escapeHtml(item.title)}${item.testDetails && item.testDetails !== item.title ? ` — ${escapeHtml(item.testDetails)}` : ''}</td></tr>
-          <tr><td class="th">Test Instruments Required</td><td colspan="3">${escapeHtml(item.testInstruments)}</td></tr>
-          <tr><td class="th">Test Setup</td><td colspan="3">${setupImageHtml}${escapeHtml(item.testSetup)}</td></tr>
-          <tr><td class="th">Test Procedure</td><td colspan="3"><ul>${item.testProcedure.map((p) => `<li>${escapeHtml(p)}</li>`).join('')}</ul></td></tr>
-          <tr><td class="th">Test Configuration</td><td colspan="3">${item.testConfiguration ? escapeHtml(item.testConfiguration) : '&nbsp;'}</td></tr>
-          <tr><td class="th">Test Limits</td><td colspan="3">${escapeHtml(item.testLimits)}</td></tr>
-          <tr><td class="th">Expected Results</td><td colspan="3"><ul>${item.expectedResults.map((p) => `<li>${escapeHtml(p)}</li>`).join('')}</ul></td></tr>
-          <tr><td class="th">Test Results</td><td colspan="3">${item.testResults ? escapeHtml(item.testResults) : '&nbsp;'}${imagesHtml}${docsHtml}${item.remarks ? `<div class="mini-remarks"><strong>Remarks: </strong>${escapeHtml(item.remarks)}</div>` : ''}</td></tr>
-          <tr><td class="th">Status</td><td colspan="3" class="${item.status === 'Pass' ? 'status-pass' : item.status === 'Fail' ? 'status-fail' : ''}">${item.status || 'Pending'}</td></tr>
-        </table>`;
-      }),
-    );
-
-    const tocSubHtml = networkTests
-      .map((t) => `<li>4.${t.testNo} ${escapeHtml(t.title)}</li>`)
-      .join('');
-    const tocHtml = `
-      <li>1. Introduction</li>
-      <li>2. Acceptance Testing Network Diagram</li>
-      <li>3. Acceptance Memorandum</li>
-      <li>4. Acceptance Testing Test Cases
-        <ul class="toc-sublist">${tocSubHtml}</ul>
-      </li>
-    `;
-
-    const networkDiagramFileHtml = await fileSlotHtml(
-      memorandumFiles?.networkDiagram,
-      'Block network diagram',
-    );
-    const qrCodeFileHtml = await fileSlotHtml(memorandumFiles?.qrCode, 'QR code');
-    const certFileHtml: Record<CertificationKey, string> = {
-      tsecCertificate: '',
-      qaCertificate: '',
-      qrCodeLogo: '',
-      photoEvidence: '',
-      oemApproval: '',
-    };
+    const certifications = {} as Record<CertificationKey, PrintFile | null>;
     for (const { key, label } of CERTIFICATION_FIELDS) {
-      certFileHtml[key] = await fileSlotHtml(certFiles?.[key], label);
+      certifications[key] = await toPrintFile(certFiles?.[key], label);
     }
 
-    const failCount =
-      basicItems.filter((i) => i.compliance === 'No').length +
-      networkItems.filter((i) => i.status === 'Fail').length;
+    const basic: ATBlockRouterPrintData['basic'] = {};
+    for (const item of basicItems) {
+      basic[item.id] = {
+        compliance: item.compliance,
+        remarks: item.remarks,
+        files: await toPrintFiles([...item.images, ...item.documents], item.testCaseNo),
+      };
+    }
 
-    const fullHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<title>AT Block Router - ${escapeHtml(blockName)}</title>
-<style>${buildPrintStyles()}</style>
-</head>
-<body>
+    const network: ATBlockRouterPrintData['network'] = {};
+    for (const item of networkItems) {
+      network[item.id] = {
+        status: item.status,
+        testConfiguration: item.testConfiguration,
+        testResults: item.testResults,
+        remarks: item.remarks,
+        files: await toPrintFiles([...item.images, ...item.documents], `Test ${item.testNo}`),
+      };
+    }
 
-  <div class="doc-header">${DOC_CODE}</div>
+    const html = buildATBlockRouterPrintHtml({
+      blockName,
+      memorandum: {
+        equipmentDescription: memorandum?.equipmentDescription || '',
+        siteNameLGD: memorandum?.siteNameLGD || blockName,
+        siteAddress: memorandum?.siteAddress || '',
+        routerHostname: memorandum?.routerHostname || '',
+        wanInterfaceIp: memorandum?.wanInterfaceIp || '',
+        dateTime: memorandum?.dateTime || new Date().toLocaleString(),
+      },
+      networkDiagram: await toPrintFile(memorandumFiles?.networkDiagram, 'Block network diagram'),
+      qrCode: await toPrintFile(memorandumFiles?.qrCode, 'QR code'),
+      certifications,
+      basic,
+      network,
+      images: await loadTemplateImages(toBase64),
+    });
 
-  <div class="cover">
-    ${bharatNetLogoBase64 ? `<img class="cover-logo" src="${bharatNetLogoBase64}" alt="BharatNet Logo" />` : ''}
-    ${bsnlLogoBase64 ? `<img class="cover-logo" src="${bsnlLogoBase64}" alt="BSNL Logo" />` : ''}
-    <h1>Bharat Sanchar Nigam Limited</h1>
-    <p>Acceptance Testing Test Cases document for Block Router — ${escapeHtml(blockName)}<br/>as per BSNL Bharatnet Tender No. MM/BNO&M/BN-III/T-791/2024 issued on 15.02.2024</p>
-  </div>
-
-  <div class="toc-page">
-    <h2 class="section-title" style="border-bottom:none;">Table of Contents</h2>
-    <ul class="toc-list">${tocHtml}</ul>
-  </div>
-
-  <h2 class="section-title">1. Introduction</h2>
-  <p class="intro-text">This document outlines the Acceptance Testing (A/T) procedures for IP/MPLS Block Routers, Type-A and Type-B, in accordance with the requirements of BSNL BharatNet Tender No. MM/BNO&M/BN-III/T-791/2024 dated 15.02.2024. It covers the applicable test cases in line with industry best practices, relevant specifications and standards, and includes the acceptance testing template for quality assurance in accordance with the requirements specified in the RFP.</p>
-
-  <h2 class="section-title">2. Acceptance Testing Network Diagram</h2>
-  <p class="intro-text">The following topology is used for the AT test cases execution:</p>
-  ${networkDiagramBase64 ? `<img class="network-diagram" src="${networkDiagramBase64}" alt="Acceptance Testing Network Diagram" />` : ''}
-  <p class="intro-text" style="margin-top:10px;">Note: The IP addresses and network diagram in Section 4 are for illustration only. All test scenarios will be executed using the actual network configuration.</p>
-
-  <h2 class="section-title">3. Acceptance Memorandum</h2>
-  <table class="memo-table">
-    <tr><td class="label">Equipment description</td><td>${memorandum?.equipmentDescription ? escapeHtml(memorandum.equipmentDescription) : '&nbsp;'}</td></tr>
-    <tr><td class="label">Site Name with LGD code</td><td>${escapeHtml(memorandum?.siteNameLGD || blockName)}</td></tr>
-    <tr><td class="label">Site Address</td><td>${memorandum?.siteAddress ? escapeHtml(memorandum.siteAddress) : '&nbsp;'}</td></tr>
-    <tr><td class="label">Router hostname</td><td>${memorandum?.routerHostname ? escapeHtml(memorandum.routerHostname) : '&nbsp;'}</td></tr>
-    <tr><td class="label">Router WAN interface / loopback0 IP address</td><td>${memorandum?.wanInterfaceIp ? escapeHtml(memorandum.wanInterfaceIp) : '&nbsp;'}</td></tr>
-    <tr><td class="label">Date &amp; Time</td><td>${memorandum?.dateTime ? escapeHtml(memorandum.dateTime) : new Date().toLocaleString()}</td></tr>
-    <tr><td class="label">Block network diagram along with rings and child-rings</td><td>${networkDiagramFileHtml}</td></tr>
-    <tr><td class="label">QR code</td><td>${qrCodeFileHtml}</td></tr>
-  </table>
-  <p class="intro-text">We hereby declare that all tests in this form were successfully completed.</p>
-
-  <table class="sig-table">
-    <tr>
-      <td><span class="sig-title">PIA Representative's Sign off</span>Representative Name:<br/><br/>Designation:<br/><br/>Date:<br/><br/>Signature: ____________________</td>
-      <td><span class="sig-title">IE Representative's Sign off</span>Representative Name:<br/><br/>Designation:<br/><br/>Date:<br/><br/>Signature: ____________________</td>
-      <td><span class="sig-title">BSNL Representative's Sign off*</span>Representative Name:<br/><br/>Designation:<br/><br/>Date:<br/><br/>Signature: ____________________</td>
-    </tr>
-  </table>
-  <p class="intro-text" style="font-size:8pt;color:#64748b;">*Note: For first time AT of Block Router, GP Router, Block Rack, GP Rack, Route and Ring, one BSNL person may be kept mandatorily and his/her signatures are required on the AT document. For subsequent ATs, BSNL may assign person on need basis or as requested by any PIA. Decision regarding the same shall be taken by BharatNet State Head on case-to-case basis.</p>
-
-  <h3 class="sub-title">Certification Verification</h3>
-  <p class="intro-text" style="font-size:8pt;color:#64748b;">TEC/GR 48050:2022 with latest amendments if any.</p>
-  <table class="cert-table">
-    <tr><td class="label">TSEC Certificate</td><td>${certFileHtml.tsecCertificate}</td></tr>
-    <tr><td class="label">QA Certificate</td><td>${certFileHtml.qaCertificate}</td></tr>
-    <tr><td class="label">QR Code, logo</td><td>${certFileHtml.qrCodeLogo}</td></tr>
-    <tr><td class="label">Photo evidence</td><td>${certFileHtml.photoEvidence}</td></tr>
-    <tr><td class="label">OEM approval of BSNL</td><td>${certFileHtml.oemApproval}</td></tr>
-  </table>
-
-  <h3 class="sub-title">Documentation Requirements</h3>
-  <table class="cert-table">
-    <tr>
-      <td class="label">Documentation requirements</td>
-      <td>
-        <strong>Test 1:</strong> The contractor shall provide the following documents: system description documents; installation, operation and maintenance documents; training document; repair manual.<br/>
-        <strong>Test 2:</strong> All technical documents shall be in English language both in CD-ROM and in hard copy. All necessary interfaces, connectors, connecting cables and accessories required for satisfactory installation and convenient operations shall be supplied. Type of connectors/adapters used shall conform to the interfaces defined in this GR.<br/>
-        <em>*All the above documents are to be handed over only once per model no.</em>
-      </td>
-    </tr>
-  </table>
-
-  <div class="summary-bar">
-    <div class="summary-chip"><div class="val">${totalCount}</div><div class="lbl">Total Tests</div></div>
-    <div class="summary-chip"><div class="val" style="color:#166534">${passCount}</div><div class="lbl">Pass</div></div>
-    <div class="summary-chip"><div class="val" style="color:#b91c1c">${failCount}</div><div class="lbl">Fail</div></div>
-    <div class="summary-chip"><div class="val">${completedCount}/${totalCount}</div><div class="lbl">Completed</div></div>
-  </div>
-
-  <h2 class="section-title">4. Acceptance Testing Test Cases</h2>
-  <h3 class="sub-title">Basic Pre-AT Checks</h3>
-  <p class="intro-text">Following basic checks are to be done before starting the Router AT. If any of the below is not qualified and/or not available, then AT cannot proceed.</p>
-  <table class="basic-table">
-    <tr><th>Clause</th><th>Description / Procedure</th><th>Status</th></tr>
-    ${basicRowsHtml.join('')}
-  </table>
-
-  <h3 class="sub-title">Network Configuration Tests</h3>
-  ${networkSectionsHtml.join('')}
-
-  <div class="page-footer">
-    <span>AT Block Router Compliance — Block Name: ${escapeHtml(blockName)}</span>
-    <span>Confidential — Internal Use Only</span>
-  </div>
-
-  ${attachmentPages.length > 0 ? attachmentPages.join('') : ''}
-</body>
-</html>`;
-
-    printWindow.document.open();
-    printWindow.document.write(fullHtml);
-    printWindow.document.close();
-
-    const waitForImages = (doc: Document): Promise<void> => {
-      const imgs = Array.from(doc.images);
-      if (imgs.length === 0) return Promise.resolve();
-      return Promise.all(
-        imgs.map(
-          (img) =>
-            img.complete
-              ? Promise.resolve()
-              : new Promise<void>((resolve) => {
-                  img.addEventListener('load', () => resolve());
-                  img.addEventListener('error', () => resolve());
-                }),
-        ),
-      ).then(() => undefined);
-    };
-
-    printWindow.onload = () => {
-      waitForImages(printWindow.document).then(() => {
-        setTimeout(() => {
-          printWindow.focus();
-          printWindow.print();
-        }, 300);
-      });
-    };
+    printHtmlDocument(printWindow, html);
   };
 
   const handlePrint = async () => {

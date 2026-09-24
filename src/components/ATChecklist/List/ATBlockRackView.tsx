@@ -23,15 +23,19 @@ import {
   CertificationKey,
 } from '../forms/ATBlockRack';
 import MediaCarousel from '../../DepthChart/MediaCarousel';
-import BharatNetLogo from '../../../images/logo/bharatnet-logo.jpg';
-import BsnlLogo from '../../../images/logo/bsnl-logo.jpg';
+import {
+  ATBlockRackPrintData,
+  PrintFile,
+  buildATBlockRackPrintHtml,
+  loadRackTemplateImages,
+  printHtmlDocument,
+} from '../print/atBlockRackPrint';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 const ImgbaseUrl = import.meta.env.VITE_Image_URL;
-const DOC_CODE = 'ABP/AT/BLRK/002 Ver1.0';
 
 interface TestItem {
   id: string;
@@ -161,14 +165,6 @@ const ATBlockRackView = () => {
   const certFiles = rackData?.certificationFiles;
   const memorandum = rackData?.memorandum;
 
-  const escapeHtml = (value: string | number | null | undefined): string =>
-    String(value ?? '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-
   const toBase64 = async (source: string): Promise<string> => {
     try {
       const response = await fetch(source, {
@@ -219,271 +215,25 @@ const ATBlockRackView = () => {
     return pages;
   };
 
-  const getDocMeta = (
-    doc: string,
-  ): { ext: string; label: string; color: string; bg: string; icon: string } => {
-    const name = getFileName(doc);
-    const ext = name.split('.').pop()?.toLowerCase() ?? '';
-    if (ext === 'pdf')
-      return { ext: 'PDF', label: name, color: '#dc2626', bg: '#fef2f2', icon: '📄' };
-    if (ext === 'doc' || ext === 'docx')
-      return { ext: 'WORD', label: name, color: '#2563eb', bg: '#eff6ff', icon: '📝' };
-    if (ext === 'xls' || ext === 'xlsx')
-      return { ext: 'EXCEL', label: name, color: '#16a34a', bg: '#f0fdf4', icon: '📊' };
-    return {
-      ext: ext.toUpperCase() || 'FILE',
-      label: name,
-      color: '#7c3aed',
-      bg: '#f5f3ff',
-      icon: '📎',
-    };
-  };
-
-  const buildDocumentCardHtml = async (
-    doc: string,
-    label: string,
-    attachmentPages: string[],
-  ): Promise<string> => {
-    const meta = getDocMeta(doc);
-    const fullLabel = `${label} - ${meta.label}`;
-
-    if (meta.ext === 'PDF') {
-      let pdfPages: string[] = [];
-      try {
-        pdfPages = await renderPdfToImages(doc);
-        pdfPages.forEach((src, index) => {
-          attachmentPages.push(`
-            <div class="attachment-page pdf-attachment-page">
-              <div class="attachment-label">${escapeHtml(fullLabel)} - Page ${index + 1}</div>
-              <img src="${src}" alt="${escapeHtml(fullLabel)} page ${index + 1}" />
-            </div>
-          `);
-        });
-      } catch (error) {
-        console.error('PDF render failed:', doc, error);
-      }
-      return `
-        <div class="doc-card compact-doc-card">
-          <div class="doc-card-meta">
-            <span class="doc-ext-badge" style="background:${meta.bg};color:${meta.color};">${meta.icon} ${meta.ext}</span>
-            <span class="doc-filename">${escapeHtml(meta.label)}</span>
-          </div>
-          <div class="doc-card-info" style="border-left:3px solid ${meta.color};">
-            <p style="color:${meta.color};font-weight:600;margin-bottom:4px;">PDF Document</p>
-            <p style="color:#64748b;font-size:8pt;">${pdfPages.length > 0 ? 'Full PDF content is included in the attachment appendix.' : 'This PDF could not be embedded (file server blocked the request). Open it using the link below.'}</p>
-            ${pdfPages.length === 0 ? `<p style="font-size:7.5pt;color:#94a3b8;margin-top:4px;word-break:break-all;">📎 ${escapeHtml(getFullImageUrl(doc))}</p>` : ''}
-          </div>
-        </div>`;
-    }
-
-    return `
-      <div class="doc-card">
-        <div class="doc-card-meta">
-          <span class="doc-ext-badge" style="background:${meta.bg};color:${meta.color};">${meta.icon} ${meta.ext}</span>
-          <span class="doc-filename">${escapeHtml(meta.label)}</span>
-        </div>
-        <div class="doc-card-info" style="border-left:3px solid ${meta.color};">
-          <p style="color:${meta.color};font-weight:600;margin-bottom:4px;">${meta.ext} Document</p>
-          <p style="color:#64748b;font-size:8pt;">This file type cannot be rendered inline. The document has been attached and submitted with this checklist.</p>
-        </div>
-      </div>`;
-  };
-
-  const buildImageThumbHtml = async (
-    image: string,
-    label: string,
-    index: number,
-    attachmentPages: string[],
-  ): Promise<string> => {
-    const fullUrl = getFullImageUrl(image);
-    const src = await toBase64(fullUrl);
-    const fullLabel = `${label} - ${getFileName(image) || `Image ${index + 1}`}`;
-
-    attachmentPages.push(`
-      <div class="attachment-page image-attachment-page">
-        <div class="attachment-label">${escapeHtml(fullLabel)}</div>
-        <img src="${src}" alt="${escapeHtml(fullLabel)}" />
-      </div>
-    `);
-
-    return `<div class="image-thumb"><img src="${src}" alt="${escapeHtml(fullLabel)}" /></div>`;
-  };
-
-  const fileSlotHtml = async (
+  const toPrintFile = async (
     url: string | undefined,
-    label: string,
-    attachmentPages: string[],
-  ): Promise<string> => {
-    if (!url) return '&nbsp;';
-    if (isImageUrl(url)) {
-      let src = getFullImageUrl(url);
-      try {
-        src = await toBase64(src);
-      } catch (_) {}
-      attachmentPages.push(`
-        <div class="attachment-page image-attachment-page">
-          <div class="attachment-label">Certification Verification - ${escapeHtml(label)}</div>
-          <img src="${src}" alt="${escapeHtml(label)}" />
-        </div>
-      `);
-      return `<img src="${src}" alt="${escapeHtml(label)}" class="memo-file-image" />`;
-    }
-
-    if (getFileExt(url) === 'pdf') {
-      try {
-        const pdfPages = await renderPdfToImages(url);
-        pdfPages.forEach((src, index) => {
-          attachmentPages.push(`
-            <div class="attachment-page pdf-attachment-page">
-              <div class="attachment-label">Certification Verification - ${escapeHtml(label)} - Page ${index + 1}</div>
-              <img src="${src}" alt="${escapeHtml(label)} page ${index + 1}" />
-            </div>
-          `);
-        });
-      } catch (error) {
-        console.error('Certification PDF render failed:', label, error);
+    fallbackName: string,
+  ): Promise<PrintFile | null> => {
+    if (!url) return null;
+    const name = getFileName(url) || fallbackName;
+    const kind = isImageUrl(url) ? 'image' : getFileExt(url) === 'pdf' ? 'pdf' : 'other';
+    try {
+      if (kind === 'image') {
+        return { name, kind, pages: [await toBase64(getFullImageUrl(url))] };
       }
+      if (kind === 'pdf') {
+        return { name, kind, pages: await renderPdfToImages(url) };
+      }
+    } catch (error) {
+      console.error('Attachment render failed:', name, error);
     }
-    return `<div class="doc-chip">📎 ${escapeHtml(getFileName(url))}</div>`;
+    return { name, kind, pages: [] };
   };
-
-  const buildPrintStyles = (): string => `
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Segoe UI', Arial, sans-serif;
-      font-size: 11pt;
-      color: #1a1a2e;
-      background: #fff;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    @page { size: A4; margin: 14mm 16mm 18mm 16mm; }
-
-    .cover { text-align:center; padding: 30px 0 20px; page-break-after: always; break-after: page; }
-    .cover img.cover-logo { height:60px; margin: 0 auto 14px; display:block; }
-    .cover h1 { font-size:15pt; font-weight:700; margin: 10px 0 4px; color:#0d47a1; }
-    .cover p { font-size:10.5pt; max-width:600px; margin:6px auto 0; line-height:1.5; color:#1e293b; }
-
-    .toc-page { page-break-after: always; break-after: page; }
-    .toc-title { font-size:13pt; font-weight:700; margin-bottom:14px; color:#0d47a1; border-bottom:2px solid #1565c0; padding-bottom:4px; }
-    .toc-list { list-style:none; padding-left:0; font-size:9.5pt; line-height:1.9; color:#1e293b; }
-    .toc-sublist { list-style:none; padding-left:22px; font-size:8.8pt; line-height:1.7; color:#475569; }
-
-    h2.section-title {
-      font-size:13pt; font-weight:700; margin:18px 0 10px; padding-bottom:4px;
-      border-bottom:2px solid #1565c0; color:#0d47a1;
-    }
-    p.intro-text { font-size:9.5pt; line-height:1.55; margin-bottom:10px; color:#1e293b; }
-    table.memo-table, table.cert-table {
-      width:100%; border-collapse:collapse; margin-bottom:14px; font-size:9.2pt;
-    }
-    table.memo-table td, table.cert-table td {
-      border:1px solid #94a3b8; padding:6px 8px; vertical-align:top;
-    }
-    table.memo-table td.label, table.cert-table td.label { width:32%; font-weight:600; background:#f1f5f9; }
-    .memo-file-image {
-      display:block; max-width:220px; max-height:160px; border:1px solid #e2e8f0; border-radius:4px;
-    }
-    .doc-chip { font-size:8pt; color:#4338ca; }
-    .doc-header {
-      display:flex; justify-content:flex-end; font-size:8.5pt; color:#374151;
-      padding-bottom:6px; margin-bottom:14px; border-bottom:1px solid #cbd5e1;
-    }
-    .sig-table { width:100%; border-collapse:collapse; margin-top:8px; margin-bottom:16px; }
-    .sig-table td { border:1px solid #94a3b8; padding:14px 10px; width:33.33%; vertical-align:top; font-size:9pt; }
-    .sig-table .sig-title { font-weight:700; margin-bottom:26px; display:block; }
-
-    table.test-table { width:100%; border-collapse:collapse; margin-top:6px; font-size:8pt; table-layout:fixed; }
-    table.test-table thead { display:table-header-group; }
-    table.test-table tbody { display:table-row-group; }
-    table.test-table th, table.test-table td {
-      border:1px solid #94a3b8; padding:6px 7px; vertical-align:top; text-align:left;
-      word-break:break-word; overflow-wrap:break-word;
-    }
-    table.test-table thead th {
-      background:#e2e8f0; color:#0f172a; font-size:8pt; font-weight:700; text-align:center;
-    }
-    tr.test-row { page-break-inside:avoid; break-inside:avoid; }
-    tr.test-row td.tc-cell { font-weight:700; color:#1d4ed8; text-align:center; white-space:nowrap; }
-    tr.test-row td.clause-cell { font-size:7.6pt; color:#3730a3; }
-    tr.test-row td.compliance-cell { text-align:center; font-weight:700; }
-    tr.test-row td.compliance-yes     { background:#dcfce7; color:#166534; }
-    tr.test-row td.compliance-no      { background:#fee2e2; color:#991b1b; }
-    tr.test-row td.compliance-pending { background:#f1f5f9; color:#64748b; }
-    tr.test-row td.remarks-cell { color:#78350f; }
-    tr.attachment-row td { background:#f8fafc; page-break-inside:avoid; break-inside:avoid; }
-
-    .section-title { font-size:9pt; font-weight:600; color:#374151; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
-    .section-title::before { content:''; display:inline-block; width:3px; height:12px; border-radius:2px; }
-    .blue-bar::before   { background:#3b82f6; }
-    .purple-bar::before { background:#8b5cf6; }
-
-    .images-section { margin-top:10px; }
-    .images-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
-    .image-thumb { border:1px solid #e2e8f0; border-radius:6px; overflow:hidden; aspect-ratio:4/3; }
-    .image-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
-
-    .docs-section { margin-top:12px; }
-    .doc-card {
-      border:1px solid #e2e8f0; border-radius:8px; overflow:hidden;
-      margin-bottom:10px; page-break-inside:avoid;
-    }
-    .doc-card-meta {
-      display:flex; align-items:center; gap:10px; padding:8px 12px;
-      background:#fafafa; border-bottom:1px solid #e2e8f0;
-    }
-    .doc-ext-badge {
-      font-size:8pt; font-weight:700; padding:3px 8px;
-      border-radius:4px; white-space:nowrap; flex-shrink:0;
-    }
-    .doc-filename { font-size:9pt; color:#1e293b; font-weight:500; flex:1; word-break:break-all; }
-    .doc-card-info { padding:10px 14px; background:#fff; }
-
-    .images-section, .compact-doc-card {
-      break-inside:avoid;
-      page-break-inside:avoid;
-    }
-
-    .attachment-page {
-      page-break-before: always;
-      break-before: page;
-      page-break-inside: avoid;
-      break-inside: avoid;
-      height: 245mm;
-      border: 1px solid #e2e8f0;
-      background: #fff;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    .attachment-label {
-      flex: 0 0 auto;
-      padding: 7px 10px;
-      font-size: 8.5pt;
-      font-weight: 700;
-      color: #1e293b;
-      border-bottom: 1px solid #e2e8f0;
-      background: #f8fafc;
-      word-break: break-word;
-    }
-    .attachment-page img {
-      flex: 1 1 auto;
-      min-height: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      display: block;
-      background: #fff;
-    }
-
-    .signature-section { margin-top:28px; padding-top:18px; border-top:2px solid #e2e8f0; page-break-inside:avoid; }
-    .signature-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; }
-    .signature-block { text-align:center; }
-    .signature-line { border-bottom:1px solid #94a3b8; margin-bottom:6px; height:40px; }
-    .signature-label { font-size:8.5pt; color:#64748b; }
-
-    .report-footer { margin-top:18px; padding-top:10px; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; font-size:8pt; color:#94a3b8; }
-  `;
 
   const triggerPrint = async () => {
     if (testItems.every((item) => item.compliance === '')) {
@@ -503,237 +253,39 @@ const ATBlockRackView = () => {
       </head><body>⏳ Preparing report, please wait…</body></html>`);
     printWindow.document.close();
 
-    let bharatNetLogoBase64 = '';
-    let bsnlLogoBase64 = '';
-    try {
-      bharatNetLogoBase64 = await toBase64(BharatNetLogo as unknown as string);
-    } catch (_) {
-      /* skip */
-    }
-    try {
-      bsnlLogoBase64 = await toBase64(BsnlLogo as unknown as string);
-    } catch (_) {
-      /* skip */
-    }
-
-    const attachmentPages: string[] = [];
-
-    const itemsHtml = await Promise.all(
-      testItems.map(async (item) => {
-        const imagesHtml = await Promise.all(
-          item.images.map((image, index) =>
-            buildImageThumbHtml(image, item.testCaseNo, index, attachmentPages),
-          ),
-        );
-        const docsHtml = await Promise.all(
-          item.documents.map((doc) =>
-            buildDocumentCardHtml(doc, item.testCaseNo, attachmentPages),
-          ),
-        );
-
-        const complianceClass =
-          item.compliance === 'Yes'
-            ? 'compliance-yes'
-            : item.compliance === 'No'
-              ? 'compliance-no'
-              : 'compliance-pending';
-
-        const hasAttachments = imagesHtml.length > 0 || docsHtml.length > 0;
-
-        return `
-          <tr class="test-row">
-            <td class="tc-cell">${escapeHtml(item.testCaseNo)}</td>
-            <td class="clause-cell">${escapeHtml(item.clause)}</td>
-            <td>${escapeHtml(item.description)}</td>
-            <td>${escapeHtml(item.parameters)}</td>
-            <td>${escapeHtml(item.procedure)}</td>
-            <td>${escapeHtml(item.expectedResult)}</td>
-            <td class="compliance-cell ${complianceClass}">${escapeHtml(item.compliance) || '&nbsp;'}</td>
-            <td class="remarks-cell">${item.remarks ? escapeHtml(item.remarks) : '&nbsp;'}</td>
-          </tr>
-          ${
-            hasAttachments
-              ? `
-          <tr class="attachment-row">
-            <td colspan="8">
-              ${
-                imagesHtml.length > 0
-                  ? `
-              <div class="images-section">
-                <div class="section-title blue-bar">Images (${imagesHtml.length})</div>
-                <div class="images-grid">${imagesHtml.join('')}</div>
-              </div>`
-                  : ''
-              }
-              ${
-                docsHtml.length > 0
-                  ? `
-              <div class="docs-section">
-                <div class="section-title purple-bar">Documents (${docsHtml.length})</div>
-                ${docsHtml.join('')}
-              </div>`
-                  : ''
-              }
-            </td>
-          </tr>`
-              : ''
-          }`;
-      }),
-    );
-
-    const tocHtml = `
-      <li>1. Introduction</li>
-      <li>2. Acceptance Memorandum</li>
-      <li>3. Acceptance testing test cases
-        <ul class="toc-sublist"><li>3.1 Test cases for BLOCK smart rack</li></ul>
-      </li>
-    `;
-
-    const certFileHtml: Record<CertificationKey, string> = {
-      tsecCertificate: '',
-      qaCertificate: '',
-      qrCodeLogo: '',
-      photoEvidence: '',
-      oemApproval: '',
-    };
+    const certifications = {} as Record<CertificationKey, PrintFile | null>;
     for (const { key, label } of CERTIFICATION_FIELDS) {
-      certFileHtml[key] = await fileSlotHtml(certFiles?.[key], label, attachmentPages);
+      certifications[key] = await toPrintFile(certFiles?.[key], label);
     }
 
-    const fullHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>AT Block Rack Compliance Report</title>
-  <style>${buildPrintStyles()}</style>
-</head>
-<body>
-  <div class="doc-header">${DOC_CODE}</div>
-  <div class="cover">
-    ${bharatNetLogoBase64 ? `<img class="cover-logo" src="${bharatNetLogoBase64}" alt="BharatNet Logo" />` : ''}
-    ${bsnlLogoBase64 ? `<img class="cover-logo" src="${bsnlLogoBase64}" alt="BSNL Logo" />` : ''}
-    <h1>Bharat Sanchar Nigam Limited</h1>
-    <p>Acceptance Testing Test Cases document for Block Rack — ${escapeHtml(blockName)}<br/>as per BSNL Bharatnet Tender No. MM/BNO&M/BN-III/T-791/2024 issued on 15.02.2024</p>
-  </div>
-
-  <div class="toc-page">
-    <div class="toc-title">Table of Contents</div>
-    <ul class="toc-list">${tocHtml}</ul>
-  </div>
-
-  <h2 class="section-title">1. Introduction</h2>
-  <p class="intro-text">This document outlines the Acceptance Testing (A/T) procedures for Smart Rack at Block, in accordance with the requirements of BSNL BharatNet Tender No. MM/BNO&M/BN-III/T-791/2024 dated 15.02.2024. It covers the applicable test cases in line with industry best practices, relevant specifications and standards, and includes the acceptance testing template for quality assurance in accordance with the requirements specified in the RFP.</p>
-
-  <h2 class="section-title">2. Acceptance Memorandum</h2>
-  <table class="memo-table">
-    <tr><td class="label">Equipment description</td><td>${memorandum?.equipmentDescription ? escapeHtml(memorandum.equipmentDescription) : '&nbsp;'}</td></tr>
-    <tr><td class="label">Site Name with Block code</td><td>${escapeHtml(memorandum?.siteNameBlockCode || blockName)}</td></tr>
-    <tr><td class="label">Site Address</td><td>${memorandum?.siteAddress ? escapeHtml(memorandum.siteAddress) : '&nbsp;'}</td></tr>
-    <tr><td class="label">Date &amp; Time</td><td>${memorandum?.dateTime ? escapeHtml(memorandum.dateTime) : new Date().toLocaleString()}</td></tr>
-  </table>
-  <p class="intro-text">We hereby declare that all tests in this form were successfully completed.</p>
-  <table class="sig-table">
-    <tr>
-      <td><span class="sig-title">PIA Representative's Sign off</span>Representative Name:<br/><br/>Designation:<br/><br/>Date:<br/><br/>Signature: ____________________</td>
-      <td><span class="sig-title">IE Representative's Sign off</span>Representative Name:<br/><br/>Designation:<br/><br/>Date:<br/><br/>Signature: ____________________</td>
-      <td><span class="sig-title">BSNL Representative's Sign off*</span>Representative Name:<br/><br/>Designation:<br/><br/>Date:<br/><br/>Signature: ____________________</td>
-    </tr>
-  </table>
-  <p class="intro-text" style="font-size:8pt;color:#64748b;">*Note: For first time AT of Block Router, GP Router, Block Rack, GP Rack, Route and Ring, one BSNL person may be kept mandatorily and his/her signatures are required on the AT document. For subsequent ATs, BSNL may assign person on need basis or as requested by any PIA. Decision regarding the same shall be taken by BharatNet State Head on case-to-case basis.</p>
-
-  <h3 style="font-size:11pt;font-weight:700;margin:14px 0 8px;color:#1565c0;">Certification Verification</h3>
-  <table class="cert-table">
-    <tr><td class="label">Rack</td><td>DIN41491, DIN41494, and IEC297.</td></tr>
-    <tr><td class="label">All products/OEM</td><td>ISO 9001, 14001, ISO 45001 and IS13252: PART1 (2010) &amp; IEC 60950-1.</td></tr>
-    <tr><td class="label">Protection category</td><td>IP55: IS/IEC60529:2001. Certificate from NABL accredited lab shall be attached.</td></tr>
-    <tr><td class="label">TSEC Certificate</td><td>${certFileHtml.tsecCertificate}</td></tr>
-    <tr><td class="label">QA Certificate</td><td>${certFileHtml.qaCertificate}</td></tr>
-    <tr><td class="label">QR Code, logo</td><td>${certFileHtml.qrCodeLogo}</td></tr>
-    <tr><td class="label">Photo evidence</td><td>${certFileHtml.photoEvidence}</td></tr>
-    <tr><td class="label">OEM approval by BSNL</td><td>${certFileHtml.oemApproval}</td></tr>
-  </table>
-
-  <h3 style="font-size:11pt;font-weight:700;margin:14px 0 8px;color:#1565c0;">Documentation Requirements</h3>
-  <table class="cert-table">
-    <tr>
-      <td class="label">Documentation requirements</td>
-      <td>
-        <strong>Test 1:</strong> The contractor shall provide the following documents: system description documents; installation, operation and maintenance documents.<br/>
-        <strong>Test 2:</strong> All technical documents shall be in English language both in CD-ROM and in hard copy. To be provided by PIA along with first Block AT offered for the package.
-      </td>
-    </tr>
-  </table>
-
-  <h2 class="section-title">3. Acceptance Testing Test Cases</h2>
-
-  <table class="test-table">
-    <colgroup>
-      <col style="width:6%"><col style="width:10%"><col style="width:15%">
-      <col style="width:17%"><col style="width:15%"><col style="width:18%">
-      <col style="width:10%"><col style="width:9%">
-    </colgroup>
-    <thead>
-      <tr>
-        <th>Test Cases</th>
-        <th>RFP Clause</th>
-        <th>Test Description</th>
-        <th>Test Parameters</th>
-        <th>Test Procedure</th>
-        <th>Test Result</th>
-        <th>Compliance (Y/N)</th>
-        <th>Remarks</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${itemsHtml.join('')}
-    </tbody>
-  </table>
-
-  <div class="signature-section">
-    <div class="signature-grid">
-      <div class="signature-block"><div class="signature-line"></div><div class="signature-label">PIA Representative</div></div>
-      <div class="signature-block"><div class="signature-line"></div><div class="signature-label">IE Representative</div></div>
-      <div class="signature-block"><div class="signature-line"></div><div class="signature-label">BSNL Representative</div></div>
-    </div>
-  </div>
-
-  <div class="report-footer">
-    <span>AT Block Rack Compliance Checklist — Block Name: ${escapeHtml(blockName)}</span>
-    <span>Confidential — Internal Use Only</span>
-  </div>
-  ${attachmentPages.length > 0 ? attachmentPages.join('') : ''}
-
-</body>
-</html>`;
-
-    printWindow.document.open();
-    printWindow.document.write(fullHtml);
-    printWindow.document.close();
-
-    const waitForImages = (doc: Document): Promise<void> => {
-      const imgs = Array.from(doc.images);
-      if (imgs.length === 0) return Promise.resolve();
-      return Promise.all(
-        imgs.map(
-          (img) =>
-            img.complete
-              ? Promise.resolve()
-              : new Promise<void>((resolve) => {
-                  img.addEventListener('load', () => resolve());
-                  img.addEventListener('error', () => resolve());
-                }),
+    const tests: ATBlockRackPrintData['tests'] = {};
+    for (const item of testItems) {
+      const files = await Promise.all(
+        [...item.images, ...item.documents].map((url, index) =>
+          toPrintFile(url, `${item.testCaseNo}-${index + 1}`),
         ),
-      ).then(() => undefined);
-    };
+      );
+      tests[item.id] = {
+        compliance: item.compliance,
+        remarks: item.remarks,
+        files: files.filter((file): file is PrintFile => file !== null),
+      };
+    }
 
-    printWindow.onload = () => {
-      waitForImages(printWindow.document).then(() => {
-        setTimeout(() => {
-          printWindow.focus();
-          printWindow.print();
-        }, 300);
-      });
-    };
+    const html = buildATBlockRackPrintHtml({
+      blockName,
+      memorandum: {
+        equipmentDescription: memorandum?.equipmentDescription || '',
+        siteNameBlockCode: memorandum?.siteNameBlockCode || blockName,
+        siteAddress: memorandum?.siteAddress || '',
+        dateTime: memorandum?.dateTime || new Date().toLocaleString(),
+      },
+      certifications,
+      tests,
+      images: await loadRackTemplateImages(toBase64),
+    });
+
+    printHtmlDocument(printWindow, html);
   };
 
   const handlePrint = async () => {

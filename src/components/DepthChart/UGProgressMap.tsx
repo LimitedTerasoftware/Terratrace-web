@@ -1,7 +1,7 @@
 import axios from 'axios';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertCircle, ArrowLeft, Loader2, X, ZoomIn, Camera, RefreshCw } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Loader2, X, ZoomIn, Camera, RefreshCw, Download } from 'lucide-react';
 import moment from 'moment';
 import GoogleMapsLoader from '../hooks/googleMapsLoader';
 import { Activity, JointChamberData } from '../../types/survey';
@@ -692,6 +692,96 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
   const [hiddenEventTypes, setHiddenEventTypes] = useState<Set<string>>(
     new Set(),
   );
+  const [downloadingShape, setDownloadingShape] = useState(false);
+
+  // Builds { <legend key>: [...items] } for every layer checked in the legend.
+  // Construction path is sent as separate DEPTH / STARTPIT / ENDPIT arrays;
+  // integrated GPs are intentionally excluded.
+  const buildFinalShapePayload = () => {
+    const payload: Record<string, unknown[]> = {};
+
+    planningCategories
+      .filter(
+        (category) =>
+          category.name !== 'Desktop : Offset Cable' &&
+          visiblePlanningCategories.has(category.id),
+      )
+      .forEach((category) => {
+        payload[category.name] = planningPlacemarks.filter(
+          (placemark) => placemark.category === category.name,
+        );
+      });
+
+    if (showConstructionPath) {
+      CONNECT_EVENT_TYPES.forEach((eventType) => {
+        payload[eventType] = markers
+          .filter(
+            (marker) =>
+              marker.eventType === eventType &&
+              !ofcSurveyIds.has(marker.surveyId),
+          )
+          .sort(
+            (a, b) =>
+              a.surveyId - b.surveyId ||
+              (a.indexId ?? Number.MAX_SAFE_INTEGER) -
+                (b.indexId ?? Number.MAX_SAFE_INTEGER) ||
+              a.id - b.id,
+          );
+      });
+    }
+
+    markers
+      .filter(
+        (marker) =>
+          (!CONNECT_EVENT_TYPES.has(marker.eventType) ||
+            ofcSurveyIds.has(marker.surveyId)) &&
+          !hiddenEventTypes.has(marker.eventType),
+      )
+      .forEach((marker) => {
+        if (!payload[marker.eventType]) payload[marker.eventType] = [];
+        payload[marker.eventType].push(marker);
+      });
+
+    return payload;
+  };
+
+  const handleDownloadFinalShape = async () => {
+    setDownloadingShape(true);
+    try {
+      const response = await axios.post(
+        `${TraceBASEURL}/download-final-shape`,
+        buildFinalShapePayload(),
+        {
+          headers: { 'Content-Type': 'application/json' },
+          responseType: 'blob',
+        },
+      );
+
+      const disposition: string =
+        response.headers['content-disposition'] ?? '';
+      const fileNameMatch = disposition.match(
+        /filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i,
+      );
+      const fileName = fileNameMatch
+        ? decodeURIComponent(fileNameMatch[1].trim())
+        : 'final-shape.zip';
+
+      const blob = new Blob([response.data], { type: 'application/zip' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error downloading final shape:', err);
+      alert('Failed to download shapefile');
+    } finally {
+      setDownloadingShape(false);
+    }
+  };
   const toggleEventType = (eventType: string) => {
     setHiddenEventTypes((prev) => {
       const next = new Set(prev);
@@ -1172,8 +1262,22 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
 
       {(planningCategories.length > 0 || integratedGps.length > 0) && (
         <div className="absolute right-4 top-10 z-10 max-w-xs rounded-md border border-gray-200 bg-white p-3 shadow-lg">
-          <div className="text-sm font-semibold text-gray-800">
-            Approved KMZ
+          <div className="flex items-center gap-2">
+            <div className="text-sm font-semibold text-gray-800">
+              Approved KMZ
+            </div>
+            <button
+              onClick={handleDownloadFinalShape}
+              disabled={downloadingShape}
+              className="ml-auto flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {downloadingShape ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Download className="h-3 w-3" />
+              )}
+              {downloadingShape ? 'Downloading...' : 'Download'}
+            </button>
           </div>
           <div className="mt-2 max-h-56 space-y-1 overflow-auto text-xs text-gray-600">
             {planningCategories
