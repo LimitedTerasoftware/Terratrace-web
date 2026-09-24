@@ -470,7 +470,17 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
       { lat: number; lng: number; id: string ; order_id: number }[]
     > = {};
 
-    placemarks.forEach((placemark) => {
+    // Rendering every placemark synchronously in one tick is what froze the
+    // page when several large layers (physical survey, construction,
+    // approved KMZ, ...) were enabled together — the combined list can run
+    // into many thousands of entries. Processing them in small chunks across
+    // animation frames keeps the browser responsive; `cancelled` lets a
+    // stale run stop early if this effect re-fires before finishing.
+    let cancelled = false;
+    let rafId: number | null = null;
+    const PLACEMARK_CHUNK_SIZE = 300;
+
+    const processPlacemark = (placemark: (typeof placemarks)[number]) => {
       // Determine placemark source from ID prefix
       const isPhysicalPlacemark =
         placemark.id.startsWith('physical-') ||
@@ -1742,48 +1752,73 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
           (coord: any) => bounds.extend(coord),
         );
       }
-    });
+    };
 
-    // Draw polylines connecting construction markers with same survey_id
-    Object.entries(constructionPolylinesBySurvey).forEach(
-      ([surveyId, coords]) => {
-        if (coords.length < 2) return;
+    const finalizeRendering = () => {
+      // Draw polylines connecting construction markers with same survey_id
+      Object.entries(constructionPolylinesBySurvey).forEach(
+        ([surveyId, coords]) => {
+          if (coords.length < 2) return;
 
-      const sortedCoords = [...coords].sort((a, b) => {
-          const aId = String(a.order_id ?? a.id ?? '');
-          const bId = String(b.order_id ?? b.id ?? '');
+          const sortedCoords = [...coords].sort((a, b) => {
+            const aId = String(a.order_id ?? a.id ?? '');
+            const bId = String(b.order_id ?? b.id ?? '');
 
-          return aId.localeCompare(bId, undefined, { numeric: true });
-        });
+            return aId.localeCompare(bId, undefined, { numeric: true });
+          });
 
-        const constructionPolyline = new google.maps.Polyline({
-          path: sortedCoords as google.maps.LatLngLiteral[],
-          geodesic: true,
-          strokeColor: '#0891B2',
-          strokeOpacity: 0.8,
-          strokeWeight: 4,
-          map: mapInstanceRef.current!,
-          // title: `Construction Route - Survey ID: ${surveyId}`,
-        });
+          const constructionPolyline = new google.maps.Polyline({
+            path: sortedCoords as google.maps.LatLngLiteral[],
+            geodesic: true,
+            strokeColor: '#0891B2',
+            strokeOpacity: 0.8,
+            strokeWeight: 4,
+            map: mapInstanceRef.current!,
+            // title: `Construction Route - Survey ID: ${surveyId}`,
+          });
 
-        polylinesRef.current.push(constructionPolyline);
+          polylinesRef.current.push(constructionPolyline);
 
-        sortedCoords.forEach((coord) => {
-          bounds.extend(coord as unknown as google.maps.LatLng);
-        });
+          sortedCoords.forEach((coord) => {
+            bounds.extend(coord as unknown as google.maps.LatLng);
+          });
 
-        hasVisiblePlacemarks = true;
-      },
-    );
+          hasVisiblePlacemarks = true;
+        },
+      );
 
-    if (
-      hasVisiblePlacemarks &&
-      !bounds.isEmpty() &&
-      !videoSurveyMode &&
-      !photoSurveyMode
-    ) {
-      mapInstanceRef.current!.fitBounds(bounds, { padding: 50 });
-    }
+      if (
+        hasVisiblePlacemarks &&
+        !bounds.isEmpty() &&
+        !videoSurveyMode &&
+        !photoSurveyMode
+      ) {
+        mapInstanceRef.current!.fitBounds(bounds, { padding: 50 });
+      }
+    };
+
+    const processChunk = (startIndex: number) => {
+      if (cancelled) return;
+      const endIndex = Math.min(
+        startIndex + PLACEMARK_CHUNK_SIZE,
+        placemarks.length,
+      );
+      for (let i = startIndex; i < endIndex; i++) {
+        processPlacemark(placemarks[i]);
+      }
+      if (endIndex < placemarks.length) {
+        rafId = requestAnimationFrame(() => processChunk(endIndex));
+      } else {
+        finalizeRendering();
+      }
+    };
+
+    processChunk(0);
+
+    return () => {
+      cancelled = true;
+      if (rafId != null) cancelAnimationFrame(rafId);
+    };
   }, [
     placemarks,
     categories,

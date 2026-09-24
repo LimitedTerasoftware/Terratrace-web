@@ -673,8 +673,6 @@ function SmartInventory() {
 
       if (response.status === 200 || response.status === 201) {
         if (Object.keys(result.data).length > 0) {
-          Object.entries(result.data).forEach(([blockId, points]) => {});
-
           // Use VideoSurveyService for video validation
           const videoValidation: ValidationResult =
             VideoSurveyService.validateVideoSurveyData(result);
@@ -2439,14 +2437,6 @@ function SmartInventory() {
 
   // Individual arrays for specific contexts
   const externalFilePlacemarks = processedPlacemarks;
-  const apiPlacemarks = [
-    ...physicalSurveyData,
-    ...desktopPlanningData,
-    ...rectificationData, // ADD THIS
-    ...JointsData,
-    ...constructionData,
-    ...approvedKmzData,
-  ];
 
   // ==============================================
   // RENDER
