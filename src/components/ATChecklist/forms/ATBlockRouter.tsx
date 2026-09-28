@@ -12,6 +12,7 @@ import {
   ClipboardCheck,
   Loader2,
   Printer,
+  FileDown,
   ArrowLeft,
   Wrench,
   Network,
@@ -34,10 +35,7 @@ import {
   loadTemplateImages,
   printHtmlDocument,
 } from '../print/atBlockRouterPrint';
-import * as pdfjsLib from 'pdfjs-dist';
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+import { downloadATBlockRouterDocx } from '../print/atBlockRouterDocx';
 
 const BASEURL = import.meta.env.VITE_API_BASE;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -693,6 +691,7 @@ const ATBlockRouterForm = ({
   );
   const [submitting, setSubmitting] = useState(false);
   const [preparing, setPreparing] = useState(false);
+  const [downloadingWord, setDownloadingWord] = useState(false);
 
   useEffect(() => {
     if (existingData?.memorandum) {
@@ -1171,40 +1170,6 @@ const ATBlockRouterForm = ({
     return name.toLowerCase().split('?')[0].endsWith('.pdf');
   };
 
-  const renderPdfToImages = async (source: File | string): Promise<string[]> => {
-    let arrayBuffer: ArrayBuffer;
-    if (source instanceof File) {
-      arrayBuffer = await source.arrayBuffer();
-    } else {
-      const fullUrl = getFullImageUrl(source);
-      arrayBuffer = await fetch(fullUrl, {
-        mode: 'cors',
-        credentials: 'omit',
-        cache: 'no-cache',
-      }).then((response) => {
-        if (!response.ok) throw new Error(`Failed to fetch PDF: ${fullUrl}`);
-        return response.arrayBuffer();
-      });
-    }
-
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    const pages: string[] = [];
-
-    for (let pageNo = 1; pageNo <= pdf.numPages; pageNo += 1) {
-      const page = await pdf.getPage(pageNo);
-      const viewport = page.getViewport({ scale: 1.6 });
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      if (!context) continue;
-      canvas.width = Math.floor(viewport.width);
-      canvas.height = Math.floor(viewport.height);
-      await page.render({ canvasContext: context, viewport, canvas }).promise;
-      pages.push(canvas.toDataURL('image/png'));
-    }
-
-    return pages;
-  };
-
   const toPrintFile = async (
     slot: UploadedFile | null,
     fallbackName: string,
@@ -1215,9 +1180,6 @@ const ATBlockRouterForm = ({
     try {
       if (kind === 'image') {
         return { name, kind, pages: [slot.file ? await toBase64(slot.file) : await toBase64(slot.preview)] };
-      }
-      if (kind === 'pdf') {
-        return { name, kind, pages: await renderPdfToImages(slot.file || slot.url || '') };
       }
     } catch (error) {
       console.error('Attachment render failed:', name, error);
@@ -1237,19 +1199,7 @@ const ATBlockRouterForm = ({
     return files.filter((file): file is PrintFile => file !== null);
   };
 
-  const triggerPrint = async () => {
-    const printWindow = window.open('', '_blank', 'width=1200,height=900');
-    if (!printWindow) {
-      alert('Pop-up blocked. Please allow pop-ups for this site to print.');
-      return;
-    }
-
-    printWindow.document
-      .write(`<!DOCTYPE html><html><head><title>AT Block Router Report</title>
-      <style>body{display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#64748b;font-size:15pt;}</style>
-      </head><body>⏳ Preparing report, please wait…</body></html>`);
-    printWindow.document.close();
-
+  const collectPrintData = async (): Promise<ATBlockRouterPrintData> => {
     const certifications = {} as Record<CertificationKey, PrintFile | null>;
     for (const { key, label } of CERTIFICATION_FIELDS) {
       certifications[key] = await toPrintFile(certificationFiles[key], label);
@@ -1275,7 +1225,7 @@ const ATBlockRouterForm = ({
       };
     }
 
-    const html = buildATBlockRouterPrintHtml({
+    return {
       blockName,
       memorandum: {
         ...memorandum,
@@ -1288,9 +1238,35 @@ const ATBlockRouterForm = ({
       basic,
       network,
       images: await loadTemplateImages((src) => toBase64(src)),
-    });
+    };
+  };
 
-    printHtmlDocument(printWindow, html);
+  const triggerPrint = async () => {
+    const printWindow = window.open('', '_blank', 'width=1200,height=900');
+    if (!printWindow) {
+      alert('Pop-up blocked. Please allow pop-ups for this site to print.');
+      return;
+    }
+
+    printWindow.document
+      .write(`<!DOCTYPE html><html><head><title>AT Block Router Report</title>
+      <style>body{display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#64748b;font-size:15pt;}</style>
+      </head><body>⏳ Preparing report, please wait…</body></html>`);
+    printWindow.document.close();
+
+    printHtmlDocument(printWindow, buildATBlockRouterPrintHtml(await collectPrintData()));
+  };
+
+  const handleDownloadWord = async () => {
+    setDownloadingWord(true);
+    try {
+      await downloadATBlockRouterDocx(await collectPrintData());
+    } catch (error) {
+      console.error('Word download failed:', error);
+      alert('Failed to create the Word document. Please try again.');
+    } finally {
+      setDownloadingWord(false);
+    }
   };
 
   const handlePrint = async () => {
@@ -2071,6 +2047,21 @@ const ATBlockRouterForm = ({
           ) : (
             <>
               <Printer size={18} /> Print / PDF
+            </>
+          )}
+        </button>
+        <button
+          onClick={handleDownloadWord}
+          disabled={downloadingWord}
+          className="px-6 py-3.5 font-bold rounded-2xl transition-all flex items-center justify-center gap-2 text-base bg-white border-2 border-blue-200 text-blue-700 hover:bg-blue-50 shadow disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {downloadingWord ? (
+            <>
+              <Loader2 size={18} className="animate-spin" /> Preparing…
+            </>
+          ) : (
+            <>
+              <FileDown size={18} /> Word
             </>
           )}
         </button>

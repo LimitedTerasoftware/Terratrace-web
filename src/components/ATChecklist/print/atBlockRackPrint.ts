@@ -1,11 +1,11 @@
 // Print template for the AT Block Rack checklist.
 //
-// Reproduces the filled reference document for the Block Rack AT (107398.pdf,
-// ABP/AT/BLRK/002 Ver1.0) page-for-page: four portrait pages (cover, contents,
-// introduction and memorandum, certification) followed by landscape pages with the
-// section 3.1 test table. Positions are in pt from the page's top-left corner, measured
-// from that document. Evidence photos follow the test table (one block per test,
-// repeating its row); PDFs are printed at the end of the document.
+// Reproduces the filled reference documents for the Block Rack AT (ABP/AT/BLRK/002 Ver1.0):
+// four portrait pages (cover, contents, introduction and memorandum, certification) as in
+// 107398.pdf, then landscape pages for section 3.1 where, as in "INDPUR Rack Pre AT.pdf",
+// each test is a table of its own (header row and the test's row) followed by its photos.
+// Positions are in pt from the page's top-left corner, measured from those documents.
+// PDFs and other documents appear as an icon with the file name.
 
 import type { CertificationKey } from '../forms/ATBlockRack';
 import BharatNetLogo from '../../../images/logo/bharatnet-logo.jpg';
@@ -20,8 +20,9 @@ import {
   PrintFile,
   Row,
   TableGeometry,
-  annexurePages,
-  createAttachments,
+  attachmentDocuments,
+  attachmentImages,
+  attachmentsHtml,
   esc,
   flow,
   image,
@@ -35,6 +36,19 @@ import {
   tableHtml,
 } from './printEngine';
 import { RACK_TABLE_PAGES, RackCell, RackRow, RackTablePage } from './atBlockRackTable';
+import {
+  CERT_STANDARDS,
+  COVER_TITLE,
+  DECLARATION,
+  DOC_REQUIREMENTS,
+  INTRO_1,
+  INTRO_2,
+  NOTE_1,
+  NOTE_2,
+  SIGN_OFF,
+  SIGN_OFF_LINES,
+  rackTestColumns,
+} from './atBlockRackContent';
 
 export { printHtmlDocument } from './printEngine';
 export type { PrintFile } from './printEngine';
@@ -150,21 +164,22 @@ ${BASE_STYLES}
   .cell-val .val-block { line-height: ${CAMBRIA_LINE}; }
   .cell-val .fchip { width: auto; max-width: 100%; font-size: 6pt; }
   .cell-val .fchip svg { width: 20pt; height: 24pt; }
-  .rack-evidence { break-before: page; page-break-before: always; }
-  .ev-group { margin-bottom: 10pt; }
-  .ev-group > .row-copy { break-after: avoid; page-break-after: avoid; margin-bottom: 6pt; }
-  .ev-images { display: flex; flex-wrap: wrap; gap: 8pt; align-items: flex-start; }
-  .ev-images img.ev { max-width: 100%; margin: 0; }
+  /* Section 3.1: one table per test, followed by its photos */
+  /* A test's table and its photos stay on one page. */
+  .rack-test { margin-top: 18pt; break-inside: avoid; page-break-inside: avoid; }
+  .rack-test table { break-inside: avoid; page-break-inside: avoid; }
+  .rack-test .tc { padding: 2pt 3pt; }
+  .rack-test .files { justify-content: center; }
+  .rack-photos { display: flex; flex-wrap: wrap; gap: 2pt; align-items: flex-end; margin-top: 10pt; }
+  .rack-photos img.ev { max-width: 100%; margin: 0; }
   .cert-files { text-align: left; padding: 2pt 5.5pt 0; }
   .cert-files .files { margin-bottom: 2pt; }
-  .annex { height: 700pt; }
 `;
 
 // ─── Document ───────────────────────────────────────────────────────────────
 
 export const buildATBlockRackPrintHtml = (data: ATBlockRackPrintData): string => {
   const { memorandum: memo, images: img } = data;
-  const attach = createAttachments();
   const test = (id: string) => data.tests[id] ?? { compliance: '', remarks: '', files: [] };
 
   const pages: string[] = [];
@@ -176,12 +191,8 @@ export const buildATBlockRackPrintHtml = (data: ATBlockRackPrintData): string =>
     image(93.5, 162.4, 215.9, 126.0, img.bharatNetLogo),
     image(293.8, 219.4, 152.7, 113.7, img.bsnlLogo),
     text({ base: 429.31, x: 186.17, scale: 1.15 }, ['Bharat Sanchar Nigam Limited']),
-    text({ base: 455.83, x: 66.26, right: 560, size: 12, scale: 1.145 }, [
-      'Acceptance Testing Test Cases document for Block Rack as per BSNL',
-    ]),
-    text({ base: 469.99, x: 38.88, right: 560, size: 12, scale: 1.145 }, [
-      'Bharatnet Tender No. MM/BNO&M/BN-III/T-791/2024 issued on 15.02.2024',
-    ]),
+    text({ base: 455.83, x: 66.26, right: 560, size: 12, scale: 1.145 }, [COVER_TITLE[0]]),
+    text({ base: 469.99, x: 38.88, right: 560, size: 12, scale: 1.145 }, [COVER_TITLE[1]]),
   );
 
   // ── Page 2: table of contents ──────────────────────────────────────────────
@@ -234,61 +245,35 @@ export const buildATBlockRackPrintHtml = (data: ATBlockRackPrintData): string =>
     );
   // Sign-off table (in the reference document this area holds the signed copy).
   const signCell = (title: string) =>
-    `<div class="in" style="padding:5pt 5.5pt 0;font-size:10pt">${[
-      title,
-      'Representative Name:',
-      'Designation:',
-      'Date:',
-    ]
+    `<div class="in" style="padding:5pt 5.5pt 0;font-size:10pt">${[title, ...SIGN_OFF_LINES]
       .map((line, i) => `<div style="height:${i === 0 ? 22 : 23}pt">${esc(line)}</div>`)
       .join('')}<div>Signature<span style="display:inline-block;width:70pt;border-bottom:0.6pt solid #000000"></span></div></div>`;
   portrait(
     heading(90.26, '1.', 'Introduction'),
-    text({ base: 121.1, right: 520.3, align: 'justify', scale: 1.15 }, [
-      'This document outlines the Acceptance Testing (A/T) procedures for Smart Rack at',
-      'Block, in accordance with the requirements of BSNL BharatNet Tender No.',
-      'MM/BNO&M/BN-III/T-791/2024 dated 15.02.2024.',
-    ]),
-    text({ base: 173.9, right: 520.6, align: 'justify', scale: 1.15 }, [
-      'It covers the applicable test cases in line with industry best practices, relevant',
-      'specifications and standards, and includes the acceptance testing template for quality',
-      'assurance in accordance with the requirements specified in the RFP.',
-    ]),
+    text({ base: 121.1, right: 520.3, align: 'justify', scale: 1.15 }, INTRO_1),
+    text({ base: 173.9, right: 520.6, align: 'justify', scale: 1.15 }, INTRO_2),
     heading(235.1, '2.', 'Acceptance Memorandum'),
     memoItem(258.17, 'a)', 'Equipment description', memo.equipmentDescription),
     memoItem(277.01, 'b)', 'Site Name with Block code', memo.siteNameBlockCode),
     memoItem(296.45, 'c)', 'Site Address', memo.siteAddress, 2),
     memoItem(328.61, 'd)', 'Date & Time', memo.dateTime),
-    text({ base: 382.73, scale: 1.1, pitch: 26.88 }, [
-      'We hereby declare that all tests in this form were successfully completed. Note (if',
-      'any):',
-    ]),
+    text({ base: 382.73, scale: 1.1, pitch: 26.88 }, DECLARATION),
     table({ x: 53.2, cols: [3155, 3155, 3156], border: 0.5, pad: 0, size: 11 }, 426.0, [
       {
         h: (554.2 - 426.0 - 0.5) * 20,
         cells: [
-          { html: signCell('PIA Representative’s Sign off'), valign: 'top' },
-          { html: signCell('IE Representative’s Sign off'), valign: 'top' },
-          { html: signCell('BSNL Representative’s Sign off*'), valign: 'top' },
+          ...SIGN_OFF.map((title) => ({ html: signCell(title), valign: 'top' as const })),
         ],
       },
     ]),
     text({ base: 621.34, scale: 1.1 }, ['*Note:']),
     text(
       { base: 648.22, x: 89.3, right: 526.3, align: 'justify', scale: 1.1, marker: { text: '1.', x: 71.3, scale: 1.24 } },
-      [
-        'For first time AT of Block Router, GP Router, Block Rack, GP Rack, Route and',
-        'Ring, one BSNL person may be kept mandatorily and his/her signatures are',
-        'required on the AT document.',
-      ],
+      NOTE_1,
     ),
     text(
       { base: 686.98, x: 89.3, right: 525.8, align: 'justify', scale: 1.15, marker: { text: '2.', x: 71.3, scale: 1.24 } },
-      [
-        'For subsequent ATs, BSNL may assign person on need basis or as requested by',
-        'any PIA. Decision regarding the same shall be taken by BharatNet State Head on',
-        'case-to-case basis.',
-      ],
+      NOTE_2,
     ),
   );
 
@@ -298,15 +283,15 @@ export const buildATBlockRackPrintHtml = (data: ATBlockRackPrintData): string =>
     `<div style="font-size:${size}pt">${lines
       .map((line) => `<div class="sx" style="--sx:${scale}"><div class="ln${center ? ' c' : ''}">${esc(line)}</div></div>`)
       .join('')}</div>`;
-  const certFiles = (keys: CertificationKey[], label: string) => {
-    const html = attach.html(keys.map((key) => data.certifications[key]), label, 200);
+  const certFiles = (keys: CertificationKey[]) => {
+    const html = attachmentsHtml(keys.map((key) => data.certifications[key]), 200);
     return html ? `<div class="cert-files">${html}</div>` : '';
   };
   const cert = (label: string, lines: string[], keys: CertificationKey[], rowH: number, top = false): Row => ({
     h: (rowH - 0.5) * 20,
     cells: [
       { html: certLines([label], 12, 1.14), valign: top ? 'top' : 'middle', padTop: top ? 24 : 0 },
-      { html: certFiles(keys, label) + certLines(lines, 11, 1.15), valign: top ? 'top' : 'middle', padTop: top ? 24 : 0 },
+      { html: certFiles(keys) + certLines(lines, 11, 1.15), valign: top ? 'top' : 'middle', padTop: top ? 24 : 0 },
     ],
   });
   portrait(
@@ -316,22 +301,7 @@ export const buildATBlockRackPrintHtml = (data: ATBlockRackPrintData): string =>
         h: (215.1 - 98.4 - 0.5) * 20,
         cells: [
           {
-            html: `<div style="padding-left:5.75pt">${certLines(
-              [
-                'Rack: DIN41491, DIN41494, and',
-                'IEC297.',
-                'All products/OEM: ISO 9001,',
-                '14001, ISO 45001 and IS13252:',
-                'PART1 (2010) & IEC 60950-1.',
-                'Protection category: IP55:',
-                'IS/IEC60529:2001. Certificate',
-                'from NABL accredited lab shall be',
-                'attached',
-              ],
-              11,
-              1.15,
-              false,
-            )}</div>`,
+            html: `<div style="padding-left:5.75pt">${certLines(CERT_STANDARDS, 11, 1.15, false)}</div>`,
             valign: 'top',
             padTop: 22,
           },
@@ -347,19 +317,11 @@ export const buildATBlockRackPrintHtml = (data: ATBlockRackPrintData): string =>
         cells: [
           { html: certLines(['Documentation requirements'], 12, 1.14) },
           {
-            html: `<div style="padding-left:4.4pt">${flow(363.65, 266.7, [
-              text({ base: 374.33, x: 271.1, right: 560, scale: 1.1 }, ['Test 1: The contractor shall provide following', 'documents:']),
-              text({ base: 400.01, x: 271.1, right: 560, scale: 1.15 }, ['a. System description documents']),
-              text({ base: 412.97, x: 271.1, right: 560, scale: 1.15 }, ['b. Installation, Operation and Maintenance', 'documents']),
-              text({ base: 451.75, x: 271.1, right: 560, scale: 1.15 }, [
-                'Test 2: All technical documents shall be in English',
-                'language both in CD- ROM and in hard copy.',
-              ]),
-              text({ base: 489.43, x: 271.1, right: 560, scale: 1.1 }, [
-                'To be provided by PIA along with first BLOCK AT',
-                'offered for the package',
-              ]),
-            ])}</div>`,
+            html: `<div style="padding-left:4.4pt">${flow(
+              363.65,
+              266.7,
+              DOC_REQUIREMENTS.map(([base, lines, scale]) => text({ base, x: 271.1, right: 560, scale }, lines)),
+            )}</div>`,
             valign: 'top',
           },
         ],
@@ -369,84 +331,66 @@ export const buildATBlockRackPrintHtml = (data: ATBlockRackPrintData): string =>
 
   // ── Landscape pages: 3. Acceptance Testing Test Cases, 3.1 table ───────────
   const { text: landText } = makeText({ x: 72.0, right: L_RIGHT });
-  const values = (row: RackRow): Cell[] => {
-    if (!row.test) return [{ html: '' }, { html: '' }];
-    const t = test(row.test);
+  const values = (id: string): Cell[] => {
+    const t = test(id);
     const remarks =
       (t.remarks ? `<div class="val-block" style="font-size:9pt">${esc(t.remarks)}</div>` : '') +
-      attach.documents(t.files, `${row.test.replace('T', 'T-')} document`, true, false);
+      attachmentDocuments(t.files);
     return [
-      { html: t.compliance ? `<div class="val cell-val">${esc(t.compliance)}</div>` : '', valign: 'top', pad: 4 },
-      { html: remarks ? `<div class="cell-val">${remarks}</div>` : '', valign: 'top', pad: 0, padTop: 22 },
+      { html: t.compliance ? `<div class="val cell-val">${esc(t.compliance)}</div>` : '', align: 'center', pad: 0 },
+      { html: remarks ? `<div class="cell-val">${remarks}</div>` : '', align: 'center', pad: 0 },
     ];
   };
-  const rackRows = (page: RackTablePage, rows: RackRow[]): Row[] =>
-    rows.map((row) => {
-      const cells: Cell[] = [];
-      row.cells.forEach((cell, c) => {
-        if (cell) cells.push(staticCell(cell, row.top, page.cols[c], !!row.header));
-      });
-      return {
-        h: rowTwips(row),
-        className: row.header ? 'hdr' : undefined,
-        cells: row.header ? cells : [...cells, ...values(row)],
-      };
-    });
 
-  RACK_TABLE_PAGES.forEach((page, index) => {
-    const blocks = [];
-    if (index === 0) {
-      blocks.push(
-        landText(
-          // The reference has this heading at 52.2, inside the landscape header band.
-          { base: L_TOP + 12 * CAMBRIA_ASCENT, x: 93.38, size: 12, bold: true, scale: 1.15, marker: { text: '3.', x: 75.36, scale: 1.23 } },
-          ['Acceptance Testing Test Cases'],
-        ),
-        landText(
-          { base: 80.3, x: 108.02, size: 12, bold: true, scale: 1.2, marker: { text: '3.1', x: 72.0, scale: 1.17 } },
-          ['TEST CASES FOR BLOCK RACK:'],
-        ),
-      );
-    }
-    blocks.push(table(geometry(page), page.rows[0].top, rackRows(page, page.rows)));
-    pages.push(`<section class="page land">${flow(L_TOP, L_LEFT, blocks)}</section>`);
-  });
+  const testText = rackTestColumns();
 
-  // ── Evidence: photos of each test below its repeated row ───────────────────
-  const firstRow = new Map<string, { page: RackTablePage; row: RackRow; covered: (RackCell | undefined)[] }>();
-  RACK_TABLE_PAGES.forEach((page) => {
-    const spanning: (RackCell | undefined)[] = [];
-    page.rows.forEach((row) => {
-      row.cells.forEach((cell, c) => {
-        if (cell?.rowspan) spanning[c] = cell;
-        else if (cell) spanning[c] = undefined;
-      });
-      if (row.test && !firstRow.has(row.test)) firstRow.set(row.test, { page, row, covered: [...spanning] });
-    });
-  });
-  const rowCopy = (id: string) => {
-    const entry = firstRow.get(id);
-    if (!entry) return '';
-    const { page, row, covered } = entry;
-    const cells: Cell[] = row.cells.map((cell, c) => {
-      const source = cell ?? covered[c];
-      if (!source) return { html: '' };
-      const rendered = staticCell({ lines: source.lines }, row.top, page.cols[c], false);
-      // Text of a merged cell is centred in the single copied row.
-      return cell && !cell.rowspan ? rendered : { ...rendered, valign: 'middle', padTop: 0 };
-    });
-    return `<div class="row-copy">${tableHtml(geometry(page), [
-      { h: rowTwips(row), cells: [...cells, ...values(row)] },
-    ])}</div>`;
+  // Columns 0-1 (test number, clause) are centred, the others left-aligned.
+  const testCell = (cells: RackCell[], c: number): Cell => {
+    const lines = cells.flatMap((cell) => cell.lines);
+    const html = lines
+      .map(([line, , , scale]) => `<div class="sx" style="--sx:${scale}"><div class="ln${c < 2 ? ' c' : ''}">${esc(line)}</div></div>`)
+      .join('');
+    return { html: `<div class="tc">${html}</div>`, pad: 0 };
   };
-  const evidence = RACK_TABLE_PAGES.flatMap((page) => page.rows)
-    .filter((row) => row.test && firstRow.get(row.test)?.row === row)
-    .map((row) => {
-      const photos = attach.images(test(row.test!).files, 230);
-      return photos ? `<div class="ev-group">${rowCopy(row.test!)}<div class="ev-images">${photos}</div></div>` : '';
+
+  const firstPage = RACK_TABLE_PAGES[0];
+  const header = firstPage.rows[0];
+  const headerRow: Row = {
+    h: rowTwips(header),
+    className: 'hdr',
+    cells: header.cells.map((cell, c) => staticCell(cell!, header.top, firstPage.cols[c], true)),
+  };
+
+  // One block per test, as in the filled reference: a table with the header row and the
+  // test's row, followed by the test's photos.
+  const testBlocks = [...testText.keys()]
+    .map((id) => {
+      const columns = testText.get(id)!;
+      const row: Row = {
+        h: 0,
+        cells: [...columns.map(testCell), ...values(id)],
+      };
+      const photos = attachmentImages(test(id).files, 250);
+      return `<div class="rack-test" style="margin-left:${n(firstPage.cols[0] - L_LEFT)}pt">${tableHtml(geometry(firstPage), [
+        headerRow,
+        row,
+      ])}${photos ? `<div class="rack-photos">${photos}</div>` : ''}</div>`;
     })
     .join('');
-  if (evidence) pages.push(`<section class="page land rack-evidence">${evidence}</section>`);
+
+  pages.push(
+    `<section class="page land">${flow(L_TOP, L_LEFT, [
+      landText(
+        // The reference has this heading at 52.2, inside the landscape header band.
+        { base: L_TOP + 12 * CAMBRIA_ASCENT, x: 93.38, size: 12, bold: true, scale: 1.15, marker: { text: '3.', x: 75.36, scale: 1.23 } },
+        ['Acceptance Testing Test Cases'],
+      ),
+      landText(
+        { base: 80.3, x: 108.02, size: 12, bold: true, scale: 1.2, marker: { text: '3.1', x: 72.0, scale: 1.17 } },
+        ['TEST CASES FOR BLOCK RACK:'],
+      ),
+    ])}${testBlocks}</section>`,
+  );
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -458,7 +402,6 @@ ${FALLBACK_FONTS_LINK}
 </head>
 <body>
 ${pages.join('\n')}
-${annexurePages(attach.annexures, 'page port annex')}
 </body>
 </html>`;
 };

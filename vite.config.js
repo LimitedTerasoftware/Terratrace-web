@@ -15,6 +15,14 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
         },
+        // Uploaded files (VITE_Image_URL) read by the AT Word downloads: that server only
+        // allows CORS from the production site, so in development they go through here.
+        '/image-proxy/': {
+          target: env.VITE_Image_URL ? new URL(env.VITE_Image_URL).origin : 'https://docs.tricadtrack.com',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/image-proxy/, ''),
+        },
       },
     },
   }

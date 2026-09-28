@@ -7,8 +7,8 @@
 // ─── Data contract ──────────────────────────────────────────────────────────
 
 /**
- * An uploaded file. `pages` holds image data URLs: the image itself, the rendered pages
- * of a PDF, or nothing for other documents.
+ * An uploaded file. For an image, `pages` holds its data URL; PDFs and other documents
+ * are printed as an icon with the file name (`pages` is empty).
  */
 export interface PrintFile {
   name: string;
@@ -207,6 +207,7 @@ export interface Cell {
   padTop?: number; // twips; space before the first paragraph of a top-aligned cell
   align?: 'center';
   rowspan?: number; // vertically merged cell
+  colspan?: number; // horizontally merged cell
 }
 
 export interface Row {
@@ -255,10 +256,13 @@ export const tableHtml = (g: TableGeometry, rows: Row[]) => {
           ]
             .filter(Boolean)
             .join(';');
-          return `<td${cell.rowspan ? ` rowspan="${cell.rowspan}"` : ''} style="${style}">${cell.html}</td>`;
+          const spans = `${cell.rowspan ? ` rowspan="${cell.rowspan}"` : ''}${cell.colspan ? ` colspan="${cell.colspan}"` : ''}`;
+          return `<td${spans} style="${style}">${cell.html}</td>`;
         })
         .join('');
-      return `<tr${row.className ? ` class="${row.className}"` : ''}>${cells}</tr>`;
+      const tr = `<tr${row.className ? ` class="${row.className}"` : ''}>${cells}</tr>`;
+      // A header row repeats at the top of every printed page the table runs onto.
+      return row.className === 'hdr' ? `<thead>${tr}</thead>` : tr;
     })
     .join('');
   return `<table class="t" style="--bw:${g.border}pt;width:${n(width)}pt;margin:-${n(topBorder / 2)}pt 0 -${n(
@@ -313,79 +317,37 @@ export const inlineValue = (value: string, offset: number, lines = 1) =>
 /** The ":" at a tab stop, `offset` pt from the left edge of the block. */
 export const tabColon = (offset: number) => `<span class="colon" style="left:${n(offset)}pt">:</span>`;
 
-interface Annexure {
-  number: number;
-  label: string;
-  file: PrintFile;
-}
-
 const PDF_ICON =
   '<svg viewBox="0 0 16 19" aria-hidden="true"><path d="M1 .5h10l4.5 4.5v13.5H1z" fill="#FFFFFF" stroke="#8C8C8C" stroke-width=".6"/><path d="M11 .5V5h4.5" fill="none" stroke="#8C8C8C" stroke-width=".6"/><rect x="2.5" y="9" width="11" height="5.2" rx=".6" fill="#D93831"/><text x="8" y="13.1" text-anchor="middle" font-family="Arial, sans-serif" font-size="4.2" font-weight="700" fill="#FFFFFF">PDF</text></svg>';
 const DOC_ICON =
   '<svg viewBox="0 0 16 19" aria-hidden="true"><path d="M1 .5h10l4.5 4.5v13.5H1z" fill="#FFFFFF" stroke="#8C8C8C" stroke-width=".6"/><path d="M11 .5V5h4.5" fill="none" stroke="#8C8C8C" stroke-width=".6"/><path d="M3.5 9h9M3.5 11h9M3.5 13h9M3.5 15h6" stroke="#2B579A" stroke-width=".8"/></svg>';
 
-/**
- * Renders uploaded files where they belong, as in the filled reference documents:
- * images inline, other documents as an icon with the file name. PDF pages are
- * additionally printed as annexures at the end of the document.
- */
-export const createAttachments = () => {
-  const annexures: Annexure[] = [];
-  const addAnnexure = (file: PrintFile, label: string) => {
-    annexures.push({ number: annexures.length + 1, label, file });
-    return annexures.length;
-  };
-  const isRenderedPdf = (file: PrintFile) => file.kind === 'pdf' && file.pages.length > 0;
-  const present = (files: (PrintFile | null | undefined)[]) => files.filter((file): file is PrintFile => !!file);
+// Uploaded files are shown where they belong, as in the filled reference documents:
+// images inline, PDFs and other documents as an icon with the file name.
 
-  /** Images of `files`. */
-  const images = (files: (PrintFile | null | undefined)[], maxHeight: number) =>
-    present(files)
-      .filter((file) => file.kind === 'image' && file.pages.length > 0)
-      .map((file) => `<img class="ev" src="${file.pages[0]}" alt="${esc(file.name)}" style="max-height:${maxHeight}pt" />`)
-      .join('');
+type Files = (PrintFile | null | undefined)[];
 
-  /**
-   * Icons for the documents of `files` (PDFs are also queued as annexures; `annexureNote`
-   * adds the annexure number under the icon).
-   */
-  const documents = (files: (PrintFile | null | undefined)[], label: string, pdfInline = true, annexureNote = true) => {
-    const chips = present(files)
-      .filter((file) => file.kind !== 'image' || file.pages.length === 0)
-      .map((file) => {
-        if (!isRenderedPdf(file)) {
-          return `<div class="fchip">${file.kind === 'pdf' ? PDF_ICON : DOC_ICON}<div>${esc(file.name)}</div></div>`;
-        }
-        const number = addAnnexure(file, label);
-        const note = annexureNote ? `<div>(Annexure-${number})</div>` : '';
-        return pdfInline ? `<div class="fchip">${PDF_ICON}<div>${esc(file.name)}</div>${note}</div>` : '';
-      })
-      .filter(Boolean);
-    return chips.length ? `<div class="files">${chips.join('')}</div>` : '';
-  };
+const present = (files: Files) => files.filter((file): file is PrintFile => !!file);
+const isImage = (file: PrintFile) => file.kind === 'image' && file.pages.length > 0;
 
-  // `pdfInline: false` prints PDFs only at the end of the document (no icon in place).
-  const html = (files: (PrintFile | null | undefined)[], label: string, maxHeight: number, pdfInline = true) =>
-    documents(files, label, pdfInline) + images(files, maxHeight);
+/** The images among `files`. */
+export const attachmentImages = (files: Files, maxHeight: number) =>
+  present(files)
+    .filter(isImage)
+    .map((file) => `<img class="ev" src="${file.pages[0]}" alt="${esc(file.name)}" style="max-height:${maxHeight}pt" />`)
+    .join('');
 
-  return { annexures, html, images, documents };
+/** Icons with file names for the documents (PDFs etc.) among `files`. */
+export const attachmentDocuments = (files: Files) => {
+  const chips = present(files)
+    .filter((file) => !isImage(file))
+    .map((file) => `<div class="fchip">${file.kind === 'pdf' ? PDF_ICON : DOC_ICON}<div>${esc(file.name)}</div></div>`);
+  return chips.length ? `<div class="files">${chips.join('')}</div>` : '';
 };
 
-export const annexurePages = (list: Annexure[], pageClass = 'page annex') =>
-  list
-    .flatMap(({ number, label, file }) =>
-      file.pages.map(
-        (src, index) => `
-  <section class="${pageClass}">
-    <div class="annex-label">Annexure-${number}: ${esc(label)}${
-      file.pages.length > 1 ? ` (page ${index + 1} of ${file.pages.length})` : ''
-    }</div>
-    <div class="annex-name">${esc(file.name)}</div>
-    <img src="${src}" alt="${esc(label)}" />
-  </section>`,
-      ),
-    )
-    .join('');
+/** Document icons followed by the images. */
+export const attachmentsHtml = (files: Files, maxHeight: number) =>
+  attachmentDocuments(files) + attachmentImages(files, maxHeight);
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
 
@@ -488,10 +450,6 @@ export const BASE_STYLES = `
   .fchip { width: 72pt; text-align: center; font-family: Arial, Arimo, sans-serif; font-size: 6.5pt; line-height: 1.2; overflow-wrap: anywhere; break-inside: avoid; }
   .fchip svg { display: block; width: 16pt; height: 19pt; margin: 0 auto 2pt; }
 
-  .annex { display: flex; flex-direction: column; }
-  .annex-label { font-weight: 700; }
-  .annex-name { font-size: 10pt; margin-bottom: 6pt; overflow-wrap: anywhere; }
-  .annex img { flex: 1 1 auto; min-height: 0; width: 100%; object-fit: contain; object-position: center top; }
 `;
 
 export const FALLBACK_FONTS_LINK =

@@ -12,6 +12,7 @@ import {
   AlertCircle,
   ExternalLink,
   Printer,
+  FileDown,
   ClipboardCheck,
 } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -30,11 +31,8 @@ import {
   loadTemplateImages,
   printHtmlDocument,
 } from '../print/atBlockRouterPrint';
+import { downloadATBlockRouterDocx } from '../print/atBlockRouterDocx';
 import MediaCarousel from '../../DepthChart/MediaCarousel';
-import * as pdfjsLib from 'pdfjs-dist';
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 const ImgbaseUrl = import.meta.env.VITE_Image_URL;
 
@@ -127,6 +125,7 @@ const ATBlockRouterView = () => {
   const [carouselItems, setCarouselItems] = useState<string[]>([]);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [preparing, setPreparing] = useState(false);
+  const [downloadingWord, setDownloadingWord] = useState(false);
 
   const fetchData = async () => {
     if (!blockId) return;
@@ -231,35 +230,6 @@ const ATBlockRouterView = () => {
     }
   };
 
-  const renderPdfToImages = async (source: string): Promise<string[]> => {
-    const fullUrl = getFullImageUrl(source);
-    const arrayBuffer = await fetch(fullUrl, {
-      mode: 'cors',
-      credentials: 'omit',
-      cache: 'no-cache',
-    }).then((response) => {
-      if (!response.ok) throw new Error(`Failed to fetch PDF: ${fullUrl}`);
-      return response.arrayBuffer();
-    });
-
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    const pages: string[] = [];
-
-    for (let pageNo = 1; pageNo <= pdf.numPages; pageNo += 1) {
-      const page = await pdf.getPage(pageNo);
-      const viewport = page.getViewport({ scale: 1.6 });
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      if (!context) continue;
-      canvas.width = Math.floor(viewport.width);
-      canvas.height = Math.floor(viewport.height);
-      await page.render({ canvasContext: context, viewport, canvas }).promise;
-      pages.push(canvas.toDataURL('image/png'));
-    }
-
-    return pages;
-  };
-
   const toPrintFile = async (
     url: string | undefined,
     fallbackName: string,
@@ -270,9 +240,6 @@ const ATBlockRouterView = () => {
     try {
       if (kind === 'image') {
         return { name, kind, pages: [await toBase64(getFullImageUrl(url))] };
-      }
-      if (kind === 'pdf') {
-        return { name, kind, pages: await renderPdfToImages(url) };
       }
     } catch (error) {
       console.error('Attachment render failed:', name, error);
@@ -287,24 +254,7 @@ const ATBlockRouterView = () => {
     return files.filter((file): file is PrintFile => file !== null);
   };
 
-  const triggerPrint = async () => {
-    if (totalCount === 0 || (basicCompletedCount === 0 && networkCompletedCount === 0)) {
-      alert('No checklist data found for this block.');
-      return;
-    }
-
-    const printWindow = window.open('', '_blank', 'width=1200,height=900');
-    if (!printWindow) {
-      alert('Pop-up blocked. Please allow pop-ups for this site to print.');
-      return;
-    }
-
-    printWindow.document
-      .write(`<!DOCTYPE html><html><head><title>AT Block Router Report</title>
-      <style>body{display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#64748b;font-size:15pt;}</style>
-      </head><body>⏳ Preparing report, please wait…</body></html>`);
-    printWindow.document.close();
-
+  const collectPrintData = async (): Promise<ATBlockRouterPrintData> => {
     const certifications = {} as Record<CertificationKey, PrintFile | null>;
     for (const { key, label } of CERTIFICATION_FIELDS) {
       certifications[key] = await toPrintFile(certFiles?.[key], label);
@@ -330,7 +280,7 @@ const ATBlockRouterView = () => {
       };
     }
 
-    const html = buildATBlockRouterPrintHtml({
+    return {
       blockName,
       memorandum: {
         equipmentDescription: memorandum?.equipmentDescription || '',
@@ -346,9 +296,40 @@ const ATBlockRouterView = () => {
       basic,
       network,
       images: await loadTemplateImages(toBase64),
-    });
+    };
+  };
 
-    printHtmlDocument(printWindow, html);
+  const triggerPrint = async () => {
+    if (totalCount === 0 || (basicCompletedCount === 0 && networkCompletedCount === 0)) {
+      alert('No checklist data found for this block.');
+      return;
+    }
+
+    const printWindow = window.open('', '_blank', 'width=1200,height=900');
+    if (!printWindow) {
+      alert('Pop-up blocked. Please allow pop-ups for this site to print.');
+      return;
+    }
+
+    printWindow.document
+      .write(`<!DOCTYPE html><html><head><title>AT Block Router Report</title>
+      <style>body{display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#64748b;font-size:15pt;}</style>
+      </head><body>⏳ Preparing report, please wait…</body></html>`);
+    printWindow.document.close();
+
+    printHtmlDocument(printWindow, buildATBlockRouterPrintHtml(await collectPrintData()));
+  };
+
+  const handleDownloadWord = async () => {
+    setDownloadingWord(true);
+    try {
+      await downloadATBlockRouterDocx(await collectPrintData());
+    } catch (error) {
+      console.error('Word download failed:', error);
+      alert('Failed to create the Word document. Please try again.');
+    } finally {
+      setDownloadingWord(false);
+    }
   };
 
   const handlePrint = async () => {
@@ -778,6 +759,18 @@ const ATBlockRouterView = () => {
                   <Printer className="w-4 h-4" />
                 )}
                 <span>{preparing ? 'Preparing...' : 'Print'}</span>
+              </button>
+              <button
+                onClick={handleDownloadWord}
+                disabled={downloadingWord || loadingData || completedCount === 0}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-blue-200 bg-white text-blue-700 text-sm font-medium hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {downloadingWord ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <FileDown className="w-4 h-4" />
+                )}
+                <span>{downloadingWord ? 'Preparing...' : 'Word'}</span>
               </button>
             </div>
           </div>

@@ -12,6 +12,7 @@ import {
   ClipboardCheck,
   Loader2,
   Printer,
+  FileDown,
   ArrowLeft,
 } from 'lucide-react';
 import Tricad from '../../../images/logo/Tricad.png';
@@ -24,10 +25,7 @@ import {
   loadRackTemplateImages,
   printHtmlDocument,
 } from '../print/atBlockRackPrint';
-import * as pdfjsLib from 'pdfjs-dist';
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+import { downloadATBlockRackDocx } from '../print/atBlockRackDocx';
 
 const BASEURL = import.meta.env.VITE_API_BASE;
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -435,6 +433,7 @@ const ATBlockRackForm = ({
   const [submitting, setSubmitting] = useState(false);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [preparing, setPreparing] = useState(false);
+  const [downloadingWord, setDownloadingWord] = useState(false);
   const [memorandum, setMemorandum] = useState({
     equipmentDescription: '',
     siteNameBlockCode: '',
@@ -777,36 +776,6 @@ const ATBlockRackForm = ({
     }
   };
 
-  const renderPdfToImages = async (
-    source: File | string,
-  ): Promise<string[]> => {
-    const arrayBuffer =
-      source instanceof File
-        ? await source.arrayBuffer()
-        : await fetch(source, {
-            mode: 'cors',
-            credentials: 'omit',
-            cache: 'no-cache',
-          }).then((res) => {
-            if (!res.ok) throw new Error(`Failed to fetch PDF: ${source}`);
-            return res.arrayBuffer();
-          });
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    const pages: string[] = [];
-    for (let pageNo = 1; pageNo <= pdf.numPages; pageNo += 1) {
-      const page = await pdf.getPage(pageNo);
-      const viewport = page.getViewport({ scale: 1.6 });
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      if (!context) continue;
-      canvas.width = Math.floor(viewport.width);
-      canvas.height = Math.floor(viewport.height);
-      await page.render({ canvasContext: context, viewport, canvas }).promise;
-      pages.push(canvas.toDataURL('image/png'));
-    }
-    return pages;
-  };
-
   const getDocMeta = (
     doc: UploadedFile,
   ): {
@@ -873,28 +842,13 @@ const ATBlockRackForm = ({
       if (kind === 'image') {
         return { name, kind, pages: [slot.file ? await toBase64(slot.file) : await toBase64(slot.preview)] };
       }
-      if (kind === 'pdf') {
-        return { name, kind, pages: await renderPdfToImages(slot.file || slot.preview) };
-      }
     } catch (error) {
       console.error('Attachment render failed:', name, error);
     }
     return { name, kind, pages: [] };
   };
 
-  const triggerPrint = async () => {
-    const printWindow = window.open('', '_blank', 'width=1200,height=900');
-    if (!printWindow) {
-      alert('Pop-up blocked. Please allow pop-ups for this site to print.');
-      return;
-    }
-
-    printWindow.document
-      .write(`<!DOCTYPE html><html><head><title>AT Block Rack Report</title>
-      <style>body{display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#64748b;font-size:15pt;}</style>
-      </head><body>⏳ Preparing report, please wait…</body></html>`);
-    printWindow.document.close();
-
+  const collectPrintData = async (): Promise<ATBlockRackPrintData> => {
     const certifications = {} as Record<CertificationKey, PrintFile | null>;
     for (const { key, label } of CERTIFICATION_FIELDS) {
       certifications[key] = await toPrintFile(certificationFiles[key], label);
@@ -914,7 +868,7 @@ const ATBlockRackForm = ({
       };
     }
 
-    const html = buildATBlockRackPrintHtml({
+    return {
       blockName,
       memorandum: {
         ...memorandum,
@@ -924,9 +878,35 @@ const ATBlockRackForm = ({
       certifications,
       tests,
       images: await loadRackTemplateImages((src) => toBase64(src)),
-    });
+    };
+  };
 
-    printHtmlDocument(printWindow, html);
+  const triggerPrint = async () => {
+    const printWindow = window.open('', '_blank', 'width=1200,height=900');
+    if (!printWindow) {
+      alert('Pop-up blocked. Please allow pop-ups for this site to print.');
+      return;
+    }
+
+    printWindow.document
+      .write(`<!DOCTYPE html><html><head><title>AT Block Rack Report</title>
+      <style>body{display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#64748b;font-size:15pt;}</style>
+      </head><body>⏳ Preparing report, please wait…</body></html>`);
+    printWindow.document.close();
+
+    printHtmlDocument(printWindow, buildATBlockRackPrintHtml(await collectPrintData()));
+  };
+
+  const handleDownloadWord = async () => {
+    setDownloadingWord(true);
+    try {
+      await downloadATBlockRackDocx(await collectPrintData());
+    } catch (error) {
+      console.error('Word download failed:', error);
+      alert('Failed to create the Word document. Please try again.');
+    } finally {
+      setDownloadingWord(false);
+    }
   };
 
   const handlePrint = async () => {
@@ -1433,6 +1413,21 @@ const ATBlockRackForm = ({
           ) : (
             <>
               <Printer size={18} /> Print
+            </>
+          )}
+        </button>
+        <button
+          onClick={handleDownloadWord}
+          disabled={downloadingWord}
+          className="px-6 py-3.5 font-bold rounded-2xl transition-all flex items-center justify-center gap-2 text-base bg-white border-2 border-blue-200 text-blue-700 hover:bg-blue-50 shadow disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {downloadingWord ? (
+            <>
+              <Loader2 size={18} className="animate-spin" /> Preparing…
+            </>
+          ) : (
+            <>
+              <FileDown size={18} /> Word
             </>
           )}
         </button>

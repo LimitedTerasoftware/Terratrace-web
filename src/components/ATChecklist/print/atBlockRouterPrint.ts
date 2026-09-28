@@ -37,10 +37,9 @@ import {
   LINE_11,
   PrintFile,
   TableGeometry,
-  annexurePages,
   bullets,
   cellText,
-  createAttachments,
+  attachmentsHtml,
   esc,
   flow,
   image,
@@ -161,14 +160,12 @@ ${BASE_STYLES}
   .run-a { position: absolute; top: -0.85pt; font-size: 12pt; transform: scaleX(1.1); transform-origin: 0 0; }
   .result { text-align: center; }
   .cert-files { padding-left: 5.5pt; text-align: left; }
-  .annex { height: 720pt; }
 `;
 
 // ─── Document ───────────────────────────────────────────────────────────────
 
 export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): string => {
   const { memorandum: memo, images: img } = data;
-  const attach = createAttachments();
 
   // Values for the numbered network tests (keyed by the form's test ids).
   const network = (id: string) =>
@@ -180,12 +177,12 @@ export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): strin
   };
 
   // Entered results and remarks, followed by the evidence images inside the cell.
-  const resultsCell = (id: string, testNo: string): Cell => {
+  const resultsCell = (id: string): Cell => {
     const t = network(id);
     const lines = [t.testResults, t.remarks].filter(Boolean).join('\n');
     const html =
       (lines ? `<div class="val-block">${esc(lines)}</div>` : '') +
-      attach.html(t.files, `Test ${testNo} evidence`, 330);
+      attachmentsHtml(t.files, 330);
     return html ? { html: `<div class="val-cell">${html}</div>`, valign: 'top' } : { html: '' };
   };
 
@@ -250,14 +247,10 @@ export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): strin
       : false;
   };
 
-  // Attachments of all pre-AT checks, shown together at the bottom of the section;
-  // their PDFs are printed at the end of the document.
-  const BASIC_CHECKS: [string, string][] = [
-    ['T1', '4(a)'], ['T2', '4(b)'], ['T3', '4(c)'], ['T4', '4(d)'], ['T5', '4(e)'],
-    ['T6', '4(f)'], ['T7', '4(g)'], ['T8', '4(h)'], ['T9', '4(i)'], ['T10', '4(j)'],
-  ];
+  // Attachments of all pre-AT checks 4(a)-4(j), shown together at the bottom of the section.
+  const BASIC_CHECKS = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10'];
   const basicAttachments = (): string | false => {
-    const html = BASIC_CHECKS.map(([id, tag]) => attach.html(basic(id).files, `${tag} evidence`, 300, false)).join('');
+    const html = BASIC_CHECKS.map((id) => attachmentsHtml(basic(id).files, 300)).join('');
     return html ? `<div class="blk evidence" style="margin-left:${n(72 - PAGE_LEFT)}pt">${html}</div>` : false;
   };
 
@@ -395,7 +388,7 @@ export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): strin
     memoItem(213.38, 'g)', 'QR code', 120.9, '', null),
     // Uploaded network diagram / QR code, below the list.
     (() => {
-      const files = attach.html([data.networkDiagram, data.qrCode], 'Block network diagram / QR code', 180);
+      const files = attachmentsHtml([data.networkDiagram, data.qrCode], 180);
       return files ? `<div class="blk evidence" style="margin-left:${n(72 - PAGE_LEFT)}pt">${files}</div>` : false;
     })(),
     text({ base: 270.05, scale: 1.15, extra: tabColon(216.05 - 72) + inlineValue(memo.dateTime, 224 - 72) }, [
@@ -459,8 +452,8 @@ export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): strin
     ]),
   ]);
   // Right-hand column: the template text, followed by the uploaded files.
-  const certValue = (templateText: string, keys: CertificationKey[], label: string): Cell => {
-    const files = attach.html(keys.map((key) => data.certifications[key]), label, 250);
+  const certValue = (templateText: string, keys: CertificationKey[]): Cell => {
+    const files = attachmentsHtml(keys.map((key) => data.certifications[key]), 250);
     return {
       html: `<div style="font-size:11pt">${templateText ? certCol([templateText], 11) : ''}${
         files ? `<div class="evidence cert-files">${files}</div>` : ''
@@ -478,16 +471,16 @@ export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): strin
           { html: certCol(['Declaration'], 11), pad: 0 },
         ],
       },
-      { h: 312, cells: [{ html: certCol(['TSEC Certificate'], 12, 1.14), pad: 0 }, certValue('Date of TSEC', ['tsecCertificate'], 'TSEC Certificate')] },
-      { h: 311, cells: [{ html: certCol(['QA Certificate'], 12, 1.14), pad: 0 }, certValue('Date of QA', ['qaCertificate'], 'QA Certificate')] },
+      { h: 312, cells: [{ html: certCol(['TSEC Certificate'], 12, 1.14), pad: 0 }, certValue('Date of TSEC', ['tsecCertificate'])] },
+      { h: 311, cells: [{ html: certCol(['QA Certificate'], 12, 1.14), pad: 0 }, certValue('Date of QA', ['qaCertificate'])] },
       {
         h: 306,
         cells: [
           { html: certCol(['QR Code, logo'], 12, 1.14), pad: 0 },
-          certValue('Photo evidence', ['qrCodeLogo', 'photoEvidence'], 'QR Code, logo / Photo evidence'),
+          certValue('Photo evidence', ['qrCodeLogo', 'photoEvidence']),
         ],
       },
-      { h: 311, cells: [{ html: certCol(['OEM approval of BSNL'], 12, 1.14), pad: 0 }, certValue('', ['oemApproval'], 'OEM approval of BSNL')] },
+      { h: 311, cells: [{ html: certCol(['OEM approval of BSNL'], 12, 1.14), pad: 0 }, certValue('', ['oemApproval'])] },
       {
         h: 4906,
         cells: [
@@ -594,7 +587,7 @@ export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): strin
       { h: 941, cells: [label('Test Configuration'), configCell('N1')] },
       { h: 445, cells: [label('Test Limits'), label('NA')] },
       { h: 460, cells: [label('Expected Results'), bullets(['Verified the Router BOM as per RFP'], { left: 825, hanging: 361, before: 38 })] },
-      { h: 1175, cells: [label('Test Results'), resultsCell('N1', '1')] },
+      { h: 1175, cells: [label('Test Results'), resultsCell('N1')] },
       { h: 460, cells: [label('Status'), statusCell('N1')] },
     ]),
     table(SN, 477.9, [
@@ -695,7 +688,7 @@ export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): strin
       { h: 940, cells: [label('Test Configuration'), configCell('N2')] },
       { h: 446, cells: [label('Test Limits'), label('NA')] },
       { h: 518, cells: [label('Expected Results'), bullets([['Ping should continue while removing and re-inserting', 'the PSU.']])] },
-      { h: 1175, cells: [label('Test Results'), resultsCell('N2', '2')], edge: 'results' },
+      { h: 1175, cells: [label('Test Results'), resultsCell('N2')], edge: 'results' },
       { h: 461, cells: [label('Status'), statusCell('N2', 54)], edge: 'status' },
     ]),
     // "4.2 A": the "A" is a separate 12pt run between the number and the title.
@@ -735,7 +728,7 @@ export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): strin
       { h: 940, cells: [label('Test Configuration'), configCell('N2A')] },
       { h: 441, cells: [label('Test Limits'), label('NA')] },
       { h: 465, cells: [label('Expected Results'), bullets(['Check through CLI commands'], { before: 101 })] },
-      { h: 1877, cells: [label('Test Results'), resultsCell('N2A', '2A')], edge: 'results' },
+      { h: 1877, cells: [label('Test Results'), resultsCell('N2A')], edge: 'results' },
       { h: 460, cells: [label('Status'), statusCell('N2A', 54)], edge: 'status' },
     ]),
     testHeading(598.63, '4.3', 90.0, '1G/10G Ethernet Link Bring Up (As Applicable)', 126.0),
@@ -765,7 +758,7 @@ export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): strin
             ]),
         ],
       },
-      { h: 1881, cells: [label('Test Results'), resultsCell('N3', '3')], edge: 'results' },
+      { h: 1881, cells: [label('Test Results'), resultsCell('N3')], edge: 'results' },
       { h: 460, cells: [label('Status'), statusCell('N3', 54)], edge: 'status' },
     ]),
     testHeading(464.11, '4.4', 89.5, 'Loopback interface Tests', 111.35),
@@ -797,7 +790,7 @@ export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): strin
           bullets([['Loopbacks are reachable from CLI command locally or', 'SNOC.'], 'Ping is successful.'], { left: 778, hanging: 361 }),
         ],
       },
-      { h: 460, cells: [label('Test Results'), resultsCell('N4', '4')], edge: 'results' },
+      { h: 460, cells: [label('Test Results'), resultsCell('N4')], edge: 'results' },
       { h: 460, cells: [label('Status'), statusCell('N4', 54)], edge: 'status' },
     ]),
     testHeading(292.73, '4.5', 89.5, 'iBGP / eBGP', 111.35, 1.15),
@@ -834,7 +827,7 @@ export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): strin
   // ── Page 13: 4.5 (cont.), 4.6 BFD, 4.7 Jumbo frames ────────────────────────
   page(
     table(T115(C2430), 60.5, [
-      { h: 1170, cells: ['', resultsCell('N5', '5')], edge: 'results' },
+      { h: 1170, cells: ['', resultsCell('N5')], edge: 'results' },
       { h: 465, cells: [{ html: label('Status'), pad: 54 }, statusCell('N5', 54)], edge: 'status' },
     ]),
     testHeading(171.98, '4.6', 89.5, 'BFD (Fast Failure Detection)', 111.35),
@@ -858,7 +851,7 @@ export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): strin
       { h: 1680, cells: [label('Test Configuration'), configCell('N6')] },
       { h: 446, cells: [label('Test Limits'), label('NA')] },
       { h: 460, cells: [label('Expected Results'), bullets(['BFD session come up.'], { before: 96 })] },
-      { h: 940, cells: [label('Test Results'), resultsCell('N6', '6')], edge: 'results' },
+      { h: 940, cells: [label('Test Results'), resultsCell('N6')], edge: 'results' },
       { h: 460, cells: [label('Status'), statusCell('N6', 54)], edge: 'status' },
     ]),
     testHeading(710.62, '4.7', 89.5, 'Jumbo Frames / MTU Tests', 111.35, 1.15),
@@ -884,7 +877,7 @@ export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): strin
       { h: 1641, cells: [label('Test Configuration'), configCell('N7')] },
       { h: 446, cells: [label('Test Limits'), { html: label('NA'), pad: 52 }] },
       { h: 460, cells: [label('Expected Results'), bullets(['Ping with large size is successful.'], { left: 773, hanging: 361, before: 96 })] },
-      { h: 1646, cells: [label('Test Results'), resultsCell('N7', '7')], edge: 'results' },
+      { h: 1646, cells: [label('Test Results'), resultsCell('N7')], edge: 'results' },
       { h: 460, cells: [label('Status'), statusCell('N7', 50)], edge: 'status' },
     ]),
     testHeading(592.03, '4.8', 89.5, 'SSH/Telnet, FTP/SCP support', 111.35, 1.15),
@@ -921,7 +914,7 @@ export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): strin
           numbered(['Verify router supports SSH/Telnet access.', 'Verify router supports FTP/SCP access.'], "Calibri, Carlito, sans-serif"),
         ],
       },
-      { h: 935, cells: [label('Test Results'), resultsCell('N8', '8')] },
+      { h: 935, cells: [label('Test Results'), resultsCell('N8')] },
       { h: 301, cells: [label('Status'), statusCell('N8', 73)] },
     ]),
     textHtml(
@@ -969,7 +962,7 @@ export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): strin
           ]),
         ],
       },
-      { h: 296, cells: [label('Test Results'), resultsCell('N9', '9')] },
+      { h: 296, cells: [label('Test Results'), resultsCell('N9')] },
       { h: 302, cells: [label('Status'), statusCell('N9', 68)] },
     ]),
   );
@@ -999,7 +992,7 @@ export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): strin
           bullets(['LLDP neighborship is established.', 'Neighbor details are visible in LLDP table']),
         ],
       },
-      { h: 1176, cells: [label('Test Results'), resultsCell('N10', '10')], edge: 'results' },
+      { h: 1176, cells: [label('Test Results'), resultsCell('N10')], edge: 'results' },
       { h: 460, cells: [label('Status'), statusCell('N10', 54)], edge: 'status' },
     ]),
     testHeading(631.66, '4.11', 90.0, 'VLAN-based Sub-interfaces', 126.0),
@@ -1031,7 +1024,7 @@ export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): strin
           bullets(['VLAN interfaces are up.', 'Ping between VLAN interfaces is successful.']),
         ],
       },
-      { h: 1411, cells: [label('Test Results'), resultsCell('N11', '11')], edge: 'results' },
+      { h: 1411, cells: [label('Test Results'), resultsCell('N11')], edge: 'results' },
       { h: 460, cells: [label('Status'), statusCell('N11', 54)], edge: 'status' },
     ]),
     testHeading(490.63, '4.12', 89.5, 'ISIS/OSPF', 144.0),
@@ -1070,7 +1063,7 @@ export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): strin
             ]),
         ],
       },
-      { h: 1175, cells: [label('Test Results'), resultsCell('N12', '12')], edge: 'results' },
+      { h: 1175, cells: [label('Test Results'), resultsCell('N12')], edge: 'results' },
       { h: 460, cells: [label('Status'), statusCell('N12', 54)], edge: 'status' },
     ]),
     testHeading(337.13, '4.13', 89.5, 'ISIS /OSPF MD5 Authentication', 144.0),
@@ -1103,7 +1096,7 @@ export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): strin
         h: 518,
         cells: [label('Expected Results'), bullets([['ISIS/ OSPF adjacency forms successfully with MD5', 'authentication']])],
       },
-      { h: 1881, cells: [label('Test Results'), resultsCell('N13', '13')], edge: 'results' },
+      { h: 1881, cells: [label('Test Results'), resultsCell('N13')], edge: 'results' },
       { h: 460, cells: [label('Status'), statusCell('N13', 54)], edge: 'status' },
     ]),
     testHeading(233.42, '4.14', 89.5, 'MPLS LDP/RSVP Ping & Traceroute', 144.0),
@@ -1136,7 +1129,7 @@ export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): strin
   // ── Page 20: 4.14 (cont.), 4.15 LDP MD5 ────────────────────────────────────
   page(
     table(T115(C2430), 60.5, [
-      { h: 940, cells: ['', resultsCell('N14', '14')], edge: 'results' },
+      { h: 940, cells: ['', resultsCell('N14')], edge: 'results' },
       { h: 460, cells: [label('Status'), statusCell('N14', 54)], edge: 'status' },
     ]),
     testHeading(160.22, '4.15', 89.5, 'LDP MD5/ Authentication', 144.0),
@@ -1163,7 +1156,7 @@ export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): strin
       { h: 1445, cells: [label('Test Configuration'), configCell('N15')] },
       { h: 446, cells: [label('Test Limits'), label('NA')] },
       { h: 460, cells: [label('Expected Results'), bullets(['LDP sessions form securely.'], { before: 106 })] },
-      { h: 1641, cells: [label('Test Results'), resultsCell('N15', '15')], edge: 'results' },
+      { h: 1641, cells: [label('Test Results'), resultsCell('N15')], edge: 'results' },
       { h: 465, cells: [label('Status'), statusCell('N15', 54)], edge: 'status' },
     ]),
   );
@@ -1192,7 +1185,7 @@ export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): strin
       { h: 1876, cells: [label('Test Configuration'), configCell('N16')] },
       { h: 446, cells: [label('Test Limits'), label('NA')] },
       { h: 460, cells: [label('Expected Results'), bullets(['Session only comes up with the correct keys.'], { before: 96 })] },
-      { h: 465, cells: [label('Test Results'), resultsCell('N16', '16')], edge: 'results' },
+      { h: 465, cells: [label('Test Results'), resultsCell('N16')], edge: 'results' },
       { h: 460, cells: [label('Status'), statusCell('N16', 54)], edge: 'status' },
     ]),
     testHeading(617.11, '4.17', 89.5, 'VRF Configuration & L3VPN', 144.0),
@@ -1226,7 +1219,7 @@ export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): strin
       { h: 460, cells: [label('Test Configuration'), configCell('N17')] },
       { h: 446, cells: [label('Test Limits'), label('NA')] },
       { h: 537, cells: [label('Expected Results'), bullets(['VPNv4 routes are exchanged.', 'Ping the VRF IP address.'])] },
-      { h: 1641, cells: [label('Test Results'), resultsCell('N17', '17')], edge: 'results' },
+      { h: 1641, cells: [label('Test Results'), resultsCell('N17')], edge: 'results' },
       { h: 460, cells: [label('Status'), statusCell('N17', 54)], edge: 'status' },
     ]),
     testHeading(508.63, '4.18', 89.5, 'L2 VPN', 144.0),
@@ -1265,7 +1258,7 @@ export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): strin
           bullets(['L2VPN comes up is UP.', ' END to END ping work fine btw test terminal.']),
         ],
       },
-      { h: 1170, cells: [label('Test Results'), resultsCell('N18', '18')], edge: 'results' },
+      { h: 1170, cells: [label('Test Results'), resultsCell('N18')], edge: 'results' },
       { h: 465, cells: [label('Status'), statusCell('N18', 54)], edge: 'status' },
     ]),
     testHeading(409.73, '4.19', 89.5, 'Segment Routing (SR-MPLS)', 144.0),
@@ -1302,7 +1295,7 @@ export const buildATBlockRouterPrintHtml = (data: ATBlockRouterPrintData): strin
           bullets(['SR-Ping returns the expected SID path.', 'SR-Traceroute shows correct segment hops.'], { left: 778, hanging: 361 }),
         ],
       },
-      { h: 940, cells: [label('Test Results'), resultsCell('N20', '20')], edge: 'results' },
+      { h: 940, cells: [label('Test Results'), resultsCell('N20')], edge: 'results' },
       { h: 460, cells: [label('Status'), statusCell('N20', 54)], edge: 'status' },
     ]),
   );
@@ -1370,7 +1363,6 @@ ${FALLBACK_FONTS_LINK}
 </head>
 <body>
 ${pages.join('\n')}
-${annexurePages(attach.annexures)}
 </body>
 </html>`;
 };
