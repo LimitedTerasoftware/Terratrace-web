@@ -31,6 +31,7 @@ interface Network {
   dt_name: string;
   user_id: number;
   user_name: string;
+  type:string;
 }
 
 interface State {
@@ -755,6 +756,7 @@ const RouteList = () => {
                   <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Network Name</th>
                   <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">State Name</th>
                   <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">District Name</th>
+                  <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                   <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Length (km)</th>
                   <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Name</th>
                   <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
@@ -764,7 +766,7 @@ const RouteList = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-4">
+                    <td colSpan={9} className="px-6 py-4">
                       <div className="flex items-center justify-center">
                         <svg className="animate-spin h-5 w-5 mr-3 text-blue-500" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
@@ -776,7 +778,7 @@ const RouteList = () => {
                   </tr>
                 ) : currentNetworks.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan={9} className="px-6 py-4 text-center text-gray-500">
                       {globalsearch || selectedState || selectedDistrict || selectedBlock || selectedStatus || fromDate || toDate 
                         ? 'No networks match your search criteria.' 
                         : 'No networks found.'}
@@ -804,6 +806,9 @@ const RouteList = () => {
                       </td>
                       <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
                         {network.dt_name || 'N/A'}
+                      </td>
+                       <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {network.type || '-'}
                       </td>
                       <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
                         {parseFloat(network.total_length).toFixed(2)}

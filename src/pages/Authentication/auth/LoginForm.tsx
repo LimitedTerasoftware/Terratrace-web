@@ -19,7 +19,8 @@ const LoginForm: React.FC = () => {
   const [password, setPassword] = useState<string>("");
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading,setLoading] = useState(false)
-  
+  const [apiError, setApiError] = useState<string>("");
+
   const handleClearData = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('userData');
@@ -50,6 +51,7 @@ const LoginForm: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     if (!validateForm()) return;
+    setApiError("");
     setLoading(true)
     try {
       const response = await axios.post(`${BASEURL}/adminuser`, {
@@ -77,14 +79,19 @@ const LoginForm: React.FC = () => {
        
       } else {
         setLoading(false)
-        toast.error(response.data.message || "Invalid credentials.", {
+        const message = response.data?.error || response.data?.message || "Invalid credentials.";
+        setApiError(message);
+        toast.error(message, {
           autoClose: 3000, // Correct property name
         });
       }
     } catch (error) {
       setLoading(false)
-      
-      toast.error("Something went wrong. Please try again later.", {
+      const message = axios.isAxiosError(error) && error.response
+        ? error.response.data?.error || error.response.data?.message || "Invalid credentials."
+        : "Something went wrong. Please try again later.";
+      setApiError(message);
+      toast.error(message, {
         autoClose: 3000, // Correct property name
       });
     }
@@ -118,7 +125,13 @@ const LoginForm: React.FC = () => {
             required
           />
         </div>
-        
+
+        {apiError && (
+          <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            {apiError}
+          </div>
+        )}
+
         <Button
           type="submit"
           fullWidth
