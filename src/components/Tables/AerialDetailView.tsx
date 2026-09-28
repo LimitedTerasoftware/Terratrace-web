@@ -9,6 +9,8 @@ import { Edit2, Image as ImageIcon } from "lucide-react";
 import MediaCarousel from "./MediaCarousel";
 import { EditType } from "../../types/aerial-survey";
 import { EditModal } from "../AerialSurveyMap/EditModal";
+import AerialSurveyMap from "../AerialSurveyMap/AerialSurveyMap";
+import { AerialSurveyDetails } from "../../types/aerial-survey";
 
 interface AerialSurvey {
   id: number;
@@ -93,6 +95,7 @@ const AerialDetailView: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editData, setEditData] = useState<any>(null);
   const [editType, setEditType] = useState<EditType>('aerial');
+  const [activeTab, setActiveTab] = useState<'details' | 'map'>('details');
 
   // Media Carousel States
   const [isCarouselOpen, setIsCarouselOpen] = useState<boolean>(false);
@@ -233,7 +236,7 @@ const AerialDetailView: React.FC = () => {
     }
   };
 
-  useEffect(() => {
+  const fetchSurvey = () => {
     axios
       .get(`${BASEURL}/aerial-surveys/${id}`)
       .then((response) => {
@@ -244,6 +247,10 @@ const AerialDetailView: React.FC = () => {
         setError("Failed to fetch data");
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    fetchSurvey();
   }, [id]);
 
   const customStyles = {
@@ -617,6 +624,7 @@ const aerialPolesWithDistance = useMemo(() => {
   };
   const handleEditSuccess = () => {
    setIsEditModalOpen(false);
+   fetchSurvey();
   };
  
   if (loading) return <div className="text-center py-10">Loading...</div>;
@@ -657,6 +665,36 @@ const aerialPolesWithDistance = useMemo(() => {
           </h1>
         </div>
 
+        <div className="flex gap-2 mb-6 border-b border-gray-200">
+          {(['details', 'map'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                activeTab === tab
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {tab === 'details' ? 'Details' : 'Map'}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === 'map' && data && (
+          <div className="mb-6 h-[70vh] rounded-lg overflow-hidden border border-gray-200">
+            <AerialSurveyMap
+              surveys={[data as unknown as AerialSurveyDetails]}
+              editable={AdminAcess}
+              onPositionsSaved={() => {
+                toast.success("Positions updated successfully!");
+                fetchSurvey();
+              }}
+            />
+          </div>
+        )}
+
+        {activeTab === 'details' && (<>
         <div className="mb-6">
           <h2 className="text-xl font-semibold mb-4">Survey Details</h2>
           <div className="overflow-x-auto">
@@ -703,6 +741,7 @@ const aerialPolesWithDistance = useMemo(() => {
             />
           </div>
         </div>
+        </>)}
 
         {!viewOnly && !ngUser && (
           <div className="mt-6 flex gap-4 justify-center">
