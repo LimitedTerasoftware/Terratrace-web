@@ -101,6 +101,7 @@ import ATBlockRackView from './components/ATChecklist/List/ATBlockRackView';
 import ATBlockRouterView from './components/ATChecklist/List/ATBlockRouterView';
 import OverallMap from './components/OverallMap';
 import AuditLogs from './components/AuditLogs';
+import PaymentsPage from './components/Payments';
 import AerialView from './components/DepthChart/AerialView';
 import PoleStringView from './components/DepthChart/PoleStringView';
 import MainDashboard from './components/Dashboards/MainDashboard';
@@ -1112,6 +1113,17 @@ function App() {
                     <DefaultLayout>
                       <PageTitle title="Audit Logs" />
                       <AuditLogs />
+                    </DefaultLayout>
+                  </>
+                }
+              />
+              <Route
+                path="/payments"
+                element={
+                  <>
+                    <DefaultLayout>
+                      <PageTitle title="Payments" />
+                      <PaymentsPage />
                     </DefaultLayout>
                   </>
                 }

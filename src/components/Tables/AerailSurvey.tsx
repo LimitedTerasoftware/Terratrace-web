@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
+import { ToastContainer, toast } from "react-toastify";
 import {
   useReactTable,
   getCoreRowModel,
@@ -11,8 +12,9 @@ import {
 import { useNavigate, Link, useLocation, useSearchParams } from "react-router-dom";
 import * as XLSX from "xlsx";
 import ResponsivePagination from "./ResponsivePagination";
-import { hasViewOnlyAccess, hasDownloadAccess, getAuthHeaders } from "../../utils/accessControl";
-import { Eye, EyeIcon, Globe2Icon, Loader, RotateCcw, Search, SheetIcon, TableCellsMerge, User, Video as VideoIcon } from "lucide-react";
+import { hasViewOnlyAccess, hasDownloadAccess, getAuthHeaders, isAdminUser } from "../../utils/accessControl";
+import AerialLocationEditModal from "../AerialSurveyMap/AerialLocationEditModal";
+import { Edit2, Eye, EyeIcon, Globe2Icon, Loader, RotateCcw, Search, SheetIcon, TableCellsMerge, User, Video as VideoIcon } from "lucide-react";
 import { AerialSurveyDetails } from "../../types/aerial-survey";
 import AerialSurveyMap from "../AerialSurveyMap/AerialSurveyMap";
 import { parseCoordinates } from "../../utils/map-helpers";
@@ -40,6 +42,8 @@ interface AerialSurvey {
   endGpCoordinates: string;
   is_active: number;
   block_id: string;
+  gp_id?: string;
+  end_gp_id?: string;
   survey_id: string;
   company_id: string;
   user_id: string;
@@ -121,6 +125,7 @@ const AerialSurvey: React.FC = () => {
   const [pageSize, setPageSize] = useState<number>(15);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [editingRow, setEditingRow] = useState<AerialSurvey | null>(null);
+  const AdminAcess = isAdminUser();
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -331,17 +336,6 @@ const AerialSurvey: React.FC = () => {
     }
   };
 
-  // Handle edit
-  const handleEditSave = async () => {
-    if (!editingRow) return;
-    try {
-      await axios.put(`${BASEURL}/aerial-surveys/${editingRow.id}`, editingRow);
-      setData((prevData) => prevData.map((item) => (item.id === editingRow.id ? editingRow : item)));
-      setEditingRow(null);
-    } catch (error) {
-      alert("Failed to update record.");
-    }
-  };
 
   useEffect(() => {
     axios.get(`${TraceBASEURL}/states`, { headers: getAuthHeaders() })
@@ -715,6 +709,14 @@ const handleGenerateKML = async () => {
               title="View">
               <Eye className="w-4 h-4" />
             </button>
+            {AdminAcess && (
+              <button
+                onClick={() => setEditingRow(row.original)}
+                className="text-purple-600 hover:text-purple-900 p-1"
+                title="Edit">
+                <Edit2 className="w-4 h-4" />
+              </button>
+            )}
           </div>
         ),
       },
@@ -1246,79 +1248,17 @@ const handleGenerateKML = async () => {
           totalItems={data.length}
         />
 
-        {/* Edit Modal */}
-        {editingRow && (
-          <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md w-96 max-h-[80vh] overflow-y-auto">
-              <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Edit Record</h2>
-              <div className="space-y-3">
-                <input
-                  type="text"
-                  value={editingRow.state_name}
-                  onChange={(e) => setEditingRow({ ...editingRow, state_name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  placeholder="State Name"
-                />
-                <input
-                  type="text"
-                  value={editingRow.district_name}
-                  onChange={(e) => setEditingRow({ ...editingRow, district_name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  placeholder="District Name"
-                />
-                <input
-                  type="text"
-                  value={editingRow.block_name}
-                  onChange={(e) => setEditingRow({ ...editingRow, block_name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  placeholder="Block Name"
-                />
-                <input
-                  type="text"
-                  value={editingRow.startGpName}
-                  onChange={(e) => setEditingRow({ ...editingRow, startGpName: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  placeholder="Start GP Name"
-                />
-                <input
-                  type="text"
-                  value={editingRow.startGpCoordinates}
-                  onChange={(e) => setEditingRow({ ...editingRow, startGpCoordinates: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  placeholder="Start GP Coordinates"
-                />
-                <input
-                  type="text"
-                  value={editingRow.endGpName}
-                  onChange={(e) => setEditingRow({ ...editingRow, endGpName: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  placeholder="End GP Name"
-                />
-                <input
-                  type="text"
-                  value={editingRow.endGpCoordinates}
-                  onChange={(e) => setEditingRow({ ...editingRow, endGpCoordinates: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  placeholder="End GP Coordinates"
-                />
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={handleEditSave}
-                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-green-600 rounded-md hover:bg-green-700 outline-none"
-                >
-                  Save
-                </button>
-                <button
-                  onClick={() => setEditingRow(null)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
+        <ToastContainer />
+        {/* Edit Modal (admin only) */}
+        {editingRow && AdminAcess && (
+          <AerialLocationEditModal
+            row={editingRow}
+            onClose={() => setEditingRow(null)}
+            onSuccess={() => {
+              toast.success("Record updated successfully!");
+              fetchData();
+            }}
+          />
         )}
 
         <MediaCarousel

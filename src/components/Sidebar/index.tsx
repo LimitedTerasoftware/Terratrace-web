@@ -58,6 +58,7 @@ import {
   CheckSquare,
   ConstructionIcon,
   LayoutDashboard,
+  IndianRupee,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -1041,6 +1042,27 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                       <SquareActivityIcon className="w-5 h-5" />
                     </div>
                     {isOpen && <span className="whitespace-nowrap">Logs</span>}
+                  </NavLink>
+                </li>
+
+                <li>
+                  <NavLink
+                    to="/payments"
+                    className={`
+                        flex items-center py-2 ${isOpen ? 'px-3 gap-4' : 'px-2 gap-0'} rounded-lg 
+                        transition-colors duration-200 text-bodydark1 
+                        ${
+                          pathname.includes('payments')
+                            ? 'bg-graydark dark:bg-meta-4'
+                            : 'hover:bg-graydark dark:hover:bg-meta-4'
+                        }
+                        ${!isOpen ? 'w-[44px] justify-center' : ''}
+                      `}
+                  >
+                    <div className="min-w-[20px] flex justify-center">
+                      <IndianRupee className="w-5 h-5" />
+                    </div>
+                    {isOpen && <span className="whitespace-nowrap">Payments</span>}
                   </NavLink>
                 </li>
 
