@@ -16,7 +16,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload, isLoading,
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) ` `=> {
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && (file.name.toLowerCase().endsWith('.kmz') || file.name.toLowerCase().endsWith('.kml'))) {
       onFileUpload(file);

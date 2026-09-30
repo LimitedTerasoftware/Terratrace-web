@@ -741,6 +741,16 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
         if (!payload[marker.eventType]) payload[marker.eventType] = [];
         payload[marker.eventType].push(marker);
       });
+    if (events.length > 0) {
+      return {
+        ...payload,
+        codes: {
+          st_code: events[0].state_code,
+          dt_code: events[0].dt_census_code,
+          blk_code: events[0].block_code,
+        },
+      };
+    }
 
     return payload;
   };

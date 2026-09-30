@@ -301,6 +301,10 @@ export interface Activity {
   user_name?:string;
   blowingType?:string;
   work_type?: string | null;
+  state_code:string | null;
+  dist_code:string | null;
+  dt_census_code:string | null;
+  block_code:string | null;
 }
 
 export interface ApiResponseMachine {
