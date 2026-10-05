@@ -66,6 +66,9 @@ interface AcceptedLinksProps {
   pdf?: boolean;
   onPdf?: () => void;
   onPdfLoadingChange?: (loading: boolean) => void;
+  sync?: boolean;
+  onSync?: () => void;
+  onSyncLoadingChange?: (loading: boolean) => void;
 }
 
 export type { AcceptedLinksSummary };
@@ -124,6 +127,9 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
   pdf,
   onPdf,
   onPdfLoadingChange,
+  sync,
+  onSync,
+  onSyncLoadingChange,
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -139,6 +145,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
   const [savingOtdrId, setSavingOtdrId] = useState<number | null>(null);
   const [statusUpdatingId, setStatusUpdatingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const adminAccess = isAdminUser();
 
   useEffect(() => {
@@ -206,6 +213,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
     filtersReady,
     page,
     perPage,
+    refreshKey,
   ]);
 
   useEffect(() => {
@@ -349,6 +357,33 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       setDeletingId(null);
     }
   };
+
+  const handleSync = async () => {
+    onSyncLoadingChange?.(true);
+    try {
+      const response = await axios.get(
+        `${TraceBASEURL}/api/reconcile`,
+         { headers: getAuthHeaders() },
+      );
+      if (response.data?.status === false) {
+        toast.error(response.data?.message || 'Sync failed.');
+        return;
+      }
+      toast.success(response.data?.message || 'Sync completed.');
+      setRefreshKey((prev) => prev + 1);
+    } catch (err) {
+      console.error('Error syncing links', err);
+      toast.error('Failed to sync links.');
+    } finally {
+      onSyncLoadingChange?.(false);
+      onSync?.();
+    }
+  };
+
+  useEffect(() => {
+    if (!sync) return;
+    handleSync();
+  }, [sync]);
 
   const statusLabel = (status: number) => (status === 1 ? 'Completed' : 'Pending');
 

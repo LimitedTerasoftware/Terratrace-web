@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import DataTable, { TableColumn } from 'react-data-table-component';
+import moment from 'moment';
 import {
   IndianRupee,
   Link2,
@@ -9,53 +10,104 @@ import {
   Wallet,
   CheckCircle,
   Scale,
+  PenIcon,
+  PlusCircle,
+  History,
 } from 'lucide-react';
 import { StateData, District, Block } from '../../types/survey';
 import { getAuthHeaders, isIEUser } from '../../utils/accessControl';
 import SearchableSelect from '../Forms/SearchableSelect';
+import { ToastContainer, toast } from 'react-toastify';
+import PaymentEditModal from './PaymentEditModal';
+import AddPaymentModal from './AddPaymentModal';
+import PaymentHistoryModal from './PaymentHistoryModal';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
-
-// Share of the (Base + GST) amount that is payable against completed work.
-const PAYABLE_PERCENT = 0.8;
-const GST_PERCENT = 0.18;
 
 interface StatesResponse {
   success: boolean;
   data: StateData[];
 }
 
+// Distances are in meters, amounts in rupees. Amounts are null until payment details are saved.
 interface PaymentRow {
-  id?: number;
+  link_detail_id: number | null;
+  start_location: number;
+  end_location: number;
+  start_name: string;
+  end_name: string;
+  link_name: string;
   state_name: string;
   district_name: string;
   block_name: string;
-  link_name: string;
-  total_km: number | null;
-  rate: number | null;
-  completed_km: number | null;
-  payment_base?: number | null;
-  payment_gst?: number | null;
-  paid_base: number | null;
-  paid_gst: number | null;
-  balance_base?: number | null;
-  balance_gst?: number | null;
+  firm_ids: string | null;
+  firm_names: string | null;
+  authorised_persons: string | null;
+  authorised_mobiles: string | null;
+  work_types: string | null;
+  total_surveys: number;
+  boq_distance: number | null;
+  td_accepted_distance: number | null;
+  vendor_mis_distance: number | null;
+  otdr_distance: number | null;
+  accepted_distance: number | null;
+  rate_per_meter: number | null;
+  gst_percent: number | null;
+  tds_percent: number | null;
+  base_amount: number | null;
+  gst_amount: number | null;
+  tds_amount: number | null;
+  net_payable: number | null;
+  base_paid: number | null;
+  gst_paid: number | null;
+  tds_paid: number | null;
+  net_paid: number | null;
+  base_balance: number | null;
+  gst_balance: number | null;
+  tds_balance: number | null;
+  net_balance: number | null;
+  payment_count: number;
+  last_payment_date: string | null;
+  payment_status: string | null;
+  base_payment_count?: number | null;
 }
 
 interface PaymentSummary {
-  totalLinks: number;
-  totalKm: number;
-  completedKm: number;
-  totalPayment: number;
-  paidAmount: number;
-  balanceAmount: number;
+  total_surveys: number;
+  boq_distance: number;
+  td_accepted_distance: number;
+  vendor_mis_distance: number;
+  otdr_distance: number;
+  accepted_distance: number;
+  base_amount: number;
+  gst_amount: number;
+  tds_amount: number;
+  net_payable: number;
+  base_paid: number;
+  gst_paid: number;
+  tds_paid: number;
+  net_paid: number;
+  base_balance: number;
+  gst_balance: number;
+  tds_balance: number;
+  net_balance: number;
+}
+
+interface PaymentsPagination {
+  page: number;
+  limit: number;
+  total_records: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
 }
 
 interface PaymentsResponse {
   status: boolean;
   data: PaymentRow[];
-  totalRows?: number;
-  summary?: PaymentSummary;
+  count?: number;
+  totals?: PaymentSummary;
+  pagination?: PaymentsPagination;
 }
 
 const toNum = (v: number | string | null | undefined) => {
@@ -66,39 +118,52 @@ const toNum = (v: number | string | null | undefined) => {
 const formatCurrency = (v: number) =>
   `₹${v.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-const formatKm = (v: number) =>
+const formatDistance = (v: number) =>
   v.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-// Fill in derived amounts when the API does not send them.
-const computeRow = (row: PaymentRow) => {
-  const completedKm = toNum(row.completed_km);
-  const rate = toNum(row.rate);
-  const paymentBase =
-    row.payment_base != null ? toNum(row.payment_base) : completedKm * rate * PAYABLE_PERCENT;
-  const paymentGst =
-    row.payment_gst != null ? toNum(row.payment_gst) : paymentBase * GST_PERCENT;
-  const paidBase = toNum(row.paid_base);
-  const paidGst = toNum(row.paid_gst);
-  const balanceBase =
-    row.balance_base != null ? toNum(row.balance_base) : paymentBase - paidBase;
-  const balanceGst =
-    row.balance_gst != null ? toNum(row.balance_gst) : paymentGst - paidGst;
-  return {
-    ...row,
-    totalKm: toNum(row.total_km),
-    rate,
-    completedKm,
-    paymentBase,
-    paymentGst,
-    paymentTotal: paymentBase + paymentGst,
-    paidBase,
-    paidGst,
-    balanceBase,
-    balanceGst,
-  };
+type ComputedRow = PaymentRow;
+
+const PAYMENT_STATUS_STYLES: Record<string, string> = {
+  unpaid: 'bg-red-100 text-red-700',
+  partial: 'bg-yellow-100 text-yellow-800',
+  'partially paid': 'bg-yellow-100 text-yellow-800',
+  paid: 'bg-green-100 text-green-700',
+  'details pending': 'bg-blue-100 text-blue-700',
 };
 
-type ComputedRow = ReturnType<typeof computeRow>;
+const workTypeOptions = [
+  { value: 'New Construction', label: 'New Construction' },
+  { value: 'Rectification', label: 'Rectification' },
+  { value: 'OFC Blowing/ JointChamber', label: 'OFC Blowing / Joint Chamber' },
+  { value: 'Protection', label: 'Protection' },
+];
+
+// Distance columns, in display order (values in meters, shown as sent by the API).
+const DISTANCE_COLUMNS: { key: keyof PaymentRow; title: string }[] = [
+  { key: 'boq_distance', title: 'BOQ Distance' },
+  { key: 'td_accepted_distance', title: 'T&D Accepted Distance' },
+  { key: 'otdr_distance', title: 'OTDR Distance' },
+  { key: 'vendor_mis_distance', title: 'Vendor MIS Distance' },
+  { key: 'accepted_distance', title: 'Accepted Distance' },
+];
+
+type AmountTone = 'payable' | 'paid' | 'balance';
+
+// Amount columns, in display order. Net = Base + GST - TDS.
+const AMOUNT_COLUMNS: { key: keyof PaymentRow; title: string; tone: AmountTone; total?: boolean }[] = [
+  { key: 'base_amount', title: 'Base Amount', tone: 'payable' },
+  { key: 'gst_amount', title: 'GST Amount', tone: 'payable' },
+  { key: 'tds_amount', title: 'TDS Amount', tone: 'payable' },
+  { key: 'net_payable', title: 'Net Payable', tone: 'payable', total: true },
+  { key: 'base_paid', title: 'Base Paid', tone: 'paid' },
+  { key: 'gst_paid', title: 'GST Paid', tone: 'paid' },
+  { key: 'tds_paid', title: 'TDS Paid', tone: 'paid' },
+  { key: 'net_paid', title: 'Net Paid', tone: 'paid', total: true },
+  { key: 'base_balance', title: 'Base Balance', tone: 'balance' },
+  { key: 'gst_balance', title: 'GST Balance', tone: 'balance' },
+  { key: 'tds_balance', title: 'TDS Balance', tone: 'balance' },
+  { key: 'net_balance', title: 'Net Balance', tone: 'balance', total: true },
+];
 
 const customStyles = {
   headCells: {
@@ -176,18 +241,27 @@ function PaymentsPage() {
     () => searchParams.get('link'),
   );
 
+  const [worktype, setworktype] = useState<string[]>(() =>
+    (searchParams.get('workType') || '').split(',').filter(Boolean),
+  );
+  const [workTypeDropdownOpen, setWorkTypeDropdownOpen] = useState(false);
+  const workTypeDropdownRef = useRef<HTMLDivElement>(null);
+
   const [loadingStates, setLoadingStates] = useState(false);
   const [loadingDistricts, setLoadingDistricts] = useState(false);
   const [loadingBlock, setLoadingBlock] = useState(false);
   const [loadingConnections, setLoadingConnections] = useState(false);
 
   const [rows, setRows] = useState<PaymentRow[]>([]);
+  const [editRow, setEditRow] = useState<PaymentRow | null>(null);
+  const [addPaymentRow, setAddPaymentRow] = useState<PaymentRow | null>(null);
+  const [historyRow, setHistoryRow] = useState<PaymentRow | null>(null);
   const [apiSummary, setApiSummary] = useState<PaymentSummary | null>(null);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(25);
+  const [perPage, setPerPage] = useState(10);
 
   const PaymentsHeader = () => (
     <header className="bg-white shadow-sm border-b border-gray-200 px-7 py-2">
@@ -317,17 +391,18 @@ function PaymentsPage() {
       const conn = getSelectedConnectionDetails();
       if (conn?.startLocation) params.start = conn.startLocation;
       if (conn?.endLocation) params.end = conn.endLocation;
+      if (worktype.length > 0) params.workType = worktype.join(',');
 
       const response = await fetch(
-        `${TraceBASEURL}/get-payments?${new URLSearchParams(params).toString()}`,
+        `${TraceBASEURL}/link-payments/summary?${new URLSearchParams(params).toString()}`,
         { headers: getAuthHeaders() },
       );
       if (!response.ok) throw new Error('Failed to fetch payments');
       const result: PaymentsResponse = await response.json();
       const data = result.status ? result.data || [] : [];
       setRows(data);
-      setTotalRows(result.totalRows ?? data.length);
-      setApiSummary(result.summary ?? null);
+      setTotalRows(result.pagination?.total_records ?? result.count ?? data.length);
+      setApiSummary(result.totals ?? null);
     } catch (err: any) {
       console.error('Error fetching payments:', err);
       setError(err?.message || 'Failed to fetch payments');
@@ -362,19 +437,34 @@ function PaymentsPage() {
     // Wait for link list so start/end can be resolved when a link is preselected from the URL.
     if (selectedConnection && !getSelectedConnectionDetails()) return;
     fetchPayments();
-  }, [selectedState, selectedDistrict, selectedBlock, selectedConnection, connections, page, perPage]);
+  }, [selectedState, selectedDistrict, selectedBlock, selectedConnection, connections, worktype, page, perPage]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        workTypeDropdownRef.current &&
+        !workTypeDropdownRef.current.contains(event.target as Node)
+      ) {
+        setWorkTypeDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const syncParams = (
     state: string | null,
     district: string | null,
     block: string | null,
     link: string | null,
+    workTypes: string[] = worktype,
   ) => {
     const params: Record<string, string> = {};
     if (state) params.state_id = state;
     if (district) params.district_id = district;
     if (block) params.block_id = block;
     if (link) params.link = link;
+    if (workTypes.length > 0) params.workType = workTypes.join(',');
     setSearchParams(params);
     setPage(1);
   };
@@ -405,87 +495,114 @@ function PaymentsPage() {
     syncParams(selectedState, selectedDistrict, selectedBlock, value || null);
   };
 
+  const handleWorkTypeToggle = (value: string) => {
+    const updated = worktype.includes(value)
+      ? worktype.filter((w) => w !== value)
+      : [...worktype, value];
+    setworktype(updated);
+    syncParams(selectedState, selectedDistrict, selectedBlock, selectedConnection, updated);
+  };
+
   const clearFilters = () => {
     setSelectedState(IEUser ? '6' : null);
     setSelectedDistrict(null);
     setSelectedBlock(null);
     setSelectedConnection(null);
+    setworktype([]);
     setSearchParams({});
     setPage(1);
   };
 
-  const computedRows = useMemo(() => rows.map(computeRow), [rows]);
+  const computedRows = rows;
 
-  const summary: PaymentSummary = useMemo(() => {
-    if (apiSummary) return apiSummary;
-    return computedRows.reduce(
-      (acc, r) => ({
-        totalLinks: acc.totalLinks + 1,
-        totalKm: acc.totalKm + r.totalKm,
-        completedKm: acc.completedKm + r.completedKm,
-        totalPayment: acc.totalPayment + r.paymentTotal,
-        paidAmount: acc.paidAmount + r.paidBase + r.paidGst,
-        balanceAmount: acc.balanceAmount + r.balanceBase + r.balanceGst,
-      }),
-      {
-        totalLinks: 0,
-        totalKm: 0,
-        completedKm: 0,
-        totalPayment: 0,
-        paidAmount: 0,
-        balanceAmount: 0,
-      },
-    );
-  }, [apiSummary, computedRows]);
-
-  const statsConfig = [
+  const statsConfig: {
+    icon: typeof Link2;
+    label: string;
+    value: string | number;
+    sub?: string;
+    color: string;
+    bgColor: string;
+  }[] = [
     {
       icon: Link2,
-      label: 'Total Links',
-      value: summary.totalLinks,
+      label: 'Total Surveys',
+      value: toNum(apiSummary?.total_surveys),
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
     },
     {
       icon: Ruler,
-      label: 'Total Distance (km)',
-      value: formatKm(toNum(summary.totalKm)),
+      label: 'Accepted Distance (mt)',
+      value: formatDistance(toNum(apiSummary?.accepted_distance)),
+      sub: `BOQ: ${formatDistance(toNum(apiSummary?.boq_distance))} mt`,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
     },
     {
       icon: MapPin,
-      label: 'Completed Distance (km)',
-      value: formatKm(toNum(summary.completedKm)),
+      label: 'T&D Accepted Distance (mt)',
+      value: formatDistance(toNum(apiSummary?.td_accepted_distance)),
+      sub: `OTDR: ${formatDistance(toNum(apiSummary?.otdr_distance))} · MIS: ${formatDistance(
+        toNum(apiSummary?.vendor_mis_distance),
+      )} mt`,
       color: 'text-emerald-600',
       bgColor: 'bg-emerald-50',
     },
     {
       icon: Wallet,
-      label: 'Total Payment',
-      value: formatCurrency(toNum(summary.totalPayment)),
+      label: 'Net Payable',
+      value: formatCurrency(toNum(apiSummary?.net_payable)),
+      sub: `Base ${formatCurrency(toNum(apiSummary?.base_amount))} + GST ${formatCurrency(
+        toNum(apiSummary?.gst_amount),
+      )} − TDS ${formatCurrency(toNum(apiSummary?.tds_amount))}`,
       color: 'text-indigo-600',
       bgColor: 'bg-indigo-50',
     },
     {
       icon: CheckCircle,
-      label: 'Paid Amount',
-      value: formatCurrency(toNum(summary.paidAmount)),
+      label: 'Net Paid',
+      value: formatCurrency(toNum(apiSummary?.net_paid)),
+      sub: `Base ${formatCurrency(toNum(apiSummary?.base_paid))} · GST ${formatCurrency(
+        toNum(apiSummary?.gst_paid),
+      )} · TDS ${formatCurrency(toNum(apiSummary?.tds_paid))}`,
       color: 'text-teal-600',
       bgColor: 'bg-teal-50',
     },
     {
       icon: Scale,
-      label: 'Balance Amount',
-      value: formatCurrency(toNum(summary.balanceAmount)),
+      label: 'Net Balance',
+      value: formatCurrency(toNum(apiSummary?.net_balance)),
+      sub: `Base ${formatCurrency(toNum(apiSummary?.base_balance))} · GST ${formatCurrency(
+        toNum(apiSummary?.gst_balance),
+      )} · TDS ${formatCurrency(toNum(apiSummary?.tds_balance))}`,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
     },
   ];
 
-  const amountCell = (value: number, className = 'text-gray-900') => (
-    <span className={`tabular-nums whitespace-nowrap ${className}`}>{formatCurrency(value)}</span>
-  );
+  // Null means payment details are not saved yet, so show a dash instead of ₹0.
+  const amountCell = (value: number | string | null | undefined, className = 'text-gray-900') =>
+    value == null ? (
+      <span className="text-gray-400">-</span>
+    ) : (
+      <span className={`tabular-nums whitespace-nowrap ${className}`}>
+        {formatCurrency(toNum(value))}
+      </span>
+    );
+
+  const toneClass = (tone: AmountTone, value: number, total?: boolean) => {
+    const weight = total ? 'font-semibold' : '';
+    if (tone === 'paid') return `text-teal-700 ${weight}`;
+    if (tone === 'balance' && value > 0) return `text-orange-600 font-medium ${weight}`;
+    return `text-gray-900 ${weight}`;
+  };
+
+  const percentCell = (value: number | null) =>
+    value == null ? (
+      <span className="text-gray-400">-</span>
+    ) : (
+      <span className="tabular-nums">{toNum(value)}%</span>
+    );
 
   const columns: TableColumn<ComputedRow>[] = [
     {
@@ -523,85 +640,182 @@ function PaymentsPage() {
       grow: 2,
     },
     {
-      name: <HeaderLabel title="Total KM" />,
-      selector: (row) => row.totalKm,
-      cell: (row) => <span className="tabular-nums">{formatKm(row.totalKm)}</span>,
+      name: <HeaderLabel title="Firm Name" />,
+      selector: (row) => row.firm_names ?? '',
+      cell: (row) => <Wrap text={row.firm_names ?? ''} />,
       sortable: true,
-      right: true,
-      minWidth: '110px',
+      minWidth: '180px',
     },
     {
-      name: <HeaderLabel title="Rate" sub="per km" />,
-      selector: (row) => row.rate,
-      cell: (row) => amountCell(row.rate),
+      name: <HeaderLabel title="Authorised Person" />,
+      selector: (row) => row.authorised_persons ?? '',
+      cell: (row) => <Wrap text={row.authorised_persons ?? ''} />,
       sortable: true,
-      right: true,
-      minWidth: '130px',
+      minWidth: '170px',
     },
     {
-      name: <HeaderLabel title="Completed KM" />,
-      selector: (row) => row.completedKm,
-      cell: (row) => <span className="tabular-nums">{formatKm(row.completedKm)}</span>,
+      name: <HeaderLabel title="Authorised Mobile" />,
+      selector: (row) => row.authorised_mobiles ?? '',
+      cell: (row) => <Wrap text={row.authorised_mobiles ?? ''} />,
+      minWidth: '140px',
+    },
+    {
+      name: <HeaderLabel title="Work Type" />,
+      selector: (row) => row.work_types ?? '',
+      cell: (row) => <Wrap text={row.work_types ?? ''} />,
+      sortable: true,
+      minWidth: '150px',
+    },
+    {
+      name: <HeaderLabel title="Total Surveys" />,
+      selector: (row) => toNum(row.total_surveys),
+      cell: (row) => <span className="tabular-nums">{toNum(row.total_surveys)}</span>,
+      sortable: true,
+      right: true,
+      minWidth: '100px',
+    },
+    ...DISTANCE_COLUMNS.map(
+      ({ key, title }): TableColumn<ComputedRow> => ({
+        name: <HeaderLabel title={title} sub="mt" />,
+        selector: (row) => toNum(row[key]),
+        cell: (row) => (
+          <span className="tabular-nums whitespace-nowrap">{formatDistance(toNum(row[key]))}</span>
+        ),
+        sortable: true,
+        right: true,
+        minWidth: '125px',
+      }),
+    ),
+    {
+      name: <HeaderLabel title="Rate" sub="per meter" />,
+      selector: (row) => toNum(row.rate_per_meter),
+      cell: (row) => amountCell(row.rate_per_meter),
       sortable: true,
       right: true,
       minWidth: '120px',
     },
     {
-      name: <HeaderLabel title="Payment" sub="Base + GST (80%)" />,
-      selector: (row) => row.paymentTotal,
+      name: <HeaderLabel title="GST" sub="%" />,
+      selector: (row) => toNum(row.gst_percent),
+      cell: (row) => percentCell(row.gst_percent),
+      sortable: true,
+      right: true,
+      minWidth: '80px',
+    },
+    {
+      name: <HeaderLabel title="TDS" sub="%" />,
+      selector: (row) => toNum(row.tds_percent),
+      cell: (row) => percentCell(row.tds_percent),
+      sortable: true,
+      right: true,
+      minWidth: '80px',
+    },
+    ...AMOUNT_COLUMNS.map(
+      ({ key, title, tone, total }): TableColumn<ComputedRow> => ({
+        name: <HeaderLabel title={title} />,
+        selector: (row) => toNum(row[key]),
+        cell: (row) =>
+          amountCell(row[key] as number | null, toneClass(tone, toNum(row[key]), total)),
+        sortable: true,
+        right: true,
+        minWidth: total ? '150px' : '135px',
+      }),
+    ),
+    {
+      name: <HeaderLabel title="Payment Count" />,
+      selector: (row) => toNum(row.payment_count),
+      cell: (row) => <span className="tabular-nums">{toNum(row.payment_count)}</span>,
+      sortable: true,
+      right: true,
+      minWidth: '100px',
+    },
+    {
+      name: <HeaderLabel title="Last Payment Date" />,
+      selector: (row) => row.last_payment_date ?? '',
       cell: (row) => (
-        <div className="text-right leading-snug">
-          <div className="font-semibold tabular-nums whitespace-nowrap">
-            {formatCurrency(row.paymentTotal)}
-          </div>
-          <div className="text-xs text-gray-500 tabular-nums whitespace-nowrap">
-            {formatCurrency(row.paymentBase)} + {formatCurrency(row.paymentGst)}
-          </div>
-        </div>
+        <span className="whitespace-nowrap">
+          {row.last_payment_date ? moment(row.last_payment_date).format('DD-MM-YYYY') : '-'}
+        </span>
       ),
       sortable: true,
-      right: true,
-      minWidth: '210px',
-    },
-    {
-      name: <HeaderLabel title="Paid Base" />,
-      selector: (row) => row.paidBase,
-      cell: (row) => amountCell(row.paidBase, 'text-teal-700'),
-      sortable: true,
-      right: true,
-      minWidth: '140px',
-    },
-    {
-      name: <HeaderLabel title="Paid GST" />,
-      selector: (row) => row.paidGst,
-      cell: (row) => amountCell(row.paidGst, 'text-teal-700'),
-      sortable: true,
-      right: true,
       minWidth: '130px',
     },
     {
-      name: <HeaderLabel title="Balance Base" />,
-      selector: (row) => row.balanceBase,
-      cell: (row) =>
-        amountCell(row.balanceBase, row.balanceBase > 0 ? 'text-orange-600 font-medium' : 'text-gray-900'),
+      name: <HeaderLabel title="Payment Status" />,
+      selector: (row) => row.payment_status ?? '',
+      cell: (row) => (
+        <span
+          className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${
+            PAYMENT_STATUS_STYLES[(row.payment_status ?? '').toLowerCase()] ??
+            'bg-gray-100 text-gray-700'
+          }`}
+        >
+          {row.payment_status || '-'}
+        </span>
+      ),
       sortable: true,
-      right: true,
-      minWidth: '140px',
+      minWidth: '130px',
     },
     {
-      name: <HeaderLabel title="Balance GST" />,
-      selector: (row) => row.balanceGst,
-      cell: (row) =>
-        amountCell(row.balanceGst, row.balanceGst > 0 ? 'text-orange-600 font-medium' : 'text-gray-900'),
-      sortable: true,
-      right: true,
-      minWidth: '130px',
+      name: <HeaderLabel title="Action" />,
+      cell: (row) => (
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setEditRow(row)}
+            title="Edit payment details"
+            className="p-1.5 text-blue-600 rounded-md hover:bg-blue-50"
+          >
+            <PenIcon className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setAddPaymentRow(row)}
+            title="Add payment"
+            className="p-1.5 text-green-600 rounded-md hover:bg-green-50"
+          >
+            <PlusCircle className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setHistoryRow(row)}
+            title="Payment history"
+            className="p-1.5 text-indigo-600 rounded-md hover:bg-indigo-50"
+          >
+            <History className="w-4 h-4" />
+          </button>
+        </div>
+      ),
+      width: '130px',
+      center: true,
     },
   ];
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <ToastContainer />
       <PaymentsHeader />
+      <PaymentEditModal
+        row={editRow}
+        onClose={() => setEditRow(null)}
+        onSaved={(message) => {
+          toast.success(message);
+          setEditRow(null);
+          fetchPayments();
+        }}
+        onError={(message) => toast.error(message)}
+      />
+      <PaymentHistoryModal link={historyRow} onClose={() => setHistoryRow(null)} />
+      <AddPaymentModal
+        row={addPaymentRow}
+        onClose={() => setAddPaymentRow(null)}
+        onSaved={(message) => {
+          toast.success(message);
+          setAddPaymentRow(null);
+          fetchPayments();
+        }}
+        onError={(message) => toast.error(message)}
+      />
 
       {/* KPI Cards */}
       <div className="bg-gray-50 border-b border-gray-200">
@@ -626,6 +840,11 @@ function PaymentsPage() {
                           {stat.value}
                         </div>
                         <div className="text-sm text-gray-600">{stat.label}</div>
+                        {stat.sub && (
+                          <div className="text-xs text-gray-400 truncate" title={stat.sub}>
+                            {stat.sub}
+                          </div>
+                        )}
                       </div>
                       <div className={`p-2 ${stat.bgColor} rounded-lg flex-shrink-0`}>
                         <Icon className={`w-5 h-5 ${stat.color}`} />
@@ -695,6 +914,55 @@ function PaymentsPage() {
               />
             </div>
 
+            <div
+              className="relative flex-1 min-w-0 sm:flex-none sm:w-48"
+              ref={workTypeDropdownRef}
+            >
+              <button
+                type="button"
+                onClick={() => setWorkTypeDropdownOpen((prev) => !prev)}
+                className="w-full flex items-center justify-between px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              >
+                <span className="truncate text-left">
+                  {worktype.length === 0
+                    ? 'All Work Type'
+                    : worktype
+                        .map(
+                          (value) =>
+                            workTypeOptions.find((option) => option.value === value)?.label ??
+                            value,
+                        )
+                        .join(', ')}
+                </span>
+                <svg
+                  className="w-4 h-4 text-gray-400 flex-shrink-0 ml-1"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {workTypeDropdownOpen && (
+                <div className="absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg dark:bg-gray-700 dark:border-gray-600">
+                  {workTypeOptions.map((option) => (
+                    <label
+                      key={option.value}
+                      className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 dark:text-white"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={worktype.includes(option.value)}
+                        onChange={() => handleWorkTypeToggle(option.value)}
+                        className="rounded border-gray-300"
+                      />
+                      {option.label}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <button
               onClick={clearFilters}
               className="flex-none h-10 px-4 py-2 text-sm font-medium text-red-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-red-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
@@ -723,8 +991,6 @@ function PaymentsPage() {
               paginationRowsPerPageOptions={[10, 25, 50, 100, 200, 500]}
               highlightOnHover
               responsive
-              fixedHeader
-              fixedHeaderScrollHeight="65vh"
               customStyles={customStyles}
               noHeader
               persistTableHead

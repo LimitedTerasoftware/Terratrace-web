@@ -15,6 +15,7 @@ import {
   Loader2,
   FileText,
   Download,
+  RefreshCw,
 } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { UGConstructionSurveyData } from '../../types/survey';
@@ -66,6 +67,8 @@ function ConstructionPage() {
   const [excel, setExcel] = useState<boolean>(false);
   const [pdf, setPdf] = useState<boolean>(false);
   const [acceptedPdfLoading, setAcceptedPdfLoading] = useState<boolean>(false);
+  const [sync, setSync] = useState<boolean>(false);
+  const [acceptedSyncLoading, setAcceptedSyncLoading] = useState<boolean>(false);
   const [kml, setkml] = useState<boolean>(false);
   const [preview, setPreview] = useState<boolean>(false);
   const [progressmap, setProgressmap] = useState<boolean>(false);
@@ -1028,6 +1031,17 @@ function ConstructionPage() {
                   )}
                   {acceptedPdfLoading ? 'Generating...' : 'PDF'}
                 </button>
+
+                <button
+                  onClick={() => setSync(true)}
+                  disabled={acceptedSyncLoading}
+                  className="flex-none h-10 px-4 py-2 text-sm font-medium text-purple-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none dark:bg-gray-700 dark:text-purple-400 dark:border-gray-600 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center gap-2"
+                >
+                  <RefreshCw
+                    className={`h-4 w-4 text-purple-600 ${acceptedSyncLoading ? 'animate-spin' : ''}`}
+                  />
+                  {acceptedSyncLoading ? 'Syncing...' : 'Sync'}
+                </button>
               </>
             )}
             {/* Links Filter */}
@@ -1393,6 +1407,9 @@ function ConstructionPage() {
               pdf={pdf}
               onPdf={() => setPdf(false)}
               onPdfLoadingChange={setAcceptedPdfLoading}
+              sync={sync}
+              onSync={() => setSync(false)}
+              onSyncLoadingChange={setAcceptedSyncLoading}
             />
           </>
         )}

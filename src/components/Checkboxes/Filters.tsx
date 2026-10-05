@@ -254,6 +254,7 @@ export default function Filters({
             { value: 'LOW_DEPTH', label: 'Low Depth' },
             { value: 'HIGH_DEPTH', label: 'High Depth' },
             { value: 'SURVEY_DISTANCE_EXCEEDED', label: 'Survey Distance Exceeded' },
+            {value:"WATERMARK_MISSING",label:"Watermark Missing"},
           ]}
         />
         )}
