@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import {
-  Download,
   AlertTriangle,
   TrendingDown,
   MapPin,
@@ -16,6 +15,7 @@ import { machineApi } from '../Services/api';
 import Filters from '../Checkboxes/Filters';
 import RecentIssues from '../Chat/RecentIssues';
 import { isIEUser } from '../../utils/accessControl';
+import * as XLSX from 'xlsx';
 
 function ConstructionIssues() {
   const location = useLocation();
@@ -212,6 +212,67 @@ function ConstructionIssues() {
     };
     setStats(newStats);
   };
+  const exportToExcel = () => {
+    if (!filteredIssues.length) return;
+
+    const formatTimestamp = (timestamp: string) =>
+      timestamp
+        ? new Date(timestamp).toLocaleString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : '-';
+
+    const headers = [
+      'Type',
+      'Category',
+      'Severity',
+      'Status',
+      'Depth (m)',
+      'Distance (mt)',
+      'Location',
+      'Vendor',
+      'Machine',
+      'Survey ID',
+      'Point ID',
+      'Remarks',
+      'Timestamp',
+    ];
+
+    const dataRows = filteredIssues.map((issue) => [
+      issue.issue_type === 'DEPTH'
+        ? 'Depth Variance'
+        : (issue.category || '').replace(/_/g, ' '),
+      issue.category || '-',
+      issue.severity || '-',
+      issue.status || '-',
+      issue.depth || '-',
+      issue.total_distance || '-',
+      issue.location || '-',
+      issue.vendor || '-',
+      issue.machine || '-',
+      issue.survey_id ?? '-',
+      issue.point_id ?? '-',
+      issue.remark || '-',
+      formatTimestamp(issue.timestamp),
+    ]);
+
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
+    worksheet['!cols'] = headers.map((h) => ({
+      wch: Math.max(h.length + 2, 15),
+    }));
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Construction Issues');
+    XLSX.writeFile(
+      workbook,
+      `Construction_Issues_${new Date().toISOString().split('T')[0]}.xlsx`,
+      { compression: true },
+    );
+  };
+
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'Depth Violation':
@@ -288,6 +349,8 @@ function ConstructionIssues() {
             onReset={handleReset}
             onFromDateChange={setSelectedFromDate}
             onToDateChange={setSelectedToDate}
+            onDownload={exportToExcel}
+            downloadDisabled={loading || filteredIssues.length === 0}
           />
 
           {/* <div className="flex flex-wrap gap-3">

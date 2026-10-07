@@ -3,6 +3,7 @@ import { getStateData, getDistrictData, getBlockData, machineApi } from '../Serv
 import { Block, District, StateData } from '../../types/survey';
 import { MachineDetailsResponse } from '../../types/machine';
 import { isIEUser } from '../../utils/accessControl';
+import { Download } from 'lucide-react';
 import SearchableSelect from '../Forms/SearchableSelect';
 
 interface FiltersProps {
@@ -31,6 +32,8 @@ interface FiltersProps {
   onStatusChange?: (status: string) => void;
   onFromDateChange?: (date: string) => void;
   onToDateChange?: (date: string) => void;
+  onDownload?: () => void;
+  downloadDisabled?: boolean;
 }
 
 export default function Filters({
@@ -59,6 +62,8 @@ export default function Filters({
   onWorkTypeChange,
   onFromDateChange,
   onToDateChange,
+  onDownload,
+  downloadDisabled = false,
 }: FiltersProps) {
   const [states, setStates] = useState<StateData[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
@@ -325,6 +330,17 @@ export default function Filters({
         >
           Reset
         </button>
+
+        {onDownload && (
+          <button
+            className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 flex items-center gap-2 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={onDownload}
+            disabled={downloadDisabled}
+          >
+            <Download className="w-4 h-4" />
+            <span>Excel</span>
+          </button>
+        )}
 
         {/* <button className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 flex items-center space-x-2">
           <Download className="w-4 h-4" />
