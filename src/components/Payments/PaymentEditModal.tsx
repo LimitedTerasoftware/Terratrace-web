@@ -14,6 +14,7 @@ export interface PaymentEditRow {
   gst_percent: number | null;
   tds_percent: number | null;
   remarks?: string | null;
+  td_accepted_distance?:number|null;
 }
 
 interface PaymentEditModalProps {
@@ -131,7 +132,7 @@ const PaymentEditModal: React.FC<PaymentEditModalProps> = ({ row, onClose, onSav
         <div className="flex items-start justify-between px-6 py-4 border-b border-gray-200">
           <div className="min-w-0">
             <h2 className="text-lg font-semibold text-gray-900">Edit Payment Details</h2>
-            <p className="text-sm text-gray-500 break-words">{row.link_name}</p>
+            <p className="text-sm text-gray-500 break-words">{row.link_name} - T&D Distance({row.td_accepted_distance} mt) </p>
           </div>
           <button
             type="button"

@@ -49,6 +49,13 @@ const ADMIN_EMAIL = ["Krishnakapil.s@terasoftware.com",
 "umamahesh.y@terasoftware.com","Nikhitha.m@terasoftware.com","Annapurna.t@terasoftware.com"
 ];
 
+// Only these users can see and open the Payments page
+const PAYMENTS_ACCESS_EMAILS = [
+  "ravindrababu.y@terasoftware.com",
+  "girish.t@terasoftware.in",
+  "brahmareddy.v@terasoftware.in",
+];
+
 // Users with installation page access
 const INSTALLATION_ACCESS_EMAILS = ["survey@terasoftware.com","wb@terasoftware.com"];
 
@@ -152,6 +159,15 @@ export const hasInstallationAccess = (): boolean => {
   const user = getUser();
   const email = user?.email?.toLowerCase();
   return INSTALLATION_ACCESS_EMAILS.includes(email ?? "");
+};
+
+/**
+ * Check if user can access the Payments page
+ */
+export const hasPaymentsAccess = (): boolean => {
+  const user = getUser();
+  const email = user?.email?.toLowerCase();
+  return PAYMENTS_ACCESS_EMAILS.includes(email ?? "");
 };
 
 /**

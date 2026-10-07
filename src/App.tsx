@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
 import Loader from './common/Loader';
 import PageTitle from './components/PageTitle';
@@ -102,6 +102,7 @@ import ATBlockRouterView from './components/ATChecklist/List/ATBlockRouterView';
 import OverallMap from './components/OverallMap';
 import AuditLogs from './components/AuditLogs';
 import PaymentsPage from './components/Payments';
+import { hasPaymentsAccess } from './utils/accessControl';
 import AerialView from './components/DepthChart/AerialView';
 import PoleStringView from './components/DepthChart/PoleStringView';
 import MainDashboard from './components/Dashboards/MainDashboard';
@@ -1120,12 +1121,16 @@ function App() {
               <Route
                 path="/payments"
                 element={
-                  <>
-                    <DefaultLayout>
-                      <PageTitle title="Payments" />
-                      <PaymentsPage />
-                    </DefaultLayout>
-                  </>
+                  hasPaymentsAccess() ? (
+                    <>
+                      <DefaultLayout>
+                        <PageTitle title="Payments" />
+                        <PaymentsPage />
+                      </DefaultLayout>
+                    </>
+                  ) : (
+                    <Navigate to="/dashboard" replace />
+                  )
                 }
               />
               <Route

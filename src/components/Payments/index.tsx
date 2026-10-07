@@ -17,6 +17,8 @@ import {
 import { StateData, District, Block } from '../../types/survey';
 import { getAuthHeaders, isIEUser } from '../../utils/accessControl';
 import SearchableSelect from '../Forms/SearchableSelect';
+import { machineApi } from '../Services/api';
+import { MachineDetailsResponse } from '../../types/machine';
 import { ToastContainer, toast } from 'react-toastify';
 import PaymentEditModal from './PaymentEditModal';
 import AddPaymentModal from './AddPaymentModal';
@@ -134,8 +136,8 @@ const PAYMENT_STATUS_STYLES: Record<string, string> = {
 const workTypeOptions = [
   { value: 'New Construction', label: 'New Construction' },
   { value: 'Rectification', label: 'Rectification' },
-  { value: 'OFC Blowing/ JointChamber', label: 'OFC Blowing / Joint Chamber' },
-  { value: 'Protection', label: 'Protection' },
+  // { value: 'OFC Blowing/ JointChamber', label: 'OFC Blowing / Joint Chamber' },
+  // { value: 'Protection', label: 'Protection' },
 ];
 
 // Distance columns, in display order (values in meters, shown as sent by the API).
@@ -251,6 +253,11 @@ function PaymentsPage() {
   const [loadingDistricts, setLoadingDistricts] = useState(false);
   const [loadingBlock, setLoadingBlock] = useState(false);
   const [loadingConnections, setLoadingConnections] = useState(false);
+  const [vendors, setVendors] = useState<MachineDetailsResponse['data']>([]);
+  const [selectedVendor, setSelectedVendor] = useState<string | null>(
+    () => searchParams.get('firm_id'),
+  );
+  const [loadingVendors, setLoadingVendors] = useState(false);
 
   const [rows, setRows] = useState<PaymentRow[]>([]);
   const [editRow, setEditRow] = useState<PaymentRow | null>(null);
@@ -356,6 +363,23 @@ function PaymentsPage() {
     }
   };
 
+  const fetchVendors = async () => {
+    try {
+      setLoadingVendors(true);
+      const response = await machineApi.getFirmDistanceStats(
+        selectedState || undefined,
+        selectedDistrict || undefined,
+        selectedBlock || undefined,
+      );
+      setVendors(response.data || []);
+    } catch (err) {
+      console.error('Error fetching vendors:', err);
+      setVendors([]);
+    } finally {
+      setLoadingVendors(false);
+    }
+  };
+
   const fetchConnections = async (blockId: string) => {
     try {
       setLoadingConnections(true);
@@ -392,6 +416,7 @@ function PaymentsPage() {
       if (conn?.startLocation) params.start = conn.startLocation;
       if (conn?.endLocation) params.end = conn.endLocation;
       if (worktype.length > 0) params.workType = worktype.join(',');
+      if (selectedVendor) params.firm_id = selectedVendor;
 
       const response = await fetch(
         `${TraceBASEURL}/link-payments/summary?${new URLSearchParams(params).toString()}`,
@@ -434,10 +459,25 @@ function PaymentsPage() {
   }, [selectedBlock]);
 
   useEffect(() => {
+    if (selectedState) fetchVendors();
+    else setVendors([]);
+  }, [selectedState, selectedDistrict, selectedBlock]);
+
+  useEffect(() => {
     // Wait for link list so start/end can be resolved when a link is preselected from the URL.
     if (selectedConnection && !getSelectedConnectionDetails()) return;
     fetchPayments();
-  }, [selectedState, selectedDistrict, selectedBlock, selectedConnection, connections, worktype, page, perPage]);
+  }, [
+    selectedState,
+    selectedDistrict,
+    selectedBlock,
+    selectedConnection,
+    connections,
+    worktype,
+    selectedVendor,
+    page,
+    perPage,
+  ]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -458,6 +498,7 @@ function PaymentsPage() {
     block: string | null,
     link: string | null,
     workTypes: string[] = worktype,
+    vendor: string | null = selectedVendor,
   ) => {
     const params: Record<string, string> = {};
     if (state) params.state_id = state;
@@ -465,6 +506,7 @@ function PaymentsPage() {
     if (block) params.block_id = block;
     if (link) params.link = link;
     if (workTypes.length > 0) params.workType = workTypes.join(',');
+    if (vendor) params.firm_id = vendor;
     setSearchParams(params);
     setPage(1);
   };
@@ -474,25 +516,33 @@ function PaymentsPage() {
     setSelectedDistrict(null);
     setSelectedBlock(null);
     setSelectedConnection(null);
-    syncParams(value || null, null, null, null);
+    setSelectedVendor(null);
+    syncParams(value || null, null, null, null, worktype, null);
   };
 
   const handleDistrictChange = (value: string) => {
     setSelectedDistrict(value || null);
     setSelectedBlock(null);
     setSelectedConnection(null);
-    syncParams(selectedState, value || null, null, null);
+    setSelectedVendor(null);
+    syncParams(selectedState, value || null, null, null, worktype, null);
   };
 
   const handleBlockChange = (value: string) => {
     setSelectedBlock(value || null);
     setSelectedConnection(null);
-    syncParams(selectedState, selectedDistrict, value || null, null);
+    setSelectedVendor(null);
+    syncParams(selectedState, selectedDistrict, value || null, null, worktype, null);
   };
 
   const handleLinkChange = (value: string) => {
     setSelectedConnection(value || null);
     syncParams(selectedState, selectedDistrict, selectedBlock, value || null);
+  };
+
+  const handleVendorChange = (value: string) => {
+    setSelectedVendor(value || null);
+    syncParams(selectedState, selectedDistrict, selectedBlock, selectedConnection, worktype, value || null);
   };
 
   const handleWorkTypeToggle = (value: string) => {
@@ -509,6 +559,7 @@ function PaymentsPage() {
     setSelectedBlock(null);
     setSelectedConnection(null);
     setworktype([]);
+    setSelectedVendor(null);
     setSearchParams({});
     setPage(1);
   };
@@ -646,19 +697,19 @@ function PaymentsPage() {
       sortable: true,
       minWidth: '180px',
     },
-    {
-      name: <HeaderLabel title="Authorised Person" />,
-      selector: (row) => row.authorised_persons ?? '',
-      cell: (row) => <Wrap text={row.authorised_persons ?? ''} />,
-      sortable: true,
-      minWidth: '170px',
-    },
-    {
-      name: <HeaderLabel title="Authorised Mobile" />,
-      selector: (row) => row.authorised_mobiles ?? '',
-      cell: (row) => <Wrap text={row.authorised_mobiles ?? ''} />,
-      minWidth: '140px',
-    },
+    // {
+    //   name: <HeaderLabel title="Authorised Person" />,
+    //   selector: (row) => row.authorised_persons ?? '',
+    //   cell: (row) => <Wrap text={row.authorised_persons ?? ''} />,
+    //   sortable: true,
+    //   minWidth: '170px',
+    // },
+    // {
+    //   name: <HeaderLabel title="Authorised Mobile" />,
+    //   selector: (row) => row.authorised_mobiles ?? '',
+    //   cell: (row) => <Wrap text={row.authorised_mobiles ?? ''} />,
+    //   minWidth: '140px',
+    // },
     {
       name: <HeaderLabel title="Work Type" />,
       selector: (row) => row.work_types ?? '',
@@ -898,6 +949,19 @@ function PaymentsPage() {
                 }))}
                 placeholder="All Blocks"
                 disabled={!selectedDistrict || loadingBlock}
+              />
+            </div>
+
+            <div className="relative flex-1 min-w-0 sm:flex-none sm:w-48">
+              <SearchableSelect
+                value={selectedVendor || ''}
+                onChange={handleVendorChange}
+                options={vendors.map((vendor) => ({
+                  value: vendor.firm_id.toString(),
+                  label: vendor.firm_name,
+                }))}
+                placeholder="All Vendors"
+                disabled={!selectedState || loadingVendors}
               />
             </div>
 
