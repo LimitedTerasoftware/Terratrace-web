@@ -133,6 +133,13 @@ const PAYMENT_STATUS_STYLES: Record<string, string> = {
   'details pending': 'bg-blue-100 text-blue-700',
 };
 
+const paymentStatusOptions = [
+  { value: 'Details Pending', label: 'Details Pending' },
+  { value: 'Unpaid', label: 'Unpaid' },
+  { value: 'Partially Paid', label: 'Partially Paid' },
+  { value: 'Paid', label: 'Paid' },
+];
+
 const workTypeOptions = [
   { value: 'New Construction', label: 'New Construction' },
   { value: 'Rectification', label: 'Rectification' },
@@ -258,6 +265,9 @@ function PaymentsPage() {
     () => searchParams.get('firm_id'),
   );
   const [loadingVendors, setLoadingVendors] = useState(false);
+  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState<string | null>(
+    () => searchParams.get('payment_status'),
+  );
 
   const [rows, setRows] = useState<PaymentRow[]>([]);
   const [editRow, setEditRow] = useState<PaymentRow | null>(null);
@@ -417,6 +427,7 @@ function PaymentsPage() {
       if (conn?.endLocation) params.end = conn.endLocation;
       if (worktype.length > 0) params.workType = worktype.join(',');
       if (selectedVendor) params.firm_id = selectedVendor;
+      if (selectedPaymentStatus) params.payment_status = selectedPaymentStatus;
 
       const response = await fetch(
         `${TraceBASEURL}/link-payments/summary?${new URLSearchParams(params).toString()}`,
@@ -475,6 +486,7 @@ function PaymentsPage() {
     connections,
     worktype,
     selectedVendor,
+    selectedPaymentStatus,
     page,
     perPage,
   ]);
@@ -499,6 +511,7 @@ function PaymentsPage() {
     link: string | null,
     workTypes: string[] = worktype,
     vendor: string | null = selectedVendor,
+    paymentStatus: string | null = selectedPaymentStatus,
   ) => {
     const params: Record<string, string> = {};
     if (state) params.state_id = state;
@@ -507,6 +520,7 @@ function PaymentsPage() {
     if (link) params.link = link;
     if (workTypes.length > 0) params.workType = workTypes.join(',');
     if (vendor) params.firm_id = vendor;
+    if (paymentStatus) params.payment_status = paymentStatus;
     setSearchParams(params);
     setPage(1);
   };
@@ -545,6 +559,19 @@ function PaymentsPage() {
     syncParams(selectedState, selectedDistrict, selectedBlock, selectedConnection, worktype, value || null);
   };
 
+  const handlePaymentStatusChange = (value: string) => {
+    setSelectedPaymentStatus(value || null);
+    syncParams(
+      selectedState,
+      selectedDistrict,
+      selectedBlock,
+      selectedConnection,
+      worktype,
+      selectedVendor,
+      value || null,
+    );
+  };
+
   const handleWorkTypeToggle = (value: string) => {
     const updated = worktype.includes(value)
       ? worktype.filter((w) => w !== value)
@@ -560,6 +587,7 @@ function PaymentsPage() {
     setSelectedConnection(null);
     setworktype([]);
     setSelectedVendor(null);
+    setSelectedPaymentStatus(null);
     setSearchParams({});
     setPage(1);
   };
@@ -975,6 +1003,15 @@ function PaymentsPage() {
                 }))}
                 placeholder="Select Links"
                 disabled={!selectedBlock || loadingConnections}
+              />
+            </div>
+
+            <div className="relative flex-1 min-w-0 sm:flex-none sm:w-44">
+              <SearchableSelect
+                value={selectedPaymentStatus || ''}
+                onChange={handlePaymentStatusChange}
+                options={paymentStatusOptions}
+                placeholder="All Statuses"
               />
             </div>
 
