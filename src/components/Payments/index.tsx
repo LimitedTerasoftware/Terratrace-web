@@ -13,6 +13,9 @@ import {
   PenIcon,
   PlusCircle,
   History,
+  Check,
+  X,
+  Loader2,
 } from 'lucide-react';
 import { StateData, District, Block } from '../../types/survey';
 import { getAuthHeaders, isIEUser } from '../../utils/accessControl';
@@ -155,6 +158,117 @@ const DISTANCE_COLUMNS: { key: keyof PaymentRow; title: string }[] = [
   { key: 'vendor_mis_distance', title: 'Vendor MIS Distance' },
   { key: 'accepted_distance', title: 'Accepted Distance' },
 ];
+
+// Distance columns that can be edited inline from the table.
+type EditableDistanceKey =  'vendor_mis_distance' | 'accepted_distance';
+const EDITABLE_DISTANCE_KEYS: EditableDistanceKey[] = [
+  'vendor_mis_distance',
+  'accepted_distance',
+];
+
+const EditableDistanceCell = ({
+  value,
+  onSave,
+}: {
+  value: number | null;
+  onSave: (value: number) => Promise<boolean>;
+}) => {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const startEdit = () => {
+    setDraft(value == null ? '' : String(value));
+    setError(null);
+    setEditing(true);
+  };
+
+  const cancel = () => {
+    setEditing(false);
+    setError(null);
+  };
+
+  const save = async () => {
+    const raw = draft.trim();
+    const n = Number(raw);
+    if (raw === '' || !Number.isFinite(n) || n < 0) {
+      setError('Enter a positive number');
+      return;
+    }
+    if (value != null && n === Number(value)) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    const ok = await onSave(n);
+    setSaving(false);
+    if (ok) setEditing(false);
+  };
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        onClick={startEdit}
+        title="Click to edit"
+        className="group inline-flex items-center gap-1 tabular-nums whitespace-nowrap rounded px-1 -mx-1 hover:bg-blue-50"
+      >
+        {formatDistance(toNum(value))}
+        <PenIcon className="w-3 h-3 text-blue-500 opacity-0 group-hover:opacity-100" />
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-0.5 py-1">
+      <div className="flex items-center gap-1">
+        <input
+          type="number"
+          step="any"
+          min="0"
+          autoFocus
+          value={draft}
+          disabled={saving}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            setError(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') save();
+            if (e.key === 'Escape') cancel();
+          }}
+          className={`w-24 px-1.5 py-1 text-sm text-right border rounded outline-none focus:ring-1 focus:ring-blue-500 ${
+            error ? 'border-red-400' : 'border-gray-300'
+          }`}
+        />
+        {saving ? (
+          <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={save}
+              title="Save"
+              className="p-0.5 text-green-600 rounded hover:bg-green-50"
+            >
+              <Check className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={cancel}
+              title="Cancel"
+              className="p-0.5 text-gray-500 rounded hover:bg-gray-100"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </>
+        )}
+      </div>
+      {error && <span className="text-[11px] text-red-600">{error}</span>}
+    </div>
+  );
+};
 
 type AmountTone = 'payable' | 'paid' | 'balance';
 
@@ -683,6 +797,42 @@ function PaymentsPage() {
       <span className="tabular-nums">{toNum(value)}%</span>
     );
 
+  // Saves one inline-edited distance; the other saved fields are sent unchanged.
+  const saveDistance = async (
+    row: PaymentRow,
+    key: EditableDistanceKey,
+    value: number,
+  ): Promise<boolean> => {
+    const payload: Record<string, number | string | null> = {
+      start_location: row.start_location,
+      end_location: row.end_location,
+      vendor_mis_distance: row.vendor_mis_distance,
+      accepted_distance: row.accepted_distance,
+      [key]: value,
+    };
+    if (row.rate_per_meter != null) payload.rate_per_meter = row.rate_per_meter;
+    if (row.gst_percent != null) payload.gst_percent = row.gst_percent;
+    if (row.tds_percent != null) payload.tds_percent = row.tds_percent;
+    try {
+      const response = await fetch(`${TraceBASEURL}/link-payments/details`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.status === false) {
+        throw new Error(result.message || 'Failed to update distance');
+      }
+      toast.success(result.message || 'Distance updated successfully');
+      fetchPayments();
+      return true;
+    } catch (err: any) {
+      console.error('Error updating distance:', err);
+      toast.error(err?.message || 'Failed to update distance');
+      return false;
+    }
+  };
+
   const columns: TableColumn<ComputedRow>[] = [
     {
       name: <HeaderLabel title="S.No" />,
@@ -745,24 +895,31 @@ function PaymentsPage() {
       sortable: true,
       minWidth: '150px',
     },
-    {
-      name: <HeaderLabel title="Total Surveys" />,
-      selector: (row) => toNum(row.total_surveys),
-      cell: (row) => <span className="tabular-nums">{toNum(row.total_surveys)}</span>,
-      sortable: true,
-      right: true,
-      minWidth: '100px',
-    },
+    // {
+    //   name: <HeaderLabel title="Total Surveys" />,
+    //   selector: (row) => toNum(row.total_surveys),
+    //   cell: (row) => <span className="tabular-nums">{toNum(row.total_surveys)}</span>,
+    //   sortable: true,
+    //   right: true,
+    //   minWidth: '100px',
+    // },
     ...DISTANCE_COLUMNS.map(
       ({ key, title }): TableColumn<ComputedRow> => ({
         name: <HeaderLabel title={title} sub="mt" />,
         selector: (row) => toNum(row[key]),
-        cell: (row) => (
-          <span className="tabular-nums whitespace-nowrap">{formatDistance(toNum(row[key]))}</span>
-        ),
+        cell: (row) =>
+          EDITABLE_DISTANCE_KEYS.includes(key as EditableDistanceKey) ? (
+            <EditableDistanceCell
+              key={`${row.start_location}-${row.end_location}-${key}`}
+              value={row[key] as number | null}
+              onSave={(value) => saveDistance(row, key as EditableDistanceKey, value)}
+            />
+          ) : (
+            <span className="tabular-nums whitespace-nowrap">{formatDistance(toNum(row[key]))}</span>
+          ),
         sortable: true,
         right: true,
-        minWidth: '125px',
+        minWidth: '150px',
       }),
     ),
     {
