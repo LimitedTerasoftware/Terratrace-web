@@ -16,6 +16,7 @@ import {
   Check,
   X,
   Loader2,
+  FileDown,
 } from 'lucide-react';
 import { StateData, District, Block } from '../../types/survey';
 import { getAuthHeaders, isIEUser } from '../../utils/accessControl';
@@ -26,6 +27,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import PaymentEditModal from './PaymentEditModal';
 import AddPaymentModal from './AddPaymentModal';
 import PaymentHistoryModal from './PaymentHistoryModal';
+import { generatePaymentsPdf } from './paymentsPdf';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
@@ -34,8 +36,36 @@ interface StatesResponse {
   data: StateData[];
 }
 
+// Per-vendor breakdown of a link. Amounts are null until payment details are saved.
+export interface PaymentVendor {
+  link_detail_id: number | null;
+  firm_id: number;
+  firm_name: string;
+  authorised_person: string | null;
+  authorised_mobile: string | null;
+  total_surveys: number;
+  td_accepted_distance: number | null;
+  vendor_mis_distance: number | null;
+  accepted_distance: number | null;
+  rate_per_meter: number | null;
+  gst_percent: number | null;
+  tds_percent: number | null;
+  base_amount: number | null;
+  gst_amount: number | null;
+  tds_amount: number | null;
+  base_paid: number | null;
+  gst_paid: number | null;
+  tds_paid: number | null;
+  base_balance: number | null;
+  gst_balance: number | null;
+  tds_balance: number | null;
+  payment_count: number;
+  last_payment_date: string | null;
+  payment_status: string | null;
+}
+
 // Distances are in meters, amounts in rupees. Amounts are null until payment details are saved.
-interface PaymentRow {
+export interface PaymentRow {
   link_detail_id: number | null;
   start_location: number;
   end_location: number;
@@ -75,9 +105,10 @@ interface PaymentRow {
   last_payment_date: string | null;
   payment_status: string | null;
   base_payment_count?: number | null;
+  vendors?: PaymentVendor[];
 }
 
-interface PaymentSummary {
+export interface PaymentSummary {
   total_surveys: number;
   boq_distance: number;
   td_accepted_distance: number;
@@ -128,6 +159,26 @@ const formatDistance = (v: number) =>
 
 type ComputedRow = PaymentRow;
 
+// Identifies a row across pages for checkbox selection.
+const rowKey = (r: PaymentRow) =>
+  `${r.start_location}-${r.end_location}-${r.firm_ids ?? ''}-${r.work_types ?? ''}`;
+
+// Fields summed for the totals of a selected-rows PDF.
+const SUMMABLE_TOTAL_KEYS: (keyof PaymentSummary)[] = [
+  'total_surveys', 'boq_distance', 'td_accepted_distance', 'vendor_mis_distance',
+  'otdr_distance', 'accepted_distance', 'base_amount', 'gst_amount', 'tds_amount',
+  'net_payable', 'base_paid', 'gst_paid', 'tds_paid', 'net_paid', 'base_balance',
+  'gst_balance', 'tds_balance', 'net_balance',
+];
+
+const sumTotals = (rows: PaymentRow[]): PaymentSummary => {
+  const totals = {} as PaymentSummary;
+  SUMMABLE_TOTAL_KEYS.forEach((key) => {
+    totals[key] = rows.reduce((acc, r) => acc + toNum(r[key]), 0);
+  });
+  return totals;
+};
+
 const PAYMENT_STATUS_STYLES: Record<string, string> = {
   unpaid: 'bg-red-100 text-red-700',
   partial: 'bg-yellow-100 text-yellow-800',
@@ -151,7 +202,10 @@ const workTypeOptions = [
 ];
 
 // Distance columns, in display order (values in meters, shown as sent by the API).
-const DISTANCE_COLUMNS: { key: keyof PaymentRow; title: string }[] = [
+// Scalar fields of a row (excludes the nested vendors list).
+type PaymentRowField = Exclude<keyof PaymentRow, 'vendors'>;
+
+const DISTANCE_COLUMNS: { key: PaymentRowField; title: string }[] = [
   { key: 'boq_distance', title: 'BOQ Distance' },
   { key: 'td_accepted_distance', title: 'T&D Accepted Distance' },
   { key: 'otdr_distance', title: 'OTDR Distance' },
@@ -270,10 +324,104 @@ const EditableDistanceCell = ({
   );
 };
 
+const dashOr = (value: number | null | undefined, format: (v: number) => string) =>
+  value == null ? <span className="text-gray-400">-</span> : format(toNum(value));
+
+const VENDOR_COLUMNS: {
+  title: string;
+  right?: boolean;
+  render: (v: PaymentVendor) => React.ReactNode;
+}[] = [
+  { title: 'Firm Name', render: (v) => v.firm_name || '-' },
+  { title: 'Authorised Person', render: (v) => v.authorised_person || '-' },
+  { title: 'Mobile', render: (v) => v.authorised_mobile || '-' },
+  { title: 'Surveys', right: true, render: (v) => toNum(v.total_surveys) },
+  { title: 'T&D Accepted (mt)', right: true, render: (v) => dashOr(v.td_accepted_distance, formatDistance) },
+  { title: 'Vendor MIS (mt)', right: true, render: (v) => dashOr(v.vendor_mis_distance, formatDistance) },
+  { title: 'Accepted (mt)', right: true, render: (v) => dashOr(v.accepted_distance, formatDistance) },
+  { title: 'Rate', right: true, render: (v) => dashOr(v.rate_per_meter, formatCurrency) },
+  { title: 'GST %', right: true, render: (v) => dashOr(v.gst_percent, (n) => `${n}%`) },
+  { title: 'TDS %', right: true, render: (v) => dashOr(v.tds_percent, (n) => `${n}%`) },
+  { title: 'Base Amount', right: true, render: (v) => dashOr(v.base_amount, formatCurrency) },
+  { title: 'GST Amount', right: true, render: (v) => dashOr(v.gst_amount, formatCurrency) },
+  { title: 'TDS Amount', right: true, render: (v) => dashOr(v.tds_amount, formatCurrency) },
+  { title: 'Base Paid', right: true, render: (v) => dashOr(v.base_paid, formatCurrency) },
+  { title: 'GST Paid', right: true, render: (v) => dashOr(v.gst_paid, formatCurrency) },
+  { title: 'TDS Paid', right: true, render: (v) => dashOr(v.tds_paid, formatCurrency) },
+  { title: 'Base Balance', right: true, render: (v) => dashOr(v.base_balance, formatCurrency) },
+  { title: 'GST Balance', right: true, render: (v) => dashOr(v.gst_balance, formatCurrency) },
+  { title: 'TDS Balance', right: true, render: (v) => dashOr(v.tds_balance, formatCurrency) },
+  { title: 'Payments', right: true, render: (v) => toNum(v.payment_count) },
+  {
+    title: 'Last Payment',
+    render: (v) => (v.last_payment_date ? moment(v.last_payment_date).format('DD-MM-YYYY') : '-'),
+  },
+  {
+    title: 'Status',
+    render: (v) => (
+      <span
+        className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
+          PAYMENT_STATUS_STYLES[(v.payment_status ?? '').toLowerCase()] ?? 'bg-gray-100 text-gray-700'
+        }`}
+      >
+        {v.payment_status || '-'}
+      </span>
+    ),
+  },
+];
+
+// Expanded row: vendor-wise breakdown of the link.
+const VendorBreakdown = ({ data }: { data: PaymentRow }) => {
+  const vendors = data.vendors ?? [];
+  return (
+    <div className="px-6 py-3 bg-slate-50 border-y border-gray-200">
+      <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-600">
+        Vendors ({vendors.length})
+      </div>
+      {vendors.length === 0 ? (
+        <div className="py-3 text-sm text-gray-500">No vendors for this link</div>
+      ) : (
+        <div className="overflow-x-auto bg-white border border-gray-200 rounded-lg">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-50 text-xs font-semibold uppercase text-gray-600">
+              <tr>
+                {VENDOR_COLUMNS.map((col) => (
+                  <th
+                    key={col.title}
+                    className={`px-3 py-2 whitespace-nowrap ${col.right ? 'text-right' : 'text-left'}`}
+                  >
+                    {col.title}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {vendors.map((vendor) => (
+                <tr key={vendor.firm_id} className="border-t border-gray-100 hover:bg-gray-50">
+                  {VENDOR_COLUMNS.map((col) => (
+                    <td
+                      key={col.title}
+                      className={`px-3 py-2 whitespace-nowrap ${
+                        col.right ? 'text-right tabular-nums' : 'text-left'
+                      }`}
+                    >
+                      {col.render(vendor)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
+
 type AmountTone = 'payable' | 'paid' | 'balance';
 
 // Amount columns, in display order. Net = Base + GST - TDS.
-const AMOUNT_COLUMNS: { key: keyof PaymentRow; title: string; tone: AmountTone; total?: boolean }[] = [
+const AMOUNT_COLUMNS: { key: PaymentRowField; title: string; tone: AmountTone; total?: boolean }[] = [
   { key: 'base_amount', title: 'Base Amount', tone: 'payable' },
   { key: 'gst_amount', title: 'GST Amount', tone: 'payable' },
   { key: 'tds_amount', title: 'TDS Amount', tone: 'payable' },
@@ -382,6 +530,8 @@ function PaymentsPage() {
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState<string | null>(
     () => searchParams.get('payment_status'),
   );
+  const [fromDate, setFromDate] = useState(() => searchParams.get('from_date') || '');
+  const [toDate, setToDate] = useState(() => searchParams.get('to_date') || '');
 
   const [rows, setRows] = useState<PaymentRow[]>([]);
   const [editRow, setEditRow] = useState<PaymentRow | null>(null);
@@ -393,6 +543,10 @@ function PaymentsPage() {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  // Selected rows by rowKey; kept across pages, cleared when filters change.
+  const [selectedRows, setSelectedRows] = useState<Record<string, PaymentRow>>({});
+  const selectedCount = Object.keys(selectedRows).length;
 
   const PaymentsHeader = () => (
     <header className="bg-white shadow-sm border-b border-gray-200 px-7 py-2">
@@ -525,23 +679,32 @@ function PaymentsPage() {
     return connections.find((c) => c.route_name === selectedConnection);
   };
 
+  // Query params for the current filters (shared by the table and the PDF export).
+  const buildFilterParams = () => {
+    const params: Record<string, string> = {};
+    if (selectedState) params.state_id = selectedState;
+    if (selectedDistrict) params.district_id = selectedDistrict;
+    if (selectedBlock) params.block_id = selectedBlock;
+    const conn = getSelectedConnectionDetails();
+    if (conn?.startLocation) params.start = conn.startLocation;
+    if (conn?.endLocation) params.end = conn.endLocation;
+    if (worktype.length > 0) params.workType = worktype.join(',');
+    if (selectedVendor) params.firm_id = selectedVendor;
+    if (selectedPaymentStatus) params.payment_status = selectedPaymentStatus;
+    if (fromDate) params.from_date = fromDate;
+    if (toDate) params.to_date = toDate;
+    return params;
+  };
+
   const fetchPayments = async () => {
     try {
       setLoading(true);
       setError(null);
       const params: Record<string, string> = {
+        ...buildFilterParams(),
         page: String(page),
         limit: String(perPage),
       };
-      if (selectedState) params.state_id = selectedState;
-      if (selectedDistrict) params.district_id = selectedDistrict;
-      if (selectedBlock) params.block_id = selectedBlock;
-      const conn = getSelectedConnectionDetails();
-      if (conn?.startLocation) params.start = conn.startLocation;
-      if (conn?.endLocation) params.end = conn.endLocation;
-      if (worktype.length > 0) params.workType = worktype.join(',');
-      if (selectedVendor) params.firm_id = selectedVendor;
-      if (selectedPaymentStatus) params.payment_status = selectedPaymentStatus;
 
       const response = await fetch(
         `${TraceBASEURL}/link-payments/summary?${new URLSearchParams(params).toString()}`,
@@ -601,6 +764,8 @@ function PaymentsPage() {
     worktype,
     selectedVendor,
     selectedPaymentStatus,
+    fromDate,
+    toDate,
     page,
     perPage,
   ]);
@@ -626,6 +791,8 @@ function PaymentsPage() {
     workTypes: string[] = worktype,
     vendor: string | null = selectedVendor,
     paymentStatus: string | null = selectedPaymentStatus,
+    from: string = fromDate,
+    to: string = toDate,
   ) => {
     const params: Record<string, string> = {};
     if (state) params.state_id = state;
@@ -635,8 +802,11 @@ function PaymentsPage() {
     if (workTypes.length > 0) params.workType = workTypes.join(',');
     if (vendor) params.firm_id = vendor;
     if (paymentStatus) params.payment_status = paymentStatus;
+    if (from) params.from_date = from;
+    if (to) params.to_date = to;
     setSearchParams(params);
     setPage(1);
+    setSelectedRows({});
   };
 
   const handleStateChange = (value: string) => {
@@ -686,12 +856,97 @@ function PaymentsPage() {
     );
   };
 
+  const handleDateChange = (from: string, to: string) => {
+    setFromDate(from);
+    setToDate(to);
+    syncParams(
+      selectedState,
+      selectedDistrict,
+      selectedBlock,
+      selectedConnection,
+      worktype,
+      selectedVendor,
+      selectedPaymentStatus,
+      from,
+      to,
+    );
+  };
+
   const handleWorkTypeToggle = (value: string) => {
     const updated = worktype.includes(value)
       ? worktype.filter((w) => w !== value)
       : [...worktype, value];
     setworktype(updated);
     syncParams(selectedState, selectedDistrict, selectedBlock, selectedConnection, updated);
+  };
+
+  // Exports every row matching the current filters, not just the visible page.
+  // Keep selected snapshots in sync with freshly loaded rows (e.g. after an inline edit).
+  useEffect(() => {
+    setSelectedRows((prev) => {
+      if (Object.keys(prev).length === 0) return prev;
+      let changed = false;
+      const next = { ...prev };
+      rows.forEach((r) => {
+        const key = rowKey(r);
+        if (next[key] && next[key] !== r) {
+          next[key] = r;
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [rows]);
+
+  const pdfFilters = () => ({
+    state: states.find((s) => String(s.state_id) === selectedState)?.state_name ?? null,
+    district:
+      districts.find((d) => String(d.district_id) === selectedDistrict)?.district_name ?? null,
+    block: blocks.find((b) => String(b.block_id) === selectedBlock)?.block_name ?? null,
+    link: selectedConnection,
+    vendor: vendors.find((v) => String(v.firm_id) === selectedVendor)?.firm_name ?? null,
+    workTypes: worktype,
+    paymentStatus: selectedPaymentStatus,
+    fromDate,
+    toDate,
+  });
+
+  // Exports the checked rows if any, otherwise every row matching the filters.
+  const handleDownloadPdf = async () => {
+    if (selectedCount > 0) {
+      const picked = Object.values(selectedRows);
+      generatePaymentsPdf({ rows: picked, totals: sumTotals(picked), filters: pdfFilters() });
+      return;
+    }
+    try {
+      setExportingPdf(true);
+      const params: Record<string, string> = {
+        ...buildFilterParams(),
+        page: '1',
+        limit: String(Math.max(totalRows, 1)),
+      };
+      const response = await fetch(
+        `${TraceBASEURL}/link-payments/summary?${new URLSearchParams(params).toString()}`,
+        { headers: getAuthHeaders() },
+      );
+      if (!response.ok) throw new Error('Failed to fetch payments for PDF');
+      const result: PaymentsResponse = await response.json();
+      const data = result.status ? result.data || [] : [];
+      if (data.length === 0) {
+        toast.info('No payment records to export');
+        return;
+      }
+      generatePaymentsPdf({
+        rows: data,
+        totals: result.totals ?? apiSummary,
+        filters: pdfFilters(),
+      });
+    } catch (err: any) {
+      console.error('Error exporting payments PDF:', err);
+      toast.error(err?.message || 'Failed to export PDF');
+    } finally {
+      setExportingPdf(false);
+    }
   };
 
   const clearFilters = () => {
@@ -702,7 +957,10 @@ function PaymentsPage() {
     setworktype([]);
     setSelectedVendor(null);
     setSelectedPaymentStatus(null);
+    setFromDate('');
+    setToDate('');
     setSearchParams({});
+    setSelectedRows({});
     setPage(1);
   };
 
@@ -833,7 +1091,54 @@ function PaymentsPage() {
     }
   };
 
+  const pageAllSelected = rows.length > 0 && rows.every((r) => selectedRows[rowKey(r)]);
+  const pageSomeSelected = rows.some((r) => selectedRows[rowKey(r)]);
+
+  const toggleRow = (row: PaymentRow) =>
+    setSelectedRows((prev) => {
+      const next = { ...prev };
+      const key = rowKey(row);
+      if (next[key]) delete next[key];
+      else next[key] = row;
+      return next;
+    });
+
+  const togglePage = () =>
+    setSelectedRows((prev) => {
+      const next = { ...prev };
+      rows.forEach((r) => {
+        if (pageAllSelected) delete next[rowKey(r)];
+        else next[rowKey(r)] = r;
+      });
+      return next;
+    });
+
   const columns: TableColumn<ComputedRow>[] = [
+    {
+      name: (
+        <input
+          type="checkbox"
+          checked={pageAllSelected}
+          ref={(el) => {
+            if (el) el.indeterminate = !pageAllSelected && pageSomeSelected;
+          }}
+          onChange={togglePage}
+          disabled={rows.length === 0}
+          title="Select all on this page"
+          className="w-4 h-4 cursor-pointer accent-blue-600"
+        />
+      ),
+      cell: (row) => (
+        <input
+          type="checkbox"
+          checked={!!selectedRows[rowKey(row)]}
+          onChange={() => toggleRow(row)}
+          className="w-4 h-4 cursor-pointer accent-blue-600"
+        />
+      ),
+      width: '52px',
+      center: true,
+    },
     {
       name: <HeaderLabel title="S.No" />,
       cell: (_row, index) => (page - 1) * perPage + index + 1,
@@ -1172,6 +1477,28 @@ function PaymentsPage() {
               />
             </div>
 
+            <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+              <input
+                type="date"
+                value={fromDate}
+                max={toDate || undefined}
+                onChange={(e) => handleDateChange(e.target.value, toDate)}
+                title="From Date"
+                className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              />
+            </div>
+
+            <div className="relative flex-1 min-w-0 sm:flex-none sm:w-36">
+              <input
+                type="date"
+                value={toDate}
+                min={fromDate || undefined}
+                onChange={(e) => handleDateChange(fromDate, e.target.value)}
+                title="To Date"
+                className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              />
+            </div>
+
             <div
               className="relative flex-1 min-w-0 sm:flex-none sm:w-48"
               ref={workTypeDropdownRef}
@@ -1228,6 +1555,37 @@ function PaymentsPage() {
               <span className="text-red-500 dark:text-red-400 font-medium text-sm">✕</span>
               <span>Clear Filters</span>
             </button>
+
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={exportingPdf || loading || (totalRows === 0 && selectedCount === 0)}
+              title={
+                selectedCount > 0
+                  ? `Download payment request for ${selectedCount} selected link(s)`
+                  : 'Download payment request for all filtered links'
+              }
+              className="flex-none h-10 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 outline-none disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center gap-2"
+            >
+              {exportingPdf ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <FileDown className="w-4 h-4" />
+              )}
+              <span>
+                {exportingPdf ? 'Preparing...' : selectedCount > 0 ? `PDF (${selectedCount})` : 'PDF'}
+              </span>
+            </button>
+
+            {selectedCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setSelectedRows({})}
+                className="flex-none h-10 px-3 text-sm font-medium text-gray-600 hover:text-gray-900 whitespace-nowrap"
+              >
+                Clear selection
+              </button>
+            )}
           </div>
         </div>
 
@@ -1249,6 +1607,9 @@ function PaymentsPage() {
               paginationRowsPerPageOptions={[10, 25, 50, 100, 200, 500]}
               highlightOnHover
               responsive
+              expandableRows
+              expandableRowsComponent={VendorBreakdown}
+              expandableRowDisabled={(row) => !row.vendors?.length}
               customStyles={customStyles}
               noHeader
               persistTableHead

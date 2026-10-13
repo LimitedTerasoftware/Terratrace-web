@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { useEffect, useState } from 'react';
-import { Search, PenIcon, Check, X, Trash2 } from 'lucide-react';
+import { Search, PenIcon, Check, X, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import moment from 'moment';
 import DataTable, { TableColumn } from 'react-data-table-component';
 import { ToastContainer, toast } from 'react-toastify';
@@ -10,6 +10,16 @@ import autoTable from 'jspdf-autotable';
 import TricadIcon from '../../images/logo/favicon.png';
 import { getAuthHeaders, isAdminUser } from '../../utils/accessControl';
 import SearchableSelect from '../Forms/SearchableSelect';
+
+interface VendorBreakdown {
+  firm_name: string;
+  type: string;
+  machine_ids: string[];
+  survey_count: number;
+  bore_distance_meters: number;
+  ofc_distance_meters: number;
+  share_percent: number;
+}
 
 interface AcceptedLinkRow {
   id: number;
@@ -37,6 +47,7 @@ interface AcceptedLinkRow {
   joint_chambers:string;
   firm_names:string;
   machine_ids:number;
+  vendor_breakdown?: VendorBreakdown[];
 }
 
 interface AcceptedLinksSummary {
@@ -146,6 +157,16 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
   const [statusUpdatingId, setStatusUpdatingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [expandedFirmIds, setExpandedFirmIds] = useState<Set<number>>(new Set());
+
+  const toggleFirmExpand = (id: number) => {
+    setExpandedFirmIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
   const adminAccess = isAdminUser();
 
   useEffect(() => {
@@ -700,6 +721,42 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       selector:row=> row.firm_names,
       sortable:true,
       wrap:true,
+      minWidth: '220px',
+      cell: (row) => {
+        const breakdown = row.vendor_breakdown ?? [];
+        const isOpen = expandedFirmIds.has(row.id);
+        return (
+          <div className="flex flex-col w-full py-1">
+            <div className="flex items-center gap-1">
+              {breakdown.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => toggleFirmExpand(row.id)}
+                  className="p-0.5 rounded text-gray-500 hover:bg-gray-100 hover:text-blue-600"
+                  title={isOpen ? 'Hide vendor details' : 'Show vendor details'}
+                >
+                  {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </button>
+              )}
+              <span>{row.firm_names || '-'}</span>
+            </div>
+            {isOpen && breakdown.length > 0 && (
+              <div className="flex flex-col gap-1.5 mt-1.5 w-full">
+                {breakdown.map((v, i) => (
+                  <div key={`${v.firm_name}-${i}`} className="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-gray-800">{v.firm_name}</span>
+                      <span className="rounded bg-blue-100 px-1.5 text-blue-700">{v.share_percent}%</span>
+                    </div>
+                    <div className="text-gray-600">Bore: {Number(v.bore_distance_meters ?? 0).toFixed(2)} m</div>
+                    <div className="text-gray-600">OFC: {Number(v.ofc_distance_meters ?? 0).toFixed(2)} m</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      },
     },
     {
       name: 'Link Name',
