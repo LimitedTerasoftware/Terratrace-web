@@ -13,6 +13,10 @@ import {
   LucideListOrdered,
   Scissors,
   Columns3,
+  PenIcon,
+  Check,
+  X,
+  Loader2,
 } from 'lucide-react';
 import axios from 'axios';
 import { FaArrowLeft } from 'react-icons/fa';
@@ -77,6 +81,111 @@ const JOINT_CHAMBER_POINT_LABELS: Record<string, string> = {
   pointA: 'Point A',
   pointB: 'Point B',
   pointC: 'Point C',
+};
+
+// Depth value that can be edited inline from the table.
+const EditableDepthCell = ({
+  value,
+  onSave,
+}: {
+  value: string | number | null | undefined;
+  onSave: (value: string) => Promise<boolean>;
+}) => {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const startEdit = () => {
+    setDraft(value == null ? '' : String(value));
+    setError(null);
+    setEditing(true);
+  };
+
+  const cancel = () => {
+    setEditing(false);
+    setError(null);
+  };
+
+  const save = async () => {
+    const raw = draft.trim();
+    const n = Number(raw);
+    if (raw === '' || !Number.isFinite(n) || n < 0) {
+      setError('Enter a positive number');
+      return;
+    }
+    if (value != null && String(value) === raw) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    const ok = await onSave(raw);
+    setSaving(false);
+    if (ok) setEditing(false);
+  };
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        onClick={startEdit}
+        title="Click to edit"
+        className="group inline-flex items-center gap-1 whitespace-nowrap rounded px-1 -mx-1 hover:bg-blue-50"
+      >
+        {value || '-'}
+        <PenIcon className="w-3 h-3 text-blue-500 opacity-0 group-hover:opacity-100" />
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-0.5 py-1">
+      <div className="flex items-center gap-1">
+        <input
+          type="number"
+          step="any"
+          min="0"
+          autoFocus
+          value={draft}
+          disabled={saving}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            setError(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') save();
+            if (e.key === 'Escape') cancel();
+          }}
+          className={`w-20 px-1.5 py-1 text-sm border rounded outline-none focus:ring-1 focus:ring-blue-500 ${
+            error ? 'border-red-400' : 'border-gray-300'
+          }`}
+        />
+        {saving ? (
+          <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={save}
+              title="Save"
+              className="p-0.5 text-green-600 rounded hover:bg-green-50"
+            >
+              <Check className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={cancel}
+              title="Cancel"
+              className="p-0.5 text-gray-500 rounded hover:bg-gray-100"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </>
+        )}
+      </div>
+      {error && <span className="text-[11px] text-red-600">{error}</span>}
+    </div>
+  );
 };
 
 interface MediaItem {
@@ -860,6 +969,25 @@ function Eventreport() {
     }
   };
 
+  // Saves one inline-edited depth; only the depth key is sent.
+  const saveDepth = async (row: Activity, value: string): Promise<boolean> => {
+    try {
+      const resp = await axios.post(`${TraceBASEURL}/update-event/${row.id}`, {
+        depthMeters: value,
+      });
+      if (resp.status === 200 || resp.status === 201) {
+        toast.success('Depth updated successfully');
+        getData();
+        return true;
+      }
+      throw new Error('Failed to update depth');
+    } catch (error) {
+      console.error('Error updating depth:', error);
+      toast.error('Failed to update depth');
+      return false;
+    }
+  };
+
   const handleSplitCheckboxChange = (id: number, checked: boolean) => {
     setSelectedSplitIds((prev) =>
       checked ? [...prev, id] : prev.filter((existingId) => existingId !== id),
@@ -1202,6 +1330,15 @@ function Eventreport() {
     {
       name: 'Depth Meters',
       selector: (row) => row.depthMeters || '-',
+      cell: (row) =>
+        viewOnly || IEUser ? (
+          row.depthMeters || '-'
+        ) : (
+          <EditableDepthCell
+            value={row.depthMeters}
+            onSave={(value) => saveDepth(row, value)}
+          />
+        ),
       sortable: true,
     },
     {
