@@ -14,6 +14,7 @@ const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 const MachineSurveyDashboard: React.FC = () => {
   const [activities, setActivities] = useState<MachineDataListItem[]>([]);
   const [machineId, setMachineId] = useState<string | null>(null);
+  const [date, setDate] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'map' | 'chart' | 'table'>('map');
@@ -45,6 +46,7 @@ const MachineSurveyDashboard: React.FC = () => {
     const urlParams = new URLSearchParams(window.location.search);
     const id = urlParams.get('machineId');
     setMachineId(id);
+    setDate(urlParams.get('date'));
   }, []);
 
   useEffect(() => {
@@ -72,7 +74,9 @@ const MachineSurveyDashboard: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch(`${TraceBASEURL}/get-latest-activity?machine_id=${machineId}`);
+      const params = new URLSearchParams({ machine_id: machineId });
+      if (date) params.set('date', date);
+      const response = await fetch(`${TraceBASEURL}/get-latest-activity?${params}`);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -97,7 +101,7 @@ const MachineSurveyDashboard: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [machineId]);
+  }, [machineId, date]);
 
   useEffect(() => {
     fetchMachineData();
