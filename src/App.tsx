@@ -83,6 +83,7 @@ import JointDetails from './components/Joints/JointsDetails';
 import MachineReports from './components/MachineManagement/Reports';
 import MachineDetails from './components/MachineManagement/Reports/MachineItem';
 import MachineSurveyDashboard from './components/MachineManagement/MachineSummary';
+import AerialBlockActivity from './components/AerialBlockActivity';
 import NewConstructionDashboard from './components/Dashboards/NewConstructionDashboard';
 import AerialDashboard from './components/Dashboards/AerialDashboard';
 import ExecutiveConstructionView from './components/Dashboards/ExecutiveConstructionView';
@@ -124,6 +125,7 @@ function App() {
     pathname === '/auth/signin' ||
     pathname === '/auth/signup' ||
     pathname === '/machine-activity' ||
+    pathname === '/aerial-activity' ||
     pathname === '/gp-checklist' ||
     pathname === '/block-router-checklist' ||
     pathname === '/at-checklist' ||
@@ -164,6 +166,15 @@ function App() {
                 <>
                   <PageTitle title="Machine Activity" />
                   <MachineSurveyDashboard />
+                </>
+              }
+            />
+            <Route
+              path="/aerial-activity"
+              element={
+                <>
+                  <PageTitle title="Aerial Activity" />
+                  <AerialBlockActivity />
                 </>
               }
             />
