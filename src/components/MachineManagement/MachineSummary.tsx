@@ -53,7 +53,13 @@ const MachineSurveyDashboard: React.FC = () => {
     const fetchData = async () => {
       try {
         const response = await machineApi.getMachineLinkStats(
-          parseInt(machineId!)
+          parseInt(machineId!),
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          date || undefined,
+          date || undefined,
         );
         setData(response);
         setError(null);
@@ -65,7 +71,7 @@ const MachineSurveyDashboard: React.FC = () => {
     if (machineId) {
       fetchData();
     }
-  }, [machineId]);
+  }, [machineId, date]);
 
   const fetchMachineData = useCallback(async () => {
     if (!machineId) return;
