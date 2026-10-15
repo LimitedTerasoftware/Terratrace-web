@@ -230,8 +230,12 @@ const AerialBlockActivity: React.FC = () => {
     });
   }, [data]);
 
+  // Work can only be ongoing when viewing today's data
+  const isToday = (data?.date ?? date) === todayString();
+
   // Single most recent stringing pole across all routes = ongoing work location
   const latestPole = useMemo(() => {
+    if (!isToday) return null;
     const poles = stringingRoutes.flatMap((r) => r.poles);
     if (!poles.length) return null;
     return poles.reduce((a, b) =>
@@ -240,7 +244,7 @@ const AerialBlockActivity: React.FC = () => {
         ? b
         : a,
     );
-  }, [stringingRoutes]);
+  }, [stringingRoutes, isToday]);
 
   const installations = useMemo(
     () => (data?.pole_installation ?? []).filter((p) => toLatLng(p.latitude, p.longitude)),
@@ -402,13 +406,15 @@ const AerialBlockActivity: React.FC = () => {
             <>
               {legendDot(NEW_POLE_COLOR, 'New Pole')}
               {legendDot(EXISTING_POLE_COLOR, 'Existing Pole')}
-              <span className="flex items-center gap-1 text-gray-600">
-                <span className="relative inline-flex h-3 w-3">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
-                  <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
+              {isToday && (
+                <span className="flex items-center gap-1 text-gray-600">
+                  <span className="relative inline-flex h-3 w-3">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+                    <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
+                  </span>
+                  Work in progress
                 </span>
-                Work in progress
-              </span>
+              )}
             </>
           }
           isLoaded={isLoaded}

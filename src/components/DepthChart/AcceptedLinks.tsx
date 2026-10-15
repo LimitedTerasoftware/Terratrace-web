@@ -748,7 +748,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
                       <span className="font-semibold text-gray-800">{v.firm_name}</span>
                       <span className="rounded bg-blue-100 px-1.5 text-blue-700">{v.share_percent}%</span>
                     </div>
-                    <div className="text-gray-600">Bore: {Number(v.bore_distance_meters ?? 0).toFixed(2)} m</div>
+                    <div className="text-gray-600">T&D: {Number(v.bore_distance_meters ?? 0).toFixed(2)} m</div>
                     <div className="text-gray-600">OFC: {Number(v.ofc_distance_meters ?? 0).toFixed(2)} m</div>
                   </div>
                 ))}

@@ -327,18 +327,51 @@ const EditableDistanceCell = ({
 const dashOr = (value: number | null | undefined, format: (v: number) => string) =>
   value == null ? <span className="text-gray-400">-</span> : format(toNum(value));
 
+type VendorDistanceKey = 'vendor_mis_distance' | 'accepted_distance';
+
+type SaveVendorDistance = (
+  row: PaymentRow,
+  vendor: PaymentVendor,
+  key: VendorDistanceKey,
+  value: number,
+) => Promise<boolean>;
+
 const VENDOR_COLUMNS: {
   title: string;
   right?: boolean;
-  render: (v: PaymentVendor) => React.ReactNode;
+  render: (v: PaymentVendor, row: PaymentRow, onSave?: SaveVendorDistance) => React.ReactNode;
 }[] = [
   { title: 'Firm Name', render: (v) => v.firm_name || '-' },
   { title: 'Authorised Person', render: (v) => v.authorised_person || '-' },
   { title: 'Mobile', render: (v) => v.authorised_mobile || '-' },
   { title: 'Surveys', right: true, render: (v) => toNum(v.total_surveys) },
   { title: 'T&D Accepted (mt)', right: true, render: (v) => dashOr(v.td_accepted_distance, formatDistance) },
-  { title: 'Vendor MIS (mt)', right: true, render: (v) => dashOr(v.vendor_mis_distance, formatDistance) },
-  { title: 'Accepted (mt)', right: true, render: (v) => dashOr(v.accepted_distance, formatDistance) },
+  {
+    title: 'Vendor MIS (mt)',
+    right: true,
+    render: (v, row, onSave) =>
+      onSave ? (
+        <EditableDistanceCell
+          value={v.vendor_mis_distance}
+          onSave={(value) => onSave(row, v, 'vendor_mis_distance', value)}
+        />
+      ) : (
+        dashOr(v.vendor_mis_distance, formatDistance)
+      ),
+  },
+  {
+    title: 'Accepted (mt)',
+    right: true,
+    render: (v, row, onSave) =>
+      onSave ? (
+        <EditableDistanceCell
+          value={v.accepted_distance}
+          onSave={(value) => onSave(row, v, 'accepted_distance', value)}
+        />
+      ) : (
+        dashOr(v.accepted_distance, formatDistance)
+      ),
+  },
   { title: 'Rate', right: true, render: (v) => dashOr(v.rate_per_meter, formatCurrency) },
   { title: 'GST %', right: true, render: (v) => dashOr(v.gst_percent, (n) => `${n}%`) },
   { title: 'TDS %', right: true, render: (v) => dashOr(v.tds_percent, (n) => `${n}%`) },
@@ -371,7 +404,13 @@ const VENDOR_COLUMNS: {
 ];
 
 // Expanded row: vendor-wise breakdown of the link.
-const VendorBreakdown = ({ data }: { data: PaymentRow }) => {
+const VendorBreakdown = ({
+  data,
+  onSaveVendorDistance,
+}: {
+  data: PaymentRow;
+  onSaveVendorDistance?: SaveVendorDistance;
+}) => {
   const vendors = data.vendors ?? [];
   return (
     <div className="px-6 py-3 bg-slate-50 border-y border-gray-200">
@@ -405,7 +444,7 @@ const VendorBreakdown = ({ data }: { data: PaymentRow }) => {
                         col.right ? 'text-right tabular-nums' : 'text-left'
                       }`}
                     >
-                      {col.render(vendor)}
+                      {col.render(vendor, data, onSaveVendorDistance)}
                     </td>
                   ))}
                 </tr>
@@ -1091,6 +1130,39 @@ function PaymentsPage() {
     }
   };
 
+  // Saves one inline-edited vendor distance for a link; firm_id targets the vendor's share.
+  const saveVendorDistance: SaveVendorDistance = async (row, vendor, key, value) => {
+    const payload: Record<string, number | string | null> = {
+      start_location: row.start_location,
+      end_location: row.end_location,
+      firm_id: vendor.firm_id,
+      vendor_mis_distance: vendor.vendor_mis_distance,
+      accepted_distance: vendor.accepted_distance,
+      [key]: value,
+    };
+    if (vendor.rate_per_meter != null) payload.rate_per_meter = vendor.rate_per_meter;
+    if (vendor.gst_percent != null) payload.gst_percent = vendor.gst_percent;
+    if (vendor.tds_percent != null) payload.tds_percent = vendor.tds_percent;
+    try {
+      const response = await fetch(`${TraceBASEURL}/link-payments/details`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.status === false) {
+        throw new Error(result.message || 'Failed to update vendor distance');
+      }
+      toast.success(result.message || 'Vendor distance updated successfully');
+      fetchPayments();
+      return true;
+    } catch (err: any) {
+      console.error('Error updating vendor distance:', err);
+      toast.error(err?.message || 'Failed to update vendor distance');
+      return false;
+    }
+  };
+
   const pageAllSelected = rows.length > 0 && rows.every((r) => selectedRows[rowKey(r)]);
   const pageSomeSelected = rows.some((r) => selectedRows[rowKey(r)]);
 
@@ -1609,6 +1681,7 @@ function PaymentsPage() {
               responsive
               expandableRows
               expandableRowsComponent={VendorBreakdown}
+              expandableRowsComponentProps={{ onSaveVendorDistance: saveVendorDistance }}
               expandableRowDisabled={(row) => !row.vendors?.length}
               customStyles={customStyles}
               noHeader
