@@ -11,6 +11,7 @@ import {
   Stamp,
   Scissors,
   PlusCircleIcon,
+  Eraser,
 } from 'lucide-react';
 import axios from 'axios';
 import { FaArrowLeft } from 'react-icons/fa';
@@ -28,7 +29,11 @@ import { hasViewOnlyAccess, isAdminUser } from '../../utils/accessControl';
 import { PoleStringEditModal } from './PoleStringEditModal';
 import { PoleStringImageModal } from './PoleStringImageModal';
 import PoleReorderModal from './PoleReorderModal';
-import { movePolesSurvey } from '../Services/api';
+import {
+  addImageWatermark,
+  movePolesSurvey,
+  removeWatermark,
+} from '../Services/api';
 import { PoleSplitModal, PoleSplitLocation } from './PoleSplitModal';
 import { AddPoleEventModal } from './AddPoleEventModal';
 
@@ -144,6 +149,13 @@ function PoleStringView() {
   const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
   const [isAddPoleModalOpen, setIsAddPoleModalOpen] = useState(false);
   const [watermarkLoading, setWatermarkLoading] = useState(false);
+  const [watermarkMode, setWatermarkMode] = useState<
+    'add' | 'remove' | null
+  >(null);
+  const [selectedWatermarkIds, setSelectedWatermarkIds] = useState<number[]>(
+    [],
+  );
+  const [removeWatermarkLoading, setRemoveWatermarkLoading] = useState(false);
   const columnMenuRef = useRef<HTMLDivElement>(null);
 
   // ── Data fetch ──────────────────────────────────────────────────────────────
@@ -359,25 +371,96 @@ function PoleStringView() {
   };
 
   const handleAddWatermark = async () => {
-    const surveyId = multipreview ? null : MainData?.id;
-    if (!surveyId) {
-      toast.error('No survey selected to add watermark');
+    const images = poleData
+      .filter((row) => selectedWatermarkIds.includes(row.id))
+      .flatMap((row) =>
+      getRowImagePaths(row).map((imagePath) => ({
+        imagePath,
+        latitude: row.latitude != null ? String(row.latitude) : '',
+        longitude: row.longitude != null ? String(row.longitude) : '',
+        linkName: `${row.start_lgd_name || ''} - ${row.end_lgd_name || ''}`,
+        createdTime: row.created_at || '',
+      })),
+    );
+    if (images.length === 0) {
+      toast.error('Selected rows have no images.');
       return;
     }
+    if (
+      !window.confirm(
+        `Add watermark to ${images.length} image(s) in ${selectedWatermarkIds.length} row(s)?`,
+      )
+    )
+      return;
+
     try {
       setWatermarkLoading(true);
-      const resp = await axios.post(`${TraceBASEURL}/poles/add-watermark`, {
-        survey_id: surveyId,
-      });
-      if (resp.status === 200 || resp.status === 201) {
-        toast.success('Watermark added successfully');
-        getData();
-      }
+      await addImageWatermark(images);
+      toast.success('Watermark added successfully');
+      handleCancelWatermarkMode();
+      getData();
     } catch (error) {
       console.error('Error adding watermark:', error);
       toast.error('Failed to add watermark');
     } finally {
       setWatermarkLoading(false);
+    }
+  };
+
+  // ── Remove watermark (bulk) ─────────────────────────────────────────────────
+
+  const getRowImagePaths = (row: PoleString): string[] =>
+    extractMediaFromRow(row)
+      .filter((m) => m.type === 'image')
+      .map((m) =>
+        m.url.startsWith(IMGbaseUrl) ? m.url.slice(IMGbaseUrl.length) : m.url,
+      );
+
+  const handleWatermarkCheckboxChange = (id: number, checked: boolean) => {
+    setSelectedWatermarkIds((prev) =>
+      checked ? [...prev, id] : prev.filter((existingId) => existingId !== id),
+    );
+  };
+
+  const handleSelectAllWatermarkCheckbox = (checked: boolean) => {
+    setSelectedWatermarkIds(checked ? poleData.map((row) => row.id) : []);
+  };
+
+  const handleCancelWatermarkMode = () => {
+    setWatermarkMode(null);
+    setSelectedWatermarkIds([]);
+  };
+
+  const handleSubmitRemoveWatermark = async () => {
+    const imagePaths = Array.from(
+      new Set(
+        poleData
+          .filter((row) => selectedWatermarkIds.includes(row.id))
+          .flatMap(getRowImagePaths),
+      ),
+    );
+    if (imagePaths.length === 0) {
+      toast.error('Selected rows have no images.');
+      return;
+    }
+    if (
+      !window.confirm(
+        `Remove watermark from ${imagePaths.length} image(s) in ${selectedWatermarkIds.length} row(s)?`,
+      )
+    )
+      return;
+
+    try {
+      setRemoveWatermarkLoading(true);
+      await removeWatermark(imagePaths);
+      toast.success('Watermark removed successfully');
+      handleCancelWatermarkMode();
+      getData();
+    } catch (error) {
+      console.error('Error removing watermark:', error);
+      toast.error('Failed to remove watermark');
+    } finally {
+      setRemoveWatermarkLoading(false);
     }
   };
 
@@ -481,6 +564,34 @@ function PoleStringView() {
   // ── Columns ─────────────────────────────────────────────────────────────────
 
   const allColumns: TableColumn<PoleString>[] = [
+    ...(watermarkMode
+      ? [
+          {
+            name: (
+              <input
+                type="checkbox"
+                checked={
+                  poleData.length > 0 &&
+                  selectedWatermarkIds.length === poleData.length
+                }
+                onChange={(e) =>
+                  handleSelectAllWatermarkCheckbox(e.target.checked)
+                }
+              />
+            ),
+            cell: (row: PoleString) => (
+              <input
+                type="checkbox"
+                checked={selectedWatermarkIds.includes(row.id)}
+                onChange={(e) =>
+                  handleWatermarkCheckboxChange(row.id, e.target.checked)
+                }
+              />
+            ),
+            maxWidth: '48px',
+          } as TableColumn<PoleString>,
+        ]
+      : []),
     ...(isSplitMode
       ? [
           {
@@ -1164,25 +1275,94 @@ function PoleStringView() {
               </button>
             )}
             {!multipreview && AdminAcess && (
-              <button
-                onClick={handleAddWatermark}
-                disabled={watermarkLoading}
-                className="flex-none h-10 px-4 py-2 text-sm font-medium text-teal-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-teal-400 dark:border-gray-600 dark:hover:bg-gray-600 whitespace-nowrap flex items-center gap-2"
-              >
-                {watermarkLoading ? (
-                  <span className="w-4 h-4 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Stamp className="h-4 w-4 text-teal-600" />
+              <>
+                <button
+                  onClick={() => {
+                    if (watermarkMode === 'add') {
+                      handleCancelWatermarkMode();
+                    } else {
+                      handleCancelSplit();
+                      setSelectedWatermarkIds([]);
+                      setWatermarkMode('add');
+                    }
+                  }}
+                  className={`flex-none h-10 px-4 py-2 text-sm font-medium rounded-md border outline-none whitespace-nowrap flex items-center gap-2 ${
+                    watermarkMode === 'add'
+                      ? 'text-red-600 bg-white border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-red-400 dark:border-gray-600 dark:hover:bg-gray-600'
+                      : 'text-teal-600 bg-white border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-teal-400 dark:border-gray-600 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  <Stamp className="h-4 w-4" />
+                  {watermarkMode === 'add' ? 'Cancel' : 'Add Watermark'}
+                </button>
+                {watermarkMode === 'add' && (
+                  <button
+                    onClick={handleAddWatermark}
+                    disabled={
+                      watermarkLoading || selectedWatermarkIds.length === 0
+                    }
+                    className="flex-none h-10 px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 outline-none disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center gap-2"
+                  >
+                    {watermarkLoading ? (
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Stamp className="h-4 w-4" />
+                    )}
+                    {watermarkLoading
+                      ? 'Adding...'
+                      : `Submit (${selectedWatermarkIds.length})`}
+                  </button>
                 )}
-                {watermarkLoading ? 'Adding Watermark...' : 'Add Watermark'}
-              </button>
+              </>
             )}
             {!multipreview && AdminAcess && (
               <>
                 <button
-                  onClick={() =>
-                    isSplitMode ? handleCancelSplit() : setIsSplitMode(true)
-                  }
+                  onClick={() => {
+                    if (watermarkMode === 'remove') {
+                      handleCancelWatermarkMode();
+                    } else {
+                      handleCancelSplit();
+                      setSelectedWatermarkIds([]);
+                      setWatermarkMode('remove');
+                    }
+                  }}
+                  className={`flex-none h-10 px-4 py-2 text-sm font-medium rounded-md border outline-none whitespace-nowrap flex items-center gap-2 ${
+                    watermarkMode === 'remove'
+                      ? 'text-red-600 bg-white border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-red-400 dark:border-gray-600 dark:hover:bg-gray-600'
+                      : 'text-orange-600 bg-white border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-orange-400 dark:border-gray-600 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  <Eraser className="h-4 w-4" />
+                  {watermarkMode === 'remove' ? 'Cancel' : 'Remove Watermark'}
+                </button>
+                {watermarkMode === 'remove' && (
+                  <button
+                    onClick={handleSubmitRemoveWatermark}
+                    disabled={
+                      removeWatermarkLoading || selectedWatermarkIds.length === 0
+                    }
+                    className="flex-none h-10 px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 outline-none disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center gap-2"
+                  >
+                    <Eraser className="h-4 w-4" />
+                    {removeWatermarkLoading
+                      ? 'Removing...'
+                      : `Submit (${selectedWatermarkIds.length})`}
+                  </button>
+                )}
+              </>
+            )}
+            {!multipreview && AdminAcess && (
+              <>
+                <button
+                  onClick={() => {
+                    if (isSplitMode) {
+                      handleCancelSplit();
+                    } else {
+                      handleCancelWatermarkMode();
+                      setIsSplitMode(true);
+                    }
+                  }}
                   className={`flex-none h-10 px-4 py-2 text-sm font-medium rounded-md border outline-none whitespace-nowrap flex items-center gap-2 ${
                     isSplitMode
                       ? 'text-red-600 bg-white border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-red-400 dark:border-gray-600 dark:hover:bg-gray-600'

@@ -779,17 +779,29 @@ export interface PoleReorderItem {
 
 export interface AddImageWatermarkPayload {
   imagePath: string;
-  latitude: string;
-  longitude: string;
+  latitude: string | number;
+  longitude: string | number;
   linkName?: string;
   createdTime?: string;
 }
 
+const toCoordinate = (value: string | number) => {
+  const num = Number(value);
+  return value !== '' && Number.isFinite(num) ? num : value;
+};
+
 export const addImageWatermark = async (
-  payload: AddImageWatermarkPayload,
+  payload: AddImageWatermarkPayload | AddImageWatermarkPayload[],
 ): Promise<any> => {
+  const images = (Array.isArray(payload) ? payload : [payload]).map((img) => ({
+    ...img,
+    latitude: toCoordinate(img.latitude),
+    longitude: toCoordinate(img.longitude),
+  }));
   try {
-    const resp = await axios.post(`${TraceBASEURL}/add-single-watermark`, payload);
+    const resp = await axios.post(`${TraceBASEURL}/add-single-watermark`, {
+      images,
+    });
     return resp.data;
   } catch (error) {
     console.error('Error adding watermark:', error);
@@ -809,10 +821,12 @@ export const watermarkConstruction = async (surveyId: number): Promise<any> => {
   }
 };
 
-export const removeWatermark = async (imagePath: string): Promise<any> => {
+export const removeWatermark = async (
+  imagePaths: string | string[],
+): Promise<any> => {
   try {
     const resp = await axios.post(`${TraceBASEURL}/remove-watermark`, {
-      imagePath,
+      imagePaths: Array.isArray(imagePaths) ? imagePaths : [imagePaths],
     });
     return resp.data;
   } catch (error) {

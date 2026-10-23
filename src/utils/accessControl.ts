@@ -46,7 +46,8 @@ const ADMIN_EMAIL = ["Krishnakapil.s@terasoftware.com",
 "tirumalarao@terasoftware.com",
 "brahmareddy.v@terasoftware.in",
 "admin@terasoftware.com","laxminarayana.p@terasoftware.com",
-"umamahesh.y@terasoftware.com","Nikhitha.m@terasoftware.com","Annapurna.t@terasoftware.com"
+"umamahesh.y@terasoftware.com","Nikhitha.m@terasoftware.com","Annapurna.t@terasoftware.com",
+"saipavan.k@terasoftware.com"
 ];
 
 // Only these users can see and open the Payments page

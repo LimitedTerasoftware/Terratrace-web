@@ -43,12 +43,16 @@ export function PoleStringImageModal({
   const [removingWatermarkId, setRemovingWatermarkId] = useState<
     string | null
   >(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkRemoving, setBulkRemoving] = useState(false);
+  const [bulkAdding, setBulkAdding] = useState(false);
   const originalSnapshot = useRef<Record<string, string[]>>({});
 
   useEffect(() => {
     if (row && isOpen) {
       loadExistingImages();
       setError(null);
+      setSelectedIds([]);
     }
   }, [row, isOpen]);
 
@@ -166,6 +170,82 @@ export function PoleStringImageModal({
       setError('Failed to remove watermark. Please try again.');
     } finally {
       setRemovingWatermarkId(null);
+    }
+  };
+
+  const selectableImages = images.filter((img) => !img.isNew);
+  const selectedCount = selectableImages.filter((img) =>
+    selectedIds.includes(img.id),
+  ).length;
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const toggleSelectAll = () => {
+    setSelectedIds(
+      selectedCount === selectableImages.length
+        ? []
+        : selectableImages.map((img) => img.id),
+    );
+  };
+
+  const handleBulkRemoveWatermark = async () => {
+    const imagePaths = selectableImages
+      .filter((img) => selectedIds.includes(img.id))
+      .map((img) => img.originalUrl || stripBaseUrl(img.url));
+    if (imagePaths.length === 0) return;
+    if (
+      !window.confirm(
+        `Remove watermark from ${imagePaths.length} selected image(s)?`,
+      )
+    )
+      return;
+
+    setBulkRemoving(true);
+    setError(null);
+    try {
+      await removeWatermark(imagePaths);
+      setSelectedIds([]);
+      onSuccess();
+    } catch (err) {
+      setError('Failed to remove watermark. Please try again.');
+    } finally {
+      setBulkRemoving(false);
+    }
+  };
+
+  const handleBulkAddWatermark = async () => {
+    if (!row) return;
+    const imagePaths = selectableImages
+      .filter((img) => selectedIds.includes(img.id))
+      .map((img) => img.originalUrl || stripBaseUrl(img.url));
+    if (imagePaths.length === 0) return;
+    if (
+      !window.confirm(`Add watermark to ${imagePaths.length} selected image(s)?`)
+    )
+      return;
+
+    setBulkAdding(true);
+    setError(null);
+    try {
+      await addImageWatermark(
+        imagePaths.map((imagePath) => ({
+          imagePath,
+          latitude: row.latitude != null ? String(row.latitude) : '',
+          longitude: row.longitude != null ? String(row.longitude) : '',
+          linkName: `${row.start_lgd_name || ''} - ${row.end_lgd_name || ''}`,
+          createdTime: row.created_at || '',
+        })),
+      );
+      setSelectedIds([]);
+      onSuccess();
+    } catch (err) {
+      setError('Failed to add watermark. Please try again.');
+    } finally {
+      setBulkAdding(false);
     }
   };
 
@@ -420,6 +500,38 @@ export function PoleStringImageModal({
         </div>
 
         <div className="p-6">
+          {selectableImages.length > 0 && (
+            <div className="flex justify-between items-center mb-4 p-3 bg-gray-50 border rounded-md">
+              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedCount === selectableImages.length}
+                  onChange={toggleSelectAll}
+                  className="w-4 h-4 accent-blue-600"
+                />
+                Select All ({selectedCount}/{selectableImages.length})
+              </label>
+              <div className="flex gap-2">
+              <button
+                onClick={handleBulkAddWatermark}
+                disabled={selectedCount === 0 || bulkAdding || bulkRemoving}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-teal-300 transition-colors"
+              >
+                <Droplets size={14} />
+                {bulkAdding ? 'Adding...' : 'Add Watermark'}
+              </button>
+              <button
+                onClick={handleBulkRemoveWatermark}
+                disabled={selectedCount === 0 || bulkRemoving || bulkAdding}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm text-white bg-red-600 rounded-md hover:bg-red-700 disabled:bg-red-300 transition-colors"
+              >
+                <Eraser size={14} />
+                {bulkRemoving ? 'Removing...' : 'Remove Watermark'}
+              </button>
+              </div>
+            </div>
+          )}
+
           <div className="mb-6">
             {Object.entries(groupedImages).map(([groupKey, fieldImages]) => {
               const first = fieldImages[0];
@@ -453,6 +565,15 @@ export function PoleStringImageModal({
                         key={image.id}
                         className="relative group border rounded-lg overflow-hidden"
                       >
+                        {!image.isNew && (
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(image.id)}
+                            onChange={() => toggleSelect(image.id)}
+                            className="absolute top-2 left-2 z-10 w-4 h-4 cursor-pointer accent-blue-600"
+                            title="Select for watermark removal"
+                          />
+                        )}
                         <img
                           src={image.url}
                           alt={`${getGroupLabel(groupKey)} ${index + 1}`}

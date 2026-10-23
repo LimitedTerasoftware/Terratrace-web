@@ -63,6 +63,9 @@ const ImageModal: React.FC<ImageModalProps> = ({
   const [uploading, setUploading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [watermarkingId, setWatermarkingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkRemoving, setBulkRemoving] = useState(false);
+  const [bulkAdding, setBulkAdding] = useState(false);
   const BASEURL = import.meta.env.VITE_API_BASE;
   const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
   const ImgbaseUrl = import.meta.env.VITE_Image_URL;
@@ -102,6 +105,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
   useEffect(() => {
     if (activity && isOpen) {
       loadExistingImages();
+      setSelectedIds([]);
     }
   }, [activity, isOpen]);
 
@@ -1138,6 +1142,102 @@ const ImageModal: React.FC<ImageModalProps> = ({
     }
   };
 
+  const isWatermarkSelectable = (img: ImageItem) => !img.isNew && !img.isVideo;
+
+  const selectableImages = images.filter(isWatermarkSelectable);
+  const selectedCount = selectableImages.filter((img) =>
+    selectedIds.includes(img.id),
+  ).length;
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) =>
+      prev.length === selectableImages.length
+        ? []
+        : selectableImages.map((img) => img.id),
+    );
+  };
+
+  const handleBulkRemoveWatermark = async () => {
+    const imagePaths = images
+      .filter((img) => selectedIds.includes(img.id))
+      .map((img) => img.url.replace(ImgbaseUrl, ''));
+    if (imagePaths.length === 0) return;
+    if (
+      !window.confirm(
+        `Remove watermark from ${imagePaths.length} selected image(s)?`,
+      )
+    )
+      return;
+
+    setBulkRemoving(true);
+    try {
+      await removeWatermark(imagePaths);
+      setSelectedIds([]);
+      onUpdate();
+      onClose();
+    } catch (error) {
+      console.error('Remove watermark error:', error);
+      alert('Failed to remove watermark. Please try again.');
+    } finally {
+      setBulkRemoving(false);
+    }
+  };
+
+  const handleBulkAddWatermark = async () => {
+    if (!activity) return;
+    const imagePaths = images
+      .filter((img) => selectedIds.includes(img.id))
+      .map((img) => img.url.replace(ImgbaseUrl, ''));
+    if (imagePaths.length === 0) return;
+    if (
+      !window.confirm(`Add watermark to ${imagePaths.length} selected image(s)?`)
+    )
+      return;
+
+    const latLong = getEventLatLong(activity);
+    const [latitude, longitude] = latLong
+      ? latLong.split(',').map((v) => v.trim())
+      : ['', ''];
+
+    setBulkAdding(true);
+    try {
+      await addImageWatermark(
+        imagePaths.map((imagePath) => ({
+          imagePath,
+          latitude,
+          longitude,
+          linkName: linkName || '',
+          createdTime: activity.created_time || activity.created_at || '',
+        })),
+      );
+      setSelectedIds([]);
+      onUpdate();
+      onClose();
+    } catch (error) {
+      console.error('Watermark error:', error);
+      alert('Failed to add watermark. Please try again.');
+    } finally {
+      setBulkAdding(false);
+    }
+  };
+
+  const renderSelectCheckbox = (img: ImageItem) =>
+    isWatermarkSelectable(img) ? (
+      <input
+        type="checkbox"
+        checked={selectedIds.includes(img.id)}
+        onChange={() => toggleSelect(img.id)}
+        className="absolute top-2 left-2 z-10 w-4 h-4 cursor-pointer accent-blue-600"
+        title="Select for watermark removal"
+      />
+    ) : null;
+
   const buildVideoDetails = (videoUrl: string): string => {
     let existing: Record<string, any> = {};
     if (activity?.videoDetails) {
@@ -1226,6 +1326,38 @@ const ImageModal: React.FC<ImageModalProps> = ({
         </div>
 
         <div className="p-6">
+          {selectableImages.length > 0 && (
+            <div className="flex justify-between items-center mb-4 p-3 bg-gray-50 border rounded-md">
+              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedCount === selectableImages.length}
+                  onChange={toggleSelectAll}
+                  className="w-4 h-4 accent-blue-600"
+                />
+                Select All ({selectedCount}/{selectableImages.length})
+              </label>
+              <div className="flex gap-2">
+              <button
+                onClick={handleBulkAddWatermark}
+                disabled={selectedCount === 0 || bulkAdding || bulkRemoving}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-teal-300 transition-colors"
+              >
+                <Droplets size={14} />
+                {bulkAdding ? 'Adding...' : 'Add Watermark'}
+              </button>
+              <button
+                onClick={handleBulkRemoveWatermark}
+                disabled={selectedCount === 0 || bulkRemoving || bulkAdding}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm text-white bg-red-600 rounded-md hover:bg-red-700 disabled:bg-red-300 transition-colors"
+              >
+                <Eraser size={14} />
+                {bulkRemoving ? 'Removing...' : 'Remove Watermark'}
+              </button>
+              </div>
+            </div>
+          )}
+
           {/* DUCT Event - Special handling for start_duct and end_duct */}
           {fieldMapping?.hasDuct && (
             <div className="mb-8">
@@ -1255,6 +1387,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
                         key={image.id}
                         className="relative group border rounded-lg overflow-hidden"
                       >
+                        {renderSelectCheckbox(image)}
                         {image.isVideo ? (
                           <video
                             src={image.url}
@@ -1389,6 +1522,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
                         key={image.id}
                         className="relative group border rounded-lg overflow-hidden"
                       >
+                        {renderSelectCheckbox(image)}
                         {image.isVideo ? (
                           <video
                             src={image.url}
@@ -1529,6 +1663,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
                         key={image.id}
                         className="relative group border rounded-lg overflow-hidden"
                       >
+                        {renderSelectCheckbox(image)}
                         {image.isVideo ? (
                           <video
                             src={image.url}
@@ -1663,6 +1798,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
                         key={image.id}
                         className="relative group border rounded-lg overflow-hidden"
                       >
+                        {renderSelectCheckbox(image)}
                         {image.isVideo ? (
                           <video
                             src={image.url}
@@ -1802,6 +1938,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
                     key={image.id}
                     className="relative group border rounded-lg overflow-hidden"
                   >
+                    {renderSelectCheckbox(image)}
                     {isDocument(image.url) ? (
                       <div className="h-48 bg-gray-100 flex items-center justify-center">
                         <div className="text-center">
@@ -1979,6 +2116,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
 
                       {pointImage ? (
                         <div className="relative group">
+                          {renderSelectCheckbox(pointImage)}
                           <img
                             src={pointImage.url}
                             alt={`${label} photo`}
@@ -2094,6 +2232,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
                     key={image.id}
                     className="relative group border rounded-lg overflow-hidden"
                   >
+                    {renderSelectCheckbox(image)}
                     <video
                       src={image.url}
                       title={`Video ${index + 1}`}
@@ -2198,6 +2337,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
                       key={image.id}
                       className="relative group border rounded-lg overflow-hidden"
                     >
+                      {renderSelectCheckbox(image)}
                       {isDocument(image.url) ? (
                         <div className="h-48 bg-gray-100 flex items-center justify-center">
                           <div className="text-center">
@@ -2360,6 +2500,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
                     key={image.id}
                     className="relative group border rounded-lg overflow-hidden"
                   >
+                    {renderSelectCheckbox(image)}
                     {image.isVideo ? (
                       <video
                         src={image.url}

@@ -17,6 +17,7 @@ import {
   Check,
   X,
   Loader2,
+  Eraser,
 } from 'lucide-react';
 import axios from 'axios';
 import { FaArrowLeft } from 'react-icons/fa';
@@ -32,6 +33,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import { EditModal } from './EditModal';
 import { AddEventModal } from './AddEventModal';
 import ReorderModal from './ReorderModal';
+import { removeWatermark } from '../Services/api';
 import type {
   DesktopPlanningApiResponse,
   ProcessedDesktopPlanning,
@@ -223,6 +225,11 @@ function Eventreport() {
   const [Split, setSplit] = useState(false);
   const [selectedSplitIds, setSelectedSplitIds] = useState<number[]>([]);
   const [splitLoading, setSplitLoading] = useState(false);
+  const [isRemoveWatermarkMode, setIsRemoveWatermarkMode] = useState(false);
+  const [selectedWatermarkIds, setSelectedWatermarkIds] = useState<number[]>(
+    [],
+  );
+  const [removeWatermarkLoading, setRemoveWatermarkLoading] = useState(false);
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const columnMenuRef = useRef<HTMLDivElement>(null);
@@ -1007,6 +1014,61 @@ function Eventreport() {
     setSelectedSplitIds([]);
   };
 
+  const getRowImagePaths = (row: Activity): string[] =>
+    extractMediaFromRow(row)
+      .filter((m) => m.type === 'image')
+      .map((m) =>
+        m.url.startsWith(baseUrl) ? m.url.slice(baseUrl.length) : m.url,
+      );
+
+  const handleWatermarkCheckboxChange = (id: number, checked: boolean) => {
+    setSelectedWatermarkIds((prev) =>
+      checked ? [...prev, id] : prev.filter((existingId) => existingId !== id),
+    );
+  };
+
+  const handleSelectAllWatermarkCheckbox = (checked: boolean) => {
+    setSelectedWatermarkIds(checked ? filteredData.map((row) => row.id) : []);
+  };
+
+  const handleCancelRemoveWatermark = () => {
+    setIsRemoveWatermarkMode(false);
+    setSelectedWatermarkIds([]);
+  };
+
+  const handleSubmitRemoveWatermark = async () => {
+    const imagePaths = Array.from(
+      new Set(
+        depthData
+          .filter((row) => selectedWatermarkIds.includes(row.id))
+          .flatMap(getRowImagePaths),
+      ),
+    );
+    if (imagePaths.length === 0) {
+      toast.error('Selected rows have no images.');
+      return;
+    }
+    if (
+      !window.confirm(
+        `Remove watermark from ${imagePaths.length} image(s) in ${selectedWatermarkIds.length} row(s)?`,
+      )
+    )
+      return;
+
+    try {
+      setRemoveWatermarkLoading(true);
+      await removeWatermark(imagePaths);
+      toast.success('Watermark removed successfully');
+      handleCancelRemoveWatermark();
+      getData();
+    } catch (error) {
+      console.error('Error removing watermark:', error);
+      toast.error('Failed to remove watermark');
+    } finally {
+      setRemoveWatermarkLoading(false);
+    }
+  };
+
   const handleSplitEvents = async () => {
     if (selectedSplitIds.length === 0) {
       toast.error('Please select at least one event to split.');
@@ -1064,6 +1126,34 @@ function Eventreport() {
   };
 
   const allColumns: TableColumn<Activity>[] = [
+    ...(isRemoveWatermarkMode
+      ? [
+          {
+            name: (
+              <input
+                type="checkbox"
+                checked={
+                  filteredData.length > 0 &&
+                  selectedWatermarkIds.length === filteredData.length
+                }
+                onChange={(e) =>
+                  handleSelectAllWatermarkCheckbox(e.target.checked)
+                }
+              />
+            ),
+            cell: (row: Activity) => (
+              <input
+                type="checkbox"
+                checked={selectedWatermarkIds.includes(row.id)}
+                onChange={(e) =>
+                  handleWatermarkCheckboxChange(row.id, e.target.checked)
+                }
+              />
+            ),
+            maxWidth: '48px',
+          } as TableColumn<Activity>,
+        ]
+      : []),
     ...(Split
       ? [
           {
@@ -2324,9 +2414,14 @@ function Eventreport() {
                   Edit Order Index
                 </button>
                   <button
-                  onClick={() =>
-                    Split ? handleCancelSplit() : setSplit(true)
-                  }
+                  onClick={() => {
+                    if (Split) {
+                      handleCancelSplit();
+                    } else {
+                      handleCancelRemoveWatermark();
+                      setSplit(true);
+                    }
+                  }}
                   className={`flex-none h-10 px-4 py-2 text-sm font-medium rounded-md border outline-none whitespace-nowrap flex items-center gap-2 ${
                     Split
                       ? 'text-red-600 bg-white border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-red-400 dark:border-gray-600 dark:hover:bg-gray-600'
@@ -2350,6 +2445,42 @@ function Eventreport() {
                 )}
                 </>
                 )}
+            {AdminAcess && (
+              <>
+                <button
+                  onClick={() => {
+                    if (isRemoveWatermarkMode) {
+                      handleCancelRemoveWatermark();
+                    } else {
+                      handleCancelSplit();
+                      setIsRemoveWatermarkMode(true);
+                    }
+                  }}
+                  className={`flex-none h-10 px-4 py-2 text-sm font-medium rounded-md border outline-none whitespace-nowrap flex items-center gap-2 ${
+                    isRemoveWatermarkMode
+                      ? 'text-red-600 bg-white border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-red-400 dark:border-gray-600 dark:hover:bg-gray-600'
+                      : 'text-orange-600 bg-white border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-orange-400 dark:border-gray-600 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  <Eraser className="h-4 w-4" />
+                  {isRemoveWatermarkMode ? 'Cancel' : 'Remove Watermark'}
+                </button>
+                {isRemoveWatermarkMode && (
+                  <button
+                    onClick={handleSubmitRemoveWatermark}
+                    disabled={
+                      removeWatermarkLoading || selectedWatermarkIds.length === 0
+                    }
+                    className="flex-none h-10 px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 outline-none disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center gap-2"
+                  >
+                    <Eraser className="h-4 w-4" />
+                    {removeWatermarkLoading
+                      ? 'Removing...'
+                      : `Submit (${selectedWatermarkIds.length})`}
+                  </button>
+                )}
+              </>
+            )}
              { AdminAcess && (
               
                 <button
