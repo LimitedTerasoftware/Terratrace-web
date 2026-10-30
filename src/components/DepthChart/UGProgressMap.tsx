@@ -41,6 +41,8 @@ interface ProgressMarker {
   surveyId: number;
   indexId: number;
   workType: string | null;
+  /** Set for DEPTH markers — sent in the DEPTH array of the final shape payload */
+  depthMeters?: string | null;
   /** Set for joint chamber point markers (pointA/B/C) — the id of the parent JOINTCHAMBER Activity */
   parentId?: number;
   /** Set for joint chamber point markers — which point this marker represents */
@@ -285,6 +287,9 @@ const buildMarkers = (
           surveyId: event.survey_id,
           indexId: event.order_index,
           workType: event.work_type ?? null,
+          ...(event.eventType === 'DEPTH' && {
+            depthMeters: event.depthMeters ?? null,
+          }),
         });
       }
 

@@ -331,7 +331,7 @@ const AerialBlockActivity: React.FC = () => {
   const renderInstallationInfo = (p: PoleInstallation) => (
     <div className="max-h-[360px] max-w-[280px] space-y-1 overflow-y-auto">
       <div className="mb-1 text-sm font-semibold">Pole Installation</div>
-      {row('Status', p.status)}
+      {/* {row('Status', p.status)} */}
       {row('Event Type', p.eventType)}
       {row('Latitude', p.latitude)}
       {row('Longitude', p.longitude)}

@@ -173,6 +173,7 @@ export interface PoleString {
   start_longitude: string,
   end_latitude: string,
   end_longitude: string,
+  isJointChamber:number|0
 }
 export interface PoleSurveyResponse {
   status: boolean;
