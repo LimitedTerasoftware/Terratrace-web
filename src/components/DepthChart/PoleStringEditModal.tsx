@@ -49,6 +49,7 @@ export function PoleStringEditModal({
           : null,
         is_active: row.is_active,
         isJointChamber: row.isJointChamber ?? 0,
+        jointChamberType: row.jointChamberType ?? null,
       };
 
       if (row.road_crossing) {
@@ -130,6 +131,10 @@ export function PoleStringEditModal({
           : formData.joint_enclosure,
         is_active: formData.is_active,
         isJointChamber: Number(formData.isJointChamber ?? 0),
+        jointChamberType:
+          Number(formData.isJointChamber) == 1
+            ? formData.jointChamberType || null
+            : null,
         user_id: userData.id,
         user_name: userData.name,
       };
@@ -240,6 +245,25 @@ export function PoleStringEditModal({
                 <option value={1}>JointChamber</option>
               </select>
             </div>
+            {Number(formData.isJointChamber) == 1 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Joint Chamber Type
+                </label>
+                <select
+                  value={formData.jointChamberType ?? ''}
+                  onChange={(e) =>
+                    handleChange('jointChamberType', e.target.value || null)
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  disabled={isLoading}
+                >
+                  <option value="">Select type</option>
+                  <option value="SJC">SJC</option>
+                  <option value="BJC">BJC</option>
+                </select>
+              </div>
+            )}
 
             {/* Pole Details */}
             {(formData.eventType === "POLE") && (<>

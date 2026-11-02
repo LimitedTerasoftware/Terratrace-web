@@ -741,7 +741,8 @@ function PoleStringView() {
     },
     {
       name: 'Joint Type',
-      selector: (row) => row.joint_enclosure?.jointType || '-',
+      selector: (row) =>
+        row.jointChamberType || row.joint_enclosure?.jointType || '-',
       sortable: true,
       wrap: true,
     },
@@ -1022,7 +1023,7 @@ function PoleStringView() {
             .map((u, i) => makeHyperlink(u, `Landmark_${i + 1}`))
             .join(', ')
         : '-',
-      item.joint_enclosure?.jointType ?? '-',
+      item.jointChamberType || item.joint_enclosure?.jointType || '-',
       item.joint_enclosure?.startDrumNumber ?? '-',
       item.joint_enclosure?.startDrumMeter ?? '-',
       item.joint_enclosure?.endDrumNumber ?? '-',

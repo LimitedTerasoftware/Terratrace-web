@@ -19,6 +19,9 @@ interface ProgressPoleMarker {
   /** Joint Enclosure's jointType, when present — lets joint markers be
    * styled/grouped by joint type instead of all sharing one look. */
   subType?: string;
+  /** Set for poles marked as a joint chamber (isJointChamber === 1). */
+  jointChamberType?: string;
+  poleType?: string;
 }
 
 const parseSurveyIdsParam = (value: string | null): number[] => {
@@ -133,14 +136,39 @@ const getPointStyle = (
   NORMALIZED_EVENT_POINT_STYLES.get(normalizeEventTypeKey(eventType)) ??
   getFallbackStyle(eventType);
 
+type MarkerStyleFields = Pick<
+  ProgressPoleMarker,
+  'eventType' | 'subType' | 'jointChamberType' | 'poleType'
+>;
+
+const JOINT_CHAMBER_STYLES: Record<
+  string,
+  { color: string; shape: MarkerShape }
+> = {
+  SJC: { color: '#DB2777', shape: 'star' },
+  BJC: { color: '#0891B2', shape: 'pentagon' },
+};
+
+/** Poles flagged as a joint chamber get their own standalone marker, even
+ * though poles are otherwise only drawn as the route polyline. */
+const isJointChamberPole = (marker: MarkerStyleFields) =>
+  CONNECT_EVENT_TYPES.has(marker.eventType) && !!marker.jointChamberType;
+
+const getJointChamberLabel = (marker: MarkerStyleFields) =>
+  [marker.poleType, marker.eventType, marker.jointChamberType]
+    .filter(Boolean)
+    .join(' - ');
+
 /** Groups markers for the legend/visibility toggle — Joint Enclosure markers
  * group by jointType (when recorded) instead of all sharing one bucket. */
-const getMarkerGroupKey = (
-  marker: Pick<ProgressPoleMarker, 'eventType' | 'subType'>,
-): string =>
-  isJointEnclosureEventType(marker.eventType) && marker.subType
+const getMarkerGroupKey = (marker: MarkerStyleFields): string => {
+  if (isJointChamberPole(marker)) {
+    return `JOINTCHAMBER::${getJointChamberLabel(marker)}`;
+  }
+  return isJointEnclosureEventType(marker.eventType) && marker.subType
     ? `${marker.eventType}::${marker.subType}`
     : marker.eventType;
+};
 
 /** Resolves the shape/color/label actually drawn for a marker — Joint
  * Enclosure markers get a distinct look per jointType (hashed, same
@@ -149,8 +177,14 @@ const getMarkerGroupKey = (
 // generic "Joint Enclosure" name — so the label is just marker.subType,
 // with no "Joint Enclosure -" prefix, whenever a joint type is recorded.
 const getMarkerStyle = (
-  marker: Pick<ProgressPoleMarker, 'eventType' | 'subType'>,
+  marker: MarkerStyleFields,
 ): { color: string; label: string; shape: MarkerShape } => {
+  if (isJointChamberPole(marker)) {
+    const { color, shape } =
+      JOINT_CHAMBER_STYLES[marker.jointChamberType!.toUpperCase()] ??
+      getFallbackStyle(marker.jointChamberType!);
+    return { color, shape, label: getJointChamberLabel(marker) };
+  }
   if (isJointEnclosureEventType(marker.eventType) && marker.subType) {
     const { color, shape } = getFallbackStyle(getMarkerGroupKey(marker));
     return { color, shape, label: marker.subType };
@@ -406,6 +440,19 @@ const getRecordVideoUrl = (record: PoleString): string | null => {
   return null;
 };
 
+const getRecordStyleFields = (record: PoleString): MarkerStyleFields => {
+  const isJointChamber =
+    Number(record.isJointChamber) === 1 && !!record.jointChamberType;
+  return {
+    eventType: record.eventType,
+    subType: getJointEnclosure(record)?.jointType?.trim() || undefined,
+    jointChamberType: isJointChamber
+      ? record.jointChamberType!.trim()
+      : undefined,
+    poleType: isJointChamber ? record.pole_type?.trim() || undefined : undefined,
+  };
+};
+
 const buildMarkers = (records: PoleString[]): ProgressPoleMarker[] =>
   records
     .filter((record) => {
@@ -423,10 +470,9 @@ const buildMarkers = (records: PoleString[]): ProgressPoleMarker[] =>
       id: record.id,
       lat: Number(record.latitude),
       lng: Number(record.longitude),
-      eventType: record.eventType,
       surveyId: record.survey_id ?? 0,
       orderIndex: record.order_index || record.id,
-      subType: getJointEnclosure(record)?.jointType?.trim() || undefined,
+      ...getRecordStyleFields(record),
     }));
 
 const LoadingState: React.FC<{ label: string }> = ({ label }) => (
@@ -505,10 +551,7 @@ const MarkerDetailsPanel: React.FC<{
 }> = ({ record, onClose, onImageClick }) => {
   const jointEnclosure = getJointEnclosure(record);
   const landmark = getLandmark(record);
-  const style = getMarkerStyle({
-    eventType: record.eventType,
-    subType: jointEnclosure?.jointType?.trim() || undefined,
-  });
+  const style = getMarkerStyle(getRecordStyleFields(record));
   const videoUrl = getRecordVideoUrl(record);
 
   // Some records repeat the same URL across joint_enclosure sub-fields (or
@@ -557,6 +600,9 @@ const MarkerDetailsPanel: React.FC<{
         )}
         {record.drum_number && (
           <Row label="Drum Number" value={record.drum_number} />
+        )}
+        {Number(record.isJointChamber) === 1 && record.jointChamberType && (
+          <Row label="Joint Chamber Type" value={record.jointChamberType} />
         )}
         {landmark?.type && <Row label="Landmark Type" value={landmark.type} />}
         {landmark?.description && (
@@ -691,7 +737,11 @@ const AerialProgressMapComp: React.FC<AerialProgressMapCompProps> = ({
       { groupKey: string; marker: ProgressPoleMarker; count: number }
     >();
     markers
-      .filter((marker) => !CONNECT_EVENT_TYPES.has(marker.eventType))
+      .filter(
+        (marker) =>
+          !CONNECT_EVENT_TYPES.has(marker.eventType) ||
+          isJointChamberPole(marker),
+      )
       .forEach((marker) => {
         const groupKey = getMarkerGroupKey(marker);
         const existing = groups.get(groupKey);
@@ -824,7 +874,8 @@ const AerialProgressMapComp: React.FC<AerialProgressMapCompProps> = ({
     pointMarkersRef.current = markers
       .filter(
         (marker) =>
-          !CONNECT_EVENT_TYPES.has(marker.eventType) &&
+          (!CONNECT_EVENT_TYPES.has(marker.eventType) ||
+            isJointChamberPole(marker)) &&
           !hiddenMarkerGroups.has(getMarkerGroupKey(marker)),
       )
       .map((marker) => {
