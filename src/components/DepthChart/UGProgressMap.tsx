@@ -1435,6 +1435,248 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
   );
 };
 
+const parseOfcDetails = (data: unknown) => {
+  if (!data) return null;
+  if (typeof data === 'object') return data;
+  if (typeof data === 'string' && data.trim() !== '' && data !== 'null') {
+    try {
+      return JSON.parse(data);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
+// ABD payload only carries DEPTH and OFC events; every other event type is ignored.
+const ABD_LINK_DETAILS = {
+  package: '9/ WEST BENGAL',
+  pia: 'Tera Software',
+};
+
+const buildAbdPayload = (markers: ProgressMarker[], events: Activity[]) => {
+  const DEPTH = markers
+    .filter((marker) => marker.eventType === 'DEPTH')
+    .sort(
+      (a, b) =>
+        a.surveyId - b.surveyId ||
+        (a.indexId ?? Number.MAX_SAFE_INTEGER) -
+          (b.indexId ?? Number.MAX_SAFE_INTEGER) ||
+        a.id - b.id,
+    )
+    .map(({ id, lat, lng, eventType, surveyId, indexId, workType, depthMeters }) => ({
+      id,
+      lat,
+      lng,
+      eventType,
+      surveyId,
+      indexId,
+      workType,
+      depthMeters: depthMeters ?? null,
+    }));
+
+  const OFC = events
+    .filter((event) => event.status === 0 && event.eventType === 'OFC')
+    .flatMap((event) => {
+      // OFC events store their location in blowingLatLong (see AddEventModal).
+      const coords = parseLatLong(event.blowingLatLong);
+      if (!coords) return [];
+      return [
+        {
+          surveyId: event.survey_id,
+          lat: coords.lat,
+          lng: coords.lng,
+          start_ofc: parseOfcDetails(event.start_ofc),
+          end_ofc: parseOfcDetails(event.end_ofc),
+        },
+      ];
+    });
+
+  return {
+    link: ABD_LINK_DETAILS,
+    DEPTH,
+    OFC,
+    ...(events.length > 0 && {
+      codes: {
+        st_code: events[0].state_code,
+        dt_code: events[0].dt_census_code,
+        blk_code: events[0].block_code,
+      },
+    }),
+  };
+};
+
+const getResponseErrorMessage = async (err: unknown, fallback: string) => {
+  if (axios.isAxiosError(err) && err.response?.data instanceof Blob) {
+    try {
+      const parsed = JSON.parse(await err.response.data.text());
+      return parsed?.message || parsed?.error || fallback;
+    } catch {
+      return fallback;
+    }
+  }
+  return err instanceof Error ? err.message : fallback;
+};
+
+const AbdDownloadModal: React.FC<{
+  markers: ProgressMarker[];
+  events: Activity[];
+  onClose: () => void;
+}> = ({ markers, events, onClose }) => {
+  const [payloadFile, setPayloadFile] = useState<File | null>(null);
+  const [shapeFile, setShapeFile] = useState<File | null>(null);
+  const [downloading, setDownloading] = useState(false);
+  const [message, setMessage] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
+
+  const depthCount = markers.filter((m) => m.eventType === 'DEPTH').length;
+  const ofcCount = events.filter(
+    (e) => e.status === 0 && e.eventType === 'OFC',
+  ).length;
+
+  const handleExportPayload = () => {
+    const payload = buildAbdPayload(markers, events);
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: 'application/json',
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'payload.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadAbd = async () => {
+    if (!payloadFile || !shapeFile) return;
+    setDownloading(true);
+    setMessage(null);
+    try {
+      const formData = new FormData();
+      formData.append('payload', payloadFile);
+      formData.append('files', shapeFile);
+
+      const response = await axios.post(
+        `${TraceBASEURL}/link-diagram`,
+        formData,
+        { responseType: 'blob' },
+      );
+
+      // File name comes from the API response, not built on the client.
+      const disposition: string =
+        response.headers['content-disposition'] ?? '';
+      const fileNameMatch = disposition.match(
+        /filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i,
+      );
+      const fileName = fileNameMatch
+        ? decodeURIComponent(fileNameMatch[1].trim())
+        : '';
+
+      const blob = new Blob([response.data], {
+        type: response.headers['content-type'] || 'application/octet-stream',
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      setMessage({ type: 'success', text: 'ABD downloaded successfully.' });
+    } catch (err) {
+      console.error('Error downloading ABD:', err);
+      setMessage({
+        type: 'error',
+        text: await getResponseErrorMessage(err, 'Failed to download ABD'),
+      });
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">ABD Download</h2>
+          <button
+            onClick={onClose}
+            className="rounded p-1 text-gray-500 hover:bg-gray-100"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="mt-4 rounded-md border border-gray-200 p-3">
+          <h3 className="text-sm font-semibold text-gray-800">
+            Step 1: Export Payload
+          </h3>
+          <p className="mt-1 text-xs text-gray-500">
+            {depthCount} DEPTH | {ofcCount} OFC events
+          </p>
+          <button
+            onClick={handleExportPayload}
+            className="mt-3 flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Download className="h-4 w-4" />
+            Export Payload
+          </button>
+        </div>
+
+        <div className="mt-4 rounded-md border border-gray-200 p-3">
+          <h3 className="text-sm font-semibold text-gray-800">
+            Step 2: Download ABD
+          </h3>
+          <label className="mt-2 block text-xs font-medium text-gray-600">
+            Payload (.json)
+            <input
+              type="file"
+              accept=".json,application/json"
+              onChange={(e) => setPayloadFile(e.target.files?.[0] ?? null)}
+              className="mt-1 block w-full text-sm"
+            />
+          </label>
+          <label className="mt-2 block text-xs font-medium text-gray-600">
+            Shape file (.zip / .rar)
+            <input
+              type="file"
+              accept=".zip,.rar,application/zip,application/vnd.rar,application/x-rar-compressed"
+              onChange={(e) => setShapeFile(e.target.files?.[0] ?? null)}
+              className="mt-1 block w-full text-sm"
+            />
+          </label>
+          <button
+            onClick={handleDownloadAbd}
+            disabled={!payloadFile || !shapeFile || downloading}
+            className="mt-3 flex items-center gap-2 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {downloading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            {downloading ? 'Downloading...' : 'Download ABD'}
+          </button>
+          {message && (
+            <p
+              className={`mt-2 text-xs ${
+                message.type === 'success' ? 'text-green-600' : 'text-red-600'
+              }`}
+            >
+              {message.text}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const UGProgressMap: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -1475,6 +1717,7 @@ const UGProgressMap: React.FC = () => {
   >(new Set());
   const [integratedGps, setIntegratedGps] = useState<IntegratedGp[]>([]);
   const [syncingGps, setSyncingGps] = useState(false);
+  const [showAbdModal, setShowAbdModal] = useState(false);
   const [syncGpsMessage, setSyncGpsMessage] = useState<{
     type: 'success' | 'error';
     text: string;
@@ -1678,6 +1921,14 @@ const UGProgressMap: React.FC = () => {
             )}
             {syncingGps ? 'Syncing...' : 'Sync GPS'}
           </button>
+          <button
+            onClick={() => setShowAbdModal(true)}
+            disabled={loading || events.length === 0}
+            className="flex flex-none items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Download className="h-4 w-4" />
+            ABD
+          </button>
         </div>
         {syncGpsMessage && (
           <p
@@ -1708,6 +1959,14 @@ const UGProgressMap: React.FC = () => {
           integratedGps={integratedGps}
           ofcSurveyIds={ofcSurveyIds}
           events={events}
+        />
+      )}
+
+      {showAbdModal && (
+        <AbdDownloadModal
+          markers={markers}
+          events={events}
+          onClose={() => setShowAbdModal(false)}
         />
       )}
     </div>
