@@ -231,7 +231,7 @@ export function PoleStringEditModal({
             {textField('is_active', 'Is Active', { type: 'number' })}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Is Joint Chamber
+                Is Joint Enclosure
               </label>
               <select
                 value={formData.isJointChamber ?? 0}
@@ -242,13 +242,13 @@ export function PoleStringEditModal({
                 disabled={isLoading}
               >
                 <option value={0}>Pole</option>
-                <option value={1}>JointChamber</option>
+                <option value={1}>JointEnclosure</option>
               </select>
             </div>
             {Number(formData.isJointChamber) == 1 && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Joint Chamber Type
+                  Joint Enclosure Type
                 </label>
                 <select
                   value={formData.jointChamberType ?? ''}

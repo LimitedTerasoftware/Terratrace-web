@@ -85,15 +85,76 @@ const isGpPoleEndpoint = (eventType: string) => {
   return upper === 'STARTGP_POLE' || upper === 'ENDGP_POLE';
 };
 
+// Poles flagged as a joint chamber — same look as AerialProgressMap: SJC is a
+// pink star, BJC a cyan pentagon, labelled "pole type - POLE - SJC".
+const JOINT_CHAMBER_STYLES: Record<
+  string,
+  { color: string; shape: 'star' | 'pentagon' }
+> = {
+  SJC: { color: '#DB2777', shape: 'star' },
+  BJC: { color: '#0891B2', shape: 'pentagon' },
+};
+const DEFAULT_JOINT_CHAMBER_STYLE = { color: '#A855F7', shape: 'star' as const };
+
+const getJointChamberType = (record: PoleString): string | null =>
+  record.eventType?.toUpperCase() === 'POLE' &&
+  Number(record.isJointChamber) === 1 &&
+  record.jointChamberType
+    ? record.jointChamberType.trim()
+    : null;
+
+const getJointChamberStyle = (jointChamberType: string) =>
+  JOINT_CHAMBER_STYLES[jointChamberType.toUpperCase()] ??
+  DEFAULT_JOINT_CHAMBER_STYLE;
+
+const getJointChamberLabel = (record: PoleString, jointChamberType: string) =>
+  [record.pole_type, record.eventType, jointChamberType]
+    .filter(Boolean)
+    .join(' - ');
+
+// SVG path for a star / pentagon centered at (0, 0), first point up.
+const JOINT_CHAMBER_RADIUS = 10;
+const shapePath = (shape: 'star' | 'pentagon') => {
+  const vertices = shape === 'star' ? 10 : 5;
+  const points: string[] = [];
+  for (let i = 0; i < vertices; i++) {
+    const angle = (-90 + (360 / vertices) * i) * (Math.PI / 180);
+    const radius =
+      shape === 'star' && i % 2 === 1
+        ? JOINT_CHAMBER_RADIUS / 2.4
+        : JOINT_CHAMBER_RADIUS;
+    points.push(
+      `${(radius * Math.cos(angle)).toFixed(2)} ${(radius * Math.sin(angle)).toFixed(2)}`,
+    );
+  }
+  return `M ${points.join(' L ')} Z`;
+};
+
 // Builds the icon for an exact (non-clustered) /get-pole-stringing marker —
-// a drop pin for GP-boundary start/end events, a plain circle for everything
-// else — with three visual states: resting, moved-but-not-dragging, and
-// actively being dragged.
+// a drop pin for GP-boundary start/end events, a star/pentagon for joint
+// chamber poles, a plain circle for everything else — with three visual
+// states: resting, moved-but-not-dragging, and actively being dragged.
 const buildExactMarkerIcon = (
   eventType: string,
   fillColor: string,
   state: 'normal' | 'moved' | 'dragging',
+  jointChamberType?: string | null,
 ): google.maps.Symbol => {
+  if (jointChamberType) {
+    const { color, shape } = getJointChamberStyle(jointChamberType);
+    const scale = state === 'dragging' ? 1.4 : state === 'moved' ? 1.25 : 1.1;
+    return {
+      path: shapePath(shape),
+      fillColor: color,
+      fillOpacity: state === 'normal' ? 0.95 : 1,
+      strokeColor: state === 'normal' ? '#ffffff' : '#facc15',
+      strokeWeight: state === 'normal' ? 2 : state === 'moved' ? 2.5 : 3,
+      scale,
+      anchor: new google.maps.Point(0, 0),
+      labelOrigin: new google.maps.Point(0, -JOINT_CHAMBER_RADIUS - 8),
+    };
+  }
+
   if (isGpPoleEndpoint(eventType)) {
     return {
       path: PIN_PATH,
@@ -275,7 +336,14 @@ const InfoWindow: React.FC<{
   onClose: () => void;
   onImageClick: (url: string) => void;
 }> = ({ record, onClose, onImageClick }) => {
-  const config = getMarkerConfig(record.eventType);
+  const jointChamberType = getJointChamberType(record);
+  const config = jointChamberType
+    ? {
+        ...getMarkerConfig(record.eventType),
+        color: getJointChamberStyle(jointChamberType).color,
+        label: getJointChamberLabel(record, jointChamberType),
+      }
+    : getMarkerConfig(record.eventType);
   const je: JointEnclosure | null = record.joint_enclosure;
 
   const allImages: { url: string; label: string }[] = [];
@@ -356,6 +424,9 @@ const InfoWindow: React.FC<{
 
         {/* POLE fields */}
         {record.pole_type && <Row label="Pole Type" value={record.pole_type} />}
+        {jointChamberType && (
+          <Row label="JointEnclosure Type" value={jointChamberType} />
+        )}
         {record.line_type && <Row label="Line Type" value={record.line_type} />}
         {record.pole_material && (
           <Row label="Pole Material" value={record.pole_material} />
@@ -925,22 +996,35 @@ const MapComponent: React.FC<Props> = ({
         const lng = override?.lng ?? origLng;
         const hasMoved =
           override !== undefined && (override.lat !== origLat || override.lng !== origLng);
+        const jointChamberType = getJointChamberType(record);
+        const orderLabel = (record.order_index || record.id).toString();
 
         const marker = new google.maps.Marker({
           position: { lat, lng },
           map,
-          title: `${config.label} — ${(record.order_index || record.id).toString() ?? record.pit_id }`,
-          label: {
-            text: (record.order_index || record.id).toString(),
-            color: '#ffffff',
-            fontSize: '11px',
-            fontWeight: 'bold',
-          },
+          title: jointChamberType
+            ? `${getJointChamberLabel(record, jointChamberType)} — ${orderLabel}`
+            : `${config.label} — ${orderLabel ?? record.pit_id}`,
+          label: jointChamberType
+            ? {
+                text: getJointChamberLabel(record, jointChamberType),
+                color: '#111827',
+                fontSize: '10px',
+                fontWeight: '600',
+              }
+            : {
+                text: orderLabel,
+                color: '#ffffff',
+                fontSize: '11px',
+                fontWeight: 'bold',
+              },
           icon: buildExactMarkerIcon(
             record.eventType,
             fillColor,
             hasMoved ? 'moved' : 'normal',
+            jointChamberType,
           ),
+          zIndex: jointChamberType ? 1000 : undefined,
           draggable: AdminAcess,
           cursor: AdminAcess ? 'grab' : 'pointer',
         });
@@ -950,7 +1034,12 @@ const MapComponent: React.FC<Props> = ({
         marker.addListener('dragstart', () => {
           setSelectedRecord(null);
           marker.setIcon(
-            buildExactMarkerIcon(record.eventType, fillColor, 'dragging'),
+            buildExactMarkerIcon(
+              record.eventType,
+              fillColor,
+              'dragging',
+              jointChamberType,
+            ),
           );
         });
 
