@@ -1464,10 +1464,8 @@ const buildAbdPayload = (markers: ProgressMarker[], events: Activity[]) => {
           (b.indexId ?? Number.MAX_SAFE_INTEGER) ||
         a.id - b.id,
     )
-    .map(({ id, lat, lng, eventType, surveyId, indexId, workType, depthMeters }) => ({
+    .map(({ id, eventType, surveyId, indexId, workType, depthMeters }) => ({
       id,
-      lat,
-      lng,
       eventType,
       surveyId,
       indexId,
@@ -1477,20 +1475,11 @@ const buildAbdPayload = (markers: ProgressMarker[], events: Activity[]) => {
 
   const OFC = events
     .filter((event) => event.status === 0 && event.eventType === 'OFC')
-    .flatMap((event) => {
-      // OFC events store their location in blowingLatLong (see AddEventModal).
-      const coords = parseLatLong(event.blowingLatLong);
-      if (!coords) return [];
-      return [
-        {
-          surveyId: event.survey_id,
-          lat: coords.lat,
-          lng: coords.lng,
-          start_ofc: parseOfcDetails(event.start_ofc),
-          end_ofc: parseOfcDetails(event.end_ofc),
-        },
-      ];
-    });
+    .map((event) => ({
+      surveyId: event.survey_id,
+      start_ofc: parseOfcDetails(event.start_ofc),
+      end_ofc: parseOfcDetails(event.end_ofc),
+    }));
 
   return {
     link: ABD_LINK_DETAILS,
