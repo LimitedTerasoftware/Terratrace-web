@@ -5,6 +5,29 @@ import { AlertCircle, Camera, Loader2, X, ZoomIn } from 'lucide-react';
 import moment from 'moment';
 import GoogleMapsLoader from '../hooks/googleMapsLoader';
 import type { JointEnclosure, Landmark, PoleString } from '../../types/aerial-survey';
+import type {
+  DesktopPlanningApiResponse,
+  PlacemarkCategory,
+  ProcessedDesktopPlanning,
+} from '../../types/kmz';
+import { processDesktopPlanningData } from '../SmartInventory/PlaceMark';
+import { DESKTOP_PLANNING_CATEGORIES } from './UGProgressMap';
+
+// Hidden by default, same as UGProgressMap.
+const HIDDEN_BY_DEFAULT_PLANNING_CATEGORY = 'Desktop : Offset Cable';
+
+const getPlanningCategoryId = (
+  placemark: ProcessedDesktopPlanning,
+  categories: PlacemarkCategory[],
+) =>
+  categories.find((item) => item.name === placemark.category)?.id ??
+  placemark.category.toLowerCase().replace(/[^a-z0-9]/g, '-');
+
+const isSameLocation = (
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+  epsilon = 0.0003,
+) => Math.abs(a.lat - b.lat) < epsilon && Math.abs(a.lng - b.lng) < epsilon;
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 const baseUrl = import.meta.env.VITE_Image_URL;
@@ -675,13 +698,26 @@ const MarkerDetailsPanel: React.FC<{
 interface AerialProgressMapCompProps {
   records: PoleString[];
   markers: ProgressPoleMarker[];
+  planningPlacemarks: ProcessedDesktopPlanning[];
+  planningCategories: PlacemarkCategory[];
+  visiblePlanningCategories: Set<string>;
+  onPlanningCategoryVisibilityChange: (
+    categoryId: string,
+    visible: boolean,
+  ) => void;
 }
 
 const AerialProgressMapComp: React.FC<AerialProgressMapCompProps> = ({
   records,
   markers,
+  planningPlacemarks,
+  planningCategories,
+  visiblePlanningCategories,
+  onPlanningCategoryVisibilityChange,
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
+  const planningMarkersRef = useRef<google.maps.Marker[]>([]);
+  const planningPolylinesRef = useRef<google.maps.Polyline[]>([]);
   const routePolylinesRef = useRef<google.maps.Polyline[]>([]);
   const pointMarkersRef = useRef<google.maps.Marker[]>([]);
   const gpMarkersRef = useRef<google.maps.Marker[]>([]);
@@ -962,6 +998,121 @@ const AerialProgressMapComp: React.FC<AerialProgressMapCompProps> = ({
     };
   }, [gpEndpointMarkers, map, showStartGp, showEndGp]);
 
+  // Approved KMZ (desktop planning) layer — drawn underneath survey data.
+  useEffect(() => {
+    if (!map) return;
+
+    planningMarkersRef.current.forEach((marker) => marker.setMap(null));
+    planningPolylinesRef.current.forEach((polyline) => polyline.setMap(null));
+    planningMarkersRef.current = [];
+    planningPolylinesRef.current = [];
+
+    planningPlacemarks.forEach((placemark) => {
+      const categoryId = getPlanningCategoryId(placemark, planningCategories);
+      if (!visiblePlanningCategories.has(categoryId)) return;
+
+      const category = planningCategories.find(
+        (item) => item.name === placemark.category,
+      );
+      const color = category?.color ?? '#6B7280';
+
+      if (placemark.type === 'point') {
+        const coord = placemark.coordinates as { lat: number; lng: number };
+
+        // Skip planned GPs that sit on a start/end GP pin so labels don't overlap.
+        if (
+          placemark.category === 'Desktop: GP' &&
+          gpEndpointMarkers.some((gp) => isSameLocation(coord, gp))
+        ) {
+          return;
+        }
+
+        const marker = new google.maps.Marker({
+          position: coord,
+          map,
+          title: placemark.name,
+          zIndex: 900,
+          label: {
+            text: placemark.name,
+            color: '#111827',
+            fontSize: '10px',
+            fontWeight: '600',
+          },
+          icon: buildLabeledShapeIcon('circle', color, 12),
+        });
+
+        marker.addListener('click', () => {
+          const rows: string[] = [
+            `<div>Category: ${escapeHtml(placemark.category)}</div>`,
+          ];
+          if (placemark.pointType) {
+            rows.push(`<div>Point Type: ${escapeHtml(placemark.pointType)}</div>`);
+          }
+          if (placemark.assetType) {
+            rows.push(`<div>Asset Type: ${escapeHtml(placemark.assetType)}</div>`);
+          }
+          if (placemark.status) {
+            rows.push(`<div>Status: ${escapeHtml(placemark.status)}</div>`);
+          }
+          if (placemark.ring) {
+            rows.push(`<div>Ring: ${escapeHtml(placemark.ring)}</div>`);
+          }
+          if (placemark.connectionType) {
+            rows.push(
+              `<div>Connection Type: ${escapeHtml(placemark.connectionType)}</div>`,
+            );
+          }
+          if (placemark.length) {
+            rows.push(`<div>Length: ${escapeHtml(placemark.length)}</div>`);
+          }
+          if (placemark.lgdCode && placemark.lgdCode !== 'NULL') {
+            rows.push(`<div>LGD Code: ${escapeHtml(placemark.lgdCode)}</div>`);
+          }
+          if (placemark.networkId) {
+            rows.push(
+              `<div>Network ID: ${escapeHtml(String(placemark.networkId))}</div>`,
+            );
+          }
+
+          infoWindowRef.current?.setContent(`
+            <div style="padding:4px 4px;font-size:13px;line-height:1.6">
+              <div style="font-weight:700;color:#111827;margin-bottom:2px">${escapeHtml(placemark.name)}</div>
+              ${rows.join('')}
+            </div>
+          `);
+          infoWindowRef.current?.open(map, marker);
+        });
+
+        planningMarkersRef.current.push(marker);
+        return;
+      }
+
+      const polyline = new google.maps.Polyline({
+        path: placemark.coordinates as { lat: number; lng: number }[],
+        geodesic: true,
+        strokeColor: color,
+        strokeOpacity: 0.75,
+        strokeWeight: 2,
+        zIndex: 500,
+        map,
+      });
+      planningPolylinesRef.current.push(polyline);
+    });
+
+    return () => {
+      planningMarkersRef.current.forEach((marker) => marker.setMap(null));
+      planningPolylinesRef.current.forEach((polyline) => polyline.setMap(null));
+      planningMarkersRef.current = [];
+      planningPolylinesRef.current = [];
+    };
+  }, [
+    map,
+    planningPlacemarks,
+    planningCategories,
+    visiblePlanningCategories,
+    gpEndpointMarkers,
+  ]);
+
   useEffect(() => {
     if (!map || !mapRef.current) return;
 
@@ -987,11 +1138,34 @@ const AerialProgressMapComp: React.FC<AerialProgressMapCompProps> = ({
       bounds.extend({ lat: gp.lat, lng: gp.lng });
       points += 1;
     });
+    planningPlacemarks.forEach((placemark) => {
+      const categoryId = getPlanningCategoryId(placemark, planningCategories);
+      if (!visiblePlanningCategories.has(categoryId)) return;
+
+      if (placemark.type === 'point') {
+        bounds.extend(placemark.coordinates as { lat: number; lng: number });
+        points += 1;
+        return;
+      }
+      (placemark.coordinates as { lat: number; lng: number }[]).forEach(
+        (coord) => {
+          bounds.extend(coord);
+          points += 1;
+        },
+      );
+    });
 
     if (points === 0) return;
     map.fitBounds(bounds, 48);
     if (points === 1) map.setZoom(16);
-  }, [map, markers, gpEndpointMarkers]);
+  }, [
+    map,
+    markers,
+    gpEndpointMarkers,
+    planningPlacemarks,
+    planningCategories,
+    visiblePlanningCategories,
+  ]);
 
   if (isLoading) return <LoadingState label="Loading map..." />;
   if (error) return <ErrorState message={error} />;
@@ -1001,6 +1175,45 @@ const AerialProgressMapComp: React.FC<AerialProgressMapCompProps> = ({
       <div ref={mapRef} className="h-full w-full" />
 
       <div className="absolute right-4 top-10 z-10 max-w-xs rounded-md border border-gray-200 bg-white p-3 shadow-lg">
+        {planningCategories.length > 0 && (
+          <>
+            <div className="text-sm font-semibold text-gray-800">
+              Approved KMZ
+            </div>
+            <div className="mt-2 mb-2 max-h-56 space-y-1 overflow-auto border-b border-gray-200 pb-2 text-xs text-gray-600">
+              {planningCategories
+                .filter(
+                  (category) =>
+                    category.name !== HIDDEN_BY_DEFAULT_PLANNING_CATEGORY,
+                )
+                .map((category) => (
+                  <label
+                    key={category.id}
+                    className="flex cursor-pointer items-center gap-2"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={visiblePlanningCategories.has(category.id)}
+                      onChange={(event) =>
+                        onPlanningCategoryVisibilityChange(
+                          category.id,
+                          event.target.checked,
+                        )
+                      }
+                    />
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: category.color }}
+                    />
+                    <span className="flex-1 truncate">
+                      {category.name.replace(/^Desktop\s*:?\s*/, '')}
+                    </span>
+                    <span className="font-medium">{category.count}</span>
+                  </label>
+                ))}
+            </div>
+          </>
+        )}
         <div className="text-sm font-semibold text-gray-800">Legend</div>
         <div className="mt-2 max-h-56 space-y-1 overflow-auto text-xs text-gray-600">
           <label className="flex cursor-pointer items-center gap-2">
@@ -1095,12 +1308,105 @@ const AerialProgressMap: React.FC = () => {
     [searchParams],
   );
   const surveyIdsKey = surveyIds.join(',');
+  const selectedState = searchParams.get('selectedState') ?? '';
+  const selectedDistrict = searchParams.get('selectedDistrict') ?? '';
+  const selectedBlock = searchParams.get('selectedBlock') ?? '';
 
   const [records, setRecords] = useState<PoleString[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [planningPlacemarks, setPlanningPlacemarks] = useState<
+    ProcessedDesktopPlanning[]
+  >([]);
+  const [planningCategories, setPlanningCategories] = useState<
+    PlacemarkCategory[]
+  >([]);
+  const [visiblePlanningCategories, setVisiblePlanningCategories] = useState<
+    Set<string>
+  >(new Set());
 
   const markers = useMemo(() => buildMarkers(records), [records]);
+
+  useEffect(() => {
+    const resetPlanning = () => {
+      setPlanningPlacemarks([]);
+      setPlanningCategories([]);
+      setVisiblePlanningCategories(new Set());
+    };
+    if (!selectedState || !selectedDistrict || !selectedBlock) {
+      resetPlanning();
+      return;
+    }
+
+    let mounted = true;
+    const fetchDesktopPlanning = async () => {
+      try {
+        const response = await axios.post(
+          `${TraceBASEURL}/get-desktop-planning`,
+          {
+            stateId: selectedState,
+            districtId: selectedDistrict,
+            blockId: selectedBlock,
+            type: 'Approved KMZ',
+          },
+          { headers: { 'Content-Type': 'application/json' } },
+        );
+
+        if (!mounted) return;
+        const result: DesktopPlanningApiResponse = response.data;
+        if (
+          (response.status === 200 || response.status === 201) &&
+          result.status &&
+          result.data.length > 0
+        ) {
+          const { placemarks, categories } = processDesktopPlanningData(result);
+          const filteredPlacemarks = placemarks.filter((placemark) =>
+            DESKTOP_PLANNING_CATEGORIES.includes(placemark.category),
+          );
+          const filteredCategories = categories.filter((category) =>
+            DESKTOP_PLANNING_CATEGORIES.includes(category.name),
+          );
+
+          setPlanningPlacemarks(filteredPlacemarks);
+          setPlanningCategories(filteredCategories);
+          setVisiblePlanningCategories(
+            new Set(
+              filteredCategories
+                .filter(
+                  (category) =>
+                    category.visible &&
+                    category.name !== HIDDEN_BY_DEFAULT_PLANNING_CATEGORY,
+                )
+                .map((category) => category.id),
+            ),
+          );
+        } else {
+          resetPlanning();
+        }
+      } catch (err) {
+        if (!mounted) return;
+        console.error('Error fetching desktop planning data', err);
+        resetPlanning();
+      }
+    };
+
+    fetchDesktopPlanning();
+    return () => {
+      mounted = false;
+    };
+  }, [selectedState, selectedDistrict, selectedBlock]);
+
+  const handlePlanningCategoryVisibilityChange = (
+    categoryId: string,
+    visible: boolean,
+  ) => {
+    setVisiblePlanningCategories((prev) => {
+      const next = new Set(prev);
+      if (visible) next.add(categoryId);
+      else next.delete(categoryId);
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (surveyIds.length === 0) {
@@ -1164,7 +1470,16 @@ const AerialProgressMap: React.FC = () => {
       ) : error ? (
         <ErrorState message={error} />
       ) : (
-        <AerialProgressMapComp records={records} markers={markers} />
+        <AerialProgressMapComp
+          records={records}
+          markers={markers}
+          planningPlacemarks={planningPlacemarks}
+          planningCategories={planningCategories}
+          visiblePlanningCategories={visiblePlanningCategories}
+          onPlanningCategoryVisibilityChange={
+            handlePlanningCategoryVisibilityChange
+          }
+        />
       )}
     </div>
   );

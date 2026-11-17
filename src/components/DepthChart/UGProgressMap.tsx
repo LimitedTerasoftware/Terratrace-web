@@ -14,7 +14,7 @@ import { processDesktopPlanningData } from '../SmartInventory/PlaceMark';
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
 
-const DESKTOP_PLANNING_CATEGORIES = [
+export const DESKTOP_PLANNING_CATEGORIES = [
   'Desktop: GP',
   'Desktop: FPOI',
   'Desktop: Block Router',
