@@ -751,7 +751,7 @@ const UGProgressMapComp: React.FC<UGProgressMapCompProps> = ({
         ...payload,
         codes: {
           st_code: events[0].state_code,
-          dt_code: events[0].dt_census_code,
+          dt_code: events[0].dist_code,
           blk_code: events[0].block_code,
         },
       };
@@ -1464,8 +1464,10 @@ const buildAbdPayload = (markers: ProgressMarker[], events: Activity[]) => {
           (b.indexId ?? Number.MAX_SAFE_INTEGER) ||
         a.id - b.id,
     )
-    .map(({ id, eventType, surveyId, indexId, workType, depthMeters }) => ({
+    .map(({ id, lat, lng, eventType, surveyId, indexId, workType, depthMeters }) => ({
       id,
+      lat,
+      lng,
       eventType,
       surveyId,
       indexId,
@@ -1473,13 +1475,33 @@ const buildAbdPayload = (markers: ProgressMarker[], events: Activity[]) => {
       depthMeters: depthMeters ?? null,
     }));
 
+  const jointChamberEvents = events.filter(
+    (event) =>
+      event.status === 0 &&
+      event.eventType === 'JOINTCHAMBER' &&
+      parseLatLong(event.jointChamberLatLong),
+  );
+
   const OFC = events
     .filter((event) => event.status === 0 && event.eventType === 'OFC')
-    .map((event) => ({
-      surveyId: event.survey_id,
-      start_ofc: parseOfcDetails(event.start_ofc),
-      end_ofc: parseOfcDetails(event.end_ofc),
-    }));
+    .map((event) => {
+      // OFC events carry no coordinates of their own, so use the closest
+      // JOINTCHAMBER event (by order) in the same survey.
+      const nearestJointChamber = jointChamberEvents
+        .filter((jc) => jc.survey_id === event.survey_id)
+        .sort(
+          (a, b) =>
+            Math.abs(a.order_index - event.order_index) -
+            Math.abs(b.order_index - event.order_index),
+        )[0];
+      const coords = parseLatLong(nearestJointChamber?.jointChamberLatLong);
+      return {
+        surveyId: event.survey_id,
+        ...(coords && { lat: coords.lat, lng: coords.lng }),
+        start_ofc: parseOfcDetails(event.start_ofc),
+        end_ofc: parseOfcDetails(event.end_ofc),
+      };
+    });
 
   return {
     link: ABD_LINK_DETAILS,

@@ -48,6 +48,10 @@ interface AcceptedLinkRow {
   firm_names:string;
   machine_ids:number;
   vendor_breakdown?: VendorBreakdown[];
+  merger_status:string,
+  joint_chamber_status:string,
+  route_indicator_status:string,
+  link_status:string,    
 }
 
 interface AcceptedLinksSummary {
@@ -61,6 +65,47 @@ interface AcceptedLinksSummary {
   totalRouteIndicators?: number;
 }
 
+export const QC_STATUS_OPTIONS = {
+  merger_status: ['Completed', 'Pending', 'Gaps Identified'],
+  joint_chamber_status: ['Completed', 'Pending', 'Not Fully Captured'],
+  route_indicator_status: ['Completed', 'Pending', 'Not Fully Captured'],
+  link_status: ['Completed', 'Pending', 'Partially Completed'],
+} as const;
+
+export type QcStatusKey = keyof typeof QC_STATUS_OPTIONS;
+export type QcStatusFilters = Record<QcStatusKey, string>;
+
+export const QC_STATUS_KEYS = Object.keys(QC_STATUS_OPTIONS) as QcStatusKey[];
+
+export const QC_STATUS_LABELS: Record<QcStatusKey, string> = {
+  merger_status: 'Merger Status',
+  joint_chamber_status: 'Joint Chamber Status',
+  route_indicator_status: 'Route Indicator Status',
+  link_status: 'Link Status',
+};
+
+export const EMPTY_QC_FILTERS: QcStatusFilters = {
+  merger_status: '',
+  joint_chamber_status: '',
+  route_indicator_status: '',
+  link_status: '',
+};
+
+const qcStatusClass = (value: string) => {
+  switch (value) {
+    case 'Completed':
+      return 'bg-green-100 text-green-800 border-green-200';
+    case 'Pending':
+      return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    case 'Gaps Identified':
+    case 'Not Fully Captured':
+    case 'Partially Completed':
+      return 'bg-orange-100 text-orange-800 border-orange-200';
+    default:
+      return 'bg-gray-100 text-gray-800 border-gray-200';
+  }
+};
+
 interface AcceptedLinksProps {
   selectedState: string | null;
   selectedDistrict: string | null;
@@ -70,6 +115,7 @@ interface AcceptedLinksProps {
   filtersReady: boolean;
   tdStatus?: string;
   ofcStatus?: string;
+  qcFilters?: QcStatusFilters;
   onSummaryChange?: (summary: AcceptedLinksSummary | null) => void;
   excel?: boolean;
   onExcel?: () => void;
@@ -131,6 +177,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
   filtersReady,
   tdStatus,
   ofcStatus,
+  qcFilters = EMPTY_QC_FILTERS,
   onSummaryChange,
   excel,
   onExcel,
@@ -156,6 +203,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
   const [savingOtdrId, setSavingOtdrId] = useState<number | null>(null);
   const [statusUpdatingId, setStatusUpdatingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [qcUpdating, setQcUpdating] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [expandedFirmIds, setExpandedFirmIds] = useState<Set<number>>(new Set());
 
@@ -187,6 +235,9 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
         if (globalsearch.trim()) params.search = globalsearch.trim();
         if (tdStatus) params.td_status = tdStatus;
         if (ofcStatus) params.ofc_status = ofcStatus;
+        QC_STATUS_KEYS.forEach((key) => {
+          if (qcFilters[key]) params[key] = qcFilters[key];
+        });
 
         const response = await axios.get<{
           status: boolean;
@@ -231,6 +282,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
     globalsearch,
     tdStatus,
     ofcStatus,
+    qcFilters,
     filtersReady,
     page,
     perPage,
@@ -239,7 +291,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
 
   useEffect(() => {
     setPage(1);
-  }, [selectedState, selectedDistrict, selectedBlock, selectedvendor,globalsearch, tdStatus, ofcStatus]);
+  }, [selectedState, selectedDistrict, selectedBlock, selectedvendor,globalsearch, tdStatus, ofcStatus, qcFilters]);
 
   const startEdit = (row: AcceptedLinkRow) => {
     setEditingId(row.id);
@@ -408,6 +460,63 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
 
   const statusLabel = (status: number) => (status === 1 ? 'Completed' : 'Pending');
 
+  const handleQcStatusChange = async (
+    row: AcceptedLinkRow,
+    key: QcStatusKey,
+    value: string,
+  ) => {
+    if (row[key] === value) return;
+    const updatingKey = `${row.id}-${key}`;
+    setQcUpdating(updatingKey);
+    try {
+      await axios.post(
+        `${TraceBASEURL}/link-tracker/${row.id}/qc-status`,
+        { [key]: value },
+        { headers: getAuthHeaders() },
+      );
+      setData((prev) =>
+        prev.map((item) => (item.id === row.id ? { ...item, [key]: value } : item)),
+      );
+      toast.success(`${QC_STATUS_LABELS[key]} updated.`);
+    } catch (err) {
+      console.error('Error updating QC status', err);
+      toast.error(`Failed to update ${QC_STATUS_LABELS[key]}.`);
+    } finally {
+      setQcUpdating(null);
+    }
+  };
+
+  const renderQcStatusCell = (row: AcceptedLinkRow, key: QcStatusKey) => {
+    const value = row[key] || '';
+    const className = qcStatusClass(value);
+    if (!adminAccess) {
+      return value ? (
+        <span
+          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border whitespace-nowrap ${className}`}
+        >
+          {value}
+        </span>
+      ) : (
+        '-'
+      );
+    }
+    return (
+      <select
+        value={value}
+        disabled={qcUpdating === `${row.id}-${key}`}
+        onChange={(e) => handleQcStatusChange(row, key, e.target.value)}
+        className={`text-xs font-semibold rounded-full px-2 py-1 border outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+      >
+        {!value && <option value="">Select</option>}
+        {QC_STATUS_OPTIONS[key].map((opt) => (
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
+        ))}
+      </select>
+    );
+  };
+
   const handleExportExcel = async () => {
     try {
       onExcelLoadingChange?.(true);
@@ -422,6 +531,9 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       if (globalsearch.trim()) params.search = globalsearch.trim();
       if (tdStatus) params.td_status = tdStatus;
       if (ofcStatus) params.ofc_status = ofcStatus;
+      QC_STATUS_KEYS.forEach((key) => {
+        if (qcFilters[key]) params[key] = qcFilters[key];
+      });
 
       const response = await axios.get<{
         status: boolean;
@@ -456,6 +568,10 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
         'OFC Status',
         'JointChamber Count',
         'ROuteIndicator Count',
+        'Merger Status',
+        'Joint Chamber Status',
+        'Route Indicator Status',
+        'Link Status',
         'Updated At',
       ];
 
@@ -479,6 +595,10 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
         statusLabel(row.ofc_status),
         row.joint_chambers,
         row.route_indicators,
+        row.merger_status,
+        row.joint_chamber_status,
+        row.route_indicator_status,
+        row.link_status,
         moment(row.updated_at).format('DD/MM/YYYY, hh:mm A'),
       ]);
 
@@ -514,6 +634,9 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       if (globalsearch.trim()) params.search = globalsearch.trim();
       if (tdStatus) params.td_status = tdStatus;
       if (ofcStatus) params.ofc_status = ofcStatus;
+      QC_STATUS_KEYS.forEach((key) => {
+        if (qcFilters[key]) params[key] = qcFilters[key];
+      });
 
       const response = await axios.get<{
         status: boolean;
@@ -1022,7 +1145,14 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
      sortable: true,
       cell: (row) => row.route_indicators|| '-',
     },
-   {
+    ...QC_STATUS_KEYS.map((key) => ({
+      name: QC_STATUS_LABELS[key],
+      selector: (row: AcceptedLinkRow) => row[key] || '',
+      sortable: true,
+      minWidth: '190px',
+      cell: (row: AcceptedLinkRow) => renderQcStatusCell(row, key),
+    })),
+    {
       name: 'Updated',
       selector: (row) => row.updated_at,
       sortable: true,

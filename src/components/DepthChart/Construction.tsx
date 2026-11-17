@@ -2,7 +2,13 @@ import { act, useEffect, useRef, useState } from 'react';
 import { StateData, District, Block } from '../../types/survey';
 import Report from './UGConst';
 import AcceptedLinks from './AcceptedLinks';
-import type { AcceptedLinksSummary } from './AcceptedLinks';
+import type { AcceptedLinksSummary, QcStatusFilters, QcStatusKey } from './AcceptedLinks';
+import {
+  EMPTY_QC_FILTERS,
+  QC_STATUS_KEYS,
+  QC_STATUS_LABELS,
+  QC_STATUS_OPTIONS,
+} from './AcceptedLinks';
 import ConstructionStatsPanel from './ConstructionStatsPanel';
 import {
   SheetIcon,
@@ -106,6 +112,7 @@ function ConstructionPage() {
   const [cords, setcords] = useState<string>('');
   const [tdStatus, setTdStatus] = useState<string>('');
   const [ofcStatus, setOfcStatus] = useState<string>('');
+  const [qcFilters, setQcFilters] = useState<QcStatusFilters>(EMPTY_QC_FILTERS);
   const [page, setPage] = useState<number>(() => {
     const pageParam = Number(new URLSearchParams(window.location.search).get('page'));
     return pageParam > 0 ? pageParam : 1;
@@ -392,6 +399,10 @@ function ConstructionPage() {
     const td_status = searchParams.get('td_status') || '';
     const ofc_status = searchParams.get('ofc_status') || '';
     const firm_id = searchParams.get('firm_id') || null;
+    const qcFromUrl = QC_STATUS_KEYS.reduce<QcStatusFilters>(
+      (acc, key) => ({ ...acc, [key]: searchParams.get(key) || '' }),
+      { ...EMPTY_QC_FILTERS },
+    );
 
     setcords(cords);
     setSelectedState(state_id || (IEUser ? '6' : null));
@@ -416,6 +427,7 @@ function ConstructionPage() {
     setActiveTab(IEUser ? 'UG' : tab === 'AcceptedLinks' ? 'AcceptedLinks' : 'UG');
     setTdStatus(td_status);
     setOfcStatus(ofc_status);
+    setQcFilters(qcFromUrl);
     setSelectedVendor(firm_id);
   }, []);
 
@@ -441,6 +453,7 @@ function ConstructionPage() {
     tdStatus?: string,
     ofcStatus?: string,
     firmId?: string | null,
+    qc: QcStatusFilters = qcFilters,
   ) => {
     const params: Record<string, string> = {};
     if (newState) params.state_id = newState;
@@ -461,6 +474,9 @@ function ConstructionPage() {
     if (tdStatus) params.td_status = tdStatus;
     if (ofcStatus) params.ofc_status = ofcStatus;
     if (firmId) params.firm_id = firmId;
+    QC_STATUS_KEYS.forEach((key) => {
+      if (qc[key]) params[key] = qc[key];
+    });
     setSearchParams(params);
     if (!page) setPage(1);
   };
@@ -481,6 +497,7 @@ function ConstructionPage() {
     setcords('');
     setTdStatus('');
     setOfcStatus('');
+    setQcFilters(EMPTY_QC_FILTERS);
     setPage(1);
   };
 
@@ -711,6 +728,30 @@ function ConstructionPage() {
       tdStatus,
       ofcStatus,
       selectedVendor,
+    );
+  };
+
+  const handleQcFilterChange = (key: QcStatusKey, value: string) => {
+    const next = { ...qcFilters, [key]: value };
+    setQcFilters(next);
+    handleFilterChange(
+      selectedState,
+      selectedDistrict,
+      selectedBlock,
+      selectedConnection,
+      selectedStatus,
+      worktype,
+      fromdate,
+      todate,
+      globalsearch,
+      constType,
+      activeTab,
+      cords,
+      page,
+      tdStatus,
+      ofcStatus,
+      selectedVendor,
+      next,
     );
   };
 
@@ -1005,6 +1046,17 @@ function ConstructionPage() {
                     placeholder="All OFC Status"
                   />
                 </div>
+
+                {QC_STATUS_KEYS.map((key) => (
+                  <div key={key} className="relative flex-1 min-w-0 sm:flex-none sm:w-48">
+                    <SearchableSelect
+                      value={qcFilters[key]}
+                      onChange={(value: string) => handleQcFilterChange(key, value)}
+                      options={QC_STATUS_OPTIONS[key].map((opt) => ({ value: opt, label: opt }))}
+                      placeholder={`${QC_STATUS_LABELS[key]}`}
+                    />
+                  </div>
+                ))}
 
                 <button
                   onClick={() => setExcel(true)}
@@ -1400,6 +1452,7 @@ function ConstructionPage() {
               filtersReady={filtersReady}
               tdStatus={tdStatus}
               ofcStatus={ofcStatus}
+              qcFilters={qcFilters}
               onSummaryChange={setAcceptedLinksSummary}
               excel={excel}
               onExcel={() => setExcel(false)}
