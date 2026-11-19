@@ -175,6 +175,9 @@ export interface PoleString {
   end_longitude: string,
   isJointChamber:number|0
   jointChamberType?: 'SJC' | 'BJC' | null;
+  remark: string | null;
+  elevation:string | null;
+  distance_3d:string | null;
 }
 export interface PoleSurveyResponse {
   status: boolean;

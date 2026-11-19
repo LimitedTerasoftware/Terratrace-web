@@ -857,6 +857,22 @@ function PoleStringView() {
       },
     },
     {
+      name:'Elevation',
+      selector:(row)=>row.elevation || '-',
+      sortable:true,
+    },
+    {
+      name:'Distance 3D',
+      selector:(row)=>row.distance_3d || '-',
+      sortable:true,
+    },
+    {
+      name:'Remark',
+      selector:(row)=>row.remark || '-',
+      sortable:true,
+      wrap:true
+    },
+    {
       name: 'Created At',
       selector: (row) => moment(row.created_at).format('DD/MM/YYYY, hh:mm A'),
       sortable: true,

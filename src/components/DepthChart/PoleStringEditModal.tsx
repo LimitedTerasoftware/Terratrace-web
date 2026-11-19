@@ -50,6 +50,7 @@ export function PoleStringEditModal({
         is_active: row.is_active,
         isJointChamber: row.isJointChamber ?? 0,
         jointChamberType: row.jointChamberType ?? null,
+        remark: row.remark ?? '',
       };
 
       if (row.road_crossing) {
@@ -135,6 +136,7 @@ export function PoleStringEditModal({
           Number(formData.isJointChamber) == 1
             ? formData.jointChamberType || null
             : null,
+        remark: formData.remark?.trim() || null,
         user_id: userData.id,
         user_name: userData.name,
       };
@@ -347,6 +349,21 @@ export function PoleStringEditModal({
                 )}
               </>
             )}
+
+            {/* Remark */}
+            <div className="md:col-span-3 mt-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Remark
+              </label>
+              <textarea
+                value={formData.remark ?? ''}
+                onChange={(e) => handleChange('remark', e.target.value)}
+                placeholder="Enter remark..."
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                disabled={isLoading}
+              />
+            </div>
           </div>
 
           {error && (

@@ -15,6 +15,7 @@ import {
   Globe2Icon,
   PlusCircleIcon,
   GitMerge,
+  Ruler,
 } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { getAuthHeaders, isAdminUser } from '../../utils/accessControl';
@@ -69,6 +70,8 @@ function AerialListPage() {
   const [progressmap, setProgressmap] = useState<boolean>(false);
   const [mergeSurveys, setMergeSurveys] = useState<boolean>(false);
   const [mergeLoading, setMergeLoading] = useState<boolean>(false);
+  const [calculate3D, setCalculate3D] = useState<boolean>(false);
+  const [calculate3DLoading, setCalculate3DLoading] = useState<boolean>(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [filtersReady, setFiltersReady] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -993,6 +996,21 @@ function AerialListPage() {
               </button>
             )}
 
+            {activeTab === 'Aerial' && (
+              <button
+                onClick={() => setCalculate3D(true)}
+                disabled={calculate3DLoading}
+                className="flex-none h-10 px-4 py-2 text-sm font-medium text-teal-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 outline-none disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center gap-2"
+              >
+                {calculate3DLoading ? (
+                  <span className="w-4 h-4 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Ruler className="h-4 w-4 text-teal-600" />
+                )}
+                {calculate3DLoading ? 'Calculating...' : 'Calculate 3D Distance'}
+              </button>
+            )}
+
             {(activeTab === 'Aerial' && AdminAcess) && (
               <button
                 onClick={() => setIsAddModalOpen(true)}
@@ -1037,7 +1055,7 @@ function AerialListPage() {
               connectionEnd: getSelectedConnectionDetails()?.endLocation,
               page,
               mergeSurveys,
-
+              calculate3D,
             }}
             Onexcel={() => setExcel(false)}
             OnPreview={() => setPreview(false)}
@@ -1048,6 +1066,8 @@ function AerialListPage() {
             OnPageChange={handlePageChange}
             OnMergeSurveys={() => setMergeSurveys(false)}
             OnMergeLoadingChange={setMergeLoading}
+            OnCalculate3D={() => setCalculate3D(false)}
+            OnCalculate3DLoadingChange={setCalculate3DLoading}
           />
         )}
         {activeTab === 'Pole' && (

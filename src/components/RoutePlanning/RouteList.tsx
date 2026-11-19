@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { AlertCircle, AlertTriangle, CheckCircle, Eye, Trash, X, RotateCcw, Search, User, Route, SheetIcon} from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle, Eye, Trash, X, RotateCcw, Search, User, Route, SheetIcon, Mountain, Upload, Loader2 } from 'lucide-react';
 import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useAppContext } from './AppContext';
 import { getAuthHeaders } from '../../utils/accessControl';
@@ -32,6 +32,8 @@ interface Network {
   user_id: number;
   user_name: string;
   type:string;
+  elevation_length_m:string | null;
+  elevation_base_length_m:string | null;
 }
 
 interface State {
@@ -122,6 +124,13 @@ const RouteList = () => {
   const [districts, setDistricts] = useState<District[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [globalsearch, setGlobalSearch] = useState<string>('');
+
+  // Elevation distance (estimate from KMZ)
+  const [elevationNetwork, setElevationNetwork] = useState<{ id: number; name: string } | null>(null);
+  const [elevationFile, setElevationFile] = useState<File | null>(null);
+  const [elevationLoading, setElevationLoading] = useState<boolean>(false);
+  const [elevationError, setElevationError] = useState<string | null>(null);
+  const [elevationResult, setElevationResult] = useState<any>(null);
 
   const [loadingStates, setLoadingStates] = useState<boolean>(false);
   const [loadingDistricts, setLoadingDistricts] = useState<boolean>(false);
@@ -305,6 +314,59 @@ const RouteList = () => {
       showNotification('error', 'Something went wrong while deleting.');
     }
   }
+
+  const openElevationModal = (id: number, name: string) => {
+    setElevationNetwork({ id, name });
+    setElevationFile(null);
+    setElevationError(null);
+    setElevationResult(null);
+  };
+
+  const closeElevationModal = () => {
+    if (elevationLoading) return;
+    setElevationNetwork(null);
+    setElevationFile(null);
+    setElevationError(null);
+    setElevationResult(null);
+  };
+
+  const handleElevationSubmit = async () => {
+    if (!elevationNetwork) return;
+    if (!elevationFile) {
+      setElevationError('Please select a KMZ file.');
+      return;
+    }
+    if (!elevationFile.name.toLowerCase().endsWith('.kmz')) {
+      setElevationError('Only .kmz files are allowed.');
+      return;
+    }
+
+    setElevationLoading(true);
+    setElevationError(null);
+    setElevationResult(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', elevationFile);
+      formData.append('network_id', String(elevationNetwork.id));
+
+      const response = await fetch(`${TraceBASEURL}/poles/estimate-from-kmz`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json().catch(() => null);
+      if (!response.ok || result?.status === false) {
+        throw new Error(result?.message || `Request failed with status ${response.status}`);
+      }
+
+      setElevationResult(result);
+      showNotification('success', `Elevation distance estimated for ${result?.network?.name || elevationNetwork.name}`);
+    } catch (err) {
+      setElevationError(err instanceof Error ? err.message : 'Failed to estimate elevation distance');
+    } finally {
+      setElevationLoading(false);
+    }
+  };
 
   // Fetch all states
   const fetchStates = async () => {
@@ -758,6 +820,8 @@ const RouteList = () => {
                   <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">District Name</th>
                   <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                   <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Length (km)</th>
+                  <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Elevation Length (m)</th>
+                  <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Elevation Base Length (m)</th>
                   <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Name</th>
                   <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
                   <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -766,7 +830,7 @@ const RouteList = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
                   <tr>
-                    <td colSpan={9} className="px-6 py-4">
+                    <td colSpan={11} className="px-6 py-4">
                       <div className="flex items-center justify-center">
                         <svg className="animate-spin h-5 w-5 mr-3 text-blue-500" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
@@ -778,7 +842,7 @@ const RouteList = () => {
                   </tr>
                 ) : currentNetworks.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan={11} className="px-6 py-4 text-center text-gray-500">
                       {globalsearch || selectedState || selectedDistrict || selectedBlock || selectedStatus || fromDate || toDate 
                         ? 'No networks match your search criteria.' 
                         : 'No networks found.'}
@@ -812,6 +876,12 @@ const RouteList = () => {
                       </td>
                       <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
                         {parseFloat(network.total_length).toFixed(2)}
+                      </td>
+                      <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {network.elevation_length_m || '-'}
+                      </td>
+                      <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {network.elevation_base_length_m || '-'}
                       </td>
                       <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
                         <div className="flex items-center">
@@ -858,6 +928,16 @@ const RouteList = () => {
                             className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 outline-none dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-800"
                           >
                             GP List
+                          </button>
+
+                          {/* Elevation Distance Button */}
+                          <button
+                            onClick={() => openElevationModal(network.id, network.name)}
+                            className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-teal-600 bg-teal-50 border border-teal-200 rounded-md hover:bg-teal-100 outline-none dark:bg-teal-900 dark:text-teal-300 dark:border-teal-700 dark:hover:bg-teal-800"
+                            title="Elevation Distance"
+                          >
+                            <Mountain className="w-3.5 h-3.5" />
+                            Elevation Distance
                           </button>
                         </div>
                       </td>
@@ -926,6 +1006,149 @@ const RouteList = () => {
           )}
         </>
       </div>
+
+      {elevationNetwork && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-700">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Elevation Distance</h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {elevationNetwork.name} (ID: {elevationNetwork.id})
+                </p>
+              </div>
+              <button
+                onClick={closeElevationModal}
+                disabled={elevationLoading}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700">
+                <Upload className="w-6 h-6 text-gray-400 mb-2" />
+                <span className="text-sm text-gray-600 dark:text-gray-300">
+                  {elevationFile ? elevationFile.name : 'Click to select a KMZ file'}
+                </span>
+                <input
+                  type="file"
+                  accept=".kmz"
+                  className="hidden"
+                  disabled={elevationLoading}
+                  onChange={(e) => {
+                    setElevationFile(e.target.files?.[0] ?? null);
+                    setElevationError(null);
+                    setElevationResult(null);
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+
+              {elevationError && (
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <p className="text-sm text-red-600 dark:text-red-400">{elevationError}</p>
+                </div>
+              )}
+
+              {elevationResult && (() => {
+                const o = elevationResult.overall ?? {};
+                const num = (v: any, digits = 2) =>
+                  v === null || v === undefined || v === '' || isNaN(Number(v))
+                    ? '-'
+                    : Number(v).toLocaleString(undefined, { maximumFractionDigits: digits });
+                const meters = (v: any) => (num(v) === '-' ? '-' : `${num(v)} m`);
+                const km = (v: any) =>
+                  v === null || v === undefined || isNaN(Number(v))
+                    ? ''
+                    : ` (${(Number(v) / 1000).toLocaleString(undefined, { maximumFractionDigits: 3 })} km)`;
+
+                const stats: { label: string; value: string; highlight?: boolean }[] = [
+                  { label: 'Flat Distance', value: meters(o.flat_m) + km(o.flat_m) },
+                  { label: '3D Distance', value: meters(o.distance_3d_m) + km(o.distance_3d_m), highlight: true },
+                  { label: 'Additional Length', value: meters(o.additional_m), highlight: true },
+                  { label: 'Increase', value: num(o.increase_pct, 3) === '-' ? '-' : `${num(o.increase_pct, 3)} %` },
+                  { label: 'Paths', value: num(o.paths, 0) },
+                  { label: 'Poles', value: num(o.poles, 0) },
+                  { label: 'Total Ascent', value: meters(o.total_ascent_m) },
+                  { label: 'Total Descent', value: meters(o.total_descent_m) },
+                  { label: 'Min Elevation', value: meters(o.min_elev_m) },
+                  { label: 'Max Elevation', value: meters(o.max_elev_m) },
+                  { label: 'Max Slope', value: num(o.max_abs_slope_pct) === '-' ? '-' : `${num(o.max_abs_slope_pct)} %` },
+                  { label: 'Pole Spacing', value: meters(elevationResult.spacing_m) },
+                ];
+
+                return (
+                  <div className="space-y-3">
+                    <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                      <p className="text-sm font-medium text-green-700 dark:text-green-400">
+                        Estimation completed{elevationResult.saved ? ' and saved' : ''}
+                      </p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 break-all">
+                        File: {elevationResult.file_name || '-'}
+                        {elevationResult.network?.name ? ` · Network: ${elevationResult.network.name}` : ''}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      {stats.map((s) => (
+                        <div
+                          key={s.label}
+                          className={`p-2.5 rounded-lg border ${
+                            s.highlight
+                              ? 'bg-teal-50 border-teal-200 dark:bg-teal-900/20 dark:border-teal-800'
+                              : 'bg-gray-50 border-gray-200 dark:bg-gray-700/40 dark:border-gray-600'
+                          }`}
+                        >
+                          <p className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                            {s.label}
+                          </p>
+                          <p
+                            className={`text-sm font-semibold ${
+                              s.highlight ? 'text-teal-700 dark:text-teal-300' : 'text-gray-900 dark:text-white'
+                            }`}
+                          >
+                            {s.value}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 p-5 border-t border-gray-200 dark:border-gray-700">
+              <button
+                type="button"
+                onClick={closeElevationModal}
+                disabled={elevationLoading}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                {elevationResult ? 'Close' : 'Cancel'}
+              </button>
+              <button
+                onClick={handleElevationSubmit}
+                disabled={elevationLoading || !elevationFile}
+                className="px-4 py-2 text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {elevationLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4" />
+                    Upload &amp; Estimate
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {notification.show && (
         <div className={`fixed top-4 right-4 z-[60] min-w-80 max-w-md transform transition-all duration-300 ease-in-out ${

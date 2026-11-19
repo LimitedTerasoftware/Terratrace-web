@@ -38,6 +38,7 @@ interface ReportProps {
     editLink?: boolean;
     selectedVendor?: string | null;
     downloadMBLink?: boolean;
+    calculate3D?: boolean;
   };
   Onexcel: () => void;
   OnPreview: () => void;
@@ -51,6 +52,8 @@ interface ReportProps {
   OnEditLink?: () => void;
   OnDownloadMBLink?: () => void;
   OnDownloadMBLinkLoadingChange?: (loading: boolean) => void;
+  OnCalculate3D?: () => void;
+  OnCalculate3DLoadingChange?: (loading: boolean) => void;
 }
 
 const TraceBASEURL = import.meta.env.VITE_TraceAPI_URL;
@@ -184,6 +187,8 @@ const Report: React.FC<ReportProps> = ({
   OnEditLink,
   OnDownloadMBLink,
   OnDownloadMBLinkLoadingChange,
+  OnCalculate3D,
+  OnCalculate3DLoadingChange,
 }) => {
   const AdminAcess = isAdminUser();
   const IEUser = isIEUser();
@@ -972,6 +977,48 @@ const Report: React.FC<ReportProps> = ({
     } finally {
       OnMergeLoadingChange(false);
       OnMergeSurveys();
+    }
+  };
+
+  useEffect(() => {
+    if (!Data.calculate3D) return;
+    if (selectedRows.length === 0) {
+      alert('Please select at least one row to calculate 3D distance.');
+      OnCalculate3D?.();
+      return;
+    }
+    handleCalculate3DDistance();
+  }, [Data.calculate3D]);
+
+  const handleCalculate3DDistance = async () => {
+    OnCalculate3DLoadingChange?.(true);
+    try {
+      const surveyIds = selectedRows
+        .filter((row) => row.construction_type === 'Aerial')
+        .map((row) => row.id);
+
+      if (surveyIds.length === 0) {
+        toast.error('Please select at least one Aerial survey.');
+        return;
+      }
+
+      const resp = await axios.post(
+        `${TraceBASEURL}/poles/calculate-3d-distance`,
+        { survey_ids: surveyIds },
+        { headers: { 'Content-Type': 'application/json' } },
+      );
+
+      if (resp.status === 200 || resp.status === 201) {
+        toast.success(resp.data?.message || '3D distance calculated successfully!');
+      } else {
+        toast.error('Failed to calculate 3D distance');
+      }
+    } catch (error) {
+      console.error('Error calculating 3D distance:', error);
+      toast.error('Error calculating 3D distance');
+    } finally {
+      OnCalculate3DLoadingChange?.(false);
+      OnCalculate3D?.();
     }
   };
 
