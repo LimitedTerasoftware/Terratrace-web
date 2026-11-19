@@ -51,7 +51,8 @@ interface AcceptedLinkRow {
   merger_status:string,
   joint_chamber_status:string,
   route_indicator_status:string,
-  link_status:string,    
+  link_status:string,
+  cable_type?: string | null;
 }
 
 interface AcceptedLinksSummary {
@@ -116,6 +117,7 @@ interface AcceptedLinksProps {
   tdStatus?: string;
   ofcStatus?: string;
   qcFilters?: QcStatusFilters;
+  cableType?: string;
   onSummaryChange?: (summary: AcceptedLinksSummary | null) => void;
   excel?: boolean;
   onExcel?: () => void;
@@ -178,6 +180,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
   tdStatus,
   ofcStatus,
   qcFilters = EMPTY_QC_FILTERS,
+  cableType,
   onSummaryChange,
   excel,
   onExcel,
@@ -235,6 +238,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
         if (globalsearch.trim()) params.search = globalsearch.trim();
         if (tdStatus) params.td_status = tdStatus;
         if (ofcStatus) params.ofc_status = ofcStatus;
+        if (cableType) params.cable_type = cableType;
         QC_STATUS_KEYS.forEach((key) => {
           if (qcFilters[key]) params[key] = qcFilters[key];
         });
@@ -283,6 +287,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
     tdStatus,
     ofcStatus,
     qcFilters,
+    cableType,
     filtersReady,
     page,
     perPage,
@@ -291,7 +296,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
 
   useEffect(() => {
     setPage(1);
-  }, [selectedState, selectedDistrict, selectedBlock, selectedvendor,globalsearch, tdStatus, ofcStatus, qcFilters]);
+  }, [selectedState, selectedDistrict, selectedBlock, selectedvendor,globalsearch, tdStatus, ofcStatus, qcFilters, cableType]);
 
   const startEdit = (row: AcceptedLinkRow) => {
     setEditingId(row.id);
@@ -531,6 +536,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       if (globalsearch.trim()) params.search = globalsearch.trim();
       if (tdStatus) params.td_status = tdStatus;
       if (ofcStatus) params.ofc_status = ofcStatus;
+      if (cableType) params.cable_type = cableType;
       QC_STATUS_KEYS.forEach((key) => {
         if (qcFilters[key]) params[key] = qcFilters[key];
       });
@@ -555,6 +561,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
         'District',
         'Block',
         'Link Name',
+        'Cable Type',
         'Survey Count',
         'BOQ Distance (m)',
         'T&D Distance (m)',
@@ -580,6 +587,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
         row.district_name,
         row.block_name,
         row.link_name,
+        row.cable_type || '-',
         row.survey_count,
         row.actual_distance_meters != null
           ? row.actual_distance_meters.toFixed(2)
@@ -634,6 +642,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       if (globalsearch.trim()) params.search = globalsearch.trim();
       if (tdStatus) params.td_status = tdStatus;
       if (ofcStatus) params.ofc_status = ofcStatus;
+      if (cableType) params.cable_type = cableType;
       QC_STATUS_KEYS.forEach((key) => {
         if (qcFilters[key]) params[key] = qcFilters[key];
       });
@@ -887,6 +896,26 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       sortable: true,
       wrap: true,
       minWidth: '220px',
+    },
+    {
+      name: 'Cable Type',
+      selector: (row) => row.cable_type || '',
+      sortable: true,
+      minWidth: '130px',
+      cell: (row) =>
+        row.cable_type ? (
+          <span
+            className={`px-2 py-1 text-xs font-medium rounded-full border ${
+              row.cable_type === 'Incremental'
+                ? 'bg-purple-50 text-purple-700 border-purple-200'
+                : 'bg-sky-50 text-sky-700 border-sky-200'
+            }`}
+          >
+            {row.cable_type}
+          </span>
+        ) : (
+          '-'
+        ),
     },
     {
       name: 'Survey Count',

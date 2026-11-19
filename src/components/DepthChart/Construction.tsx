@@ -113,6 +113,7 @@ function ConstructionPage() {
   const [tdStatus, setTdStatus] = useState<string>('');
   const [ofcStatus, setOfcStatus] = useState<string>('');
   const [qcFilters, setQcFilters] = useState<QcStatusFilters>(EMPTY_QC_FILTERS);
+  const [cableType, setCableType] = useState<string>('');
   const [page, setPage] = useState<number>(() => {
     const pageParam = Number(new URLSearchParams(window.location.search).get('page'));
     return pageParam > 0 ? pageParam : 1;
@@ -399,6 +400,7 @@ function ConstructionPage() {
     const td_status = searchParams.get('td_status') || '';
     const ofc_status = searchParams.get('ofc_status') || '';
     const firm_id = searchParams.get('firm_id') || null;
+    const cable_type = searchParams.get('cable_type') || '';
     const qcFromUrl = QC_STATUS_KEYS.reduce<QcStatusFilters>(
       (acc, key) => ({ ...acc, [key]: searchParams.get(key) || '' }),
       { ...EMPTY_QC_FILTERS },
@@ -429,6 +431,7 @@ function ConstructionPage() {
     setOfcStatus(ofc_status);
     setQcFilters(qcFromUrl);
     setSelectedVendor(firm_id);
+    setCableType(cable_type);
   }, []);
 
   useEffect(() => {
@@ -454,6 +457,7 @@ function ConstructionPage() {
     ofcStatus?: string,
     firmId?: string | null,
     qc: QcStatusFilters = qcFilters,
+    cable: string = cableType,
   ) => {
     const params: Record<string, string> = {};
     if (newState) params.state_id = newState;
@@ -477,6 +481,7 @@ function ConstructionPage() {
     QC_STATUS_KEYS.forEach((key) => {
       if (qc[key]) params[key] = qc[key];
     });
+    if (cable) params.cable_type = cable;
     setSearchParams(params);
     if (!page) setPage(1);
   };
@@ -498,6 +503,7 @@ function ConstructionPage() {
     setTdStatus('');
     setOfcStatus('');
     setQcFilters(EMPTY_QC_FILTERS);
+    setCableType('');
     setPage(1);
   };
 
@@ -752,6 +758,30 @@ function ConstructionPage() {
       ofcStatus,
       selectedVendor,
       next,
+    );
+  };
+
+  const handleCableTypeChange = (value: string) => {
+    setCableType(value);
+    handleFilterChange(
+      selectedState,
+      selectedDistrict,
+      selectedBlock,
+      selectedConnection,
+      selectedStatus,
+      worktype,
+      fromdate,
+      todate,
+      globalsearch,
+      constType,
+      activeTab,
+      cords,
+      page,
+      tdStatus,
+      ofcStatus,
+      selectedVendor,
+      qcFilters,
+      value,
     );
   };
 
@@ -1044,6 +1074,18 @@ function ConstructionPage() {
                         label: option.label == "Accepted" ? 'Completed' : option.label,
                       }))}
                     placeholder="All OFC Status"
+                  />
+                </div>
+
+                <div className="relative flex-1 min-w-0 sm:flex-none sm:w-40">
+                  <SearchableSelect
+                    value={cableType}
+                    onChange={handleCableTypeChange}
+                    options={[
+                      { value: 'Incremental', label: 'Incremental' },
+                      { value: 'Proposed', label: 'Proposed' },
+                    ]}
+                    placeholder="All Cable Type"
                   />
                 </div>
 
@@ -1453,6 +1495,7 @@ function ConstructionPage() {
               tdStatus={tdStatus}
               ofcStatus={ofcStatus}
               qcFilters={qcFilters}
+              cableType={cableType}
               onSummaryChange={setAcceptedLinksSummary}
               excel={excel}
               onExcel={() => setExcel(false)}

@@ -681,6 +681,16 @@ function PoleStringView() {
       wrap: true,
     },
     {
+      name:'Elevation (m)',
+      selector:(row)=>row.elevation || '-',
+      sortable:true,
+    },
+    {
+      name:'3D Distance (m)',
+      selector:(row)=>row.distance_3d || '-',
+      sortable:true,
+    },
+    {
       name:"Muff Type",
       selector:(row)=>row.muff_type || '-',
       sortable:true,
@@ -856,16 +866,7 @@ function PoleStringView() {
         );
       },
     },
-    {
-      name:'Elevation',
-      selector:(row)=>row.elevation || '-',
-      sortable:true,
-    },
-    {
-      name:'Distance 3D',
-      selector:(row)=>row.distance_3d || '-',
-      sortable:true,
-    },
+   
     {
       name:'Remark',
       selector:(row)=>row.remark || '-',
