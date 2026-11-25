@@ -1170,6 +1170,8 @@ export interface PoleDashboardResponse {
     accepted_poles?: number;
     rejected_poles?: number;
     total_distance_km: number;
+    total_distance_3d_km?: number;
+    poles_missing_3d?: number;
     new_poles_distance_km: number;
     existing_poles_distance_km: number;
     completion_rate: number;

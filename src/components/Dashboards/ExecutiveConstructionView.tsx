@@ -971,6 +971,16 @@ export default function ExecutiveConstructionView({ fullView = false }: Executiv
             },
           ],
         },
+        {
+          label: '3D Distance',
+          value: `${formatNumber(poleStats.total_distance_3d_km ?? 0)} KM`,
+          accentColor: 'blue' as const,
+        },
+        {
+          label: 'Poles Missing 3D',
+          value: formatNumber(poleStats.poles_missing_3d ?? 0),
+          accentColor: 'red' as const,
+        },
       ]
     : [];
 
@@ -1177,7 +1187,7 @@ export default function ExecutiveConstructionView({ fullView = false }: Executiv
         </div>
       )}
       {activeTab === 'aerial' && aerialStatsCards.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-2 bg-gray-50">
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 p-2 bg-gray-50">
           {aerialStatsCards.map((s) => (
             <StatsCard
               key={s.label}

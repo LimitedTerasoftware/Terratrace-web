@@ -207,6 +207,7 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
   const [statusUpdatingId, setStatusUpdatingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [qcUpdating, setQcUpdating] = useState<string | null>(null);
+  const [cableTypeUpdatingId, setCableTypeUpdatingId] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [expandedFirmIds, setExpandedFirmIds] = useState<Set<number>>(new Set());
 
@@ -340,6 +341,29 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       toast.error('Failed to update BOQ distance.');
     } finally {
       setSavingId(null);
+    }
+  };
+
+  const handleCableTypeUpdate = async (row: AcceptedLinkRow, value: string) => {
+    if (!value || row.cable_type === value) return;
+    setCableTypeUpdatingId(row.id);
+    try {
+      await axios.post(
+        `${TraceBASEURL}/link-tracker/${row.id}/qc-status`,
+        { cable_type: value },
+        { headers: getAuthHeaders() },
+      );
+      setData((prev) =>
+        prev.map((item) =>
+          item.id === row.id ? { ...item, cable_type: value } : item,
+        ),
+      );
+      toast.success('Cable type updated.');
+    } catch (err) {
+      console.error('Error updating cable type', err);
+      toast.error('Failed to update cable type.');
+    } finally {
+      setCableTypeUpdatingId(null);
     }
   };
 
@@ -901,21 +925,39 @@ const AcceptedLinks: React.FC<AcceptedLinksProps> = ({
       name: 'Cable Type',
       selector: (row) => row.cable_type || '',
       sortable: true,
-      minWidth: '130px',
-      cell: (row) =>
-        row.cable_type ? (
-          <span
-            className={`px-2 py-1 text-xs font-medium rounded-full border ${
-              row.cable_type === 'Incremental'
-                ? 'bg-purple-50 text-purple-700 border-purple-200'
-                : 'bg-sky-50 text-sky-700 border-sky-200'
-            }`}
+      minWidth: '150px',
+      cell: (row) => {
+        const value = row.cable_type || '';
+        const className =
+          value === 'Incremental'
+            ? 'bg-green-100 text-green-800 border-green-200'
+            : value === 'Proposed'
+              ? 'bg-red-100 text-red-800 border-red-200'
+              : 'bg-gray-100 text-gray-700 border-gray-200';
+
+        if (!adminAccess) {
+          return value ? (
+            <span className={`px-2 py-1 text-xs font-medium rounded-full border ${className}`}>
+              {value}
+            </span>
+          ) : (
+            '-'
+          );
+        }
+
+        return (
+          <select
+            value={value}
+            disabled={cableTypeUpdatingId === row.id}
+            onChange={(e) => handleCableTypeUpdate(row, e.target.value)}
+            className={`text-xs font-semibold rounded-full px-2 py-1 border outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
           >
-            {row.cable_type}
-          </span>
-        ) : (
-          '-'
-        ),
+            {!value && <option value="">Select</option>}
+            <option value="Incremental">Incremental</option>
+            <option value="Proposed">Proposed</option>
+          </select>
+        );
+      },
     },
     {
       name: 'Survey Count',

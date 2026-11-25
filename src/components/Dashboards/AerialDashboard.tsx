@@ -134,6 +134,16 @@ export default function AerialDashboard() {
             },
           ],
         },
+        {
+          label: '3D Distance',
+          value: `${formatNumber(poleData.total_distance_3d_km ?? 0)} KM`,
+          accentColor: 'blue' as const,
+        },
+        {
+          label: 'Poles Missing 3D',
+          value: formatNumber(poleData.poles_missing_3d ?? 0),
+          accentColor: 'red' as const,
+        },
       ]
     : [];
 
@@ -404,7 +414,7 @@ export default function AerialDashboard() {
           <div className="flex-1 overflow-auto">
             <main className="flex-1 min-w-0 overflow-y-auto">
               <div className="px-5 lg:px-8 py-6 max-w-screen-2xl mx-auto">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
                   {stats.map((s) => (
                     <StatsCard
                       key={s.label}

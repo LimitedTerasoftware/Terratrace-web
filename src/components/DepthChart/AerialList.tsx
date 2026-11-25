@@ -197,6 +197,16 @@ function AerialListPage() {
             },
           ],
         },
+        {
+          label: '3D Distance',
+          value: `${formatNumber(poleData.total_distance_3d_km ?? 0)} KM`,
+          accentColor: 'blue' as const,
+        },
+        {
+          label: 'Poles Missing 3D',
+          value: formatNumber(poleData.poles_missing_3d ?? 0),
+          accentColor: 'red' as const,
+        },
       ]
     : [];
 
@@ -684,7 +694,7 @@ function AerialListPage() {
 
       {poleStats.length > 0 && (
         <div className="p-3">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
             {poleStats.map((s) => (
               <StatsCard
                 key={s.label}
