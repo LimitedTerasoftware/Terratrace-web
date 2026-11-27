@@ -14,6 +14,7 @@ const VIEW_ONLY_EMAILS = ["aditisamanta@terasoftware.com","wb@terasoftware.com",
   "harunkowshik@terasoftware.com",
 "srayaseemajhi@terasoftware.com",
 "debdiproy@terasoftware.com",
+"ranikahamed@terasoftware.com"
 ];
 const DOWNLOAD_EMAILS =["nexus@terasoftware.com","debdiproy@terasoftware.com"];
 const SmartInvViewEmail = "survey@terasoftware.com";

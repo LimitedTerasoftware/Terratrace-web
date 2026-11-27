@@ -32,7 +32,7 @@ const EVENT_TYPES = [
   'DEPTH',
   'JOINTCHAMBER',
   //   'MANHOLES',
-  //   'LANDMARK',
+  'LANDMARK',
   //   'KILOMETERSTONE',
   //   'FIBERTURN',
   //   'ROUTEINDICATOR',

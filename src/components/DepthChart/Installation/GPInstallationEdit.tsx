@@ -287,107 +287,87 @@ const GPInstallationEdit = () => {
     }));
   };
 
-  const parseAndSetEquipmentData = (data: GPInstallationData) => {
+  // Field may arrive as a JSON string or as an already-parsed object/array.
+  // Each field is parsed independently so one bad field can't wipe the rest.
+  const parseField = (value: any, field: string): any => {
+    if (value === null || value === undefined || value === '') return null;
+    if (typeof value !== 'string') return value;
     try {
-      // Smart Rack
-      if (data.smart_rack) {
-        const parsed = JSON.parse(data.smart_rack);
-        setSmartRack(Array.isArray(parsed) ? parsed : [parsed]);
-      }
-
-      // FDMS Shelf
-      if (data.fdms_shelf) {
-        const parsed = JSON.parse(data.fdms_shelf);
-        setFdmsShelf(Array.isArray(parsed) ? parsed : [parsed]);
-      }
-
-      // IP MPLS Router
-      if (data.ip_mpls_router) {
-        const parsed = JSON.parse(data.ip_mpls_router);
-        setIpMplsRouter(Array.isArray(parsed) ? parsed : [parsed]);
-      }
-
-      // SFP Items
-      if (data.sfp_10g_40) {
-        const parsed =
-          typeof data.sfp_10g_40 === 'string'
-            ? JSON.parse(data.sfp_10g_40)
-            : data.sfp_10g_40;
-        setSfp10g(Array.isArray(parsed) ? parsed : [parsed]);
-      }
-
-      if (data.sfp_1g_10) {
-        const parsed =
-          typeof data.sfp_1g_10 === 'string'
-            ? JSON.parse(data.sfp_1g_10)
-            : data.sfp_1g_10;
-        setSfp1g(Array.isArray(parsed) ? parsed : [parsed]);
-      }
-
-      if (data.sfp_10g_10) {
-        const parsed =
-          typeof data.sfp_10g_10 === 'string'
-            ? JSON.parse(data.sfp_10g_10)
-            : data.sfp_10g_10;
-        setSfp100g(Array.isArray(parsed) ? parsed : [parsed]);
-      }
-
-      // Power Systems
-      if (data.power_system_with_mppt) {
-        const parsed = JSON.parse(data.power_system_with_mppt);
-        setPowerSystemWithMppt(normalizePowerSystemItems(parsed));
-      }
-
-      if (data.power_system_with_out_mppt) {
-        const parsed = JSON.parse(data.power_system_with_out_mppt);
-        setPowerSystemWithoutMppt(normalizePowerSystemItems(parsed));
-      }
-
-      if (data.mppt_solar_1kw) {
-        const parsed = JSON.parse(data.mppt_solar_1kw);
-        setMpptSolar1kw(normalizePowerSystemItems(parsed));
-      }
-
-      if (data.earthpit) {
-        const parsed = JSON.parse(data.earthpit);
-        setEarthpit(Array.isArray(parsed) ? parsed : [parsed]);
-      }
-
-      // Electricity Meter
-      if (data.electricity_meter) {
-        const parsed =
-          typeof data.electricity_meter === 'string'
-            ? JSON.parse(data.electricity_meter)
-            : data.electricity_meter;
-        const item = Array.isArray(parsed) ? parsed[0] : parsed;
-        setElectricityMeter({
-          meter_no: item?.meter_no || '',
-          photo: item?.photo || '',
-        });
-      }
-
-      // RFMS Filters
-      if (data.RFMS_FILTERS) {
-        const parsed =
-          typeof data.RFMS_FILTERS === 'string'
-            ? JSON.parse(data.RFMS_FILTERS)
-            : data.RFMS_FILTERS;
-        setRfmsFilters(Array.isArray(parsed) ? parsed : [parsed]);
-      }
-
-      // Contacts
-      if (data.gp_contact) {
-        const parsed = JSON.parse(data.gp_contact);
-        setGpContact(parsed);
-      }
-
-      if (data.key_person) {
-        const parsed = JSON.parse(data.key_person);
-        setKeyPerson(parsed);
-      }
+      return JSON.parse(value);
     } catch (e) {
-      console.error('Error parsing equipment data:', e);
+      console.error(`Error parsing ${field}:`, e);
+      return null;
     }
+  };
+
+  const toArray = (parsed: any) =>
+    parsed == null ? [] : Array.isArray(parsed) ? parsed : [parsed];
+
+  const parseAndSetEquipmentData = (data: GPInstallationData) => {
+    const p = (key: keyof GPInstallationData) =>
+      parseField((data as any)[key], key as string);
+
+    const smartRackData = p('smart_rack');
+    if (smartRackData) setSmartRack(toArray(smartRackData));
+
+    const fdmsData = p('fdms_shelf');
+    if (fdmsData) setFdmsShelf(toArray(fdmsData));
+
+    const routerData = p('ip_mpls_router');
+    if (routerData) setIpMplsRouter(toArray(routerData));
+
+    const sfp10gData = p('sfp_10g_40');
+    if (sfp10gData) setSfp10g(toArray(sfp10gData));
+
+    const sfp1gData = p('sfp_1g_10');
+    if (sfp1gData) setSfp1g(toArray(sfp1gData));
+
+    const sfp100gData = p('sfp_10g_10');
+    if (sfp100gData) setSfp100g(toArray(sfp100gData));
+
+    const withMppt = p('power_system_with_mppt');
+    if (withMppt) setPowerSystemWithMppt(normalizePowerSystemItems(withMppt));
+
+    const withoutMppt = p('power_system_with_out_mppt');
+    if (withoutMppt)
+      setPowerSystemWithoutMppt(normalizePowerSystemItems(withoutMppt));
+
+    const solar = p('mppt_solar_1kw');
+    if (solar) setMpptSolar1kw(normalizePowerSystemItems(solar));
+
+    // Earthpit
+    const earthpitData = p('earthpit');
+    if (earthpitData) {
+      setEarthpit(
+        toArray(earthpitData).map((item: any) => ({
+          capacity: item?.capacity ?? '',
+          latitude: item?.latitude ?? '',
+          longitude: item?.longitude ?? '',
+          photo: item?.photo ?? '',
+        })),
+      );
+    }
+
+    // Electricity Meter
+    const meterData = p('electricity_meter');
+    if (meterData) {
+      const item = Array.isArray(meterData) ? meterData[0] : meterData;
+      setElectricityMeter({
+        meter_no: item?.meter_no || '',
+        photo: item?.photo || '',
+      });
+    }
+
+    // RFMS Filters
+    const rfmsData = p('RFMS_FILTERS' as keyof GPInstallationData);
+    if (rfmsData) setRfmsFilters(toArray(rfmsData));
+
+    // Contacts
+    const contact = p('gp_contact');
+    if (contact) setGpContact(contact);
+
+    const keyPersonData = p('key_person');
+    if (keyPersonData) setKeyPerson(keyPersonData);
   };
 
   useEffect(() => {
@@ -513,7 +493,13 @@ const GPInstallationEdit = () => {
       const ProcessEarthpitPhoto = async (items: earthpitItem[]) => {
         const results = [];
         for (const item of items) {
-          if (!item.capacity) continue;
+          if (
+            !item.capacity &&
+            !item.latitude &&
+            !item.longitude &&
+            !item.photo
+          )
+            continue;
           const newItem = { ...item };
           if (item.photo && isDataUrl(item.photo)) {
             const uploadedUrls = await uploadImagesToServer([item.photo]);
